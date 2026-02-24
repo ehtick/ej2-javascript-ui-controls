@@ -64,7 +64,8 @@ export class Mention extends DropDownBase {
     private isUpDownKey: boolean;
     private isRTE: boolean;
     private keyEventName: string;
-
+    private keyupHandler: () => void;
+    private keydownHandler: () => void;
     // Mention Options
 
     /**
@@ -514,18 +515,23 @@ export class Mention extends DropDownBase {
     }
 
     private wireEvent(): void {
-        EventHandler.add(this.inputElement, 'keyup', this.onKeyUp, this);
+        this.keyupHandler = this.onKeyUp.bind(this);
+        EventHandler.add(this.inputElement, 'keyup', this.keyupHandler, this);
         this.bindCommonEvent();
     }
 
     private unWireEvent(): void {
-        EventHandler.remove(this.inputElement, 'keyup', this.onKeyUp);
+        if (this.keyupHandler) {
+            EventHandler.remove(this.inputElement, 'keyup', this.keyupHandler);
+            this.keyupHandler = null;
+        }
         this.unBindCommonEvent();
     }
 
     private bindCommonEvent(): void {
         if (!Browser.isDevice) {
-            this.inputElement.addEventListener('keydown', this.keyDownHandler.bind(this), !this.isRTE);
+            this.keydownHandler = this.keyDownHandler.bind(this);
+            this.inputElement.addEventListener('keydown', this.keydownHandler, !this.isRTE);
         }
     }
 
@@ -701,8 +707,9 @@ export class Mention extends DropDownBase {
     }
 
     private unBindCommonEvent(): void {
-        if (!Browser.isDevice) {
-            this.inputElement.removeEventListener('keydown', this.keyDownHandler.bind(this), !this.isRTE);
+        if (!Browser.isDevice && this.keydownHandler) {
+            this.inputElement.removeEventListener('keydown', this.keydownHandler, !this.isRTE);
+            this.keydownHandler = null;
         }
     }
 

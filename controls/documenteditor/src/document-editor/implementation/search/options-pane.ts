@@ -952,8 +952,8 @@ export class OptionsPane {
                 }
                 if (!isNullOrUndefined(results) && !isNullOrUndefined(results.currentSearchResult)) {
                     let result: TextSearchResult = results.currentSearchResult;
-                    this.documentHelper.owner.searchModule.navigate(result);
                     if (result.text === selectionText) {
+                        this.documentHelper.owner.searchModule.navigate(result);
                         let replace: string = isNullOrUndefined(replaceText) ? '' : replaceText;
                         this.documentHelper.owner.searchModule.replace(replace, result, results);
                         let pattern: RegExp = this.documentHelper.owner.searchModule.textSearch.stringToRegex(findText, this.findOption);

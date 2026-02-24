@@ -397,10 +397,10 @@ export class BaseQuickToolbar implements IBaseQuickToolbar {
             this.tooltip = null;
         }
         this.removeEventListener();
-        this.quickTBarObj.destroy();
-        this.quickTBarObj = null;
         if (this.popupObj && !this.popupObj.isDestroyed) {
             this.removeEleFromDOM();
+            this.quickTBarObj.destroy();
+            this.quickTBarObj = null;
             this.popupObj.destroy();
         }
         this.colorPickerObj = null;

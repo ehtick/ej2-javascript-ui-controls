@@ -2,6 +2,9 @@
 @forward 'ej2-base/styles/definition/material3-dark';
 
 //layout variables
+$list-header-bg-color: $transparent !default;
+$list-header-text-color: rgba($content-text-color-alt1) !default;
+$list-header-icon-color: rgba($icon-color) !default;
 $listbox-font-family: $font-family !default;
 $listbox-icon-margin-right: 16px !default;
 $listbox-icon-line-height: 34px !default;
@@ -111,8 +114,8 @@ $listbox-header-border: rgba($border-light) !default;
 $checkmark-bgcolor: rgba($primary) !default;
 $checkmark-border-color: transparent !default;
 $checkmark-color: rgba($primary-text-color) !default;
-$listbox-groupheader-text-color: rgba($content-text-color-alt1) !default;
-$listbox-groupheader-bg: $content-bg-color-alt2 !default;
+$listbox-groupheader-text-color: $list-header-text-color !default;
+$listbox-groupheader-bg: $list-header-bg-color !default;
 $listbox-groupheader-border: rgba($content-text-color-alt1) !default;
 $listbox-groupheader-icon: rgba($icon-color) !default;
 $listbox-template-multiline-header-color: rgba($content-text-color) !default;

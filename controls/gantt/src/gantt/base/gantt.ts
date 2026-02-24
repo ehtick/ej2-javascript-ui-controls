@@ -4859,6 +4859,8 @@ export class Gantt extends Component<HTMLElement>
     public filterByColumn(
         fieldName: string, filterOperator: string, filterValue: string | number | Date | boolean | number[] | string[] | Date[] | boolean[],
         predicate?: string, matchCase?: boolean, ignoreAccent?: boolean): void {
+        // Close any open cell editing before applying the filter
+        this.closeGanttActions();
         this.treeGrid.filterByColumn(
             fieldName, filterOperator, filterValue, predicate, matchCase, ignoreAccent
         );

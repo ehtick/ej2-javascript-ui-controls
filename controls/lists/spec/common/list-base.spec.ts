@@ -902,6 +902,19 @@ describe('ListBase', () => {
 
     });
 
+    describe('disableHtmlSanitizer option', () => {
+        it('renders raw text with angle bracket when sanitizer disabled, and strips tag when enabled', () => {
+            const ds: { [key: string]: Object }[] = [{ text: 'New<word' }];
+            const raw: HTMLElement[] = ListBase.createListItemFromJson(createElement, deepCloning(ds), { disableHtmlEncode: true, enableHtmlSanitizer: false });
+            const sanitized: HTMLElement[] = ListBase.createListItemFromJson(createElement, deepCloning(ds), { disableHtmlEncode: false, enableHtmlSanitizer: true });
+            const rawText: string = raw[0].querySelector('.e-list-text').textContent;
+            const saneText: string = sanitized[0].querySelector('.e-list-text').textContent;
+            expect(rawText).toContain('New<word');
+            expect(saneText).toContain('New');
+            expect(saneText).not.toContain('<');
+        });
+    });
+   
     describe('createListFromJSON method', () => {
 
         it('UL element creation', () => {

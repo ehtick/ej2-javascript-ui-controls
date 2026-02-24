@@ -5630,3 +5630,35 @@ describe('EJ2-1000957: Grid focus behavior not working correctly when enableHead
         gridObj = null;
     });
 });
+
+describe('EJ2-1008898: Grid calculatePageSizeByParentHeight returns incorrect value when showColumnChooser is enabled', () => {
+    let gridObj: Grid;
+    let pageSize: number;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                allowPaging: true,
+                showColumnChooser: true,
+                toolbar: ['ColumnChooser'],
+                columns: [
+                    { headerText: 'OrderID', field: 'OrderID', width: 150 },
+                    { headerText: 'CustomerID', field: 'CustomerID', width: 150 },
+                    { headerText: 'EmployeeID', field: 'EmployeeID', width: 150 },
+                    { headerText: 'ShipCountry', field: 'ShipCountry', width: 150 },
+                    { headerText: 'ShipCity', field: 'ShipCity', width: 150 },
+                ],
+            }, done);
+    });
+
+    it('should return same calculatePageSizeByParentHeight value with or without ColumnChooser', () => {
+        pageSize = gridObj.calculatePageSizeByParentHeight(400);
+        gridObj.showColumnChooser = false;
+        expect(gridObj.calculatePageSizeByParentHeight(400)).toBe(pageSize);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = pageSize = null;
+    });
+});

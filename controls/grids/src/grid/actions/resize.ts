@@ -272,6 +272,10 @@ export class Resize implements IAction {
                 this.resizeColumn(fieldName, columnIndex, null, startRowIndex, endRowIndex);
             }
         }
+        if ((this.parent.detailTemplate || this.parent.childGrid) && this.parent.resizeSettings.mode === 'Auto' && this.parent.isAutoFitColumns) {
+            this.parent.getHeaderTable().querySelector('.e-emptycell').classList.remove('e-indentRefreshed');
+            this.parent.recalcIndentWidth();
+        }
         if (this.parent.allowTextWrap) {
             this.parent.notify(events.freezeRender, { case: 'refreshHeight', isModeChg: true });
         }

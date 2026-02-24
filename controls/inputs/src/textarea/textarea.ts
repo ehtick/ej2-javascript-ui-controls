@@ -439,8 +439,9 @@ export class TextArea extends Component<HTMLTextAreaElement> implements INotifyP
                 }
             }
             this.element.appendChild(inputElement);
+            setValue('ej2_instances', ejInstance, inputElement);
+            setValue('ej2_instances', null, this.element);
             this.element = inputElement;
-            setValue('ej2_instances', ejInstance, this.element);
         }
         this.updateHTMLAttributesToElement();
         this.checkAttributes(false);

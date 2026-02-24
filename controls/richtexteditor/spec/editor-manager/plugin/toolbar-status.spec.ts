@@ -551,7 +551,7 @@ describe('962591 - FontName and FontSize should not be detected from block eleme
         const node = document.getElementById('focusNode');
         domSelection.setSelectionText(document, node.childNodes[0], node.childNodes[0], 0, 5);
         const format: IToolbarStatus = ToolbarStatus.get(document, parentDiv, ['p'], ['18pt'], ['Arial']);
-        expect(format.fontname).toBe(null);
+        expect(format.fontname).toBe('Arial');
         expect(format.fontsize).toBe(null);
     });
 

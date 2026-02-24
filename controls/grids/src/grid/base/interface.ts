@@ -919,6 +919,7 @@ export interface IGrid extends Component<HTMLElement> {
     serverExcelExport?(url: string): void;
     serverPdfExport?(url: string): void;
     getCurrentVisibleColumns?(isColVirtualization?: boolean): Column[];
+    recalcIndentWidth?(): void;
     // public Events
     dataStateChange?: EmitType<DataStateChangeEventArgs>;
     exportGroupCaption?: EmitType<ExportGroupCaptionEventArgs>;

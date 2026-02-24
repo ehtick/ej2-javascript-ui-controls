@@ -329,6 +329,7 @@ export class SplitButton extends DropDownButton implements INotifyPropertyChange
         };
         this.secondaryBtnObj = new DropDownButton(dropDownBtnModel);
         this.secondaryBtnObj.createElement = this.createElement;
+        if (this.isAngular) { this.secondaryBtnObj.isAngular = this.isAngular; }
         this.secondaryBtnObj.appendTo(btnElem);
         if (!this.createPopupOnClick) {
             this.secondaryBtnObj.dropDown.relateTo = this.wrapper;
@@ -389,6 +390,9 @@ export class SplitButton extends DropDownButton implements INotifyPropertyChange
                     this.wrapper.parentNode.insertBefore(this.element, this.wrapper);
                     remove(this.wrapper);
                 }
+                this.unWireEvents();
+            }
+            else if (this.wrapper && this.wrapper.tagName === TAGNAME) {
                 this.unWireEvents();
             }
         }

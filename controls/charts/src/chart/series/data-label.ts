@@ -181,9 +181,8 @@ export class DataLabel {
         let isDataLabelOverlap: boolean = false;
         const dataLabelElement: Element[] = [];
         let startLocation: ChartLocation;
-        dataLabel.angle = dataLabel.labelIntersectAction === 'Rotate90' ? 90 : dataLabel.angle;
         dataLabel.enableRotation = dataLabel.labelIntersectAction === 'Rotate90' ? true : dataLabel.enableRotation;
-        const angle: number = degree = dataLabel.angle;
+        const angle: number = degree = dataLabel.labelIntersectAction === 'Rotate90' ? 90 : dataLabel.angle;
         const border: BorderModel = { width: dataLabel.border.width, color: dataLabel.border.color };
         const argsFont: FontModel = <FontModel>(extend({}, getValue('properties', dataLabel.font), null, true));
         if (
@@ -208,7 +207,7 @@ export class DataLabel {
                         this.createDataLabelTemplate(element, series, dataLabel, point, argsData, i, this.chart.redraw);
                     } else {
                         if (dataLabel.enableRotation) {
-                            textSize = rotateTextSize(dataLabel.font, argsData.text, dataLabel.angle, this.chart,
+                            textSize = rotateTextSize(dataLabel.font, argsData.text, angle, this.chart,
                                                       this.chart.themeStyle.datalabelFont);
                         }
                         else {
@@ -221,7 +220,7 @@ export class DataLabel {
                             const rectCoordinates: ChartLocation[] = this.getRectanglePoints(actualRect);
                             rectCenterX = rect.x + (rect.width / 2);
                             rectCenterY = (rect.y + (rect.height / 2));
-                            isDataLabelOverlap = (dataLabel.labelIntersectAction === 'Rotate90' || angle === -90) ? false : this.isDataLabelOverlapWithChartBound(rectCoordinates, this.chart, { x: 0, y: 0, width: 0, height: 0 });
+                            isDataLabelOverlap = (dataLabel.labelIntersectAction === 'Rotate90' || angle === -90 || angle === 90) ? false : this.isDataLabelOverlapWithChartBound(rectCoordinates, this.chart, { x: 0, y: 0, width: 0, height: 0 });
                             if (!isDataLabelOverlap) {
                                 this.chart.rotatedDataLabelCollections.push(rectCoordinates);
                                 const currentPointIndex: number = this.chart.rotatedDataLabelCollections.length - 1;
@@ -281,7 +280,7 @@ export class DataLabel {
                                 xPos -= this.chart.chartAreaType === 'Cartesian' && xPos + (textSize.width / 2) > clip.width ? (!this.chart.requireInvertedAxis && xPos > clip.width) ? 0 : (xPos + textSize.width / 2) - clip.width : 0;
                                 yPos -= (yPos + textSize.height > clip.y + clip.height && !(series.type.indexOf('Bar') > -1)) ? (yPos + textSize.height) - (clip.y + clip.height) : 0;
                             }
-                            const textAnchor: string = dataLabel.labelIntersectAction === 'Rotate90' ? (dataLabel.position === 'Top' ? 'start' : (dataLabel.position === 'Middle' ? 'middle' : 'end')) :
+                            const textAnchor: string = (dataLabel.labelIntersectAction === 'Rotate90' || angle === 90) ? (dataLabel.position === 'Top' ? 'start' : (dataLabel.position === 'Middle' ? 'middle' : 'end')) :
                                 ((angle === -90 && dataLabel.enableRotation) ? (dataLabel.position === 'Top' ? 'end' : (dataLabel.position === 'Middle' ? 'middle' : 'start')) : 'middle');
                             let oldText: string;
                             if (this.chart.redraw && document.getElementById(this.commonId + point.index + '_Text_' + i)) {
@@ -303,7 +302,7 @@ export class DataLabel {
                                 ));
                             }
                             if (this.isShape && dataLabel.enableRotation) {
-                                shapeRect.setAttribute('transform', 'rotate(' + dataLabel.angle + ', ' + xValue + ', ' + yValue + ')');
+                                shapeRect.setAttribute('transform', 'rotate(' + angle + ', ' + xValue + ', ' + yValue + ')');
                             }
                             if (this.chart.stackLabels.visible && series.type.indexOf('Stacking') > -1) {
                                 this.dataLabelRectCollection = !this.dataLabelRectCollection ? {}

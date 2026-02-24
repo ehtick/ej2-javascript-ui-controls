@@ -1452,9 +1452,11 @@ export class Tab extends Component<HTMLElement> implements INotifyPropertyChange
             }
         } else if (this.heightAdjustMode === 'Fill') {
             addClass([this.element], [CLS_FILL]);
-            setStyle(this.element, { 'height': '100%' });
+            const parent: HTEle = <HTEle>this.element.parentElement;
+            const heightVal: string = parent.style.height || parent.getAttribute('height');
+            setStyle(this.element, { 'height': heightVal != null ? heightVal : '100%' });
             this.loadContentElement();
-            this.cntEle.style.height = 'calc(100% - ' + this.hdrEle.offsetHeight + 'px)';
+            this.cntEle.style.height = heightVal != null ? `calc(${heightVal} - ${this.hdrEle.offsetHeight}px)` : 'calc(100vh - ' + this.hdrEle.offsetHeight + 'px)';
         } else if (this.heightAdjustMode === 'Auto') {
             if (this.isTemplate === true) {
                 const cnt: HTEle[] = selectAll('.' + CLS_CONTENT + ' > .' + CLS_ITEM, this.element);

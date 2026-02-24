@@ -355,7 +355,15 @@ export class DropDownButton extends Component<HTMLButtonElement> implements INot
             className: this.popupWidth !== 'auto' ? `${classNames.POPUP} ${classNames.POPUPWIDTH}` : classNames.POPUP,
             id: this.element.id + '-popup'
         });
-        document.body.appendChild(div);
+        let appendToElement: HTMLElement = document.body;
+        if (this.isAngular) {
+            const cdkPane: HTMLElement = this.element.closest('.cdk-overlay-pane') as HTMLElement;
+            const popoverEl: HTMLElement = this.element.closest('[popover]') as HTMLElement;
+            if (cdkPane && popoverEl) {
+                appendToElement = cdkPane;
+            }
+        }
+        appendToElement.appendChild(div);
         this.dropDown = new Popup(div, {
             width: this.popupWidth,
             relateTo: this.element,

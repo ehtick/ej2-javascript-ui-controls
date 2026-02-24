@@ -144,14 +144,15 @@ export class Search {
         if (index < 0) {
             return 0;
         }
+        const startOffset: string = this.documentHelper.selection.getHierarchicalIndexByPosition(this.documentHelper.selection.start);
         this.owner.editorModule.insertTextInternal(replaceText, true);
-        const endTextPosition: TextPosition = result.end;
+        const startTextPosition: TextPosition = this.documentHelper.selection.getTextPosBasedOnLogicalIndex(startOffset);
         const startPosition: TextPosition = new TextPosition(this.viewer.owner);
-        if (endTextPosition.currentWidget.children.length === 0) {
-            const linewidget: LineWidget = endTextPosition.currentWidget.paragraph.childWidgets[0] as LineWidget;
+        if (startTextPosition.currentWidget.children.length === 0) {
+            const linewidget: LineWidget = startTextPosition.currentWidget.paragraph.childWidgets[0] as LineWidget;
             startPosition.setPositionParagraph(linewidget, endPosition.offset - replaceText.length);
         } else {
-            startPosition.setPositionParagraph(endTextPosition.currentWidget, endPosition.offset - replaceText.length);
+            startPosition.setPositionParagraph(startTextPosition.currentWidget, endPosition.offset - replaceText.length);
         }
         this.documentHelper.selection.selectRange(endPosition, startPosition);
         const eventArgs: SearchResultsChangeEventArgs = { source: this.viewer.owner };

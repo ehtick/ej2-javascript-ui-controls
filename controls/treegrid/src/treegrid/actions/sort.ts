@@ -11,6 +11,7 @@ import { getParentData } from '../utils';
  * @hidden
  */
 export class Sort {
+    public sortedResult: Object[];
     // Internal variables
     private flatSortedData: Object[];
     private taskIds: Object[];
@@ -62,6 +63,11 @@ export class Sort {
         this.iterateSort(data, srtQry);
         this.storedIndex = -1;
         sortParams.modifiedData = this.flatSortedData;
+        if (srtQry.queries.filter((q: QueryOptions) => q.fn === 'onSortBy').length > 0) {
+            this.sortedResult = this.flatSortedData.filter((item: ITreeData) => !item.isSummaryRow);
+        } else {
+            this.sortedResult = [];
+        }
         this.flatSortedData = [];
     }
     private iterateSort(data: ITreeData[], srtQry: Query): void {

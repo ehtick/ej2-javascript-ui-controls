@@ -15,6 +15,7 @@ import { PdfDocument } from '@syncfusion/ej2-pdf-export';
 export class PdfExport {
     private parent: TreeGrid;
     private dataResults: ReturnOption;
+    private isCollapsedStatePersist: boolean = false;
     /**
      * Constructor for PDF export module
      *
@@ -73,6 +74,20 @@ export class PdfExport {
         const prop: Object = Object();
         const isLocal: boolean = !isRemoteData(this.parent) && isOffline(this.parent);
         setValue('cancel', false, prop);
+        if (!isNullOrUndefined(pdfExportProperties)) {
+            this.isCollapsedStatePersist = (pdfExportProperties as TreeGridPdfExportProperties).isCollapsedStatePersist;
+        }
+        if (!isNullOrUndefined(pdfExportProperties)) {
+            if (!isLocal && !isNullOrUndefined(pdfExportProperties.dataSource) && !pdfExportProperties.dataSource['dataSource']) {
+                return this.parent.grid.pdfExportModule.Map(
+                    this.parent.grid, pdfExportProperties, isMultipleExport, pdfDoc, isBlob);
+            }
+            if (pdfExportProperties.exportType === 'CurrentPage') {
+                pdfExportProperties.dataSource = this.parent.getCurrentViewRecords();
+                return this.parent.grid.pdfExportModule.Map(
+                    this.parent.grid, pdfExportProperties, isMultipleExport, pdfDoc, isBlob);
+            }
+        }
         return new Promise((resolve: Function) => {
             const dm: DataManager = isLocal && !(dtSrc instanceof DataManager) ? new DataManager(dtSrc)
                 : <DataManager>this.parent.dataSource;
@@ -118,6 +133,23 @@ export class PdfExport {
         //count not required for this query
         const isLocal: boolean = !isRemoteData(this.parent) && isOffline(this.parent);
         setValue('query', this.parent.grid.getDataModule().generateQuery(true), args);
+        if (!isLocal && !isNullOrUndefined(prop) && !isNullOrUndefined((prop as TreeGridPdfExportProperties).isCollapsedStatePersist)
+            && (prop as TreeGridPdfExportProperties).isCollapsedStatePersist === false) {
+            if ((args as any).query && (args as any).query.queries && (args as any).query.queries.length) {
+                (args as any).query.queries = (args as any).query.queries.filter((q: any) => {
+                    if (q.fn === 'onWhere' && q.e) {
+                        const preds: any = q.e;
+                        if (preds && preds.field === this.parent.parentIdMapping && (preds.value === null || preds.value === 'null')) {
+                            return false;
+                        }
+                    }
+                    return true;
+                });
+            }
+            if ((args as any).query && (args as any).query.params && (args as any).query.params.length) {
+                (args as any).query.params = (args as any).query.params.filter((param: any) => param.key !== 'IdMapping');
+            }
+        }
         setValue('isExport',  true, args);
         setValue('isPdfExport', true, args);
         if (!isNullOrUndefined(prop) && !isNullOrUndefined((prop as TreeGridPdfExportProperties).isCollapsedStatePersist)) {

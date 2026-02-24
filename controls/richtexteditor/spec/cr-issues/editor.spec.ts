@@ -414,6 +414,37 @@ describe('Editor specs', ()=> {
         });
     });
 
+    describe('Bug 1009430: Font Family dropdown does not display the actual font name (Times New Roman, Arial) when content is copied from Microsoft Word', () => {
+        let rteObj: RichTextEditor;
+        let rteEle: HTMLElement;
+        let controlId: string;
+        beforeAll(() => {
+            rteObj = renderRTE({
+                toolbarSettings: {
+                    items: ['FontName', 'FontSize']
+                },
+                value: `<p style="margin: 0in 0in 8pt; line-height: 115%; font-size: 12pt; font-family: Aptos, sans-serif;"><span class="rte-span" style="font-size: 14pt; line-height: 115%; font-family: &quot;Times New Roman&quot;, serif;">This is Times New Roman</span></p><p style="margin: 0in 0in 8pt; line-height: 115%; font-size: 12pt; font-family: Aptos, sans-serif;"><span style="font-size: 16pt; line-height: 115%;">This is Aptos </span></p><p style="margin: 0in 0in 8pt; line-height: 115%; font-size: 12pt; font-family: Aptos, sans-serif;"><br> <span style="font-size: 18pt; line-height: 115%; font-family: Verdana, sans-serif;">This is Verdana</span></p><p style="margin: 0in 0in 8pt; line-height: 115%; font-size: 12pt; font-family: Aptos, sans-serif;"><span style="font-family: Arial, sans-serif;">This is Arial</span></p>`
+            });
+            rteEle = rteObj.element;
+            controlId = rteEle.id;
+        });
+        it('Check the toolbar status while click on fontName element ', (done) => {
+            let spanEle: HTMLElement = rteObj.element.querySelector('.rte-span');
+            rteObj.formatter.editorManager.nodeSelection.setSelectionText(document, spanEle.childNodes[0], spanEle.childNodes[0], 0, 3);
+            dispatchEvent(spanEle, 'mousedown');
+            dispatchEvent(spanEle, 'mouseup');
+            spanEle.click();
+            setTimeout(() => {
+                let fontName: HTMLElement = rteObj.element.querySelector('#' + controlId + '_toolbar_FontName');
+                expect((fontName.firstElementChild as HTMLElement).innerText.trim()).toBe('Times New Roman');
+                done();
+            }, 50)
+        });
+        afterAll(() => {
+            destroy(rteObj);
+        });
+    });
+
     describe('EJ2-21814 - Clicking on view source code with single character inside textarea removes the character.', () => {
         let rteObj: RichTextEditor;
         let rteEle: HTMLElement;
@@ -2616,7 +2647,7 @@ describe('Editor specs', ()=> {
               <circle cx='50' cy='50' r='40' stroke='green' stroke-width='4' fill='yellow' />
             </svg>
           </div><p>text</p>`);
-          expect(rteObj.contentModule.getEditPanel().innerHTML === '<div><p>test</p><svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"> <circle cx="50" cy="50" r="40" stroke="green" stroke-width="4" fill="yellow"></circle></svg></div><p>text</p>').toBe(true);
+          expect(rteObj.contentModule.getEditPanel().innerHTML === '<div> <p>test</p> <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"> <circle cx="50" cy="50" r="40" stroke="green" stroke-width="4" fill="yellow"></circle> </svg> </div><p>text</p>').toBe(true);
         });
     });
 

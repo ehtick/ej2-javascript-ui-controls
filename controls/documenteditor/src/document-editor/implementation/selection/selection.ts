@@ -2905,7 +2905,11 @@ export class Selection {
             }
         } else if (!this.owner.isReadOnlyMode && !this.documentHelper.isFormFillProtectedMode) {
             if (isCursorAtParaStart && start.paragraph.paragraphFormat.firstLineIndent < this.documentHelper.defaultTabWidth && !start.paragraph.isEmpty()) {
-                this.documentHelper.owner.editorModule.onApplyParagraphFormat('firstLineIndent', this.documentHelper.defaultTabWidth, true, false);
+                if (this.owner.selection.isEmpty && start.paragraph.paragraphFormat.tabs && start.paragraph.paragraphFormat.tabs.length > 0) {
+                    this.owner.editorModule.handleTextInput('\t');
+                } else {
+                    this.documentHelper.owner.editorModule.onApplyParagraphFormat('firstLineIndent', this.documentHelper.defaultTabWidth, true, false);
+                }
             }
             else if (isCursorAtLineStart && !start.paragraph.isEmpty()) {
                 if (isShiftTab) {
@@ -5946,17 +5950,20 @@ export class Selection {
     }
     private highlightNextBlock(paragraph: BlockWidget, start: TextPosition, end: TextPosition): void {
         let block: BlockWidget = paragraph.nextRenderedWidget as BlockWidget;
-        if (!isNullOrUndefined(block)) {
+        while (!isNullOrUndefined(block)) {
             if (block instanceof ParagraphWidget) {
                 this.isHighlightNext = false;
                 this.highlight(block, start, end);
-                if (this.isHighlightNext) {
-                    this.highlightNextBlock(this.hightLightNextParagraph, start, end);
+                block = undefined;
+                if (this.isHighlightNext && !isNullOrUndefined(this.hightLightNextParagraph)) {
+                    block = this.hightLightNextParagraph.nextRenderedWidget as BlockWidget;
                     this.isHighlightNext = false;
                     this.hightLightNextParagraph = undefined;
                 }
-            } else {
+            }
+            else {
                 this.highlightTable(block as TableWidget, start, end);
+                break;
             }
         }
     }
@@ -9042,18 +9049,19 @@ export class Selection {
      * @private
      */
     public getParagraphFormatInternalInBlock(block: BlockWidget, start: TextPosition, end: TextPosition): void {
-        if (block instanceof ParagraphWidget) {
-            this.getParagraphFormatInternalInParagraph(block, start, end);
-            if (end.paragraph === block) {
-                return;
-            }
-            let para: BlockWidget = this.getNextRenderedBlock(block) as BlockWidget;
-            if (!isNullOrUndefined(para)) {
-                this.getParagraphFormatInternalInBlock(para, start, end);
-            }
-        } else {
-            this.getParagraphFormatInternalInTable(block as TableWidget, start, end);
-        }
+        let current: BlockWidget = block;
+        while (current) {
+            if (current instanceof ParagraphWidget) {
+                this.getParagraphFormatInternalInParagraph(current, start, end);
+                if (end && end.paragraph === current) {
+                    return;
+                }
+                current = this.getNextRenderedBlock(current);
+            } else {
+                this.getParagraphFormatInternalInTable(current as TableWidget, start, end);
+                break;
+            }            
+        } 
     }
     /**
      * @private
@@ -9557,13 +9565,18 @@ export class Selection {
      * @private
      */
     public getCharacterFormatForBlock(block: BlockWidget, start: TextPosition, end: TextPosition): void {
-        if (block instanceof ParagraphWidget) {
-            let blockAdv: BlockWidget = this.getCharacterFormat(block, start, end);
-            if (!isNullOrUndefined(blockAdv) && blockAdv != block) {
-                this.getCharacterFormatForBlock(blockAdv, start, end);
+        let current: BlockWidget = block;
+        while (current) {
+            if (current instanceof ParagraphWidget) {
+                this.getCharacterFormat(current as ParagraphWidget, start, end);
+                if (end && end.paragraph === current) {
+                    return;
+                }
+                current = this.getNextRenderedBlock(current);
+            } else {
+                this.getCharacterFormatInTable(current as TableWidget, start, end);
+                break;
             }
-        } else {
-            this.getCharacterFormatInTable(block as TableWidget, start, end);
         }
     }
     /**

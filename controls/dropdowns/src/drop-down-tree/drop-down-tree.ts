@@ -739,10 +739,24 @@ export class DropDownTree extends Component<HTMLElement> implements INotifyPrope
      * Specifies whether to display or remove the untrusted HTML values in the Dropdown Tree component.
      * If 'enableHtmlSanitizer' set to true, the component will sanitize any suspected untrusted strings and scripts before rendering them.
      *
+     * **Note:** To correctly remove untrusted HTML values, `disableHtmlEncode` must also be set to true. When `enableHtmlSanitizer` is set to false, `disableHtmlEncode` must also be set to false.
+     *
      * @default true
      */
     @Property(true)
     public enableHtmlSanitizer: boolean;
+
+    /**
+     * Enables rendering of raw text content in the Dropdown Tree component without HTML encoding.
+     * When set to true, the text will be displayed exactly as provided (including HTML tags or special characters),
+     * instead of being encoded or truncated (e.g., `hiiih<hihi` will be shown as-is).
+     *
+     * **Note:** To preserve and render raw HTML content correctly, `enableHtmlSanitizer` must also be set to false.
+     *
+     * @default true
+     */
+    @Property(true)
+    public disableHtmlEncode: boolean
 
     /**
      * Specifies whether to show or hide the clear icon in textbox.
@@ -1866,10 +1880,7 @@ export class DropDownTree extends Component<HTMLElement> implements INotifyPrope
                         temp = this.getOverflowVal(index);
                         data += temp;
                         temp = this.overFlowWrapper.innerHTML;
-                        if (this.enableHtmlSanitizer) {
-                            this.overFlowWrapper.innerText = SanitizeHtmlHelper.sanitize(data);
-                        }
-                        else { this.overFlowWrapper.innerHTML = data; }
+                        this.overFlowWrapper[this.getDomSetter()] = this.getSanitizedText(data);
                         wrapperleng = this.overFlowWrapper.offsetWidth;
                         overAllContainer = this.inputWrapper.offsetWidth;
                         if ((wrapperleng + downIconWidth + this.clearIconWidth) > overAllContainer) {
@@ -2433,6 +2444,7 @@ export class DropDownTree extends Component<HTMLElement> implements INotifyPrope
             dataBound: this.OnDataBound.bind(this),
             allowMultiSelection: this.allowMultiSelection,
             enableHtmlSanitizer: this.enableHtmlSanitizer,
+            disableHtmlEncode: this.disableHtmlEncode,
             showCheckBox: this.showCheckBox,
             autoCheck: this.treeSettings.autoCheck,
             sortOrder: this.sortOrder,
@@ -3398,10 +3410,7 @@ export class DropDownTree extends Component<HTMLElement> implements INotifyPrope
         });
         const chipContent: HTMLElement = this.createElement('span', { className: CHIP_CONTENT });
         const chipClose: HTMLElement = this.createElement('span', { className: CHIP_CLOSE + ' ' + ICONS });
-        if (this.enableHtmlSanitizer){
-            chipContent.innerText = SanitizeHtmlHelper.sanitize(text);
-        }
-        else { chipContent.innerHTML = text; }
+        chipContent[this.getDomSetter()] = this.getSanitizedText(text);
         chip.appendChild(chipContent);
         this.chipCollection.appendChild(chip);
         if (this.showClearButton) {
@@ -3834,6 +3843,14 @@ export class DropDownTree extends Component<HTMLElement> implements INotifyPrope
         } else if (this.hiddenElement.hasAttribute('multiple') && (!this.allowMultiSelection && !this.showCheckBox)) {
             this.hiddenElement.removeAttribute('multiple');
         }
+    }
+
+    private getDomSetter(): 'textContent' | 'innerHTML' {
+        return this.disableHtmlEncode ? 'textContent' : 'innerHTML';
+    }
+
+    private getSanitizedText(text: string): string {
+        return this.enableHtmlSanitizer ? SanitizeHtmlHelper.sanitize(text) : text;
     }
 
     /**

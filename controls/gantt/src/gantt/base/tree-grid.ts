@@ -890,10 +890,11 @@ export class GanttTreeGrid {
         if (content.scrollTop !== this.previousScroll.top) {
             this.parent.notify('grid-scroll', { top: content.scrollTop });
         }
-        this.previousScroll.top = content.scrollTop;
-        if (this.parent.contextMenuModule && this.parent.contextMenuModule.isOpen) {
+        if (this.parent.contextMenuModule && this.parent.contextMenuModule.isOpen &&
+            this.previousScroll.top !== content.scrollTop) {
             this.parent.contextMenuModule.contextMenu.close();
         }
+        this.previousScroll.top = content.scrollTop;
     }
     /**
      * @returns {void} .
@@ -1565,6 +1566,9 @@ export class GanttTreeGrid {
         const newScrollTop: number = getValue('top', args);
         this.treeGridElement.querySelector('.e-content').scrollTop = newScrollTop;
         this.previousScroll.top = this.treeGridElement.querySelector('.e-content').scrollTop;
+        if (this.parent.contextMenuModule && this.parent.contextMenuModule.isOpen) {
+            this.parent.contextMenuModule.contextMenu.close();
+        }
     }
     private treeGridClickHandler(e: PointerEvent): void {
         this.parent.notify('treeGridClick', e);

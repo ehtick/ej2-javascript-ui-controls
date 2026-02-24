@@ -297,50 +297,51 @@ export class TextHelper {
     }
 
     public inverseCharacter(ch: string): string {
-        switch (ch) {
-            //Specify the '('
-            case '(':
-                //Specify the ')'
-                return ')';
-
-            //Specify the ')'
-            case ')':
-                //Specify the '('
-                return '(';
-
-            //Specify the '<'
-            case '<':
-                //Specify the '>'
-                return '>';
-
-            //Specify the '>'
-            case '>':
-                //Specify the '<'
-                return '<';
-
-            //Specify the '{'
-            case '{':
-                //Specify the '}'
-                return '}';
-
-            //Specify the '}'
-            case '}':
-                //Specify the '{'
-                return '{';
-
-            //Specify the '['
-            case '[':
-                //Specify the ']'
-                return ']';
-
-            //Specify the ']'
-            case ']':
-                //Specify the '['
-                return '[';
-
-            default:
-                return ch;
+        if (isNullOrUndefined(ch) || ch.length === 0) {
+            return ch;
         }
+        // If single character, keep existing behavior
+        if (ch.length === 1) {
+            switch (ch) {
+                case '(':
+                    return ')';
+                case ')':
+                    return '(';
+                case '<':
+                    return '>';
+                case '>':
+                    return '<';
+                case '{':
+                    return '}';
+                case '}':
+                    return '{';
+                case '[':
+                    return ']';
+                case ']':
+                    return '[';
+                default:
+                    return ch;
+            }
+        }
+
+        // For multi-character strings: only inverse when all characters are word-split characters
+        let allWordSplit: boolean = true;
+        for (let i: number = 0; i < ch.length; i++) {
+            if (!this.isWordSplitChar(ch[i])) {
+                allWordSplit = false;
+                break;
+            }
+        }
+        if (!allWordSplit) {
+            return ch;
+        }
+
+        // Map each character using single-char inverse and combine
+        let result: string = '';
+        for (let i: number = ch.length - 1; i >= 0; i--) {
+            result += this.inverseCharacter(ch[i]);
+        }
+        return result;
     }
 
     public containsSpecialChar(text: string): boolean {

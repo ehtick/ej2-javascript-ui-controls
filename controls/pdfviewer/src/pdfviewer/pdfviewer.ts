@@ -11760,7 +11760,7 @@ export class PdfViewer extends Component<HTMLElement> implements INotifyProperty
         const firstAnnotation: any = jsonData.pdfAnnotation[Object.keys(jsonData.pdfAnnotation)[0]];
         if ((Object.keys(jsonData.pdfAnnotation).length >= 1) && (firstAnnotation.textMarkupAnnotation ||
             firstAnnotation.measureShapeAnnotation || firstAnnotation.freeTextAnnotation ||
-            firstAnnotation.stampAnnotations || firstAnnotation.signatureInkAnnotation ||
+            firstAnnotation.stampAnnotations || firstAnnotation.signatureInkAnnotation || firstAnnotation.stickyNotesAnnotation ||
             (firstAnnotation.shapeAnnotation && firstAnnotation.shapeAnnotation[0].Bounds))) {
             this.viewerBase.isPDFViewerJson = true;
             this.viewerBase.importAnnotations(jsonData, AnnotationDataFormat.Json);

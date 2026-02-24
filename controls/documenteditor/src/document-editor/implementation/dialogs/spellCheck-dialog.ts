@@ -201,6 +201,11 @@ export class SpellCheckDialog {
             this.parent.spellCheckerModule.isChange = true;
             this.removeErrors();
             this.parent.spellCheckerModule.checkForNextError();
+            this.documentHelper.triggerSpellCheck = true;
+            if (!isNullOrUndefined(this.documentHelper.owner.editorModule)) {
+                this.documentHelper.owner.editorModule.reLayout(this.documentHelper.selection);
+            }
+            this.documentHelper.triggerSpellCheck = false;
             hideSpinner(this.documentHelper.dialog.element);
             this.selectedText = undefined;
         }

@@ -550,6 +550,32 @@ describe('DDList_Virtualization', () => {
             (<any>listObj).beforePopupOpen = true;
             (<any>listObj).updatePopupState();
         });
+        it('coverage for preselect', function () {
+            (<any>listObj).enabled = false;
+            (<any>listObj).onFocusOut();
+            (<any>listObj).mobileKeyActionHandler();
+            (<any>listObj).isPopupOpen = false;
+            (<any>listObj).windowResize();
+            (<any>listObj).setEleWidth(null);
+            (<any>listObj).beforePopupOpen = false;
+            (<any>listObj).updatePopupState();
+            (<any>listObj).fields.disabled = false;
+            (<any>listObj).disableItem();
+            (<any>listObj).selectedLI = null;
+            (<any>listObj).scrollTop('pageUp');
+            (<any>listObj).popupObj = null;
+            (<any>listObj).setZIndex();
+            (<any>listObj).isResizing = false;
+            (<any>listObj).stopResizing(null);
+            (<any>listObj).spinnerElement = null;
+            (<any>listObj).hideSpinner();
+            (<any>listObj).enabled = false;
+            (<any>listObj).keyActionHandler();
+            (<any>listObj).enabled = true;
+            (<any>listObj).isPopupOpen = true;
+            (<any>listObj).readonly = true;
+            (<any>listObj).mobileKeyActionHandler();
+        });
     });
 });
 

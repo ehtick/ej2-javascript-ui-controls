@@ -2269,7 +2269,18 @@ export class StickyNotesAnnotation {
                 if (annotation && annotation.isCommentLock)
                 {
                     editModule.enableEditMode = false;
-                    this.createCommentDiv(event.currentTarget);
+                    const commentsContainer: HTMLElement = event.currentTarget.parentElement;
+                    if (commentsContainer) {
+                        const existingNewComment: NodeListOf<HTMLElement> =
+                            commentsContainer.querySelectorAll<HTMLElement>('.e-pv-new-comments-div');
+                        const nodes: Array<Element> = Array.from(existingNewComment);
+                        const allDisplayNone: boolean = nodes.length > 0 && nodes.every((n: any) => getComputedStyle(n).display === 'none');
+                        if (existingNewComment.length === 0 || allDisplayNone) {
+                            this.createCommentDiv(event.currentTarget);
+                        }
+                    } else {
+                        this.createCommentDiv(event.currentTarget);
+                    }
                 }
                 this.pdfViewer.fireCommentSelect(event.currentTarget.id, event.currentTarget.childNodes[1].ej2_instances[0].value,
                                                  annotation);

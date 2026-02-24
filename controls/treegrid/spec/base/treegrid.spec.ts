@@ -5762,3 +5762,35 @@ describe('Bug 1006073: Unexpected failure logged even when showCheckbox and tree
         destroy(gridObj);
     });
 });
+
+describe('Coverage Fix', () => {
+    let gridObj: TreeGrid;
+    let actionFailedFunction: () => void = jasmine.createSpy('actionFailure');
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 2,
+                columns: [
+                { field: 'taskID', headerText: 'Task ID', textAlign: 'Right', width: 100},
+                { field: 'taskName', headerText: 'Task Name', width: 260 },
+                { field: 'startDate', headerText: 'Start Date', width: 150, showCheckbox: true },
+                ],
+                actionFailure: actionFailedFunction
+            },
+            done
+        );
+    });
+    it('Coverage case 1', () => {
+        gridObj.enableStickyHeader = true;
+        expect(gridObj.enableStickyHeader).toBe(true);
+    });
+    it('Coverage case 2', () => {
+        gridObj.emptyRecordTemplate = '#emptyRecTemplate';
+        expect(gridObj.emptyRecordTemplate === '#emptyRecTemplate').toBe(true);
+    });
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});

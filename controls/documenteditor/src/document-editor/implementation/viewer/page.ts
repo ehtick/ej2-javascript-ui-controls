@@ -3956,6 +3956,10 @@ export class TableCellWidget extends BlockWidget {
                 } else {
                     // If cell has prefferd width, we need to consider prefferd width.
                     cellWidth = this.cellFormat.preferredWidth - leftMargin - rightMargin;
+                    // If cell prefferd width exceeds container width, we need to consider container width
+                    if (containerWidth < cellWidth) {
+                        cellWidth = containerWidth;
+                    }
                 }
             }
         } else if (this.cellFormat.preferredWidthType === 'Percent') {
@@ -6127,6 +6131,7 @@ export class TextElementBox extends ElementBox {
         // }
         textEle.width = this.width;
         textEle.height = this.height;
+        textEle.errorCollection = this.errorCollection;
         if (this.contentControlProperties) {
             textEle.contentControlProperties = this.contentControlProperties;
         }

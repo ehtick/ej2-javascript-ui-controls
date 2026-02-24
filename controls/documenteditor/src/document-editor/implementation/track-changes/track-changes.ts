@@ -228,6 +228,10 @@ export class Revision {
                 for (let k: number = 0; k < comments.length; k++) {
                     // Reset the removedIds array of the current comment element to an empty array.
                     if (comments[k].indexInOwner < 0) {
+                        const index = comments[k].getAllRevision().indexOf(this);
+                        if(index !== -1){
+                            comments[k].removeRevision(index);
+                        }
                         comments[k].removedIds = [];
                         this.owner.editorModule.initInsertInline(comments[k], false);
                     }

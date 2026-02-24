@@ -7,9 +7,24 @@ import { PasteCleanup } from "../../src/rich-text-editor/index";
 import { renderRTE, destroy, dispatchEvent as dispatchEve, setCursorPoint } from './../rich-text-editor/render.spec';
 import { NodeSelection } from '../../src/selection/selection';
 import { Dialog } from '@syncfusion/ej2-popups';
-import { BACKSPACE_EVENT_INIT, BASIC_MOUSE_EVENT_INIT, ENTERKEY_EVENT_INIT, ESCAPE_KEY_EVENT_INIT, PRINTSCREEN_KEY_EVENT_INIT } from '../constant.spec';
+import { BACKSPACE_EVENT_INIT, BASIC_MOUSE_EVENT_INIT, ENTERKEY_EVENT_INIT, ESCAPE_KEY_EVENT_INIT, PRINTSCREEN_KEY_EVENT_INIT, DELETE_EVENT_INIT } from '../constant.spec';
 
 describe('RTE CR issues ', () => {
+
+    let keyboardEventArgs = {
+        preventDefault: function () { },
+        altKey: false,
+        ctrlKey: false,
+        shiftKey: false,
+        char: '',
+        key: '',
+        charCode: 13,
+        keyCode: 13,
+        which: 13,
+        code: 'Enter',
+        action: 'enter',
+        type: 'keydown'
+    };
 
     describe('879054: InsertHtml executeCommand not inserts into the cursor position after inserting table in RichTextEditor ', () => {
         const selection: NodeSelection = new NodeSelection();
@@ -857,7 +872,7 @@ describe('RTE CR issues ', () => {
             let mouseEvent = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
             clearFormatButton.dispatchEvent(mouseEvent);
             clearFormatButton.click();
-            expect(rteObj.inputElement.innerHTML).toEqual(`<p><br></p><p>Welcome to the Syncfusion Rich Text Editor</p><p>The Rich Text Editor, a WYSIWYG (what you see is what you get) editor, is a user interface that allows you to create, edit, and format rich text content. You can try out a demo of this editor here.</p><p>Do you know the key features of the editor?</p><p>Basic features include headings, block quotes, numbered lists, bullet lists, and support to insert images, tables, audio, and video.</p><p>Inline styles include bold, italic, underline, strikethrough, hyperlinks, 😀 and more.</p><p>The toolbar has multi-row, expandable, and scrollable modes. The Editor supports an inline toolbar, a floating toolbar, and custom toolbar items.</p><p>Integration with Syncfusion Mention control lets users tag other users. To learn more, check out the documentation and demos.</p><p>Paste from MS Word - helps to reduce the effort while converting the Microsoft Word content to HTML format with format and styles. To learn more, check out the documentation here.</p><p>Other features: placeholder text, character count, form validation, enter key configuration, resizable editor, IFrame rendering, tooltip, source code view, RTL mode, persistence, HTML Sanitizer, autosave, and more.</p><p>Easily access Audio, Image, Link, Video, and Table operations through the quick toolbar by right-clicking on the corresponding element with your mouse.</p><p>Unlock the Power of Tables</p><p>A table can be created in the editor using either a keyboard shortcut or the toolbar. With the quick toolbar, you can perform table cell insert, delete, split, and merge operations. You can style the table cells using background colours and borders.</p><table class="e-rte-table"><tr><th>S No<br></th><th>Name<br></th><th>Age<br></th><th>Gender<br></th><th>Occupation<br></th><th>Mode of Transport</th></tr><tbody><tr><td>1</td><td>Selma Rose</td><td>30</td><td>Female</td><td>Engineer<br></td><td>🚴</td></tr><tr><td>2</td><td>Robert<br></td><td>28</td><td>Male</td><td>Graphic Designer</td><td>🚗</td></tr><tr><td>3</td><td>William<br></td><td>35</td><td>Male</td><td>Teacher</td><td>🚗</td></tr><tr><td>4</td><td>Laura Grace<br></td><td>42</td><td>Female</td><td>Doctor</td><td>🚌</td></tr><tr><td>5</td><td>Andrew James<br></td><td>45</td><td>Male</td><td>Lawyer</td><td>🚕</td></tr></tbody></table><p>Elevating Your Content with Images</p><p>Images can be added to the editor by pasting or dragging into the editing area, using the toolbar to insert one as a URL, or uploading directly from the File Browser. Easily manage your images on the server by configuring the insertImageSettings to upload, save, or remove them.</p><p>The Editor can integrate with the Syncfusion Image Editor to crop, rotate, annotate, and apply filters to images. Check out the demos here.</p><p><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 50%" class="e-rte-image e-imginline"></p>`);
+            expect(rteObj.inputElement.innerHTML).toEqual(`<p><br></p><p>Welcome to the Syncfusion Rich Text Editor</p><p>The Rich Text Editor, a WYSIWYG (what you see is what you get) editor, is a user interface that allows you to create, edit, and format rich text content. You can try out a demo of this editor here.</p><p>Do you know the key features of the editor?</p> <p>Basic features include headings, block quotes, numbered lists, bullet lists, and support to insert images, tables, audio, and video.</p> <p>Inline styles include bold, italic, underline, strikethrough, hyperlinks, 😀 and more.</p> <p>The toolbar has multi-row, expandable, and scrollable modes. The Editor supports an inline toolbar, a floating toolbar, and custom toolbar items.</p> <p>Integration with Syncfusion Mention control lets users tag other users. To learn more, check out the documentation and demos.</p> <p>Paste from MS Word - helps to reduce the effort while converting the Microsoft Word content to HTML format with format and styles. To learn more, check out the documentation here.</p> <p>Other features: placeholder text, character count, form validation, enter key configuration, resizable editor, IFrame rendering, tooltip, source code view, RTL mode, persistence, HTML Sanitizer, autosave, and more.</p><p>Easily access Audio, Image, Link, Video, and Table operations through the quick toolbar by right-clicking on the corresponding element with your mouse.</p><p>Unlock the Power of Tables</p><p>A table can be created in the editor using either a keyboard shortcut or the toolbar. With the quick toolbar, you can perform table cell insert, delete, split, and merge operations. You can style the table cells using background colours and borders.</p><table class="e-rte-table">  <tr> <th>S No<br></th> <th>Name<br></th> <th>Age<br></th> <th>Gender<br></th> <th>Occupation<br></th> <th>Mode of Transport</th> </tr>  <tbody> <tr> <td>1</td> <td>Selma Rose</td> <td>30</td> <td>Female</td> <td>Engineer<br></td> <td>🚴</td> </tr> <tr> <td>2</td> <td>Robert<br></td> <td>28</td> <td>Male</td> <td>Graphic Designer</td> <td>🚗</td> </tr> <tr> <td>3</td> <td>William<br></td> <td>35</td> <td>Male</td> <td>Teacher</td> <td>🚗</td> </tr> <tr> <td>4</td> <td>Laura Grace<br></td> <td>42</td> <td>Female</td> <td>Doctor</td> <td>🚌</td> </tr> <tr> <td>5</td><td>Andrew James<br></td><td>45</td><td>Male</td><td>Lawyer</td><td>🚕</td></tr></tbody></table><p>Elevating Your Content with Images</p><p>Images can be added to the editor by pasting or dragging into the editing area, using the toolbar to insert one as a URL, or uploading directly from the File Browser. Easily manage your images on the server by configuring the insertImageSettings to upload, save, or remove them. </p><p>The Editor can integrate with the Syncfusion Image Editor to crop, rotate, annotate, and apply filters to images. Check out the demos here.</p><p><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 50%" class="e-rte-image e-imginline"></p>`);
             done();
         });
     });
@@ -2638,7 +2653,7 @@ describe('RTE CR issues ', () => {
                 setCursorPoint(nodetext, 0);
                 (<any>rteObj).keyDown(keyboardEventArgs);
                 setTimeout(() => {
-                    expect(rteObj.inputElement.innerHTML).toBe('<p><br><br><img alt="Logo" src="https://ej2.syncfusion.com/angular/demos/assets/rich-text-editor/images/RTEImage-Feather.png" style="width: 300px;" class="e-rte-image e-imginline"></p>');
+                    expect(rteObj.inputElement.innerHTML).toBe('<p><br><br><img alt="Logo" src="https://ej2.syncfusion.com/angular/demos/assets/rich-text-editor/images/RTEImage-Feather.png" style="width: 300px;" class="e-rte-image e-imginline"> </p>');
                     done();
                 }, 100);
             }, 100);
@@ -3881,7 +3896,7 @@ describe('RTE CR issues ', () => {
             let keyBoardEvent: any = { type: 'keydown', preventDefault: () => { }, ctrlKey: false, code:'Backspace', key: 'backspace', action: 'backspace', keyCode: 8, stopPropagation: () => { }, shiftKey: false, which: 8 };
             keyBoardEvent.target = rteObj.inputElement;
             (rteObj as any).keyDown(keyBoardEvent);
-            expect((rteObj as any).inputElement.innerHTML === '<div style="font-style: normal; font-weight: 400; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; color: rgb(32, 31, 30); font-family: Aptos; font-size: 18.6667px; background-color: rgb(255, 255, 255);">Hi Janet,</div><div style="font-style: normal; font-weight: 400; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; color: rgb(32, 31, 30); font-family: Aptos; font-size: 18.6667px; background-color: rgb(255, 255, 255);"><br></div><div style="font-style: normal; font-weight: 400; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; color: rgb(32, 31, 30); font-family: Aptos; font-size: 18.6667px; background-color: rgb(255, 255, 255);">Thank you for reaching out!</div><div style="font-style: normal; font-weight: 400; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; color: rgb(32, 31, 30); font-family: Aptos; font-size: 18.6667px; background-color: rgb(255, 255, 255);"><br></div><div style="font-style: normal; font-weight: 400; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; color: rgb(32, 31, 30); font-family: Aptos; font-size: 18.6667px; background-color: rgb(255, 255, 255);"><div><div>Has the claimant previously been absent due to back problems?</div></div><div><div>Were aware of any pre-existing back problems with the claimant?Risk assessment for slips, trips and falls together with adverse weather conditions;</div></div><div><div>Whilst&nbsp;we note there is a stop work authority which the claimant alleges, he never really understood how it worked, did the other agents not know about it either - can we either provide training records or a read and sign;</div></div></div>').toBe(true);
+            expect((rteObj as any).inputElement.innerHTML === '<div style="font-style: normal; font-weight: 400; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; color: rgb(32, 31, 30); font-family: Aptos; font-size: 18.6667px; background-color: rgb(255, 255, 255);">Hi Janet,</div><div style="font-style: normal; font-weight: 400; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; color: rgb(32, 31, 30); font-family: Aptos; font-size: 18.6667px; background-color: rgb(255, 255, 255);"><br></div><div style="font-style: normal; font-weight: 400; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; color: rgb(32, 31, 30); font-family: Aptos; font-size: 18.6667px; background-color: rgb(255, 255, 255);">Thank you for reaching out!</div><div style="font-style: normal; font-weight: 400; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; color: rgb(32, 31, 30); font-family: Aptos; font-size: 18.6667px; background-color: rgb(255, 255, 255);"><br></div><div style="font-style: normal; font-weight: 400; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; color: rgb(32, 31, 30); font-family: Aptos; font-size: 18.6667px; background-color: rgb(255, 255, 255);"> <div><div>Has the claimant previously been absent due to back problems?</div></div> <div><div>Were aware of any pre-existing back problems with the claimant?Risk assessment for slips, trips and falls together with adverse weather conditions;</div></div>  <div><div>Whilst&nbsp;we note there is a stop work authority which the claimant alleges, he never really understood how it worked, did the other agents not know about it either - can we either provide training records or a read and sign;</div></div> </div>').toBe(true);
             done();
         });
         afterAll((done: DoneFn) => {
@@ -4036,6 +4051,157 @@ describe('RTE CR issues ', () => {
         afterAll(() => {
             rteObj.destroy();
             document.body.removeChild(containerDiv);
+        });
+    });
+
+    describe('1007050: Inline format preservation - Without Enter Key BR (Default P mode)', () => {
+        let rteObj: RichTextEditor;
+        beforeEach(() => {
+            rteObj = renderRTE({
+                height: 400
+            });
+        });
+        afterEach(() => {
+            destroy(rteObj);
+        });
+        it('Single backspace/delete - Preserve inline formatting Should maintain the inline element after backspacing the whole content', () => {
+            (rteObj.contentModule.getEditPanel() as HTMLElement).focus();
+            rteObj.inputElement.innerHTML = '<p><strong><em>Welcome</em></strong></p><p><strong><em>S</em></strong></p>';
+            let node = rteObj.inputElement.querySelectorAll('em')[1].childNodes[0];
+            setCursorPoint(node, node.textContent.length);
+            const backSpaceKeyDown: KeyboardEvent = new KeyboardEvent('keydown', BACKSPACE_EVENT_INIT);
+            const backSpaceKeyUp: KeyboardEvent = new KeyboardEvent('keyup', BACKSPACE_EVENT_INIT);
+            rteObj.inputElement.dispatchEvent(backSpaceKeyDown);
+            rteObj.inputElement.dispatchEvent(backSpaceKeyUp);
+            expect(rteObj.inputElement.querySelectorAll('em').length === 2).toBe(true);
+            (<any>rteObj).keyDown(keyboardEventArgs);
+            expect(rteObj.inputElement.querySelectorAll('em').length === 3).toBe(true);
+        });
+        it('Single backspace/delete - Preserve inline formatting Should maintain the inline element after deleting the whole content', () => {
+            (rteObj.contentModule.getEditPanel() as HTMLElement).focus();
+            rteObj.inputElement.innerHTML = '<p><strong><em>Welcome</em></strong></p><p><strong><em>S</em></strong></p>';
+            let node = rteObj.inputElement.querySelectorAll('em')[1].childNodes[0];
+            setCursorPoint(node, 0);
+            const deleteKeyDown: KeyboardEvent = new KeyboardEvent('keydown', DELETE_EVENT_INIT);
+            const deleteKeyUp: KeyboardEvent = new KeyboardEvent('keyup', DELETE_EVENT_INIT);
+            rteObj.inputElement.dispatchEvent(deleteKeyDown);
+            rteObj.inputElement.dispatchEvent(deleteKeyUp);
+            expect(rteObj.inputElement.querySelectorAll('em').length === 2).toBe(true);
+            (<any>rteObj).keyDown(keyboardEventArgs);
+            expect(rteObj.inputElement.querySelectorAll('em').length === 3).toBe(true);
+        });
+        it('Double backspace/delete - Remove inline element Should delete the inline element after backspacing twice', () => {
+            (rteObj.contentModule.getEditPanel() as HTMLElement).focus();
+            rteObj.inputElement.innerHTML = '<p><strong><em>Welcome</em></strong></p><p><strong><em>S</em></strong></p>';
+            let node = rteObj.inputElement.querySelectorAll('em')[1].childNodes[0];
+            setCursorPoint(node, node.textContent.length);
+            const backSpaceKeyDown: KeyboardEvent = new KeyboardEvent('keydown', BACKSPACE_EVENT_INIT);
+            const backSpaceKeyUp: KeyboardEvent = new KeyboardEvent('keyup', BACKSPACE_EVENT_INIT);
+            rteObj.inputElement.dispatchEvent(backSpaceKeyDown);
+            rteObj.inputElement.dispatchEvent(backSpaceKeyUp);
+            rteObj.inputElement.dispatchEvent(backSpaceKeyDown);
+            rteObj.inputElement.dispatchEvent(backSpaceKeyUp);
+            expect(rteObj.inputElement.querySelectorAll('p')[1].innerHTML === '<br>').toBe(true);
+        });
+        it('Double backspace/delete - Remove inline element Should delete the inline element after deleting twice', () => {
+            (rteObj.contentModule.getEditPanel() as HTMLElement).focus();
+            rteObj.inputElement.innerHTML = '<p><strong><em>Welcome</em></strong></p><p><strong><em>S</em></strong></p>';
+            let node = rteObj.inputElement.querySelectorAll('em')[1].childNodes[0];
+            setCursorPoint(node, 0);
+            const deleteKeyDown: KeyboardEvent = new KeyboardEvent('keydown', DELETE_EVENT_INIT);
+            const deleteKeyUp: KeyboardEvent = new KeyboardEvent('keyup', DELETE_EVENT_INIT);
+            rteObj.inputElement.dispatchEvent(deleteKeyDown);
+            rteObj.inputElement.dispatchEvent(deleteKeyUp);
+            rteObj.inputElement.dispatchEvent(deleteKeyDown);
+            rteObj.inputElement.dispatchEvent(deleteKeyUp);
+            expect(rteObj.inputElement.querySelectorAll('p')[1].innerHTML === '<br>').toBe(true);
+        });
+    });
+
+    describe('1007050: Inline format preservation - With Enter Key BR', () => {
+        let rteObj: RichTextEditor;
+        let innerHTML1: string = '<strong><em>S</em></strong>';
+        beforeEach(() => {
+            rteObj = renderRTE({
+                height: 400,
+                enterKey: 'BR',
+                value: innerHTML1
+            });
+        });
+        afterEach(() => {
+            destroy(rteObj);
+        });
+        it('Backspace behavior with BR mode Should preserve inline formatting on first backspace and remove on second', () => {
+            (rteObj.contentModule.getEditPanel() as HTMLElement).focus();
+            let node = rteObj.inputElement.querySelectorAll('em')[0].childNodes[0];
+            setCursorPoint(node, node.textContent.length);
+            const backSpaceKeyDown: KeyboardEvent = new KeyboardEvent('keydown', BACKSPACE_EVENT_INIT);
+            const backSpaceKeyUp: KeyboardEvent = new KeyboardEvent('keyup', BACKSPACE_EVENT_INIT);
+            // First backspace - should preserve inline elements
+            rteObj.inputElement.dispatchEvent(backSpaceKeyDown);
+            rteObj.inputElement.dispatchEvent(backSpaceKeyUp);
+            expect(rteObj.inputElement.querySelectorAll('strong').length === 1).toBe(true);
+            expect(rteObj.inputElement.querySelectorAll('em').length === 1).toBe(true);
+            // Second backspace - should remove inline elements
+            rteObj.inputElement.dispatchEvent(backSpaceKeyDown);
+            rteObj.inputElement.dispatchEvent(backSpaceKeyUp);
+            expect(rteObj.inputElement.querySelectorAll('strong').length === 0).toBe(true);
+            expect(rteObj.inputElement.querySelectorAll('em').length === 0).toBe(true);
+        });
+    });
+    describe('1007050: Code Coverage - Edge cases', () => {
+        let rteObj: RichTextEditor;
+        beforeEach(() => {
+            rteObj = renderRTE({
+                height: 400,
+            });
+        });
+        afterEach(() => {
+            destroy(rteObj);
+        });
+        it('Inline element preservation in mixed content Should not change inline element to empty text node when block has content', () => {
+            (rteObj.contentModule.getEditPanel() as HTMLElement).focus();
+            rteObj.inputElement.innerHTML = '<p> The <strong>R</strong>ich Text Editor, a WYSIWYG (what you see is what you get) editor, is a user interface that allows you to create, edit, and format rich text content. You can try out a demo of this editor here. </p>';
+            let node = rteObj.inputElement.querySelector('strong').childNodes[0];
+            setCursorPoint(node, 1);
+            const backSpaceKeyDown: KeyboardEvent = new KeyboardEvent('keydown', BACKSPACE_EVENT_INIT);
+            const backSpaceKeyUp: KeyboardEvent = new KeyboardEvent('keyup', BACKSPACE_EVENT_INIT);
+            rteObj.inputElement.dispatchEvent(backSpaceKeyDown);
+            rteObj.inputElement.dispatchEvent(backSpaceKeyUp);
+            expect(rteObj.inputElement.querySelector('strong').textContent === 'R').toBe(true);
+        });
+        it('Cursor at edge positions Should maintain text after pressing backspace at 0th offset', () => {
+            (rteObj.contentModule.getEditPanel() as HTMLElement).focus();
+            rteObj.inputElement.innerHTML = '<p><strong><em>S</em></strong></p>';
+            let node = rteObj.inputElement.querySelectorAll('em')[0].childNodes[0];
+            setCursorPoint(node, 0);
+            const backSpaceKeyDown: KeyboardEvent = new KeyboardEvent('keydown', BACKSPACE_EVENT_INIT);
+            const backSpaceKeyUp: KeyboardEvent = new KeyboardEvent('keyup', BACKSPACE_EVENT_INIT);
+            rteObj.inputElement.dispatchEvent(backSpaceKeyDown);
+            rteObj.inputElement.dispatchEvent(backSpaceKeyUp);
+            expect(rteObj.inputElement.querySelector('em').textContent === 'S').toBe(true);
+        });
+        it('Cursor at edge positions Should maintain text after pressing delete at end offset', () => {
+            (rteObj.contentModule.getEditPanel() as HTMLElement).focus();
+            rteObj.inputElement.innerHTML = '<p><strong><em>S</em></strong></p>';
+            let node = rteObj.inputElement.querySelectorAll('em')[0].childNodes[0];
+            setCursorPoint(node, 1);
+            const deleteKeyDown: KeyboardEvent = new KeyboardEvent('keydown', DELETE_EVENT_INIT);
+            const deleteKeyUp: KeyboardEvent = new KeyboardEvent('keyup', DELETE_EVENT_INIT);
+            rteObj.inputElement.dispatchEvent(deleteKeyDown);
+            rteObj.inputElement.dispatchEvent(deleteKeyUp);
+            expect(rteObj.inputElement.querySelector('em').textContent === 'S').toBe(true);
+        });
+        it('When range is not inside inline element range should be indie a block element', () => {
+            (rteObj.contentModule.getEditPanel() as HTMLElement).focus();
+            rteObj.inputElement.innerHTML = '<p>S</p>';
+            let node = rteObj.inputElement.querySelector('p').childNodes[0];
+            setCursorPoint(node, 1);
+            const backSpaceKeyDown: KeyboardEvent = new KeyboardEvent('keydown', BACKSPACE_EVENT_INIT);
+            const backSpaceKeyUp: KeyboardEvent = new KeyboardEvent('keyup', BACKSPACE_EVENT_INIT);
+            rteObj.inputElement.dispatchEvent(backSpaceKeyDown);
+            rteObj.inputElement.dispatchEvent(backSpaceKeyUp);
+            expect(rteObj.inputElement.querySelector('p').textContent === 'S').toBe(true);
         });
     });
 });

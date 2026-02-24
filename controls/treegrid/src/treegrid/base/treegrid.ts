@@ -2953,23 +2953,7 @@ export class TreeGrid extends Component<HTMLElement> implements INotifyPropertyC
             if (args.requestType === 'save' && this.aggregates.map((ag: AggregateRow) => ag.showChildSummary === true).length) {
                 this.grid.refresh();
             }
-            if (args.action === 'filter') {
-                if (!args.isCollapseMaintain && this.filterModule['currentFilterObject'] !== '' && this.enableVirtualization && !this.initialRender && !this.expandStateMapping && !(isRemoteData(this) && this.enableVirtualization)) {
-                    this.expandAll();
-                }
-            }
-            if (args.requestType === 'searching') {
-                if (!args.isCollapseMaintain && this.searchSettings.key !== '' && this.enableVirtualization && !this.initialRender && !this.expandStateMapping && !(isRemoteData(this) && this.enableVirtualization)) {
-                    this.expandAll();
-                }
-            }
-            if (args.action === 'clearFilter' && this.enableCollapseAll) {
-                this.collapseAll();
-            }
-            if (args.action === 'clearFilter' && this.enableInfiniteScrolling) {
-                this.expandAll();
-            }
-            if (args.requestType === 'sorting' && this.enableInfiniteScrolling) {
+            if ((args.action === 'clearFilter' || args.action === 'clear-filter' || args.requestType === 'sorting') && this.enableInfiniteScrolling) {
                 this.expandAll();
             }
             if (this.action === 'indenting' || this.action === 'outdenting') {
@@ -3929,6 +3913,11 @@ export class TreeGrid extends Component<HTMLElement> implements INotifyPropertyC
         rowData.hasChildRecords = record.hasChildRecords;
         rowData.parentUniqueID = record.parentUniqueID;
         rowData.expanded = record.expanded;
+        if (this.enableVirtualization) {
+            this.grid.selectionModule.selectedRowIndexes = this.grid.selectionModule.selectedRowIndexes.indexOf(record.index) === -1
+            && (this.selectedRowIndex >= 0 && this.selectedRowIndex !== record.index) ? [record.index] :
+                this.grid.selectionModule.selectedRowIndexes;
+        }
         this.grid.setRowData(key, rowData);
         const visibleRecords: ITreeData[] = this.getVisibleRecords();
         if (visibleRecords.length > 0 && key === (visibleRecords[visibleRecords.length - 1])[`${primaryKey}`]) {

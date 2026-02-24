@@ -407,9 +407,9 @@ export class NumericTextBox extends Component<HTMLInputElement> implements INoti
             }
             this.element.classList.remove('e-control', 'e-numerictextbox');
             this.element.appendChild(input);
+            setValue('ej2_instances', ejInstance, input);
+            setValue('ej2_instances', null, this.element);
             this.element = <HTMLInputElement>input;
-            setValue('ej2_instances', ejInstance, this.element);
-
         }
         attributes(this.element, { 'role': 'spinbutton', 'tabindex': '0', 'autocomplete': 'off'});
         const localeText: object = {

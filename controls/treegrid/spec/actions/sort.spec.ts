@@ -453,4 +453,37 @@ describe('Last row border after sorting', () => {
       destroy(gridObj);
     });
   });
-  
+
+describe('sortedResult Testcase', () => {
+  let gridObj: TreeGrid;
+  let actionComplete: () => void;
+  beforeAll((done: Function) => {
+    gridObj = createGrid(
+      {
+        dataSource: sampleData,
+        allowPaging: true,
+        childMapping: 'subtasks',
+        allowSorting: true,
+        treeColumnIndex: 1,
+        height:400,
+        columns: [
+          { field: 'taskID', headerText: 'Task ID', isPrimaryKey: true },
+          { field: 'taskName', headerText: 'Task Name' },
+          { field: 'progress', headerText: 'Progress' }
+        ]
+      }, done);
+  });
+
+  it('Sort testing', (done: Function) => {
+    actionComplete = (args?: Object): void => {
+      expect((gridObj.sortModule.sortedResult[0] as any).taskID).toBe(6);
+      done();
+    }
+    gridObj.grid.actionComplete = actionComplete;
+    gridObj.sortByColumn("taskName", "Ascending", true);
+  });
+  afterAll(() => {
+    destroy(gridObj);
+  });
+});
+

@@ -177,6 +177,7 @@ export class DropDownList extends DropDownBase implements IInput {
     private filterArgs: KeyboardEventArgs;
     private isReactTemplateUpdate: boolean = false;
     private iOSscrollPosition: {x: number, y: number};
+    private resizeHandler: () => void;
 
     /**
      * Sets CSS classes to the root element of the component that allows customization of appearance.
@@ -1009,7 +1010,8 @@ export class DropDownList extends DropDownBase implements IInput {
         EventHandler.add(this.inputWrapper.container, 'mousedown', this.dropDownClick, this);
         EventHandler.add(this.inputWrapper.container, 'focus', this.focusIn, this);
         EventHandler.add(this.inputWrapper.container, 'keypress', this.onSearch, this);
-        EventHandler.add(<HTMLElement & Window><unknown>window, 'resize', this.windowResize, this);
+        this.resizeHandler = this.windowResize.bind(this);
+        window.addEventListener('resize', this.resizeHandler);
         this.bindCommonEvent();
     }
 
@@ -1824,7 +1826,10 @@ export class DropDownList extends DropDownBase implements IInput {
             EventHandler.remove(this.inputWrapper.container, 'mousedown', this.dropDownClick);
             EventHandler.remove(this.inputWrapper.container, 'keypress', this.onSearch);
             EventHandler.remove(this.inputWrapper.container, 'focus', this.focusIn);
-            EventHandler.remove(<HTMLElement & Window><unknown>window, 'resize', this.windowResize);
+            if (this.resizeHandler) {
+                window.removeEventListener('resize', this.resizeHandler);
+                this.resizeHandler = null;
+            }
         }
         this.unBindCommonEvent();
     }
@@ -2847,30 +2852,7 @@ export class DropDownList extends DropDownBase implements IInput {
                     const checkField: string = isNullOrUndefined(this.fields.value) ? this.fields.text : this.fields.value;
                     const value: string | number | boolean = this.allowObjectBinding && !isNullOrUndefined(this.value) ?
                         getValue(checkField, this.value) : this.value;
-                    const fieldValue: string[] = this.fields.value.split('.');
-                    let checkVal: boolean = list.some((x: { [key: string]: boolean | string | number }) =>
-                        isNullOrUndefined(x[checkField as string]) && fieldValue.length > 1 ?
-                            this.checkFieldValue(x, fieldValue) === value : x[checkField as string] === value);
-                    if (this.enableVirtualization && this.virtualGroupDataSource){
-                        checkVal = (this.virtualGroupDataSource as any).some((x: { [key: string]: boolean | string | number }) =>
-                            isNullOrUndefined(x[checkField as string]) && fieldValue.length > 1 ?
-                                this.checkFieldValue(x, fieldValue) === value : x[checkField as string] === value);
-                    }
-                    if (!checkVal && !this.enableVirtualization) {
-                        this.dataSource.executeQuery(this.getQuery(this.query).where(new Predicate(checkField, 'equal', value)))
-                            .then((e: Object) => {
-                                if ((e as ResultData).result.length > 0) {
-                                    if (!this.enableVirtualization) {
-                                        this.addItem((e as ResultData).result, list.length);
-                                    }
-                                    this.updateValues();
-                                } else {
-                                    this.updateValues();
-                                }
-                            });
-                    } else {
-                        this.updateValues();
-                    }
+                    this.checkAndFetchItemData(list, value, checkField);
                 } else {
                     this.updateValues();
                 }
@@ -2980,6 +2962,47 @@ export class DropDownList extends DropDownBase implements IInput {
         });
         return checkField;
     }
+
+    private checkAndFetchItemData(
+        list: { [key: string]: Object }[],
+        value: string | number | boolean,
+        checkField: string
+    ): void {
+        const fieldValue: string[] = this.fields.value.split('.');
+        let checkVal: boolean = list.some((x: { [key: string]: boolean | string | number }) =>
+            isNullOrUndefined(x[checkField as string]) && fieldValue.length > 1 ?
+                this.checkFieldValue(x, fieldValue) === value : x[checkField as string] === value);
+        if (this.enableVirtualization && this.virtualGroupDataSource) {
+            checkVal = (this.virtualGroupDataSource as any).some((x: { [key: string]: boolean | string | number }) =>
+                isNullOrUndefined(x[checkField as string]) && fieldValue.length > 1 ?
+                    this.checkFieldValue(x, fieldValue) === value : x[checkField as string] === value);
+        }
+        if (!checkVal && this.dataSource instanceof DataManager) {
+            (this.dataSource).executeQuery(this.getQuery(this.query).where(new Predicate(checkField, 'equal', value)))
+                .then((e: Object) => {
+                    if ((e as ResultData).result.length > 0) {
+                        if (!this.enableVirtualization) {
+                            this.addItem((e as ResultData).result, list.length);
+                        }
+                        else {
+                            this.itemData = (e as ResultData).result[0];
+                            const dataItem: { [key: string]: string } = this.getItemData();
+                            if ((this.value === dataItem.value && this.text !== dataItem.text) ||
+                                            (this.value !== dataItem.value && this.text === dataItem.text)) {
+                                this.setProperties({ text: dataItem.text.toString() });
+                                Input.setValue(this.text, this.inputElement, this.floatLabelType, this.showClearButton);
+                            }
+                        }
+                        this.updateValues();
+                    } else {
+                        this.updateValues();
+                    }
+                });
+        } else {
+            this.updateValues();
+        }
+    }
+
 
     private updateActionCompleteDataValues(ulElement: HTMLElement, list: { [key: string]: object; }[]): void {
         this.actionCompleteData = { ulElement: ulElement.cloneNode(true) as HTMLElement, list: list, isUpdated: true };
@@ -4390,6 +4413,12 @@ export class DropDownList extends DropDownBase implements IInput {
                     return;
                 }
                 if (this.enableVirtualization){
+                    if (newProp.value && this.dataSource instanceof DataManager) {
+                        const checkField: string = isNullOrUndefined(this.fields.value) ? this.fields.text : this.fields.value;
+                        const value: string | number | boolean = this.allowObjectBinding && !isNullOrUndefined(newProp.value) ?
+                            getValue(checkField, newProp.value) : newProp.value;
+                        this.checkAndFetchItemData(this.listData as any[], value, checkField);
+                    }
                     this.updateValues();
                     this.updateInputFields();
                     this.notify('setCurrentViewDataAsync', {

@@ -220,7 +220,7 @@ console.log('on backspace before splitted paragraph');
         editor.selection.handleDownKey();
         editor.editor.onBackSpace();
         editor.editor.onBackSpace();
-        expect(editor.documentHelper.bookmarks.keys.length).toBe(1);
+        expect(editor.documentHelper.bookmarks.keys.length).toBe(0);
     });
     it('undo after on backspace before splitted paragraph', () => {
 console.log('undo after on backspace before splitted paragraph');

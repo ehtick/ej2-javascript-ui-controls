@@ -1526,11 +1526,7 @@ export class FreeTextAnnotation {
         this.inputBoxElement.style.paddingRight = (align === 'right') ? padPx : (computedPad * zoomFactor) + 'px';
         if (this.selectedAnnotation && this.selectedAnnotation.wrapper.children[0].style.strokeWidth) {
             if (!this.isNewFreeTextAnnot) {
-                if (zoomFactor >= 1) {
-                    this.inputBoxElement.style.borderWidth = this.selectedAnnotation.wrapper.children[0].style.strokeWidth * (96 / 72) + 'px';
-                } else {
-                    this.inputBoxElement.style.borderWidth = this.selectedAnnotation.wrapper.children[0].style.strokeWidth + 'px';
-                }
+                this.inputBoxElement.style.borderWidth = this.selectedAnnotation.wrapper.children[0].style.strokeWidth * (96 / 72) * zoomFactor + 'px';
             }
         }
         pageDiv.appendChild(this.inputBoxElement);

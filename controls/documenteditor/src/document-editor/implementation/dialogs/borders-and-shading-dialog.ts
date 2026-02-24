@@ -782,17 +782,16 @@ export class BordersAndShadingDialog {
     private triggeronUnsupportedBorderStyleClickEvent(): UnsupportedBorderStyleClickEventArgs {
         const localValue: L10n = new L10n('documenteditor', this.documentHelper.owner.defaultLocale);
         localValue.setLocale(this.documentHelper.owner.locale);
+        // Create event args object
+        const eventArgs: UnsupportedBorderStyleClickEventArgs = {
+            cancel: false,
+            alertMessage: localValue.getConstant('Border Style information')
+        };
+        // Trigger event
         if (!isNullOrUndefined(this.documentHelper.owner) && !isNullOrUndefined(this.documentHelper.owner.unsupportedBorderStyleClick)) {
-            // Create event args object
-            const eventArgs: UnsupportedBorderStyleClickEventArgs = {
-                cancel: false,
-                alertMessage: localValue.getConstant('Border Style information')
-            };
-            // Trigger event
             this.documentHelper.owner.trigger(unsupportedBorderStyleClick, eventArgs);
-            return eventArgs;
         }
-        return undefined;
+        return eventArgs;
     }
 
     private initAlertDialog(args: UnsupportedBorderStyleClickEventArgs): void {

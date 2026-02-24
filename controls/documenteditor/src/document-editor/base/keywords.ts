@@ -39,6 +39,7 @@ export const localeIdFarEastProperty: string[] = ['localeIdFarEast', 'idfe'];
 export const localeIdBidiProperty: string[] = ['localeIdBidi', 'idbi'];
 export const boldProperty: string[] = ['bold', 'b'];
 export const italicProperty: string[] = ['italic', 'i'];
+export const ligatureProperty: string[] = ['ligature', 'lig'];
 export const underlineProperty: string[] = ['underline', 'u'];
 export const underlineColorProperty: string[] = ['underlineColor', 'uc'];
 export const fontHintTypeProperty: string[] = ['fontHintType', 'fht'];

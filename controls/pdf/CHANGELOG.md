@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## 32.2.7 (2026-02-24)
+
+### PDF
+
+#### Bug Fixes
+
+- Fixed an issue where an invalid password exception was thrown while decrypting a password protected document.
+- Fixed an issue where incorrect bounds were retrieved for newly created stamp annotation that used existing data.
+
 ## 32.2.5 (2026-02-17)
 
 ### PDF

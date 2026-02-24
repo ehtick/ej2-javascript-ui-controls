@@ -668,7 +668,7 @@ export class VirtualContentRenderer extends ContentRender implements IRenderer {
                 this.virtualEle.wrapper.style.minHeight = !isNullOrUndefined(virtualHeight) ? formatUnit(<number>this.parent.height) : '0px';
             }
         }
-        if (this.parent.enableColumnVirtualization) {
+        if (this.parent.enableColumnVirtualization && this.header.virtualEle) {
             this.header.virtualEle.setVirtualHeight(1, width);
         }
     }

@@ -156,6 +156,7 @@ export class ListBox extends DropDownBase {
     private timer: number;
     private inputFormName: string;
     private selectedListItemCount : number;
+    private boundResizeHandler: () => void;
     /**
      * Sets the CSS classes to root element of this component, which helps to customize the
      * complete styles.
@@ -1500,7 +1501,8 @@ export class ListBox extends DropDownBase {
         if (form) {
             EventHandler.add(form, 'reset', this.formResetHandler, this);
         }
-        window.addEventListener('resize', this.resizeHandler.bind(this));
+        this.boundResizeHandler = this.resizeHandler.bind(this);
+        window.addEventListener('resize', this.boundResizeHandler);
     }
 
     private wireToolbarEvent(): void {
@@ -1524,7 +1526,10 @@ export class ListBox extends DropDownBase {
         if (form) {
             EventHandler.remove(form, 'reset', this.formResetHandler);
         }
-        window.removeEventListener('resize', this.resizeHandler.bind(this));
+        if (this.boundResizeHandler) {
+            window.removeEventListener('resize', this.boundResizeHandler);
+            this.boundResizeHandler = null;
+        }
     }
 
     private clickHandler(e: MouseEvent): void {

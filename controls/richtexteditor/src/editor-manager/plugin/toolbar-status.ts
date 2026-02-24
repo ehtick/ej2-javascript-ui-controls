@@ -322,7 +322,9 @@ export class ToolbarStatus {
     private static isFontName(docElement: Document, node: Node, fontName?: string[]): string {
         let name: string = (node as HTMLElement).style && (node as HTMLElement).style.fontFamily;
         const isInlineTags: boolean = IsFormatted.inlineTags.indexOf(node.nodeName.toLowerCase()) > -1;
-        if (name && node.nodeType === 1 && !isInlineTags ) {
+        const hasOnlyTextNodes: boolean = node.childNodes.length > 0 &&
+        Array.prototype.every.call(node.childNodes, (child: Node) => child.nodeType === 3);
+        if (name && node.nodeType === 1 && !isInlineTags && !hasOnlyTextNodes) {
             name = null;
         }
         if ((name === null || name === undefined || name === '') && node.nodeType !== 3 && isInlineTags) {
@@ -333,7 +335,11 @@ export class ToolbarStatus {
             && (fontName === null || fontName === undefined || (fontName.filter((value: string, pos: number) => {
                 const regExp: RegExpConstructor = RegExp;
                 const pattern: RegExp = new regExp(name, 'i');
+                // Extract first font name from both strings for comparison
+                const nodePrimaryFont: string = name.split(',')[0].trim().replace(/"/g, '').toLowerCase();
+                const valuePrimaryFont: string = value.split(',')[0].trim().replace(/"/g, '').toLowerCase();
                 if ((value.replace(/"/g, '').replace(/ /g, '').toLowerCase() === name.replace(/"/g, '').replace(/ /g, '').toLowerCase()) ||
+                    (nodePrimaryFont === valuePrimaryFont) ||
                     (value.split(',')[0] && !isNullOrUndefined(value.split(',')[0].trim().match(pattern)) &&
                     value.split(',')[0].trim() === value.split(',')[0].trim().match(pattern)[0])) {
                     index = pos;

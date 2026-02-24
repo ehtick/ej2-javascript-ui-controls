@@ -1,6 +1,6 @@
 import { addClass, attributes, Browser, closest, detach, isNullOrUndefined as isNOU, isNullOrUndefined, KeyboardEventArgs, L10n, MouseEventArgs, removeClass } from '@syncfusion/ej2-base';
 import { ClickEventArgs } from '@syncfusion/ej2-navigations';
-import { hasAnyFormatting, isIDevice, removeClassWithAttr, scrollToCursor, convertFontSize } from '../../common/util';
+import { hasAnyFormatting, isIDevice, removeClassWithAttr, scrollToCursor, convertFontSize, isBlockNode } from '../../common/util';
 import { EditorManager } from '../../editor-manager';
 import { CodeBlockPosition, IHtmlKeyboardEvent } from '../../editor-manager/base/interface';
 import { InsertHtml } from '../../editor-manager/plugin/inserthtml';
@@ -384,6 +384,26 @@ export class HtmlEditor {
             isCodeBlock = this.parent.formatter.editorManager.codeBlockObj.
                 isSelectionWithinCodeBlock(currentRange, currentRange.startContainer, currentRange.endContainer);
         }
+        const range: Range = this.parent.getRange();
+        // Handle empty inline element protection on delete/backspace
+        const isDeleteOrBackspace: boolean = (args.key === 'Backspace' && args.keyCode === 8) ||
+            (args.key === 'Delete' && args.keyCode === 46);
+        if (this.isInlineProtectionNeeded(range, isDeleteOrBackspace)) {
+            const rootInlineContainer: HTMLElement = this.parent.formatter.editorManager.domTree.getTopMostNode(
+                range.startContainer as Text) as HTMLElement;
+            const rootBlockEle: Element = this.parent.formatter.editorManager.domNode.blockParentNode(
+                range.startContainer as HTMLElement);
+            // Check if this is a single-character inline element that needs protection
+            const isSingleCharInBlock: boolean = rootBlockEle.textContent.length === 1 &&
+                rootInlineContainer.previousSibling === null &&
+                rootInlineContainer.nextSibling === null;
+            const isIsolatedSingleChar: boolean = this.isInlineSurroundedByBR(rootInlineContainer) &&
+                rootInlineContainer.textContent.length === 1;
+            if (isSingleCharInBlock || isIsolatedSingleChar) {
+                this.processInlineElementDeletion(range, args, rootInlineContainer, isIsolatedSingleChar);
+            }
+        }
+
         if (args.keyCode === 9 && this.parent.enableTabKey && !isCodeBlock) {
             this.parent.formatter.saveData(e);
             if (!this.indentTab()) {
@@ -529,6 +549,61 @@ export class HtmlEditor {
             }
         }
         return false;
+    }
+    private isInlineProtectionNeeded(range: Range, isDeleteOrBackspace: boolean): boolean {
+        if (!range || !isDeleteOrBackspace) { return false; }
+        const collapsed: boolean = range.startContainer === range.endContainer && range.startOffset === range.endOffset;
+        if (!collapsed) { return false; }
+        const startContainer: HTMLElement = range.startContainer.parentElement;
+        const isInlineText: boolean = range.startContainer.nodeType === Node.TEXT_NODE && !isBlockNode(startContainer);
+        if (!isInlineText) { return false; }
+        const isCursorAtStart: boolean = range.startOffset === 0 || range.startOffset === 1;
+        return isCursorAtStart;
+    }
+    private isInlineSurroundedByBR(rootInline: HTMLElement): boolean {
+        const prevSibling: Node = rootInline.previousSibling;
+        const nextSibling: Node = rootInline.nextSibling;
+        const isPrevEmpty: boolean = prevSibling === null || prevSibling.nodeName === 'BR';
+        const isNextEmpty: boolean = nextSibling === null || nextSibling.nodeName === 'BR';
+        return isPrevEmpty && isNextEmpty;
+    }
+    private replaceInlineWithBreak(rootInline: HTMLElement): void {
+        const parent: HTMLElement = rootInline.parentElement;
+        // Create temporary BR with focus marker
+        const brElem: HTMLElement = document.createElement('br');
+        addClass([brElem], 'focus-node');
+        parent.replaceChild(brElem, rootInline);
+        // Set cursor to the BR and cleanup marker
+        const focusNode: HTMLElement = this.parent.rootContainer.querySelector('.focus-node');
+        this.parent.formatter.editorManager.nodeSelection.setCursorPoint(
+            this.parent.contentModule.getDocument(), focusNode, 0);
+        focusNode.removeAttribute('class');
+    }
+    private insertZeroWidthSpace(inlineElement: HTMLElement): void {
+        inlineElement.textContent = '';
+        inlineElement.appendChild(document.createTextNode('\u200B'));
+        this.parent.formatter.editorManager.nodeSelection.setCursorPoint(
+            this.parent.contentModule.getDocument(), inlineElement.firstChild as Element, 1);
+    }
+    private processInlineElementDeletion(
+        currentRange: Range, args: KeyboardEvent, rootInlineContainer: HTMLElement, isIsolatedSingleChar: boolean): void {
+        const inlineElement: HTMLElement = currentRange.startContainer.parentElement;
+        const hasPlaceholder: boolean = rootInlineContainer.textContent.includes('\u200B');
+        const isBackspaceKeyPress: boolean = !hasPlaceholder && args.key === 'Backspace' && currentRange.startOffset === 1;
+        const isDeleteKeyPress: boolean = !hasPlaceholder && args.key === 'Delete' && currentRange.startOffset === 0;
+        if (hasPlaceholder) {
+            // Second delete/backspace: remove the inline element entirely
+            if (isIsolatedSingleChar && this.parent.enterKey === 'BR') {
+                //Need to remove the inline element alone when enter key is <br>
+                rootInlineContainer.parentElement.removeChild(rootInlineContainer);
+            } else {
+                this.replaceInlineWithBreak(rootInlineContainer);
+            }
+        } else if (isBackspaceKeyPress || isDeleteKeyPress) {
+            // First delete/backspace: preserve inline element with placeholder
+            this.insertZeroWidthSpace(inlineElement);
+        }
+        args.preventDefault();
     }
     private isUnOrderedList(editorValue: string): boolean {
         editorValue = editorValue.replace(/\u200B/g, '');

@@ -107,6 +107,13 @@ export class WCharacterFormat {
         this.setPropertyValue('fontColor', value);
     }
 
+    public get ligature(): string {
+        return this.getPropertyValue('ligature') as string;
+    }
+    public set ligature(value: string) {
+        this.setPropertyValue('ligature', value);
+    }
+
     public get bidi(): boolean {
         return this.getPropertyValue('bidi') as boolean;
     }
@@ -422,6 +429,7 @@ export class WCharacterFormat {
         this.addUniqueCharacterFormat('italic', property, propValue, uniqueCharFormatTemp);
         this.addUniqueCharacterFormat('underline', property, propValue, uniqueCharFormatTemp);
         this.addUniqueCharacterFormat('underlineColor', property, propValue, uniqueCharFormatTemp);
+        this.addUniqueCharacterFormat('ligature', property, propValue, uniqueCharFormatTemp);
         this.addUniqueCharacterFormat('fontHintType', property, propValue, uniqueCharFormatTemp);
         this.addUniqueCharacterFormat('strikethrough', property, propValue, uniqueCharFormatTemp);
         this.addUniqueCharacterFormat('baselineAlignment', property, propValue, uniqueCharFormatTemp);
@@ -475,6 +483,9 @@ export class WCharacterFormat {
             break;
         case 'underlineColor':
             value = undefined;
+            break;
+        case 'ligature':
+            value = 'None';
             break;
         case 'fontHintType':
             value = 'Default';
@@ -575,7 +586,8 @@ export class WCharacterFormat {
             && this.characterSpacing === format.characterSpacing
             && this.scaling === format.scaling
             && this.fontFamilyNonFarEast === format.fontFamilyNonFarEast
-            && this.hidden === format.hidden);
+            && this.hidden === format.hidden
+            && this.ligature === format.ligature);
     }
     public isSameFormat(format: WCharacterFormat): boolean {
         return this.baseCharStyle === format.baseCharStyle &&
@@ -742,6 +754,9 @@ export class WCharacterFormat {
         if (isNullOrUndefined(this.getValue('fontColor'))) {
             this.fontColor = format.getValue('fontColor') as string;
         }
+        if (isNullOrUndefined(this.getValue('ligature'))) {
+            this.ligature = format.getValue('ligature') as string;
+        }
         if (isNullOrUndefined(this.getValue('bidi'))) {
             this.bidi = format.getValue('bidi') as boolean;
         }
@@ -836,6 +851,9 @@ export class WCharacterFormat {
         }
         if (format.hasValue('fontColor')) {
             this.fontColor = format.getValue('fontColor') as string;
+        }
+        if (format.hasValue('ligature')) {
+            this.ligature = format.getValue('ligature') as string;
         }
         if (format.hasValue('bidi')) {
             this.bidi = format.getValue('bidi') as boolean;

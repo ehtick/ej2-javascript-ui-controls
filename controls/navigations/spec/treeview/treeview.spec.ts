@@ -647,7 +647,8 @@ describe('TreeView control', () => {
             it('enableHtmlSanitizer property testing', (done: Function) => {
                 treeObj = new TreeView({ 
                     fields: { dataSource: XSSnestedData, id: "id", text: "text", child: "child"},
-                  enableHtmlSanitizer: false
+                  enableHtmlSanitizer: false,
+                  disableHtmlEncode: false
                 },'#tree1');
                 jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
                 setTimeout(function() {
@@ -6251,7 +6252,8 @@ describe('TreeView control', () => {
             it('enableHtmlSanitizer property testing', (done: Function) => {
                 treeObj = new TreeView({ 
                     fields: { dataSource: XSSData, id: "id", text: "text",},
-                  enableHtmlSanitizer: false
+                  enableHtmlSanitizer: false,
+                  disableHtmlEncode: false
                 },'#tree1');
                 jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
                 setTimeout(function() {
@@ -13390,6 +13392,39 @@ describe('TreeView control', () => {
             EventHandler.trigger(<any>(document), 'mousemove', mousemove);
             expect(i).toBe(1);         
     });
+    });
+    describe('disableHtmlEncode Property validation', () => {
+        let treeObj: TreeView;
+        let ele: HTMLElement = createElement('div', { id: 'treeTest' });
+        beforeAll(() => {
+            document.body.appendChild(ele);
+        });
+        afterEach(() => {
+            if (treeObj) {
+                treeObj.destroy();
+            }
+        });
+        it('Default - Truncates text with < character', () => {
+            treeObj = new TreeView({
+                fields: { dataSource: [{ id: '1', text: 'Auto<Select' }], id: 'id', text: 'text' },
+                disableHtmlEncode: false, 
+                enableHtmlSanitizer: false
+            });
+            treeObj.appendTo(ele);
+            const nodeText = ele.querySelector('.e-list-text');
+            expect(nodeText.textContent).toContain('Auto');
+            expect(nodeText.textContent).not.toContain('<Select');
+        });
+        it('Special case - Shows full text with < character', () => {
+            treeObj = new TreeView({
+                fields: { dataSource: [{ id: '1', text: 'Auto<Select' }], id: 'id', text: 'text' },
+                disableHtmlEncode: true,
+                enableHtmlSanitizer: false
+            });
+            treeObj.appendTo(ele);
+            const nodeText = ele.querySelector('.e-list-text');
+            expect(nodeText.textContent).toBe('Auto<Select');
+        });
     });
     describe('check on click property testing', function() {
         let treeObj: any;

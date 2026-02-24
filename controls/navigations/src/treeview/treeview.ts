@@ -845,11 +845,24 @@ export class TreeView extends Component<HTMLElement> implements INotifyPropertyC
      * });
      * treeObj.appendTo('#tree');
      * ```
+     * **Note:** To correctly remove untrusted HTML values, `disableHtmlEncode` must also be set to true. When `enableHtmlSanitizer` is set to false, `disableHtmlEncode` must also be set to false.
      *
      * @default true
      */
     @Property(true)
     public enableHtmlSanitizer: boolean;
+
+    /**
+     * Enables rendering of raw text content in the Treeview component without HTML encoding.
+     * When set to true, the text will be displayed exactly as provided (including HTML tags or special characters),
+     * instead of being encoded or truncated (e.g., `hiiih<hihi` will be shown as-is).
+     *
+     * **Note:** To preserve and render raw HTML content correctly, `enableHtmlSanitizer` must also be set to false.
+     *
+     * @default true
+     */
+    @Property(true)
+    public disableHtmlEncode: boolean;
 
     /**
      * Enables or disables persisting TreeView state between page reloads. If enabled, following APIs will persist.
@@ -1270,6 +1283,7 @@ export class TreeView extends Component<HTMLElement> implements INotifyPropertyC
                 this.beforeNodeCreate(e);
             },
             enableHtmlSanitizer: this.enableHtmlSanitizer,
+            disableHtmlEncode: this.disableHtmlEncode,
             itemNavigable: this.fullRowNavigable
         };
         this.updateListProp(this.fields);
@@ -4366,11 +4380,7 @@ export class TreeView extends Component<HTMLElement> implements INotifyPropertyC
             this.renderNodeTemplate(newData, txtEle, dataId);
             this.renderReactTemplates();
         } else {
-            if (this.enableHtmlSanitizer) {
-                txtEle.innerText = SanitizeHtmlHelper.sanitize(newText);
-            } else {
-                txtEle.innerHTML = newText;
-            }
+            txtEle[ListBase.getDomSetter(this.listBaseOption)] = ListBase.getSanitizedText(newText, this.listBaseOption);
         }
         if (isInput) {
             removeClass([liEle], EDITING);

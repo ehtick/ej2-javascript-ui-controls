@@ -589,6 +589,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
     private isFirstFileOnSelection: boolean = false;
     private dragCounter : number = 0;
     private isPreloadFiles: boolean;
+    private documentClickHandler: () => void;
     /**
      * Get the file item(li) which are shown in file list.
      *
@@ -1265,8 +1266,10 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
                 inputElement.setAttribute('name', 'UploadFiles');
             }
             this.element.appendChild(inputElement);
+            setValue('ej2_instances', ejInstance, inputElement);
+            // Clear reference from this.element to avoid retaining component instance
+            setValue('ej2_instances', null, this.element);
             this.element = inputElement;
-            setValue('ej2_instances', ejInstance, this.element);
         }
         /* istanbul ignore next */
         if (ejInstance[0].isPureReactComponent) {
@@ -1659,7 +1662,8 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
     private wireEvents(): void {
         EventHandler.add(this.browseButton, 'click', this.browseButtonClick, this);
         EventHandler.add(this.element, 'change', this.onSelectFiles, this);
-        EventHandler.add(document, 'click', this.removeFocus, this);
+        this.documentClickHandler = this.removeFocus.bind(this);
+        EventHandler.add(document, 'click', this.documentClickHandler);
         this.keyboardModule = new KeyboardEvents( this.uploadWrapper, {
             keyAction: this.keyActionHandler.bind(this),
             keyConfigs: this.keyConfigs,
@@ -1673,7 +1677,10 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
     private unWireEvents(): void {
         EventHandler.remove(this.browseButton, 'click', this.browseButtonClick);
         EventHandler.remove(this.element, 'change', this.onSelectFiles);
-        EventHandler.remove(document, 'click', this.removeFocus);
+        if (this.documentClickHandler) {
+            EventHandler.remove(document, 'click', this.documentClickHandler);
+            this.documentClickHandler = null;
+        }
         if (this.isForm) {
             EventHandler.remove(this.formElement, 'reset', this.resetForm);
         }

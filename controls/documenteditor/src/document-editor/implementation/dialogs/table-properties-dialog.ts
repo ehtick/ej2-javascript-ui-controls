@@ -778,10 +778,12 @@ export class TablePropertiesDialog {
         if (isNullOrUndefined(tableFormat.title))
         {
             this.titleTextBox.value = '';
+            this.tableFormat.title = '';
         }
         else
         {
             this.titleTextBox.value = tableFormat.title;
+            this.tableFormat.title = tableFormat.title;
         }
         if (isNullOrUndefined(tableFormat.description))
         {

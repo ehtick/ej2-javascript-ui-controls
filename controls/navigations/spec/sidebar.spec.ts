@@ -2022,6 +2022,32 @@ describe("Sidebar DOM class Testing ", () => {
     });
 });
 
+describe("Sidebar enableDock toggle fix", () => {
+    let sidebar: Sidebar;
+    beforeEach(() => {
+        const ele: HTMLDivElement = document.createElement("div");
+        ele.id = "sidebar";
+        document.body.appendChild(ele);
+    });
+    afterEach(() => {
+        if (sidebar) {
+            sidebar.destroy();
+        }
+        document.body.innerHTML = "";
+    });
+    it("should remove e-dock class when enableDock is set to false dynamically", () => {
+        const ele: HTMLElement = document.getElementById("sidebar") as HTMLElement;
+        sidebar = new Sidebar({ width: '220px', dockSize: '72px', enableDock: true }, ele);
+        sidebar.show();
+        expect(sidebar.element.classList.contains('e-dock')).toBe(true);
+        sidebar.enableDock = false;
+        sidebar.dataBind();
+        expect(sidebar.element.classList.contains('e-dock')).toBe(false);
+        sidebar.hide();
+        expect(sidebar.element.classList.contains('e-close')).toBe(true);
+    });
+});
+
 describe('Null or undefined value testing', () => {
         let sidebar: any;
         beforeEach((): void => {

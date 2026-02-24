@@ -401,6 +401,7 @@ export class QueryBuilder extends Component<HTMLDivElement> implements INotifyPr
     private isRequestSent: boolean = false;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private ddTree: any;
+    private boundResizeHandler: () => void;
 
     /**
      * Triggers when the component is created.
@@ -4387,6 +4388,30 @@ export class QueryBuilder extends Component<HTMLDivElement> implements INotifyPr
         this.element.innerHTML = '';
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if ((this as any).portals && (this as any).portals.length) { this.clearQBTemplate(); }
+
+        let qbDdlElems: NodeListOf<HTMLElement> = this.element.querySelectorAll('.qb-dropdownlist') as NodeListOf<HTMLElement>;
+        if (!qbDdlElems || qbDdlElems.length === 0) {
+            qbDdlElems = document.querySelectorAll('.qb-dropdownlist') as NodeListOf<HTMLElement>;
+        }
+        for (i = 0; i < qbDdlElems.length; i++) {
+            const ddlElem: HTMLElement = qbDdlElems[i as number];
+            const targetInput: HTMLInputElement = ddlElem.tagName === 'INPUT' ? ddlElem as HTMLInputElement : (ddlElem.querySelector('input') as HTMLInputElement);
+            if (targetInput) {
+                const ddlInst: DropDownList = getComponent(targetInput as HTMLElement, 'dropdownlist') as DropDownList;
+                if (ddlInst) {
+                    if (ddlInst.close) {
+                        ddlInst.close = null;
+                    }
+                    if (ddlInst.open) {
+                        ddlInst.open = null;
+                    }
+                    if (ddlInst.change) {
+                        ddlInst.change = null;
+                    }
+                    ddlInst.destroy();
+                }
+            }
+        }
         const popupElement: NodeListOf<HTMLElement> = document.querySelectorAll('.qb-dropdownlist.e-popup') as NodeListOf<HTMLElement>;
         if (popupElement) {
             for (i = 0; i < popupElement.length; i++) {
@@ -5271,7 +5296,8 @@ export class QueryBuilder extends Component<HTMLDivElement> implements INotifyPr
         if (this.allowDragAndDrop) {
             EventHandler.add(document, 'keydown', this.keyBoardHandler, this);
         }
-        window.addEventListener('resize', this.windowResizeHandler.bind(this));
+        this.boundResizeHandler = this.windowResizeHandler.bind(this);
+        window.addEventListener('resize', this.boundResizeHandler);
     }
     protected unWireEvents(): void {
         const wrapper: Element = this.getWrapper();
@@ -5280,7 +5306,10 @@ export class QueryBuilder extends Component<HTMLDivElement> implements INotifyPr
         EventHandler.remove(wrapper, 'focusin', this.focusEventHandler);
         EventHandler.remove(this.element, 'keydown', this.keyBoardHandler);
         EventHandler.remove(document, 'keydown', this.keyBoardHandler);
-        window.removeEventListener('resize', this.windowResizeHandler);
+        if (this.boundResizeHandler) {
+            window.removeEventListener('resize', this.boundResizeHandler);
+            this.boundResizeHandler = null;
+        }
     }
     private getParentGroup(target: Element | string, isParent?: boolean): RuleModel {
         const groupLevel: number[] = (target instanceof Element) ? this.levelColl[target.id] : this.levelColl[`${target}`];

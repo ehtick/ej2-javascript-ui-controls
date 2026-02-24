@@ -124,6 +124,7 @@ export class MultiSelect extends DropDownBase implements IInput {
     private isFilterPrevented: boolean = false;
     private isFilteringAction: boolean = false;
     private headerTemplateHeight: number;
+    private resizeHandler: () => void;
 
     /**
      * The `fields` property maps the columns of the data table and binds the data to the component.
@@ -4290,7 +4291,8 @@ export class MultiSelect extends DropDownBase implements IInput {
     }
     protected wireEvent(): void {
         EventHandler.add(this.componentWrapper, 'mousedown', this.wrapperClick, this);
-        EventHandler.add(<HTMLElement & Window><unknown>window, 'resize', this.windowResize, this);
+        this.resizeHandler = this.windowResize.bind(this);
+        window.addEventListener('resize', this.resizeHandler);
         EventHandler.add(this.inputElement, 'focus', this.focusInHandler, this);
         EventHandler.add(this.inputElement, 'keydown', this.onKeyDown, this);
         EventHandler.add(this.inputElement, 'keyup', this.keyUp, this);
@@ -5619,8 +5621,10 @@ export class MultiSelect extends DropDownBase implements IInput {
         if (!isNullOrUndefined(this.componentWrapper)) {
             EventHandler.remove(this.componentWrapper, 'mousedown', this.wrapperClick);
         }
-
-        EventHandler.remove(<HTMLElement & Window><unknown>window, 'resize', this.windowResize);
+        if (this.resizeHandler) {
+            window.removeEventListener('resize', this.resizeHandler);
+            this.resizeHandler = null;
+        }
         if (!isNullOrUndefined(this.inputElement)) {
             EventHandler.remove(this.inputElement, 'focus', this.focusInHandler);
             EventHandler.remove(this.inputElement, 'keydown', this.onKeyDown);

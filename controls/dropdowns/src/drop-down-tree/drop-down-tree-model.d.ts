@@ -410,9 +410,22 @@ export interface DropDownTreeModel extends ComponentModel{
      * Specifies whether to display or remove the untrusted HTML values in the Dropdown Tree component.
      * If 'enableHtmlSanitizer' set to true, the component will sanitize any suspected untrusted strings and scripts before rendering them.
      *
+     * **Note:** To correctly remove untrusted HTML values, `disableHtmlEncode` must also be set to true. When `enableHtmlSanitizer` is set to false, `disableHtmlEncode` must also be set to false.
+     *
      * @default true
      */
     enableHtmlSanitizer?: boolean;
+
+    /**
+     * Enables rendering of raw text content in the Dropdown Tree component without HTML encoding.
+     * When set to true, the text will be displayed exactly as provided (including HTML tags or special characters),
+     * instead of being encoded or truncated (e.g., `hiiih<hihi` will be shown as-is).
+     *
+     * **Note:** To preserve and render raw HTML content correctly, `enableHtmlSanitizer` must also be set to false.
+     *
+     * @default true
+     */
+    disableHtmlEncode?: boolean
 
     /**
      * Specifies whether to show or hide the clear icon in textbox.

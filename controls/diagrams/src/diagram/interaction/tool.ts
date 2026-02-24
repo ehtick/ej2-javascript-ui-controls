@@ -120,6 +120,9 @@ export class ToolBase {
 
     private checkProperty: boolean = true;
 
+    /**   @private  */
+    public isConnectionChangeStarted : boolean = false;
+
     protected undoParentElement: SelectorModel = { nodes: [], connectors: [] };
 
     protected undoContainerElement: SelectorModel = { nodes: [], connectors: [] };
@@ -496,6 +499,8 @@ export class ConnectTool extends ToolBase {
 
     /**   @private  */
     public selectedSegment: BezierSegment;
+    /** @private - tracks whether the connector endpoint actually moved during the change */
+    protected connectionChangeMoved: boolean = false;
 
     constructor(commandHandler: CommandHandler, endPoint: string) {
         super(commandHandler, true);
@@ -575,14 +580,15 @@ export class ConnectTool extends ToolBase {
         this.checkPropertyValue();
         this.commandHandler.updateSelector();
         this.commandHandler.removeSnap();
-        if (args.source && (args.source as SelectorModel).connectors && (!(this instanceof ConnectorDrawingTool)) && ((this.endPoint === 'ConnectorSourceEnd' &&
+        //1010806: Incorrect state Values in sourcePointChange and targetPointChange Events
+        if ((args.source && (args.source as SelectorModel).connectors && (!(this instanceof ConnectorDrawingTool)) && ((this.endPoint === 'ConnectorSourceEnd' &&
             (args.source as SelectorModel).connectors.length &&
             ((!Point.equals((args.source as SelectorModel).connectors[0].sourcePoint, this.undoElement.connectors[0].sourcePoint) ||
                 ((args.source as SelectorModel).connectors[0].sourceID !== this.undoElement.connectors[0].sourceID)))) ||
             (this.endPoint === 'ConnectorTargetEnd' &&
                 ((!Point.equals((args.source as SelectorModel).connectors[0].targetPoint, this.undoElement.connectors[0].targetPoint))
-                    || ((args.source as SelectorModel).connectors[0].targetID !== this.undoElement.connectors[0].targetID))))) {
-
+                    || ((args.source as SelectorModel).connectors[0].targetID !== this.undoElement.connectors[0].targetID)))) ) ||
+            (this.isConnectionChangeStarted && this.connectionChangeMoved && args.source && (args.source as SelectorModel).connectors)) {
             let oldValues: PointModel; let newValues: PointModel; let connector: ConnectorModel;
             if (args.source && (args.source as SelectorModel).connectors && this.endPoint === 'ConnectorSourceEnd') {
                 //941055: The sourcePointChange event's old and new values are the same
@@ -625,6 +631,7 @@ export class ConnectTool extends ToolBase {
                 this.commandHandler.addHistoryEntry(entry);
             }
             const trigger: number = this.endPoint === 'ConnectorSourceEnd' ? DiagramEvent.sourcePointChange : DiagramEvent.targetPointChange;
+            this.isConnectionChangeStarted = false;
             this.commandHandler.triggerEvent(trigger, arg);
             //this.commandHandler.removeTerminalSegment(connector as Connector, true);
         } else if (!(this instanceof ConnectorDrawingTool) &&
@@ -657,7 +664,7 @@ export class ConnectTool extends ToolBase {
     public mouseMove(args: MouseEventArgs): boolean {
         super.mouseMove(args);
         let tempArgs: IBlazorConnectionChangeEventArgs;
-        if ((!(this instanceof ConnectorDrawingTool)) && ((this.endPoint === 'ConnectorSourceEnd' &&
+        if (!this.isConnectionChangeStarted && !this.connectionChangeMoved && (!(this instanceof ConnectorDrawingTool)) && ((this.endPoint === 'ConnectorSourceEnd' &&
             Point.equals((args.source as SelectorModel).connectors[0].sourcePoint, this.undoElement.connectors[0].sourcePoint)) ||
             (this.endPoint === 'ConnectorTargetEnd' &&
                 Point.equals((args.source as SelectorModel).connectors[0].targetPoint, this.undoElement.connectors[0].targetPoint)))) {
@@ -674,6 +681,7 @@ export class ConnectTool extends ToolBase {
                 // eslint-disable-next-line @typescript-eslint/no-unused-expressions
                 (target instanceof PointPort || target instanceof BpmnSubEvent) ? targetPort = target.id : targetNode = target.id;
             }
+            this.isConnectionChangeStarted = true;
             let arg: IEndChangeEventArgs = {
                 connector: connectors, state: 'Start', targetNode: targetNode,
                 oldValue: oldValue, newValue: oldValue, cancel: false, targetPort: targetPort
@@ -709,6 +717,8 @@ export class ConnectTool extends ToolBase {
                 const trigger: number = this.endPoint === 'ConnectorSourceEnd' ?
                     DiagramEvent.sourcePointChange : DiagramEvent.targetPointChange;
                 this.commandHandler.triggerEvent(trigger, arg);
+                // mark that the connector endpoint has moved at least once during this interaction
+                this.connectionChangeMoved = true;
             }
             if (args.target) {
                 inPort = getInOutConnectPorts((args.target as Node), true); outPort = getInOutConnectPorts((args.target as Node), false);
@@ -883,6 +893,7 @@ export class ConnectTool extends ToolBase {
         super.endAction();
         this.prevPosition = null;
         this.endPoint = null;
+        this.connectionChangeMoved = false;
     }
 }
 
@@ -1415,7 +1426,9 @@ export class MoveTool extends ToolBase {
         }
         if (isSame && !isBlazor()) {
             this.commandHandler.triggerEvent(DiagramEvent.positionChange, arg);
-            this.connectorEndPointChangeEvent(arg);
+            if (!this.isStartAction) {
+                this.connectorEndPointChangeEvent(arg);
+            }
             this.isStartAction = true;
         }
         this.commandHandler.diagram.cancelPositionChange = arg.cancel;
@@ -1450,7 +1463,9 @@ export class MoveTool extends ToolBase {
             this.commandHandler.triggerEvent(DiagramEvent.positionChange, arg);
             this.commandHandler.diagram.cancelPositionChange = arg.cancel;
             this.canTrigger = true;
-            this.connectorEndPointChangeEvent(arg, snappedPoint);
+            if (this.isStartAction && arg.state !== 'Start') {
+                this.connectorEndPointChangeEvent(arg, snappedPoint);
+            }
             if (!arg.cancel && !this.canCancel) {
                 this.blocked = !this.commandHandler.dragSelectedObjects(snappedPoint.x, snappedPoint.y);
                 const blocked: boolean = !(this.commandHandler.mouseOver(this.currentElement, this.currentTarget, this.currentPosition));

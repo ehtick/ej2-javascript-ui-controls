@@ -37,6 +37,7 @@ export abstract class SignatureBase extends Component<HTMLCanvasElement> {
     private tempCanvas: HTMLCanvasElement;
     private tempContext: CanvasRenderingContext2D;
     private canRedraw: boolean = true;
+    private boundResizeHandler: () => void;
 
     /**
      * Gets or sets the background color of the component.
@@ -132,7 +133,8 @@ export abstract class SignatureBase extends Component<HTMLCanvasElement> {
         if (isNullOrUndefined(this.pointColl) && !this.isReadOnly && !this.disabled) {
             EventHandler.add(this.canvasContext.canvas, 'mousedown touchstart', this.mouseDownHandler, this);
             EventHandler.add(this.canvasContext.canvas, 'keydown', this.keyboardHandler, this);
-            window.addEventListener('resize', this.resizeHandler.bind(this));
+            this.boundResizeHandler = this.resizeHandler.bind(this);
+            window.addEventListener('resize', this.boundResizeHandler);
         } else if (this.pointColl) {
             EventHandler.add(this.canvasContext.canvas, 'mousemove touchmove', this.mouseMoveHandler, this);
             EventHandler.add(this.canvasContext.canvas, 'mouseup touchend', this.mouseUpHandler, this);
@@ -152,7 +154,10 @@ export abstract class SignatureBase extends Component<HTMLCanvasElement> {
                 EventHandler.remove(this.canvasContext.canvas, 'mousedown touchstart', this.mouseDownHandler);
                 EventHandler.remove(this.canvasContext.canvas, 'keydown', this.keyboardHandler);
             }
-            window.removeEventListener('resize', this.resizeHandler);
+            if (this.boundResizeHandler) {
+                window.removeEventListener('resize', this.boundResizeHandler);
+                this.boundResizeHandler = null;
+            }
         }
     }
 

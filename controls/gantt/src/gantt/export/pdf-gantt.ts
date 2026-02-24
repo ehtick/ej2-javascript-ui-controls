@@ -109,8 +109,8 @@ export class PdfGantt extends PdfTreeGrid {
             range[0] = point;
             // Calculate time offset if project starts with a specific time (not midnight)
             let timeOffsetWidth: number = 0;
-            if (point === 0 && this.parent.cloneProjectStartDate) {
-                const startDate: Date = this.parent.cloneProjectStartDate;
+            if (point === 0 && this.parent.timelineModule.timelineStartDate) {
+                const startDate: Date = this.parent.timelineModule.timelineStartDate;
                 const hours: number = startDate.getHours();
                 const minutes: number = startDate.getMinutes();
                 const seconds: number = startDate.getSeconds();

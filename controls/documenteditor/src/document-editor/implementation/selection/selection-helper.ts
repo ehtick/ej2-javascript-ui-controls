@@ -1588,6 +1588,7 @@ export class TextPosition {
             || (((isNullOrUndefined(this.selection.start.paragraph.previousRenderedWidget)
                 && this.selection.start.paragraph === this.selection.end.paragraph
                 && this.selection.end.offset === this.selection.getStartOffset(this.selection.end.paragraph))
+                && this.selection.getParagraphLength(this.selection.end.paragraph) == this.selection.start.offset
                 || (this.selection.start.paragraph !== this.selection.end.paragraph))
                 && this.selection.start.offset === this.selection.start.currentWidget.getEndOffset() && this.selection.start.currentWidget.isLastLine())) {
             isSelectParaMark = true;

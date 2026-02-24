@@ -1773,6 +1773,7 @@ export class AnnotationToolbar {
             enableScrolling: true,
             beforeOpen: (args: Menuopen): void => {
                 this.resetFreeTextAnnot();
+                this.deselectAllItems();
                 if (args.parentItem.text === '' && this.pdfViewer.customStampSettings.isAddToMenu && args.items.length > 0) {
                     let currentElements: any = null;
                     for (let i: number = 0; i < args.items.length; i++) {
@@ -4104,6 +4105,7 @@ export class AnnotationToolbar {
         this.isHighlightEnabled = false;
         this.isUnderlineEnabled = false;
         this.isSquigglyEnabled = false;
+        this.inkAnnotationSelected = false;
         const freeTextAnnotationModule: FreeTextAnnotation = this.pdfViewer.annotation.freeTextAnnotationModule;
         freeTextAnnotationModule.setAnnotationType('FreeText');
         freeTextAnnotationModule.isNewFreeTextAnnot = true;
@@ -4954,11 +4956,17 @@ export class AnnotationToolbar {
                     commentPanelResizer.style.top = (toolbarHeight + annotationToolbarHeight) + 'px';
                 }
             } else {
-                sideBarToolbar.style.top = (annotationToolbarHeight) + 'px';
-                sideBarContentContainer.style.top = (annotationToolbarHeight) + 'px';
-                splitterElement.style.top = (annotationToolbarHeight) + 'px';
-                commentsContainer.style.top = (annotationToolbarHeight) + 'px';
-                commentPanelResizer.style.top = (toolbarHeight + annotationToolbarHeight) + 'px';
+                if (!isNullOrUndefined(sideBarToolbar)) {
+                    sideBarToolbar.style.top = (annotationToolbarHeight) + 'px';
+                } if (!isNullOrUndefined(sideBarContentContainer)) {
+                    sideBarContentContainer.style.top = (annotationToolbarHeight) + 'px';
+                } if (!isNullOrUndefined(splitterElement)) {
+                    splitterElement.style.top = (annotationToolbarHeight) + 'px';
+                } if (!isNullOrUndefined(commentsContainer)) {
+                    commentsContainer.style.top = (annotationToolbarHeight) + 'px';
+                } if (!isNullOrUndefined(commentPanelResizer)) {
+                    commentPanelResizer.style.top = (toolbarHeight + annotationToolbarHeight) + 'px';
+                }
             }
             if (!this.pdfViewer.enableToolbar) {
                 toolbarHeight = 0;

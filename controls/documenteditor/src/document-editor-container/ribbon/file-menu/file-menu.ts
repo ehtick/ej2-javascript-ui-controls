@@ -114,30 +114,30 @@ export class FileMenu {
      * @returns {void}
      */
     public onFileMenuItemSelect(args: MenuEventArgs): void {
-        const locale: L10n = this.container.localObj;
+        const id: string = this.container.element.id + "_ribbon";
         if (args.item && args.item.id) {
-            switch (args.item.text) {
-            case locale.getConstant('New'):
+            switch (args.item.id) {
+            case id +'new':
                 this.container.documentEditor.openBlank();
                 break;
-            case locale.getConstant('Open'):
+            case id +'open':
                 this.initializeFilePicker();
                 this.filePicker.value = '';
                 this.filePicker.click();
                 break;
-            case locale.getConstant('Print'):
+            case id +'print':
                 this.container.documentEditor.print();
                 break;
-            case locale.getConstant('Word Document (*.docx)'):
+            case id +'export_sfdt':
                 this.container.documentEditor.save(this.container.documentEditor.documentName || 'Document', 'Docx');
                 break;
-            case locale.getConstant('Word Template (*.dotx)'):
+            case id +'export_docx':
                 this.container.documentEditor.save(this.container.documentEditor.documentName || 'Document', 'Dotx');
                 break;
-            case locale.getConstant('Syncfusion Document Text (*.sfdt)'):
+            case id +'export_dotx':
                 this.container.documentEditor.save(this.container.documentEditor.documentName || 'Document', 'Sfdt');
                 break;
-            case locale.getConstant('Plain Text (*.txt)'):
+            case id +'export_txt':
                 this.container.documentEditor.save(this.container.documentEditor.documentName || 'Document', 'Txt');
                 break;
             default:

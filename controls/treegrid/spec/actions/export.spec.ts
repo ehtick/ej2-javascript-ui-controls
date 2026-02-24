@@ -578,3 +578,65 @@ describe('custom aggregate Pdf Exporting with pdfAggregateQueryCellInfo', () => 
       destroy(gridObj);
     });
 });
+
+describe('Pdf Exporting Remote data with isCollapsedStatePersist false', () => {
+    let gridObj: TreeGrid;
+    let data: Object = new DataManager({
+        url: 'https://services.syncfusion.com/js/production/api/SelfReferenceData',
+        adaptor: new WebApiAdaptor,
+        crossDomain: true
+    });
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                hasChildMapping: 'isParent',
+                idMapping: 'TaskID',
+                parentIdMapping: 'ParentItem',
+                height: 400,
+                treeColumnIndex: 1,
+                allowPaging: true,
+                allowPdfExport: true,
+                columns: [
+                    { field: 'TaskID', headerText: 'Task ID', textAlign: 'Right', width: 120 },
+                    { field: 'TaskName', headerText: 'Task Name', width: 150 },
+                    { field: 'StartDate', headerText: 'Start Date', textAlign: 'Right', width: 120 }
+                ],
+                pdfExportComplete: exportComplete
+            },
+            done
+        );
+    });
+    
+    it('Checking the pdf export', (done: Function) => {
+        let prop: any = {
+            isCollapsedStatePersist: false,
+        }
+        let dtSrc: any = [];
+        (gridObj.pdfExportModule as any).manipulatePdfProperties(prop, dtSrc);
+        done();
+    });
+
+    it('Checking the pdf export with custom data', (done: Function) => {
+        let pdfExportProperties: any = {
+            isCollapsedStatePersist: false,
+            dataSource: []
+        }
+        gridObj.pdfExport(pdfExportProperties);
+        done();
+    });
+
+    it('Checking the pdf export with export type current page', (done: Function) => {
+        let pdfExportProperties: any = {
+            isCollapsedStatePersist: false,
+            exportType: 'CurrentPage'
+        }
+        gridObj.pdfExport(pdfExportProperties);
+        done();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj.pdfExportModule.destroy();
+    });
+});

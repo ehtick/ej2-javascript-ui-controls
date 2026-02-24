@@ -188,8 +188,8 @@ describe(' HTML editor update toolbar ', () => {
             (rteObj as any).mouseUp({ target: editNode });
             expect((rteObj.htmlEditorModule as any).toolbarUpdate.toolbarStatus.subscript).toEqual(true);
             expect(status.subscript).toEqual(true);
-            expect((rteObj.htmlEditorModule as any).toolbarUpdate.toolbarStatus.fontname).toEqual(null);
-            expect(status.fontname).toEqual(null);
+            expect((rteObj.htmlEditorModule as any).toolbarUpdate.toolbarStatus.fontname).toEqual('Times New Roman,Times,serif');
+            expect(status.fontname).toEqual('Times New Roman,Times,serif');
         });
         it('Check single font name tag without specfic family', () => {
             let node: Node = document.getElementById('name31');

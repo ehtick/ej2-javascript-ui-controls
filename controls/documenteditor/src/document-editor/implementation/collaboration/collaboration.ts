@@ -581,15 +581,17 @@ export class CollaborativeEditingHandler {
                         }
                         if (commentType === 1) {
                             const commentEnd: CommentCharacterElementBox = deleteComment;
-                            if (commentEnd.indexInOwner !== -1) {
+                        if (!isNullOrUndefined(commentEnd) && commentEnd.indexInOwner !== -1) {
                                 this.documentEditor.editorModule.removeAtOffset(selection.start.currentWidget, this.documentEditor.selectionModule, selection.start.offset);
                             }
                         } else {
                             const commentStart: CommentCharacterElementBox = deleteComment;
-                            if (commentStart.indexInOwner !== -1) {
+                            if (!isNullOrUndefined(commentStart) && commentStart.indexInOwner !== -1) {
                                 this.documentEditor.editorModule.removeAtOffset(selection.start.currentWidget, this.documentEditor.selectionModule, selection.start.offset);
                             }
-                            commentStart.removeCommentMark();
+                            if (!isNullOrUndefined(commentStart)) {
+                                commentStart.removeCommentMark();
+                            }
                         }
                     } else {
                         let selection = this.documentEditor.selectionModule;
@@ -760,8 +762,8 @@ export class CollaborativeEditingHandler {
         if (operation.text === (CONTROL_CHARACTERS.Marker_Start.toString() + CONTROL_CHARACTERS.Marker_End.toString())) {
             let ownerComment: CommentElementBox = undefined;
             let commentToDelete: CommentElementBox = undefined;
-            if (this.documentEditor.selection.getElementInfo(this.documentEditor.selection.end.currentWidget, this.documentEditor.selection.end.offset).element instanceof CommentCharacterElementBox && operation.offset > 0) {
-                let commentID: string = (this.documentEditor.selection.getElementInfo(this.documentEditor.selection.end.currentWidget, this.documentEditor.selection.end.offset).element as CommentCharacterElementBox).commentId;
+            if ((!isNullOrUndefined(this.documentEditor.selection.getElementInfo(this.documentEditor.selection.end.currentWidget, this.documentEditor.selection.end.offset).element) || (markerData && markerData.commentId)) && operation.offset > 0) {
+                let commentID: string = this.documentEditor.selection.getElementInfo(this.documentEditor.selection.end.currentWidget, this.documentEditor.selection.end.offset).element instanceof CommentCharacterElementBox ? (this.documentEditor.selection.getElementInfo(this.documentEditor.selection.end.currentWidget, this.documentEditor.selection.end.offset).element as CommentCharacterElementBox).commentId : markerData.commentId;
                 commentToDelete = this.getComment(commentID);
             }
             if (!isNullOrUndefined(commentToDelete) && !(!isNullOrUndefined(markerData.done) && isNullOrUndefined(markerData.date)) && isNullOrUndefined(markerData.isReply)) {

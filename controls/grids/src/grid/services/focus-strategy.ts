@@ -46,6 +46,7 @@ export class FocusStrategy {
     private isVirtualScroll: boolean = false;
     private evtHandlers: { event: string, handler: Function }[];
     private groupedFrozenRow: number = 0;
+    private focusKey: string;
 
     constructor(parent: IGrid) {
         this.parent = parent;
@@ -122,6 +123,11 @@ export class FocusStrategy {
         if (this.parent.allowPaging && this.parent.pagerModule.pagerObj.element.querySelector('.e-pagercontainer')) {
             this.parent.pagerModule.pagerObj.element.querySelector('.e-pagercontainer').removeAttribute('aria-hidden');
         }
+        const lastRow: HTMLElement = this.parent.getContentTable().querySelector('tr:last-child');
+        const lastCell: boolean = lastRow && lastRow.lastElementChild === e.target;
+        const isFocusOutFromTabKey: boolean = e && !this.parent.isEdit && this.focusKey === 'tab' && (closest(<HTMLElement>e.target, '.e-gridpager') || lastCell)
+            && isNullOrUndefined(e.relatedTarget) && closest(<HTMLElement>e.target, '.e-grid') && !closest(document.activeElement, '.e-grid') ? true : false;
+        this.focusKey = '';
         // The below boolean condition for gantt team focus fix.
         const isGantt: boolean = parentsUntil((e.target as Element), 'e-gantt') && (e.target as Element).classList.contains('e-rowcell')
             && (!isNullOrUndefined((e.target as Element).nextElementSibling)
@@ -130,7 +136,7 @@ export class FocusStrategy {
             && !(this.parent.element.classList.contains('e-childgrid') && !this.parent.element.matches(':focus-within')))
             && !(!isGantt && isNullOrUndefined(e.relatedTarget) && parseInt((e.target as Element).getAttribute('aria-colindex'), 10) - 1 === 0
             && parseInt((e.target as Element).getAttribute('data-index'), 10) === 0) && !(!isGantt && isNullOrUndefined(e.relatedTarget)
-            && !closest(document.activeElement, '.e-grid') && !isNullOrUndefined(e['sourceCapabilities']))) { return; }
+            && !closest(document.activeElement, '.e-grid') && !isNullOrUndefined(e['sourceCapabilities'])) && !isFocusOutFromTabKey) { return; }
         this.removeFocus(); this.skipFocus = true; this.currentInfo.skipAction = false;
         this.setLastContentCellTabIndex();
         this.setFirstFocusableTabIndex();
@@ -246,6 +252,7 @@ export class FocusStrategy {
     }
 
     protected onKeyPress(e: KeyboardEventArgs): void {
+        this.focusKey = e.action;
         if (this.content && this.content.target) {
             this.content.target = null;
         }

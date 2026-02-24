@@ -460,6 +460,7 @@ export class CommentReviewPane {
             }
             this.commentPane.addComment(comment);
         }
+        this.commentPane.updateCommentStatus();
     }
 
     private isUnreferredComment(comment: CommentElementBox): boolean {
@@ -621,7 +622,6 @@ export class CommentPane {
             this.comments.add(comment.replyComments[i], replyView);
             commentParent.insertBefore(replyView.layoutComment(true), commentView.replyViewContainer);
         }
-        this.updateCommentStatus();
         commentView.hideDrawer();
     }
 

@@ -270,8 +270,15 @@ export class HeaderFooterProperties {
     }
     private changeLinkToPreviousOptions(): void {
         if (!this.documentEditor.isReadOnly) {
-            const headerFooterType: HeaderFooterType = (
-                (this.documentEditor.selectionModule.start.paragraph.containerWidget) as HeaderFooterWidget).headerFooterType;
+            let headerFooterWidget: HeaderFooterWidget;
+            if (this.documentEditor.selectionModule.start.paragraph.containerWidget instanceof TableCellWidget) {
+                headerFooterWidget = this.documentEditor.selectionModule.getContainerWidget(
+                    this.documentEditor.selectionModule.start.paragraph.containerWidget) as HeaderFooterWidget;
+            }
+            else {
+                headerFooterWidget = this.documentEditor.selectionModule.start.paragraph.containerWidget as HeaderFooterWidget;
+            }
+            const headerFooterType: HeaderFooterType = headerFooterWidget.headerFooterType;
             const value: boolean = this.linkToPrevious.checked;
             switch (headerFooterType) {
             case 'OddHeader':

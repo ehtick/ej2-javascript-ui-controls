@@ -248,6 +248,7 @@ export class WUniqueFormat {
             case 'hidden': return 26;
             case 'underlineColor': return 27;
             case 'fontHintType': return 28;
+            case 'ligature': return 29;
             default: return 0;
         }
     }
@@ -424,6 +425,9 @@ export class WUniqueFormat {
             return false;
         }
         if (this.isNotEqual('underlineColor', source, modifiedProperty, modifiedValue, 2)) {
+            return false;
+        }
+        if (this.isNotEqual('ligature', source, modifiedProperty, modifiedValue, 2)) {
             return false;
         }
         if (this.isNotEqual('fontHintType', source, modifiedProperty, modifiedValue, 2)) {

@@ -4712,6 +4712,9 @@ export function _updateBounds(annotation: PdfAnnotation, bounds?: number[]): num
                 rect[1] += cropBoxOrMediaBox[1];
             }
         }
+        if (annotation && annotation instanceof PdfRubberStampAnnotation) {
+            return [rect[0], rect[1] + rect[3], rect[0] + rect[2], rect[1]];
+        }
         return [rect[0], rect[1], rect[0] + rect[2], rect[1] + rect[3]];
     }
     return rect;

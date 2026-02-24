@@ -307,10 +307,22 @@ export interface TreeViewModel extends ComponentModel{
      * });
      * treeObj.appendTo('#tree');
      * ```
+     * **Note:** To correctly remove untrusted HTML values, `disableHtmlEncode` must also be set to true. When `enableHtmlSanitizer` is set to false, `disableHtmlEncode` must also be set to false.
      *
      * @default true
      */
     enableHtmlSanitizer?: boolean;
+
+    /**
+     * Enables rendering of raw text content in the Treeview component without HTML encoding.
+     * When set to true, the text will be displayed exactly as provided (including HTML tags or special characters),
+     * instead of being encoded or truncated (e.g., `hiiih<hihi` will be shown as-is).
+     *
+     * **Note:** To preserve and render raw HTML content correctly, `enableHtmlSanitizer` must also be set to false.
+     *
+     * @default true
+     */
+    disableHtmlEncode?: boolean;
 
     /**
      * Enables or disables persisting TreeView state between page reloads. If enabled, following APIs will persist.

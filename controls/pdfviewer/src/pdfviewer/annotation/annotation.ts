@@ -2862,7 +2862,7 @@ export class Annotation {
         const y: number = currentAnnotation.bounds.y;
         currentAnnotation.fontSize = currentValue;
         const previousText: string = currentAnnotation.dynamicText;
-        if (freeTextAnnotation && !freeTextAnnotation.isNewFreeTextAnnot && currentAnnotation.dynamicText !== '') {
+        if (freeTextAnnotation && !freeTextAnnotation.isNewFreeTextAnnot && currentAnnotation.dynamicText !== '' && !this.isFreeTextFontsizeChanged) {
             freeTextAnnotation.addInuptElemet({ x: x, y: y }, currentAnnotation);
             if (currentAnnotation) {
                 const zoomFactor: number = this.pdfViewerBase.getZoomFactor();

@@ -6,8 +6,8 @@ import { PdfRadioButtonListField } from "../src/pdf/core/form/field";
 import { PdfAnnotationExportSettings, PdfDocument } from "../src/pdf/core/pdf-document";
 import { PdfPage } from "../src/pdf/core/pdf-page";
 import { _PdfDictionary, _PdfName } from "../src/pdf/core/pdf-primitives";
-import { _bytesToString, _decodeText, _decodeUtf16Bytes, _trimTailIfMatches } from "../src/pdf/core/utils";
-import { crossReferenceTable } from "./inputs.spec";
+import { _bytesToString, _decodeText, _decodeUtf16Bytes, _trimTailIfMatches, _updateBounds } from "../src/pdf/core/utils";
+import { crossReferenceTable, passwordInput } from "./inputs.spec";
 import { _makeLocalDate, createNumberFormat, setMeasureDictionary } from "./test-utility.spec";
 describe('Viewer Reported Issues', () => {
     it('1003272 XFDF AllowedInteractions Export Issue', () => {
@@ -1776,5 +1776,32 @@ describe('Viewer Reported Issues', () => {
         let radioField = (loadedPdfDoc.form.fieldAt(0) as PdfRadioButtonListField);
         expect(radioField._dictionary.get('Ff')).toEqual(32768);
         loadedPdfDoc.destroy();
+    });
+    it('1008830 - Invalid password exception', () => {
+        let document: PdfDocument = new PdfDocument(passwordInput, "vn,s(^%@#scCWW2421$%.0");
+        expect(document).not.toBeUndefined();
+        expect(document.pageCount).toEqual(1);
+        document.destroy();
+    });
+	it('1009280 - Stamp Bounds Issue Coverage', () => {
+        let document: PdfDocument = new PdfDocument();
+        let page = document.addPage();
+        let annot: PdfRubberStampAnnotation = new PdfRubberStampAnnotation({x: 40, y: 60, width: 80, height: 20});
+		annot.icon = PdfRubberStampAnnotationIcon.approved;
+        annot.setAppearance(true);
+		page.annotations.add(annot);
+        let updatedData = document.save();
+        let expectedRect = annot._dictionary.get('Rect');
+        expect(expectedRect).toEqual([80, 742, 160, 722]);
+        document.destroy();
+        document = new PdfDocument(updatedData);
+        page = document.getPage(0);
+        annot = page.annotations.at(0) as PdfRubberStampAnnotation;
+        page.annotations.remove(annot);
+        let newAnnot = new PdfRubberStampAnnotation(annot.bounds);
+        page.annotations.add(newAnnot);
+        let actualRect = _updateBounds(newAnnot);
+        expect(expectedRect).toEqual(actualRect);
+        document.destroy();
     });
 });

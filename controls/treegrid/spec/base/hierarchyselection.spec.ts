@@ -405,7 +405,6 @@ describe('HierarchySelection with filtering - None', () => {
         expect(gridObj.getHeaderTable().querySelectorAll('th')[1].querySelector('.e-frame').classList.contains('e-stop')
         ).toBeTruthy();
         gridObj.filterByColumn('taskName', 'startswith', 'Design');
-        gridObj.clearFiltering();
     });
     afterAll(() => {
         destroy(gridObj);

@@ -4,7 +4,7 @@ import { isNullOrUndefined, L10n, classList, Browser } from '@syncfusion/ej2-bas
 import { DocumentEditor } from '../document-editor';
 import { Selection, ContextElementInfo } from './index';
 import { TextPosition } from './selection/selection-helper';
-import { FieldElementBox, ElementBox, TextFormField, CheckBoxFormField, DropDownFormField, ContentControl} from './viewer/page';
+import { FieldElementBox, ElementBox, TextFormField, CheckBoxFormField, DropDownFormField, ContentControl, ErrorTextElementBox} from './viewer/page';
 import { SpellChecker } from './spell-check/spell-checker';
 import { HelperMethods, Point } from './editor/editor-helper';
 import { CheckBox } from '@syncfusion/ej2-buttons';
@@ -649,6 +649,11 @@ export class ContextMenu {
             if (content === 'Ignore All') {
                 this.spellChecker.handleIgnoreAllItems();
             } else {
+                if (!isNullOrUndefined(this.currentContextInfo) && this.currentContextInfo.element instanceof ErrorTextElementBox && (this.currentContextInfo.element as ErrorTextElementBox).start.paragraph.isInHeaderFooter)
+                {
+                    this.documentHelper.selection.start = (this.currentContextInfo.element as ErrorTextElementBox).start.clone();
+                    this.documentHelper.selection.end = (this.currentContextInfo.element as ErrorTextElementBox).end.clone();
+                }
                 this.spellChecker.manageReplace(content);
                 if (content === 'Ignore Once') {
                     this.documentHelper.owner.spellCheckDialogModule.errorText = this.currentContextInfo.text;

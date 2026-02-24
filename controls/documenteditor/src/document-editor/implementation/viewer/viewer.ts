@@ -2836,6 +2836,7 @@ export class DocumentHelper {
     /* eslint-disable  */
     public onMouseUpInternal = (event: MouseEvent): void => {
         if (!isNullOrUndefined(event.target) && event.target !== this.viewerContainer || this.owner.isTableMarkerDragging) {
+            this.isMouseDown = false;
             return;
         }
         event.preventDefault();
@@ -5784,6 +5785,9 @@ export abstract class LayoutViewer {
                 if (block.bodyWidget.sectionFormat.columns.length <= 1) {
                     this.clientActiveArea.x = this.clientArea.x = tableWidget.x;
                     this.clientActiveArea.width = this.clientArea.width = tableWidget.width;
+                    if (updateXPosition && this.documentHelper.getFirstParagraphInFirstCell(block)) {
+                        this.updateTableXPositionBasedOnTextWrap(block);
+                    }
                 }
                 //Updates the location of last item.
                 tableWidget = tableCollection[tableCollection.length - 1] as TableWidget;

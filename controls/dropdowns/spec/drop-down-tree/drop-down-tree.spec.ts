@@ -1786,3 +1786,54 @@ describe('Remote Data Filtering', () => {
         done();
     });
 });
+describe('disableHtmlEncode Property', () => {
+    let ddtreeObj: DropDownTree;
+    let ele = createElement('input', { id: 'ddtree' }) as HTMLInputElement;
+    beforeAll(() => {
+        document.body.appendChild(ele);
+    });
+    afterEach(() => {
+        if (ddtreeObj) {
+            ddtreeObj.destroy();
+        }
+        ele.value = '';
+    });
+    it('Default behavior: Truncates text with < character', () => {
+        ddtreeObj = new DropDownTree({
+            fields: { dataSource: [{ id: '1', text: 'Auto<Select' }], value: 'id', text: 'text' },
+            disableHtmlEncode: false,
+            enableHtmlSanitizer: false,
+        });
+        ddtreeObj.appendTo(ele);
+        ddtreeObj.showPopup();
+        const nodeText = document.querySelector('.e-list-text') as HTMLElement;
+        expect(nodeText.innerHTML).toContain('Auto');
+        expect(nodeText.innerHTML).not.toContain('<Select');
+        ddtreeObj.hidePopup();
+    });
+    it('Special case: Shows full text with < character', () => {
+        ddtreeObj = new DropDownTree({
+            fields: { dataSource: [{ id: '1', text: 'Auto<Select' }], value: 'id', text: 'text' },
+            disableHtmlEncode: true,
+            enableHtmlSanitizer: false,
+        });
+        ddtreeObj.appendTo(ele);
+        ddtreeObj.showPopup();
+        const nodeText = document.querySelector('.e-list-text') as HTMLElement;
+        expect(nodeText.textContent).toBe('Auto<Select');
+        ddtreeObj.hidePopup();
+    });
+    it('Special case with sanitizer=true: Sanitized + truncation', () => {
+        ddtreeObj = new DropDownTree({
+            fields: { dataSource: [{ id: '1', text: 'Auto<Select' }], value: 'id', text: 'text' },
+            disableHtmlEncode: true,
+            enableHtmlSanitizer: true,
+        });
+        ddtreeObj.appendTo(ele);
+        ddtreeObj.showPopup();
+        const nodeText = document.querySelector('.e-list-text') as HTMLElement;
+        expect(nodeText.innerText).toBe('Auto');
+        expect(nodeText.innerText).not.toContain('<Select');
+        ddtreeObj.hidePopup();
+    });
+});

@@ -71,9 +71,6 @@ export class _PdfEncryptor {
         const fileIdBytes: Uint8Array = (_stringToBytes(id, false, true) as Uint8Array);
         let passwordBytes: Uint8Array;
         if (password) {
-            if (revision === 6) {
-                password = encodeURIComponent(password);
-            }
             passwordBytes = _stringToBytes(password, false, true) as Uint8Array;
         }
         let encryptionKey: Uint8Array;

@@ -482,6 +482,7 @@ export class NavigationPane {
                                 if ((Object.keys(jsonData.pdfAnnotation).length >= 1) && (firstAnnotation.textMarkupAnnotation ||
                                      firstAnnotation.measureShapeAnnotation || firstAnnotation.freeTextAnnotation ||
                                       firstAnnotation.stampAnnotations || firstAnnotation.signatureInkAnnotation ||
+                                      firstAnnotation.stickyNotesAnnotation ||
                                        (firstAnnotation.shapeAnnotation && firstAnnotation.shapeAnnotation[0].Bounds))) {
                                     this.pdfViewerBase.isPDFViewerJson = true;
                                     this.pdfViewerBase.importAnnotations(jsonData, AnnotationDataFormat.Json);

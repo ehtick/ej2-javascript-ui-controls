@@ -1979,3 +1979,48 @@ describe("EJ2-971747 Script error when frozen rows are enabled in collapsing aft
     destroy(gridObj);
   });
 });
+
+describe("Issue: Records expand on clearing filter when the type is Excel filter.", () => {
+    let gridObj: TreeGrid;
+    let actionComplete: () => void;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: "subtasks",
+                treeColumnIndex: 1,
+                allowFiltering: true,
+                filterSettings: { type: 'Excel'},
+                enableVirtualization:true,
+                enableCollapseAll:true,
+                height: 400,
+                columns: ["taskID", "taskName", "duration", "progress"],
+            },
+            done
+        );
+    });
+    it('Check Filtering', (done: Function) => {
+        expect(gridObj.getRows().length === 3).toBe(true);
+        actionComplete = (args?: Object): void => {
+            expect(true).toBe(true);
+            done();
+        };
+        gridObj.grid.actionComplete = actionComplete;
+        gridObj.filterByColumn('taskName', 'startswith', 'plan');
+
+    });
+    it('Check the clearfiltered records', (done: Function) => {
+        actionComplete = (args?: any): void => {
+            if (args.requestType == 'refresh') {
+                expect(gridObj.getRows()[0].getAttribute('aria-expanded')).toBe('false');
+                done();
+            }
+        };
+        gridObj.grid.actionComplete = actionComplete;
+        gridObj.clearFiltering();
+
+    });
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});

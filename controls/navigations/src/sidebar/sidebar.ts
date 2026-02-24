@@ -756,6 +756,12 @@ export class Sidebar extends Component<HTMLElement> implements INotifyPropertyCh
                 if (!this.getState()) {
                     this.setDock();
                 }
+                if (!this.enableDock) {
+                    removeClass([this.element], DOCKER);
+                }
+                else {
+                    addClass([this.element], DOCKER);
+                }
                 break;
             case 'zIndex':
                 this.setZindex();

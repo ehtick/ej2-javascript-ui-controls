@@ -103,6 +103,7 @@ export namespace ListBase {
         showCheckBox: false,
         showIcon: false,
         enableHtmlSanitizer: false,
+        disableHtmlEncode: false,
         expandCollapse: false,
         fields: defaultMappedFields,
         ariaAttributes: defaultAriaAttributes,
@@ -320,13 +321,10 @@ export namespace ListBase {
                 anchorElement = li.querySelector('.' + cssClass.anchorWrap);
                 if (Object.prototype.hasOwnProperty.call(fieldData, fields.tooltip)) {
                     let tooltipText: string = <string>fieldData[fields.tooltip];
-                    if (options && options.enableHtmlSanitizer) {
-                        tooltipText = SanitizeHtmlHelper.sanitize(tooltipText);
-                    } else {
-                        let tooltipTextElement: HTMLElement = createElement('span', { innerHTML: tooltipText });
-                        tooltipText = tooltipTextElement.innerText;
-                        tooltipTextElement = null;
-                    }
+                    tooltipText = getSanitizedText(tooltipText, curOpt);
+                    let tooltipTextElement: HTMLElement = createElement('span', { innerHTML: tooltipText });
+                    tooltipText = tooltipTextElement.innerText;
+                    tooltipTextElement = null;
                     li.setAttribute('title', tooltipText);
                 }
                 if (curOpt.itemNavigable && checkboxElement.length) {
@@ -342,13 +340,10 @@ export namespace ListBase {
                 anchorElement = li.querySelector('.' + cssClass.anchorWrap);
                 if (Object.prototype.hasOwnProperty.call(fieldData, fields.tooltip)) {
                     let tooltipText: string = <string>fieldData[fields.tooltip];
-                    if (options && options.enableHtmlSanitizer) {
-                        tooltipText = SanitizeHtmlHelper.sanitize(tooltipText);
-                    } else {
-                        let tooltipTextElement: HTMLElement = createElement('span', { innerHTML: tooltipText });
-                        tooltipText = tooltipTextElement.innerText;
-                        tooltipTextElement = null;
-                    }
+                    tooltipText = getSanitizedText(tooltipText, curOpt);
+                    let tooltipTextElement: HTMLElement = createElement('span', { innerHTML: tooltipText });
+                    tooltipText = tooltipTextElement.innerText;
+                    tooltipTextElement = null;
                     li.setAttribute('title', tooltipText);
                 }
                 if (Object.prototype.hasOwnProperty.call(fieldData, fields.htmlAttributes) && fieldData[fields.htmlAttributes]) {
@@ -907,6 +902,7 @@ export namespace ListBase {
                 <string>fieldData[fields.text] : (<string>fieldData[fields.text] || '');
             value = <string>fieldData[fields.value];
         }
+        text = getSanitizedText(text, curOpt);
         let elementID: string;
         if (!isNullOrUndefined(dataSource) && !isNullOrUndefined(fieldData[fields.id])
             && fieldData[fields.id] !== '') {
@@ -922,11 +918,8 @@ export namespace ListBase {
         if (dataSource && Object.prototype.hasOwnProperty.call(fieldData, fields.enabled) && fieldData[fields.enabled].toString() === 'false') {
             li.classList.add(cssClass.disabled);
         }
-        if (options && options.enableHtmlSanitizer) {
-            text = SanitizeHtmlHelper.sanitize(text);
-        }
         if (grpLI) {
-            li.innerText = text;
+            li[getDomSetter(curOpt)] = text;
         } else {
             li.setAttribute('data-value', isNullOrUndefined(value) ? 'null' : value);
 
@@ -939,7 +932,7 @@ export namespace ListBase {
 
             if (dataSource && (fieldData[fields.url] || (fieldData[fields.urlAttributes] &&
                 (fieldData[fields.urlAttributes] as { [key: string]: Object }).href))) {
-                li.appendChild(anchorTag(createElement, dataSource, fields, text, innerElements, curOpt.itemNavigable));
+                li.appendChild(anchorTag(createElement, dataSource, fields, text, innerElements, curOpt.itemNavigable, curOpt));
             } else {
                 if (innerElements.length && curOpt.itemNavigable) { append(innerElements, li); }
                 li.appendChild(document.createTextNode(text));
@@ -987,11 +980,13 @@ export namespace ListBase {
      * @param {string} text - The text content of the anchor tag.
      * @param {HTMLElement[]} innerElements - Optional array of inner elements to append to the anchor tag.
      * @param {boolean} isFullNavigation - Indicates whether the anchor tag should be for full navigation.
+     * @param {ListBaseOptions} [options] - Optional ListBase options.
      * @returns {HTMLElement} The created anchor tag element.
      */
     function anchorTag(
         createElement: createElementParams, dataSource: { [key: string]: object } | { [key: string]: string },
-        fields: FieldsMapping, text: string, innerElements: HTMLElement[], isFullNavigation: boolean): HTMLElement {
+        fields: FieldsMapping, text: string, innerElements: HTMLElement[], isFullNavigation: boolean, options?: ListBaseOptions):
+        HTMLElement {
         const fieldData: { [key: string]: Object } = <{ [key: string]: Object }>getFieldValues(dataSource, fields);
         const attr: { [key: string]: string } = { href: <string>fieldData[fields.url] };
         if (Object.prototype.hasOwnProperty.call(fieldData, fields.urlAttributes) && fieldData[fields.urlAttributes]) {
@@ -1000,15 +995,19 @@ export namespace ListBase {
                 (fieldData[fields.urlAttributes] as { [key: string]: Object }).href as string;
         }
         let anchorTag: HTMLElement;
+        const curOpt: ListBaseOptions = extend({}, defaultListBaseOptions, options);
+        const safeText: string = getSanitizedText(text, curOpt);
+
         if (!isFullNavigation) {
-            anchorTag = createElement('a', { className: cssClass.text + ' ' + cssClass.url, innerHTML: text });
+            anchorTag = createElement('a', { className: cssClass.text + ' ' + cssClass.url });
+            anchorTag[getDomSetter(curOpt)] = safeText;
         } else {
             anchorTag = createElement('a', { className: cssClass.text + ' ' + cssClass.url });
             const anchorWrapper: HTMLElement = createElement('div', { className: cssClass.anchorWrap });
             if (innerElements && innerElements.length) {
                 append(innerElements, anchorWrapper);
             }
-            anchorWrapper.appendChild(document.createTextNode(text));
+            anchorWrapper.appendChild(document.createTextNode(safeText));
             append([anchorWrapper], anchorTag);
         }
         setAttribute(anchorTag, attr);
@@ -1042,9 +1041,7 @@ export namespace ListBase {
             grpLI = (Object.prototype.hasOwnProperty.call(item, 'isHeader') && (item as { isHeader: Object } & { [key: string]: Object }).isHeader)
                 ? true : false;
         }
-        if (options && options.enableHtmlSanitizer) {
-            text = SanitizeHtmlHelper.sanitize(text);
-        }
+        text = getSanitizedText(text, curOpt);
         const li: HTMLElement = createElement('li', {
             className: (grpLI === true ? cssClass.group : cssClass.li) + ' ' + (isNullOrUndefined(className) ? '' : className),
             attrs: (ariaAttributes.groupItemRole !== '' && ariaAttributes.itemRole !== '' ?
@@ -1104,17 +1101,13 @@ export namespace ListBase {
             });
             if (dataSource && (fieldData[fields.url] || (fieldData[fields.urlAttributes] &&
                 (fieldData[fields.urlAttributes] as { [key: string]: Object }).href))) {
-                innerDiv.appendChild(anchorTag(createElement, dataSource, fields, text, null, curOpt.itemNavigable));
+                innerDiv.appendChild(anchorTag(createElement, dataSource, fields, text, null, curOpt.itemNavigable, curOpt));
             } else {
                 const element: HTMLElement = createElement('span', {
                     className: cssClass.text,
                     attrs: (ariaAttributes.itemText !== '' ? { role: ariaAttributes.itemText } : {})
                 });
-                if (options && options.enableHtmlSanitizer) {
-                    element.innerText = text;
-                } else {
-                    element.innerHTML = text;
-                }
+                element[getDomSetter(curOpt)] = text as string;
                 innerDiv.appendChild(element);
             }
             li.appendChild(innerDiv);
@@ -1176,6 +1169,14 @@ export namespace ListBase {
             liElement.querySelector('.' + cssClass.textContent));
 
         return liElement;
+    }
+
+    export function getDomSetter(options: ListBaseOptions): 'textContent' | 'innerHTML' {
+        return options.disableHtmlEncode ? 'textContent' : 'innerHTML';
+    }
+
+    export function getSanitizedText(text: string, options: ListBaseOptions): string {
+        return options.enableHtmlSanitizer ? SanitizeHtmlHelper.sanitize(text) : text;
     }
 
 }
@@ -1314,8 +1315,16 @@ export interface ListBaseOptions {
     isStringTemplate?: string;
     /**
      * Defines whether to allow the cross scripting site or not.
+     * **Note:** To correctly remove untrusted HTML values, `disableHtmlEncode` must also be set to true. When `enableHtmlSanitizer` is set to false, `disableHtmlEncode` must also be set to false.
      */
     enableHtmlSanitizer?: boolean;
+    /**
+     * Enables rendering of raw text content without HTML encoding.
+     * When set to true, the text will be displayed exactly as provided (including HTML tags or special characters).
+     *
+     * **Note:** To preserve and render raw HTML content correctly, `enableHtmlSanitizer` must also be set to false.
+     */
+    disableHtmlEncode?: boolean;
     /**
      * If set true to this property then the entire list will be navigate-able instead of text element
      */

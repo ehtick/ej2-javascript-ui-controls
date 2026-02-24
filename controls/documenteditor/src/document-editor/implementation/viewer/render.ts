@@ -585,7 +585,9 @@ export class Renderer {
         let shapeType: any = shape.autoShapeType;
         let blocks: BlockWidget[] = shape.textFrame.childWidgets as BlockWidget[];
         this.pageContext.beginPath();
+        const originalAlpha: number = this.pageContext.globalAlpha;
         if (shape.fillFormat && shape.fillFormat.color && shape.fillFormat.fill && shapeType !== 'StraightConnector') {
+            this.pageContext.globalAlpha = 1;
             this.pageContext.fillStyle = shape.fillFormat.color;
             if(shapeType === 'Rectangle') {
                 this.pageContext.fillRect(shapeLeft, shapeTop, this.getScaledValue(shape.width), this.getScaledValue(shape.height));
@@ -598,6 +600,7 @@ export class Renderer {
             this.pageContext.fillStyle = shape.fillFormat.color;
             this.renderPathElement(shape, shapeLeft, shapeTop);
         }
+        this.pageContext.globalAlpha = originalAlpha;
         if (!isNullOrUndefined(shapeType)) {
             if (shape.lineFormat.line && shape.lineFormat.lineFormatType !== 'None') {
                 this.pageContext.lineWidth = shape.lineFormat.weight;
@@ -1972,15 +1975,26 @@ private calculatePathBounds(data: string): Rect {
             if (lineWidget.paragraph.bodyWidget && !(lineWidget.paragraph.bodyWidget instanceof HeaderFooterWidget)) {
                 pageIndex = this.documentHelper.pages.indexOf(lineWidget.paragraph.bodyWidget.page);
             }
-            if ((children.length == 0 && !lineWidget.isEndsWithLineBreak && !isNullOrUndefined(lineWidget.paragraph)) || (lineWidget.paragraph.childWidgets.length === 1)) {
-                y = lineWidget.paragraph.y + (this.documentHelper.textHelper.getHeight(currentCharFormat)).BaselineOffset + (!isNullOrUndefined(lineWidget.margin) ? lineWidget.margin.top : 0);
-                //Paragraph with empty linewidgets with mutiple line breaks
-                if (!lineWidget.isEndsWithLineBreak && lineWidget.indexInOwner > 0 && children.length == 0) {
-                    y = top + lineWidget.previousLine.maxBaseLine;
-                }
-            } else {
-                y = top + lineWidget.maxBaseLine;
-            }
+           
+if ((children.length == 0 && !lineWidget.isEndsWithLineBreak && !isNullOrUndefined(lineWidget.paragraph))) {
+           
+                           y = lineWidget.paragraph.y + (this.documentHelper.textHelper.getHeight(currentCharFormat)).BaselineOffset + (!isNullOrUndefined(lineWidget.margin) ? lineWidget.margin.top : 0);
+                           
+                           if (!lineWidget.isEndsWithLineBreak && lineWidget.indexInOwner > 0 && children.length == 0) {
+                               y = top + lineWidget.previousLine.maxBaseLine;
+                           }
+                       } else {
+                           if (lineWidget.paragraph.childWidgets.length === 1 && lineWidget.maxBaseLine == 0) {
+                               y = top + (this.documentHelper.textHelper.getHeight(currentCharFormat)).BaselineOffset + lineWidget.margin.top;
+                           } else {
+                               // for handling negative margin top
+                               if (lineWidget.margin.top > 0) {
+                                   y = top + lineWidget.maxBaseLine + lineWidget.margin.top;
+                               } else {
+                                   y = top + lineWidget.maxBaseLine;
+                               }
+                           }
+                       }
             if (currentCharFormat.revisionLength > 0) {
                 //CharacterFormat Track changes is not supported., Hence only the Para mark changes are parsed and preserved in the charcterForamt. 
                 let revisionInfo: RevisionInfo[] = this.checkRevisionType(currentCharFormat);
@@ -2329,7 +2343,51 @@ private calculatePathBounds(data: string): Rect {
             return "#000000";
         }
     }
+    // Returns true when every character in the element is a word-split character
+    private isElementAllWordSplit(elem: TextElementBox): boolean {
+        if (isNullOrUndefined(elem) || isNullOrUndefined(elem.text)) { return false; }
+        for (let i: number = 0; i < elem.text.length; i++) {
+            if (!this.documentHelper.textHelper.isWordSplitChar(elem.text[i])) {
+                return false;
+            }
+        }
+        return true;
+    }
 
+    // Returns true when the element should be ignored for RTL scanning
+    // (e.g. all word-split characters or numeric-only runs).
+    private isSkippableElement(elem: TextElementBox): boolean {
+        if (isNullOrUndefined(elem) || isNullOrUndefined(elem.text)) { return false; }
+        if (this.isElementAllWordSplit(elem)) { return true; }
+        // treat numeric-only elements as skippable too
+        if (this.documentHelper.textHelper.containsNumberAlone(elem.text)) { return true; }
+        return false;
+    }
+    // Determines whether the nearest preceding (non-skippable) element is RTL.
+    private prevIsRTL(prevElem: TextElementBox): boolean {
+        if (isNullOrUndefined(prevElem)) { return false; }
+        if (this.isSkippableElement(prevElem)) {
+            let scan: TextElementBox = prevElem.previousElement instanceof TextElementBox ? prevElem.previousElement as TextElementBox : undefined;
+            while (scan && this.isSkippableElement(scan)) {
+                scan = scan.previousElement instanceof TextElementBox ? scan.previousElement as TextElementBox : undefined;
+            }
+            return !isNullOrUndefined(scan) && this.documentHelper.textHelper.isRTLText(scan.text);
+        }
+        return this.documentHelper.textHelper.isRTLText(prevElem.text);
+    }
+
+    // Determines whether the nearest following (non-skippable) element is RTL.
+    private nextIsRTL(nextElem: TextElementBox): boolean {
+        if (isNullOrUndefined(nextElem)) { return false; }
+        if (this.isSkippableElement(nextElem)) {
+            let scan: TextElementBox = nextElem.nextElement instanceof TextElementBox ? nextElem.nextElement as TextElementBox : undefined;
+            while (scan && this.isSkippableElement(scan)) {
+                scan = scan.nextElement instanceof TextElementBox ? scan.nextElement as TextElementBox : undefined;
+            }
+            return !isNullOrUndefined(scan) && this.documentHelper.textHelper.isRTLText(scan.text);
+        }
+        return this.documentHelper.textHelper.isRTLText(nextElem.text);
+    }
     private renderTextElementBox(elementBox: TextElementBox, left: number, top: number, underlineY: number): void {
         let isHeightType: boolean = false;
         let containerWidget: Widget = elementBox.line.paragraph.containerWidget;
@@ -2409,10 +2467,16 @@ private calculatePathBounds(data: string): Rect {
             text = text.toUpperCase();
         }
         let characterRange: CharacterRangeType = elementBox.characterRange;
-        if (((characterRange == CharacterRangeType.WordSplit) ||
+        // True when the current element is flanked by RTL text on both sides;
+        // used to decide contextual inversion / ligature handling.
+        let isBetweenRTL: boolean = false;
+        const prevElem: TextElementBox = elementBox.previousElement instanceof TextElementBox ? elementBox.previousElement as TextElementBox : undefined;
+        const nextElem: TextElementBox = elementBox.nextElement instanceof TextElementBox ? elementBox.nextElement as TextElementBox : undefined;
+        isBetweenRTL = this.prevIsRTL(prevElem) && this.nextIsRTL(nextElem);
+        if ((((characterRange == CharacterRangeType.WordSplit) ||
             (((characterRange & CharacterRangeType.WordSplit) == CharacterRangeType.WordSplit) &&
-                ((characterRange & CharacterRangeType.RightToLeft) == CharacterRangeType.RightToLeft))) && format.bidi) {
-            text = this.inverseCharacter(text);
+                ((characterRange & CharacterRangeType.RightToLeft) == CharacterRangeType.RightToLeft))) && format.bidi ) ||  (this.documentHelper.characterFormat.ligature === "StandardContextual" && isBetweenRTL)) {
+            text = this.documentHelper.textHelper.inverseCharacter(text);
         }
         let scaleFactor: number = format.scaling < 100 ? 1 : format.scaling / 100;
         if (characterRange === CharacterRangeType.RightToLeft && !HelperMethods.startsWith(text, ' ')) {
@@ -2574,6 +2638,7 @@ private calculatePathBounds(data: string): Rect {
     
     private inverseCharacter(ch: string): string {
         switch (ch) {
+
             //Specify the '('
             case String.fromCharCode(40):
                 //Specify the ')'
@@ -2952,8 +3017,10 @@ private calculatePathBounds(data: string): Rect {
                 //     widgetWidth = containerWid.width + containerWid.x;
                 // } else 
                 if (elementBox.line.paragraph.paragraphFormat.lineSpacingType === 'Exactly' && elementBox.line.paragraph.paragraphFormat.lineSpacing > 0) {
-                    isClipped = true;
-                    this.clipRect(elementBox.line.paragraph.x, elementBox.line.paragraph.y, this.getScaledValue(elementBox.line.paragraph.width), this.getScaledValue(elementBox.line.paragraph.height));
+                    if (!(containerWid instanceof TableCellWidget)) {
+                        isClipped = true;
+                        this.clipRect(elementBox.line.paragraph.x, elementBox.line.paragraph.y, this.getScaledValue(elementBox.line.paragraph.width), this.getScaledValue(elementBox.line.paragraph.height));
+                    }
                 } else if (containerWid instanceof TableCellWidget) {
                     let leftIndent: number = 0;
                     if (containerWid.childWidgets[0] instanceof ParagraphWidget) {

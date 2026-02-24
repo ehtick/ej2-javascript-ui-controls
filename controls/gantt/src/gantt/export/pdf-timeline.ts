@@ -71,14 +71,13 @@ export class PdfTimeline {
         this.detailsTimeline = detail;
         this.pageIndex = pageIndex;
         this.timelineHeight = this.gantt.layouter.headerHeight;
-        let remainWidth: number = (this.parent.pdfExportModule.gantt.taskbar.isAutoFit()) ?
-            pointToPixel(Math.floor(detail.totalWidth)) : Math.round(detail.totalWidth);
+        let remainWidth: number = Math.round(detail.totalWidth);
         let renderWidth: number = 0;
         this.topTierPoint.x = startPoint.x;
         this.topTierPoint.y = startPoint.y;
         this.prevTopTierIndex = this.topTierIndex;
         this.prevBottomTierIndex = this.bottomTierIndex;
-        const startDate: Date = this.parent.cloneProjectStartDate;
+        const startDate: Date = this.parent.timelineModule.timelineStartDate;
         const hours: number = startDate.getHours();
         const minutes: number = startDate.getMinutes();
         const seconds: number = startDate.getSeconds();

@@ -2,7 +2,23 @@
 
 ## [Unreleased]
 
-## 32.2.5 (2026-02-17)
+## 32.2.7 (2026-02-24)
+
+### Chart
+
+#### Bug Fixes
+
+- `I811385` - The chart data label now display correctly in the top and bottom positions when the angle is set to 90 degree.
+
+## 32.1.25 (2026-01-24)
+
+### Chart
+
+#### Bug Fixes
+
+- The `columnWidthInPixel` property works correctly when the `enableSideBySidePlacement` property is disabled.
+
+## 32.1.24 (2026-01-20)
 
 ### Chart
 
