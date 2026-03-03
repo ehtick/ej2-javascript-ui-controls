@@ -858,8 +858,7 @@ export class PdfViewerBase {
             if (Browser.isDevice && !this.pdfViewer.enableDesktopMode) {
                 this.createMobilePageNumberContainer();
             }
-
-            (this.viewerContainer as HTMLElement).tabIndex = -1;
+            (this.viewerContainer as HTMLElement).tabIndex = 0;
             if (this.pdfViewer.enableRtl) {
                 this.viewerContainer.style.direction = 'rtl';
             }
@@ -5107,6 +5106,10 @@ export class PdfViewerBase {
      * @returns {void}
      */
     private onWindowKeyDown = (event: KeyboardEvent): void => {
+        const container: HTMLElement = this.viewerContainer as HTMLElement;
+        if (container && container.tabIndex === 0) {
+            container.tabIndex = -1;
+        }
         const isMac: boolean = /ipad|iphone|ipod|mac/.test(navigator.userAgent.toLowerCase()) ? true : false;
         const isCommandKey: boolean = isMac ? event.metaKey : false;
         if ((this.isFreeTextAnnotationModule() && this.pdfViewer.annotationModule
@@ -9897,8 +9900,13 @@ export class PdfViewerBase {
                                         case 'imageRendered':
                                             if (event.data.message === 'imageRendered') {
                                                 if (event.data.textDetailsId.includes(proxy.documentId)) {
-                                                    const canvas: HTMLCanvasElement = document.createElement('canvas');
                                                     const { value, width, height, pageIndex } = event.data;
+                                                    if (width <= 0 || height <= 0 || isNaN(width) || isNaN(height)) {
+                                                        proxy.pdfViewer.unload();
+                                                        console.error('The dimensions of this page are out-of-range.Page content might be truncated');
+                                                        return;
+                                                    }
+                                                    const canvas: HTMLCanvasElement = document.createElement('canvas');
                                                     canvas.width = width;
                                                     canvas.height = height;
                                                     const canvasContext: CanvasRenderingContext2D = canvas.getContext('2d');
@@ -12104,7 +12112,7 @@ export class PdfViewerBase {
             this.pdfViewer.annotationModule.freeTextAnnotationModule.isInuptBoxInFocus) {
             isSkip = true;
         }
-        if (target.parentElement && target.parentElement.className !== 'foreign-object' && !target.classList.contains('e-pv-radio-btn') && !target.classList.contains('e-pv-radiobtn-span') && !target.classList.contains('e-pv-checkbox-div') && !target.classList.contains('e-pdfviewer-formFields')
+        if (target.parentElement && !target.parentElement.classList.contains('foreign-object') && !target.classList.contains('e-pv-radio-btn') && !target.classList.contains('e-pv-radiobtn-span') && !target.classList.contains('e-pv-checkbox-div') && !target.classList.contains('e-pdfviewer-formFields')
             && !target.classList.contains('e-pdfviewer-ListBox') && !target.classList.contains('e-pdfviewer-signatureformfields')
             && !((target).className === 'free-text-input' && (target).tagName === 'TEXTAREA')
             && !isSkip && !((target).className === 'e-pv-hyperlink') && target.parentElement.classList.length > 0 && !target.parentElement.classList.contains('e-editable-elements') && !this.isAddComment) {

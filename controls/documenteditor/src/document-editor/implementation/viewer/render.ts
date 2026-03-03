@@ -1976,25 +1976,23 @@ private calculatePathBounds(data: string): Rect {
                 pageIndex = this.documentHelper.pages.indexOf(lineWidget.paragraph.bodyWidget.page);
             }
            
-if ((children.length == 0 && !lineWidget.isEndsWithLineBreak && !isNullOrUndefined(lineWidget.paragraph))) {
-           
-                           y = lineWidget.paragraph.y + (this.documentHelper.textHelper.getHeight(currentCharFormat)).BaselineOffset + (!isNullOrUndefined(lineWidget.margin) ? lineWidget.margin.top : 0);
-                           
-                           if (!lineWidget.isEndsWithLineBreak && lineWidget.indexInOwner > 0 && children.length == 0) {
-                               y = top + lineWidget.previousLine.maxBaseLine;
-                           }
-                       } else {
-                           if (lineWidget.paragraph.childWidgets.length === 1 && lineWidget.maxBaseLine == 0) {
-                               y = top + (this.documentHelper.textHelper.getHeight(currentCharFormat)).BaselineOffset + lineWidget.margin.top;
-                           } else {
-                               // for handling negative margin top
-                               if (lineWidget.margin.top > 0) {
-                                   y = top + lineWidget.maxBaseLine + lineWidget.margin.top;
-                               } else {
-                                   y = top + lineWidget.maxBaseLine;
-                               }
-                           }
-                       }
+            if ((children.length == 0 && !lineWidget.isEndsWithLineBreak && !isNullOrUndefined(lineWidget.paragraph))) {
+                y = lineWidget.paragraph.y + (this.documentHelper.textHelper.getHeight(currentCharFormat)).BaselineOffset + (!isNullOrUndefined(lineWidget.margin) ? lineWidget.margin.top : 0);
+                if (!lineWidget.isEndsWithLineBreak && lineWidget.indexInOwner > 0 && children.length == 0) {
+                    y = top + lineWidget.previousLine.maxBaseLine;
+                }
+            } else {
+                if (lineWidget.paragraph.childWidgets.length === 1 && lineWidget.maxBaseLine == 0) {
+                    y = top + (this.documentHelper.textHelper.getHeight(currentCharFormat)).BaselineOffset + (!isNullOrUndefined(lineWidget.margin) ? lineWidget.margin.top : 0);
+                } else {
+                    // for handling negative margin top
+                    if (lineWidget.margin && lineWidget.margin.top > 0) {
+                        y = top + lineWidget.maxBaseLine + lineWidget.margin.top;
+                    } else {
+                        y = top + lineWidget.maxBaseLine;
+                    }
+                }
+            }
             if (currentCharFormat.revisionLength > 0) {
                 //CharacterFormat Track changes is not supported., Hence only the Para mark changes are parsed and preserved in the charcterForamt. 
                 let revisionInfo: RevisionInfo[] = this.checkRevisionType(currentCharFormat);
@@ -2275,6 +2273,12 @@ if ((children.length == 0 && !lineWidget.isEndsWithLineBreak && !isNullOrUndefin
         let baselineAlignment: BaselineAlignment = format.hasValue('baselineAlignment') ? format.baselineAlignment : breakCharacterFormat.baselineAlignment;
         bold = format.hasValue('bold') ? format.bold ? 'bold' : '' : breakCharacterFormat.bold ? 'bold' : '';
         italic = format.hasValue('italic') ? format.italic ? 'italic' : '' : breakCharacterFormat.italic ? 'italic' : '';
+        if (elementBox.paragraph.paragraphFormat.listFormat.listLevel.listLevelPattern === "Bullet" && !format.bold) {
+            bold = '';
+        }
+        if (elementBox.paragraph.paragraphFormat.listFormat.listLevel.listLevelPattern === "Bullet" && !format.italic) {
+            italic = '';
+        }
         fontSize = fontSize === 0 ? 0.5 : fontSize / (baselineAlignment === 'Normal' ? 1 : 1.5);
         fontSize = this.isPrinting ? fontSize : fontSize * this.documentHelper.zoomFactor;
         let strikethrough: Strikethrough = format.hasValue('strikethrough') ? format.strikethrough : breakCharacterFormat.strikethrough;
@@ -2388,6 +2392,26 @@ if ((children.length == 0 && !lineWidget.isEndsWithLineBreak && !isNullOrUndefin
         }
         return this.documentHelper.textHelper.isRTLText(nextElem.text);
     }
+    
+    private checkFormatToCombineText(currentFormat: WCharacterFormat, previousFormat: WCharacterFormat): boolean {
+        return (currentFormat.fontSize === previousFormat.fontSize
+            && currentFormat.fontFamily === previousFormat.fontFamily
+            && currentFormat.bold === previousFormat.bold
+            && currentFormat.italic === previousFormat.italic
+            && currentFormat.baselineAlignment === previousFormat.baselineAlignment
+            && currentFormat.bidi === previousFormat.bidi
+            && currentFormat.bdo === previousFormat.bdo
+            && currentFormat.allCaps === previousFormat.allCaps
+            && currentFormat.complexScript === previousFormat.complexScript
+            && currentFormat.fontFamilyAscii === previousFormat.fontFamilyAscii
+            && currentFormat.fontFamilyBidi === previousFormat.fontFamilyBidi
+            && currentFormat.fontFamilyFarEast === previousFormat.fontFamilyFarEast
+            && currentFormat.characterSpacing === previousFormat.characterSpacing
+            && currentFormat.scaling === previousFormat.scaling
+            && currentFormat.fontFamilyNonFarEast === previousFormat.fontFamilyNonFarEast
+            && currentFormat.hidden === previousFormat.hidden);
+    }
+
     private renderTextElementBox(elementBox: TextElementBox, left: number, top: number, underlineY: number): void {
         let isHeightType: boolean = false;
         let containerWidget: Widget = elementBox.line.paragraph.containerWidget;
@@ -2463,6 +2487,18 @@ if ((children.length == 0 && !lineWidget.isEndsWithLineBreak && !isNullOrUndefin
         }
         //this.pageContext.direction = 'ltr';
         text = this.documentHelper.textHelper.setText(text, isRTL, format.bdo, true);
+        const line: LineWidget = elementBox.line;
+        const index: number = line.renderedElements.indexOf(elementBox);
+        if (index > 0) {
+            const previousElement: TextElementBox = line.renderedElements[index - 1] as TextElementBox;
+            if (previousElement && elementBox.scriptType !== FontScriptType.Hebrew && this.checkFormatToCombineText(elementBox.characterFormat, previousElement.characterFormat) &&
+                !HelperMethods.startsWith(elementBox.text, ' ') && !HelperMethods.endsWith(previousElement.text)
+                && elementBox.characterFormat.bidi && previousElement.characterFormat.bidi
+                && elementBox.characterRange === CharacterRangeType.RightToLeft
+                && previousElement.characterRange === CharacterRangeType.RightToLeft) {
+                text += '\u200D'; //Use ZWJ (Zero Width Joiner - \u200D) at the boundary to join RTL text.
+            }
+        }
         if (format.allCaps) {
             text = text.toUpperCase();
         }

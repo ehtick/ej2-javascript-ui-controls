@@ -1266,10 +1266,8 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
                 inputElement.setAttribute('name', 'UploadFiles');
             }
             this.element.appendChild(inputElement);
-            setValue('ej2_instances', ejInstance, inputElement);
-            // Clear reference from this.element to avoid retaining component instance
-            setValue('ej2_instances', null, this.element);
             this.element = inputElement;
+            setValue('ej2_instances', ejInstance, this.element);
         }
         /* istanbul ignore next */
         if (ejInstance[0].isPureReactComponent) {
@@ -3957,6 +3955,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
         this.keyboardModule = null;
         this.clearButton = null;
         this.uploadButton = null;
+        setValue('ej2_instances', null, this.element);
         super.destroy();
     }
 

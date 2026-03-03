@@ -3,3 +3,7 @@ export * from './image-structure';
 export * from './image-utils';
 export * from './image';
 export * from './pdf-embedded-image';
+export * from './colorspace-utils';
+export * from './colorspace';
+export * from './icc-based-colorspace';
+export * from './jpeg-image';

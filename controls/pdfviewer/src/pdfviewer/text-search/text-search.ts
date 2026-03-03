@@ -228,12 +228,18 @@ export class TextSearch {
                             const dataSourceInfo: any = this.autompleteDataSource;
                             const totalCount: any = dataSourceInfo.reduce((acc: number, obj: { Count: string }) =>
                                 acc + parseInt(obj.Count, 10), 0);
-                            document.querySelector('.e-pv-total-exact-matches').innerHTML = totalCount;
+                            if (document.querySelector('.e-pv-total-exact-matches')) {
+                                document.querySelector('.e-pv-total-exact-matches').innerHTML = totalCount;
+                            }
                             if (this.isMultiSearch) {
-                                document.querySelector('.e-pv-search-exact-matches').innerHTML = this.pdfViewer.localeObj.getConstant('Total Matches');
+                                if (document.querySelector('.e-pv-search-exact-matches')) {
+                                    document.querySelector('.e-pv-search-exact-matches').innerHTML = this.pdfViewer.localeObj.getConstant('Total Matches');
+                                }
                             }
                             else {
-                                document.querySelector('.e-pv-search-exact-matches').innerHTML = this.pdfViewer.localeObj.getConstant('Exact Matches');
+                                if (document.querySelector('.e-pv-search-exact-matches')) {
+                                    document.querySelector('.e-pv-search-exact-matches').innerHTML = this.pdfViewer.localeObj.getConstant('Exact Matches');
+                                }
                             }
                         }
                         else if (this.autompleteDataSource.length === 0) {

@@ -3125,7 +3125,8 @@ export class DropDownList extends DropDownBase implements IInput {
                     this.setFooterTemplate(popupEle);
                     this.isUpdateFooterHeight = this.footer.offsetHeight !== 0;
                 }
-                document.body.appendChild(popupEle);
+                const appendToElement: HTMLElement = this.getAppendToElement();
+                appendToElement.appendChild(popupEle);
                 popupEle.style.top = '0px';
                 initialPopupHeight = popupEle.clientHeight;
                 if (this.enableVirtualization && (this.itemTemplate || this.isAngular)) {
@@ -3378,6 +3379,16 @@ export class DropDownList extends DropDownBase implements IInput {
                 this.beforePopupOpen = false;
             }
         });
+    }
+    protected getAppendToElement(): HTMLElement {
+        if (this.isAngular) {
+            const cdkPane: HTMLElement = this.element && this.element.closest ? this.element.closest('.cdk-overlay-pane') as HTMLElement : null;
+            const popoverEl: HTMLElement = this.element && this.element.closest ? this.element.closest('[popover]') as HTMLElement : null;
+            if (cdkPane && popoverEl) {
+                return cdkPane;
+            }
+        }
+        return document.body;
     }
     private checkCollision(popupEle: HTMLElement): void {
         if (!Browser.isDevice || (Browser.isDevice && !(this.getModuleName() === 'dropdownlist' || this.isDropDownClick))) {
@@ -4158,7 +4169,8 @@ export class DropDownList extends DropDownBase implements IInput {
         const listParentHeight: string = formatUnit(this.popupHeight);
         listParent.style.height = (parseInt(listParentHeight, 10)).toString() + 'px';
         listParent.appendChild(item);
-        document.body.appendChild(listParent);
+        const appendToElement: HTMLElement = this.getAppendToElement();
+        appendToElement.appendChild(listParent);
         this.virtualListHeight = listParent.getBoundingClientRect().height;
         const listItemHeight: number = Math.ceil(item.getBoundingClientRect().height) +
             parseInt(window.getComputedStyle(item).marginBottom, 10);

@@ -2703,19 +2703,12 @@ export class TableWidget extends BlockWidget {
             this.isDefaultFormatUpdated = true;
         }
         this.tableHolder.validateColumnWidths();
-        let isCurrentTableResizing: boolean = false;
-        if (!isNullOrUndefined(this.bodyWidget.page) && this.bodyWidget.page.documentHelper && this.bodyWidget.page.documentHelper.owner
-            && (this.bodyWidget.page.documentHelper.owner.isTableMarkerDragging || this.bodyWidget.page.documentHelper.isRowOrCellResizing)) {
-            isCurrentTableResizing = this.bodyWidget.page.documentHelper.owner.editorModule.tableResize.currentResizingTable === this;
-        }
-        if (!isCurrentTableResizing) {
-            if (isAutoFit) {
-                // Fits the column width automatically based on contents.
-                this.tableHolder.autoFitColumn(containerWidth, tableWidth, isAutoWidth, this.isInsideTable, isAutoFit, hasSpannedCells, this.bodyWidget.page.viewer.clientArea.width, this.leftIndent + this.rightIndent, pageContainerWidth, this.tableFormat.preferredWidthType, gridBeforeWidth);
-            } else {
-                // Fits the column width based on preferred width. i.e. Fixed layout.
-                this.tableHolder.fitColumns(containerWidth, tableWidth, isAutoWidth, isAutoFit, this.leftIndent + this.rightIndent);
-            }
+        if (isAutoFit) {
+            // Fits the column width automatically based on contents.
+            this.tableHolder.autoFitColumn(containerWidth, tableWidth, isAutoWidth, this.isInsideTable, isAutoFit, hasSpannedCells, this.bodyWidget.page.viewer.clientArea.width, this.leftIndent + this.rightIndent, pageContainerWidth, this.tableFormat.preferredWidthType, gridBeforeWidth);
+        } else {
+            // Fits the column width based on preferred width. i.e. Fixed layout.
+            this.tableHolder.fitColumns(containerWidth, tableWidth, isAutoWidth, isAutoFit, this.leftIndent + this.rightIndent);
         }
         // if (!isAutoFit && isAutoWidth) {
         //     tableWidth = this.tableHolder.tableWidth;
@@ -2837,7 +2830,7 @@ export class TableWidget extends BlockWidget {
     /**
      * @private
      */
-    public updateWidth(dragValue: number): void {
+    public updateWidth(dragValue: number, isCurrentTableResizing?: boolean, isLastColumn?: boolean): void {
         let totalPreferredWidth: number = this.tableHolder.getTotalWidth(0);
         let ownerWidth: number = this.getOwnerWidth(true);
         let containerWidth: number = this.getTableClientWidth(ownerWidth);
@@ -2850,9 +2843,14 @@ export class TableWidget extends BlockWidget {
             if (this.tableFormat.preferredWidthType === 'Point') {
                 this.tableFormat.preferredWidth = this.getMaxRowWidth(containerWidth);
             } else {   //ToDo:Need to analyze more the Percentage calculation for table width.
+                totalPreferredWidth = this.getMaxRowWidth(containerWidth);
                 let value: number = (totalPreferredWidth / ownerWidth) * 100;
                 this.tableFormat.preferredWidth = value;
             }
+        }
+        if (isLastColumn && isCurrentTableResizing && this.tableFormat.preferredWidthType === 'Auto' &&
+            this.tableFormat.preferredWidth < this.getMaxRowWidth(containerWidth)) {
+            this.tableFormat.preferredWidth = this.getMaxRowWidth(containerWidth);
         }
     }
     /**

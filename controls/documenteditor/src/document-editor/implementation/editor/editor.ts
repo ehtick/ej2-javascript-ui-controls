@@ -13181,12 +13181,20 @@ export class Editor {
             if (this.isRTLFormat(format)) {
                 format.boldBidi = format.bold == format.boldBidi ? value as boolean : !value as boolean;
             }
-            format.bold = value as boolean;
+            if (!(this.selection.isEmpty && this.selection.start.paragraph.lastChild === this.selection.start.currentWidget
+                && this.selection.start.offset === this.selection.getLineLength(this.selection.start.currentWidget)
+                && (this.selection.start.paragraph.firstChild as LineWidget).children[0] instanceof ListTextElementBox)) {
+                format.bold = value as boolean;
+            }
         } else if (property === 'italic') {
             if (this.isRTLFormat(format)) {
                 format.italicBidi = format.italic == format.italicBidi ? value as boolean : !value as boolean;
             }
-            format.italic = value as boolean;
+            if (!(this.selection.isEmpty && this.selection.start.paragraph.lastChild === this.selection.start.currentWidget
+                && this.selection.start.offset === this.selection.getLineLength(this.selection.start.currentWidget)
+                && (this.selection.start.paragraph.firstChild as LineWidget).children[0] instanceof ListTextElementBox)) {
+                format.italic = value as boolean;
+            }
         } else if (property === 'fontColor') {
             format.fontColor = value as string;
         } else if (property === 'fontFamily') {
@@ -15377,7 +15385,7 @@ export class Editor {
                 }
 
             } else {
-                this.removeBlock(table, false, false, false, true);
+                this.removeBlock(table, undefined, false, false, true);
             }
             this.selection.selectParagraphInternal(paragraph, true);
             if (this.checkIsNotRedoing() || isNullOrUndefined(this.editorHistory)) {
@@ -15511,6 +15519,12 @@ export class Editor {
                     length += 1;
                     i--;
                 }
+            }
+        }   
+        for (let k: number = this.documentHelper.contentControlCollection.length - 1; k >= 0; k--) {
+            let content: ContentControl = this.documentHelper.contentControlCollection[k];
+            if (isNullOrUndefined(content.contentControlProperties)) {
+                this.documentHelper.contentControlCollection.splice(k);
             }
         }
         if (insertedCells.length > 0) {
@@ -17423,10 +17437,12 @@ export class Editor {
             isRowSelected = false;
         }
         this.removeRevisionsInRow(row, isRowSelected, undefined, startColumnIndex, endColumnIndex);
+        const minColumnIndex: number = Math.min(startColumnIndex, endColumnIndex);
+        const maxColumnIndex: number = Math.max(startColumnIndex, endColumnIndex);
         for (let j: number = 0; j < row.childWidgets.length; j++) {
             let cell: TableCellWidget = row.childWidgets[j] as TableCellWidget;
             //this.removeRevisionForCell(cell, true);
-            if (cell.columnIndex >= startColumnIndex && cell.columnIndex <= endColumnIndex) {
+            if (cell.columnIndex >= minColumnIndex && cell.columnIndex <= maxColumnIndex) {
                 if (!isStarted) {
                     this.updateEditPosition(cell, selection);
                     isStarted = true;
@@ -19005,7 +19021,7 @@ export class Editor {
                     paragraph.paragraphFormat.copyFormat(paragraphAdv.paragraphFormat);
                     paragraph.characterFormat.copyFormat(paragraphAdv.characterFormat);
                 }
-                if ((paragraphAdv.lastChild as LineWidget).children.length > 0) {
+                if ((paragraphAdv.lastChild as LineWidget).children.length > 0 && !((paragraphAdv.firstChild as LineWidget).children[0] instanceof ListTextElementBox)) {
                     paragraphAdv.characterFormat.copyFormat((paragraphAdv.lastChild as LineWidget).children[(paragraphAdv.lastChild as LineWidget).children.length - 1].characterFormat);
                 }
             }
@@ -19662,6 +19678,40 @@ export class Editor {
         return { commentStartInfo: commentStarts, commentEndInfo: commentEnds };
     }
     /**
+     * Check if EditRange element is at list boundary
+     *
+     * @param {ElementBox} inline - The EditRangeStartElementBox or EditRangeEndElementBox element
+     * @private
+     * @returns {boolean} - Returns true if element is at list boundary
+     */
+    private isEditRangeAtListBoundary(inline: ElementBox): boolean {
+        if (inline instanceof EditRangeStartElementBox) {
+            let paragraph: ParagraphWidget = inline.line.paragraph;
+            let hasListFormat: boolean = paragraph.paragraphFormat.listFormat && paragraph.paragraphFormat.listFormat.listId !== -1;
+            if (!hasListFormat) {
+                return false;
+            }
+            let precedingElement: ElementBox = inline.previousNode;
+            while (precedingElement && (precedingElement instanceof BookmarkElementBox || precedingElement instanceof ContentControl || precedingElement instanceof CommentCharacterElementBox || precedingElement instanceof FieldElementBox || precedingElement instanceof EditRangeStartElementBox || precedingElement instanceof EditRangeEndElementBox)) {
+                precedingElement = precedingElement.previousNode;
+            }
+            if (precedingElement instanceof ListTextElementBox) {
+                return true;
+            }
+            if (precedingElement instanceof TextElementBox) {
+                return false;
+            }
+            return false;
+        }
+        if (inline instanceof EditRangeEndElementBox) {
+            if (inline.previousNode instanceof ListTextElementBox) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Remove single character on left of cursor position
      *
      * @param {Selection} selection - Specifies the selection
@@ -19862,7 +19912,19 @@ export class Editor {
                 offset = inline.line.getOffset(inline, inline.length);
             }
         }
-        if (inline instanceof EditRangeStartElementBox || inline instanceof EditRangeEndElementBox) {
+        if ((inline instanceof EditRangeStartElementBox || inline instanceof EditRangeEndElementBox) && this.isEditRangeAtListBoundary(inline)) {
+            if (inline instanceof EditRangeStartElementBox) {
+                if (paragraph.childWidgets && paragraph.childWidgets.length > 0) {
+                    let firstLine: LineWidget = paragraph.childWidgets[0] as LineWidget;
+                    if (firstLine.children && firstLine.children.length > 0) {
+                        inline = firstLine.children[0];
+                        offset = 0;
+                        paragraph = inline.line.paragraph;
+                    }
+                }
+            }
+        }
+        else if (inline instanceof EditRangeStartElementBox || inline instanceof EditRangeEndElementBox) {
             if ((inline.nextNode instanceof EditRangeEndElementBox && (inline as EditRangeStartElementBox).editRangeEnd === inline.nextNode)
                 || (inline.previousNode instanceof EditRangeStartElementBox
                     && (inline as EditRangeEndElementBox).editRangeStart === inline.previousNode)) {
@@ -19872,12 +19934,6 @@ export class Editor {
                 selection.skipFormatRetrieval = false;
                 return;
             }
-            if (this.documentHelper.isDocumentProtected &&
-                this.documentHelper.protectionType === 'ReadOnly') {
-                if (inline instanceof EditRangeStartElementBox || inline instanceof EditRangeEndElementBox) {
-                    return;
-                }
-            } 
             if (inline instanceof EditRangeEndElementBox) {
                 do {
                     if (!isNullOrUndefined(inline.previousNode)) {
@@ -19905,7 +19961,7 @@ export class Editor {
                 }
             }
             if (inline instanceof BookmarkElementBox) {
-                if (inline.previousNode) {
+                if (inline.previousNode && !(inline.previousNode instanceof ListTextElementBox) ) {
                     inline = inline.previousNode;
                     if (inline instanceof FieldElementBox && !this.selection.isInlineFormFillMode()) {
                         inline = inline.fieldBegin;

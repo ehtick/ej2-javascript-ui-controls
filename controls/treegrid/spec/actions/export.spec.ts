@@ -597,12 +597,14 @@ describe('Pdf Exporting Remote data with isCollapsedStatePersist false', () => {
                 treeColumnIndex: 1,
                 allowPaging: true,
                 allowPdfExport: true,
+                allowExcelExport: true,
                 columns: [
                     { field: 'TaskID', headerText: 'Task ID', textAlign: 'Right', width: 120 },
                     { field: 'TaskName', headerText: 'Task Name', width: 150 },
                     { field: 'StartDate', headerText: 'Start Date', textAlign: 'Right', width: 120 }
                 ],
-                pdfExportComplete: exportComplete
+                pdfExportComplete: exportComplete,
+                excelExportComplete: exportComplete
             },
             done
         );
@@ -634,9 +636,19 @@ describe('Pdf Exporting Remote data with isCollapsedStatePersist false', () => {
         gridObj.pdfExport(pdfExportProperties);
         done();
     });
+    
+    it('Checking the excel export', (done: Function) => {
+        let prop: any = {
+            isCollapsedStatePersist: false,
+        }
+        let dtSrc: any = [];
+        (gridObj.excelExportModule as any).manipulateExportProperties(prop, dtSrc);
+        done();
+    });
 
     afterAll(() => {
         destroy(gridObj);
         gridObj.pdfExportModule.destroy();
+        gridObj.excelExportModule.destroy();
     });
 });

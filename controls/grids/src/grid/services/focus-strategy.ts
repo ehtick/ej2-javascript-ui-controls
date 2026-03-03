@@ -95,6 +95,9 @@ export class FocusStrategy {
     protected passiveFocus(e: FocusEvent): void {
         if (this.parent.isDestroyed) { return; }
         const firstHeaderCell: Element = this.parent.getHeaderContent().querySelector('.e-headercell:not(.e-hide)');
+        const lastRow: HTMLElement = this.parent.getContentTable().querySelector('tr:last-child');
+        const lastCell: Element = lastRow && lastRow.lastElementChild;
+        const templateCell: Element = closest(<HTMLElement>e.target, '.e-templatecell');
         if (e.target === firstHeaderCell && e.relatedTarget && !parentsUntil((e.relatedTarget as Element), 'e-grid')
             && !this.firstHeaderCellClick) {
             let firstHeaderCellIndex: number[] = [0, 0];
@@ -111,6 +114,18 @@ export class FocusStrategy {
             else {
                 addClass([this.currentInfo.element], ['e-focused', 'e-focus']);
             }
+        }
+        if ((e.target === lastCell || (templateCell && templateCell === lastCell)) && e.relatedTarget
+            && !parentsUntil((e.relatedTarget as Element), 'e-grid')
+            && !this.firstHeaderCellClick) {
+            this.setActive(true);
+            this.setLastContentCellActive();
+            this.currentInfo.element = lastCell as HTMLElement;
+            this.currentInfo.elementToFocus = lastCell as HTMLElement;
+            if (templateCell) {
+                (templateCell as HTMLElement).focus();
+            }
+            addClass([this.currentInfo.element], ['e-focused', 'e-focus']);
         }
         this.firstHeaderCellClick = false;
         if (e.target && (<HTMLElement>e.target).classList.contains('e-detailcell') && !isNullOrUndefined(this.currentInfo.element)) {

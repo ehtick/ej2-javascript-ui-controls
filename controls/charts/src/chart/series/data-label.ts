@@ -204,7 +204,7 @@ export class DataLabel {
                     this.isDataLabelShape(argsData);
                     this.markerHeight = series.type === 'Bubble' ? (point.regions[0].height / 2) : this.markerHeight;
                     if (argsData.template !== null) {
-                        this.createDataLabelTemplate(element, series, dataLabel, point, argsData, i, this.chart.redraw);
+                        this.createDataLabelTemplate(element, series, dataLabel, point, argsData, i, this.chart.redraw, angle);
                     } else {
                         if (dataLabel.enableRotation) {
                             textSize = rotateTextSize(dataLabel.font, argsData.text, angle, this.chart,
@@ -213,7 +213,7 @@ export class DataLabel {
                         else {
                             textSize = measureText(argsData.text, dataLabel.font, this.chart.themeStyle.datalabelFont);
                         }
-                        const rect: Rect = this.calculateTextPosition(point, series, textSize, dataLabel, i);
+                        const rect: Rect = this.calculateTextPosition(point, series, textSize, dataLabel, i, angle);
                         const actualRect: Rect = new Rect(rect.x + clip.x, rect.y + clip.y, rect.width, rect.height);
                         //let notOverlapping: boolean;
                         if (dataLabel.enableRotation) {
@@ -600,12 +600,13 @@ export class DataLabel {
      * @param {ITextRenderEventArgs} data - The event data associated with rendering the data label.
      * @param {number} labelIndex - The index of the data label.
      * @param {boolean} redraw - Specifies whether to redraw the template.
+     * @param {number} angle - Specifies the angle of rotation.
      * @returns {void}
      */
     private createDataLabelTemplate(
         parentElement: HTMLElement, series: Series,
         dataLabel: DataLabelSettingsModel, point: Points, data: ITextRenderEventArgs, labelIndex: number,
-        redraw: boolean
+        redraw: boolean, angle: number
     ): void {
         this.margin = { left: 0, right: 0, bottom: 0, top: 0 };
         const clip: Rect = series.clipRect;
@@ -617,16 +618,16 @@ export class DataLabel {
                     getFontStyle(dataLabel.font, this.chart.themeStyle.datalabelFont) + ';border:' + data.border.width + 'px solid ' + data.border.color + ';'
             }),
             point.index, (this.chart.enableHtmlSanitizer ? this.chart.sanitize(data.template as string) : data.template), this.chart, point, series, this.chart.element.id + '_DataLabel', labelIndex);
-        this.calculateTemplateLabelSize(parentElement, childElement, point, series, dataLabel, labelIndex, clip, redraw);
+        this.calculateTemplateLabelSize(parentElement, childElement, point, series, dataLabel, labelIndex, clip, redraw, null, angle);
     }
     public calculateTemplateLabelSize(
         parentElement: HTMLElement, childElement: HTMLElement, point: Points, series: Series, dataLabel: DataLabelSettingsModel,
-        labelIndex: number, clip: Rect, redraw: boolean, isReactCallback?: boolean
+        labelIndex: number, clip: Rect, redraw: boolean, isReactCallback?: boolean, angle?: number
     ): void {
         const elementRect: ClientRect = measureElementRect(childElement, redraw, isReactCallback);
         const rect: Rect = this.calculateTextPosition(
             point, series, { width: elementRect.width, height: elementRect.height },
-            dataLabel, labelIndex
+            dataLabel, labelIndex, angle
         );
         const clipWidth: number = 0;
         const clipHeight: number = 0;
@@ -663,7 +664,7 @@ export class DataLabel {
     }
     private calculateTextPosition(
         point: Points, series: Series, textSize: Size,
-        dataLabel: DataLabelSettingsModel, labelIndex: number
+        dataLabel: DataLabelSettingsModel, labelIndex: number, angle: number
     ): Rect {
         let labelRegion: Rect = labelIndex > 1 ? (series.type === 'Candle') ? point.regions[1] : point.regions[0] : point.regions[0];
         if (labelIndex > 1 && series.type === 'HiloOpenClose') {
@@ -708,7 +709,7 @@ export class DataLabel {
         }
         const rect: Rect = calculateRect(location, textSize, this.margin);
         // Checking the condition whether data Label has been exist the clip rect
-        if (!(dataLabel.enableRotation === true && dataLabel.angle !== 0) &&
+        if (!(dataLabel.enableRotation === true && (angle !== 0)) &&
             !((rect.y > (clipRect.y + clipRect.height)) || (rect.x > (clipRect.x + clipRect.width)) ||
                 (rect.x + rect.width < 0) || (rect.y + rect.height < 0))) {
             rect.x = rect.x < 0 ? (series.type === 'StackingColumn' && !this.inverted ? 0 : padding) : rect.x;

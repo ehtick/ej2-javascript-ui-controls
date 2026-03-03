@@ -16384,4 +16384,15 @@ describe('CR:810428: Misalignment timeline while using project start date with t
         };
         ganttObj.pdfExport(exportProperties);
     });
+    it('coverage', () => {
+        const exportProperties: PdfExportProperties = {
+            fitToWidthSettings: {
+                isFitToWidth: true,
+                chartWidth: '150%',
+                gridWidth:'150%'
+            },
+            
+        };
+        ganttObj.pdfExport(exportProperties);
+    });
 });

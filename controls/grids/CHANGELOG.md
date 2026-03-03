@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+## 32.2.8 (2025-12-22)
+
+### Grid
+
+#### Bug fixes
+
+- `#I793520` - Resolved an inconsistency in keyboard navigation when using `Shift+Tab` to focus on the Grid component with column template.
+- `#FB72878` - Fixed an issue where the details of the deselected records were not available in the `rowDeselecting` event when clearing the selection using the header checkbox.
+
+## 32.2.7 (2026-02-24)
+
+### Grid
+
+#### Bug fixes
+
+- `#FB72619` - Resolved an issue where `calculatePageSizeByParentHeight` method returned an incorrect value when `showColumnChooser` is enabled in the Grid.
+- `#FB72620` - Fixed an issue where the detail indent cell width was altered unexpectedly when executing `autofitColumns` with `auto` resize mode.
+- `#FB72588` - Resolved an issue where focus is not restored to the grid cell during repeated navigation using the tab key.
+
 ## 32.2.5 (2026-02-17)
 
 ### Grid

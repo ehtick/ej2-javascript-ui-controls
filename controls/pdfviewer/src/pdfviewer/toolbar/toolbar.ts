@@ -2268,18 +2268,26 @@ export class Toolbar {
             this.pdfViewerBase.previousScrollbarWidth = this.pdfViewerBase.navigationPane.getViewerContainerScrollbarWidth();
             this.pdfViewer.magnificationModule.zoomTo(parseFloat(zoomText));
             this.updateZoomPercentage(this.pdfViewer.magnificationModule.zoomFactor);
-            this.zoomDropDown.focusOut();
+            setTimeout(() => {
+                this.zoomDropDown.focusOut();
+            });
         } else if (zoomText === this.pdfViewer.localeObj.getConstant('Fit Width')) {
             this.pdfViewer.magnificationModule.isAutoZoom = false;
             this.pdfViewer.magnificationModule.fitToWidth();
-            this.zoomDropDown.focusOut();
+            setTimeout(() => {
+                this.zoomDropDown.focusOut();
+            });
         } else if (zoomText === this.pdfViewer.localeObj.getConstant('Fit Page')) {
             this.pdfViewer.magnificationModule.fitToPage();
-            this.zoomDropDown.focusOut();
+            setTimeout(() => {
+                this.zoomDropDown.focusOut();
+            });
         } else if (zoomText === this.pdfViewer.localeObj.getConstant('Automatic')) {
             this.pdfViewer.magnificationModule.isAutoZoom = true;
             this.pdfViewer.magnificationModule.fitToAuto();
-            this.zoomDropDown.focusOut();
+            setTimeout(() => {
+                this.zoomDropDown.focusOut();
+            });
         }
     }
 
@@ -2309,6 +2317,7 @@ export class Toolbar {
                     this.pdfViewerBase.isMinimumZoom = false;
                 }
                 this.zoomDropDown.text = currentPercent;
+                this.zoomDropDown.dataBind();
             }
         }
     }

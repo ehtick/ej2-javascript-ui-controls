@@ -631,7 +631,22 @@ export function _isArrayEqual(arr1: number[], arr2: number[]): boolean {
     }
     return true;
 }
-
+/**
+ * Convert a Base64-encoded string into a Uint8Array of bytes.
+ *
+ * @param {string} base64String - The Base64-encoded string to decode.
+ * @returns {Uint8Array} A Uint8Array containing the decoded bytes.
+ *
+ */
+export function _base64ToUint8Array(base64String: string): Uint8Array {
+    const binaryString: string = atob(base64String);
+    const len: number = binaryString.length;
+    const bytes: Uint8Array = new Uint8Array(len);
+    for (let i: number = 0; i < len; i++) {
+        bytes[<number> i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+}
 /**
  * Represents a callback function that returns a canvas element.
  *

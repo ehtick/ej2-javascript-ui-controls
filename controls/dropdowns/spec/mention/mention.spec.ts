@@ -2007,6 +2007,37 @@ describe('Mention', () => {
             }, 450);
         });
     });
+    describe('Coverage improvements for mention component - 2', function () {
+        let listObj: Mention;
+        beforeEach(() => {
+            listObj = undefined;
+            let element: HTMLInputElement = <HTMLInputElement>createElement('input', { id: 'list' });
+            document.body.appendChild(element);
+        });
+        afterEach(() => {
+            listObj.destroy();
+            document.body.innerHTML = '';
+        });
+        it('with isAngular property', function () {
+            listObj = new Mention({
+                dataSource: datasource2,
+                debounceDelay: 0,
+                fields: { value: "id", text: "text" },
+            }, '#list');
+            listObj.isAngular = true;
+            (<any>listObj).inputElement.value = '@';
+            listObj.showPopup();
+        });
+        it('with requireLeadingSpace property', function () {
+            listObj = new Mention({
+                dataSource: datasource2,
+                debounceDelay: 0,
+                fields: { value: "id", text: "text" },
+            }, '#list');
+            listObj.requireLeadingSpace = false;
+            listObj.dataBind();
+        });
+    });
     describe('Null or undefined value testing', () => {
         let listObj: Mention;
         beforeEach(() => {

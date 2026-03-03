@@ -440,6 +440,7 @@ export class Dialog extends Component<HTMLElement> implements INotifyPropertyCha
     private dlgClosedBy: string;
     private isModelResize: boolean;
     private boundWindowResizeHandler: () => void;
+    private keyDownHandler: () => void;
     /**
      * Specifies the value that can be displayed in dialog's content area.
      * It can be information, list, or other HTML elements.
@@ -1735,11 +1736,15 @@ export class Dialog extends Component<HTMLElement> implements INotifyPropertyCha
     }
 
     private bindEvent(element: HTMLElement): void {
-        EventHandler.add(element, 'keydown', this.keyDown, this);
+        this.keyDownHandler = this.keyDown.bind(this);
+        EventHandler.add(element, 'keydown', this.keyDownHandler);
     }
 
     private unBindEvent(element: HTMLElement): void {
-        EventHandler.remove(element, 'keydown', this.keyDown);
+        if (this.keyDownHandler) {
+            EventHandler.remove(element, 'keydown', this.keyDownHandler);
+            this.keyDownHandler = null;
+        }
     }
 
     private updateSanitizeContent(): void {

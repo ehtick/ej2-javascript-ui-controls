@@ -17,7 +17,8 @@ module.exports = function (config) {
     files: [
       "test-main.js",
       { pattern: "src/**/*.js", included: false },
-      { pattern: 'src/pdf-data-extract/core/openjpeg/openjpeg.wasm', included: false, served: true, watched: false },
+      { pattern: 'src/pdf-data-extract/core/ej2-pdf-lib/openjpeg.wasm', included: false, served: true, watched: false },
+      { pattern: 'src/pdf-data-extract/core/ej2-pdf-lib/qcms_bg.wasm', included: false, served: true, watched: false },
       { pattern: "spec/**/*.spec.js", included: false },
       { pattern: "node_modules/@syncfusion/ej2-file-utils/**/*.js", included: false },
       { pattern: "node_modules/@syncfusion/ej2-compression/**/*.js", included: false },

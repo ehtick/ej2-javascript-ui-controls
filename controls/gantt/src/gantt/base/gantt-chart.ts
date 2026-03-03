@@ -173,9 +173,10 @@ export class GanttChart {
         if (this.parent.isLoad && !isUpdateRowIndex) {
             this.parent.notify('selectRowByIndex', {});
         }
-        if (this.parent.timelineModule.isZoomedToFit) {
+        if (this.parent.timelineModule.isZoomedToFit && !this.parent['isVirtualScrollAction']) {
             this.parent.timelineModule.processZoomToFit();
         }
+        this.parent['isVirtualScrollAction'] = false;
     }
 
     /**

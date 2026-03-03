@@ -90,7 +90,7 @@ export class DropDownFormFieldDialog {
         this.secondDiv = createElement('div', { className: 'e-de-ff-drpdwn-dlg-scndiv' });
         this.itemsDrpItemsLabel = createElement('div', {
             className: 'e-de-ff-dlg-drpdwn-heading',
-            innerHTML: localValue.getConstant('Items in dropdown list')
+            innerHTML: localValue.getConstant('Items in drop-down list')
         });
         this.listviewDiv = createElement('div', {
             className: 'e-bookmark-listViewDiv e-de-ff-drpdwn-listview',
@@ -157,7 +157,7 @@ export class DropDownFormFieldDialog {
         this.dropDownEnableEle = createElement('input', { attrs: { type: 'checkbox' } }) as HTMLInputElement;
         this.dropDownEnable = new CheckBox({
             cssClass: 'e-de-ff-dlg-check',
-            label: localValue.getConstant('Dropdown enabled'),
+            label: localValue.getConstant('Drop-down enabled'),
             enableRtl: isRtl
         });
         if (isRtl) {
@@ -166,7 +166,7 @@ export class DropDownFormFieldDialog {
             this.toolTipDiv.classList.add('e-de-rtl');
             this.bookmarkDiv.classList.add('e-de-rtl');
         }
-        this.dropDownEnableDiv.setAttribute('aria-label',localValue.getConstant('Dropdown enabled'));
+        this.dropDownEnableDiv.setAttribute('aria-label',localValue.getConstant('Drop-down enabled'));
         this.target.appendChild(this.dialogDiv);
         this.dialogDiv.appendChild(this.firstDiv);
         this.firstDiv.appendChild(this.drpDownItemsInput);
@@ -212,10 +212,10 @@ export class DropDownFormFieldDialog {
         this.dropDownEnable.appendTo(this.dropDownEnableEle);
         new TextBox({ placeholder: localValue.getConstant('Tooltip'), floatLabelType: 'Always' }, this.tooltipInput);
         new TextBox({ placeholder: localValue.getConstant('Name'), floatLabelType: 'Always' }, this.bookmarkInput)
-        new TextBox({ placeholder: localValue.getConstant('Dropdown items'), floatLabelType: 'Always' }, this.drpDownItemsInput)
+        new TextBox({ placeholder: localValue.getConstant('Drop-down items'), floatLabelType: 'Always' }, this.drpDownItemsInput)
         this.tooltipInput.setAttribute('aria-labelledby',localValue.getConstant('Tooltip'));
         this.bookmarkInput.setAttribute('aria-labelledby',localValue.getConstant('Name'));
-        this.drpDownItemsInput.setAttribute('aria-labelledby',localValue.getConstant('Dropdown items'));
+        this.drpDownItemsInput.setAttribute('aria-labelledby',localValue.getConstant('Drop-down items'));
     }
     /**
      * @private

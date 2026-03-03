@@ -2396,10 +2396,13 @@ export class InsertHtml {
             fragment.appendChild(nodes[1]);
         } else {
             for (let i: number = start; i < end; i++) {
-                if (nodes[i as number].nodeName === 'UL' || nodes[i as number].nodeName === 'OL') {
-                    for (let j: number = 0; j < (nodes[i as number] as HTMLElement).childNodes.length; j++) {
-                        if (this.isBlockElement(nodes[i as number].childNodes[j as number])) {
-                            fragment.appendChild(nodes[i as number].childNodes[j as number]);
+                const node: Node = nodes[i as number];
+                if (node.nodeName === 'UL' || node.nodeName === 'OL') {
+                    // snapshot childNodes to avoid live-collection mutation
+                    const children: ChildNode[] = Array.from((node as HTMLElement).childNodes);
+                    for (const child of children) {
+                        if (this.isBlockElement(child)) {
+                            fragment.appendChild(child.cloneNode(true));
                         }
                     }
                 } else {
@@ -2465,7 +2468,7 @@ export class InsertHtml {
                 continue;
             }
             const isBlockTag: boolean = CONSTANT.BLOCK_TAGS.indexOf(firstChild.nodeName.toLowerCase()) >= 0;
-            if (!isBlockTag) {
+            if (!isBlockTag && lastNewLi.lastChild && lastNewLi.lastChild.nodeType === Node.ELEMENT_NODE) {
                 lastNewLi.lastChild.appendChild(firstChild);
             } else if (firstChild.nodeName === 'UL' || firstChild.nodeName === 'OL') {
                 lastNewLi.appendChild(firstChild);

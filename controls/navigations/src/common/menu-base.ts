@@ -284,6 +284,7 @@ export abstract class MenuBase extends Component<HTMLUListElement> implements IN
     protected isOpenCalled: boolean = false;
     private isAnimationNone: boolean = false;
     private isKBDAction: boolean = false;
+    private skipNextArrowDown: boolean = false;
     private touchStartFn: (e: TouchEvent) => void;
     private touchMoveFn: (e: TouchEvent) => void;
     /**
@@ -566,7 +567,8 @@ export abstract class MenuBase extends Component<HTMLUListElement> implements IN
             if (this.isMenu) {
                 this.element.parentElement.insertBefore(wrapper, this.element);
             } else {
-                document.body.appendChild(wrapper);
+                const appendToElement: HTMLElement = this.getAppendToElement();
+                appendToElement.appendChild(wrapper);
             }
         }
         if (this.cssClass) {
@@ -701,9 +703,33 @@ export abstract class MenuBase extends Component<HTMLUListElement> implements IN
             e.action = ESCAPE;
             this.leftEscKeyHandler(e);
         }
+        const isDown: boolean = e.key ? (e.key === 'ArrowDown') : e.keyCode === 40;
+        if (!isDown) { return; }
+
+        const hostPopup: Element = closest(this.element, '.e-popup-open');
+        if (!hostPopup) { return; }
+
+        if (closest(document.activeElement as Element, '#' + this.element.id)) { return; }
+
+        const active: Element = document.activeElement as Element;
+        if (!active) { return; }
+
+        const expanded: boolean = active.getAttribute('aria-expanded') === 'true';
+        if (!expanded) { return; }
+        const ul: HTMLElement = this.element;
+        const firstItem: Element = select('.e-menu-item', ul);
+        if (firstItem) {
+            ul.focus();
+            firstItem.classList.add('e-focused');
+            (this as any).skipNextArrowDown = true;
+        }
     }
 
     private keyBoardHandler(e: KeyboardEventArgs): void {
+        if (e.action === DOWNARROW && this.skipNextArrowDown) {
+            this.skipNextArrowDown = false;
+            return;
+        }
         let actionName: string = '';
         const trgt: Element = e.target as Element;
         let actionNeeded: boolean = this.isMenu && !this.hamburgerMode && !this.element.classList.contains('e-vertical')
@@ -801,6 +827,9 @@ export abstract class MenuBase extends Component<HTMLUListElement> implements IN
         fliIdx = this.isValidLI(cli, fliIdx, e.action);
         cul.children[fliIdx as number].classList.add(FOCUSED);
         (cul.children[fliIdx as number] as HTMLElement).focus();
+        if (closest(this.element, '.e-popup')) {
+            (cul as HTMLElement).focus();
+        }
     }
 
     private isValidLI(cli: Element, index: number, action: string): number {
@@ -840,7 +869,8 @@ export abstract class MenuBase extends Component<HTMLUListElement> implements IN
             popup = [this.getWrapper()].concat([].slice.call(popups))[navIdxLen as number];
             return isNullOrUndefined(popup) ? null : select('.e-menu-parent', popup) as HTMLElement;
         } else {
-            if (!document.body.contains(this.element) && navIdxLen === 0) { return null; }
+            const appendToElement: HTMLElement = this.getAppendToElement();
+            if (!appendToElement.contains(this.element) && navIdxLen === 0) { return null; }
             return this.getWrapper().children[navIdxLen as number] as HTMLElement;
         }
     }
@@ -1148,7 +1178,8 @@ export abstract class MenuBase extends Component<HTMLUListElement> implements IN
                 if (this.hamburgerMode) {
                     top = (li as HTMLElement).offsetHeight; li.appendChild(this.popupWrapper);
                 } else {
-                    document.body.appendChild(this.popupWrapper);
+                    const appendToElement: HTMLElement = this.getAppendToElement();
+                    appendToElement.appendChild(this.popupWrapper);
                 }
                 this.isNestedOrVertical = this.element.classList.contains('e-vertical') || this.navIdx.length !== 1;
                 this.popupObj = this.generatePopup(this.popupWrapper, this.uList, li as HTMLElement, this.isNestedOrVertical);
@@ -2371,6 +2402,17 @@ export abstract class MenuBase extends Component<HTMLUListElement> implements IN
                 detach(ul);
             }
         }
+    }
+
+    protected getAppendToElement(): HTMLElement {
+        if (this.isAngular) {
+            const cdkPane: HTMLElement = this.element.closest('.cdk-overlay-pane') as HTMLElement;
+            const popoverEl: HTMLElement = this.element.closest('[popover]') as HTMLElement;
+            if (cdkPane && popoverEl) {
+                return cdkPane;
+            }
+        }
+        return document.body;
     }
 
     /**

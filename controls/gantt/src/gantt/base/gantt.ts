@@ -108,6 +108,7 @@ export class Gantt extends Component<HTMLElement>
     private cyclicValidator: cyclicValidator;
     private regenerateCycles: boolean = false;
     public isVirtualScroll: boolean;
+    private isVirtualScrollAction: boolean;
     public expandedRecords: IGanttData[] = [];
     public scrollLeftValue: number;
     public isToolBarClick: boolean;
@@ -4934,6 +4935,8 @@ export class Gantt extends Component<HTMLElement>
      * @returns {void} .
      */
     public clearFiltering(fields?: string[]): void {
+        // Close any open cell editing before applying the clear filter
+        this.closeGanttActions();
         this.treeGrid.grid.clearFiltering(fields);
     }
     /**

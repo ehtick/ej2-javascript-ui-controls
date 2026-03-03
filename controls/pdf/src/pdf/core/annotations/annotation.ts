@@ -13293,6 +13293,10 @@ export class PdfFreeTextAnnotation extends PdfComment {
     }
     _createAppearance(): PdfTemplate {
         let template: PdfTemplate;
+        let margins: PdfMargins;
+        if (this._page && this._page._pageSettings && this._page._pageSettings.margins) {
+            margins = this._page._pageSettings.margins;
+        }
         if (this._customTemplate.has('N')) {
             template = this._customTemplate.get('N');
         } else {
@@ -13353,8 +13357,8 @@ export class PdfFreeTextAnnotation extends PdfComment {
                                            false);
                 }
                 if (!this._dictionary.has('RD')) {
-                    rectangle = [this.bounds.x,
-                        -((this._page.size.height - (this.bounds.y + this.bounds.height))),
+                    rectangle = [this.bounds.x + (margins ? margins.left : 0),
+                        -((this._page.size.height - (this.bounds.y + this.bounds.height + (margins ? margins.top : 0)))),
                         this.bounds.width,
                         -this.bounds.height];
                 } else {
@@ -13398,7 +13402,8 @@ export class PdfFreeTextAnnotation extends PdfComment {
         }
         const bounds: number[] = this._obtainAppearanceBounds();
         if (this.flatten) {
-            this._bounds = { x: bounds[0], y: (this._page.size.height - (bounds[1] + bounds[3])), width: bounds[2], height: bounds[3] };
+            this._bounds = { x: bounds[0] - (margins ? margins.left : 0), y: (this._page.size.height - (bounds[1] + bounds[3]) -
+                (margins ? margins.top : 0)), width: bounds[2], height: bounds[3] };
         }
         this._dictionary.set('Rect', [bounds[0], bounds[1], bounds[0] + bounds[2], bounds[1] + bounds[3]]);
         return template;
@@ -13604,14 +13609,11 @@ export class PdfFreeTextAnnotation extends PdfComment {
                 rectangle[2] - (parameter.borderWidth * 3),
                 (rectangle[3] > 0) ? (rectangle[3] - (parameter.borderWidth * 3)) : (-rectangle[3] - (parameter.borderWidth * 3))];
         }
-        const first: boolean = this._font._getHeight() > ((rectangle[3] > 0) ? rectangle[3] : -rectangle[3]);
-        const second: boolean = this._font._getHeight() <= ((bounds[3] > 0) ? bounds[3] : -bounds[3]);
-        const checkPaddingWithFontHeight: boolean = first && second;
         this._drawFreeTextAnnotation(graphics,
                                      parameter,
                                      text,
                                      this._font,
-                                     checkPaddingWithFontHeight ? bounds : rectangle,
+                                     rectangle,
                                      true,
                                      alignment,
                                      isRotation);
@@ -13724,10 +13726,22 @@ export class PdfFreeTextAnnotation extends PdfComment {
                 }
                 path._addLines(pointArray);
             }
-            path.addRectangle({x: (this.bounds.x + this._cropBoxValueX) - 2,
-                y: ((this._page.size.height + this._cropBoxValueY) - (this.bounds.y + this.bounds.height)) - 2,
-                width: this.bounds.width + (2 * 2),
-                height: this.bounds.height + (2 * 2)});
+            bounds = path._getBounds();
+            let margin: PdfMargins;
+            if (this._page && this._page._pageSettings && this._page._pageSettings.margins) {
+                margin = this._page._pageSettings.margins;
+            }
+            if (this._page && this._page._isNew) {
+                path.addRectangle({x: (this.bounds.x + this._cropBoxValueX + margin.left) - 2,
+                    y: ((this._page.size.height + this._cropBoxValueY) - (this.bounds.y + this.bounds.height + margin.top)) - 2,
+                    width: this.bounds.width + (2 * 2),
+                    height: this.bounds.height + (2 * 2)});
+            } else {
+                path.addRectangle({x: (this.bounds.x + this._cropBoxValueX) - 2,
+                    y: ((this._page.size.height + this._cropBoxValueY) - (this.bounds.y + this.bounds.height)) - 2,
+                    width: this.bounds.width + (2 * 2),
+                    height: this.bounds.height + (2 * 2)});
+            }
             bounds = path._getBounds();
         } else {
             if (this._page) {
@@ -13750,10 +13764,14 @@ export class PdfFreeTextAnnotation extends PdfComment {
     _obtainCallOutsNative(): void {
         if (this.calloutLines && this._calloutLines.length > 0) {
             const size: Size = this._page.size;
+            let margin: PdfMargins;
+            if (this._page && this._page._pageSettings && this._page._pageSettings.margins) {
+                margin = this._page._pageSettings.margins;
+            }
             this._calloutsClone = [];
             for (let i: number = 0; i < this._calloutLines.length; i++) {
-                this._calloutsClone.push([this._calloutLines[<number>i].x + this._cropBoxValueX,
-                    (size.height + this._cropBoxValueY) - this._calloutLines[<number>i].y]);
+                this._calloutsClone.push([this._calloutLines[<number>i].x + (margin ? margin.left : 0) + this._cropBoxValueX,
+                    (size.height + this._cropBoxValueY) - (this._calloutLines[<number>i].y + (margin ? margin.top : 0))]);
             }
         }
     }

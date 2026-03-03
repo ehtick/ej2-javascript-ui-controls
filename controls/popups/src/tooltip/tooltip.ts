@@ -961,7 +961,15 @@ export class Tooltip extends Component<HTMLElement> implements INotifyPropertyCh
     private appendContainer(ctrlObj: Tooltip): void {
         if (typeof this.container == 'string') {
             if (this.container === 'body') {
-                this.containerElement = document.body;
+                let appendToElement: HTMLElement = document.body;
+                if (this.isAngular) {
+                    const cdkPane: HTMLElement = this.element && this.element.closest ? this.element.closest('.cdk-overlay-pane') as HTMLElement : null;
+                    const popoverEl: HTMLElement = this.element && this.element.closest ? this.element.closest('[popover]') as HTMLElement : null;
+                    if (cdkPane && popoverEl) {
+                        appendToElement = cdkPane;
+                    }
+                }
+                this.containerElement = appendToElement;
             }
             else {
                 this.isBodyContainer = false;

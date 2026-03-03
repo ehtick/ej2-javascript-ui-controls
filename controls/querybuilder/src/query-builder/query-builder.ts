@@ -3290,7 +3290,7 @@ export class QueryBuilder extends Component<HTMLDivElement> implements INotifyPr
                 value = dataSource[i as number][`${field}`].toString();
             }
             const data: object = {};
-            if (!(value in original)) {
+            if (!(value in original) && value) {
                 original[`${value}`] = 1;
                 if (isNested === 0) {
                     data[`${field}`] = value;
@@ -3374,7 +3374,22 @@ export class QueryBuilder extends Component<HTMLDivElement> implements INotifyPr
                 args.cancel = true;
                 this.bindMultiSelectData(element, value);
             }
+            const multiselectObj: MultiSelect = getComponent(element as HTMLElement, 'multiselect') as MultiSelect;
+            if (!multiselectObj) { return; }
+
+            const incomingQuery: Query | null = ((args as any).query) ? (args as any).query as Query : null;
+            const existingQuery: Query | null = multiselectObj.query ? multiselectObj.query as Query : null;
+
+            if (!this.areQueriesSame(existingQuery, incomingQuery)) {
+                multiselectObj.query = null;
+                (args as any).query = null;
+            }
         }
+    }
+    private areQueriesSame(query1: Query, query2: Query): boolean {
+        if ((query1 === null || query1 === undefined) && (query2 === null || query2 === undefined)) { return true; }
+        if ((query1 === null || query1 === undefined) || (query2 === null || query2 === undefined)) { return false; }
+        return JSON.stringify(query1) === JSON.stringify(query2);
     }
     private bindMultiSelectData(element: Element, value: string): void {
         this.getMultiSelectData(element, value);

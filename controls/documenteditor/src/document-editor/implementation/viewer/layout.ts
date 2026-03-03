@@ -3311,12 +3311,13 @@ export class Layout {
     }
     private isNeedToWrapLeafWidget(pargaraph: ParagraphWidget, elementBox: ElementBox): boolean {
         let IsNeedToWrap: boolean = true;
-        let floatingElements: (ShapeBase | TableWidget)[];
+        let floatingElements: (ShapeBase | TableWidget)[] = [];
         let bodyWidget = pargaraph.bodyWidget as BodyWidget;
         if (bodyWidget.floatingElements.length > 0) {
-            floatingElements = bodyWidget.floatingElements;
-        } else if (!isNullOrUndefined(bodyWidget.page) && !isNullOrUndefined(bodyWidget.page.headerWidget) && bodyWidget.page.headerWidget.floatingElements.length > 0) {
-            floatingElements = bodyWidget.page.headerWidget.floatingElements;
+            floatingElements = floatingElements.concat(bodyWidget.floatingElements);
+        }
+        if (!(bodyWidget instanceof HeaderFooterWidget) && !isNullOrUndefined(bodyWidget.page) && !isNullOrUndefined(bodyWidget.page.headerWidget) && bodyWidget.page.headerWidget.floatingElements.length > 0) {
+            floatingElements = floatingElements.concat(bodyWidget.page.headerWidget.floatingElements);
         }
         return ((!isNullOrUndefined(floatingElements) && floatingElements.length > 0)
             && (IsNeedToWrap || pargaraph.associatedCell)
@@ -3469,13 +3470,14 @@ export class Layout {
                         break;
                     }
                 }
-            } else if (!isNullOrUndefined(bodyWidget.page) && !isNullOrUndefined(bodyWidget.page.headerWidget) && bodyWidget.page.headerWidget.floatingElements.length > 0) {
+            }
+            if ( !(bodyWidget instanceof HeaderFooterWidget) && !isNullOrUndefined(bodyWidget.page) && !isNullOrUndefined(bodyWidget.page.headerWidget) && bodyWidget.page.headerWidget.floatingElements.length > 0) {
                 //Need to handle sorting floating items.
                 // Sort based on Y position
                 bodyWidget.page.headerWidget.floatingElements.sort(function (a, b) { return a.y - b.y; });
                 // Sort based on X position
                 bodyWidget.page.headerWidget.floatingElements.sort(function (a, b) { return a.x - b.x; });
-                floatingElements = bodyWidget.page.headerWidget.floatingElements;
+                floatingElements = floatingElements.concat(bodyWidget.page.headerWidget.floatingElements);
             }
             for (let i: number = 0; i < floatingElements.length; i++) {
                 let floatingItem: ShapeBase | TableWidget = floatingElements[i];
@@ -3910,11 +3912,12 @@ export class Layout {
         if (isFirstItem) {
             yValue = yposition;
         }
-        let floatingElements: (ShapeBase | TableWidget)[];
+        let floatingElements: (ShapeBase | TableWidget)[] = [];
         if (bodyWidget.floatingElements.length > 0) {
-            floatingElements = bodyWidget.floatingElements;
-        } else if (!isNullOrUndefined(bodyWidget.page) && !isNullOrUndefined(bodyWidget.page.headerWidget) && bodyWidget.page.headerWidget.floatingElements.length > 0) {
-            floatingElements = bodyWidget.page.headerWidget.floatingElements;
+            floatingElements = floatingElements.concat(bodyWidget.floatingElements);
+        }
+        if ( !(bodyWidget instanceof HeaderFooterWidget) && !isNullOrUndefined(bodyWidget.page) && !isNullOrUndefined(bodyWidget.page.headerWidget) && bodyWidget.page.headerWidget.floatingElements.length > 0) {
+            floatingElements = floatingElements.concat(bodyWidget.page.headerWidget.floatingElements);
         }
         if (!isNullOrUndefined(floatingElements) && floatingElements.length > 0) {
             let clientLayoutArea: Rect = layouter.clientActiveArea;
@@ -5657,10 +5660,13 @@ export class Layout {
     }
 
     private updateShapeYPosition(elementBox: ShapeElementBox): void {
-        if (elementBox.margin.top > 0) {
-            elementBox.y += elementBox.margin.top;
-            for (let j: number = 0; j < elementBox.textFrame.childWidgets.length; j++) {
-                (elementBox.textFrame.childWidgets[j] as Widget).y += elementBox.margin.top;
+        elementBox.y += elementBox.margin.top;
+        for (let j: number = 0; j < elementBox.textFrame.childWidgets.length; j++) {
+            const widget = elementBox.textFrame.childWidgets[j] as BlockWidget;
+            widget.y += elementBox.margin.top;
+            if (widget instanceof TableWidget) {
+                this.updateChildLocationForTable(widget.y, widget);
+                this.updateWidgetsToPage([widget], [], widget, true);
             }
         }
     }
@@ -13195,7 +13201,7 @@ export class Layout {
         }
         bodyWidget.height += bodyWidget.height;
         widget.containerWidget = bodyWidget;
-        if(previousWidget && previousWidget.page &&  previousWidget.page.footnoteWidget &&footWidget && footWidget.length > 0){
+        if (previousWidget && previousWidget.page && previousWidget.page.footnoteWidget && footWidget && footWidget.length > 0) {
             this.moveFootNotesToPage(footWidget, previousWidget, bodyWidget);
         }
     }

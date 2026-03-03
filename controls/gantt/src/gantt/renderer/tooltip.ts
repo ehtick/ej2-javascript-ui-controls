@@ -61,6 +61,9 @@ export class Tooltip {
             element = args.target;
         } else {
             element = parentsUntil(args.target as Element, cls.chartRowCell);
+            if (args.target.classList.contains(cls.baselineBar) || args.target.classList.contains(cls.baselineMilestoneContainer)) {
+                element = element.querySelector('.e-taskbar-main-container');
+            }
         }
         let data: IGanttData;
         const argsData: BeforeTooltipRenderEventArgs = {

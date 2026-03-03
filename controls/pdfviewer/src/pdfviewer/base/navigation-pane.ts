@@ -178,6 +178,9 @@ export class NavigationPane {
             this.sideBarTitle = this.pdfViewer.element.querySelector('.e-pv-sidebar-title');
             this.sideBarResizer = this.pdfViewer.element.querySelector('.e-pv-sidebar-resizer');
         }
+        if (this.sideBarContent) {
+            (this.sideBarContent as HTMLElement).tabIndex = 0;
+        }
         this.pdfViewerBase.mainContainer.appendChild(this.sideBarToolbar);
         if (this.pdfViewer.enableRtl) {
             this.sideBarToolbar.style.cssFloat = 'right';

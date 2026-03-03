@@ -394,9 +394,10 @@ export class TableResizer {
             return;
         }
         const cellwidget: TableCellWidget = this.getTableCellWidget(this.startingPoint) as TableCellWidget;
-        const spannedCell: TableCellWidget = this.isCellSpannedFromPreviousRows(cellwidget) as TableCellWidget;
+        const spannedCell: TableCellWidget[] = this.isCellSpannedFromPreviousRows(cellwidget) as TableCellWidget[];
         if (this.resizerPosition === 0 || (!isNullOrUndefined(cellwidget) && isNullOrUndefined(cellwidget.previousWidget)
-            && (table.isBidiTable ? cellwidget.x <= this.startingPoint.x : cellwidget.x >= this.startingPoint.x)) && !spannedCell) {
+            && (table.isBidiTable ? cellwidget.x <= this.startingPoint.x : cellwidget.x >= this.startingPoint.x)) &&
+            (!spannedCell || spannedCell.length === 0)) {
             // Todo: need to handle the resizing of first column and table indent.
             const columnIndex: number = this.resizerPosition;
             const rightColumn: WColumn = table.tableHolder.columns[parseInt(columnIndex.toString(), 10)];
@@ -438,6 +439,7 @@ export class TableResizer {
                     const currentIndent: number = table.tableFormat.leftIndent;
                     if (leastGridBefore === 0) {
                         if (table.isBidiTable && !this.owner.isTableMarkerDragging) {
+                            newIndent = currentIndent - dragValue;
                             this.increaseOrDecreaseWidth(cell, -dragValue, false);
                         }
                         else {
@@ -493,11 +495,11 @@ export class TableResizer {
                 dragOffset = dragOffset / 2;
             }
             table.tableFormat.leftIndent = tableAlignment === 'Left' ? newIndent : 0;
-            table.updateWidth(dragValue);
+            table.updateWidth(dragValue, this.isCurrentTableResizing(table));
             this.updateGridValue(table, true, dragOffset);
         } else if (table !== null && this.resizerPosition === table.tableHolder.columns.length || (!isNullOrUndefined(cellwidget)
             && isNullOrUndefined(cellwidget.nextWidget) && cellwidget.x + cellwidget.margin.left <= this.startingPoint.x
-            && cellwidget.columnIndex !== this.resizerPosition) && !spannedCell) {
+            && cellwidget.columnIndex !== this.resizerPosition) && (!spannedCell || spannedCell.length === 0)) {
             // Todo: need to handle the resizing of last column and table width.
             this.resizeColumnAtLastColumnIndex(table, dragValue);
         } else {
@@ -510,6 +512,13 @@ export class TableResizer {
         // table.PreserveGrid = false;
         this.owner.isLayoutEnabled = true;
         selection.selectPosition(selection.start, selection.end);
+    }
+    private isCurrentTableResizing(table: TableWidget): boolean {
+        let isCurrentTableResizing: boolean = false;
+        if (!isNullOrUndefined(this.owner) && (this.owner.isTableMarkerDragging || this.documentHelper.isRowOrCellResizing)) {
+            isCurrentTableResizing = this.currentResizingTable === table;
+        }
+        return isCurrentTableResizing;
     }
     private resizeColumnWithSelection(selection: Selection, table: TableWidget, dragValue: number): boolean {
         //const newIndent: number = table.leftIndent;
@@ -727,9 +736,10 @@ export class TableResizer {
         }
         //Updates the grid after value for all the rows.
         this.updateRowsGridAfterWidth(table);
-        if (table.tableFormat.preferredWidth) {
+        const isCurrentTableResizing: boolean = this.isCurrentTableResizing(table);
+        if (table.tableFormat.preferredWidth || isCurrentTableResizing) {
             table.tableFormat.allowAutoFit = false;
-            table.updateWidth(dragValue);
+            table.updateWidth(dragValue, isCurrentTableResizing, true);
         }
         let dragOffset: number = dragValue;
         if (tableAlignment === 'Right') {
@@ -1007,7 +1017,8 @@ export class TableResizer {
                     }
                 }
                 isRightCellWidthUpdated = this.increaseOrDecreaseWidth(cell, dragValue, true, isRightCellWidthUpdated);
-                if (cell.cellIndex === cell.ownerRow.childWidgets.length - 1 && !this.isCellSpannedFromPreviousRows(cell)) {
+                if (cell.cellIndex === cell.ownerRow.childWidgets.length - 1 &&
+                    (!this.isCellSpannedFromPreviousRows(cell) || this.isCellSpannedFromPreviousRows(cell).length === 0)) {
                     flag = true;
                 }
             }
@@ -1066,7 +1077,8 @@ export class TableResizer {
         return dragValue;
     }
 
-    private isCellSpannedFromPreviousRows(cell: TableCellWidget): TableCellWidget {
+    private isCellSpannedFromPreviousRows(cell: TableCellWidget): TableCellWidget[] {
+        const spanedCell: TableCellWidget[] = [];
         if (isNullOrUndefined(cell) || isNullOrUndefined(cell.ownerRow) || isNullOrUndefined(cell.ownerRow.ownerTable)) {
             return undefined;
         }
@@ -1082,19 +1094,19 @@ export class TableResizer {
                 const rowSpan: number = prevCell.cellFormat.rowSpan;
                 if (rowSpan > 1) {
                     if ((prevCell.rowIndex + rowSpan - 1) >= currentRowIndex) {
-                        return prevCell;
+                        spanedCell.push(prevCell);
                     }
                 }
             }
         }
-        return undefined;
+        return spanedCell;
     }
 
     private updateRowsGridAfterWidth(table: TableWidget): void {
-        const maxRowWidth: number = this.getMaxRowWidth(table, true);
+        const maxRowWidth: number = HelperMethods.round(this.getMaxRowWidth(table, true), 2);
         for (let i: number = 0; i < table.childWidgets.length; i++) {
             const row: TableRowWidget = table.childWidgets[parseInt(i.toString(), 10)] as TableRowWidget;
-            const currentRowWidth: number = this.getRowWidth(row, true);
+            const currentRowWidth: number = HelperMethods.round(this.getRowWidth(row, true), 2);
             if (maxRowWidth >= currentRowWidth && row.rowFormat.afterWidth !== maxRowWidth - currentRowWidth) {
                 const value: number = maxRowWidth - currentRowWidth;
                 row.rowFormat.gridAfterWidth = value;
@@ -1112,9 +1124,11 @@ export class TableResizer {
             const cell: TableCellWidget = row.childWidgets[parseInt(i.toString(), 10)] as TableCellWidget;
             rowWidth += cell.cellFormat.preferredWidth;
             if (cell.cellIndex === row.childWidgets.length - 1) {
-                const spannedCell: TableCellWidget = this.isCellSpannedFromPreviousRows(cell) as TableCellWidget;
-                if (!isNullOrUndefined(spannedCell)) {
-                    rowWidth += spannedCell.cellFormat.preferredWidth;
+                const spannedCell: TableCellWidget[] = this.isCellSpannedFromPreviousRows(cell) as TableCellWidget[];
+                if (!isNullOrUndefined(spannedCell) && spannedCell.length !== 0) {
+                    for (const cell of spannedCell) {
+                        rowWidth += cell.cellFormat.preferredWidth;
+                    }
                 }
             }
         }

@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## 32.2.8 (2025-12-22)
+
+### PDF
+
+#### Bug Fixes
+
+- Fixed an issue where rotated free text annotations were not being preserved correctly.
+- Fixed an issue where free text annotations overlapped the annotation border.
+
 ## 32.2.7 (2026-02-24)
 
 ### PDF

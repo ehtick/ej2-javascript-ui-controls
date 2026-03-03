@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## 32.2.8 (2025-12-22)
+
+### Menu
+
+#### Bug Fixes
+
+- `#I811271` - The issue menu inside drop-down button not focused with down arrow after enter has been resolved.
+
+### Menu
+
+#### Bug Fixes
+
+- `#I811613` - Resolved an issue where Menu popup appeared beneath Angular `dialogs` in Angular 21.
+
 ## 32.2.7 (2026-02-24)
 
 ### Tab

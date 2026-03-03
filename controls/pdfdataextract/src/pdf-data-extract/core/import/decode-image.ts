@@ -9,9 +9,9 @@ export class _PdfImageProcessor {
         const trimmedPathname: string = pathname.replace(/\/+$/, '');
         let baseUrl: string = `${protocol}//${host}${trimmedPathname}`;
         if (platform === 'angular') {
-            baseUrl =  baseUrl + '/assets/openjpeg';
+            baseUrl =  baseUrl + '/assets/ej2-pdf-lib';
         }  else if (platform === 'vue') {
-            baseUrl = baseUrl + '/public/js/openjpeg';
+            baseUrl = baseUrl + '/public/js/ej2-pdf-lib';
         } else {
             (window as any).getRunningScript = (): (() => string) => { //eslint-disable-line
                 return (): string => {
@@ -26,9 +26,9 @@ export class _PdfImageProcessor {
             const path: string = scriptLinkURL.replace('/' + splitURL[splitURL.length - 1], '');
             if (platform === 'javascript' || platform === 'typescript' || platform === 'react' || platform === 'react' ||
                 platform === 'aspnetcore' || platform === 'aspnetmvc') {
-                baseUrl = path + '/openjpeg';
+                baseUrl = path + '/ej2-pdf-lib';
             } else {
-                baseUrl = path.replace('import', 'openjpeg');
+                baseUrl = path.replace('import', 'ej2-pdf-lib');
             }
         }
         await new Promise<void>((resolve: any, reject: any) => { //eslint-disable-line

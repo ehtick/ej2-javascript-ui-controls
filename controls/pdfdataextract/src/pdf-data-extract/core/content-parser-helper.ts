@@ -332,15 +332,16 @@ export class _PdfContentParserHelper {
                             }
                             let bytes: Uint8Array;
                             if (base._isImageMask) {
-                                const image: _PdfImage = new _PdfImage(base._crossReference, base._stream, false, base._smask,
-                                                                       base._mask, false );
+                                const pdfImage: _PdfImage = new _PdfImage();
+                                const image: _PdfImage = await pdfImage._initializeFromImage(base._crossReference, base._stream, false,
+                                                                                             base._smask, base._mask, false);
                                 image._imageFormat = base._imageFormat;
                                 image._canvasRenderCallback = callBack;
                                 bytes = await image._createMask(base._stream, true);
                                 imageInfo._data = bytes;
                             } else {
                                 const image: _PdfImage = new _PdfImage();
-                                const pdfImage: any = image._buildImage(base._crossReference, base._stream, false); // eslint-disable-line
+                                const pdfImage: any = await image._buildImage(base._crossReference, base._stream, false, callBack); // eslint-disable-line
                                 pdfImage._imageFormat = base._imageFormat;
                                 pdfImage._canvasRenderCallback = callBack;
                                 bytes = await pdfImage._createImageData(false, true);

@@ -60,10 +60,7 @@ export class XmlPane {
      * @private
      * @returns {void}
      */
-    public DropDownListData: { [key: string]: Object }[] = [
-        { ID: 'Choose', Value: 'Choose an XML file' },
-        { ID: 'Add', Value: '(Add new part...)' }
-    ];
+    public DropDownListData: { [key: string]: Object }[] = [];
     public dropDownListObject: DropDownList;
     /**
      * @private
@@ -227,6 +224,13 @@ export class XmlPane {
     * @returns {void}
     */
     private intializeDropDownList() {
+        if (this.DropDownListData.length === 0) {
+            const locale: L10n = new L10n('documenteditor', this.documentHelper.owner.defaultLocale);
+            this.DropDownListData = [
+                { ID: 'Choose', Value: locale.getConstant('Choose an XML file') },
+                { ID: 'Add', Value: '(' + locale.getConstant('Add new part') + '...)' }
+            ];
+        }
         this.dropDownListObject = new DropDownList({
             dataSource: this.DropDownListData,
             fields: { text: 'Value', value: 'ID' },
@@ -246,12 +250,13 @@ export class XmlPane {
         let regx = /(no namespace)/;
         let currentID: string;
         let selectedItem: string = args.item.innerText;
+        const locale: L10n = new L10n('documenteditor', this.documentHelper.owner.defaultLocale);
         for (let i = 0; i < this.DropDownListData.length; i++) {
             if (this.dropDownListObject.dataSource[i].Value == selectedItem) {
                 currentID = this.dropDownListObject.dataSource[i].ID;
             }
         }
-        if (selectedItem === '(Add new part...)') {
+        if (selectedItem === '(' + locale.getConstant('Add new part') + '...)') {
             this.documentHelper.owner.prefixMappings = " ";
             this.handleFileSelect();
         }
@@ -263,7 +268,7 @@ export class XmlPane {
                 }
             }
         }
-        else if (selectedItem === 'Choose an XML file'){
+        else if (selectedItem === locale.getConstant('Choose an XML file')){
             this.documentHelper.owner.prefixMappings = " "
             this.handleTreeviewObject(0);
         }

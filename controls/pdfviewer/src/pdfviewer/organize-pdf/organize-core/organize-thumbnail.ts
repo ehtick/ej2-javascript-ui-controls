@@ -155,6 +155,12 @@ export function tileImageRender(pageIndex: number, subIndex?: number, pageOrder?
     if (isNewPage) {
         input.id = input.id + '_' + subIndex;
     }
+    const pageNumberForLabel: number = isNewPage ? (pageOrder + 1) : (pageIndex + 1);
+    let selectPageText: string = 'Select Page';
+    if (this.pdfViewer && this.pdfViewer.localeObj) {
+        selectPageText = this.pdfViewer.localeObj.getConstant('Select Page') || 'Select Page';
+    }
+    input.setAttribute('aria-label', `${selectPageText} ${pageNumberForLabel}`);
     this.thumbnail.appendChild(input);
     const checkBoxObj: CheckBox = new CheckBox({ disabled: false, checked: false, change: onSelectClick.bind(this) });
     checkBoxObj.appendTo(input);

@@ -31,6 +31,7 @@ export function createContentArea(): any {
     contentDiv.style.height = '100%';
     toolbarDiv.style.height = '48px';
     this.tileAreaDiv.style.height = '100%';
+    (this.tileAreaDiv as HTMLElement).tabIndex = 0;
     this.selectAllCheckBox = new CheckBox(
         { label: Browser.isDevice && !this.pdfViewer.enableDesktopMode ? '' : this.pdfViewer.localeObj.getConstant('Select All'), cssClass: 'e-pv-organize-select-all', checked: false, change: onSelectAllClick.bind(this) });
     const toolbarItems: ItemModel[] = [];
@@ -150,32 +151,44 @@ export function createContentArea(): any {
     createImportDocElement.call(this, toolbarDiv);
     importDocWireEvent.call(this);
     const rotateRightToolbarButton: HTMLElement = toolbarDiv.querySelector('#' + this.pdfViewer.element.id + '_rotate_page_right');
+    function setAriaLabel(btn: HTMLElement | null, label: string): void {
+        if (btn) {
+            btn.setAttribute('aria-label', label);
+        }
+    }
     if (!isNullOrUndefined(rotateRightToolbarButton)) {
         createTooltip.call(this, rotateRightToolbarButton, this.pdfViewer.localeObj.getConstant('Rotate Right'));
+        setAriaLabel(rotateRightToolbarButton, this.pdfViewer.localeObj.getConstant('Rotate Right'));
     }
     const rotateLeftToolbarButton: HTMLElement = toolbarDiv.querySelector('#' + this.pdfViewer.element.id + '_rotate_page_left');
     if (!isNullOrUndefined(rotateLeftToolbarButton)) {
         createTooltip.call(this, rotateLeftToolbarButton, this.pdfViewer.localeObj.getConstant('Rotate Left'));
+        setAriaLabel(rotateLeftToolbarButton, this.pdfViewer.localeObj.getConstant('Rotate Left'));
     }
     const copyToolbarButton: HTMLElement = toolbarDiv.querySelector('#' + this.pdfViewer.element.id + '_copy_page');
     if (!isNullOrUndefined(copyToolbarButton)) {
         createTooltip.call(this, copyToolbarButton, this.pdfViewer.localeObj.getConstant('Copy Pages'));
+        setAriaLabel(copyToolbarButton, this.pdfViewer.localeObj.getConstant('Copy Pages'));
     }
     const deleteToolbarButton: HTMLElement = toolbarDiv.querySelector('#' + this.pdfViewer.element.id + '_delete_selected');
     if (!isNullOrUndefined(deleteToolbarButton)) {
         createTooltip.call(this, deleteToolbarButton, this.pdfViewer.localeObj.getConstant('Delete Pages'));
+        setAriaLabel(deleteToolbarButton, this.pdfViewer.localeObj.getConstant('Delete Pages'));
     }
     const undoToolbarButton: HTMLElement = toolbarDiv.querySelector('#' + this.pdfViewer.element.id + '_undo_organize_Pages');
     if (!isNullOrUndefined(undoToolbarButton)) {
         createTooltip.call(this, undoToolbarButton, this.pdfViewer.localeObj.getConstant('Undo'));
+        setAriaLabel(undoToolbarButton, this.pdfViewer.localeObj.getConstant('Undo'));
     }
     const redoToolbarButton: HTMLElement = toolbarDiv.querySelector('#' + this.pdfViewer.element.id + '_redo_organize_Pages');
     if (!isNullOrUndefined(redoToolbarButton)) {
         createTooltip.call(this, redoToolbarButton, this.pdfViewer.localeObj.getConstant('Redo'));
+        setAriaLabel(redoToolbarButton, this.pdfViewer.localeObj.getConstant('Redo'));
     }
     const ExtractPagesButton: HTMLElement = toolbarDiv.querySelector('#' + this.pdfViewer.element.id + '_extract_pages');
     if (!isNullOrUndefined(ExtractPagesButton)) {
         createTooltip.call(this, ExtractPagesButton, this.pdfViewer.localeObj.getConstant('Extract Pages'));
+        setAriaLabel(ExtractPagesButton, this.pdfViewer.localeObj.getConstant('Extract Pages'));
     }
     return contentDiv;
 }

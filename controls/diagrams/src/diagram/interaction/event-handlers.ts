@@ -1726,7 +1726,17 @@ export class DiagramEventHandler {
             } else {
                 const horizontalOffset: number = this.diagram.scroller.horizontalOffset;
                 const verticalOffset: number = this.diagram.scroller.verticalOffset;
-                const change: number = up ? 10 : -10;
+                let change: number = up ? 10 : -10;
+                //1010829: Different scroll speed between Chrome and Firefox in Diagram
+                // Normalize Firefox wheel delta (DOMMouseWheel / detail) so scroll speed matches other browsers. Map Firefox "detail" to a uniform step
+                if (Browser && Browser.info && Browser.info.name === 'mozilla') {
+                    // prefer legacy detail
+                    const detail: number = (evt as any).detail || 0;
+                    if (detail) {
+                        // Treat any non-zero detail as one wheel "click" and map to ±10
+                        change = detail > 0 ? -10 : 10;
+                    }
+                }
                 if (this.tool && (this.tool instanceof PolygonDrawingTool || this.tool instanceof PolyLineDrawingTool)) {
                     this.eventArgs = {};
                     this.getMouseEventArgs(mousePosition, this.eventArgs);
@@ -1735,38 +1745,61 @@ export class DiagramEventHandler {
                 }
                 this.diagram.scrollActions |= ScrollActions.Interaction;
                 const canMouseWheel: boolean = true;
+                // Normalize delta values so browsers that don't provide deltaX/deltaY (eg. Firefox's DOMMouseWheel).
+                let normalizedDeltaX: number = (evt as any).deltaX !== undefined ? (evt as any).deltaX : 0;
+                let normalizedDeltaY: number = (evt as any).deltaY !== undefined ? (evt as any).deltaY : 0;
+                if (Browser && Browser.info && Browser.info.name === 'mozilla') {
+                    const detail: number = (evt as any).detail || 0;
+                    // Handle legacy horizontal wheel events in Firefox by checking `axis` when available.
+                    if (detail) {
+                        if ((evt as any).axis !== undefined) {
+                            // In old DOMMouseScroll, axis === 1 indicates horizontal scroll.
+                            if ((evt as any).axis === 1) {
+                                normalizedDeltaX = -detail;
+                                normalizedDeltaY = 0;
+                            } else {
+                                normalizedDeltaY = -detail;
+                                normalizedDeltaX = 0;
+                            }
+                        } else {
+                            // Fallback: treat detail as vertical delta
+                            normalizedDeltaY = -detail;
+                            normalizedDeltaX = 0;
+                        }
+                    }
+                }
                 if (evt.isTrusted) {
                     // Bug 829925: Scroll bar flickers on scrolling the diagram using touchpad.
                     // Added the below condition to check whether the mouse wheel is from trackpad or not.
                     let isTrackpadScroll: boolean = false;
                     // 878719: Resolve ESLint errors
                     // eslint-disable-next-line no-compare-neg-zero
-                    if ((Math.abs(evt.deltaY) < 100 && Math.abs(evt.deltaX) === -0) ||
+                    if ((Math.abs(normalizedDeltaY) < 100 && Math.abs(normalizedDeltaX) === -0) ||
                         // 878719: Resolve ESLint errors
                         // eslint-disable-next-line no-compare-neg-zero
-                        (Math.abs(evt.deltaX) < 100 && Math.abs(evt.deltaY) === -0)) {
+                        (Math.abs(normalizedDeltaX) < 100 && Math.abs(normalizedDeltaY) === -0)) {
                         isTrackpadScroll = true;
                     }
                     //Bug 892441: Infinite scroll not working in vertical axis of diagram.
                     //Due to the prevention of zoom method trigger in vertical scroll, the infinite scroll is not working in vertical axis.
                     //So added the below condition to check macOS and allowed the zoom method trigger in vertical scroll for non-MacOs.
                     let isMacOS: boolean = false;
-                    if (evt.deltaX !== 0 || evt.deltaY !== 0) {
+                    if (normalizedDeltaX !== 0 || normalizedDeltaY !== 0) {
                         // Perform macOS detection
                         isMacOS = navigator.userAgent.includes('Macintosh');
                     }
                     //898867: Diagram scrolling is not smooth while scrolling with Track Pad in Mac.
                     if (isMacOS) {
-                        const isHorizontalScroll: boolean = Math.abs(evt.deltaX) > Math.abs(evt.deltaY);
+                        const isHorizontalScroll: boolean = Math.abs(normalizedDeltaX) > Math.abs(normalizedDeltaY);
                         if (isHorizontalScroll) {
                             // eslint-disable-next-line no-compare-neg-zero
-                            if (evt.shiftKey || (evt.deltaX && evt.deltaX !== -0 && (isTrackpadScroll || !isMacOS))) {
+                            if (evt.shiftKey || (normalizedDeltaX && normalizedDeltaX !== -0 && (isTrackpadScroll || !isMacOS))) {
                                 this.diagram.scroller.zoom(1, change, 0, mousePosition, canMouseWheel, undefined, isTrackpadScroll);
                             }
                         }
                         else {
                             // eslint-disable-next-line no-compare-neg-zero
-                            if ((evt.deltaY && evt.deltaY !== -0 && (isTrackpadScroll || !isMacOS))) {
+                            if ((normalizedDeltaY && normalizedDeltaY !== -0 && (isTrackpadScroll || !isMacOS))) {
                                 this.diagram.scroller.zoom(1, 0, change, mousePosition, canMouseWheel, undefined, isTrackpadScroll);
                             }
                         }
@@ -1775,11 +1808,11 @@ export class DiagramEventHandler {
                     else {
                         // 878719: Resolve ESLint errors
                         // eslint-disable-next-line no-compare-neg-zero
-                        if (evt.shiftKey || (evt.deltaX && evt.deltaX !== -0 && (isTrackpadScroll || !isMacOS))) {
+                        if (evt.shiftKey || (normalizedDeltaX && normalizedDeltaX !== -0 && (isTrackpadScroll || !isMacOS))) {
                             this.diagram.scroller.zoom(1, change, 0, mousePosition, canMouseWheel, undefined, isTrackpadScroll);
                         }
                         // eslint-disable-next-line no-compare-neg-zero
-                        else if ((evt.deltaY && evt.deltaY !== -0 && (isTrackpadScroll || !isMacOS))) {
+                        else if ((normalizedDeltaY && normalizedDeltaY !== -0 && (isTrackpadScroll || !isMacOS))) {
                             this.diagram.scroller.zoom(1, 0, change, mousePosition, canMouseWheel, undefined, isTrackpadScroll);
                         }
                     }
@@ -1787,7 +1820,7 @@ export class DiagramEventHandler {
                 else {
                     // 878719: Resolve ESLint errors
                     // eslint-disable-next-line no-compare-neg-zero
-                    if (evt.shiftKey || (evt.deltaX && evt.deltaX !== -0)) {
+                    if (evt.shiftKey || (normalizedDeltaX && normalizedDeltaX !== -0)) {
                         this.diagram.scroller.zoom(1, change, 0, mousePosition, canMouseWheel);
                     }
                     else {

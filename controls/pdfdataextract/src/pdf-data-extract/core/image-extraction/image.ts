@@ -3,7 +3,11 @@ import { _PdfJpxImage } from '../jpx-image';
 import { _PdfImageProcessor } from '../import/decode-image';
 import { ImageFormat } from '../enum';
 import { _convertBlackAndWhiteToRGBA, _convertToRGBA, imageKind } from './image-utils';
-import { _isLittleEndian, _mathClamp, _PdfBaseStream, _PdfColorPalette, _PdfColorSpaceUtils, _PdfCrossReference, _PdfDecodeStream, _PdfDictionary, _PdfJpxStream, _PdfName, _PdfReference, FormatError } from '@syncfusion/ej2-pdf';
+import { _isLittleEndian, _mathClamp, _PdfBaseStream, _PdfCrossReference, _PdfDecodeStream, _PdfDictionary, _PdfFlateStream, _PdfJpegStream, _PdfJpxStream, _PdfName, _PdfReference, FormatError } from '@syncfusion/ej2-pdf';
+import { _PdfColorSpaceUtils } from './colorspace-utils';
+import { _PdfColorPalette } from './colorspace';
+import { _base64ToUint8Array } from '../utils';
+import { _PdfJpegImage } from './jpeg-image';
 export class _PdfImage {
     private image: any; // eslint-disable-line
     private width: number;
@@ -24,9 +28,10 @@ export class _PdfImage {
     private imageResizer: _PdfImageResizer = new _PdfImageResizer();
     private mask: _PdfImage | any; // eslint-disable-line 
     private jpxDecoderOptions: any; // eslint-disable-line
-    constructor();
-    constructor(xref?: any, image?: any, isInline?: boolean, smask?: any, mask?: any, isMask?: boolean) // eslint-disable-line
-    constructor(xref?: any, image?: any, isInline?: boolean, smask?: any, mask?: any, isMask?: boolean) { // eslint-disable-line      
+    forceRgba: boolean;
+    forceRgb: boolean;
+    async _initializeFromImage(xref: any, image: any, isInline: boolean, callBack: any, // eslint-disable-line 
+        smask?: any, mask?: any, isMask?: boolean): Promise<any> { // eslint-disable-line
         if (image) {
             this.image = image;
             const dict: _PdfDictionary = image.dictionary;
@@ -138,8 +143,8 @@ export class _PdfImage {
                 } else if (this.jpxDecoderOptions && this.jpxDecoderOptions.smaskInData) {
                     colorSpace = _PdfName.get('DeviceRGBA');
                 }
-                const color: _PdfColorSpaceUtils = new _PdfColorSpaceUtils();
-                this.colorSpace = color._parse(colorSpace, xref, null, null, null, false, null);
+                const color: _PdfColorSpaceUtils = new _PdfColorSpaceUtils(callBack);
+                this.colorSpace = await color._parse(colorSpace, xref, null, null, null, false, null);
                 this.numComps = this.colorSpace.numComps;
                 if (this.jpxDecoderOptions) {
                     this.jpxDecoderOptions.numComponents = hasColorSpace
@@ -171,19 +176,20 @@ export class _PdfImage {
                 if (smask.fallbackDims === null) {
                     smask.fallbackDims = { width, height };
                 }
-                this.smask = new _PdfImage(xref, smask, isInline, null, null, false);
+                this.smask = await new _PdfImage()._initializeFromImage(xref, smask, isInline, callBack, null, null, false);
             } else if (mask) {
                 if (mask instanceof _PdfBaseStream) {
                     const maskDict: _PdfDictionary = mask.dictionary;
                     const imageMask: any = maskDict.get('IM', 'ImageMask'); // eslint-disable-line
                     if (imageMask) {
-                        this.mask = new _PdfImage(xref, mask, isInline, null, null, true);
+                        this.mask = await new _PdfImage()._initializeFromImage(xref, mask, isInline, callBack, null, null, true);
                     }
                 } else {
                     this.mask = mask;
                 }
             }
         }
+        return this;
     }
     _resizeImageMask(src: Uint8Array | Uint16Array | Uint32Array, bpc: number, w1: number,
                      h1: number, w2: number, h2: number): Uint8Array | Uint16Array | Uint32Array {
@@ -226,13 +232,27 @@ export class _PdfImage {
         return false;
     }
     _getImageData(length: number, decoderOptions: any): any { // eslint-disable-line
-        if (!decoderOptions.image.canAsyncDecodeImageFromBuffer) {
-            if (decoderOptions.image.isAsyncDecoder) {
+        const stream: any = decoderOptions.image; // eslint-disable-line
+        if (stream instanceof _PdfJpegStream) {
+            const values: any = decoderOptions.image.getBytes(length, decoderOptions); // eslint-disable-line
+            const jpegImage: _PdfJpegImage = new _PdfJpegImage();
+            jpegImage.parse(values);
+            const data: any = jpegImage._getData(this.drawWidth, this.drawHeight, this.forceRgba, this.forceRgb, // eslint-disable-line 
+                                                 true);
+            decoderOptions.image.buffer = data;
+            decoderOptions.bufferLength = data.length;
+            return data;
+        }
+        if (!(stream instanceof _PdfFlateStream)) {
+            if (stream instanceof _PdfJpxStream) {
                 return decoderOptions.image.decodeImage(null, decoderOptions);
             }
             return decoderOptions.image.getBytes(length, decoderOptions);
         }
-        const data:any = decoderOptions.image.stream.asyncGetBytes(); // eslint-disable-line
+        const data: any = decoderOptions.image.getBytes(length, decoderOptions); // eslint-disable-line
+        if (stream instanceof _PdfFlateStream) {
+            return data;
+        }
         return decoderOptions.image.decodeImage(data, decoderOptions);
     }
     async _createImageData(forceRGBA: boolean = false, isOffscreenCanvasSupported: boolean = false): Promise<any> { // eslint-disable-line
@@ -329,7 +349,7 @@ export class _PdfImage {
         if (this.needsDecode) {
             this._decodeBuffer(comps);
         }
-        this.colorSpace._fillRgb(data, originalWidth, originalHeight, drawWidth, drawHeight, actualHeight, bpc, comps, alpha01);
+        await this.colorSpace._fillRgb(data, originalWidth, originalHeight, drawWidth, drawHeight, actualHeight, bpc, comps, alpha01);
         if (maybeUndoPreblend) {
             this._undoPreblend(data, drawWidth, actualHeight);
         }
@@ -338,7 +358,7 @@ export class _PdfImage {
             const format: string = this._findImageFormat(this._imageFormat);
             const buffer: string = canvas.toDataURL(format);
             const base64: string = buffer.split(',')[1];
-            const bytes: Uint8Array = this._base64ToUint8Array(base64);
+            const bytes: Uint8Array = _base64ToUint8Array(base64);
             return bytes;
         }
         imgData.data = data;
@@ -354,16 +374,7 @@ export class _PdfImage {
             return 'image/jpeg';
         }
     }
-    _base64ToUint8Array(base64String: string): Uint8Array {
-        const binaryString: string = atob(base64String);
-        const len: number = binaryString.length;
-        const bytes: Uint8Array = new Uint8Array(len);
-        for (let i: number = 0; i < len; i++) {
-            bytes[<number> i] = binaryString.charCodeAt(i);
-        }
-        return bytes;
-    }
-    _buildImage(xref: _PdfCrossReference, image: any, isInline: boolean): _PdfImage { // eslint-disable-line
+    async _buildImage(xref: _PdfCrossReference, image: any, isInline: boolean, callBack: any): Promise<_PdfImage> { // eslint-disable-line
         const imageData: any = image; // eslint-disable-line
         let smaskData: any = null; // eslint-disable-line
         let maskData: any = null; // eslint-disable-line
@@ -378,7 +389,7 @@ export class _PdfImage {
                 maskData = mask;
             }
         }
-        return new _PdfImage(xref, imageData, isInline, smaskData, maskData);
+        return await new _PdfImage()._initializeFromImage(xref, imageData, isInline, callBack, smaskData, maskData);
     }
     _createMask(image: any, isOffscreenCanvasSupported: boolean): any { // eslint-disable-line
         const dict: _PdfDictionary = image.dictionary;
@@ -413,7 +424,7 @@ export class _PdfImage {
             const format: string = this._findImageFormat(this._imageFormat);
             const buffer: string = canvas.toDataURL(format);
             const base64: string = buffer.split(',')[1];
-            const bytes: Uint8Array = this._base64ToUint8Array(base64);
+            const bytes: Uint8Array = _base64ToUint8Array(base64);
             return bytes;
         }
         const actualLength: number = imgArray.byteLength;
@@ -609,7 +620,7 @@ export class _PdfImage {
         if (!matte) {
             return;
         }
-        const matteRgb: any = this.colorSpace.getRgb(matte, 0); // eslint-disable-line
+        const matteRgb: any = this.colorSpace._getRgb(matte, 0); // eslint-disable-line
         const matteR: number = matteRgb[0];
         const matteG: number = matteRgb[1];
         const matteB: number = matteRgb[2];
@@ -686,7 +697,7 @@ export class _PdfImage {
         const format: string = this._findImageFormat(this._imageFormat);
         const buffer: string = canvas.toDataURL(format);
         const base64: string = buffer.split(',')[1];
-        const bytes: Uint8Array = this._base64ToUint8Array(base64);
+        const bytes: Uint8Array = _base64ToUint8Array(base64);
         return bytes;
     }
     _getTransferableImage(): any { // eslint-disable-line

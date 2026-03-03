@@ -1137,6 +1137,31 @@ describe('RTE CR issues ', () => {
         });
     });
 
+    describe('Bug 1011017: Content Update Fails When Unclosed HTML/Script Tags Exist — Causes Page Breaks After Decoding', () => {
+        let rteObj: RichTextEditor;
+        const innerHTML: string = `<p style="text-align: start"><span style="color: rgb(16, 24, 40);font-family: Inter, Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;font-size: 14px;font-style: normal;font-weight: 400;text-align: start;text-indent: 0px;text-transform: none;white-space: normal;background-color: rgb(255, 255, 255);float: none;display: inline !important;">Webmaster Bing \u2013 Validated all the issues. Created 57 tickets and added maintenance details to each ticket. 30 have been closed.</span><br style="color: rgb(16, 24, 40);font-family: Inter, Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;font-size: 14px;"/><span style="color: rgb(16, 24, 40);font-family: Inter, Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;font-size: 14px;float: none;display: inline !important;">Syncfusion.com</span><br style="color: rgb(16, 24, 40);font-size: 14px;"/><span style="color: rgb(16, 24, 40);font-size: 14px;float: none;display: inline !important;">IndexNow - 10 links</span><br style="color: rgb(16, 24, 40);font-size: 14px;"/><span style="color: rgb(16, 24, 40);font-size: 14px;float: none;display: inline !important;">Missing in sitemap - 31 links</span><br style="color: rgb(16, 24, 40);font-size: 14px;"/><span style="color: rgb(16, 24, 40);font-size: 14px;float: none;display: inline !important;">The &lt;title&gt; tag contains additional tags. - 150 links</span><br style="color: rgb(16, 24, 40);font-size: 14px;"/><span style="color: rgb(16, 24, 40);font-size: 14px;float: none;display: inline !important;">Multiple titles. - 1 links</span><br style="color: rgb(16, 24, 40);font-size: 14px;"/><span style="color: rgb(16, 24, 40);font-size: 14px;float: none;display: inline !important;">Missing &lt;h1&gt; tag- 137 links</span><br style="color: rgb(16, 24, 40);font-size: 14px;"/><span style="color: rgb(16, 24, 40);font-size: 14px;float: none;display: inline !important;">Multiple &lt;h1&gt; tags  - 100 links</span></p>`;
+
+        beforeAll(() => {
+            rteObj = renderRTE({
+                enableHtmlEncode: true,
+                value: innerHTML
+            });
+        });
+        afterAll(() => {
+            destroy(rteObj);
+        });
+        it('Should NOT create a real <title> DOM element inside the editor', () => {
+            const editPanel: HTMLElement = rteObj.inputElement;
+            const allText: string = editPanel.textContent;
+            expect(allText.indexOf('The') >= 0).toBe(true);
+            expect(allText.indexOf('tag contains additional tags. - 150 links') >= 0).toBe(true);
+            expect(allText.indexOf('Missing') >= 0).toBe(true);
+            expect(allText.indexOf('tag- 137 links') >= 0).toBe(true);
+            expect(allText.indexOf('tags - 100 links') >= 0).toBe(true);
+            expect(editPanel.querySelectorAll('title').length).toBe(0);
+        });
+    });
+
     describe('875856 - Using indents on Numbered or Bulleted list turns into nested list in RichTextEditor', () => {
         let rteObj: RichTextEditor;
         let rteEle: Element;
@@ -4074,7 +4099,7 @@ describe('RTE CR issues ', () => {
             rteObj.inputElement.dispatchEvent(backSpaceKeyDown);
             rteObj.inputElement.dispatchEvent(backSpaceKeyUp);
             expect(rteObj.inputElement.querySelectorAll('em').length === 2).toBe(true);
-            (<any>rteObj).keyDown(keyboardEventArgs);
+            rteObj.inputElement.dispatchEvent(new KeyboardEvent('keydown', ENTERKEY_EVENT_INIT));
             expect(rteObj.inputElement.querySelectorAll('em').length === 3).toBe(true);
         });
         it('Single backspace/delete - Preserve inline formatting Should maintain the inline element after deleting the whole content', () => {
@@ -4087,7 +4112,7 @@ describe('RTE CR issues ', () => {
             rteObj.inputElement.dispatchEvent(deleteKeyDown);
             rteObj.inputElement.dispatchEvent(deleteKeyUp);
             expect(rteObj.inputElement.querySelectorAll('em').length === 2).toBe(true);
-            (<any>rteObj).keyDown(keyboardEventArgs);
+            rteObj.inputElement.dispatchEvent(new KeyboardEvent('keydown', ENTERKEY_EVENT_INIT));
             expect(rteObj.inputElement.querySelectorAll('em').length === 3).toBe(true);
         });
         it('Double backspace/delete - Remove inline element Should delete the inline element after backspacing twice', () => {
@@ -4202,6 +4227,36 @@ describe('RTE CR issues ', () => {
             rteObj.inputElement.dispatchEvent(backSpaceKeyDown);
             rteObj.inputElement.dispatchEvent(backSpaceKeyUp);
             expect(rteObj.inputElement.querySelector('p').textContent === 'S').toBe(true);
+        });
+    });
+
+    describe('Bug 1010194: XSS attacks occurs with RichTextEditor', () => {
+        let rteObj: RichTextEditor;
+        let alertTriggered: boolean;
+        let originalAlert: (message?: any) => void;
+        const xssPayload: string = `#">'/><img src=M onerror="alert('http://127.0.0.1:5000')">`;
+
+        beforeAll(() => {
+            alertTriggered = false;
+            originalAlert = window.alert;
+            (window as any).alert = (msg: any) => {
+                alertTriggered = true;
+            };
+            rteObj = renderRTE({
+                value: xssPayload,
+            });
+        });
+
+        afterAll(() => {
+            window.alert = originalAlert;
+            destroy(rteObj);
+        });
+
+        it('should not trigger alert when XSS payload is loaded as value', () => {
+            expect(alertTriggered).toBe(false);
+            const content: string = rteObj.value;
+            expect(content).not.toContain('onerror');
+            expect(content).not.toContain('alert(');
         });
     });
 });

@@ -895,7 +895,6 @@ export class Selection implements IAction {
             if (this.parent.isPersistSelection || this.parent.isRemote()) {
                 this.persistSelectedData = [];
                 this.selectedRowState = {};
-                this.selectedRowIndexes = [];
                 this.persistSelectedRecordsCount = 0;
             }
             this.clearRowSelection();

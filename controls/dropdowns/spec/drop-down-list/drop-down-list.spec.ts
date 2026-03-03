@@ -7166,4 +7166,42 @@ describe('DDList', () => {
                 listObj.destroy();
             });
         });
+        describe('Opening the popup programmatically - EJ2Angular', () => {
+            let element: HTMLInputElement;
+            let listObj: DropDownList;
+            let templateDataSource: { [key: string]: Object }[] = [
+                { Name: 'Andrew Fuller', Eimg: '7', Designation: 'Team Lead', Country: 'England' },
+                { Name: 'Anne Dodsworth', Eimg: '1', Designation: 'Developer', Country: 'USA' },
+                { Name: 'Janet Leverling', Eimg: '3', Designation: 'HR', Country: 'USA' },
+                { Name: 'Laura Callahan', Eimg: '2', Designation: 'Product Manager', Country: 'USA' },
+                { Name: 'Margaret Peacock', Eimg: '6', Designation: 'Developer', Country: 'USA' },
+                { Name: 'Michael Suyama', Eimg: '9', Designation: 'Team Lead', Country: 'USA' },
+                { Name: 'Nancy Davolio', Eimg: '4', Designation: 'Product Manager', Country: 'USA' },
+                { Name: 'Robert King', Eimg: '8', Designation: 'Developer ', Country: 'England' },
+                { Name: 'Steven Buchanan', Eimg: '10', Designation: 'CEO', Country: 'England' }
+            ];
+            beforeAll(() => {
+                element = <HTMLInputElement>createElement('input', { id: 'dropdownlist' });
+                document.body.appendChild(element);
+                listObj = new DropDownList({
+                    dataSource: templateDataSource,
+                    fields: { text: 'Name', value: 'Eimg' },
+                    popupHeight: "200px",
+                    debounceDelay: 0,
+                });
+                listObj.appendTo(element);
+            });
+            it("Checked Popup Li Item TextContent", function () {
+                (<any>listObj).isAngular = true;
+                listObj.showPopup();
+                expect((<any>listObj).list.querySelector('.e-list-item').textContent).not.toBe('');
+                (<any>listObj).isAngular = false;
+            });
+            afterAll(() => {
+                if (element) {
+                    element.remove();
+                    document.body.innerHTML = '';
+                }
+            });
+        });
     });

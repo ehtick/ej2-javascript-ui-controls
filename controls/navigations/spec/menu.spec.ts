@@ -6,6 +6,7 @@
 import { Menu } from '../src/menu/menu';
 import { MenuItemModel, BeforeOpenCloseMenuEventArgs, MenuEventArgs, addScrolling, destroyScroll } from '../src/common/index';
 import { closest, createElement, Browser, isNullOrUndefined, select } from '@syncfusion/ej2-base';
+import { DropDownButton } from '@syncfusion/ej2-splitbuttons';
 import { profile , inMB, getMemoryProfile } from './common.spec';
 
 function triggerMouseEvent(node: HTMLElement, eventType: string) {
@@ -1077,5 +1078,69 @@ describe('Menu', () => {
             (keyEventArgs as any).target = scrollNav;
             (menu as any).keyBoardHandler(keyEventArgs);
         });
+    });
+});
+
+describe('Menu inside DropDownButton popup', () => {
+    let drpDownBtn: DropDownButton;
+    let menuItems = [
+        {
+            text: 'Fashion',
+            items: [
+                {
+                    text: 'Men Fashion',
+                    items: [
+                        {
+                            text: 'Personal Care',
+                            items: [{ text: 'Trimmers' }, { text: 'Shavers' }]
+                        },
+                        {
+                            text: 'Clothing',
+                            items: [
+                                { text: 'Shirts' },
+                                { text: 'Jackets' },
+                                { text: 'Track Suits' }
+                            ]
+                        },
+                        { text: 'Footwear' }
+                    ]
+                }
+            ]
+        }
+    ];
+    beforeEach(() => {
+        document.body.innerHTML = '<button id="element">Dropdown</button>';
+        drpDownBtn = new DropDownButton({
+            beforeOpen: function () {
+                let popup = document.querySelector('.e-dropdown-btn-popup') as HTMLElement  ||
+                    document.querySelector('.e-popup') as HTMLElement;
+                if (popup) {
+                    popup.innerHTML = '<ul id="popup-menu-host"></ul>';
+                    new Menu({ items: menuItems }, '#popup-menu-host');
+                }
+            }
+        }, '#element');
+    });
+
+    afterEach(() => {
+        drpDownBtn.destroy();
+        document.body.innerHTML = '';
+    });
+    it('should focus menu item on Down Arrow after opening popup with Enter', (done) => {
+        let button = document.getElementById('element') as HTMLElement;
+        button.focus();
+        button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+        button.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter' }));
+        button.click();
+        setTimeout(function () {
+            var downEvent = new KeyboardEvent('keydown', { key: 'ArrowDown' });
+            document.dispatchEvent(downEvent);
+            setTimeout(function () {
+                var menuItem = document.querySelector('#popup-menu-host .e-menu-item');
+                expect(menuItem).not.toBeNull();
+                expect(menuItem.classList.contains('e-focused')).toBe(true);
+                done();
+            }, 50)
+        },100);
     });
 });

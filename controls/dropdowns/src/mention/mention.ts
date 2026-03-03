@@ -66,6 +66,7 @@ export class Mention extends DropDownBase {
     private keyEventName: string;
     private keyupHandler: () => void;
     private keydownHandler: () => void;
+    private popupAppendTo: HTMLElement;
     // Mention Options
 
     /**
@@ -1179,9 +1180,11 @@ export class Mention extends DropDownBase {
                         addClass([popupEle], 'e-rte-elements');
                     }
                 }
+                const appendToElement: HTMLElement = this.getAppendToElement();
+                this.popupAppendTo = appendToElement;
                 if ((!this.popupObj || !document.body.contains(this.popupObj.element)) ||
                  !document.contains(popupEle) && isNullOrUndefined(this.target)) {
-                    document.body.appendChild(popupEle);
+                    appendToElement.appendChild(popupEle);
                 }
                 let coordinates: { [key: string]: number };
                 popupEle.style.visibility = 'hidden';
@@ -1248,6 +1251,20 @@ export class Mention extends DropDownBase {
                 this.beforePopupOpen = false;
             }
         });
+    }
+
+    protected getAppendToElement(): HTMLElement {
+        if (this.popupAppendTo) {
+            return this.popupAppendTo;
+        }
+        if (this.isAngular) {
+            const cdkPane: HTMLElement = this.element && this.element.closest ? this.element.closest('.cdk-overlay-pane') as HTMLElement : null;
+            const popoverEl: HTMLElement = this.element && this.element.closest ? this.element.closest('[popover]') as HTMLElement : null;
+            if (cdkPane && popoverEl) {
+                return cdkPane;
+            }
+        }
+        return document.body;
     }
 
     private setHeight(popupEle: HTMLElement): void {

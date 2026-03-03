@@ -51,7 +51,7 @@ import { ImportExport } from '../actions/import-export';
 import { EnterKeyAction } from '../actions/enter-key';
 import * as CONSTANT from '../../common/constant';
 import { IHtmlKeyboardEvent, IHtmlUndoRedoData, BeforeInputEvent, ILineHeightProperties } from '../../editor-manager/base/interface';
-import { dispatchEvent, getEditValue, decode, isEditableValueEmpty, getDefaultValue, sanitizeHelper } from '../base/util';
+import { dispatchEvent, getEditValue, decode, isEditableValueEmpty, getDefaultValue, sanitizeHelper, reEscapeRawTextTags } from '../base/util';
 import { cleanHTMLString, scrollToCursor, getStructuredHtml, isIDevice, alignmentHtml, openPrintWindow } from '../../common/util';
 import { DialogRenderer } from '../renderer/dialog-renderer';
 import { SelectedEventArgs, RemovingEventArgs, UploadingEventArgs, BeforeUploadEventArgs } from '@syncfusion/ej2-inputs';
@@ -2723,12 +2723,15 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
      */
     public serializeValue(value: string): string {
         if (this.editorMode === 'HTML' && !isNOU(value)) {
+            if (this.enableHtmlSanitizer) {
+                value = this.htmlEditorModule.sanitizeHelper(value.replace(/&amp;/g, '&'));
+            }
             value = cleanHTMLString(value, this.element);
             if (!this.enableXhtml) {
                 value = getStructuredHtml(value, this.enterKey, this.enableHtmlEncode);
             }
             if (this.enableHtmlEncode) {
-                value = this.htmlEditorModule.sanitizeHelper(decode(value));
+                value = this.htmlEditorModule.sanitizeHelper(reEscapeRawTextTags(decode(value)));
                 value = this.encode(value);
             } else {
                 value = this.htmlEditorModule.sanitizeHelper(value);
@@ -3578,7 +3581,7 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
     private updatePanelValue(): void {
         this.setProperties({ value: this.replaceEntities(this.value) }, true);
         let value: string = this.editorMode === 'HTML' && !isNOU(this.value) ? this.listOrderCorrection(this.value) : this.value;
-        value = (this.enableHtmlEncode && this.value) ? decode(value) : value;
+        value = (this.enableHtmlEncode && this.value) ? reEscapeRawTextTags(decode(value)) : value;
         const getTextArea: HTMLInputElement = this.element.querySelector('.' + classes.CLS_RTE_SOURCE_CODE_TXTAREA);
         if (value) {
             if (!isNOU(getTextArea) && this.rootContainer.classList.contains('e-source-code-enabled')) {

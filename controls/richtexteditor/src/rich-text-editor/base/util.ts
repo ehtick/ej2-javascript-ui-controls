@@ -406,6 +406,18 @@ export function toObjectLowerCase(obj: { [key: string]: IToolsItemConfigs }): { 
     return convertedValue;
 }
 /**
+ * Re-escapes HTML5 raw-text element tags that appear as text content after decoding.
+ * Prevents the browser parser from consuming them as special tokens and truncating content.
+ *
+ * @param {string} value - The decoded HTML string.
+ * @returns {string} - The string with raw-text element tags re-escaped as HTML entities.
+ * @hidden
+ */
+export function reEscapeRawTextTags(value: string): string {
+    const rawTextTagPattern: RegExp = /<(\/?)(head|title|script|style|textarea|xmp|plaintext|noframes|noscript)([\s>/])/gi;
+    return value.replace(rawTextTagPattern, '&lt;$1$2$3');
+}
+/**
  * @param {string} value - specifies the string value
  * @param {IRichTextEditor} rteObj - specifies the rte object
  * @returns {string} - returns the string

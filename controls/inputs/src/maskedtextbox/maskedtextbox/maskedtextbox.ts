@@ -323,9 +323,8 @@ export class MaskedTextBox extends Component<HTMLInputElement> implements INotif
             this.element.classList.remove('e-control', 'e-maskedtextbox');
             this.element.classList.add('e-mask-container');
             this.element.appendChild(input);
-            setValue('ej2_instances', ejInstance, input);
-            setValue('ej2_instances', null, this.element);
             this.element = <HTMLInputElement>input;
+            setValue('ej2_instances', ejInstance, this.element);
         }
         this.updateHTMLAttrToElement();
         this.checkHtmlAttributes(false);
@@ -819,6 +818,7 @@ export class MaskedTextBox extends Component<HTMLInputElement> implements INotif
         }, this.clearButton);
         this.changeEventArgs = null;
         this.inputObj = null;
+        setValue('ej2_instances', null, this.element);
         super.destroy();
     }
 }

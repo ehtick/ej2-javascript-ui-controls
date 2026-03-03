@@ -2476,12 +2476,13 @@ export class Selection {
 
         //Updates the text position based on the cursor position.
         const widget: LineWidget = this.documentHelper.getLineWidgetInternal(cursorPoint, true);
-        if (!isNullOrUndefined(widget)) {
-            this.updateTextPositionWidget(widget, cursorPoint, textPosition, true);
-        }
-        this.upDownSelectionLength = textPosition.location.x;
         const selectionStartIndex: string = this.start.getHierarchicalIndexInternal();
         const selectionEndIndex: string = this.end.getHierarchicalIndexInternal();
+        const isForward: boolean = TextPosition.isForwardSelection(selectionStartIndex, selectionEndIndex)
+        if (!isNullOrUndefined(widget)) {
+            this.updateTextPositionWidget(widget, cursorPoint, textPosition, isForward);
+        }
+        this.upDownSelectionLength = textPosition.location.x;
         if (selectionStartIndex !== selectionEndIndex && !isMouseLeave) {
             // Extends selection end to field begin or field end.
             if (TextPosition.isForwardSelection(selectionStartIndex, selectionEndIndex)) {
@@ -7100,6 +7101,19 @@ export class Selection {
             } else {
                 if (childWidget instanceof Widget && (childWidget as Widget).y <= point.y
                     && ((childWidget as Widget).y + (childWidget as Widget).height) >= point.y) {
+                    for (let k: number = 0; k < widget.childWidgets.length; k++) {
+                        let shapeInfo: ShapeInfo = undefined;
+                        const childWidget: IWidget = widget.childWidgets[k];
+                        if (childWidget instanceof TableWidget || (childWidget as ParagraphWidget).floatingElements.length === 0) {
+                            continue;
+                        }
+                        shapeInfo = this.documentHelper.checkFloatingItems(childWidget as BlockContainer, point, false, false, true);
+                        if (shapeInfo && shapeInfo.isShapeSelected && !this.documentHelper.isEmptyShape(shapeInfo)) {
+                            if (shapeInfo.isInShapeBorder || shapeInfo.element instanceof ShapeElementBox) {
+                                return shapeInfo.element.line;
+                            }
+                        }
+                    }
                     if (childWidget instanceof ParagraphWidget) {
                         // if ((childWidget as Widget).x <= point.x
                         // && ((childWidget as Widget).x + (childWidget as Widget).width) >= point.x) {

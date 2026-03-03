@@ -31,3 +31,8 @@ export * from './core/text-structure';
 export * from './core/pdf-structure-element';
 export * from './core/utils';
 export * from './core/text-extraction/enumerator';
+export * from './core/image-extraction/colorspace-utils';
+export * from './core/image-extraction/colorspace';
+export * from './core/image-extraction/icc-based-colorspace';
+export * from './core/image-extraction/jpeg-image';
+export * from './core/import/qcms-runner';

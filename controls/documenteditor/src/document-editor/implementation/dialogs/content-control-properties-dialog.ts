@@ -251,7 +251,7 @@ export class ContentControlPropertiesDialog {
         this.addbuttonDiv = createElement('div', { className: 'e-bookmark-addbutton' });
         this.buttonDiv.appendChild(this.addbuttonDiv);
         this.addButtonElement = createElement('button', {
-            innerHTML: 'Add', id: 'add',
+            innerHTML: localeValue.getConstant('Add'), id: 'add',
             attrs: { type: 'button' }
         });
         this.addButtonElement.setAttribute('aria-label', localeValue.getConstant('Add'));
@@ -264,10 +264,10 @@ export class ContentControlPropertiesDialog {
         this.deleteButtonDiv = createElement('div', { className: 'e-bookmark-deletebutton' });
         this.buttonDiv.appendChild(this.deleteButtonDiv);
         this.deleteButtonElement = createElement('button', {
-            innerHTML: 'Delete', id: 'delete',
+            innerHTML: localeValue.getConstant('Delete'), id: 'delete',
             attrs: { type: 'button' }
         });
-        this.deleteButtonElement.setAttribute('aria-label', 'Delete');
+        this.deleteButtonElement.setAttribute('aria-label', localeValue.getConstant('Delete'));
         this.deleteButtonDiv.appendChild(this.deleteButtonElement);
         this.deleteButton = new Button({ cssClass: 'e-button-custom' });
         this.deleteButton.appendTo(this.deleteButtonElement);

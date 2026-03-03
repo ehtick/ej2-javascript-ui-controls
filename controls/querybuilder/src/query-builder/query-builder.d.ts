@@ -707,6 +707,7 @@ export declare class QueryBuilder extends Component<HTMLDivElement> implements I
     private getDistinctValues;
     private renderMultiSelect;
     private multiSelectOpen;
+    private areQueriesSame;
     private bindMultiSelectData;
     private getMultiSelectData;
     private createSpinner;

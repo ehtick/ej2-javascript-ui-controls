@@ -1518,7 +1518,7 @@ export class TextPosition {
             // To select Paragraph mark similar to MS WORD
             if (this.selection.end.offset === this.selection.end.currentWidget.getEndOffset()
                 && this.selection.isParagraphLastLine(this.selection.end.currentWidget)) {
-                this.selection.end.setPositionParagraph(this.selection.end.currentWidget, this.selection.end.offset + 1);
+                this.selection.end.setPositionParagraph(this.selection.end.currentWidget, this.owner.selectionModule.isForward ? this.selection.end.offset + 1 : this.selection.end.offset);
             }
         }
         while (currentIndex !== selectionEndIndex && TextPosition.isForwardSelection(currentIndex, selectionEndIndex)) {
@@ -2077,16 +2077,19 @@ export class TextPosition {
                         break;
                     }
                 }
+                const selectionStartIndex: string = selection.start.getHierarchicalIndexInternal();
+                const selectionEndIndex: string = selection.end.getHierarchicalIndexInternal();
+                const isForward: boolean = TextPosition.isForwardSelection(selectionStartIndex, selectionEndIndex)
                 if (selection.start.paragraph.isInsideTable && this.selection.isSelectLine) {
                     let cellVal = selection.start.paragraph.associatedCell;
                     if (!isNullOrUndefined(selection.getLastParagraph(cellVal)) && selection.getLastParagraph(cellVal).lastChild === selection.start.paragraph.lastChild) {
                         this.offset = moveToNextLine ? length : length - editRangeEndLength;
                     } else {
-                        this.offset = moveToNextLine ? length + 1 : length - editRangeEndLength;
+                        this.offset = moveToNextLine ? (isForward ? length + 1 : length) : length - editRangeEndLength;
                     }
                 }
                 else {
-                    this.offset = moveToNextLine ? length + 1 : length - editRangeEndLength;
+                    this.offset = moveToNextLine ? (isForward ? length + 1 : length) : length - editRangeEndLength;
                 }
             } else {
                 let inline: ElementBox = lastElement;

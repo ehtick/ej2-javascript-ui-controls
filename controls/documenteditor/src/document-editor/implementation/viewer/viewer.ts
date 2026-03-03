@@ -4142,8 +4142,12 @@ export class DocumentHelper {
                         continue;
                     }
                     floatingElement = widget.children[i] as ShapeElementBox;
+                    let marginTop: number = floatingElement.margin.top;
+                    if (floatingElement.textWrappingStyle === 'Inline') {
+                        marginTop = 0;
+                    }
                     if (cursorPoint.x < floatingElement.x + floatingElement.margin.left + floatingElement.width &&
-                        cursorPoint.x > floatingElement.x && cursorPoint.y < floatingElement.y + floatingElement.margin.top +
+                        cursorPoint.x > floatingElement.x && cursorPoint.y < floatingElement.y + marginTop +
                         floatingElement.height && cursorPoint.y > floatingElement.y) {
                         isInShape = true;
                         if (this.isInShapeBorder(floatingElement, cursorPoint)) {
@@ -4204,7 +4208,10 @@ export class DocumentHelper {
         }
         return false;
     }
-    private checkFloatingItems(blockContainer: BlockContainer, cursorPoint: Point, isMouseDragged: boolean, isBehind?: boolean): ShapeInfo {
+    /**
+     * @private
+     */
+    public checkFloatingItems(blockContainer: BlockContainer, cursorPoint: Point, isMouseDragged: boolean, isBehind?: boolean, isInline?: boolean): ShapeInfo {
         let isInShape: boolean = false;
         let isInShapeBorder: boolean = false;
         let floatElement: ShapeBase;
@@ -4213,13 +4220,15 @@ export class DocumentHelper {
         if (blockContainer.floatingElements.length > 0) {
             let page: Page = this.currentPage;
             /* eslint-disable */
-            blockContainer.floatingElements.sort(function (a, b) {
-                if (a instanceof TableWidget || b instanceof TableWidget) {
-                    return 0;
-                } else {
-                    return a.zOrderPosition - b.zOrderPosition;
-                }
-            });
+            if (!isInline) {
+                blockContainer.floatingElements.sort(function (a, b) {
+                    if (a instanceof TableWidget || b instanceof TableWidget) {
+                        return 0;
+                    } else {
+                        return a.zOrderPosition - b.zOrderPosition;
+                    }
+                });
+            }
             if (isMouseDraggedInShape) {
                 let textFrame: TextFrame = this.owner.selectionModule.getCurrentTextFrame();
                 if (textFrame) {
@@ -4229,12 +4238,16 @@ export class DocumentHelper {
             } else {
                 for (let i: number = blockContainer.floatingElements.length - 1; i >= 0; i--) {
                     if (blockContainer.floatingElements[i] instanceof TableWidget
-                        || (!isNullOrUndefined(isBehind) && isBehind ? (blockContainer.floatingElements[i] as ShapeBase).textWrappingStyle !== 'Behind' : (blockContainer.floatingElements[i] as ShapeBase).textWrappingStyle === 'Behind')) {
+                        || (!isNullOrUndefined(isBehind) && isBehind ? (blockContainer.floatingElements[i] as ShapeBase).textWrappingStyle !== 'Behind' : (blockContainer.floatingElements[i] as ShapeBase).textWrappingStyle === 'Behind') || (isInline && (blockContainer.floatingElements[i] as ShapeBase).textWrappingStyle !== 'Inline')) {
                         continue;
                     }
                     floatElement = blockContainer.floatingElements[i] as ShapeBase;
+                    let marginTop: number = floatElement.margin.top;
+                    if (floatElement.textWrappingStyle === 'Inline') {
+                        marginTop = 0;
+                    }
                     if (cursorPoint.x < floatElement.x + floatElement.margin.left + floatElement.width &&
-                        cursorPoint.x > floatElement.x && cursorPoint.y < floatElement.y + floatElement.margin.top +
+                        cursorPoint.x > floatElement.x && cursorPoint.y < floatElement.y + marginTop +
                         floatElement.height && cursorPoint.y > floatElement.y) {
                         isInShape = true;
                         if (this.isInShapeBorder(floatElement, cursorPoint)) {
@@ -4577,7 +4590,10 @@ export class DocumentHelper {
                 return value.toString();
         }
     }
-    private isEmptyShape(shape: ShapeInfo): boolean {
+    /**
+     * @private
+     */
+    public isEmptyShape(shape: ShapeInfo): boolean {
         let isEmpty: boolean = true;
         if (shape.element instanceof ImageElementBox) {
             return isEmpty;
@@ -5807,12 +5823,6 @@ export abstract class LayoutViewer {
                         tableWidth = HelperMethods.convertPointToPixel(block.tableHolder.getTotalWidth(0));
                         tableWidth = tableWidth === 0 ? block.tableHolder.tableWidth === 0 ?
                             block.getTableClientWidth(block.getOwnerWidth(false)) : block.tableHolder.tableWidth : tableWidth;
-                        // Fore resizing table, the tableholder table width taken for updated width. 
-                        // Since, the columns will be cleared if we performed resizing.
-                        if (this.owner.editorModule && this.owner.editorModule.tableResize.currentResizingTable === block
-                            && this.owner.editorModule.tableResize.resizerPosition === 0) {
-                            tableWidth = HelperMethods.convertPointToPixel(block.tableHolder.tableWidth);
-                        }
                         if (tableAlignment === 'Center') {
                             if (!this.documentHelper.isRowOrCellResizing) {
                                 tableWidth = block.getTableCellWidth();

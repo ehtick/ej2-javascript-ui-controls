@@ -5266,6 +5266,10 @@ export class WordExport {
         if (isNullOrUndefined(borders)) {
             return;
         }
+        // Check if borders have any actual content before writing the element
+        if (!this.hasBorderContent(borders, true)) {
+            return;
+        }
         writer.writeStartElement(undefined, 'pBdr', this.wNamespace);
         this.serializeBorders(writer, formatPara[bordersProperty[this.keywordIndex]], 8, true);
         writer.writeEndElement();
@@ -5274,6 +5278,10 @@ export class WordExport {
     private serializeTableBorders(writer: XmlWriter, format: any): void {
         let borders: any = format[bordersProperty[this.keywordIndex]];
         if (isNullOrUndefined(borders)) {
+            return;
+        }
+        // Check if borders have any actual content before writing the element
+        if (!this.hasBorderContent(borders, false)) {
             return;
         }
         writer.writeStartElement(undefined, 'tblBorders', this.wNamespace);
@@ -5295,6 +5303,44 @@ export class WordExport {
             this.serializeBorder(writer, borders[diagonalDownProperty[this.keywordIndex]], 'tl2br', multipler);
             this.serializeBorder(writer, borders[diagonalUpProperty[this.keywordIndex]], 'tr2bl', multipler);
         }
+    }
+    // Helper method to check if borders have any actual content
+    private hasBorderContent(borders: any, isParagraphBorder: boolean): boolean {
+        // Check if any border has actual content (not None or undefined)
+        let borderProperties: any[] = [
+            borders[topProperty[this.keywordIndex]],
+            borders[leftProperty[this.keywordIndex]],
+            borders[bottomProperty[this.keywordIndex]],
+            borders[rightProperty[this.keywordIndex]]
+        ];
+        
+        if (isParagraphBorder) {
+            borderProperties.push(borders[horizontalProperty[this.keywordIndex]]);
+            borderProperties.push(borders[verticalProperty[this.keywordIndex]]);
+        } else {
+            borderProperties.push(borders[horizontalProperty[this.keywordIndex]]);
+            borderProperties.push(borders[verticalProperty[this.keywordIndex]]);
+            borderProperties.push(borders[diagonalDownProperty[this.keywordIndex]]);
+            borderProperties.push(borders[diagonalUpProperty[this.keywordIndex]]);
+        }
+        
+        for (let i: number = 0; i < borderProperties.length; i++) {
+            let border: any = borderProperties[i];
+            if (isNullOrUndefined(border)) {
+                continue;
+            }
+            let borderStyle: any = border[lineStyleProperty[this.keywordIndex]];
+            let sz: number = ((border[lineWidthProperty[this.keywordIndex]] ? border[lineWidthProperty[this.keywordIndex]] : 0) * 8);
+            
+            // Border has content if it's 'Cleared' or if it's not 'None'/undefined with valid size
+            if (borderStyle === (this.keywordIndex == 1 ? 26 : 'Cleared')) {
+                return true;
+            }
+            if (!((borderStyle === (this.keywordIndex == 1 ? 1 : 'None') || isNullOrUndefined(borderStyle)) && !HelperMethods.parseBoolValue(border[hasNoneStyleProperty[this.keywordIndex]])) && !(sz < 0 && !HelperMethods.parseBoolValue(border[hasNoneStyleProperty[this.keywordIndex]]))) {
+                return true;
+            }
+        }
+        return false;
     }
     // Serialize the table layout element
     private serializeTblLayout(writer: XmlWriter, format: any): void {
@@ -6155,6 +6201,15 @@ export class WordExport {
     }
     // Serializes the paragraph spacings
     private serializeParagraphSpacing(writer: XmlWriter, paragraphFormat: any): void {
+        // Check if any spacing properties exist before writing the element
+        if (isNullOrUndefined(paragraphFormat[beforeSpacingProperty[this.keywordIndex]]) &&
+            isNullOrUndefined(paragraphFormat[spaceBeforeAutoProperty[this.keywordIndex]]) &&
+            isNullOrUndefined(paragraphFormat[afterSpacingProperty[this.keywordIndex]]) &&
+            isNullOrUndefined(paragraphFormat[spaceAfterAutoProperty[this.keywordIndex]]) &&
+            isNullOrUndefined(paragraphFormat[lineSpacingProperty[this.keywordIndex]]) &&
+            isNullOrUndefined(paragraphFormat[lineSpacingTypeProperty[this.keywordIndex]])) {
+            return;
+        }
         writer.writeStartElement(undefined, 'spacing', this.wNamespace);
         // if (paragraphFormat.HasValue(WParagraphFormat.BeforeLinesKey))
         // {
@@ -6233,7 +6288,12 @@ export class WordExport {
     }
     // Serializes the paragraph indentation
     private serializeIndentation(writer: XmlWriter, paragraphFormat: any): void {
-
+        // Check if any indentation properties exist before writing the element
+        if (isNullOrUndefined(paragraphFormat[leftIndentProperty[this.keywordIndex]]) &&
+            isNullOrUndefined(paragraphFormat[rightIndentProperty[this.keywordIndex]]) &&
+            isNullOrUndefined(paragraphFormat[firstLineIndentProperty[this.keywordIndex]])) {
+            return;
+        }
         writer.writeStartElement(undefined, 'ind', this.wNamespace);
         if (!isNullOrUndefined(paragraphFormat[leftIndentProperty[this.keywordIndex]])) {
             writer.writeAttributeString(undefined, 'left', this.wNamespace, this.roundToTwoDecimal(paragraphFormat[leftIndentProperty[this.keywordIndex]] * this.twipsInOnePoint).toString());
@@ -6446,6 +6506,37 @@ export class WordExport {
     private serializeCharacterFormat(writer: XmlWriter, characterFormat: any): void {
         if (isNullOrUndefined(this.keywordIndex)) {
             this.keywordIndex = 0;
+        }
+        // Check if any character format properties exist before writing the element
+        let hasAnyProperty: boolean = !isNullOrUndefined(characterFormat[styleNameProperty[this.keywordIndex]]) ||
+            !isNullOrUndefined(characterFormat[fontFamilyProperty[this.keywordIndex]]) ||
+            !isNullOrUndefined(characterFormat[fontFamilyBidiProperty[this.keywordIndex]]) ||
+            !isNullOrUndefined(characterFormat[fontFamilyFarEastProperty[this.keywordIndex]]) ||
+            !isNullOrUndefined(characterFormat[fontFamilyAsciiProperty[this.keywordIndex]]) ||
+            !isNullOrUndefined(characterFormat[fontFamilyNonFarEastProperty[this.keywordIndex]]) ||
+            !isNullOrUndefined(characterFormat[boldProperty[this.keywordIndex]]) ||
+            HelperMethods.parseBoolValue(characterFormat[boldBidiProperty[this.keywordIndex]]) ||
+            !isNullOrUndefined(characterFormat[italicProperty[this.keywordIndex]]) ||
+            !isNullOrUndefined(characterFormat[italicBidiProperty[this.keywordIndex]]) ||
+            (HelperMethods.parseBoolValue(characterFormat[hiddenProperty[this.keywordIndex]])) ||
+            HelperMethods.parseBoolValue(characterFormat[bidiProperty[this.keywordIndex]]) ||
+            !isNullOrUndefined(characterFormat[allCapsProperty[this.keywordIndex]]) ||
+            HelperMethods.parseBoolValue(characterFormat[complexScriptProperty[this.keywordIndex]]) ||
+            !isNullOrUndefined(characterFormat[strikethroughProperty[this.keywordIndex]]) ||
+            !isNullOrUndefined(characterFormat[fontColorProperty[this.keywordIndex]]) ||
+            !isNullOrUndefined(characterFormat[highlightColorProperty[this.keywordIndex]]) ||
+            !isNullOrUndefined(characterFormat[fontSizeProperty[this.keywordIndex]]) ||
+            !isNullOrUndefined(characterFormat[fontSizeBidiProperty[this.keywordIndex]]) ||
+            !isNullOrUndefined(characterFormat[underlineProperty[this.keywordIndex]]) ||
+            !isNullOrUndefined(characterFormat[baselineAlignmentProperty[this.keywordIndex]]) ||
+            !isNullOrUndefined(characterFormat[localeIdBidiProperty[this.keywordIndex]]) ||
+            !isNullOrUndefined(characterFormat[localeIdFarEastProperty[this.keywordIndex]]) ||
+            !isNullOrUndefined(characterFormat[localeIdProperty[this.keywordIndex]]) ||
+            !isNullOrUndefined(characterFormat[characterSpacingProperty[this.keywordIndex]]) ||
+            !isNullOrUndefined(characterFormat[scalingProperty[this.keywordIndex]]);
+
+        if (!hasAnyProperty) {
+            return;
         }
         writer.writeStartElement(undefined, 'rPr', this.wNamespace);
         if (!isNullOrUndefined(characterFormat[styleNameProperty[this.keywordIndex]])) {

@@ -4,7 +4,7 @@ import { getObject, PdfExport as GridPdf, Grid, BeforeDataBoundArgs, PdfExportPr
 import { PdfQueryCellInfoEventArgs, PdfStyle } from '@syncfusion/ej2-grids';
 import { isRemoteData, isOffline } from '../utils';
 import { isNullOrUndefined, setValue, Fetch, extend, getValue } from '@syncfusion/ej2-base';
-import { DataManager, Query, ReturnOption } from '@syncfusion/ej2-data';
+import { DataManager, Query, ReturnOption, QueryOptions, ParamOption } from '@syncfusion/ej2-data';
 import * as event from '../base/constant';
 import { PdfDocument } from '@syncfusion/ej2-pdf-export';
 /**
@@ -129,16 +129,16 @@ export class PdfExport {
         return query;
     }
     protected manipulatePdfProperties(prop?: PdfExportProperties, dtSrc?: Object, queryResult?: Fetch) : Object {
-        let args: Object = {};
+        let args: BeforeDataBoundArgs = Object();
         //count not required for this query
         const isLocal: boolean = !isRemoteData(this.parent) && isOffline(this.parent);
         setValue('query', this.parent.grid.getDataModule().generateQuery(true), args);
         if (!isLocal && !isNullOrUndefined(prop) && !isNullOrUndefined((prop as TreeGridPdfExportProperties).isCollapsedStatePersist)
             && (prop as TreeGridPdfExportProperties).isCollapsedStatePersist === false) {
-            if ((args as any).query && (args as any).query.queries && (args as any).query.queries.length) {
-                (args as any).query.queries = (args as any).query.queries.filter((q: any) => {
+            if (args.query && args.query.queries && args.query.queries.length) {
+                args.query.queries = args.query.queries.filter((q: QueryOptions) => {
                     if (q.fn === 'onWhere' && q.e) {
-                        const preds: any = q.e;
+                        const preds: QueryOptions = q.e;
                         if (preds && preds.field === this.parent.parentIdMapping && (preds.value === null || preds.value === 'null')) {
                             return false;
                         }
@@ -146,8 +146,8 @@ export class PdfExport {
                     return true;
                 });
             }
-            if ((args as any).query && (args as any).query.params && (args as any).query.params.length) {
-                (args as any).query.params = (args as any).query.params.filter((param: any) => param.key !== 'IdMapping');
+            if (args.query && args.query.params && args.query.params.length) {
+                args.query.params = args.query.params.filter((param: ParamOption) => param.key !== 'IdMapping');
             }
         }
         setValue('isExport',  true, args);

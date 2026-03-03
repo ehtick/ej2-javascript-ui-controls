@@ -3,7 +3,7 @@
  */
 import { Gantt, Selection, Toolbar, DayMarkers, Edit, Filter, Reorder, Resize, ColumnMenu, VirtualScroll, Sort, RowDD, ContextMenu, ExcelExport, PdfExport } from '../../src/index';
 import { createElement, getValue } from '@syncfusion/ej2-base';
-import { resourceData,resourceCollection,resourceViewData, scheduleModeData,scheduleModeData1, data, data1, data2, data3, data4 } from '../base/data-source.spec';
+import { resourceData,resourceCollection,resourceViewData, scheduleModeData,scheduleModeData1, data, data1, data2, data3, data4, cr816171 } from '../base/data-source.spec';
 import { destroyGantt, triggerMouseEvent, createGantt, getRandom } from '../base/gantt-util.spec';
 Gantt.Inject(Selection, Toolbar, DayMarkers, Edit, Filter, Reorder, Resize, ColumnMenu, VirtualScroll, Sort, RowDD, ContextMenu, ExcelExport, PdfExport);
 
@@ -1779,3 +1779,73 @@ describe('Gantt tooltip module', () => {
             }
         });
     });
+describe('Checking tooltip after filtering-816171', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: cr816171,
+            taskFields: {
+                id: "TaskId",
+                name: "TaskName",
+                startDate: "StartDate",
+                endDate: "EndDate",
+                baselineStartDate: "BaselineStartDate",
+                baselineEndDate: "BaselineEndDate",
+                baselineDuration: 'baselineDur',
+                parentID: 'ParentId',
+                duration: 'Duration',
+                dependency: 'Predecessor',
+                progress: 'Progress'
+            },
+            allowSorting: true,
+            editSettings: {
+                allowAdding: true,
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            renderBaseline: true,
+            gridLines: "Horizontal",
+            columns: [
+                { field: "TaskId", visible: false, headerText: "Task ID" },
+                { field: "TaskName", headerText: "Task Name", allowReordering: false, width: 200 },
+                { field: 'StartDate', width: 140, },
+                { field: 'Duration', width: 125, },
+                { field: "BaselineStartDate", headerText: "Baseline Start Date", width: 195, },
+                { field: "baselineDur", type: "string", editType: "stringedit", width: 195, },
+                { field: "variance", headerText: "Variance", allowEditing: false, width: 140, },
+            ],
+            treeColumnIndex: 1,
+            allowSelection: true,
+            includeWeekend: true,
+            splitterSettings: {
+                columnIndex: 4,
+            },
+            allowResizing: true,
+            height: '650px',
+            allowFiltering: true,
+            projectStartDate: new Date("07/02/2025"),
+            projectEndDate: new Date("08/11/2025"),
+        }, done);
+    });
+    it('filtering', (done: Function) => {
+        ganttObj.filterByColumn('TaskName', 'equal', 'Allot mechanic');
+        ganttObj.actionComplete = (args: any): void => {
+            if (args.requestType == "filtering") {
+                expect(ganttObj.currentViewData.length).toBe(2)
+                done();
+            }
+        };
+    });
+    it('checking baseline tooltip', () => {
+        let baseline: HTMLElement = ganttObj.element.querySelector('#' + ganttObj.element.id + 'GanttTaskTableBody > tr:nth-child(2) > td > div.e-baseline-bar') as HTMLElement;
+        triggerMouseEvent(baseline, 'mouseover', 50);
+        expect((ganttObj.tooltipModule.toolTipObj as any).content().includes("Allot mechanic")).toBe(true);
+    });
+    afterAll(function () {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});

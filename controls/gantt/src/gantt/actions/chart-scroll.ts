@@ -265,6 +265,7 @@ export class ChartScroll {
             this.parent.enableTimelineVirtualization === true) && (this.parent.isToolBarClick ||
                 isNullOrUndefined(this.parent.isToolBarClick))) {
             this.parent.isVirtualScroll = true;
+            this.parent['isVirtualScrollAction'] = true;
             if (this.parent.showIndicator || isNullOrUndefined(this.parent.showIndicator)) {
                 if (!this.parent.enableVirtualMaskRow && this.parent.enableVirtualization && this.parent.loadingIndicator.indicatorType === 'Spinner') {
                     this.updateSpinner();

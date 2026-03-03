@@ -417,6 +417,7 @@ export class ColorPicker extends Component<HTMLInputElement> implements INotifyP
                 }
             });
         this.splitBtn.createElement = this.createElement;
+        if (this.isAngular) { this.splitBtn.isAngular = this.isAngular; }
         this.splitBtn.appendTo(splitButton);
         this.splitBtn.element.setAttribute('aria-label', 'colorpicker');
         const preview: HTMLElement = this.createElement('span', { className: SPLITPREVIEW });
@@ -492,8 +493,9 @@ export class ColorPicker extends Component<HTMLInputElement> implements INotifyP
                         this.modal = this.createElement('div');
                         this.modal.className = 'e-' + this.getModuleName() + ' e-modal';
                         this.modal.style.display = 'none';
-                        document.body.insertBefore(this.modal, popupEle);
-                        document.body.className += ' e-colorpicker-overflow';
+                        const appendToElement: HTMLElement = this.getAppendToElement();
+                        appendToElement.insertBefore(this.modal, popupEle);
+                        appendToElement.className += ' e-colorpicker-overflow';
                         this.modal.style.display = 'block';
                         this.modal.style.zIndex = (Number(popupEle.style.zIndex) - 1).toString();
                     }
@@ -527,6 +529,17 @@ export class ColorPicker extends Component<HTMLInputElement> implements INotifyP
         };
     }
 
+    protected getAppendToElement(): HTMLElement {
+        if (this.isAngular) {
+            const cdkPane: HTMLElement = this.element.closest('.cdk-overlay-pane') as HTMLElement;
+            const popoverEl: HTMLElement = this.element.closest('[popover]') as HTMLElement;
+            if (cdkPane && popoverEl) {
+                return cdkPane;
+            }
+        }
+        return document.body;
+    }
+
     private onPopupClose(): void {
         this.unWireEvents();
         this.destroyOtherComp();
@@ -536,7 +549,8 @@ export class ColorPicker extends Component<HTMLInputElement> implements INotifyP
         this.container.innerHTML = '';
         removeClass([this.container], [PICKERCONTENT, PALETTECONTENT]);
         if (Browser.isDevice && this.modal) {
-            removeClass([document.body], 'e-colorpicker-overflow');
+            const appendToElement: HTMLElement = this.getAppendToElement();
+            removeClass([appendToElement], 'e-colorpicker-overflow');
             this.modal.style.display = 'none';
             this.modal.outerHTML = '';
             this.modal = null;

@@ -113,6 +113,75 @@ export type Underline =
     'WavyDouble';
 
 /**
+ * Enum Ligature for character format
+ */
+export type Ligature =
+    /**
+     * No Ligature Property.
+     */
+    'None' |
+    /**
+     * Ligature type Standard.
+     */
+    'Standard' |
+    /**
+     * Ligature type Contextual.
+     */
+    'Contextual' |
+    /**
+     * Ligature type StandardContextual.
+     */
+    'StandardContextual' |
+    /**
+     * Ligature type Historical.
+     */
+    'Historical' |
+    /**
+     * Ligature type StandardHistorical.
+     */
+    'StandardHistorical' |
+    /**
+     * Ligature type ContextualHistorical.
+     */
+    'ContextualHistorical' |
+    /**
+     * Ligature type StandardContextualHistorical
+     */
+    'StandardContextualHistorical' |
+    /**
+     * Ligature type Discretional
+     */
+    'Discretional' |
+    /**
+     * Ligature type StandardDiscretional.
+     */
+    'StandardDiscretional' |
+    /**
+     * Ligature type ContextualDiscretional.
+     */
+    'ContextualDiscretional' |
+    /**
+     * Ligature type StandardContextualDiscretional.
+     */
+    'StandardContextualDiscretional' |
+    /**
+     *  Ligature type HistoricalDiscretional.
+     */
+    'HistoricalDiscretional' |
+    /**
+     * Ligature type StandardHistoricalDiscretional.
+     */
+    'StandardHistoricalDiscretional' |
+    /**
+     * Ligature type ContextualHistoricalDiscretional.
+     */
+    'ContextualHistoricalDiscretional' |
+    /**
+     * Ligature type All.
+     */
+    'All';
+
+/**
  * Enum strikethrough for character format
  */
 export type Strikethrough =

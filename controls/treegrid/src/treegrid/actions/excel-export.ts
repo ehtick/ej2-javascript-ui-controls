@@ -5,7 +5,7 @@ import { ExcelStyle, ExcelQueryCellInfoEventArgs, AggregateQueryCellInfoEventArg
 import { ExcelRow, Row, Column, Data } from '@syncfusion/ej2-grids';
 import { isRemoteData, isOffline, getParentData, getExpandStatus } from '../utils';
 import { isNullOrUndefined, setValue, Fetch, extend } from '@syncfusion/ej2-base';
-import { DataManager, Query, ReturnOption } from '@syncfusion/ej2-data';
+import { DataManager, Query, ReturnOption, ParamOption, QueryOptions } from '@syncfusion/ej2-data';
 import * as event from '../base/constant';
 /**
  * TreeGrid Excel Export module
@@ -100,11 +100,28 @@ export class ExcelExport {
             let query: Query = new Query();
             if (!this.isLocal()) {
                 query = this.generateQuery(query);
-                query.queries = this.parent.grid.getDataModule().generateQuery().queries;
-                query = ExportHelper.getQuery(this.parent.grid, data);
-                if (isNullOrUndefined(this.parent.filterModule)) {
-                    query.queries = query.queries.slice(1, 2);
-                    query.params = query.params.slice(0, 0);
+                const hasFilter: boolean =
+                    this.parent.grid.filterSettings &&
+                    Array.isArray(this.parent.grid.filterSettings.columns) &&
+                    this.parent.grid.filterSettings.columns.length > 0;
+
+                const hasSearch: boolean =
+                    this.parent.grid.searchSettings &&
+                    typeof this.parent.grid.searchSettings.key === 'string' &&
+                    this.parent.grid.searchSettings.key.trim().length > 0;
+
+                const hasSorting: boolean =
+                    this.parent.grid.sortSettings &&
+                    Array.isArray(this.parent.grid.sortSettings.columns) &&
+                    this.parent.grid.sortSettings.columns.length > 0;
+
+                if (hasFilter || hasSearch || hasSorting) {
+                    query.queries = this.parent.grid.getDataModule().generateQuery().queries;
+                    query = ExportHelper.getQuery(this.parent.grid, data);
+                    if (isNullOrUndefined(this.parent.filterModule)) {
+                        query.queries = query.queries.slice(1, 2);
+                        query.params = query.params.slice(0, 0);
+                    }
                 }
                 setValue('query', query, property);
             }
@@ -145,6 +162,26 @@ export class ExcelExport {
         let args: BeforeDataBoundArgs = Object();
         if (!isNullOrUndefined(this.parent.grid.getDataModule())) {
             setValue('query', this.parent.grid.getDataModule().generateQuery(true), args);
+        }
+        if (
+            !this.isLocal() && !isNullOrUndefined(property) &&
+            !isNullOrUndefined((property as TreeGridExcelExportProperties).isCollapsedStatePersist) &&
+            (property as TreeGridExcelExportProperties).isCollapsedStatePersist === false
+        ) {
+            if (args.query && args.query.queries && args.query.queries.length) {
+                args.query.queries = args.query.queries.filter((q: QueryOptions) => {
+                    if (q.fn === 'onWhere' && q.e) {
+                        const preds: QueryOptions = q.e;
+                        if (preds && preds.field === this.parent.parentIdMapping && (preds.value === null || preds.value === 'null')) {
+                            return false;
+                        }
+                    }
+                    return true;
+                });
+            }
+            if (args.query && args.query.params && args.query.params.length) {
+                args.query.params = args.query.params.filter((param: ParamOption) => param.key !== 'IdMapping');
+            }
         }
         setValue('isExport',  true, args);
         if (!isNullOrUndefined(property) && !isNullOrUndefined(property.exportType)) {

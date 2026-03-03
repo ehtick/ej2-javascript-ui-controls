@@ -2711,8 +2711,10 @@ export class DocumentEditor extends Component<HTMLElement> implements INotifyPro
         if (!this.enableSelection) {
             return;
         }
+        const locale: L10n = new L10n('documenteditor', this.defaultLocale);
+        locale.setLocale(this.locale);
         const attributes: Object = {
-            'id': this.element.id + 'PICTURE_CONTENT_CONTROL', innerHTML: 'Picture',
+            'id': this.element.id + 'PICTURE_CONTENT_CONTROL', innerHTML: locale.getConstant('Picture'),
             class: 'e-btn-icon e-icons e-de-ctnr-image e-icon-left',
             style: 'height:' + 20 + 'px;width:' + 70 + 'px;z-index:5;position:absolute;background-color:#ccc;border:1px solid #ccc;display:',
 
@@ -2744,9 +2746,6 @@ export class DocumentEditor extends Component<HTMLElement> implements INotifyPro
         } else if (!isNullOrUndefined(picture_cc) && !showPicContentControl && !pictureElement) {
             picture_cc.style.display = "none";
         }
-        const locale: L10n = new L10n('documenteditor', this.defaultLocale);
-        locale.setLocale(this.locale);
-        locale.getConstant('Picture')
     }
     /**
         * Update the picture content control dialog position
@@ -3477,6 +3476,8 @@ export class DocumentEditor extends Component<HTMLElement> implements INotifyPro
         'Unsaved comments': 'Unsaved comments',
         'XML Mapping': 'XML Mapping',
         'Custom XML Part' :'Custom XML Part:',
+        'Choose an XML file' :'Choose an XML file',
+        'Add new part' :'Add new part',
         'Discard Comment body': 'You have comments that haven\'t been posted yet. If you leave this page, they\'ll be discarded',
         'Discard Content Control': 'You can not insert a content control when the selection includes another content control.',
         'No Headings': 'No Heading Found!',
@@ -3487,13 +3488,13 @@ export class DocumentEditor extends Component<HTMLElement> implements INotifyPro
         'Text Form': 'Text Form',
         'Check Box': 'Check Box',
         'Drop Down Form Field': 'Drop Down Form Field',
-        'Dropdown items': 'Drop-down items',
-        'Items in dropdown list': 'Items in drop-down list',
+        'Drop-down items': 'Drop-down items',
+        'Items in drop-down list': 'Items in drop-down list',
         'ADD': 'ADD',
         'REMOVE': 'REMOVE',
         'Field settings': 'Field settings',
         'Tooltip': 'Tooltip',
-        'Dropdown enabled': 'Drop-down enabled',
+        'Drop-down enabled': 'Drop-down enabled',
         'Check Box Form Field': 'Check Box Form Field',
         'Check box size': 'Check box size',
         'Auto': 'Auto',
