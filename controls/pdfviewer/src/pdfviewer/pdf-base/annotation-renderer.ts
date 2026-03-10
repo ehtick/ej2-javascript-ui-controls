@@ -4482,7 +4482,7 @@ export class AnnotationRenderer {
         else {
             annotation.IsLocked = false;
         }
-        if (!isNullOrUndefined(annotFlags) && annotFlags.includes('readOnly')) {
+        if (!isNullOrUndefined(annotFlags) && (annotFlags.includes('readOnly') || annotFlags.includes('readonly'))) {
             annotation.IsCommentLock = true;
         }
         else {

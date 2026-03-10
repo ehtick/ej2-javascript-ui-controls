@@ -3005,7 +3005,10 @@ export class MultiSelect extends DropDownBase implements IInput {
                 }
             }
             else{
-                this.onActionComplete(list, this.mainData);
+                const listUl: HTMLElement = this.list && this.list.querySelector('ul');
+                const isFullList: boolean = (this as any).isReact && this.itemTemplate && listUl != null &&
+                    listUl.querySelectorAll('.e-list-item').length === this.mainData.length;
+                this.onActionComplete(isFullList ? listUl : list, this.mainData);
             }
             this.focusAtLastListItem(data);
             if (this.value && this.value.length) {
@@ -3235,8 +3238,12 @@ export class MultiSelect extends DropDownBase implements IInput {
         addClass([element], CHIP_SELECTED);
         if (element) {
             element.setAttribute('id', this.element.id + '_chip_item');
-            if (!isNullOrUndefined(this.inputElement) && element.id && !this.inputElement.hasAttribute('aria-activedescendant')) {
+            if (!isNullOrUndefined(this.inputElement) && element.id) {
                 this.inputElement.setAttribute('aria-activedescendant', element.id);
+            }
+            const chipClose: HTMLElement = <HTMLElement>element.querySelector('span.' + CHIP_CLOSE.split(' ')[0]);
+            if (chipClose) {
+                chipClose.removeAttribute('aria-hidden');
             }
         }
         this.trigger('chipSelection', e);
@@ -3641,6 +3648,7 @@ export class MultiSelect extends DropDownBase implements IInput {
         length?: number, dataValue?: { [key: string]: Object } | string | number | boolean, text?: string): void {
         const list: string[] | number[] | boolean[] | { [key: string]: Object }[] = this.listData;
         if (this.initStatus && !isNotTrigger && (!this.allowObjectBinding || (this.allowObjectBinding && value))) {
+            let selectAllArgsLocal: ISelectAllEventArgs | null = null;
             value = this.allowObjectBinding ? getValue(((this.fields.value) ? this.fields.value : ''), value) : value;
             const val: FieldSettingsModel = dataValue ? dataValue : this.getDataByValue(value) as any;
             const eventArgs: SelectEventArgs = {
@@ -3657,15 +3665,13 @@ export class MultiSelect extends DropDownBase implements IInput {
                         this.selectAllEventEle.push(<HTMLLIElement>element);
                     }
                     if (length === 1) {
-                        const args: ISelectAllEventArgs = {
+                        selectAllArgsLocal = {
                             event: eve,
                             items: this.selectAllEventEle,
                             itemData: this.selectAllEventData,
                             isInteracted: eve ? true : false,
                             isChecked: true
                         };
-                        this.trigger('selectedAll', args);
-                        this.selectAllEventData = [];
                     }
                     if (this.allowCustomValue && this.isServerRendered && this.listData !== list) {
                         this.listData = list;
@@ -3699,6 +3705,10 @@ export class MultiSelect extends DropDownBase implements IInput {
                     if (this.hideSelectedItem && this.fixedHeaderElement && this.fields.groupBy && this.mode !== 'CheckBox') {
                         super.scrollStop();
                     }
+                    if (selectAllArgsLocal) {
+                        this.trigger('selectedAll', selectAllArgsLocal);
+                        this.selectAllEventData = [];
+                    }
                 }
             });
         }
@@ -3712,11 +3722,16 @@ export class MultiSelect extends DropDownBase implements IInput {
         const elements: NodeListOf<Element> = <NodeListOf<HTMLElement>>
             this.chipCollectionWrapper.querySelectorAll('span.' + CHIP + '.' + CHIP_SELECTED);
         removeClass(elements, CHIP_SELECTED);
-        if (Browser.isDevice) {
-            const closeElements: NodeListOf<Element> = <NodeListOf<HTMLElement>>
+        const closeElements: NodeListOf<Element> = <NodeListOf<HTMLElement>>
             this.chipCollectionWrapper.querySelectorAll('span.' + CHIP_CLOSE.split(' ')[0]);
+        if (Browser.isDevice) {
             for (let index: number = 0; index < closeElements.length; index++) {
+                closeElements[index as number].setAttribute('aria-hidden', 'true');
                 (<HTMLElement>closeElements[index as number]).style.display = 'none';
+            }
+        } else {
+            for (let index: number = 0; index < closeElements.length; index++) {
+                closeElements[index as number].setAttribute('aria-hidden', 'true');
             }
         }
 
@@ -3760,7 +3775,7 @@ export class MultiSelect extends DropDownBase implements IInput {
         });
         let compiledString: Function;
         const chipContent: HTMLElement = this.createElement('span', { className: CHIP_CONTENT });
-        const chipClose: HTMLElement = this.createElement('span', { className: CHIP_CLOSE });
+        const chipClose: HTMLElement = this.createElement('span', { className: CHIP_CLOSE, attrs: { 'aria-label': 'delete', 'aria-hidden': 'true', 'tabindex': '-1' } });
         if (this.mainData) {
             itemData = this.getDataByValue(value);
         }
@@ -5134,6 +5149,9 @@ export class MultiSelect extends DropDownBase implements IInput {
                         this.hidePopup(e);
                     } else {
                         e.preventDefault();
+                        if (this.value.length === this.listData.length && this.isPopupOpen()) {
+                            this.hidePopup(e);
+                        }
                     }
                     const isFilterData: boolean = this.targetElement().trim() !== '' ? true : false;
                     this.makeTextBoxEmpty();
@@ -6781,7 +6799,7 @@ export class MultiSelect extends DropDownBase implements IInput {
             this.componentWrapper.appendChild(this.delimiterWrapper);
         } else {
             this.chipCollectionWrapper = this.createElement('span', {
-                className: CHIP_WRAPPER
+                className: CHIP_WRAPPER, attrs: { role: 'listbox' }
             });
             this.chipCollectionWrapper.style.display = 'none';
             if (this.mode === 'Default') {

@@ -478,17 +478,14 @@ export function PdfiumRunner(): void {
                 const data: object = firstPage.render('print', null, false, event.data.printScaleFactor, event.data.printDevicePixelRatio);
                 ctx.postMessage(data);
             }
-            else if (event.data.message === 'extractImage' || event.data.message === 'extractImages') {
+            else if (event.data.message === 'extractImage' || event.data.message === 'extractImages' ||
+                     (event.data.message as string).indexOf('extractImage_') === 0 ||
+                     (event.data.message as string).indexOf('extractImages_') === 0) {
                 const firstPage: Page = documentDetails.getPage(event.data.pageIndex);
                 const ImageData: any = event.data;
                 const data: object = firstPage.render(null, ImageData.zoomFactor, ImageData.isTextNeed, null, null,
                                                       ImageData.textDetailsId, null, null, null, event.data.size);
-                if (event.data.message === 'extractImage') {
-                    (data as any).message = 'imageExtracted';
-                }
-                if (event.data.message === 'extractImages') {
-                    (data as any).message = 'imagesExtracted';
-                }
+                (data as any).message = event.data.message;
                 ctx.postMessage(data);
             }
             else if (event.data.message === 'renderImageAsTile') {

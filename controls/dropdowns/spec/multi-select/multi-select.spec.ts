@@ -5249,6 +5249,7 @@ describe('MultiSelect', () => {
                 showSelectAll: true,
                 selectedAll: (args: ISelectAllEventArgs): void => {
                     expect(args.itemData.length).toBe(4);
+                    expect(ddl.value.length).toBe(5);
                 }
 
             });
@@ -12165,6 +12166,168 @@ describe('MultiSelect', () => {
             });
             listObj.appendTo(element);
             expect((<any>listObj).chipCollectionWrapper.innerText).toBe('10');
+        });
+    });
+    describe('closePopupOnSelect property - empty space popup', () => {
+        let data: any = [
+            { id: 'list1', text: 'JAVA' },
+            { id: 'list2', text: 'C#' },
+            { id: 'list3', text: 'C++' },
+            { id: 'list4', text: '.NET' },
+            { id: 'list5', text: 'Oracle' }
+        ];
+        let originalTimeout: number;
+
+        beforeAll(() => {
+            originalTimeout = jasmine.DEFAULT_TIMEOUT_INTERVAL;
+            jasmine.DEFAULT_TIMEOUT_INTERVAL = 30000;
+        });
+
+        afterAll(() => {
+            jasmine.DEFAULT_TIMEOUT_INTERVAL = originalTimeout;
+        });
+
+        it('closePopupOnSelect true - popup should close on single item selection', (done) => {
+            let element: HTMLInputElement = <HTMLInputElement>createElement('input', { id: 'multiselect_closePopup1' });
+            document.body.appendChild(element);
+
+            let listObj = new MultiSelect({
+                dataSource: data,
+                fields: { text: 'text', value: 'id' },
+                closePopupOnSelect: true,
+                hideSelectedItem: false
+            });
+            listObj.appendTo(element);
+            listObj.showPopup();
+
+            expect((<any>listObj).isPopupOpen()).toBe(true);
+            let list: Array<HTMLElement> = (<any>listObj).list.querySelectorAll('li.e-list-item');
+            mouseEventArgs.target = list[0];
+            mouseEventArgs.type = 'click';
+            (<any>listObj).onMouseClick(mouseEventArgs);
+
+            // Popup should close after selecting first item
+            expect((<any>listObj).isPopupOpen()).toBe(false);
+            expect(listObj.value.length).toBe(1);
+            listObj.destroy();
+            element.remove();
+            done();
+        });
+
+        it('closePopupOnSelect false - popup should remain open on single item selection', (done) => {
+            let element: HTMLInputElement = <HTMLInputElement>createElement('input', { id: 'multiselect_closePopup2' });
+            document.body.appendChild(element);
+
+            let listObj = new MultiSelect({
+                dataSource: data,
+                fields: { text: 'text', value: 'id' },
+                closePopupOnSelect: false,
+                hideSelectedItem: false
+            });
+            listObj.appendTo(element);
+            listObj.showPopup();
+
+            expect((<any>listObj).isPopupOpen()).toBe(true);
+            let list: Array<HTMLElement> = (<any>listObj).list.querySelectorAll('li.e-list-item');
+            mouseEventArgs.target = list[0];
+            mouseEventArgs.type = 'click';
+            (<any>listObj).onMouseClick(mouseEventArgs);
+
+            // Popup should remain open after selecting first item
+            expect((<any>listObj).isPopupOpen()).toBe(true);
+            expect(listObj.value.length).toBe(1);
+            listObj.destroy();
+            element.remove();
+            done();
+        });
+
+        it('closePopupOnSelect false - popup should close when all items are selected', (done) => {
+            let element: HTMLInputElement = <HTMLInputElement>createElement('input', { id: 'multiselect_closePopup3' });
+            document.body.appendChild(element);
+
+            let listObj = new MultiSelect({
+                dataSource: data,
+                fields: { text: 'text', value: 'id' },
+                closePopupOnSelect: false,
+                hideSelectedItem: false
+            });
+            listObj.appendTo(element);
+            listObj.showPopup();
+
+            expect((<any>listObj).isPopupOpen()).toBe(true);
+            let list: Array<HTMLElement> = (<any>listObj).list.querySelectorAll('li.e-list-item');
+
+            // Select all items
+            for (let i = 0; i < list.length; i++) {
+                mouseEventArgs.target = list[i];
+                mouseEventArgs.type = 'click';
+                (<any>listObj).onMouseClick(mouseEventArgs);
+            }
+
+            // Popup should close when all items are selected (CORE FIX)
+            expect((<any>listObj).isPopupOpen()).toBe(false);
+            expect(listObj.value.length).toBe(5);
+            listObj.destroy();
+            element.remove();
+            done();
+        });
+
+        it('closePopupOnSelect true with multiple selections - popup should close on each selection', (done) => {
+            let element: HTMLInputElement = <HTMLInputElement>createElement('input', { id: 'multiselect_closePopup5' });
+            document.body.appendChild(element);
+
+            let listObj = new MultiSelect({
+                dataSource: data,
+                fields: { text: 'text', value: 'id' },
+                closePopupOnSelect: true,
+                hideSelectedItem: false
+            });
+            listObj.appendTo(element);
+            listObj.showPopup();
+
+            expect((<any>listObj).isPopupOpen()).toBe(true);
+            let list: Array<HTMLElement> = (<any>listObj).list.querySelectorAll('li.e-list-item');
+            mouseEventArgs.target = list[0];
+            mouseEventArgs.type = 'click';
+            (<any>listObj).onMouseClick(mouseEventArgs);
+
+            expect((<any>listObj).isPopupOpen()).toBe(false);
+            expect(listObj.value.length).toBe(1);
+            listObj.destroy();
+            element.remove();
+            done();
+        });
+
+
+        it('closePopupOnSelect false with hideSelectedItem - popup should close when all items are selected', (done) => {
+            let element: HTMLInputElement = <HTMLInputElement>createElement('input', { id: 'multiselect_closePopup7' });
+            document.body.appendChild(element);
+
+            let listObj = new MultiSelect({
+                dataSource: data,
+                fields: { text: 'text', value: 'id' },
+                closePopupOnSelect: false,
+                hideSelectedItem: true
+            });
+            listObj.appendTo(element);
+            listObj.showPopup();
+
+            expect((<any>listObj).isPopupOpen()).toBe(true);
+
+            // Select all items one by one
+            let list: Array<HTMLElement> = (<any>listObj).list.querySelectorAll('li.e-list-item');
+            for (let i = 0; i < list.length; i++) {
+                mouseEventArgs.target = list[i];
+                mouseEventArgs.type = 'click';
+                (<any>listObj).onMouseClick(mouseEventArgs);
+            }
+
+            // Popup should close when all items are selected
+            expect((<any>listObj).isPopupOpen()).toBe(false);
+            expect(listObj.value.length).toBe(data.length);
+            listObj.destroy();
+            element.remove();
+            done();
         });
     });
 });

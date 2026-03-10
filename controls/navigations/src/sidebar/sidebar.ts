@@ -762,6 +762,13 @@ export class Sidebar extends Component<HTMLElement> implements INotifyPropertyCh
                 else {
                     addClass([this.element], DOCKER);
                 }
+                if (!this.isOpen && sibling) {
+                    if (!this.enableDock) {
+                        this.element.style.transform = sibling.style.transform = '';
+                    }
+                    sibling.style[this.position === 'Left' ? 'marginLeft' : 'marginRight'] =
+                        this.enableDock ? this.setDimension(this.dockSize) : '0px';
+                }
                 break;
             case 'zIndex':
                 this.setZindex();

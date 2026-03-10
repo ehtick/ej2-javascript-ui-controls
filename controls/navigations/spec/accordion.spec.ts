@@ -3703,7 +3703,45 @@ describe("Accordion Testing", () => {
             let headerEle: HTMLElement = <HTMLElement>ele.children[0].children[0];
             expect(headerEle.firstChild.textContent === "Arkansas").toBe(true);
         });
-
+        it("dataSource without itemTemplate should render item.content via fetchElement (no TypeError)", (done: Function) => {
+            let el: HTMLElement = createElement('div', { id: 'ds_no_template' });
+            document.body.appendChild(el);
+            let ds: Object[] = [{ header: 'H1', content: 'DSContent1' }];
+            let acc: Accordion = new Accordion({ dataSource: ds, headerTemplate: null });
+            acc.appendTo(el);
+            (<HTMLElement>el.querySelectorAll('.' + CLS_HEADER)[0]).click();
+            let content: HTMLElement = <HTMLElement>el.querySelector('.' + CLS_CONTENT + ' .' + CLS_CTENT);
+            expect(content && content.textContent.indexOf('DSContent1') !== -1).toBe(true);
+            acc.destroy();
+            el.remove();
+            done();
+        });
+        it("dataSource with invalid itemTemplate should fallback to content without throwing", (done: Function) => {
+            let el: HTMLElement = createElement('div', { id: 'ds_invalid_template' });
+            document.body.appendChild(el);
+            let ds: Object[] = [{ header: 'H1', content: 'FallbackContent' }];
+            let acc: Accordion = new Accordion({ dataSource: ds, itemTemplate: '', headerTemplate: null });
+            acc.appendTo(el);
+            (<HTMLElement>el.querySelectorAll('.' + CLS_HEADER)[0]).click();
+            let content: HTMLElement = <HTMLElement>el.querySelector('.' + CLS_CONTENT + ' .' + CLS_CTENT);
+            expect(content && content.textContent.indexOf('FallbackContent') !== -1).toBe(true);
+            acc.destroy();
+            el.remove();
+            done();
+        });
+        it("items (not dataSource) should render items[i].content via fetchElement", (done: Function) => {
+            let el: HTMLElement = createElement('div', { id: 'items_content' });
+            document.body.appendChild(el);
+            let items: Object[] = [{ header: 'I1', content: 'ItemContent1' }];
+            let acc: Accordion = new Accordion({ items: items });
+            acc.appendTo(el);
+            (<HTMLElement>el.querySelectorAll('.' + CLS_HEADER)[0]).click();
+            let content: HTMLElement = <HTMLElement>el.querySelector('.' + CLS_CONTENT + ' .' + CLS_CTENT);
+            expect(content && content.textContent.indexOf('ItemContent1') !== -1).toBe(true);
+            acc.destroy();
+            el.remove();
+            done();
+        });
         afterAll((): void => {
             ele.remove();
         });

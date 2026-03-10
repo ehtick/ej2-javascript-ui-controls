@@ -2,7 +2,7 @@ import { getDPRValue, hideAutoFillElement, hideAutoFillOptions, positionAutoFill
 import { closest, detach, EventHandler, initializeCSPTemplate, isNullOrUndefined } from '@syncfusion/ej2-base';
 import { Tooltip } from '@syncfusion/ej2-popups';
 import { colWidthChanged, rowHeightChanged, contentLoaded, getFilterRange, getTextWidth, getExcludedColumnWidth, readonlyAlert, IRenderer } from '../common/index';
-import { setResize, autoFit, HideShowEventArgs, completeAction, setAutoFit, refreshFilterCellsOnResize } from '../common/index';
+import { setResize, autoFit, HideShowEventArgs, completeAction, setAutoFit, refreshFilterCellsOnResize, setMaxHgt } from '../common/index';
 import { setRowHeight, isHiddenRow, SheetModel, getRowHeight, getColumnWidth, setColumn, isHiddenCol, getSheet, ColumnModel, RowModel, getRow } from '../../workbook/base/index';
 import { getColumn, setRow, getCell, CellModel } from '../../workbook/base/index';
 import { getRangeIndexes, getSwapRange, CellStyleModel, getCellIndexes, setMerge, MergeArgs, isRowSelected, beginAction, isReadOnlyCells } from '../../workbook/common/index';
@@ -468,6 +468,9 @@ export class Resize {
         } else {
             const frozenRow: number = this.parent.frozenRowCount(sheet);
             autofitValue = autofitValue > 20 ? autofitValue : 20;
+            if (autofitValue !== oldValue) {
+                setMaxHgt(sheet, idx, -1, autofitValue);
+            }
             threshold = -(oldValue - autofitValue);
             if ((frozenRow && idx >= getRangeIndexes(sheet.topLeftCell)[0] && idx < frozenRow) ||
                 (idx >= this.parent.viewport.topIndex + frozenRow && idx <= this.parent.viewport.bottomIndex)) {

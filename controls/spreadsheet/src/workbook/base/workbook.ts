@@ -6,7 +6,7 @@ import { getWorkbookRequiredModules } from '../common/module';
 import { SheetModel, CellModel, ColumnModel, RowModel, getData, RangeModel, isHiddenRow, isHiddenCol, OpenSettingsModel } from './index';
 import { OpenOptions, BeforeOpenEventArgs, OpenFailureArgs, UndoRedoEventArgs } from '../../spreadsheet/common/interface';
 import { DefineName, CellStyle, updateRowColCount, getIndexesFromAddress, localeData, workbookLocale, getUpdatedRange } from '../common/index';
-import { BorderType, getSheetIndexFromAddress, CalculationMode } from '../common/index';
+import { BorderType, getSheetIndexFromAddress, CalculationMode, getISOTime } from '../common/index';
 import * as events from '../common/event';
 import { CellStyleModel, DefineNameModel, HyperlinkModel, insertModel, InsertDeleteModelArgs, getAddressInfo } from '../common/index';
 import { setCellFormat, sheetCreated, deleteModel, ModelType, ProtectSettingsModel, ValidationModel, setLockCells } from '../common/index';
@@ -1610,6 +1610,16 @@ export class Workbook extends Component<HTMLElement> implements INotifyPropertyC
         }
         const cellModel: CellModel = getCell(range[0], range[1], sheet, false, true);
         if (cell && cell.comment) {
+            if (cell.comment.createdTime) {
+                cell.comment.createdTime = getISOTime(cell.comment.createdTime);
+            }
+            if (cell.comment.replies && cell.comment.replies.length > 0) {
+                cell.comment.replies.forEach((reply: ExtendedThreadedCommentModel) => {
+                    if (reply.createdTime) {
+                        reply.createdTime = getISOTime(reply.createdTime);
+                    }
+                });
+            }
             if (cellModel.comment) {
                 this.notify(processSheetComments, {
                     sheet: sheet, id: (cell.comment as ExtendedThreadedCommentModel).id, isDelete: true });

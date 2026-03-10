@@ -1426,9 +1426,11 @@ export class PdfRenderer {
         return new Promise((resolve: Function, reject: Function) => {
             if (!isNullOrUndefined(this.pdfViewerBase.pdfViewerRunner) && !isNullOrUndefined(this.loadedDocument)) {
                 size = !isNullOrUndefined(size) ? size : null;
-                this.pdfViewerBase.pdfViewerRunner.addTask({ pageIndex: pageIndex, message: 'extractImage', zoomFactor: this.pdfViewer.magnificationModule.zoomFactor, isTextNeed: false, size: size }, TaskPriorityLevel.Medium);
-                this.pdfViewerBase.pdfViewerRunner.onMessage('imageExtracted', function (event: any): void {
-                    if (event.data.message === 'imageExtracted') {
+                const msgTag: string = 'extractImage_' + PdfViewerUtils.createGUID();
+                this.pdfViewerBase.pdfViewerRunner.addTask({ pageIndex: pageIndex, message: msgTag,
+                    zoomFactor: this.pdfViewer.magnificationModule.zoomFactor, isTextNeed: false, size: size }, TaskPriorityLevel.Medium);
+                this.pdfViewerBase.pdfViewerRunner.onMessage(msgTag, function (event: any): void {
+                    if (event.data.message === msgTag) {
                         const canvas: HTMLCanvasElement = document.createElement('canvas');
                         const { value, width, height } = event.data;
                         canvas.width = width;
@@ -1466,11 +1468,14 @@ export class PdfRenderer {
                 size = !isNullOrUndefined(size) ? size : null;
                 const imageUrls: string[] = [];
                 const count: number = endIndex - startIndex + 1;
+                const msgTag: string = 'extractImages_' + PdfViewerUtils.createGUID();
                 for (let i: number = startIndex; i <= endIndex; i++) {
-                    this.pdfViewerBase.pdfViewerRunner.addTask({ pageIndex: i, message: 'extractImages', zoomFactor: this.pdfViewer.magnificationModule.zoomFactor, isTextNeed: false, size: size }, TaskPriorityLevel.Medium);
+                    this.pdfViewerBase.pdfViewerRunner.addTask({ pageIndex: i, message: msgTag,
+                        zoomFactor: this.pdfViewer.magnificationModule.zoomFactor, isTextNeed: false,
+                        size: size }, TaskPriorityLevel.Medium);
                 }
-                this.pdfViewerBase.pdfViewerRunner.onMessage('imagesExtracted', function (event: any): void {
-                    if (event.data.message === 'imagesExtracted') {
+                this.pdfViewerBase.pdfViewerRunner.onMessage(msgTag, function (event: any): void {
+                    if (event.data.message === msgTag) {
                         const canvas: HTMLCanvasElement = document.createElement('canvas');
                         const { value, width, height } = event.data;
                         canvas.width = width;

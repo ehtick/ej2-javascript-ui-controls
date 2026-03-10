@@ -3913,11 +3913,6 @@ export class TreeGrid extends Component<HTMLElement> implements INotifyPropertyC
         rowData.hasChildRecords = record.hasChildRecords;
         rowData.parentUniqueID = record.parentUniqueID;
         rowData.expanded = record.expanded;
-        if (this.enableVirtualization) {
-            this.grid.selectionModule.selectedRowIndexes = this.grid.selectionModule.selectedRowIndexes.indexOf(record.index) === -1
-            && (this.selectedRowIndex >= 0 && this.selectedRowIndex !== record.index) ? [record.index] :
-                this.grid.selectionModule.selectedRowIndexes;
-        }
         this.grid.setRowData(key, rowData);
         const visibleRecords: ITreeData[] = this.getVisibleRecords();
         if (visibleRecords.length > 0 && key === (visibleRecords[visibleRecords.length - 1])[`${primaryKey}`]) {

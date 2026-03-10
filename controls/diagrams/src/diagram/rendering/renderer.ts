@@ -2503,6 +2503,39 @@ export class DiagramRenderer {
                 diagramLayer.setAttribute('transform', 'translate('
                     + (transform.tx * transform.scale) + ',' + (transform.ty * transform.scale) + '),scale('
                     + transform.scale + ')');
+                const diagramElement: HTMLElement = document.getElementById(this.diagramId);
+                const instance: string = 'ej2_instances';
+                const diagram: Diagram = diagramElement[`${instance}`][0];
+                const negativeRegion: boolean = diagram.scroller.isNegativeOffset;
+                //1011407 - Selector of already‑selected node moves unexpectedly when dragging a node across the negative region of the diagram
+                if (diagram && diagram.currentSymbol && negativeRegion) {
+                    const selectorContainer: SVGElement = this.adornerSvgLayer.getElementById('diagram_SelectorElement') as SVGElement;
+                    if (selectorContainer) {
+                        const selectorElement: SVGElement[] = Array.from(selectorContainer.children) as SVGElement[];
+                        // Account for scale when calculating transform difference
+                        const deltaX: number = this.transform.x - (transform.tx * transform.scale);
+                        const deltaY: number = this.transform.y - (transform.ty * transform.scale);
+                        // eslint-disable-next-line security/detect-unsafe-regex
+                        const translateRegex: RegExp = /translate\(\s*([^,)]+)(?:\s*,\s*([^)]+))?\s*\)/;
+
+                        for (const child of selectorElement) {
+                            const previousTransform: string = child.getAttribute('transform') || '';
+                            const translateMatch: RegExpMatchArray = previousTransform.match(translateRegex);
+
+                            // Calculate new translate values accounting for scale
+                            const transX: number = translateMatch ? parseFloat(translateMatch[1]) - deltaX : -deltaX;
+                            const transY: number = translateMatch ?
+                                (translateMatch[2] ? parseFloat(translateMatch[2]) : 0) - deltaY : -deltaY;
+
+                            // Remove old translate and preserve other transforms
+                            const remainingTransforms: string = previousTransform.replace(/translate\([^)]*\)\s*,?\s*/g, '').trim();
+
+                            // Build and set new transform
+                            child.setAttribute('transform', `translate(${transX},${transY})${remainingTransforms ? ' ' + remainingTransforms : ''}`);
+                        }
+                    }
+                    diagram.scroller.isNegativeOffset = false;
+                }
             }
             //background
             //gridline

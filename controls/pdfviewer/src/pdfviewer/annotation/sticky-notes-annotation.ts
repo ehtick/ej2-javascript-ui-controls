@@ -2949,12 +2949,14 @@ export class StickyNotesAnnotation {
                         currentAnnotation.comments[parseInt(j.toString(), 10)].note = text;
                         currentAnnotation.comments[parseInt(j.toString(), 10)].modifiedDate = this.getDateAndTime();
                         currentAnnotation.comments[parseInt(j.toString(), 10)].author = newAuthor;
+                        this.updateCommentInNameTable(parentElement, annotName, text, this.getDateAndTime(), newAuthor);
                     }
                 }
                 if (currentAnnotation.annotName === parentElement) {
                     const newArray: ICommentsCollection = { annotName: annotName, parentId: parentElement, subject: currentAnnotation.subject, comments: [], author: author, note: text, shapeAnnotationType: '', state: '', stateModel: '', modifiedDate: this.getDateAndTime(), review: { state: '', stateModel: '', modifiedDate: this.getDateAndTime(), author: author }, isLock: false };
                     if (!isComment) {
                         currentAnnotation.comments[currentAnnotation.comments.length] = newArray;
+                        this.addCommentToNameTable(parentElement, newArray);
                     }
                 }
                 if (!isNullOrUndefined(existingNote) && existingNote !== '') {
@@ -2967,14 +2969,7 @@ export class StickyNotesAnnotation {
             } else if (currentAnnotation.annotName === parentElement) {
                 const newArray: ICommentsCollection = { annotName: annotName, parentId: parentElement, subject: currentAnnotation.subject, comments: [], author: author, note: text, shapeAnnotationType: '', state: '', stateModel: '', modifiedDate: this.getDateAndTime(), review: { state: '', stateModel: '', modifiedDate: this.getDateAndTime(), author: author }, isLock: false };
                 currentAnnotation.comments[currentAnnotation.comments.length] = newArray;
-                const annotationKeys: string[] = Object.keys(this.pdfViewer.nameTable);
-                for (let i: number = 0; i < annotationKeys.length; i++) {
-                    const annotObject: any = (this.pdfViewer.nameTable as any)[annotationKeys[parseInt(i.toString(), 10)]];
-                    if (!isNullOrUndefined(annotObject) && parentElement === annotObject.annotName){
-                        annotObject.comments[currentAnnotation.comments.length - 1] = newArray;
-                        break;
-                    }
-                }
+                this.addCommentToNameTable(parentElement, newArray);
                 if (!isNullOrUndefined(existingNote) && existingNote !== '') {
                     const targetProperty: string = currentAnnotation.note !== undefined ? 'note' : 'notes';
                     if (targetProperty === 'note' || targetProperty === 'notes') {
@@ -2995,6 +2990,51 @@ export class StickyNotesAnnotation {
         } else {
             this.pdfViewer.fireCommentAdd(annotName, text, currentAnnotation);
         }
+    }
+
+    private getAnnotationFromNameTable(annotName: string): any {
+        const table: any = this.pdfViewer.nameTable;
+        const keys: string[] = Object.keys(table);
+        for (let i: number = 0; i < keys.length; i++) {
+            const obj: any = (table as any)[keys[parseInt(i.toString(), 10)]];
+            if (!isNullOrUndefined(obj) && obj.annotName === annotName) {
+                return obj;
+            }
+        }
+        return null;
+    }
+
+    private updateCommentInNameTable(parentAnnotName: string, childAnnotName: string,
+                                     text: string, modifiedDate: string, author: string): boolean {
+        const parent: any = this.getAnnotationFromNameTable(parentAnnotName);
+        if (isNullOrUndefined(parent) || isNullOrUndefined(parent.comments)) {
+            return false;
+        }
+
+        for (let i: number = 0; i < parent.comments.length; i++) {
+            const c: any = parent.comments[parseInt(i.toString(), 10)];
+            if (c && c.annotName === childAnnotName) {
+                c.note = text;
+                c.modifiedDate = modifiedDate;
+                if (!isNullOrUndefined(author)) {
+                    c.author = author;
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private addCommentToNameTable(parentAnnotName: string, comment: ICommentsCollection): boolean {
+        const parent: any = this.getAnnotationFromNameTable(parentAnnotName);
+        if (isNullOrUndefined(parent)) {
+            return false;
+        }
+        if (isNullOrUndefined(parent.comments)) {
+            parent.comments = [];
+        }
+        parent.comments.push(comment);
+        return true;
     }
 
     private modifyStatusProperty(text: string, statusElement: any): void {

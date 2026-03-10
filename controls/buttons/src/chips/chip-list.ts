@@ -1275,13 +1275,14 @@ export class ChipList extends Component<HTMLElement> implements INotifyPropertyC
             (chipDataArgs as ClickEventArgs).cancel = false;
             this.trigger('beforeClick', chipDataArgs as ClickEventArgs, (observedArgs: ClickEventArgs) => {
                 if (!(observedArgs as ClickEventArgs).cancel) {
-                    this.clickEventHandler(observedArgs.element, e, del);
+                    this.clickEventHandler(observedArgs.element, e, del, this.isAngular);
                 }
             });
         }
     }
 
-    private clickEventHandler(chipWrapper: HTMLElement, e: MouseEventArgs | KeyboardEventArgs, del: boolean): void {
+    private clickEventHandler(chipWrapper: HTMLElement, e: MouseEventArgs | KeyboardEventArgs, del: boolean,
+                              skipClickTrigger: boolean = false): void {
         if (this.chipType()) {
             const chipData: ChipDataArgs = this.find(chipWrapper);
             (chipData as ClickEventArgs).event = e;
@@ -1296,7 +1297,9 @@ export class ChipList extends Component<HTMLElement> implements INotifyPropertyC
                         this.selectionHandler(chipWrapper);
                         (chipData as ClickEventArgs).selected = observedArgs.element.classList.contains(classNames.active);
                         const selectedItemArgs: ClickEventArgs = chipData as ClickEventArgs;
-                        this.trigger('click', selectedItemArgs);
+                        if (!skipClickTrigger) {
+                            this.trigger('click', selectedItemArgs);
+                        }
                         const chipElement: HTMLElement = this.element.querySelectorAll('.' + classNames.chip)[observedArgs.index] as HTMLElement;
                         if (chipElement) {
                             chipElement.focus();
@@ -1308,11 +1311,15 @@ export class ChipList extends Component<HTMLElement> implements INotifyPropertyC
                 this.selectionHandler(chipWrapper);
                 (chipData as ClickEventArgs).selected = chipWrapper.classList.contains(classNames.active);
                 const selectedItemArgs: ClickEventArgs = chipData as ClickEventArgs;
-                this.trigger('click', selectedItemArgs);
+                if (!skipClickTrigger) {
+                    this.trigger('click', selectedItemArgs);
+                }
             } else {
                 this.focusInHandler(chipWrapper);
                 const clickedItemArgs: ClickEventArgs = chipData as ClickEventArgs;
-                this.trigger('click', clickedItemArgs);
+                if (!skipClickTrigger) {
+                    this.trigger('click', clickedItemArgs);
+                }
             }
         } else {
             this.focusInHandler(chipWrapper);
@@ -1320,7 +1327,9 @@ export class ChipList extends Component<HTMLElement> implements INotifyPropertyC
                 text: this.innerText ? this.innerText : this.text,
                 element: chipWrapper, data: this.text, event: e
             } as ClickEventArgs;
-            this.trigger('click', clickedItemArgs);
+            if (!skipClickTrigger) {
+                this.trigger('click', clickedItemArgs);
+            }
         }
     }
 

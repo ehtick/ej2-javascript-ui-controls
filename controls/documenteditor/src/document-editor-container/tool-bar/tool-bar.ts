@@ -1031,7 +1031,7 @@ export class Toolbar implements IToolbarHandler {
             }
             const isPlainContetnControl: boolean = this.documentEditor.selectionModule.isPlainContentControl();
             if (this.documentEditor.selectionModule.isinFootnote || this.documentEditor.selectionModule.isinEndnote
-                || this.documentEditor.enableHeaderAndFooter || isPlainContetnControl) {
+                || this.documentEditor.enableHeaderAndFooter || isPlainContetnControl || this.documentEditor.selectionModule.isInShape) {
                 if (this.containsItem(id + ENDNOTE_ID)) {
                     this.toolbar.enableItems(this.container.element.querySelector('#' + id + ENDNOTE_ID).parentElement, false);
                 }

@@ -438,7 +438,7 @@ export class DragAndDrop {
 
     private keydownHandler(e: KeyboardEventArgs): void {
         if (e.code === 'Escape' && this.dragObj.cloneElement) {
-            EventHandler.remove(this.dragObj.cloneElement, 'keydown', this.keydownHandler);
+            EventHandler.remove(document.body, 'keydown', this.keydownHandler);
             this.dragObj.element.removeAttribute('aria-grabbed');
             this.dragStopClear();
             this.dragStopPostClear();

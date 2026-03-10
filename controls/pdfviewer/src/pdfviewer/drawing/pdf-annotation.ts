@@ -1077,6 +1077,12 @@ export class PdfFormFieldBase extends ChildProperty<PdfFormFieldBase> {
      */
     @Property(null)
     public customData: object;
+
+    /**
+     * specifies the unison selection of the form field.
+     */
+    @Property(false)
+    public isUnisonSelected: boolean;
     constructor(parent: any, propName: string, defaultValue: Object, isArray?: boolean) {
         super(parent, propName, defaultValue, isArray);
     }

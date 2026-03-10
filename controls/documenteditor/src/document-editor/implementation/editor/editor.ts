@@ -3629,7 +3629,7 @@ export class Editor {
      * @returns {void}
      */
     public dropDownChange(contentControl: ContentControl,value:string): void {
-       if(!isNullOrUndefined(contentControl)){
+       if(!isNullOrUndefined(contentControl) && !this.documentHelper.owner.isReadOnlyMode){
             this.documentHelper.selection.selectContentControlInternal(contentControl);
             this.insertTextInternal(value,true);
             if(contentControl.contentControlProperties.isTemporary){
@@ -4302,7 +4302,7 @@ export class Editor {
             sectionBreakType = SectionBreakType.NewPage;
         }
         let selection: Selection = this.documentHelper.selection;
-        if (isNullOrUndefined(selection) || this.owner.isReadOnlyMode || selection.start.paragraph.isInHeaderFooter) {
+        if (isNullOrUndefined(selection) || this.owner.isReadOnlyMode || selection.start.paragraph.isInHeaderFooter || selection.isInShape) {
             return;
         }
         if (sectionBreakType === SectionBreakType.Continuous) {
@@ -18733,7 +18733,7 @@ export class Editor {
      */
     public insertPageBreak(): void {
         if (!this.owner.isReadOnlyMode) {
-            if (this.documentHelper.selection.start.paragraph.isInHeaderFooter) {
+            if (this.documentHelper.selection.start.paragraph.isInHeaderFooter || this.documentHelper.selection.isInShape) {
                 return;
             }
             this.initComplexHistory('PageBreak');
@@ -18756,7 +18756,7 @@ export class Editor {
     public insertColumnBreak(): void {
         if (!this.owner.isReadOnlyMode) {
             if (this.documentHelper.selection.start.paragraph.isInsideTable ||
-                this.documentHelper.selection.start.paragraph.isInHeaderFooter) {
+                this.documentHelper.selection.start.paragraph.isInHeaderFooter || this.documentHelper.selection.isInShape) {
                 return;
             }
             this.initComplexHistory('ColumnBreak');
@@ -19408,6 +19408,11 @@ export class Editor {
         } else {
             if (this.owner.enableTrackChanges && this.canSkipDeleteTrack(selection)) {
                 return;
+            }
+            if (!selection.isForward) {
+                const startIndex = selection.start.getHierarchicalIndexInternal();
+                const endIndex = selection.end.getHierarchicalIndexInternal();
+                selection.start.validateBackwardFieldSelection(startIndex, endIndex);
             }
             let comments: CommentCharacterElementBox[] = this.checkAndRemoveComments();
             this.initHistory('BackSpace');

@@ -1,5 +1,5 @@
 import { BasePlaceholderProp, BlockModel, IChecklistBlockSettings } from '../../../models/index';
-import { createBaseSvg, createSvgElement } from '../../../common/utils/index';
+import { createBaseSvg, createSvgElement, decoupleReference } from '../../../common/utils/index';
 import { BlockType } from '../../../models/enums';
 import { BlockManager } from '../../base/block-manager';
 import { createElement } from '@syncfusion/ej2-base';
@@ -86,6 +86,7 @@ export class ListRenderer {
      */
     public toggleCheckedState(block: BlockModel, isChecked: boolean, isUndoRedoAction?: boolean): void {
         const props: IChecklistBlockSettings = block.properties as IChecklistBlockSettings;
+        const oldBlockClone: BlockModel = decoupleReference(block);
         const blockElement: HTMLElement = this.parent.getBlockElementById(block.id);
         const listItem: HTMLElement = blockElement.querySelector('li');
         if (listItem && listItem.textContent.trim() !== '') {
@@ -108,6 +109,14 @@ export class ListRenderer {
         this.parent.stateManager.updateManagerBlocks();
         if (!isUndoRedoAction) {
             this.parent.undoRedoAction.trackCheckedStateForUndoRedo(block.id, props.isChecked);
+            this.parent.eventService.addChange({
+                action: 'Update',
+                data: {
+                    block: decoupleReference(block),
+                    prevBlock: oldBlockClone
+                }
+            });
+            this.parent.observer.notify('triggerBlockChange', this.parent.eventService.getChanges());
         }
     }
 

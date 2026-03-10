@@ -1260,3 +1260,18 @@ export function updateMergeBorder(context: Workbook, rowIndexes: number[], colIn
         }
     });
 }
+
+/**
+ * Normalize createdTime from various formats to ISO format
+ *
+ * @param {string | Date} createdTime - The time to normalize
+ * @returns {string} - Normalized ISO format time
+ * @hidden
+ */
+export function getISOTime(createdTime?: string | Date): string {
+    if (createdTime !== undefined) {
+        const date: Date = createdTime instanceof Date ? createdTime : new Date(createdTime);
+        return Number.isNaN(date.getTime()) ? new Date().toISOString().slice(0, -1) : date.toISOString().slice(0, -1);
+    }
+    return new Date().toISOString().slice(0, -1);
+}

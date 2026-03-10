@@ -483,7 +483,8 @@ export class FormDesigner {
             option: drawingObject.options ? drawingObject.options : [], visibility: drawingObject.visibility,
             maxLength: drawingObject.maxLength, isRequired: drawingObject.isRequired, isPrint: drawingObject.isPrint,
             rotation: drawingObject.rotateAngle, tooltip: drawingObject.tooltip,
-            insertSpaces: drawingObject.insertSpaces, customData: drawingObject.customData
+            insertSpaces: drawingObject.insertSpaces, customData: drawingObject.customData,
+            isUnisonSelected: drawingObject.isUnisonSelected
         };
         if (formDesignObj.formFieldAnnotationType === 'RadioButton') {
             formDesignObj.radiobuttonItem = [];
@@ -499,7 +500,7 @@ export class FormDesigner {
                 textAlign: drawingObject.alignment, isChecked: drawingObject.isChecked, isSelected: drawingObject.isSelected,
                 isReadonly: drawingObject.isReadonly, visibility: drawingObject.visibility,
                 maxLength: drawingObject.maxLength, isRequired: drawingObject.isRequired, isPrint: drawingObject.isPrint,
-                rotation: 0, tooltip: drawingObject.tooltip
+                rotation: 0, tooltip: drawingObject.tooltip, isUnisonSelected: drawingObject.isUnisonSelected
             });
         }
         const isItemAdd: boolean = this.getRadioButtonItem(formDesignObj, drawingObject);
@@ -550,7 +551,7 @@ export class FormDesigner {
                                     isSelected: radiobutton.isSelected,
                                     isReadonly: radiobutton.isReadonly, visibility: radiobutton.visibility,
                                     maxLength: radiobutton.maxLength, isRequired: radiobutton.isRequired, isPrint: radiobutton.isPrint,
-                                    rotation: 0, tooltip: radiobutton.tooltip
+                                    rotation: 0, tooltip: radiobutton.tooltip, isUnisonSelected: radiobutton.isUnisonSelected
                                 };
                                 currentData.FormField.radiobuttonItem.splice(m, 1);
                                 currentData.FormField.radiobuttonItem.push(radiobuttonItem);
@@ -2246,62 +2247,225 @@ export class FormDesigner {
     }
 
     private setRadioButtonState(event: Event): void {
-        const data: string = this.pdfViewerBase.getItemFromSessionStorage('_formDesigner');
-        const formFieldsData: any = JSON.parse(data);
+        const storedData: string = this.pdfViewerBase.getItemFromSessionStorage('_formDesigner');
+        const formFieldsData: any = JSON.parse(storedData || '[]');
+        const clickedKey: any = ((event.currentTarget as any) && (event.currentTarget as any).id || '').split('_')[0];
+        const viewer: any = this.pdfViewer;
+        const base: any = this.pdfViewerBase;
         let targetField: any = null;
-        for (let i: number = 0; i < formFieldsData.length; i++) {
-            if (formFieldsData[parseInt(i.toString(), 10)].FormField.radiobuttonItem != null) {
-                let oldValue: any;
-                let undoElement: any;
-                let redoElement: any;
-                for (let j: number = 0; j < formFieldsData[parseInt(i.toString(), 10)].FormField.radiobuttonItem.length; j++) {
-                    if (formFieldsData[parseInt(i.toString(), 10)].FormField.radiobuttonItem[parseInt(j.toString(), 10)].id.split('_')[0] === (event.currentTarget as Element).id.split('_')[0]) {
-                        if (!(this.pdfViewer.nameTable as any)[(event.currentTarget as Element).id.split('_')[0]].isReadonly) {
-                            (this.pdfViewer.nameTable as any)[(event.currentTarget as Element).id.split('_')[0]].isSelected = true;
-                            formFieldsData[parseInt(i.toString(), 10)].FormField.
-                                radiobuttonItem[parseInt(j.toString(), 10)].isSelected = true;
-                            oldValue = this.pdfViewerBase.formFieldCollection[parseInt(i.toString(), 10)].
-                                FormField.radiobuttonItem[parseInt(j.toString(), 10)].isSelected;
-                            if (!oldValue)
-                            {undoElement = this.pdfViewerBase.formFieldCollection[parseInt(i.toString(), 10)].
-                                FormField.radiobuttonItem[parseInt(j.toString(), 10)]; }
-                            this.pdfViewerBase.formFieldCollection[parseInt(i.toString(), 10)].FormField.
-                                radiobuttonItem[parseInt(j.toString(), 10)].isSelected = true;
-                            this.pdfViewer.fireFormFieldPropertiesChangeEvent('formFieldPropertiesChange', formFieldsData[parseInt(i.toString(), 10)].FormField, this.pdfViewerBase.formFieldCollection[parseInt(i.toString(), 10)].FormField.pageNumber, true, false, false,
-                                                                              false, false, false, false, false, false, false, false,
-                                                                              false, false, false, false, false, true);
-                        }
-                    } else {
-                        if ((this.pdfViewer.nameTable as any)[(event.currentTarget as Element).id.split('_')[0]].name === formFieldsData[parseInt(i.toString(), 10)].FormField.radiobuttonItem[parseInt(j.toString(), 10)].name) {
-                            (this.pdfViewer.nameTable as any)[formFieldsData[parseInt(i.toString(), 10)].FormField.radiobuttonItem[parseInt(j.toString(), 10)].id.split('_')[0]].isSelected = false;
-                            let oldValue: any = this.pdfViewerBase.formFieldCollection[parseInt(i.toString(), 10)].FormField.
-                                radiobuttonItem[parseInt(j.toString(), 10)].isSelected;
-                            formFieldsData[parseInt(i.toString(), 10)].FormField.
-                                radiobuttonItem[parseInt(j.toString(), 10)].isSelected = false;
-                            oldValue = this.pdfViewerBase.formFieldCollection[parseInt(i.toString(), 10)].
-                                FormField.radiobuttonItem[parseInt(j.toString(), 10)].isSelected;
-                            if (oldValue)
-                            {redoElement = this.pdfViewerBase.formFieldCollection[parseInt(i.toString(), 10)].
-                                FormField.radiobuttonItem[parseInt(j.toString(), 10)]; }
-                            this.pdfViewerBase.formFieldCollection[parseInt(i.toString(), 10)].FormField.
-                                radiobuttonItem[parseInt(j.toString(), 10)].isSelected =
-                             formFieldsData[parseInt(i.toString(), 10)].FormField.radiobuttonItem[parseInt(j.toString(), 10)].isSelected;
-                            this.pdfViewer.fireFormFieldPropertiesChangeEvent('formFieldPropertiesChange', formFieldsData[parseInt(i.toString(), 10)].FormField, this.pdfViewerBase.formFieldCollection[parseInt(i.toString(), 10)].FormField.pageNumber, true, false, false,
-                                                                              false, false, false, false, false, false, false, false,
-                                                                              false, false, false, false, true, false);
-                        }
+        let clicked: any = null;
+        const getElement: any = (id: string): HTMLInputElement | null => {
+            const cut: number = id.indexOf('_');
+            const baseId: string = cut > -1 ? id.substring(0, cut) : id;
+            return document.getElementById(baseId) as HTMLInputElement | null;
+        };
+        const fireChangeEvent: any = (formField: any, page: any): any => {
+            viewer.fireFormFieldPropertiesChangeEvent(
+                'formFieldPropertiesChange',
+                formField, page,
+                true, false, false, false, false, false, false, false, false, false,
+                false, false, false, false, false, false, false, false, true
+            );
+        };
+        const updateForm: any = (item: any): any => this.updateFormFieldCollections(item);
+        formFieldsData.forEach((data: any, index: any) => {
+            const formField: any = data.FormField;
+            const radioItems: any[] = formField.radiobuttonItem;
+            if (!radioItems) { return; }
+            const localClickedItem: any = radioItems.find(
+                (it: any): boolean => it.id.split('_')[0] === clickedKey
+            );
+            if (!clicked && localClickedItem) {
+                clicked = { name: localClickedItem.name, value: localClickedItem.value };
+            }
+
+            const undoElements: any[] = [];
+            const redoElements: any[] = [];
+            const groupIndex: number = viewer.formFieldCollections.findIndex(
+                (el: any): boolean => el.id + '_content' === formField.id
+            );
+            const clickedFieldIndex: number = viewer.formFieldCollections.findIndex(
+                (el: any): boolean =>
+                    el.id === (localClickedItem ? localClickedItem.id : undefined) ||
+                    el.id === clickedKey ||
+                    el.id + '_content' === formField.id
+            );
+            const clickedIsUnison: boolean = clickedFieldIndex > -1 &&
+                !!viewer.formFieldCollections[clickedFieldIndex as number].isUnisonSelected;
+            if (clickedIsUnison && localClickedItem) {
+                radioItems.forEach((item: any, j: number) => {
+                    const itemKey: string = item.id.split('_')[0];
+                    const itemFcIndex: number = viewer.formFieldCollections.findIndex((el: any) => {
+                        return el.id === item.id ||
+                            el.id === itemKey ||
+                            el.id + '_content' === item.id;
+                    });
+                    const itemIsUnison: boolean = itemFcIndex > -1 &&
+                        !!viewer.formFieldCollections[itemFcIndex as number].isUnisonSelected;
+                    const itemNameEntry: any = (viewer.nameTable as any)[itemKey as string];
+                    if (!itemNameEntry || itemNameEntry.isReadonly) { return; }
+
+                    const formCollectionItem: any = base.formFieldCollection[index as number].FormField.radiobuttonItem[j as number];
+                    const element: any = getElement(item.id);
+                    const sameGroup: boolean = item.name === localClickedItem.name;
+
+                    if (itemIsUnison && sameGroup && item.value === localClickedItem.value) {
+                        const previouslySelectedA: boolean = formCollectionItem.isSelected;
+                        if (!previouslySelectedA) { undoElements.push(formCollectionItem); }
+                        itemNameEntry.isSelected = true;
+                        item.isSelected = true;
+                        if (element) { element.checked = true; }
+                        formCollectionItem.isSelected = true;
+                        fireChangeEvent(formField, formField.pageNumber);
+                        updateForm(formCollectionItem);
+                    } else if (itemIsUnison && sameGroup && item.value !== localClickedItem.value) {
+                        const previouslySelectedB: boolean = formCollectionItem.isSelected;
+                        if (previouslySelectedB) { redoElements.push(formCollectionItem); }
+                        itemNameEntry.isSelected = false;
+                        item.isSelected = false;
+                        if (element) { element.checked = false; }
+                        formCollectionItem.isSelected = false;
+                        fireChangeEvent(formField, formField.pageNumber);
+                        updateForm(formCollectionItem);
                     }
-                    this.updateFormFieldCollections(this.pdfViewerBase.formFieldCollection[parseInt(i.toString(), 10)].
-                        FormField.radiobuttonItem[parseInt(j.toString(), 10)]);
-                    targetField = this.pdfViewer.formFieldCollections[this.pdfViewer.formFieldCollections.findIndex(function (el: any): any { return (el.id + '_content' === formFieldsData[parseInt(i.toString(), 10)].FormField.id); })];
+                });
+                if ((undoElements.length || redoElements.length) && viewer.annotation) {
+                    viewer.annotation.addAction(
+                        formField.pageNumber, null,
+                        base.formFieldCollection[index as number].FormField,
+                        'FormField Value Change', '',
+                        undoElements, redoElements
+                    );
                 }
-                if ((undoElement != null || redoElement != null) && this.pdfViewer.annotation) {
-                    this.pdfViewer.annotation.addAction(this.pdfViewerBase.formFieldCollection[parseInt(i.toString(), 10)].FormField.pageNumber, null, this.pdfViewerBase.formFieldCollection[parseInt(i.toString(), 10)].FormField, 'FormField Value Change', '', undoElement, redoElement);
+                if (groupIndex > -1) {
+                    targetField = viewer.formFieldCollections[groupIndex as number];
+                }
+                return;
+            }
+            const clickedEntry: any = (viewer.nameTable as any)[clickedKey as number];
+            radioItems.forEach((item: any, j: number)  => {
+                const itemKey: string = item.id.split('_')[0];
+                const isClicked: boolean = itemKey === clickedKey;
+                const itemEntry: any = (viewer.nameTable as any)[itemKey as string];
+                if (!itemEntry) { return; }
+                const formCollectionItem: any = base.formFieldCollection[index as number].FormField.radiobuttonItem[j as number];
+                const element: any = getElement(item.id);
+                if (isClicked) {
+                    if (!clicked) { clicked = { name: item.name, value: item.value }; }
+                    if (!itemEntry.isReadonly) {
+                        const previouslySelected: boolean = formCollectionItem.isSelected;
+                        itemEntry.isSelected = true;
+                        item.isSelected = true;
+                        if (element) { element.checked = true; }
+                        if (!previouslySelected) { undoElements.push(formCollectionItem); }
+                        formCollectionItem.isSelected = true;
+                        fireChangeEvent(formField, formField.pageNumber);
+                    }
+                } else {
+                    if (clickedEntry && clickedEntry.name === item.name) {
+                        const previouslySelected2: boolean = formCollectionItem.isSelected;
+                        itemEntry.isSelected = false;
+                        item.isSelected = false;
+                        if (element) { element.checked = false; }
+                        if (previouslySelected2) { redoElements.push(formCollectionItem); }
+                        formCollectionItem.isSelected = false;
+                        fireChangeEvent(formField, formField.pageNumber);
+                    }
+                }
+                updateForm(formCollectionItem);
+                const idx: number = viewer.formFieldCollections.findIndex(
+                    (el: any): boolean => el.id + '_content' === formField.id
+                );
+                if (idx > -1) {
+                    targetField = viewer.formFieldCollections[idx as number];
+                }
+            });
+
+            if ((undoElements.length || redoElements.length) && viewer.annotation) {
+                viewer.annotation.addAction(
+                    formField.pageNumber, null,
+                    base.formFieldCollection[index as number].FormField,
+                    'FormField Value Change', '',
+                    undoElements, redoElements
+                );
+            }
+        });
+        base.setItemInSessionStorage(base.formFieldCollection, '_formDesigner');
+        this.updateFormFieldSessions(targetField);
+        if (clicked) {
+            this.radioButtonState(clicked);
+        }
+
+        //to get the isSelected and isUnisonSelected property in formfieldCollections
+        const radioFields: any = this.pdfViewer.formFieldCollections.filter(
+            (item: any) => item.type === 'RadioButton');
+        const firstPart: string = (event.target as any).id.split('_')[0];
+        const currentItem: any = this.pdfViewer.formFieldCollections.filter(
+            (item: any) => item.type === 'RadioButton' && item.id === firstPart);
+
+        for (let k: number = 0; k < radioFields.length; k++) {
+            if (radioFields[k as number].name === currentItem[0].name) {
+                if (radioFields[k as number].value === currentItem[0].value) {
+                    radioFields[k as number].isSelected = currentItem[0].isSelected;
+                    radioFields[k as number].isUnisonSelected = currentItem[0].isUnisonSelected;
+                } else {
+                    radioFields[k as number].isSelected = false;
                 }
             }
         }
-        this.pdfViewerBase.setItemInSessionStorage(this.pdfViewerBase.formFieldCollection, '_formDesigner');
-        this.updateFormFieldSessions(targetField);
+    }
+
+    public radioButtonState(clickedItem: any, value?: boolean, formFields?: any): void {
+        const formFieldsData: any = JSON.parse(
+            this.pdfViewerBase.getItemFromSessionStorage('_formfields') || '[]'
+        );
+        const targetName: any = clickedItem.name;
+        const targetValue: any = clickedItem.value;
+        if (!targetName) { return; }
+        formFieldsData.forEach((field: any) => {
+            if (!field) { return; }
+            const btn: any = field;
+            const btnName: any = btn.ActualFieldName;
+            const btnValue: any = btn.Value;
+            const isUnison: boolean = btn.IsUnisonSelected === true || btn.isUnisonSelected === true;
+            if (isUnison && btnName === targetName) {
+                if (btnValue === targetValue) {
+                    btn.Selected = true;
+                }
+                else {
+                    btn.Selected = false;
+                }
+                if (!isNullOrUndefined(value)) {
+                    btn.Selected = value;
+                }
+            }
+        });
+
+        this.pdfViewerBase.setItemInSessionStorage(formFieldsData, '_formfields');
+        if (formFields) {
+            for (let i: number = 0; i < formFields.length; i++) {
+                if (formFields[i as number].FormField.formFieldAnnotationType === 'RadioButton') {
+                    for (let j: number = 0; j < formFields[i as number].FormField.radiobuttonItem.length; j++) {
+                        if (formFields[i as number].FormField.radiobuttonItem[j as number].name === targetName &&
+                            formFields[i as number].FormField.radiobuttonItem[j as number].value === targetValue) {
+                            const formFieldModel: any = this.getFormField(formFields[i as number].FormField.radiobuttonItem[j as number].id.split('_')[0]);
+                            let inputElement: any;
+                            if (document.getElementById(formFields[i as number].FormField.radiobuttonItem[j as number].id.split('_')[0] + '_content_html_element')) {
+                                inputElement = document.getElementById(formFields[i as number].FormField.radiobuttonItem[j as number].id.split('_')[0] + '_content_html_element').firstElementChild.firstElementChild;
+                            }
+                            const index: number = this.getFormFiledIndex(formFields[i as number].FormField.radiobuttonItem[j as number].id.split('_')[0]);
+                            if (formFields[i as number].FormField.radiobuttonItem[j as number].name === targetName &&
+                                formFields[i as number].FormField.radiobuttonItem[j as number].value === targetValue && inputElement &&
+                                formFields[i as number].FormField.radiobuttonItem[j as number].isUnisonSelected === true) {
+                                formFieldModel.isSelected = value;
+                                this.updateIsSelectedPropertyChange(formFieldModel, inputElement.firstElementChild, true,
+                                                                    index, formFields);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private getTextboxValue(event: Event): void {
@@ -2563,6 +2727,7 @@ export class FormDesigner {
             obj.thickness = !isNullOrUndefined((options as RadioButtonFieldSettings).thickness) ?
                 (options as RadioButtonFieldSettings).thickness : 1;
             obj.borderColor = !isNullOrUndefined((options as RadioButtonFieldSettings).borderColor) ? (options as RadioButtonFieldSettings).borderColor : '#303030';
+            (obj as any).isUnisonSelected = (options as any).isUnisonSelected;
             break;
         case 'SignatureField': {
             obj.formFieldAnnotationType = formFieldType;
@@ -2683,7 +2848,7 @@ export class FormDesigner {
         } else if (formFieldIndex > -1) {
             this.pdfViewer.formFieldCollection[parseInt(formFieldIndex.toString(), 10)] = node;
         }
-        const formField: FormFieldModel = {
+        const formField: FormFieldModel | any = {
             id: node.id, name: (node as PdfFormFieldBaseModel).name, value: (node as PdfFormFieldBaseModel).value,
             type: node.formFieldAnnotationType as FormFieldType, isReadOnly: node.isReadonly, fontFamily: node.fontFamily,
             fontSize: node.fontSize, fontStyle: node.fontStyle as unknown as FontStyle, color: (node as PdfFormFieldBaseModel).color,
@@ -2699,7 +2864,8 @@ export class FormDesigner {
             isTransparent: (node as PdfFormFieldBaseModel).isTransparent, options: (node as PdfFormFieldBaseModel).options,
             selectedIndex: (node as PdfFormFieldBaseModel).selectedIndex, signatureType: (node as any).signatureType,
             zIndex: (node as PdfFormFieldBaseModel).zIndex, pageNumber: (node as PdfFormFieldBaseModel).pageNumber,
-            customData: (node as PdfFormFieldBaseModel).customData
+            customData: (node as PdfFormFieldBaseModel).customData,
+            isUnisonSelected: (node as PdfFormFieldBaseModel).isUnisonSelected
         };
         if (index > -1) {
             this.pdfViewer.formFieldCollections[parseInt(index.toString(), 10)] = formField;
@@ -4457,7 +4623,7 @@ export class FormDesigner {
      */
     public updateRadioButtonProperties(obj: PdfFormFieldBaseModel, inputElement: HTMLElement, labelElement?: HTMLElement): void {
         const fillColor: string = '#daeaf7ff';
-        (inputElement as IFormFieldProperty).name = obj.name ? obj.name : 'Radio Button' + this.setFormFieldIndex();
+        //(inputElement as IFormFieldProperty).name = obj.name ? obj.name : 'Radio Button' + this.setFormFieldIndex();
         (inputElement as IElement).checked = obj.isSelected ? true : false;
         inputElement.style.backgroundColor = obj.backgroundColor ? obj.backgroundColor : '#daeaf7ff';
         inputElement.style.borderColor = obj.borderColor ? obj.borderColor : '#303030';
@@ -4905,6 +5071,10 @@ export class FormDesigner {
                     formFieldNotContains[parseInt(k.toString(), 10)]
                 );
                 if (items.formFieldAnnotationType === 'RadioButton') {
+                    if ((formFieldNotContains[parseInt(k.toString(), 10)] as any).isUnisonSelected) {
+                        const unison: boolean = (formFieldNotContains[parseInt(k.toString(), 10)] as any).isUnisonSelected;
+                        items.radiobuttonItem[0].isUnisonSelected = unison;
+                    }
                     const index: number = formFieldsData.findIndex(
                         (field: any) => field.FormField.name === items.name
                     );
@@ -5466,7 +5636,7 @@ export class FormDesigner {
      * @returns {void}
      */
     public updateFormFieldCollections(formFieldObject: PdfFormFieldBaseModel): void {
-        const formField: FormFieldModel = {
+        const formField: FormFieldModel | any = {
             id: formFieldObject.id.split('_')[0], name: (formFieldObject as PdfFormFieldBaseModel).name, value: (formFieldObject as PdfFormFieldBaseModel).value,
             type: (formFieldObject as any).type ? (formFieldObject as any).type :
                 formFieldObject.formFieldAnnotationType as FormFieldType, isReadOnly: formFieldObject.isReadonly,
@@ -5496,7 +5666,8 @@ export class FormDesigner {
             signatureIndicatorSettings: (formFieldObject as PdfFormFieldBaseModel).signatureIndicatorSettings,
             signatureType: (formFieldObject as any).signatureType,
             zIndex: (formFieldObject as PdfFormFieldBaseModel).zIndex,
-            customData: (formFieldObject as PdfFormFieldBaseModel).customData
+            customData: (formFieldObject as PdfFormFieldBaseModel).customData,
+            isUnisonSelected: (formFieldObject as PdfFormFieldBaseModel).isUnisonSelected
         };
         this.pdfViewer.formFieldCollections[this.pdfViewer.formFieldCollections.findIndex((el: any) => el.id === formField.id)] = formField;
     }
@@ -8794,6 +8965,7 @@ export interface IRadiobuttonItem {
     zIndex?: number;
     insertSpaces?: boolean;
     customData?: object;
+    isUnisonSelected?: boolean;
 }
 /**
  * Defines the common properties of Form Fields Item
@@ -8842,6 +9014,7 @@ export interface IFormField {
     isTransparent?: boolean;
     zIndex?: number;
     customData?: object;
+    isUnisonSelected?: boolean;
 
 }
 /**

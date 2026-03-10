@@ -3270,6 +3270,18 @@ export class PdfViewerBase {
         }
         if (this.pdfViewerRunner !== null && this.pdfViewerRunner !== undefined) {
             this.pdfViewerRunner.terminate();
+            if (this.pdfViewer && this.pdfViewer.element && this.pdfViewer.element.id) {
+                const key: any = 'pdfViewerRunner_' + this.pdfViewer.element.id;
+                if (typeof window !== 'undefined' && Object.prototype.hasOwnProperty.call(window, key)) {
+                    try {
+                        delete (window as any)[key as any];
+                    }
+                    catch (e) {
+                        (window as any)[key as any] = undefined;
+                    }
+                }
+            }
+            this.pdfViewerRunner = null;
         }
         let measureElement: HTMLElement = document.getElementById('measureElement');
         if (measureElement) {
@@ -3278,9 +3290,13 @@ export class PdfViewerBase {
         if (!this.isLocaleChanged) {
             this.hyperlinkAndLinkAnnotation = {};
             this.navigationPane = new NavigationPane(this.pdfViewer, this);
+            this.navigationPane.destroy();
             this.textLayer = new TextLayer(this.pdfViewer, this);
+            this.textLayer.destroy();
             this.accessibilityTags = new AccessibilityTags(this.pdfViewer, this);
+            this.accessibilityTags.destroy();
             this.signatureModule = new Signature(this.pdfViewer, this);
+            this.signatureModule.destroy();
             this.pageTextDetails = {};
             this.pageImageDetails = {};
             this.viewerContainer = null;
@@ -4083,6 +4099,7 @@ export class PdfViewerBase {
             this.viewerContainer.removeEventListener('mouseenter', this.viewerContainerOnMouseEnter);
             this.viewerContainer.removeEventListener('mouseover', this.viewerContainerOnMouseOver);
             this.viewerContainer.removeEventListener('click', this.viewerContainerOnClick);
+            this.viewerContainer.removeEventListener('dblclick', this.viewerContainerOnClick);
             this.viewerContainer.removeEventListener('dragstart', this.viewerContainerOnDragStart);
             this.viewerContainer.removeEventListener('contextmenu', this.viewerContainerOnContextMenuClick);
             this.pdfViewer.element.removeEventListener('keydown', this.viewerContainerOnKeyDown);

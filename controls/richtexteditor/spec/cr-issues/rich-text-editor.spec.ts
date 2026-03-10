@@ -716,6 +716,35 @@ describe('RTE CR issues ', () => {
             destroy(rteObj);
         });
     });
+    describe('Bug 1011397: Backspace removes inserted video/image after pressing Enter multiple times, even when the media is not selected.', () => {
+        let rteObj: RichTextEditor;
+        const value: string = `<div style="display:block;"> <p style="margin-right:10px"> <span class="e-video-wrap" contenteditable="false" title="Screen Recording 2026-01-27 at 6.44.55 PM.mov"><video class="e-rte-video e-video-inline" controls="" width="auto" height="auto" style="min-width: 0px; max-width: 1193px; min-height: 0px;"><source src="blob:http://127.0.0.1:5500/404b6da5-5bec-484c-876c-b1b56c70dbe9" type="video/mp4"></video></span> </p><p><br></p><p><br></p><p style="margin-right: 10px;">The custom command "insert special character" is configured as the last item of the toolbar. Click on the command and choose the special character you want to include from the popup. </p> </div>`;
+        beforeAll(() => {
+            rteObj = renderRTE({
+                value: value
+            });
+        });
+        it('video element should remain after pressing backspace 4 times from start of text content', (done: DoneFn) => {
+            rteObj.focusIn();
+            const targetParagraph: HTMLElement = Array.from(rteObj.inputElement.querySelectorAll('p')).filter((p: HTMLElement) => {
+                return p.textContent && p.textContent.indexOf('The custom command "insert special character"') > -1;
+            })[0] as HTMLElement;
+            setCursorPoint(targetParagraph.firstChild as Element, 0);
+            const backSpaceKeyDown: KeyboardEvent = new KeyboardEvent('keydown', BACKSPACE_EVENT_INIT);
+            const backSpaceKeyUp: KeyboardEvent = new KeyboardEvent('keyup', BACKSPACE_EVENT_INIT);
+            for (let i: number = 0; i < 4; i++) {
+                rteObj.inputElement.dispatchEvent(backSpaceKeyDown);
+                rteObj.inputElement.dispatchEvent(backSpaceKeyUp);
+            }
+            setTimeout(() => {
+                expect(rteObj.inputElement.querySelector('video')).not.toBe(null);
+                done();
+            }, 100);
+        });
+        afterAll(() => {
+            destroy(rteObj);
+        });
+    });
     describe('Bug 1004322: Unexpected Image Deletion and Cursor Behavior in RTE When Using Shift + Enter.', () => {
         let rteObj: RichTextEditor;
         let keyboardEventArgs = {

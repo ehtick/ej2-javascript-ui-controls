@@ -205,6 +205,8 @@ export class VideoCommand {
                 const node: Node = this.parent.nodeSelection.getSelectedNodes(this.parent.currentDocument)[0];
                 wrapElement.parentNode.insertBefore(focusNode, node.nextSibling);
                 e.item.selection.save(range, this.parent.currentDocument);
+            } else if (isNOU(e.item.selection) && !e.callBack) {
+                this.setMediaElementCursor(wrapElement, this.parent.currentDocument);
             }
         }
         if (e.callBack && (isNOU(e.selector) || !isNOU(e.selector) && e.selector !== 'pasteCleanupModule')) {
@@ -252,6 +254,15 @@ export class VideoCommand {
                 this.vidElement.addEventListener('play', () => { this.editAreaVideoClick(e); });
                 this.vidElement.addEventListener('pause', () => { this.editAreaVideoClick(e); });
             }
+        }
+    }
+
+    // Sets cursor position after inserting media elements (audio/video).
+    private setMediaElementCursor(mediaElement: Element, docElement: Document): void {
+        const parentElement: HTMLElement = mediaElement.parentElement;
+        const mediaIndex: number = Array.prototype.indexOf.call(parentElement.childNodes, mediaElement);
+        if (mediaIndex !== -1) {
+            this.parent.nodeSelection.setSelectionText(docElement, parentElement, parentElement, mediaIndex + 1, mediaIndex + 1);
         }
     }
     private editAreaVideoClick(e: IHtmlItem) : void {

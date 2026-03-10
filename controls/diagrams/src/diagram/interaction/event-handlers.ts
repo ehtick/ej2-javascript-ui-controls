@@ -87,6 +87,9 @@ export class DiagramEventHandler {
     public touchArgs: TouchArgs = undefined;
     /**   @private  */
     public focus: boolean = false;
+    /** Flag indicating whether Shift/ctrl is currently pressed */
+    /** @private */
+    public isShiftOrCtrlKeyPressed: boolean = false;
 
     private get action(): Actions {
         return this.currentAction;
@@ -525,6 +528,10 @@ export class DiagramEventHandler {
                     this.mouseMove(evt, undefined);
                 }
             }, 500);
+        }
+        const ctrlKey: boolean = this.isMetaKey(evt);
+        if (ctrlKey || evt.shiftKey) {
+            this.isShiftOrCtrlKeyPressed = true;
         }
         // EJ2-57541 - Added the below code to check whether diagram tool is instance of node drawing tool or connector drawing tool.
         // If node or connector drawing tool means then we have returned without perform any operation.
@@ -2025,6 +2032,9 @@ export class DiagramEventHandler {
     }
 
     public keyUp(evt: KeyboardEvent): void {
+        if (this.isShiftOrCtrlKeyPressed && (!evt.shiftKey || !evt.ctrlKey)) {
+            this.isShiftOrCtrlKeyPressed = false;
+        }
         const element: any = cloneBlazorObject(this.diagram.selectedItems);
         this.keyArgs = {
             element: element, key: evt.key, keyCode: evt.keyCode ? evt.keyCode : evt.which,
@@ -2761,12 +2771,18 @@ export class DiagramEventHandler {
     // tslint:disable-next-line:max-func-body-length
     private updateContainerProperties(): HistoryLog {
         let helperObject: NodeModel; let isChangeProperties: boolean = false;
-        let hasStack: boolean; let connectors: string[]; let hasGroup: boolean = false; let obj: NodeModel;
+        let hasStack: boolean; let connectors: string[]; let hasGroup: boolean = false; let obj: NodeModel | SelectorModel;
         let history: HistoryLog = { hasStack: false, isPreventHistory: false };
         if (this.diagram.selectedObject.helperObject) {
             const objects: IElement[] = this.diagram.findObjectsUnderMouse(this.currentPosition);
             let target: IElement = this.diagram.findObjectUnderMouse(objects, this.action, this.inAction);
-            helperObject = this.diagram.selectedObject.helperObject as Node; obj = this.diagram.selectedObject.actualObject;
+            helperObject = this.diagram.selectedObject.helperObject as Node;
+            //1011408: AllowMovingOutsideLane causes node enlargement on Shift+Click multi-select then Shift+Drag in SwimLane.
+            if (this.diagram.selectedItems.nodes.length > 1 && this.currentAction === 'Drag' && this.isShiftOrCtrlKeyPressed) {
+                obj = this.diagram.selectedItems;
+            } else {
+                obj = this.diagram.selectedObject.actualObject;
+            }
             if (obj instanceof Node) {
                 if (obj.shape.type === 'SwimLane') {
                     connectors = getConnectors(this.diagram, (obj.wrapper.children[0] as GridPanel), 0, true);
@@ -2957,7 +2973,7 @@ export class DiagramEventHandler {
             }
         }
         if (obj && ((obj as SwimLane).isPhase || (obj as SwimLane).isLane ||
-            (obj.shape && obj.shape.type === 'SwimLane'))) {
+            ((obj as Node).shape && (obj as Node).shape.type === 'SwimLane'))) {
             this.diagram.updateDiagramElementQuad();
         }
         return history;

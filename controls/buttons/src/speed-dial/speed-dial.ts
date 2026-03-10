@@ -665,6 +665,8 @@ export class SpeedDial extends Component<HTMLButtonElement> implements INotifyPr
     private documentKeyboardModule: KeyboardEvents;
     private removeRippleEffect: Function;
     private keyConfigs: { [key: string]: string };
+    private resizeHandlerBound: () => void
+    private bodyClickHandlerBound: () => void;
 
     /**
      * Constructor for creating the widget
@@ -742,8 +744,12 @@ export class SpeedDial extends Component<HTMLButtonElement> implements INotifyPr
 
     }
     private wireEvents(): void {
-        EventHandler.add(<HTMLElement & Window><unknown>window, 'resize', this.resizeHandler, this);
-        EventHandler.add(document.body, 'click', this.bodyClickHandler, this);
+        // Bind handlers to maintain context and allow proper cleanup
+        this.resizeHandlerBound = this.resizeHandler.bind(this);
+        this.bodyClickHandlerBound = this.bodyClickHandler.bind(this);
+
+        EventHandler.add(<HTMLElement & Window><unknown>window, 'resize', this.resizeHandlerBound, this);
+        EventHandler.add(document.body, 'click', this.bodyClickHandlerBound, this);
         if (this.opensOnHover) { this.wireFabHover(); } else { this.wireFabClick(); }
     }
     private wirePopupEvents(): void {
@@ -1676,8 +1682,15 @@ export class SpeedDial extends Component<HTMLButtonElement> implements INotifyPr
         });
     }
     private unwireEvents(): void {
-        EventHandler.remove(<HTMLElement & Window><unknown>window, 'resize', this.resizeHandler);
-        EventHandler.remove(document.body, 'click', this.bodyClickHandler);
+        // Use bound handlers for proper cleanup
+        if (this.resizeHandlerBound) {
+            EventHandler.remove(<HTMLElement & Window><unknown>window, 'resize', this.resizeHandlerBound);
+            this.resizeHandlerBound = null;
+        }
+        if (this.bodyClickHandlerBound) {
+            EventHandler.remove(document.body, 'click', this.bodyClickHandlerBound);
+            this.bodyClickHandlerBound = null;
+        }
         if (this.opensOnHover) { this.unwireFabHover(); } else { this.unwireFabClick(); }
     }
     private unwireFabClick(): void {

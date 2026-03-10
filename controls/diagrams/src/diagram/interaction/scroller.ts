@@ -161,6 +161,8 @@ export class DiagramScroller {
     public scrollerWidth: number;
     private hScrollSize: number = 0;
     private vScrollSize: number = 0;
+    /** @private */
+    public isNegativeOffset: boolean = false;
 
     constructor(diagram: Diagram) {
         this.diagram = diagram;
@@ -180,6 +182,7 @@ export class DiagramScroller {
         const postion: Rect = this.diagram.spatialSearch.getPageBounds(0, 0);
         if ((postion.x < 0 || postion.y < 0) && !this.diagram.pageSettings.multiplePage) {
             pageBounds = this.getPageBounds(undefined, undefined, true, true);
+            this.isNegativeOffset = true;
         } else {
             pageBounds = this.getPageBounds(undefined, undefined, true);
         }

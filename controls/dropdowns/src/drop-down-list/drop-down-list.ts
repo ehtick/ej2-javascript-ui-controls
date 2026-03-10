@@ -2966,7 +2966,8 @@ export class DropDownList extends DropDownBase implements IInput {
     private checkAndFetchItemData(
         list: { [key: string]: Object }[],
         value: string | number | boolean,
-        checkField: string
+        checkField: string,
+        isOffline: boolean = false
     ): void {
         const fieldValue: string[] = this.fields.value.split('.');
         let checkVal: boolean = list.some((x: { [key: string]: boolean | string | number }) =>
@@ -2978,31 +2979,72 @@ export class DropDownList extends DropDownBase implements IInput {
                     this.checkFieldValue(x, fieldValue) === value : x[checkField as string] === value);
         }
         if (!checkVal && this.dataSource instanceof DataManager) {
-            (this.dataSource).executeQuery(this.getQuery(this.query).where(new Predicate(checkField, 'equal', value)))
-                .then((e: Object) => {
-                    if ((e as ResultData).result.length > 0) {
-                        if (!this.enableVirtualization) {
-                            this.addItem((e as ResultData).result, list.length);
-                        }
-                        else {
-                            this.itemData = (e as ResultData).result[0];
-                            const dataItem: { [key: string]: string } = this.getItemData();
-                            if ((this.value === dataItem.value && this.text !== dataItem.text) ||
-                                            (this.value !== dataItem.value && this.text === dataItem.text)) {
-                                this.setProperties({ text: dataItem.text.toString() });
-                                Input.setValue(this.text, this.inputElement, this.floatLabelType, this.showClearButton);
+            if (isOffline) {
+                this.searchOfflineData(value, checkField);
+            }
+            else {
+                (this.dataSource).executeQuery(this.getQuery(this.query).where(new Predicate(checkField, 'equal', value)))
+                    .then((e: Object) => {
+                        if ((e as ResultData).result.length > 0) {
+                            if (!this.enableVirtualization) {
+                                this.addItem((e as ResultData).result, list.length);
                             }
+                            else {
+                                this.itemData = (e as ResultData).result[0];
+                                const dataItem: { [key: string]: string } = this.getItemData();
+                                if ((this.value === dataItem.value && this.text !== dataItem.text) ||
+                                    (this.value !== dataItem.value && this.text === dataItem.text)) {
+                                    this.setProperties({ text: dataItem.text.toString() });
+                                    Input.setValue(this.text, this.inputElement, this.floatLabelType, this.showClearButton);
+                                }
+                            }
+                            this.updateValues();
+                        } else {
+                            this.updateValues();
                         }
-                        this.updateValues();
-                    } else {
-                        this.updateValues();
-                    }
-                });
+                    });
+            }
         } else {
             this.updateValues();
         }
     }
 
+    private searchOfflineData(
+        value: string | number | boolean,
+        checkField: string
+    ): void {
+        if (!(this.dataSource instanceof DataManager)) {
+            this.updateValues();
+            return;
+        }
+        const dataManager: DataManager = this.dataSource as DataManager;
+        const fullData: any[] = (dataManager as any).dataSource.json || [];
+        if (fullData && fullData.length > 0) {
+            const foundItem: any = (fullData as any).find((item: any) => {
+                if (this.fields.value && (this.fields.value as any).includes('.')) {
+                    const fieldValueArray: string[] = this.fields.value.split('.');
+                    const fieldVal: any = this.checkFieldValue(item, fieldValueArray);
+                    return fieldVal === value;
+                }
+                return item[checkField as string] === value;
+            });
+            if (foundItem) {
+                this.itemData = foundItem;
+                const dataItem: { [key: string]: string } = this.getItemData();
+
+                if ((this.value === dataItem.value && this.text !== dataItem.text) ||
+                    (this.value !== dataItem.value && this.text === dataItem.text)) {
+                    this.setProperties({ text: dataItem.text.toString() });
+                    Input.setValue(this.text, this.inputElement, this.floatLabelType, this.showClearButton);
+                }
+                this.updateValues();
+            } else {
+                this.updateValues();
+            }
+        } else {
+            this.updateValues();
+        }
+    }
 
     private updateActionCompleteDataValues(ulElement: HTMLElement, list: { [key: string]: object; }[]): void {
         this.actionCompleteData = { ulElement: ulElement.cloneNode(true) as HTMLElement, list: list, isUpdated: true };
@@ -4426,10 +4468,12 @@ export class DropDownList extends DropDownBase implements IInput {
                 }
                 if (this.enableVirtualization){
                     if (newProp.value && this.dataSource instanceof DataManager) {
+                        const isOfflineMode: boolean = this.dataSource instanceof DataManager &&
+                        (this.dataSource as any).dataSource.offline === true;
                         const checkField: string = isNullOrUndefined(this.fields.value) ? this.fields.text : this.fields.value;
                         const value: string | number | boolean = this.allowObjectBinding && !isNullOrUndefined(newProp.value) ?
                             getValue(checkField, newProp.value) : newProp.value;
-                        this.checkAndFetchItemData(this.listData as any[], value, checkField);
+                        this.checkAndFetchItemData(this.listData as any[], value, checkField, isOfflineMode);
                     }
                     this.updateValues();
                     this.updateInputFields();

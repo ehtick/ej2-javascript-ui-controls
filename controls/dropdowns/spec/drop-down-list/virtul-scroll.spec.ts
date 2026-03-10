@@ -577,6 +577,47 @@ describe('DDList_Virtualization', () => {
             (<any>listObj).mobileKeyActionHandler();
         });
     });
+    describe('Remote data binding', () => {
+        let listObj: any;
+        let popupObj: any;
+        let element: HTMLInputElement = <HTMLInputElement>createElement('input', { id: 'dropdownlist' });
+        let remoteData: DataManager = new DataManager({
+            url: 'https://services.syncfusion.com/js/production/api/Employees',
+            adaptor: new WebApiAdaptor,
+            offline: true,
+            crossDomain: true
+        });
+        let originalTimeout: number;
+        beforeEach(() => {
+            originalTimeout = jasmine.DEFAULT_TIMEOUT_INTERVAL;
+            jasmine.DEFAULT_TIMEOUT_INTERVAL = 4000;
+            document.body.appendChild(element);
+        });
+        afterEach(() => {
+            jasmine.DEFAULT_TIMEOUT_INTERVAL = originalTimeout;
+            if (element) {
+                element.remove();
+                document.body.innerHTML = '';
+            }
+        });
+        /**
+         * remoteData binding with index
+         */
+        it('index at initialize time ', (done) => {
+            listObj = new DropDownList({ dataSource: remoteData, enableVirtualization: true, query: new Query(), value: 34, fields: { value: 'EmployeeID', text: 'FirstName' } });
+            listObj.appendTo(element);
+            setTimeout(() => {
+                expect(listObj.value).toBe(34);
+                listObj.value = 343;
+                listObj.dataBind();
+                setTimeout(() => {
+                    expect(listObj.value).toBe(343);
+                    expect(listObj.text).toBe('Alexander Anderson');
+                    done();
+                }, 1800);
+            }, 1800);
+        });
+    });
 });
 
 function done() {

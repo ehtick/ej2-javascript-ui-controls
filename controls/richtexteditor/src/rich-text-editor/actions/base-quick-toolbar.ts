@@ -246,6 +246,7 @@ export class BaseQuickToolbar implements IBaseQuickToolbar {
                 position: 'BottomCenter',
                 cssClass: this.parent.getCssClass()
             });
+            this.tooltip.isAngular = this.parent.isModalDialog;
             this.tooltip.appendTo(this.toolbarElement as HTMLElement);
         }
         if (this.element.style.maxWidth !== '75%') {

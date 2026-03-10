@@ -2,7 +2,15 @@
 
 ## [Unreleased]
 
-## 32.2.8 (2025-12-22)
+## 32.2.9 (2026-03-10)
+
+### PDF Data Extract
+
+#### Bug Fixes
+
+- Resolved an issue where the extracted text was not retrieved properly.
+
+## 32.1.21 (2025-12-30)
 
 ### PDF Data Extract
 

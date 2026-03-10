@@ -4484,9 +4484,18 @@ export class QueryBuilder extends Component<HTMLDivElement> implements INotifyPr
                 if (this.groupCloned && this.target instanceof HTMLElement &&
                     this.getGroup(this.target).rules.length > 1) {
                     const parent: HTMLElement = this.element.querySelector('#' + groupID);
-                    const topLevelGroups: NodeListOf<HTMLElement> = parent.querySelectorAll(':scope > .e-group-body > .e-rule-list > .e-group-container');
-                    if (groupID !== 'querybuilder_group0' && !(this.isAngular && groupID === 'ej2-querybuilder_0_group0')) {
-                        this.groupIndex = topLevelGroups.length > 1 ? topLevelGroups.length - 1 : 0;
+                    const allContainers: NodeListOf<Element> = parent.querySelectorAll(':scope > .e-group-body > .e-rule-list > [class*="-container"]');
+                    const topLevelGroups: NodeListOf<Element> = parent.querySelectorAll(':scope > .e-group-body > .e-rule-list > .e-group-container');
+                    if (topLevelGroups.length > 0 && groupID !== 'querybuilder_group0' && !(this.isAngular && groupID === 'ej2-querybuilder_0_group0')) {
+                        let lastGroupIndex: number = -1;
+                        const lastGroup: Element = topLevelGroups[topLevelGroups.length - 1];
+                        for (let i: number = 0; i < allContainers.length; i++) {
+                            if (allContainers[i as number] === lastGroup) {
+                                lastGroupIndex = i;
+                                break;
+                            }
+                        }
+                        this.groupIndex = lastGroupIndex - 1;
                     }
                 }
                 if (this.groupIndex < 0) {

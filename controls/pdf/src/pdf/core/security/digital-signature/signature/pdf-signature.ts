@@ -716,7 +716,12 @@ export class PdfSignature {
                 }
             }
         }
-        if (field._dictionary && field._dictionary.has('Kids') && this._crossReference) {
+        if (field._dictionary && field._dictionary.has('Lock')) {
+            const lock: _PdfDictionary = field._dictionary.get('Lock');
+            if (lock) {
+                this._isLocked = true;
+            }
+        } else if (field._dictionary && field._dictionary.has('Kids') && this._crossReference) {
             const reference: _PdfReference[] = field._dictionary.get('Kids');
             const dictionary: _PdfDictionary = this._crossReference._cacheMap.get(reference[0]);
             if (dictionary && dictionary.has('Lock')) {
@@ -782,7 +787,7 @@ export class PdfSignature {
         if (this._signatureField && this._signatureField._crossReference) {
             const ref: _PdfReference = this._signatureField._crossReference._getNextReference();
             this._signatureField._crossReference._cacheMap.set(ref, lockDictionary);
-            this._signatureField._widgetAnnot._dictionary.update('Lock', ref);
+            this._signatureField._dictionary.update('Lock', ref);
         }
     }
     _createDictionary(document: PdfDocument, signature: PdfSignature): _PdfSignatureDictionary {

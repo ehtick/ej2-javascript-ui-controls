@@ -580,7 +580,7 @@ describe('Resize ->', () => {
                 }, 50);
             });
         });
-        describe('EJ2-876040, EJ2-911629, EJ2-924641 ->', () => {
+        describe('EJ2-876040, EJ2-911629, EJ2-924641,EJ2-1009306 ->', () => {
             beforeAll((done: Function) => {
                 helper.initializeSpreadsheet({
                     sheets: [
@@ -667,6 +667,41 @@ describe('Resize ->', () => {
                     rowHdr = helper.invoke('getRowHeaderTable').rows[2].cells[0];
                     expect(rowHdr.clientHeight).toBe(24);
                     done();
+                });
+            });
+            it('EJ2: 1009306 - Row height shrinks after increasing font size on Autofit-applied merged cells with wrap text', (done: Function) => {
+                const spreadsheet: Spreadsheet = helper.getInstance();
+                helper.invoke('updateCell', [{ value: 'Initial short text' }, 'B6']);
+                spreadsheet.merge('B6:E6', 'Horizontally');
+                helper.invoke('wrap', ['B6']);
+                helper.invoke('updateCell', [{ value: 'Initial short text with additional content to force wrapping and increase height' }, 'B6']);
+                spreadsheet.autoFit('6');
+                setTimeout(() => {
+                    expect(spreadsheet.sheets[0].rows[5].height).not.toBe(20);
+                    let rowHgt: number = spreadsheet.sheets[0].rows[5].height;
+                    helper.invoke('selectRange', ['B6']);
+                    spreadsheet.cellFormat({ fontSize: '18pt' }, 'B6');
+                    expect(spreadsheet.sheets[0].rows[5].height).toBe(rowHgt);
+                    spreadsheet.autoFit('6');
+                    expect(spreadsheet.sheets[0].rows[5].height).not.toBe(rowHgt);
+                    rowHgt = spreadsheet.sheets[0].rows[5].height;
+                    spreadsheet.autoFit('6');
+                    expect(spreadsheet.sheets[0].rows[5].height).toBe(rowHgt);
+                    done();
+                });
+            });
+            it('EJ2: 1009306: undo / redo check on autofit applied cells', (done: Function) => {
+                const sheet: SheetModel = helper.getInstance().sheets[0];
+                helper.click('#spreadsheet_undo');
+                setTimeout(() => {
+                    let maxHgts: { [key: number]: number } = sheet.maxHgts[5 as number] as { [key: number]: number };
+                    expect(maxHgts[-1 as number]).toBeUndefined();
+                    helper.click('#spreadsheet_redo');
+                    setTimeout(() => {
+                        maxHgts = sheet.maxHgts[5 as number] as { [key: number]: number };
+                        expect(maxHgts[-1 as number]).not.toBeUndefined();
+                        done();
+                    });
                 });
             });
         });

@@ -555,7 +555,9 @@ export class PdfDataExtractor {
     }
     _renderText(page: PdfPage, fontCollection: Map<string, _FontStructure>, xObjectCollection: Map<string, any>, graphicState: _GraphicState, imageExtraction?: boolean): any { // eslint-disable-line
         if (!(this._contentParser)) {
-            this._contentParser = new _PdfContentParserHelper(_TextProcessingMode.textLineExtraction);
+            this._contentParser = new _PdfContentParserHelper((this._isExtractTextLines ||
+                this._extractTaggedText) ? _TextProcessingMode.textLineExtraction
+                : _TextProcessingMode.textExtraction);
         }
         const recordCollection: _PdfRecord[] = this._contentParser._getPageRecordCollection(page);
         let text: any; // eslint-disable-line

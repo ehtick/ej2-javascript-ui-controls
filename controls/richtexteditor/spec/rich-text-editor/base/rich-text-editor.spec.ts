@@ -4099,6 +4099,41 @@ describe('RTE Base module ', () => {
             });
         });
 
+        describe('1012145: Verify setIsModalDialogValue is called during RTERender', () => {
+            let rteObj: RichTextEditor;
+            let modalContainer: HTMLElement;
+            beforeAll(() => {
+                // Create modal container first
+                modalContainer = createElement('div', { className: 'cdk-overlay-pane' });
+                // Create RTE element
+                const rteElement = createElement('div', { id: 'rte-test-modal' });
+                modalContainer.appendChild(rteElement);
+                document.body.appendChild(modalContainer);
+                // Now render RTE with isAngular already set
+                let defaultRTE: RichTextEditor = new RichTextEditor({
+                    height: 400,
+                    toolbarSettings: {
+                        items: ['Formats', 'CodeBlock', 'LineHeight', 'Alignments', '|', 'BulletFormatList', 'NumberFormatList',
+                                'FontColor', 'BackgroundColor', 'FontName', 'FontSize', '|', 'LowerCase', 'AICommands', 'AIQuery']
+                    },
+                    value: '<p>Testing</p>',
+                });
+                rteObj = defaultRTE;
+                defaultRTE.isAngular = true;
+                defaultRTE.appendTo(rteElement);
+            });
+            afterAll(() => {
+                rteObj.destroy();
+                detach(modalContainer);
+            });
+            it('should have isModalDialog set to true after render with modal setup', (done) => {
+                // The setIsModalDialogValue method should have been called during render
+                expect(rteObj.isAngular).toBe(true);
+                expect(rteObj.isModalDialog).toBe(true);
+                done();
+            });
+        });
+
         describe('RTE shortcut key - HTML', () => {
             let rteObj: RichTextEditor;
             let elem: HTMLElement;

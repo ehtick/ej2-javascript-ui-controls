@@ -118,4 +118,42 @@ describe('Insert HTML  Exec plugin', () => {
             expect(rteObj.inputElement.innerHTML === '<p>🙂</p>').toBe(true);
         });
     });
+
+    describe('1011396 - Cursor position is not maintained correctly after inserting a video using executeCommand', function () {
+        let rteObj: RichTextEditor;
+        beforeEach(function () {
+            rteObj = renderRTE({
+                value: "<p>Testing</p>"
+            });
+        });
+        afterEach(function () {
+            destroy(rteObj);
+        });
+        it('Use the executeCommand method to insert the video', function (done) {
+            rteObj.focusIn();
+            rteObj.formatter.editorManager.nodeSelection.setCursorPoint(document, rteObj.inputElement.querySelector('p').firstChild as HTMLElement, 4);
+            rteObj.executeCommand('insertVideo', {
+                url: 'https://www.w3schools.com/tags/movie.mp4',
+                cssClass: 'e-rte-video',
+            });
+            setTimeout(function () {
+                expect(window.getSelection().getRangeAt(0).startOffset).toBe(2);
+                expect(window.getSelection().getRangeAt(0).startContainer.nodeName).toBe('P');
+                done();
+            }, 100);
+        });
+        it('Use the executeCommand method to insert the audio', function (done) {
+            rteObj.focusIn();
+            rteObj.formatter.editorManager.nodeSelection.setCursorPoint(document, rteObj.inputElement.querySelector('p').firstChild as HTMLElement, 4);
+            rteObj.executeCommand('insertAudio', {
+                url: 'https://assets.mixkit.co/sfx/preview/mixkit-rain-and-thunder-storm-2390.mp3',
+                cssClass: 'e-rte-audio',
+            });
+            setTimeout(function () {
+                expect(window.getSelection().getRangeAt(0).startOffset).toBe(2);
+                expect(window.getSelection().getRangeAt(0).startContainer.nodeName).toBe('P');
+                done();
+            }, 100);
+        });
+    });
 });

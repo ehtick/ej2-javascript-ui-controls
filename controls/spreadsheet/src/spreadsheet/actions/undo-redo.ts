@@ -290,19 +290,33 @@ export class UndoRedo {
                 preventEvt = true;
                 break;
             case 'resize':
-            case 'resizeToFit':
+            case 'resizeToFit': {
                 undoRedoArgs = this.undoForResize(undoRedoArgs);
+                const eventArgs: UndoRedoEventArgs = undoRedoArgs.eventArgs;
+                const sheet: SheetModel = this.parent.sheets[eventArgs.sheetIndex];
                 if (args.isUndo) {
-                    const eventArgs: UndoRedoEventArgs = undoRedoArgs.eventArgs;
+                    if (undoRedoArgs.action === 'resizeToFit' && !eventArgs.isCol) {
+                        const maxHgts: { [key: number]: number } = sheet.maxHgts[eventArgs.index as number] as { [key: number]: number };
+                        if (maxHgts && maxHgts[-1 as number] && maxHgts[-1 as number] === parseFloat(eventArgs.oldHeight)) {
+                            delete maxHgts[-1 as number];
+                        }
+                    }
                     if (!(eventArgs as unknown as { isPrevCustomHeight: boolean }).isPrevCustomHeight) {
-                        const sheet: SheetModel = this.parent.sheets[eventArgs.sheetIndex];
                         const row: RowModel = sheet && getRow(sheet, eventArgs.index);
                         if (row && row.customHeight) {
                             delete row.customHeight;
                         }
                     }
+                } else {
+                    if (undoRedoArgs.action === 'resizeToFit' && !eventArgs.isCol) {
+                        const maxHgts: { [key: number]: number } = sheet.maxHgts[eventArgs.index as number] as { [key: number]: number };
+                        if (maxHgts && !maxHgts[-1 as number]) {
+                            setMaxHgt(sheet, eventArgs.index, -1, parseFloat(eventArgs.height));
+                        }
+                    }
                 }
                 break;
+            }
             case 'hideShow':
                 updateAction(undoRedoArgs, this.parent, !args.isUndo);
                 break;

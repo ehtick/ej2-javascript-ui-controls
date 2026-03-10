@@ -243,6 +243,7 @@ export class ToolbarRenderer implements IRenderer {
                 windowCollision: true,
                 position: isBottomToolbar ? 'TopCenter' : 'BottomCenter'
             });
+            this.tooltip.isAngular = this.parent.isModalDialog;
             this.tooltip.appendTo(args.target.parentElement);
         }
     }
@@ -515,6 +516,7 @@ export class ToolbarRenderer implements IRenderer {
         });
         dropDown.isStringTemplate = true;
         dropDown.createElement = proxy.parent.createElement;
+        dropDown.isAngular = proxy.parent.isModalDialog;
         dropDown.appendTo(args.element);
         args.element.tabIndex = -1;
         const popupElement: Element = document.getElementById(dropDown.element.id + '-popup');
@@ -688,6 +690,7 @@ export class ToolbarRenderer implements IRenderer {
             open: this.dropDownOpen.bind(this),
             beforeItemRender: this.beforeDropDownItemRender.bind(this)
         });
+        splitButton.isAngular = this.parent.isModalDialog;
         splitButton.appendTo(args.element);
         const popupElement: Element = document.getElementById(splitButton.element.id + '_dropdownbtn-popup');
         popupElement.setAttribute('aria-owns', this.parent.getID());
@@ -805,6 +808,7 @@ export class ToolbarRenderer implements IRenderer {
             },
             beforeClose: this.dropDownClose.bind(this)
         });
+        colorPicker.isAngular = this.parent.isModalDialog;
         colorPicker.isStringTemplate = true;
         colorPicker.createElement = this.parent.createElement;
         colorPicker.appendTo(args.element);
@@ -822,7 +826,9 @@ export class ToolbarRenderer implements IRenderer {
             beforeOpen: this.menueDropDownBeforeOpen.bind(this),
             beforeClose: this.menueDropDownBeforeClose.bind(this),
             select: this.menuItemSelected.bind(this)
-        }, args.dropDownRoot);
+        });
+        dropDown.isAngular = this.parent.isModalDialog;
+        dropDown.appendTo(args.dropDownRoot);
         const menu: Menu = new Menu({
             orientation: 'Vertical',
             items: args.menuItems.items,
@@ -837,6 +843,7 @@ export class ToolbarRenderer implements IRenderer {
             menu.animationSettings = { effect: 'None', duration: 0 };
             dropDown.animationSettings = { effect: 'None', duration: 0 };
         }
+        menu.isAngular = this.parent.isModalDialog;
         menu.appendTo(args.menuRoot);
         return { menu: menu, dropDownButton : dropDown};
     }

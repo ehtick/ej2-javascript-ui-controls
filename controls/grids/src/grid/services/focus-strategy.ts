@@ -96,7 +96,8 @@ export class FocusStrategy {
         if (this.parent.isDestroyed) { return; }
         const firstHeaderCell: Element = this.parent.getHeaderContent().querySelector('.e-headercell:not(.e-hide)');
         const lastRow: HTMLElement = this.parent.getContentTable().querySelector('tr:last-child');
-        const lastCell: Element = lastRow && lastRow.lastElementChild;
+        const lastVisibleCell: Element[] = lastRow && Array.from(lastRow.querySelectorAll('.e-rowcell:not(.e-hide)'));
+        const lastCell: Element = lastVisibleCell && lastVisibleCell[lastVisibleCell.length - 1];
         const templateCell: Element = closest(<HTMLElement>e.target, '.e-templatecell');
         if (e.target === firstHeaderCell && e.relatedTarget && !parentsUntil((e.relatedTarget as Element), 'e-grid')
             && !this.firstHeaderCellClick) {
@@ -221,7 +222,9 @@ export class FocusStrategy {
         const contentTable: HTMLTableElement = this.parent.getContentTable() as HTMLTableElement;
         if (contentTable.rows[contentTable.rows.length - 1]) {
             const lastCell: Element = contentTable.rows[contentTable.rows.length - 1].lastElementChild;
-            (lastCell as HTMLElement).tabIndex = 0;
+            if (!isNullOrUndefined(lastCell)) {
+                (lastCell as HTMLElement).tabIndex = 0;
+            }
         }
     }
 

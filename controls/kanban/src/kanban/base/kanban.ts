@@ -782,6 +782,10 @@ export class Kanban extends Component<HTMLElement> {
             this.tooltipModule.destroy();
             this.tooltipModule = null;
         }
+        if (this.dialogModule.formObj) {
+            this.dialogModule.formObj.destroy();
+            this.dialogModule.formObj = null;
+        }
         this.dialogModule = null;
         this.actionModule = null;
         this.crudModule = null;

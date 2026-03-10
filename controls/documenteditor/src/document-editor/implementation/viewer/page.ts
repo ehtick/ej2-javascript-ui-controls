@@ -2090,6 +2090,10 @@ export class TableWidget extends BlockWidget {
     /**
      * @private
      */
+    public isHeaderNotRepeatForAllPages: boolean = false;
+    /**
+     * @private
+     */
     public footnoteElement: FootnoteElementBox[] = [];
     // /**
     //  * @private
@@ -3425,16 +3429,18 @@ export class TableRowWidget extends BlockWidget {
      */
     public updateUniformWidthUnitForCells():void{
         let isSetMinwidth: boolean = false;
-        if (this.ownerTable && this.ownerTable.tableHolder && this.ownerTable.tableHolder.columns && this.childWidgets.length !== this.ownerTable.tableHolder.columns.length) {
+        if (this.ownerTable && this.ownerTable.tableHolder && this.ownerTable.tableHolder.columns && this.childWidgets.length !== this.ownerTable.tableHolder.columns.length && this.ownerTable.tableFormat.allowAutoFit) {
             isSetMinwidth = true;
         }
         for (let i: number = 0; i < this.childWidgets.length; i++) {
             let cell: TableCellWidget = this.childWidgets[i] as TableCellWidget;
-            cell.cellFormat.preferredWidthType = "Point";
-            if (isSetMinwidth) {
-                cell.cellFormat.preferredWidth = cell.getMinimumPreferredWidth();
-            } else {
-                cell.cellFormat.preferredWidth = cell.cellFormat.cellWidth;
+            if (cell.cellFormat.preferredWidthType !== "Point") {
+                cell.cellFormat.preferredWidthType = "Point";
+                if (isSetMinwidth) {
+                    cell.cellFormat.preferredWidth = cell.getMinimumPreferredWidth();
+                } else {
+                    cell.cellFormat.preferredWidth = cell.cellFormat.cellWidth;
+                }
             }
         }
     }

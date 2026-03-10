@@ -3078,6 +3078,10 @@
       }
     }
 
+    &.e-mac-safari.e-resize-lines.e-rcursor {
+      user-select: none;
+    }
+
     .e-columnchooser::before {
       line-height: $grid-columnchooser-toolbar-icon-line-height;
     }

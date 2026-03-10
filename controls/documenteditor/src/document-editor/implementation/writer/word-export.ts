@@ -4880,6 +4880,9 @@ export class WordExport {
     private serializeGridColumns(writer: XmlWriter, grid: number[]): void {
         for (let i: number = 0, count: number = grid.length; i < count; i++) {
             let gridValue: number = Math.round(grid[i] * 20);
+            if (gridValue === 0) {
+                gridValue = 1;
+            }
             writer.writeStartElement(undefined, 'gridCol', this.wNamespace);
             writer.writeAttributeString(undefined, 'w', this.wNamespace, gridValue.toString());
             writer.writeEndElement();

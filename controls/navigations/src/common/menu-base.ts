@@ -828,7 +828,13 @@ export abstract class MenuBase extends Component<HTMLUListElement> implements IN
         cul.children[fliIdx as number].classList.add(FOCUSED);
         (cul.children[fliIdx as number] as HTMLElement).focus();
         if (closest(this.element, '.e-popup')) {
-            (cul as HTMLElement).focus();
+            const focusedLiItem: Element = cul.children[fliIdx as number] as HTMLElement;
+            const focusableChild: HTMLElement = focusedLiItem.querySelector<HTMLElement>(
+                '[tabindex], span[tabindex], a, button, [tabindex]:not([tabindex="-1"])'
+            );
+            if (!focusableChild) {
+                (cul as HTMLElement).focus();
+            }
         }
     }
 

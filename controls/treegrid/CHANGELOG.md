@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## 32.2.9 (2026-03-10)
+
+### Tree Grid
+
+#### Bug Fixes
+
+- `#F72695` - Fixed an issue where child records were not exported in remote data when `isCollapsedStatePersist` is set to false.
+
 ## 32.2.7 (2026-02-24)
 
 ### Tree Grid
@@ -15,8 +23,6 @@
 #### Bug Fixes
 
 - `I811698` - Resolved an issue where the records expand on clearing filter in virtualization when the filter type is `Excel`.
-- `I810364` - Fixed selection not persisting after updating records with `setRowData` following post cell edit in virtualization.
-- `#F72695` - Fixed an issue where child records were not exported in remote data when `isCollapsedStatePersist` is set to false.
 
 ## 32.2.3 (2026-02-05)
 

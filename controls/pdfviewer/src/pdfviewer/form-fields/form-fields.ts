@@ -197,7 +197,8 @@ export class FormFields {
                                     customData: !isNullOrUndefined(currentData['CustomData']) ? typeof currentData['CustomData'] === 'object'
                                         ? currentData['CustomData'] : currentData['CustomData'].trim() !== ''
                                             ? JSON.parse(currentData['CustomData']) : '' : '',
-                                    signatureIndicatorSettings: indicatorSettings
+                                    signatureIndicatorSettings: indicatorSettings,
+                                    isUnisonSelected: currentData['IsUnisonSelected']
                                 };
                                 if (!currentData.id && this.pdfViewer.formFieldCollections[parseInt(i.toString(), 10)] && !isNullOrUndefined(currentData['ActualFieldName'])) {
                                     fieldProperties.id = this.pdfViewer.formFieldCollections[parseInt(i.toString(), 10)].id;
@@ -756,7 +757,8 @@ export class FormFields {
                 signatureIndicatorSettings : currentData['SignatureIndicatorSettings'], zIndex: currentData['zIndex'],
                 customData: !isNullOrUndefined(currentData['CustomData']) ? typeof currentData['CustomData'] === 'object'
                     ? currentData['CustomData'] : currentData['CustomData'].trim() !== ''
-                        ? JSON.parse(currentData['CustomData']) : '' : ''
+                        ? JSON.parse(currentData['CustomData']) : '' : '',
+                isUnisonSelected: currentData['IsUnisonSelected']
             };
             if (currentData.Name === 'DropDown' || currentData.Name === 'ListBox') {
                 fieldProperties.value = currentData['SelectedValue'];

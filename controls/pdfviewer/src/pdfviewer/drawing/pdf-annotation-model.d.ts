@@ -934,6 +934,11 @@ export interface PdfFormFieldBaseModel {
      */
     customData?: object;
 
+    /**
+     * specifies the unison selection of the form field.
+     */
+    isUnisonSelected?: boolean;
+
 }
 
 /**

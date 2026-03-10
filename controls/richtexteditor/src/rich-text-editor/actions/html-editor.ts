@@ -811,8 +811,9 @@ export class HtmlEditor {
                         currentParent = tempParent;
                     }
                     (e.args as KeyboardEventArgs).preventDefault();
-                } else {
+                } else if (prevSibling.querySelectorAll('img, video, audio').length === 0){
                     prevSibling.parentNode.removeChild(prevSibling);
+                    (e.args as KeyboardEventArgs).preventDefault();
                 }
             } else {
                 if (this.oldRangeElement.tagName === 'OL' || this.oldRangeElement.tagName === 'UL') {

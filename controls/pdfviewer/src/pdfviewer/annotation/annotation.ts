@@ -2467,6 +2467,12 @@ export class Annotation {
     }
 
     private updateFormFieldValueChange(formFieldAnnotationType: any, annotation: any, value: any): void {
+        if (Array.isArray(annotation)) {
+            annotation.forEach((item: any) => {
+                this.updateFormFieldValueChange(formFieldAnnotationType, item, value);
+            });
+            return;
+        }
         if (annotation) {
             const formFieldModel: PdfFormFieldBaseModel = this.pdfViewer.formDesigner.getFormField(annotation.id.split('_')[0]);
             let data: string = null;
@@ -2482,15 +2488,21 @@ export class Annotation {
                 case 'RadioButton':
                 case 'DropdownList':
                 case 'ListBox': {
-                    const inputElement: Element = document.getElementById(annotation.id.split('_')[0] + '_content_html_element').firstElementChild.firstElementChild;
+                    //const inputElement: Element = document.getElementById(annotation.id.split('_')[0] + '_content_html_element').firstElementChild.firstElementChild;
+                    let inputElement: Element = null;
+                    if (document.getElementById(annotation.id.split('_')[0] + '_content_html_element')) {
+                        inputElement = document.getElementById(annotation.id.split('_')[0] + '_content_html_element').firstElementChild.firstElementChild;
+                    }
                     if (formFieldAnnotationType === 'Textbox' || formFieldAnnotationType === 'PasswordField') {
                         formFieldModel.value = value;
                         this.pdfViewer.formDesigner.updateValuePropertyChange(formFieldModel, inputElement, true, index, formFieldsData);
                     }
                     else if (formFieldAnnotationType === 'RadioButton') {
                         formFieldModel.isSelected = value;
-                        this.pdfViewer.formDesigner.updateIsSelectedPropertyChange(formFieldModel, inputElement.firstElementChild as
+                        if (inputElement) {
+                            this.pdfViewer.formDesigner.updateIsSelectedPropertyChange(formFieldModel, inputElement.firstElementChild as
                              IElement, true, index, formFieldsData);
+                        }
                     }
                     else if (formFieldAnnotationType === 'DropdownList' || formFieldAnnotationType === 'ListBox') {
                         formFieldModel.selectedIndex = value;
@@ -2517,6 +2529,9 @@ export class Annotation {
                 }
                 }
                 this.pdfViewerBase.setItemInSessionStorage(this.pdfViewerBase.formFieldCollection, '_formDesigner');
+                if (this.pdfViewer.formDesignerModule) {
+                    this.pdfViewer.formDesignerModule.radioButtonState(formFieldModel, value, JSON.parse(data));
+                }
             }
         }
     }

@@ -899,6 +899,11 @@ export class FormFieldsBase {
             }
             radioButtonItem.visibility = this.getFormFieldsVisibility(radiobuttonItem.visibility);
             field.add(radioButtonItem);
+            const selectedRadios: number[] = formFieldAttributes.radiobuttonItem
+                .filter((item: any) => item.isUnisonSelected === true);
+            if (selectedRadios.length > 0) {
+                field.allowUnisonSelection = true;
+            }
             if (radiobuttonItem.isSelected) {
                 selectedIndex = i;
                 isSelectedItem = true;
@@ -1837,13 +1842,14 @@ export class FormFieldsBase {
         const parent: PdfRadioButtonListField = item._field as PdfRadioButtonListField;
         const formFields: PdfRenderedFields = new PdfRenderedFields();
         formFields.Name = 'RadioButton';
+        formFields.IsUnisonSelected = parent.allowUnisonSelection;
         formFields.ToolTip = parent.toolTip;
         if (!isNullOrUndefined(parent.actualName)) {
             formFields.GroupName = parent.actualName.replace(/[^0-9a-zA-Z]+/g, '');
             formFields.ActualFieldName = radioButtonName;
         }
         formFields.TabIndex = parent.tabIndex;
-        formFields.Selected = item.selected;
+        formFields.Selected = item.checked ? item.checked : item.selected;
         formFields.LineBounds = { X: item.bounds.x, Y: item.bounds.y, Width: item.bounds.width, Height: item.bounds.height };
         formFields.Value = item.value;
         formFields.PageIndex = index;
@@ -2422,6 +2428,7 @@ export class PdfRenderedFields {
     public TabIndex: number;
     public FontFamily: string;
     public CustomData: object;
+    IsUnisonSelected: any;
     constructor() {
         this.ActualFieldName = null;
         this.FontColor = { R: 0, G: 0, B: 0 };
@@ -2464,6 +2471,7 @@ export class PdfRenderedFields {
         this.Value = null;
         this.Visible = 0;
         this.CustomData = null;
+        this.IsUnisonSelected = false;
     }
 }
 

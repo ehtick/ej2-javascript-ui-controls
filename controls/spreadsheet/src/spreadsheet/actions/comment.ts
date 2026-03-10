@@ -2,7 +2,7 @@ import { activeCellChanged, beginAction, CellModel, ExtendedSheet, ExtendedThrea
 import { initiateComment, completeAction, createCommentIndicator, deleteComment, Spreadsheet, removeCommentContainer, locale, replyToComment, showCommentsPane, refreshCommentsPane, commentUndoRedo, getDPRValue, processSheetComments } from '../index';
 import { Browser, closest, detach, enableRipple, EventHandler, getComponent, getUniqueID, isNullOrUndefined, L10n } from '@syncfusion/ej2-base';
 import { getUpdateUsingRaf, navigateNextPrevComment, updateNoteContainer, destroyComponent } from './../common/index';
-import { CommentSaveEventArgs, getRangeAddress, ThreadedCommentModel, updateCell } from '../../workbook/index';
+import { CommentSaveEventArgs, getRangeAddress, ThreadedCommentModel, updateCell, getISOTime } from '../../workbook/index';
 import { Button } from '@syncfusion/ej2-buttons';
 import { DropDownButton, ItemModel, MenuEventArgs } from '@syncfusion/ej2-splitbuttons';
 import { ListView, SelectEventArgs, Virtualization } from '@syncfusion/ej2-lists';
@@ -457,6 +457,16 @@ export class SpreadsheetComment {
     }
 
     private createBodyContent(thread: ExtendedThreadedCommentModel, rebuild: boolean, inPane: boolean, cId?: string): HTMLElement {
+        if (thread && thread.createdTime && thread.createdTime instanceof Date) {
+            thread.createdTime = getISOTime(thread.createdTime);
+            if (thread.replies) {
+                thread.replies.forEach((reply: ExtendedThreadedCommentModel) => {
+                    if (reply.createdTime && reply.createdTime instanceof Date) {
+                        reply.createdTime = getISOTime(reply.createdTime);
+                    }
+                });
+            }
+        }
         const dataSource: { [key: string]: Object }[] = thread ? this.convertThreadToListItems(thread) : [];
         if (inPane) {
             const host: HTMLElement = this.parent.createElement('div', { className: 'e-comment-body' });
@@ -498,8 +508,8 @@ export class SpreadsheetComment {
                 const textEl: HTMLElement = this.parent.createElement('div', { className: 'e-comment-text' });
                 textEl.textContent = text;
                 const tsEl: HTMLElement = this.parent.createElement('span', { className: 'e-comment-timestamp' });
-                tsEl.textContent = new Date(createdTime + 'z').toLocaleDateString(this.parent.locale, {
-                    month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+                tsEl.textContent = createdTime ? new Date(createdTime + 'z').toLocaleDateString(this.parent.locale, {
+                    month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
                 parent.appendChild(textEl);
                 parent.appendChild(tsEl);
             };
@@ -646,7 +656,7 @@ export class SpreadsheetComment {
         if (!commentText) {
             return;
         }
-        const timeStampValue: string = this.timeStamp();
+        const timeStampValue: string = getISOTime();
         const actionFromPanel: boolean = container && container.classList.contains('e-pane-container');
         const cell: CellModel = getCell(rowIdx, colIdx, this.parent.getActiveSheet());
         if (cell && cell.comment) {
@@ -1220,10 +1230,6 @@ export class SpreadsheetComment {
             container.insertBefore(divider, bodyEl);
             container.insertBefore(wrap, bodyEl);
         }
-    }
-
-    private timeStamp(): string {
-        return new Date().toISOString().slice(0, -1);
     }
 
     private getContainer(sourceEl: HTMLElement): HTMLElement {

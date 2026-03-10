@@ -545,7 +545,7 @@ export class PageSetupGroup extends RibbonGroupBase {
 
         const ribbon: Ribbon = this.container.ribbon.ribbon;
         if (ribbon) {
-            if (isInTable || isHeaderFooter || selection.isinFootnote || selection.isinEndnote) {
+            if (isInTable || isHeaderFooter || selection.isinFootnote || selection.isinEndnote || selection.isInShape) {
                 ribbon.disableItem(this.commonId + BREAKS_DROPDOWN_ID);
             } else {
                 ribbon.enableItem(this.commonId + BREAKS_DROPDOWN_ID);

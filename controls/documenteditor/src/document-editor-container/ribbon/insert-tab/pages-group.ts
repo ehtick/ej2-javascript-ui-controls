@@ -56,7 +56,7 @@ export class PagesGroup extends RibbonGroupBase {
         const ribbon: Ribbon = this.container.ribbon.ribbon;
         if (ribbon) {
             if (isInTable || isHeaderFooter || this.container.documentEditor.selection.isinFootnote
-                || this.container.documentEditor.selection.isinEndnote) {
+                || this.container.documentEditor.selection.isinEndnote || this.container.documentEditor.selection.isInShape) {
                 ribbon.disableItem(this.ribbonId + PAGE_BREAK_ID);
             } else {
                 ribbon.enableItem(this.ribbonId + PAGE_BREAK_ID);

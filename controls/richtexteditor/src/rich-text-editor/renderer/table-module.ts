@@ -1422,6 +1422,7 @@ export class Table {
                 args.target.setAttribute('title', tooltipText);
             }
         });
+        tooltip.isAngular = this.parent.isModalDialog;
         tooltip.appendTo(container);
     }
 

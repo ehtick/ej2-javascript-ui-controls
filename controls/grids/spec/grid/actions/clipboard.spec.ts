@@ -576,3 +576,29 @@ describe('EJ2-942607 - Script error thrown when copying with focused stacked hea
         gridObj = null;
     });
 });
+
+describe('EJ2-1011563: Accessibility warning throws due to textarea used for Clipboard in grid missing id attribute', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: filterData.slice(0, 10),
+                allowPaging: true,
+                columns: [
+                    { headerText: 'OrderID', field: 'OrderID' },
+                    { headerText: 'CustomerID', field: 'CustomerID' }
+                ]
+            }, done);
+    });
+
+    it('check textarea with stable id attributes', () => {
+        const textElement: HTMLTextAreaElement = gridObj.element.querySelector('textarea.e-clipboard');
+        const clipBoardID: string = textElement.getAttribute('id');
+        expect(clipBoardID).toBeTruthy();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});

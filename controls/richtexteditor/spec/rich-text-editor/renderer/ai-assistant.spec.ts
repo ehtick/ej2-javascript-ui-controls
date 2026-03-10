@@ -2303,4 +2303,81 @@ describe('AI Assistant Module', ()=> {
             }, 100);
         })
     });
+
+    describe('Bug 1012518: AI Assistant prompt is empty when reopening AI chat after closing it before the AI response completes in the Rich Text Editor.', () => {
+        let editor: RichTextEditor;
+        const firstPrompt: string = 'Rewrite the following content in a professional tone:';
+        const secondPrompt: string = 'Rewrite the following content in a casual, conversational tone:';
+        let latestRequestedPrompt: string = '';
+        const executeAICommand = (itemIndex: number, callback: Function): void => {
+            const commandButton: HTMLButtonElement = editor.getToolbarElement().querySelector('.e-ai-commands-tbar-btn');
+            commandButton.click();
+            setTimeout(() => {
+                const rootMenu: HTMLElement = document.querySelector('.e-dropdown-popup.e-ai-commands-tbar-btn .e-menu-parent') as HTMLElement;
+                rootMenu.querySelector('li').classList.add('e-focused');
+                const mouseOverEvent: MouseEvent = new MouseEvent('mouseover', BASIC_MOUSE_EVENT_INIT);
+                rootMenu.querySelector('li').dispatchEvent(mouseOverEvent);
+                setTimeout(() => {
+                    const subMenu: HTMLElement = document.querySelectorAll('.e-menu-popup')[0] as HTMLElement;
+                    const subMenuItems: NodeListOf<HTMLLIElement> = subMenu.querySelectorAll('li');
+                    subMenuItems[itemIndex].click();
+                    setTimeout(() => {
+                        callback();
+                    }, 100);
+                }, 100);
+            }, 100);
+        };
+
+        beforeAll(() => {
+            editor = renderRTE({
+                value: '<p>This is a content with improper format</p>',
+                toolbarSettings: {
+                    items: ['aiquery', 'aicommands']
+                },
+                aiAssistantSettings: {
+                    commands: [{
+                        text: 'Change Tone',
+                        items: [
+                            {
+                                text: 'Professional',
+                                prompt: firstPrompt
+                            },
+                            {
+                                text: 'Casual',
+                                prompt: secondPrompt
+                            }
+                        ]
+                    }]
+                },
+                aiAssistantPromptRequest: (args: AIAssistantPromptRequestArgs) => {
+                    latestRequestedPrompt = args.prompt;
+                }
+            });
+        });
+
+        afterAll(() => {
+            destroy(editor);
+        });
+
+        it('Should show second command prompt after closing popup during first command processing', (done: DoneFn) => {
+            editor.focusIn();
+            setSelection(editor.inputElement.querySelector('p').firstChild, 0, editor.inputElement.querySelector('p').firstChild.textContent.length);
+            executeAICommand(0, () => {
+                expect(latestRequestedPrompt).toBe(firstPrompt);
+                expect(document.querySelector('.e-rte-aiquery-popup .e-assist-stop')).not.toBe(null);
+                const closeButton: HTMLElement = document.querySelector('.e-rte-aiquery-popup .e-view-header button .e-close').parentElement;
+                closeButton.click();
+                setTimeout(() => {
+                    expect(editor.aiAssistantModule.queryPopup.element.classList.contains('e-popup-close')).toBe(true);
+                    executeAICommand(1, () => {
+                        expect(editor.aiAssistantModule.queryPopup.element.classList.contains('e-popup-open')).toBe(true);
+                        expect(latestRequestedPrompt).toBe(secondPrompt);
+                        const prompts = editor.aiAssistantModule.assistView.prompts;
+                        expect(prompts[prompts.length - 1].prompt).toBe(secondPrompt);
+                        done();
+                    });
+                }, 100);
+            });
+        });
+    });
 });

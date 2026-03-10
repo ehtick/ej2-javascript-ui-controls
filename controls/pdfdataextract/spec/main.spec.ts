@@ -63,6 +63,14 @@ describe('Pdf Text Extraction', () => {
         expect(text).toEqual("Adobe Systems Incorporated's Portable Document Format (PDF) is the de facto\r\nstandard for the accurate, reliable, and platform-independent representation of a\r\npaged document. It's the only universally accepted file format that allows pixel-perfect\r\nlayouts. In addition, PDF supports user interaction and collaborative workflows that\r\nare not possible with printed documents.\r\nPDF documents have been in widespread use for years, and dozens of free and\r\ncommercial PDF readers, editors, and libraries are readily available. However, despite\r\nthis popularity, it's still difficult to find a succinct guide to the native PDF format.\r\nUnderstanding the internal workings of a PDF makes it possible to dynamically\r\ngenerate PDF documents. For example, a web server can extract information from a\r\ndatabase, use it to customize an invoice, and serve it to the customer on the fly.\r\nThe PDF Standard\r\nThe PDF format is an open standard maintained by the International Organization for\r\nStandardization. The official specification is defined in ISO 32000-1:2008, but Adobe\r\nalso provides a free, comprehensive guide called PDF Reference, Sixth Edition,\r\nversion 1.7.\r\nChapter 1 Conceptual Overview\r\nWe'll begin with a conceptual overview of a simple PDF document. This chapter is\r\ndesigned to be a brief orientation before diving in and creating a real document from\r\nscratch.\r\nA PDF file can be divided into four parts: a header, body, cross-reference table, and\r\ntrailer. The header marks the file as a PDF, the body defines the visible document, the\r\ncross-reference table lists the location of everything in the file, and the trailer provides\r\ninstructions for how to start reading the file.\r\nPage 1 of 1 \r\nIntroduction \r\nPDF Succinctly");
         document.destroy();
     });
+    it('Pdf Extract Text Overload', () => {
+        let document: PdfDocument = new PdfDocument(pdfSuccinctly);
+        let extractor: PdfDataExtractor = new PdfDataExtractor(document);
+        let text: string = extractor.extractText();
+        expect(typeof text === 'string').toBeTruthy();
+        expect(text.includes(' \r\n1\r\n \r\n \r\nCreated with a trial version of Syncfusion Essential PDF\r\n\r\nCreated with a trial version of Syncfusion Essential PDF\r\n\r\n')).toBeTruthy();
+        document.destroy();
+    });
 });
 describe('Pdf Redaction Test', () => {
     it('Pdf Redaction Region test', () => {

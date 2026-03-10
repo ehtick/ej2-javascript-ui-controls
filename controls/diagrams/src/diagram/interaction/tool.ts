@@ -934,7 +934,15 @@ export class MoveTool extends ToolBase {
      * @private
      */
     public mouseDown(args: MouseEventArgs): void {
-        if (args.source instanceof Node || args.source instanceof Connector) {
+        //1011408: AllowMovingOutsideLane causes node enlargement on Shift+Click multi-select then Shift+Drag in SwimLane - undo/redo
+        let isSwimLaneChildMultiDrag: boolean = false;
+        if (args.source instanceof Node && args.info && args.info.ctrlKey === true && args.source.parentId) {
+            const parentElement: Node = this.commandHandler.diagram.nameTable[`${args.source.parentId}`];
+            if (args.source.parentId && parentElement.isLane && this.commandHandler.diagram.selectedItems.nodes.length > 1) {
+                isSwimLaneChildMultiDrag = true;
+            }
+        }
+        if ((args.source instanceof Node || args.source instanceof Connector) && !isSwimLaneChildMultiDrag) {
             const arrayNodes: (NodeModel | ConnectorModel | AnnotationModel)[] = this.commandHandler.getSelectedObject();
             this.commandHandler.selectObjects([args.source], args.info && args.info.ctrlKey, arrayNodes);
             const selectedObject: SelectorModel = { nodes: [], connectors: [] };
@@ -948,7 +956,10 @@ export class MoveTool extends ToolBase {
             const wrapper: GroupableView = args.source.wrapper;
             this.undoElement.offsetX = wrapper.offsetX;
             this.undoElement.offsetY = wrapper.offsetY;
-        } else {
+        } else if (isSwimLaneChildMultiDrag) {
+            this.undoElement = cloneObject(this.commandHandler.diagram.selectedItems);
+        }
+        else {
             this.undoElement = cloneObject(args.source);
         }
         //951087-Undo function doesn't retain connector segments after node move actions.
@@ -985,10 +996,18 @@ export class MoveTool extends ToolBase {
     public async mouseUp(args: MouseEventArgs, isPreventHistory?: boolean): Promise<void> {
         let oldValues: SelectorModel; let newValues: SelectorModel;
         this.checkPropertyValue();
+        let isEndGroupActionCalled: boolean = false;
         let obj: SelectorModel; let historyAdded: boolean = false; let object: NodeModel | ConnectorModel | SelectorModel;
         const redoObject: SelectorModel = { nodes: [], connectors: [] };
         if (this.objectType !== 'Port') {
-            if (args.source instanceof Node || args.source instanceof Connector) {
+            let isSwimLaneChildMultiDrag: boolean = false;
+            if (args.source instanceof Node && args.info && args.info.ctrlKey === true && args.source.parentId) {
+                const parentElement: Node = this.commandHandler.diagram.nameTable[`${args.source.parentId}`];
+                if (args.source.parentId && parentElement.isLane && this.commandHandler.diagram.selectedItems.nodes.length > 1) {
+                    isSwimLaneChildMultiDrag = true;
+                }
+            }
+            if ((args.source instanceof Node || args.source instanceof Connector) && !isSwimLaneChildMultiDrag) {
                 if (args.source instanceof Node) {
                     redoObject.nodes.push(cloneObject(args.source) as Node);
                 } else {
@@ -996,6 +1015,8 @@ export class MoveTool extends ToolBase {
                 }
                 obj = cloneObject(redoObject); const wrapper: GroupableView = args.source.wrapper;
                 obj.offsetX = wrapper.offsetX; obj.offsetY = wrapper.offsetY;
+            } else if (isSwimLaneChildMultiDrag) {
+                obj = cloneObject(this.commandHandler.diagram.selectedItems);
             } else {
                 obj = cloneObject(args.source);
             }
@@ -1194,6 +1215,7 @@ export class MoveTool extends ToolBase {
                     }
                     if (historyAdded && this.commandHandler.isContainer && isEndGroup) {
                         this.commandHandler.endGroupAction();
+                        isEndGroupActionCalled = true;
                     }
                 }
             }
@@ -1201,7 +1223,8 @@ export class MoveTool extends ToolBase {
                 this.commandHandler.dropAnnotation(args.source, this.currentTarget);
             }
             this.commandHandler.updateSelector();
-            if (historyAdded && !this.commandHandler.isContainer) {
+            //1011408: moving single node outside lane undo-redo does not work issue
+            if (historyAdded && (!this.commandHandler.isContainer || (isSwimLaneChildMultiDrag && !isEndGroupActionCalled))) {
                 this.commandHandler.endGroupAction();
             }
         } else {

@@ -515,7 +515,7 @@ export class WorkbookFormula {
                             }
                         }
                     }
-                    value = value.replace(regx, idx + '/');
+                    value = value.replace(regx, idx + String.fromCharCode(143));
                     temp.push(idx);
                 }
             }
@@ -523,7 +523,7 @@ export class WorkbookFormula {
         i = 0;
         let sheetRef: string;
         while (i < temp.length) {
-            regx = new regExp(temp[i as number] + '/' + exp, 'gi');
+            regx = new regExp(temp[i as number] + String.fromCharCode(143) + exp, 'gi');
             sheetRef = addSheetQuotes ? '`' + sheetInfo[temp[i as number]].sheet + '`' : sheetInfo[temp[i as number]].sheet;
             value = value.replace(regx, sheetRef);
             i++;

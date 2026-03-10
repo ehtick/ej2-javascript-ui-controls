@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## 32.2.9 (2026-03-10)
+
+### Common
+
+#### Bug Fixes
+
+- `#I818823` - Resolved a licensing banner issue for the chart component using the WordEditorSdk key.
+
 ## 32.2.3 (2026-02-05)
 
 ### Common

@@ -4,7 +4,7 @@ export const componentList: string[] = ['grid', 'pivotview', 'treegrid', 'spread
 
 export const pdfViewerSDKComponents: string[] = ['grid', 'chart', 'maps', 'schedule', 'gantt', 'richtexteditor', 'kanban', 'treegrid', 'filemanager', 'pivotview', 'diagram', 'blockeditor', 'spreadsheet', 'DocumentEditor'];
 export const spreadsheetEditorSDKComponents: string[] = ['maps', 'schedule', 'gantt', 'richtexteditor', 'kanban', 'treegrid', 'filemanager', 'pivotview', 'diagram', 'blockeditor', 'PdfViewer', 'DocumentEditor'];
-export const wordEditorSDKComponents: string[] = ['grid', 'chart', 'maps', 'schedule', 'gantt', 'richtexteditor', 'kanban', 'treegrid', 'filemanager', 'pivotview', 'diagram', 'blockeditor', 'PdfViewer', 'spreadsheet'];
+export const wordEditorSDKComponents: string[] = ['grid', 'maps', 'schedule', 'gantt', 'richtexteditor', 'kanban', 'treegrid', 'filemanager', 'pivotview', 'diagram', 'blockeditor', 'PdfViewer', 'spreadsheet'];
 
 const bypassKey: number[] = [115, 121, 110, 99, 102, 117, 115, 105,
     111, 110, 46, 105, 115, 76, 105, 99, 86, 97, 108,

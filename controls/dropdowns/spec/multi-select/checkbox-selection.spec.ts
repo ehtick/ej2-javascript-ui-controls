@@ -3188,7 +3188,7 @@ describe('MultiSelect', () => {
                 filterBarPlaceholder: 'Search countries',
                 popupHeight: '350px',
                 selectedAll: (args: ISelectAllEventArgs): void => {
-                    expect(listObj.value.length).toBe(199);
+                    expect(listObj.value.length).toBe(200);
                     done();
                 }
             });

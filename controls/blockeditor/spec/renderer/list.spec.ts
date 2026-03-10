@@ -645,6 +645,38 @@ describe('List Blocks', () => {
             expect(getComputedStyle(liElement).textDecoration).toContain('line-through');
         });
 
+        it('Should trigger blockChanged Update action when checklist is toggled', (done) => {
+            editorElement = createElement('div', { id: 'editor' });
+            document.body.appendChild(editorElement);
+            let blockChanges: any;
+            const blocks: BlockModel[] = [
+                { id: 'checklist', blockType: BlockType.Checklist, content: [{ contentType: ContentType.Text, content: 'Checklist item' }] }
+            ];
+            editor = createEditor({
+                blocks: blocks,
+                blockChanged: function (args) {
+                    blockChanges = args.changes;
+                }
+            });
+            editor.appendTo('#editor');
+
+            const checklistBlock = editorElement.querySelector('#checklist') as HTMLElement;
+            const checkmark = checklistBlock.querySelector('.e-checkmark-container') as HTMLElement;
+            const props = (editor.blocks[0].properties as IChecklistBlockSettings);
+            expect(props.isChecked).toBe(false);
+
+            checkmark.click();
+
+            setTimeout(() => {
+                expect(blockChanges && blockChanges.length).toBeGreaterThan(0);
+                expect(blockChanges[0].action).toBe('Update');
+                expect(blockChanges[0].data.block.id).toBe(editor.blocks[0].id);
+                expect((blockChanges[0].data.block.properties as IChecklistBlockSettings).isChecked).toBe(true);
+                expect(blockChanges[0].data.prevBlock).toBeDefined();
+                done();
+            }, 50);
+        });
+
         it('isChecked - true with content empty - interact checkbox isChecked prop should be false', (done) => {
             editorElement = createElement('div', { id: 'editor' });
             document.body.appendChild(editorElement);

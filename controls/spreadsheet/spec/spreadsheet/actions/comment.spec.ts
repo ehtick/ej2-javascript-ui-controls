@@ -1,6 +1,6 @@
 import { SpreadsheetHelper } from '../util/spreadsheethelper.spec';
 import { defaultData } from '../util/datasource.spec';
-import { ExtendedSheet, Range } from '../../../src/index';
+import { ExtendedSheet, Range, SheetModel } from '../../../src/index';
 import { ExtendedThreadedCommentModel } from '../../../src';
 import { duplicateSheet, getSheetNameCount, moveSheet, Sheet } from '../../../src/workbook/index';
 
@@ -1007,6 +1007,48 @@ describe('Comments ->', () => {
                 const container: HTMLElement = document.querySelector('.e-comment-container') as HTMLElement;
                 expect(container).not.toBeNull();
                 expect((container.querySelector('.e-comment-timestamp').textContent)).toBe('February 13, 2026 at 2:46 PM');
+                done();
+            });
+        });
+        it('Timestamp text should be maintained properly in cell model based on the given data', (done: Function) => {
+            helper.getInstance().updateCell({
+                comment: {
+                    author: 'JC', isResolved: true, createdTime: 'February 16, 2026 10:35 AM',
+                    replies: [{ author: 'JC', text: 'Please verify the Q3 numbers.', createdTime: 'February 16, 2026 11:00 AM' }]
+                }
+            }, 'A4');
+            helper.getInstance().updateCell({comment: { author: 'JC', isResolved: true, text: 'hello there', replies: []}}, 'A5');
+            helper.getInstance().updateCell({comment: { author: 'JC', isResolved: true, text: 'hello there 2',createdTime: 'February 16, 2026 at 10:35', replies: []}}, 'A6');
+            helper.getInstance().updateCell({comment: { author: 'JC', isResolved: true, text: 'hello there 2',createdTime: '', replies: []}}, 'A7');
+            expect(helper.invoke('getCell', [3, 0]).querySelector('.e-comment-indicator')).not.toBeNull();
+            const sheet: SheetModel = helper.getInstance().sheets[0];
+            expect(sheet.rows[3].cells[0].comment.createdTime).toBe('2026-02-16T10:35:00.000');
+            expect(sheet.rows[3].cells[0].comment.replies[0].createdTime).toBe('2026-02-16T11:00:00.000');
+            expect(sheet.rows[4].cells[0].comment.createdTime).toBe(undefined);
+            expect(sheet.rows[5].cells[0].comment.createdTime).not.toBe('Invalid date');
+            expect(sheet.rows[6].cells[0].comment.createdTime).toBe('');
+            done();
+        });
+        it('check with importing JSON data',(done: Function) => {
+            const json: object = {
+                Workbook: {
+                    sheets: [{
+                        rows: [{
+                            cells: [{
+                                index: 0, value: 10, comment: {
+                                    id: 'spreadsheet-10', author: 'User', text: 'Hello', createdTime: 'January 1, 2025 10:00 AM', isResolved: false,
+                                    replies: [{ author: 'User2', text: 'Please verify the Q3 numbers.', createdTime: new Date('January 1, 2025 10:30 AM') }]
+                                } as ExtendedThreadedCommentModel
+                            }]
+                        }]
+                    }]
+                }
+            };
+            helper.getInstance().openFromJson({ file: json });
+            setTimeout(() => {
+                const sheet: SheetModel = helper.getInstance().sheets[0];
+                expect(sheet.rows[0].cells[0].comment.createdTime).toBe('2025-01-01T10:00:00.000');
+                expect(sheet.rows[0].cells[0].comment.replies[0].createdTime).toBe('2025-01-01T10:30:00.000');
                 done();
             });
         });

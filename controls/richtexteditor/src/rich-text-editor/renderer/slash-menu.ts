@@ -250,6 +250,7 @@ export class SlashMenu {
         if (this.parent.editorMode === 'HTML' && this.parent.slashMenuSettings.enable) {
             const options: MentionModel = this.generateMentionModel();
             this.mention = new Mention(options);
+            this.mention.isAngular = this.parent.isModalDialog;
             this.mention.appendTo(this.parent.rootContainer.appendChild(this.parent.createElement('div', { className: 'e-rte-slash-menu', id: this.parent.getID() + '_slash_menu' })));
         }
     }

@@ -17000,6 +17000,37 @@ describe('Spreadsheet formula module ->', () => {
                 done();
             });
         });
+        describe('EJ2-1013234 -> Formula parsing error with cell references ending in 0 before division with sheet reference ->', () => {
+            beforeAll((done: Function) => {
+                helper.initializeSpreadsheet({ sheets: [{ name: 'TEST' }] }, done);
+            });
+            afterAll(() => {
+                helper.invoke('destroy');
+            });
+            it('Checking different combinations of formula with sheet references and division opertor', (done: Function) => {
+                helper.edit('A1', '5');
+                helper.edit('B10', '100');
+                helper.edit('A2', "=B10/'TEST'!$A$1");
+                expect(helper.getInstance().sheets[0].rows[1].cells[0].value).toBe('20');
+                helper.edit('A3', '=B10/A1');
+                expect(helper.getInstance().sheets[0].rows[2].cells[0].value).toBe('20');
+                helper.edit('A4', "=B$10/'TEST'!$A$1");
+                expect(helper.getInstance().sheets[0].rows[3].cells[0].value).toBe('20');
+                helper.edit('A5', "=$B$10/'TEST'!$A$1");
+                expect(helper.getInstance().sheets[0].rows[4].cells[0].value).toBe('20');
+                helper.edit('A1', 'abc');
+                helper.edit('A6', "=B10/'TEST'!$A$1");
+                expect(helper.getInstance().sheets[0].rows[5].cells[0].value).toBe('#VALUE!');
+                helper.edit('A1', '0');
+                helper.edit('A7', "=B10/'TEST'!$A$1");
+                expect(helper.getInstance().sheets[0].rows[6].cells[0].value).toBe('#DIV/0!');
+                helper.edit('A1', '5');
+                helper.edit('B10', '');
+                helper.edit('A8', "=B10/'TEST'!$A$1");
+                expect(helper.getInstance().sheets[0].rows[7].cells[0].value).toBe('0');
+                done();
+            });
+        });
     });
     describe('EJ2-917774, EJ2-948832, EJ2-951146 ->', () => {
         beforeAll((done: Function) => {

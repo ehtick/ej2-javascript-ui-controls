@@ -2048,6 +2048,39 @@ describe("Sidebar enableDock toggle fix", () => {
     });
 });
 
+describe("Sidebar enableDock toggle dynamic change", () => {
+    let sidebar: Sidebar;
+    beforeEach(() => {
+        const ele: HTMLElement = document.createElement("div");
+        const sibling: HTMLElement = document.createElement("div");
+        ele.id = "sidebar";
+        sibling.className = 'e-content-section';
+        document.body.style.margin = "0px";
+        document.body.appendChild(ele);
+        document.body.appendChild(sibling);
+    });
+    afterEach(() => {
+        if (sidebar) { sidebar.destroy(); }
+        document.body.innerHTML = "";
+    });
+
+    it("should update main-content margin and clear transforms when enableDock toggles while closed", () => {
+        const ele: HTMLElement = document.getElementById("sidebar")!;
+        const sibling: HTMLElement = <HTMLElement>ele.nextElementSibling;
+        sidebar = new Sidebar({ enableDock: false, dockSize: '72px', width: '300px', type: 'Push' }, ele);
+        sidebar.hide();
+        expect(ele.classList.contains('e-close')).toBe(true);
+        sidebar.enableDock = true;
+        sidebar.dataBind();
+        expect(sibling.style.marginLeft).toBe('72px');
+        sidebar.enableDock = false;
+        sidebar.dataBind();
+        expect(sibling.style.marginLeft).toBe('0px');
+        expect(ele.style.transform).toBe('');
+        expect(sibling.style.transform).toBe('');
+    });
+});
+
 describe('Null or undefined value testing', () => {
         let sidebar: any;
         beforeEach((): void => {

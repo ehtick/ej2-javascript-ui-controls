@@ -116,6 +116,7 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
     private internalID: string;
     private mutationObserver: MutationObserver;
     private hasContentChanged: boolean = false;
+    public isModalDialog: boolean = false;
     private isToolbarClipboardAction: boolean;
     /**
      * @private
@@ -3176,6 +3177,7 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
         this.selectionTimeout = null;
         this.previousRange = null;
         this.isRTEFocused = false;
+        this.isModalDialog = false;
         super.destroy();
     }
 
@@ -3875,8 +3877,14 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
         if (this.enableHtmlEncode && !isNOU(this.value)) {
             this.setProperties({ value: this.encode(decode(this.value)) });
         }
+        this.setIsModalDialogValue();
     }
 
+    private setIsModalDialogValue(): void {
+        if (this.isAngular && !isNOU(this.inputElement.closest('.cdk-overlay-pane'))) {
+            this.isModalDialog = true;
+        }
+    }
     private setIframeSettings(): void {
         if (this.iframeSettings.resources) {
             const styleSrc: string[] = this.iframeSettings.resources.styles;

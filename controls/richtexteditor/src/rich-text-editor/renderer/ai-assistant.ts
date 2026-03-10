@@ -379,6 +379,11 @@ export class AIAssistant {
                 if (!isNOU(this.menuDropDown)) {
                     this.menuDropDown.destroy();
                 }
+                if (this.queryPopup.element.classList.contains('processing')) {
+                    this.assistView.addPromptResponse('', true);
+                    this.lastResponse = '';
+                    this.queryPopup.element.classList.remove('processing');
+                }
                 this.addEditorPromptCollection(this.assistView.prompts);
                 this.assistView.prompts = [];
                 this.assistView.dataBind();
@@ -507,10 +512,18 @@ export class AIAssistant {
         }
     }
 
+    private appendElement(element: HTMLElement): void {
+        if (this.parent.isModalDialog) {
+            const modalElement: HTMLElement = this.parent.inputElement.closest('.cdk-overlay-pane') as HTMLElement;
+            modalElement.appendChild(element);
+        } else {
+            document.body.appendChild(element);
+        }
+    }
     public showQueryPopup(event?: Event): void {
         if (!this.isRendered) {
             this.render();
-            document.body.appendChild(this.element);
+            this.appendElement(this.element);
             this.queryPopup.appendTo(this.element);
             this.draggable = new Draggable(this.queryPopup.element, {
                 clone: false,
@@ -523,7 +536,7 @@ export class AIAssistant {
             document.addEventListener('keydown', this.handlePopupEscapeBoundFn);
             this.isRendered = true;
         } else {
-            document.body.appendChild(this.element);
+            this.appendElement(this.element);
         }
         if (this.parent.quickToolbarModule) {
             this.parent.quickToolbarModule.hideQuickToolbars();
@@ -601,7 +614,9 @@ export class AIAssistant {
             select: (args: MenuEventArgs) => {
                 this.assistView.prompt = args.item.text;
             }
-        }, dropdownMenuRoot as HTMLButtonElement);
+        });
+        dropDownButton.isAngular = this.parent.isModalDialog;
+        dropDownButton.appendTo(dropdownMenuRoot);
         if (this.parent.element.dataset.rteUnitTesting === 'true') {
             dropDownButton.animationSettings = { effect: 'None', duration: 0 };
         }
@@ -792,6 +807,7 @@ export class AIAssistant {
             windowCollision: true,
             position: 'BottomCenter'
         });
+        this.toolTip.isAngular = this.parent.isModalDialog;
         this.toolTip.appendTo(this.assistView.element);
     }
 

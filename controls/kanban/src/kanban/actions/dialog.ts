@@ -18,10 +18,11 @@ export class KanbanDialog {
     private parent: Kanban;
     public dialogObj: Dialog;
     private element: HTMLElement;
-    private formObj: FormValidator;
+    public formObj: FormValidator;
     private action: CurrentAction;
     private storeElement: HTMLElement;
     private cardData: Record<string, any>;
+    private formSubmitHandler: EventListenerOrEventListenerObject;
     private preventUpdate: boolean = false;
 
     /**
@@ -75,8 +76,11 @@ export class KanbanDialog {
             const container: HTMLElement = createElement('div', { className: cls.FORM_WRAPPER_CLASS });
             const form: HTMLFormElement = createElement('form', {
                 id: this.parent.element.id + 'EditForm',
-                className: cls.FORM_CLASS, attrs: { onsubmit: 'return false;' }
+                className: cls.FORM_CLASS
             }) as HTMLFormElement;
+            // Prevent native form submit via event listener
+            this.formSubmitHandler = (e: Event) => { e.preventDefault(); };
+            form.addEventListener('submit', this.formSubmitHandler);
             if (this.parent.dialogSettings.template) {
                 if (args) {
                     this.destroyComponents();
@@ -464,6 +468,10 @@ export class KanbanDialog {
             this.dialogObj.destroy();
             this.storeElement.focus();
             this.dialogObj = null;
+            if (this.formObj.element && this.formSubmitHandler) {
+                this.formObj.element.removeEventListener('submit', this.formSubmitHandler);
+                this.formSubmitHandler = null;
+            }
             remove(this.element);
             this.element = null;
         }

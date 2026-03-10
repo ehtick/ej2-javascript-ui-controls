@@ -969,8 +969,18 @@ export class Accordion extends Component<HTMLElement> implements INotifyProperty
             if (this.isReact) {
                 this.renderReactTemplates();
             }
-            append(this.getItemTemplate()(this.dataSource[parseInt(index.toString(), 10)], this, 'itemTemplate', this.element.id + '_itemTemplate', false), ctn);
-            itemcnt.appendChild(ctn);
+            if (!isNOU(this.getItemTemplate())) {
+                append(this.getItemTemplate()(this.dataSource[parseInt(index.toString(), 10)], this, 'itemTemplate',
+                                              this.element.id + '_itemTemplate', false), ctn);
+                itemcnt.appendChild(ctn);
+            } else {
+                itemcnt.appendChild(
+                    this.fetchElement(
+                        ctn,
+                        (this.dataSource[parseInt(index.toString(), 10)] as AccordionItemModel).content,
+                        index
+                    ));
+            }
         } else {
             let content: string = this.items[parseInt(index.toString(), 10)].content;
             if (this.enableHtmlSanitizer && typeof (content) === 'string') {

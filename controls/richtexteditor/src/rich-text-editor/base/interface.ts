@@ -275,6 +275,7 @@ export interface IRichTextEditor extends Component<HTMLElement> {
     aiAssistantSettings: AIAssistantSettingsModel;
     showDialog(type: DialogType): void
     scrollParentElements: HTMLElement[];
+    isModalDialog: boolean;
     /**
      * Retrieves the HTML representation of the selected content as a string.
      *

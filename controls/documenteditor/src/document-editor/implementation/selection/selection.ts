@@ -2476,13 +2476,15 @@ export class Selection {
 
         //Updates the text position based on the cursor position.
         const widget: LineWidget = this.documentHelper.getLineWidgetInternal(cursorPoint, true);
-        const selectionStartIndex: string = this.start.getHierarchicalIndexInternal();
-        const selectionEndIndex: string = this.end.getHierarchicalIndexInternal();
-        const isForward: boolean = TextPosition.isForwardSelection(selectionStartIndex, selectionEndIndex)
+        const startIndex: string = this.start.getHierarchicalIndexInternal();
+        const endIndex: string = this.end.getHierarchicalIndexInternal();
+        const isForward: boolean = TextPosition.isForwardSelection(startIndex, endIndex)
         if (!isNullOrUndefined(widget)) {
             this.updateTextPositionWidget(widget, cursorPoint, textPosition, isForward);
         }
         this.upDownSelectionLength = textPosition.location.x;
+        const selectionStartIndex: string = this.start.getHierarchicalIndexInternal();
+        const selectionEndIndex: string = this.end.getHierarchicalIndexInternal();
         if (selectionStartIndex !== selectionEndIndex && !isMouseLeave) {
             // Extends selection end to field begin or field end.
             if (TextPosition.isForwardSelection(selectionStartIndex, selectionEndIndex)) {
@@ -2850,6 +2852,33 @@ export class Selection {
             this.owner.editorModule.toggleCheckBoxFormField(this.getCurrentFormField());
         }
     }
+
+    /**
+    *  @private 
+    * @returns {number}
+    */
+    public getSelectedFieldWidth(start: TextPosition): number {
+        let fieldResultWidth: number = 0;
+        if (this.isInField || (!start.paragraph.isEmpty() && start.currentWidget.children[0] instanceof ContentControl)) {
+            let fieldStart: FieldElementBox = undefined;
+            for (let i: number = 0; i < start.currentWidget.children.length; i++) {
+                if (start.currentWidget.children[i] instanceof FieldElementBox && (start.currentWidget.children[i] as FieldElementBox).fieldType === 0) {
+                    fieldStart = start.currentWidget.children[i] as FieldElementBox;
+                    break;
+                } else if (start.currentWidget.children[i] instanceof TextElementBox) {
+                    break;
+                }
+            }
+            if (!isNullOrUndefined(fieldStart)) {
+                let fieldCode: string = this.owner.selectionModule.getFieldCode(fieldStart as FieldElementBox);
+                if (fieldCode.match('PAGE') && !isNullOrUndefined((fieldStart as FieldElementBox).fieldSeparator) && !isNullOrUndefined((fieldStart as FieldElementBox).fieldSeparator.nextElement)) {
+                    fieldResultWidth = (fieldStart as FieldElementBox).fieldSeparator.nextElement.width + HelperMethods.convertPointToPixel(this.documentHelper.defaultTabWidth);
+                }
+            }
+        }
+        return fieldResultWidth;
+    }
+    
     /**
      * Handles tab key.
      *
@@ -2917,7 +2946,7 @@ export class Selection {
                     this.owner.editorModule.decreaseIndent();
                 }
                 else {
-                    if (HelperMethods.convertPointToPixel(start.paragraph.paragraphFormat.firstLineIndent + start.paragraph.paragraphFormat.leftIndent) < this.documentHelper.viewer.clientArea.width) {
+                    if ((HelperMethods.convertPointToPixel(start.paragraph.paragraphFormat.firstLineIndent + start.paragraph.paragraphFormat.leftIndent) + this.getSelectedFieldWidth(start)) < this.documentHelper.viewer.clientArea.width) {
                         this.owner.editorModule.increaseIndent();
                     }
                 }
@@ -3442,7 +3471,7 @@ export class Selection {
         if (isNullOrUndefined(this.start)) {
             return;
         }
-        const isForward: boolean = this.isForward ? this.start.isCurrentParaBidi : this.end.isCurrentParaBidi;
+        const isForward: boolean = this.isForward ? this.start.isCurrentParaBidi && !this.isImageSelected : this.end.isCurrentParaBidi && !this.isImageSelected;
         if (isForward) {
             this.end.moveForward();
         } else {
@@ -3460,7 +3489,7 @@ export class Selection {
         if (isNullOrUndefined(this.start)) {
             return;
         }
-        const isForward: boolean = this.isForward ? this.start.isCurrentParaBidi : this.end.isCurrentParaBidi;
+        const isForward: boolean = this.isForward ? this.start.isCurrentParaBidi && !this.isImageSelected : this.end.isCurrentParaBidi && !this.isImageSelected;
         if (isForward) {
             this.end.moveBackward();
         } else {
@@ -6359,7 +6388,12 @@ export class Selection {
                 //Return first paragraph in cell.
                 cell = cell.nextRenderedWidget as TableCellWidget;
                 if (cell.getSplitWidgets()[0] instanceof TableCellWidget) {
-                    cell = cell.getSplitWidgets()[0] as TableCellWidget;
+                    for (let widget of cell.getSplitWidgets()){
+                        cell = widget as TableCellWidget;
+                        if (cell.firstChild){
+                            break;
+                        }
+                    }
                 }
                 const block: BlockWidget = cell.firstChild as BlockWidget;
                 if (block) {
@@ -8037,7 +8071,7 @@ export class Selection {
             isRtlText = elementBox.characterRange === CharacterRangeType.RightToLeft;
             isParaBidi = elementBox.line.paragraph.paragraphFormat.bidi;
             left = (index === 0 && skipPadding) ? left + elementBox.margin.left : left + elementBox.margin.left + elementBox.padding.left;
-            if (elementBox instanceof ShapeBase && !isNullOrUndefined(elementBox.nextElement)) {
+            if (elementBox instanceof ShapeBase && !isParaBidi && !isNullOrUndefined(elementBox.nextElement)) {
                 left += (elementBox.nextElement.margin.left + elementBox.nextElement.padding.left)
             }
             if (isRtlText || (this.documentHelper.moveCaretPosition === 1 && !isRtlText && isParaBidi)) {
