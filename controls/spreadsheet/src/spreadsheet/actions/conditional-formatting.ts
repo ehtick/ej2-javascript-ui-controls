@@ -371,7 +371,7 @@ export class ConditionalFormatting {
             text = (e.target.parentElement.querySelector(
                 (e.target.classList.contains('e-between') ? '.e-input' : '.e-between')) as HTMLInputElement).value;
         }
-        btn.disabled = !(text.trim());
+        btn.disabled = text.length === 0;
     }
 
     private checkCellHandler(rowIdx: number, colIdx: number, cf: ConditionalFormatModel): boolean {
@@ -636,7 +636,7 @@ export class ConditionalFormatting {
                 isApply = this.isGreaterThanLessThan(cf, cellVal, value1, cellType);
                 break;
             case 'Between':
-                isApply = isNumber(cellVal) && cellType !== 'Text' && this.isBetWeen(cf, cellVal, value1, value2, isLongDate);
+                isApply = (isNumber(cellVal) || cellVal === '') && cellType !== 'Text' && this.isBetWeen(cf, cellVal, value1, value2, isLongDate);
                 break;
             case 'EqualTo':
                 isApply = this.isEqualTo(cf, cellVal, value1);
@@ -1198,6 +1198,10 @@ export class ConditionalFormatting {
                     }
                 }
             }
+        } else if (cf.type === 'GreaterThan' && !isNumber(value)) {
+            if ((value === '' && Number(input) < 0) || DataUtil.fnSort('ascending')(value.toLowerCase(), input.toLowerCase()) > 0) {
+                return true;
+            }
         } else if (cf.type === 'LessThan') {
             if (value === '' && (!isNumber(input) || Number(input) > 0)) {
                 return true;
@@ -1225,6 +1229,9 @@ export class ConditionalFormatting {
             let firstVal: number = parseFloat(input1); let secondVal: number = parseFloat(input2);
             if (firstVal > secondVal) {
                 [firstVal, secondVal] = [secondVal, firstVal];
+            }
+            if (value === '') {
+                value = '0';
             }
             return parseFloat(value) >= firstVal && parseFloat(value) <= secondVal;
         } else if (input1 && input2) {

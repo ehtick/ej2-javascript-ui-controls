@@ -1,10 +1,18 @@
-import { Component, createElement, Complex, addClass, removeClass, Event, EmitType, formatUnit, Browser, closest } from '@syncfusion/ej2-base';import { Internationalization, extend, getValue, isObjectArray, isObject, setValue, isUndefined } from '@syncfusion/ej2-base';import { Property, NotifyPropertyChanges, INotifyPropertyChanged, L10n, ModuleDeclaration, EventHandler } from '@syncfusion/ej2-base';import { isNullOrUndefined, KeyboardEvents, KeyboardEventArgs, Collection, append, remove } from '@syncfusion/ej2-base';import { createSpinner, showSpinner, hideSpinner, Dialog } from '@syncfusion/ej2-popups';import { RowDragEventArgs, GridColumn} from '@syncfusion/ej2-grids';import { TaskProcessor } from './task-processor';import { GanttChart } from './gantt-chart';import { Timeline } from '../renderer/timeline';import { GanttTreeGrid } from './tree-grid';import { Toolbar } from '../actions/toolbar';import { CriticalPath } from '../actions/critical-path';import { IGanttData, IWorkingTimeRange, IQueryTaskbarInfoEventArgs, BeforeTooltipRenderEventArgs, IDependencyEventArgs, IGanttTaskInfo, ITaskSegment } from './interface';import { DataStateChangeEventArgs } from '@syncfusion/ej2-treegrid';import { ITaskbarEditedEventArgs, IParent, ITaskData, PdfColumnHeaderQueryCellInfoEventArgs } from './interface';import { ICollapsingEventArgs, CellEditArgs, PdfQueryTimelineCellInfoEventArgs } from './interface';import { IConnectorLineObject, IValidateArgs, IValidateMode, ITaskAddedEventArgs, IKeyPressedEventArgs, IEventMarkerInfo } from './interface';import { PdfExportProperties, ISplitterResizedEventArgs } from './interface';import { ZoomEventArgs, IActionBeginEventArgs, CellSelectingEventArgs, RowDeselectEventArgs, PdfQueryCellInfoEventArgs } from './interface';import { ITimeSpanEventArgs, ZoomTimelineSettings, QueryCellInfoEventArgs, RowDataBoundEventArgs, RowSelectEventArgs } from './interface';import { TaskFieldsModel, TimelineSettingsModel, SplitterSettingsModel, SortSettings, SortSettingsModel, CalendarSettingsModel, CalendarSettings, CalendarExceptionModel } from '../models/models';import { EventMarkerModel, AddDialogFieldSettingsModel, EditDialogFieldSettingsModel, EditSettingsModel } from '../models/models';import { HolidayModel, DayWorkingTimeModel, FilterSettingsModel, SelectionSettingsModel, LoadingIndicatorModel, LoadingIndicator } from '../models/models';import { TaskFields, TimelineSettings, Holiday, EventMarker, DayWorkingTime, EditSettings, SelectionSettings } from '../models/models';import { FilterSettings, SplitterSettings, TooltipSettings, LabelSettings, LabelSettingsModel } from '../models/models';import { SearchSettingsModel, SearchSettings, ResourceFields, ResourceFieldsModel } from '../models/models';import { ItemModel, ClickEventArgs } from '@syncfusion/ej2-navigations';import { DateProcessor } from './date-processor';import { ChartRows } from '../renderer/chart-rows';import { Dependency } from '../actions/dependency';import * as cls from './css-constants';import { Query, DataManager } from '@syncfusion/ej2-data';import { Column, ColumnModel } from '../models/column';import { TreeGrid, FilterSettingsModel as TreeGridFilterSettingModel } from '@syncfusion/ej2-treegrid';import { Sort } from '../actions/sort';import { CellSelectEventArgs, ISelectedCell, ContextMenuItemModel } from '@syncfusion/ej2-grids';import { CellDeselectEventArgs, IIndex, FailureEventArgs } from '@syncfusion/ej2-grids';import { HeaderCellInfoEventArgs, ColumnMenuClickEventArgs, ColumnMenuOpenEventArgs } from '@syncfusion/ej2-grids';import { ColumnMenuItemModel, ExcelQueryCellInfoEventArgs } from '@syncfusion/ej2-grids';import { ExcelExportProperties, ExcelExportCompleteArgs, ExcelHeaderQueryCellInfoEventArgs } from '@syncfusion/ej2-grids';import { RowDD } from '../actions/rowdragdrop';import { Filter } from '../actions/filter';import { PageEventArgs, FilterEventArgs, SortEventArgs, ResizeArgs, ColumnDragEventArgs, getActualProperties, BeforeDataBoundArgs } from '@syncfusion/ej2-grids';import { RenderDayCellEventArgs } from '@syncfusion/ej2-calendars';import { ConnectorLine } from '../renderer/connector-line';import { ConnectorLineEdit } from '../actions/connector-line-edit';import { Edit } from '../actions/edit';import { Splitter } from './splitter';import { ResizeEventArgs, ResizingEventArgs } from '@syncfusion/ej2-layouts';import { TooltipSettingsModel } from '../models/tooltip-settings-model';import { Tooltip } from '../renderer/tooltip';import { ToolbarItem, ColumnMenuItem, RowPosition, DurationUnit, SortDirection, GanttAction, ViolationType } from './enum';import { GridLine, ContextMenuItem, ScheduleMode, ViewType } from './enum';import { Selection } from '../actions/selection';import { ExcelExport } from '../actions/excel-export';import { DayMarkers } from '../actions/day-markers';import { ContextMenu } from './../actions/context-menu';import { RowSelectingEventArgs } from './interface';import { ContextMenuOpenEventArgs as CMenuOpenEventArgs, ContextMenuClickEventArgs as CMenuClickEventArgs } from './interface';import { ColumnMenu } from '../actions/column-menu';import { ITaskbarClickEventArgs, RecordDoubleClickEventArgs, IMouseMoveEventArgs } from './interface';import { PdfExport } from '../actions/pdf-export';import { WorkUnit, TaskType } from './enum';import { FocusModule } from '../actions/keyboard';import { VirtualScroll } from '../actions/virtual-scroll';import { isCountRequired } from './utils';import { TaskbarEdit } from '../actions/taskbar-edit';import { UndoRedo } from '../actions/undo-redo';import { WeekWorkingTimeModel } from '../models/week-working-time-model';import { WeekWorkingTime } from '../models/week-working-time';import {CellSaveArgs} from '@syncfusion/ej2-grids';import { cyclicValidator } from '../actions/validator';import { CalendarModule } from './calendar-module';import { CalendarContext } from './calendar-context';
+import { Component, createElement, Complex, addClass, removeClass, Event, EmitType, formatUnit, Browser, closest } from '@syncfusion/ej2-base';import { Internationalization, extend, getValue, isObjectArray, isObject, setValue, isUndefined } from '@syncfusion/ej2-base';import { Property, NotifyPropertyChanges, INotifyPropertyChanged, L10n, ModuleDeclaration, EventHandler } from '@syncfusion/ej2-base';import { isNullOrUndefined, KeyboardEvents, KeyboardEventArgs, Collection, append, remove } from '@syncfusion/ej2-base';import { createSpinner, showSpinner, hideSpinner, Dialog } from '@syncfusion/ej2-popups';import { RowDragEventArgs, GridColumn} from '@syncfusion/ej2-grids';import { TaskProcessor } from './task-processor';import { GanttChart } from './gantt-chart';import { Timeline } from '../renderer/timeline';import { GanttTreeGrid } from './tree-grid';import { Toolbar } from '../actions/toolbar';import { CriticalPath } from '../actions/critical-path';import { IGanttData, IWorkingTimeRange, IQueryTaskbarInfoEventArgs, BeforeTooltipRenderEventArgs, IDependencyEventArgs, IGanttTaskInfo, ITaskSegment } from './interface';import { DataStateChangeEventArgs } from '@syncfusion/ej2-treegrid';import { ITaskbarEditedEventArgs, IParent, ITaskData, PdfColumnHeaderQueryCellInfoEventArgs } from './interface';import { ICollapsingEventArgs, CellEditArgs, PdfQueryTimelineCellInfoEventArgs } from './interface';import { IConnectorLineObject, IValidateArgs, IValidateMode, ITaskAddedEventArgs, IKeyPressedEventArgs, IEventMarkerInfo } from './interface';import { PdfExportProperties, ISplitterResizedEventArgs } from './interface';import { ZoomEventArgs, IActionBeginEventArgs, CellSelectingEventArgs, RowDeselectEventArgs, PdfQueryCellInfoEventArgs } from './interface';import { ITimeSpanEventArgs, ZoomTimelineSettings, QueryCellInfoEventArgs, RowDataBoundEventArgs, RowSelectEventArgs } from './interface';import { TaskFieldsModel, TimelineSettingsModel, SplitterSettingsModel, SortSettings, SortSettingsModel, CalendarSettingsModel, CalendarSettings, CalendarExceptionModel } from '../models/models';import { EventMarkerModel, AddDialogFieldSettingsModel, EditDialogFieldSettingsModel, EditSettingsModel } from '../models/models';import { HolidayModel, DayWorkingTimeModel, FilterSettingsModel, SelectionSettingsModel, LoadingIndicatorModel, LoadingIndicator } from '../models/models';import { TaskFields, TimelineSettings, Holiday, EventMarker, DayWorkingTime, EditSettings, SelectionSettings } from '../models/models';import { FilterSettings, SplitterSettings, TooltipSettings, LabelSettings, LabelSettingsModel } from '../models/models';import { SearchSettingsModel, SearchSettings, ResourceFields, ResourceFieldsModel } from '../models/models';import { ItemModel, ClickEventArgs } from '@syncfusion/ej2-navigations';import { DateProcessor } from './date-processor';import { ChartRows } from '../renderer/chart-rows';import { Dependency } from '../task-dependency/dependency';import * as cls from './css-constants';import { Query, DataManager } from '@syncfusion/ej2-data';import { Column, ColumnModel } from '../models/column';import { TreeGrid, FilterSettingsModel as TreeGridFilterSettingModel } from '@syncfusion/ej2-treegrid';import { Sort } from '../actions/sort';import { CellSelectEventArgs, ISelectedCell, ContextMenuItemModel } from '@syncfusion/ej2-grids';import { CellDeselectEventArgs, IIndex, FailureEventArgs } from '@syncfusion/ej2-grids';import { HeaderCellInfoEventArgs, ColumnMenuClickEventArgs, ColumnMenuOpenEventArgs } from '@syncfusion/ej2-grids';import { ColumnMenuItemModel, ExcelQueryCellInfoEventArgs } from '@syncfusion/ej2-grids';import { ExcelExportProperties, ExcelExportCompleteArgs, ExcelHeaderQueryCellInfoEventArgs } from '@syncfusion/ej2-grids';import { RowDD } from '../actions/rowdragdrop';import { Filter } from '../actions/filter';import { FilterEventArgs, SortEventArgs, ResizeArgs, ColumnDragEventArgs, getActualProperties, BeforeDataBoundArgs } from '@syncfusion/ej2-grids';import { RenderDayCellEventArgs } from '@syncfusion/ej2-calendars';import { ConnectorLine } from '../task-dependency/connector-line';import { ConnectorLineEdit } from '../task-dependency/connector-line-edit';import { Edit } from '../actions/edit';import { Splitter } from './splitter';import { ResizeEventArgs, ResizingEventArgs } from '@syncfusion/ej2-layouts';import { TooltipSettingsModel } from '../models/tooltip-settings-model';import { Tooltip } from '../renderer/tooltip';import { ToolbarItem, ColumnMenuItem, RowPosition, DurationUnit, SortDirection, GanttAction, ViolationType } from './enum';import { GridLine, ContextMenuItem, ScheduleMode, ViewType } from './enum';import { Selection } from '../actions/selection';import { ExcelExport } from '../actions/excel-export';import { DayMarkers } from '../actions/day-markers';import { ContextMenu } from './../actions/context-menu';import { RowSelectingEventArgs } from './interface';import { ContextMenuOpenEventArgs as CMenuOpenEventArgs, ContextMenuClickEventArgs as CMenuClickEventArgs } from './interface';import { ColumnMenu } from '../actions/column-menu';import { ITaskbarClickEventArgs, RecordDoubleClickEventArgs, IMouseMoveEventArgs } from './interface';import { PdfExport } from '../actions/pdf-export';import { WorkUnit, TaskType } from './enum';import { FocusModule } from '../actions/keyboard';import { VirtualScroll } from '../actions/virtual-scroll';import { isCountRequired, parentsUntil } from './utils';import { TaskbarEdit } from '../actions/taskbar-edit';import { UndoRedo } from '../actions/undo-redo';import { WeekWorkingTimeModel } from '../models/week-working-time-model';import { WeekWorkingTime } from '../models/week-working-time';import {CellSaveArgs} from '@syncfusion/ej2-grids';import { cyclicValidator } from '../actions/validator';import { CalendarModule } from './calendar-module';import { CalendarContext } from './calendar-context';
 import {ComponentModel} from '@syncfusion/ej2-base';
 
 /**
  * Interface for a class Gantt
  */
 export interface GanttModel extends ComponentModel{
+
+    /**
+     * Determines whether to automatically validate and update predecessor offsets in the IPredecessor collection and columns during initial load.
+     * When true, ensures data consistency with rendering validations.
+     *
+     * @default false
+     */
+    autoUpdatePredecessorOffset?: boolean;
 
     /**
      * Enables or disables keyboard interactions in the Gantt chart.
@@ -22,7 +30,9 @@ export interface GanttModel extends ComponentModel{
     enableImmutableMode?: boolean;
 
     /**
-     * Specifies whether to allow dependency connection support for parent records.
+     * Specifies whether dependency connections are supported for parent tasks.
+     * Only allows dependencies between tasks belonging to different parents.
+     * Dependencies within the same parent are not supported.
      *
      * @default true
      */
@@ -79,15 +89,14 @@ export interface GanttModel extends ComponentModel{
     autoCalculateDateScheduling?: boolean;
 
     /**
-     * Enables or disables automatic focusing on the taskbar when a task is clicked.
+     *  Specifies whether to automatically scroll the corresponding taskbar into view when a task is selected.
      *
      * @default true
      */
     autoFocusTasks?: boolean;
 
     /**
-     * If `enableAdaptiveUI` is set to true, the pop-up UI becomes adaptive to smaller screens, enabling better usability for filtering and other features.
-     *
+     * Specifies whether to enable an adaptive UI mode, which optimizes the layout of pop-ups for filtering, editing, and other features on smaller screens, such as mobile devices.     *
      * @default false
      */
     enableAdaptiveUI?: boolean;
@@ -111,7 +120,7 @@ export interface GanttModel extends ComponentModel{
     enableAutoWbsUpdate?: boolean;
 
     /**
-     * If `allowSelection` is set to true, it enables row selection in the Gantt chart, and the selected rows are highlighted.
+     * Specifies whether to enable row selection in the Gantt chart. When enabled, selected rows are highlighted.
      *
      * @default true
      */
@@ -168,8 +177,20 @@ export interface GanttModel extends ComponentModel{
     undoRedoActions?: GanttAction[];
 
     /**
-     * By default, task schedule dates are calculated with system time zone. If the Gantt chart is assigned with a specific time zone, then schedule dates are calculated based on the given time zone date value.
-     * This property function properly when the timeline displays hours. To enable this, set `timelineViewMode` to 'Hour' or configure `topTier.unit` as 'Day' and `bottomTier.unit` as 'Hour'.
+     * Specifies the time zone used for task date and scheduling calculations in the Gantt chart.
+     * By default, the system or browser time zone is applied.
+     *
+     * The time zone always affects internal date calculations (e.g., task start/end times, durations, and dependencies),
+     * even in non-hour views. However, visible changes in timeline and task positions only appear when the timeline
+     * includes an hour-level mode.
+     *
+     * To see the time zone reflected in the UI, configure one of these:
+     *   - `timelineViewMode: 'Hour'`
+     *   - or `topTier.unit: 'Day'` + `bottomTier.unit: 'Hour'`
+     *
+     * Without an hour view (e.g., only Day/Week/Month views), the chart looks unchanged, but Gantt chart uses the new time zone.
+     *
+     * Use standard IANA time zone names (e.g., 'Asia/Kolkata', 'UTC', 'America/New_York').
      *
      * @default null
      */
@@ -221,9 +242,10 @@ export interface GanttModel extends ComponentModel{
     durationUnit?: DurationUnit;
 
     /**
-     * Defines an external [`Query`](https://ej2.syncfusion.com/documentation/api/data/query)
+     * Defines an external [`Query`](https://ej2.syncfusion.com/documentation/data/api-query.html)
      * that will be executed in conjunction with data processing to filter, sort the data.
      * This allows for advanced data manipulation before binding the data to the Gantt chart.
+     * {% codeBlock src='gantt/query/index.md' %}{% endcodeBlock %}
      *
      * @default null
      */
@@ -264,7 +286,7 @@ export interface GanttModel extends ComponentModel{
     calendarSettings?: CalendarSettingsModel;
 
     /**
-     * Defines whether to enable or disable the taskbar drag and drop action in the Gantt chart.
+     * Specifies whether taskbar drag and drop is enabled in the Gantt chart.
      *
      * @default false
      */
@@ -280,6 +302,12 @@ export interface GanttModel extends ComponentModel{
     /**
      * Configures the grid lines displayed in the TreeGrid and Gantt chart.
      * The `gridLines` property allows customization of the type of grid lines to be shown, either horizontal, vertical, both or none.
+     *
+     * * `Both`: Displays both horizontal and vertical grid lines.
+     * * `None`: Hides both horizontal and vertical grid lines.
+     * * `Horizontal`: Displays only horizontal grid lines.
+     * * `Vertical`: Displays only vertical grid lines.
+     * * `Default`: Adjusts line visibility based on the theme.
      *
      *  @default 'Horizontal'
      */
@@ -311,8 +339,8 @@ export interface GanttModel extends ComponentModel{
     parentTaskbarTemplate?: string | Function;
 
     /**
-     * Renders customized html elements for timeline cell from the given template.
-     *
+     * Specifies the template used to render custom HTML content in timeline cells.
+     * {% codeBlock src='gantt/timelineTemplate/index.md' %}{% endcodeBlock %}
      * @default null
      * @aspType string
      */
@@ -320,6 +348,7 @@ export interface GanttModel extends ComponentModel{
 
     /**
      * Defines a custom template for rendering milestone tasks in the Gantt chart. This template allows you to customize the appearance of milestone tasks.
+     * {% codeBlock src='gantt/milestoneTemplate/index.md' %}{% endcodeBlock %}
      *
      * @default null
      * @aspType string
@@ -328,6 +357,7 @@ export interface GanttModel extends ComponentModel{
 
     /**
      * Specifies the color of the baseline bar in the Gantt chart.
+     * {% codeBlock src='gantt/baselineColor/index.md' %}{% endcodeBlock %}
      *
      *  @default null
      */
@@ -385,15 +415,16 @@ export interface GanttModel extends ComponentModel{
     toolbar?: (ToolbarItem | string | ItemModel)[];
 
     /**
-     * Defines workweek of project.
+     * Specifies the project's workweek (working days).
+     * `workWeek` specifies the days of the week that are considered working days for the project.
      *
      * @default ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
      */
     workWeek?: string[];
 
     /**
-     * Defines whether weekend days should be considered as working days in the Gantt chart.
-     * When `includeWeekend` set to true, weekends (Saturday and Sunday) are treated as regular working days.
+     * Specifies whether weekend days are considered working days in the Gantt chart.
+     * When `includeWeekend` is set to true, weekends (Saturday and Sunday) are treated as regular working days.
      *
      * @default false
      */
@@ -450,7 +481,7 @@ export interface GanttModel extends ComponentModel{
     /**
      * Defines the mapping property to retrieve the resource ID value from the resource collection.
      * This is used to map the resource ID from the resource data to the Gantt chart for resource allocation.
-     *
+     * {% codeBlock src='gantt/resources/index.md' %}{% endcodeBlock %}
      * @default null
      */
     resourceIDMapping?: string;
@@ -458,28 +489,29 @@ export interface GanttModel extends ComponentModel{
     /**
      * Defines the mapping property to retrieve the resource name value from the resource collection.
      * This is used to map the resource name from the resource data to the Gantt chart for task allocation.
-     *
+     * {% codeBlock src='gantt/resources/index.md' %}{% endcodeBlock %}
      * @default null
      */
     resourceNameMapping?: string;
 
     /**
-     * Defines the collection of resources assigned to the project.
+     * Specifies the collection of resources assigned to the project.
      *
      * @default []
      */
     resources?: object[];
 
     /**
-     * Defines the collection of segments assigned to tasks in the Gantt chart.
+     * Specifies the array of segment objects assigned to tasks in the Gantt chart.
+     * Each segment represents a portion of the taskbar, allowing for visual representation of different phases or sub-tasks within a single task.
      *
      * @default []
      */
     segmentData?: object[];
 
     /**
-     * Defines the background color of the dependency lines (connector lines) in the Gantt chart.
-     * You can set the color as a valid CSS color string (e.g., "red", "#FF5733", "rgb(255,0,0)").
+     * Specifies the background color of dependency (connector) lines in the Gantt chart.
+     * Accepts any valid CSS color value (for example: "red", "#FF5733", "rgb(255, 0, 0)").
      *
      * @default null
      */
@@ -552,7 +584,7 @@ export interface GanttModel extends ComponentModel{
     taskType?: TaskType;
 
     /**
-     * Defines the view type of the Gantt.
+     * Specifies the view type of the Gantt chart.
      *
      *  @default 'ProjectView'
      */
@@ -589,8 +621,8 @@ export interface GanttModel extends ComponentModel{
     eventMarkers?: EventMarkerModel[];
 
     /**
-     * Defines the mapping properties to extract task-related values, such as ID, start date, end date, duration, and progress, from the data source.
-     * This allows the Gantt chart to properly map the provided data to the corresponding task fields and render them accordingly.
+     * Defines the mapping properties used to extract task-related values—such as ID, start date, end date, duration, and progress—from the data source.
+     * This ensures that the Gantt chart correctly maps the provided data to the corresponding task fields and renders them accurately.
      * {% codeBlock src='gantt/taskFields/index.md' %}{% endcodeBlock %}
      */
     taskFields?: TaskFieldsModel;
@@ -609,14 +641,16 @@ export interface GanttModel extends ComponentModel{
     timelineSettings?: TimelineSettingsModel;
 
     /**
-     * Configure zooming levels of Gantt Timeline.
+     * Defines the available zoom levels for the Gantt timeline.
+     * Provide an array of ZoomTimelineSettings to control the scale and intervals used when zooming.
      *
      * @default []
      */
     zoomingLevels?: ZoomTimelineSettings[];
 
     /**
-     * Configures the sort settings for the Gantt chart.
+     * Configures the sorting options for the Gantt chart.
+     * When set, it defines how tasks are sorted based on the specified columns.
      * {% codeBlock src='gantt/sortSettings/index.md' %}{% endcodeBlock %}
      *
      * @default {columns:[]}
@@ -656,7 +690,8 @@ export interface GanttModel extends ComponentModel{
     allowFiltering?: boolean;
 
     /**
-     * If `allowExcelExport` set to true, then it will allow the user to export Gantt chart to Excel and CSV file.
+     * Enables exporting the Gantt chart to Excel (.xlsx) and CSV formats.
+     * When set to true, users can export the chart data.
      *
      * @default false
      */
@@ -710,14 +745,16 @@ export interface GanttModel extends ComponentModel{
     enableCriticalPath?: boolean;
 
     /**
-     * Enables or disables the undo and redo functionality in the Gantt chart.
+     * `enableUndoRedo` enables or disables the undo/redo functionality in the Gantt chart.
+     * Enables undo and redo in the Gantt chart. When set to true, users can
+     * revert or reapply recent changes.
      *
      * @default false
      */
     enableUndoRedo?: boolean;
 
     /**
-     * Defines number of undo/redo actions that should be stored.
+     * Specifies the number of undo and redo actions to retain in history.
      *
      * @default 10
      */
@@ -806,446 +843,424 @@ export interface GanttModel extends ComponentModel{
     /**
      * Configures the splitter settings for the Gantt chart.
      * {% codeBlock src='gantt/splitterSettings/index.md' %}{% endcodeBlock %}
+     *
+     * The `position` takes precedence over `columnIndex` when both defined.
      */
     splitterSettings?: SplitterSettingsModel;
 
     /**
-     * This will be triggered after the taskbar element is appended to the Gantt element.
+     * Event triggered per taskbar before rendering in the Gantt chart.
+     * Used to customize taskbar styles and properties dynamically.
      *
      * @event queryTaskbarInfo
      */
     queryTaskbarInfo?: EmitType<IQueryTaskbarInfoEventArgs>;
 
     /**
-     * Triggers before Gantt data is exported to Excel file.
-     *
+     * Event triggered before Gantt data is exported to Excel.
+     * Allows modification or cancellation of the export process.
      * @event beforeExcelExport
      */
     beforeExcelExport?: EmitType<Object>;
 
     /**
-     * Triggers after Gantt data is exported to Excel file.
-     *
+     * Event triggered after Gantt data has been successfully exported to Excel.
+     * Provides access to the generated workbook.
      * @event excelExportComplete
      */
     excelExportComplete?: EmitType<ExcelExportCompleteArgs>;
 
     /**
-     * Triggers before exporting each cell to Excel file.
-     * You can also customize the Excel cells.
-     *
+     * Event triggered before each cell (header or data) is exported to Excel.
+     * Allows customization of cell content, style, or value.
      * @event excelQueryCellInfo
      */
     excelQueryCellInfo?: EmitType<ExcelQueryCellInfoEventArgs>;
 
     /**
-     * Triggers before exporting each header cell to Excel file.
-     * You can also customize the Excel cells.
-     *
+     * Event triggered before each header cell is exported to Excel.
+     * Allows customization of header cell content or styling.
      * @event excelHeaderQueryCellInfo
      */
     excelHeaderQueryCellInfo?: EmitType<ExcelHeaderQueryCellInfoEventArgs>;
 
     /**
-     * Triggers when row elements are dragged (moved) continuously.
-     *
+     * Event triggered continuously while row elements are being dragged.
+     * Provides current drag position and target information.
      * @event rowDrag
      */
     rowDrag?: EmitType<RowDragEventArgs>;
 
     /**
-     * Triggers when row element’s drag(move) starts.
-     *
+     * Event triggered when a row drag operation starts.
+     * Provides initial drag source details.
      * @event rowDragStart
      */
     rowDragStart?: EmitType<RowDragEventArgs>;
 
     /**
-     * Triggers when row element’s before drag(move).
-     *
+     * Event triggered before the row drag operation officially begins.
+     * Allows preparation or cancellation of the drag action.
      * @event rowDragStartHelper
      */
     rowDragStartHelper?: EmitType<RowDragEventArgs>;
 
     /**
-     * Triggers when row elements are dropped on the target row.
-     *
+     * Event triggered when dragged row elements are dropped onto a target row.
+     * Provides source and target row information for reordering/indent/outdent.
      * @event rowDrop
      */
     rowDrop?: EmitType<RowDragEventArgs>;
 
     /**
-     * This will be triggered before the row getting collapsed.
-     *
+     * Event triggered before a row is collapsed.
+     * Allows cancellation of the collapse action.
      * @event collapsing
      */
     collapsing?: EmitType<ICollapsingEventArgs>;
 
     /**
-     * This will be triggered after the row getting collapsed.
-     *
+     * Event triggered after a row has been collapsed.
+     * Indicates the collapse action has completed.
      * @event collapsed
      */
     collapsed?: EmitType<ICollapsingEventArgs>;
 
     /**
-     * This will be triggered before the row getting expanded.
-     *
+     * Event triggered before a row is expanded.
+     * Allows cancellation of the expand action.
      * @event expanding
      */
     expanding?: EmitType<ICollapsingEventArgs>;
 
     /**
-     * This will be triggered after the row getting expanded.
-     *
+     * Event triggered after a row has been expanded.
+     * Indicates the expand action has completed.
      * @event expanded
      */
     expanded?: EmitType<ICollapsingEventArgs>;
 
     /**
-     * Triggers when Gantt actions such as sorting, filtering, searching etc., starts.
-     *
+     * Event triggered when a Gantt action (sorting, filtering, searching, etc.) begins.
+     * Allows cancellation or modification of the action.
      * @event actionBegin
      */
-    actionBegin?: EmitType<Object | PageEventArgs | FilterEventArgs | SortEventArgs | ITimeSpanEventArgs | IDependencyEventArgs | ITaskAddedEventArgs | ZoomEventArgs>;  // eslint-disable-line
+    actionBegin?: EmitType<Object | FilterEventArgs | SortEventArgs | ITimeSpanEventArgs | IDependencyEventArgs | ITaskAddedEventArgs | ZoomEventArgs>; // eslint-disable-line
 
     /**
-     * Triggers before a cell's value is saved in the Gantt chart.
-     *
-     * This event allows cancellation of the save action.
-     *
+     * Event triggered before a cell value is saved during editing.
+     * Allows cancellation or modification of the save operation.
      * @event cellSave
-     * @param args - Arguments related to the cell save event, including data and cancellation options.
      */
     cellSave?: EmitType<CellSaveArgs>;
 
     /**
-     * Triggers when Gantt actions such as sorting, filtering, searching etc. are completed.
-     *
+     * Event triggered after a Gantt action (sorting, filtering, etc.) has completed.
+     * Provides updated state after the action.
      * @event actionComplete
      */
     actionComplete?: EmitType<FilterEventArgs | SortEventArgs | ITaskAddedEventArgs | IKeyPressedEventArgs | ZoomEventArgs>;
 
     /**
-     * Triggers when actions are failed.
-     *
+     * Event triggered when a Gantt action fails during execution.
+     * Provides error details.
      * @event actionFailure
      */
     actionFailure?: EmitType<FailureEventArgs>;
 
     /**
-     * Triggers when the Gantt actions such as Sorting, Editing etc., are done.
-     * In this event,the current view data and total record count should be assigned to the `dataSource` based on the action performed.
-     *
+     * Event triggered after actions like sorting, filtering complete.
+     * Used to update the dataSource with current view data and record count.
      * @event dataStateChange
      */
     dataStateChange?: EmitType<DataStateChangeEventArgs>;
 
     /**
-     * Triggered when a taskbar is dragged and dropped into a new position on the Gantt chart.
-     *
+     * Event triggered after a taskbar has been dragged and dropped to a new position.
+     * Indicates editing via taskbar has completed.
      * @event taskbarEdited
-     */
+     */
     taskbarEdited?: EmitType<ITaskbarEditedEventArgs>;
 
     /**
-     * This will be triggered when a task get saved by cell edit.
-     *
+     * Event triggered when a task is saved through cell editing.
+     * Provides updated task data after save.
      * @event endEdit
-     */
+     */
     endEdit?: EmitType<ITaskbarEditedEventArgs>;
 
     /**
-     * This will be triggered a cell get begins to edit.
-     *
+     * Event triggered when a cell enters edit mode in the Gantt chart.
+     * Allows customization or cancellation of editing.
      * @event cellEdit
      */
     cellEdit?: EmitType<CellEditArgs>;
 
     /**
-     * Triggered before the Gantt control gets rendered.
-     *
-     * @event load
+     * Event triggered when the Gantt component begins loading data.
+     * Occurs before any rendering starts.
+     * @event load
      */
     load?: EmitType<Object>;
 
     /**
-     * Triggers when the component is created.
-     *
-     * @event created
-     */
+     * Event triggered after the Gantt component is fully created and initialized.
+     * @event created
+     */
     created?: EmitType<Object>;
 
     /**
-     * Triggers when the component is destroyed.
-     *
-     * @event destroyed
-     */
+     * Event triggered when the Gantt component is being destroyed.
+     * Allows cleanup operations.
+     * @event destroyed
+     */
     destroyed?: EmitType<Object>;
 
     /**
-     * Triggered when a taskbar is in the dragging state on the Gantt chart.
-     *
+     * Event triggered while a taskbar is being dragged.
+     * Provides current drag progress and position.
      * @event taskbarEditing
-     */
+     */
     taskbarEditing?: EmitType<ITaskbarEditedEventArgs>;
 
     /**
-     * Triggers when data source is populated in the Grid.
-     *
-     * @event dataBound
+     * Event triggered after the data source is bound to the TreeGrid part of Gantt.
+     * Indicates data binding is complete.
+     * @event dataBound
      */
     dataBound?: EmitType<Object>;
 
     /**
-     * Triggers before the data is bound to the TreeGrid in the Gantt component.
-     * This event is triggered before any visual elements (taskbars, rows, timelines) are rendered in the DOM.
-     *
+     * Event triggered before data is bound to the TreeGrid.
+     * Allows modification of data before rendering begins.
      * @event beforeDataBound
      */
     beforeDataBound?: EmitType<BeforeDataBoundArgs>;
 
     /**
-     * Triggers when column resize starts.
-     *
+     * Event triggered when column resizing starts in the Grid.
      * @event resizeStart
      */
     resizeStart?: EmitType<ResizeArgs>;
 
     /**
-     * Triggers on column resizing.
-     *
+     * Event triggered continuously while a column is being resized.
      * @event resizing
      */
     resizing?: EmitType<ResizeArgs>;
 
     /**
-     * Triggers when column resize ends.
-     *
+     * Event triggered when column resizing completes.
      * @event resizeStop
      */
     resizeStop?: EmitType<ResizeArgs>;
 
     /**
-     * Triggers when splitter resizing starts.
-     *
+     * Event triggered when splitter resizing begins in the Gantt component.
      * @event splitterResizeStart
      */
     splitterResizeStart?: EmitType<ResizeEventArgs>;
 
     /**
-     * Triggers when splitter bar was dragging.
-     *
+     * Event triggered continuously while the splitter bar is being dragged.
      * @event splitterResizing
      */
     splitterResizing?: EmitType<ResizingEventArgs>;
 
     /**
-     * Triggers when splitter resizing action completed.
-     *
+     * Event triggered when splitter resizing action completes.
      * @event splitterResized
      */
     splitterResized?: EmitType<ISplitterResizedEventArgs>;
 
     /**
-     * Triggers when column header element drag (move) starts.
-     *
+     * Event triggered when column header drag starts.
      * @event columnDragStart
      */
     columnDragStart?: EmitType<ColumnDragEventArgs>;
 
     /**
-     * Triggers when column header element is dragged (moved) continuously.
-     *
+     * Event triggered continuously while a column header is being dragged.
      * @event columnDrag
      */
     columnDrag?: EmitType<ColumnDragEventArgs>;
 
     /**
-     * Triggers when a column header element is dropped on the target column.
-     *
+     * Event triggered when a dragged column header is dropped.
      * @event columnDrop
      */
     columnDrop?: EmitType<ColumnDragEventArgs>;
 
     /**
-     * Triggers before tooltip get rendered.
-     *
+     * Event triggered before a tooltip is rendered.
+     * Allows customization of tooltip content or cancellation.
      * @event beforeTooltipRender
-     */
+     */
     beforeTooltipRender?: EmitType<BeforeTooltipRenderEventArgs>;
 
     /**
-     * Triggers before row selection occurs.
-     *
+     * Event triggered before a row is selected.
+     * Allows cancellation of selection.
      * @event rowSelecting
      */
     rowSelecting?: EmitType<RowSelectingEventArgs>;
 
     /**
-     * Triggers after row selection occurs.
-     *
+     * Event triggered after a row has been selected.
      * @event rowSelected
      */
     rowSelected?: EmitType<RowSelectEventArgs>;
 
     /**
-     * Triggers before deselecting the selected row.
-     *
+     * Event triggered before a selected row is deselected.
+     * Allows cancellation of deselection.
      * @event rowDeselecting
      */
     rowDeselecting?: EmitType<RowDeselectEventArgs>;
 
     /**
-     * Triggers when a selected row is deselected.
-     *
+     * Event triggered after a row has been deselected.
      * @event rowDeselected
      */
     rowDeselected?: EmitType<RowDeselectEventArgs>;
 
     /**
-     * Triggers before any cell selection occurs.
-     *
+     * Event triggered before a cell is selected.
+     * Allows cancellation of cell selection.
      * @event cellSelecting
      */
     cellSelecting?: EmitType<CellSelectingEventArgs>;
 
     /**
-     * Triggers after a cell is selected.
-     *
+     * Event triggered after a cell has been selected.
      * @event cellSelected
      */
     cellSelected?: EmitType<CellSelectEventArgs>;
 
     /**
-     * Triggers before the selected cell is deselecting.
-     *
+     * Event triggered before a selected cell is deselected.
+     * Allows cancellation of cell deselection.
      * @event cellDeselecting
      */
     cellDeselecting?: EmitType<CellDeselectEventArgs>;
 
     /**
-     * Triggers when a particular selected cell is deselected.
-     *
-     * @event cellDeselected
-     */
+     * Event triggered after a cell has been deselected.
+     * @event cellDeselected
+     */
     cellDeselected?: EmitType<CellDeselectEventArgs>;
 
     /**
-     * This will be triggered before the header cell element is appended to the Grid element.
-     *
+     * Event triggered before each cell element is rendered.
+     * Allows customization of cell content or style.
      * @event queryCellInfo
      */
     queryCellInfo?: EmitType<QueryCellInfoEventArgs>;
 
     /**
-     * This will be triggered before the header cell element is appended to the Grid element.
-     *
+     * Event triggered before each header cell element is rendered.
+     * Allows customization of header cell content or style.
      * @event headerCellInfo
      */
     headerCellInfo?: EmitType<HeaderCellInfoEventArgs>;
 
     /**
-     * This will be triggered before the row element is appended to the Grid element.
-     *
+     * Event triggered before each row element is rendered.
+     * Allows customization of row appearance.
      * @event rowDataBound
      */
     rowDataBound?: EmitType<RowDataBoundEventArgs>;
 
     /**
-     * Triggers before column menu opens.
-     *
-     * @event columnMenuOpen
-     */
+     * Event triggered before the column menu is opened.
+     * Allows customization or cancellation of menu display.
+     * @event columnMenuOpen
+     */
     columnMenuOpen?: EmitType<ColumnMenuOpenEventArgs>;
 
     /**
-     * Triggers when toolbar item was clicked.
-     *
+     * Event triggered when a toolbar item is clicked.
      * @event toolbarClick
      */
     toolbarClick?: EmitType<ClickEventArgs>;
 
     /**
-     * Triggers when click on column menu.
-     *
+     * Event triggered when an item in the column menu is clicked.
      * @event columnMenuClick
      */
     columnMenuClick?: EmitType<ColumnMenuClickEventArgs>;
 
     /**
-     * Triggers before context menu opens.
-     *
+     * Event triggered before the context menu is opened.
+     * Allows customization or cancellation.
      * @event contextMenuOpen
      */
     contextMenuOpen?: EmitType<CMenuOpenEventArgs>;
 
     /**
-     * Triggers when click on context menu.
-     *
+     * Event triggered when an item in the context menu is clicked.
      * @event contextMenuClick
      */
     contextMenuClick?: EmitType<CMenuClickEventArgs>;
 
     /**
-     * This event will be triggered when click on taskbar element.
-     *
+     * Event triggered when a taskbar element is clicked.
+     * Provides task and click details.
      * @event onTaskbarClick
-     */
+     */
     onTaskbarClick?: EmitType<ITaskbarClickEventArgs>;
 
     /**
-     * This event will be triggered when double click on record.
-     *
+     * Event triggered when a record is double-clicked.
      * @event recordDoubleClick
-     */
+     */
     recordDoubleClick?: EmitType<RecordDoubleClickEventArgs>;
 
     /**
-     * This event will be triggered when mouse move on Gantt.
-     *
+     * Event triggered on mouse move over the Gantt component.
+     * Provides mouse position and target information.
      * @event onMouseMove
-     */
+     */
     onMouseMove?: EmitType<IMouseMoveEventArgs>;
 
     /**
-     * Triggers before Gantt data is exported to PDF document.
-     *
+     * Event triggered before Gantt data is exported to PDF.
+     * Allows modification or cancellation of PDF export.
      * @event beforePdfExport
      */
     beforePdfExport?: EmitType<Object>;
 
     /**
-     * Triggers after TreeGrid data is exported to PDF document.
-     *
+     * Event triggered after Gantt data has been exported to PDF.
+     * Provides access to the generated document.
      * @event pdfExportComplete
      */
     pdfExportComplete?: EmitType<Object>;
 
     /**
-     * Triggers before exporting each cell to PDF document. You can also customize the PDF cells.
-     *
-     * @event pdfQueryCellInfo
-     */
+     * Event triggered before each cell is exported to PDF.
+     * Allows customization of cell content or style.
+     * @event pdfQueryCellInfo
+     */
     pdfQueryCellInfo?: EmitType<PdfQueryCellInfoEventArgs>;
 
     /**
-     * Triggers before exporting each taskbar to PDF document. You can also customize the taskbar.
-     *
+     * Event triggered before each taskbar is exported to PDF.
+     * Allows customization of taskbar appearance in PDF.
      * @event pdfQueryTaskbarInfo
      */
     pdfQueryTaskbarInfo?: EmitType<Object>;
 
     /**
-     * Triggers before exporting each cell to PDF document. You can also customize the PDF cells.
-     *
+     * Event triggered before each timeline cell is exported to PDF.
+     * Allows customization of timeline cell content or style.
      * @event pdfQueryTimelineCellInfo
      */
     pdfQueryTimelineCellInfo?: EmitType<PdfQueryTimelineCellInfoEventArgs>;
 
     /**
-     * Triggers before exporting each header cell to PDF document. You can also customize the PDF cells.
-     *
+     * Event triggered before each column header cell is exported to PDF.
+     * Allows customization of header cell content or style.
      * @event pdfColumnHeaderQueryCellInfo
      */
     pdfColumnHeaderQueryCellInfo?: EmitType<PdfColumnHeaderQueryCellInfoEventArgs>;

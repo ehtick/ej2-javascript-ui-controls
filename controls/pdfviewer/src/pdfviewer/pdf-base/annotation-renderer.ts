@@ -109,8 +109,15 @@ export class AnnotationRenderer {
             if (shapeAnnotation.allowedInteractions && shapeAnnotation['allowedInteractions'] != null){
                 lineAnnotation.setValues('AllowedInteractions', JSON.stringify(shapeAnnotation['allowedInteractions']));
             }
+            if (shapeAnnotation.annotationSelectorSettings && shapeAnnotation['annotationSelectorSettings'] != null)
+            {
+                lineAnnotation.setValues('AnnotationSelectorSettings', JSON.stringify(shapeAnnotation['annotationSelectorSettings']));
+            }
             if (shapeAnnotation.originalName) {
                 lineAnnotation.name = shapeAnnotation.originalName;
+            }
+            if (!isNullOrUndefined(shapeAnnotation.isPrint)) {
+                lineAnnotation._dictionary.set('IsPrint', shapeAnnotation.isPrint);
             }
             lineAnnotation.setAppearance(true);
             page.annotations.add(lineAnnotation);
@@ -209,8 +216,15 @@ export class AnnotationRenderer {
             if (shapeAnnotation.allowedInteractions && shapeAnnotation['allowedInteractions'] != null){
                 squareAnnotation.setValues('AllowedInteractions', JSON.stringify(shapeAnnotation['allowedInteractions']));
             }
+            if (shapeAnnotation.annotationSelectorSettings && shapeAnnotation['annotationSelectorSettings'] != null)
+            {
+                squareAnnotation.setValues('AnnotationSelectorSettings', JSON.stringify(shapeAnnotation['annotationSelectorSettings']));
+            }
             if (shapeAnnotation.originalName) {
                 squareAnnotation.name = shapeAnnotation.originalName;
+            }
+            if (!isNullOrUndefined(shapeAnnotation.isPrint)) {
+                squareAnnotation._dictionary.set('IsPrint', shapeAnnotation.isPrint);
             }
             squareAnnotation.setAppearance(true);
             page.annotations.add(squareAnnotation);
@@ -302,8 +316,15 @@ export class AnnotationRenderer {
             if (shapeAnnotation.allowedInteractions && shapeAnnotation['allowedInteractions'] != null){
                 circleAnnotation.setValues('AllowedInteractions', JSON.stringify(shapeAnnotation['allowedInteractions']));
             }
+            if (shapeAnnotation.annotationSelectorSettings && shapeAnnotation['annotationSelectorSettings'] != null)
+            {
+                circleAnnotation.setValues('AnnotationSelectorSettings', JSON.stringify(shapeAnnotation['annotationSelectorSettings']));
+            }
             if (shapeAnnotation.originalName) {
                 circleAnnotation.name = shapeAnnotation.originalName;
+            }
+            if (!isNullOrUndefined(shapeAnnotation.isPrint)) {
+                circleAnnotation._dictionary.set('IsPrint', shapeAnnotation.isPrint);
             }
             circleAnnotation.setAppearance(true);
             page.annotations.add(circleAnnotation);
@@ -392,8 +413,15 @@ export class AnnotationRenderer {
             if (!isNullOrUndefined(shapeAnnotation.allowedInteractions)) {
                 polygonAnnotation.setValues('AllowedInteractions', JSON.stringify(shapeAnnotation.allowedInteractions));
             }
+            if (shapeAnnotation.annotationSelectorSettings && shapeAnnotation['annotationSelectorSettings'] != null)
+            {
+                polygonAnnotation.setValues('AnnotationSelectorSettings', JSON.stringify(shapeAnnotation['annotationSelectorSettings']));
+            }
             if (shapeAnnotation.originalName) {
                 polygonAnnotation.name = shapeAnnotation.originalName;
+            }
+            if (!isNullOrUndefined(shapeAnnotation.isPrint)) {
+                polygonAnnotation._dictionary.set('IsPrint', shapeAnnotation.isPrint);
             }
             polygonAnnotation.setAppearance(true);
             page.annotations.add(polygonAnnotation);
@@ -473,15 +501,22 @@ export class AnnotationRenderer {
                 }
             }
             this.preserveIsLockProperty(shapeAnnotation, polylineAnnotation);
-            if (shapeAnnotation.originalName) {
-                polylineAnnotation.name = shapeAnnotation.originalName;
-            }
             polylineAnnotation.setAppearance(true);
             if (!isNullOrUndefined(shapeAnnotation.customData)) {
                 polylineAnnotation.setValues('CustomData', JSON.stringify(shapeAnnotation.customData));
             }
             if (!isNullOrUndefined(shapeAnnotation.allowedInteractions)) {
                 polylineAnnotation.setValues('AllowedInteractions', JSON.stringify(shapeAnnotation.allowedInteractions));
+            }
+            if (shapeAnnotation.annotationSelectorSettings && shapeAnnotation['annotationSelectorSettings'] != null)
+            {
+                polylineAnnotation.setValues('AnnotationSelectorSettings', JSON.stringify(shapeAnnotation['annotationSelectorSettings']));
+            }
+            if (shapeAnnotation.originalName) {
+                polylineAnnotation.name = shapeAnnotation.originalName;
+            }
+            if (!isNullOrUndefined(shapeAnnotation.isPrint)) {
+                polylineAnnotation._dictionary.set('IsPrint', shapeAnnotation.isPrint);
             }
             page.annotations.add(polylineAnnotation);
         }
@@ -552,6 +587,9 @@ export class AnnotationRenderer {
             }
             if (!isNullOrUndefined(shapeAnnotation.customData)) {
                 annotation.setValues('CustomData', shapeAnnotation.customData);
+            }
+            if (!isNullOrUndefined(shapeAnnotation.isPrint)) {
+                annotation._dictionary.set('IsPrint', shapeAnnotation.isPrint);
             }
             page.annotations.add(annotation);
         }
@@ -725,6 +763,9 @@ export class AnnotationRenderer {
         }
         if (redactionAnnotation.originalName) {
             redactAnnotation.name = redactionAnnotation.originalName;
+        }
+        if (!isNullOrUndefined(redactionAnnotation.isPrint)) {
+            redactAnnotation._dictionary.set('IsPrint', redactionAnnotation.isPrint);
         }
         redactAnnotation.setAppearance(true);
         page.annotations.add(redactAnnotation);
@@ -927,8 +968,14 @@ export class AnnotationRenderer {
         if (!isNullOrUndefined(inkSignatureAnnotation.customData)) {
             inkAnnotation.setValues('CustomData', JSON.stringify(inkSignatureAnnotation.customData));
         }
+        if (!isNullOrUndefined(inkSignatureAnnotation.annotationSelectorSettings) && inkSignatureAnnotation['annotationSelectorSettings'] != null) {
+            inkAnnotation.setValues('AnnotationSelectorSettings', JSON.stringify(inkSignatureAnnotation['annotationSelectorSettings']));
+        }
         if (inkSignatureAnnotation.originalName) {
             inkAnnotation.name = inkSignatureAnnotation.originalName;
+        }
+        if (!isNullOrUndefined(inkSignatureAnnotation.isPrint)) {
+            inkAnnotation._dictionary.set('IsPrint', inkSignatureAnnotation.isPrint);
         }
         inkAnnotation.setAppearance(true);
         page.annotations.add(inkAnnotation);
@@ -1098,6 +1145,9 @@ export class AnnotationRenderer {
         }
         if (markupAnnotation.originalName) {
             annotation.name = markupAnnotation.originalName;
+        }
+        if (!isNullOrUndefined(markupAnnotation.isPrint)) {
+            annotation._dictionary.set('IsPrint', markupAnnotation.isPrint);
         }
         annotation.setAppearance(true);
         page.annotations.add(annotation);
@@ -1299,8 +1349,14 @@ export class AnnotationRenderer {
             if (!isNullOrUndefined(stampAnnotation.customData)) {
                 rubberStampAnnotation.setValues('CustomData', JSON.stringify(stampAnnotation.customData));
             }
+            if (!isNullOrUndefined(stampAnnotation.annotationSelectorSettings) && stampAnnotation['annotationSelectorSettings'] != null) {
+                rubberStampAnnotation.setValues('AnnotationSelectorSettings', JSON.stringify(stampAnnotation['annotationSelectorSettings']));
+            }
             if (!isNullOrUndefined(stampAnnotation.icon)){
                 rubberStampAnnotation.setValues('iconName', stampAnnotation.icon);
+            }
+            if (!isNullOrUndefined(stampAnnotation.isPrint)) {
+                rubberStampAnnotation._dictionary.set('IsPrint', stampAnnotation.isPrint);
             }
         }
         else {
@@ -1392,6 +1448,9 @@ export class AnnotationRenderer {
             if (!isNullOrUndefined(stampAnnotation.customData)) {
                 rubberStampAnnotation.setValues('CustomData', JSON.stringify(stampAnnotation.customData));
             }
+            if (!isNullOrUndefined(stampAnnotation.annotationSelectorSettings) && stampAnnotation['annotationSelectorSettings'] != null) {
+                rubberStampAnnotation.setValues('AnnotationSelectorSettings', JSON.stringify(stampAnnotation['annotationSelectorSettings']));
+            }
             if (!isNullOrUndefined(stampAnnotation.rotateAngle)) {
                 rubberStampAnnotation.setValues('rotateAngle', stampAnnotation.rotateAngle.toString());
             }
@@ -1401,9 +1460,14 @@ export class AnnotationRenderer {
             if (stampAnnotation.originalName) {
                 rubberStampAnnotation.name = stampAnnotation.originalName;
             }
+            if (!isNullOrUndefined(stampAnnotation.isPrint)) {
+                rubberStampAnnotation._dictionary.set('IsPrint', stampAnnotation.isPrint);
+            }
             page.annotations.add(rubberStampAnnotation);
             if (!isIconExists) {
                 const appearance: PdfTemplate = rubberStampAnnotation.appearance.normal;
+                const state: PdfGraphicsState = appearance.graphics.save();
+                appearance.graphics.setTransparency(opacity);
                 const isVectorStamp: boolean = icon.trim() === 'Accepted' || icon.trim() === 'Rejected';
                 if (!isVectorStamp) {
                     appearance.graphics.drawRoundedRectangle({x: 0.5, y: 0.5, width: rectangle.width - 1,
@@ -1411,19 +1475,14 @@ export class AnnotationRenderer {
                 }
                 if (isDynamic === 'true') {
                     const text: string = stampAnnotation.dynamicText.toString();
-                    const state: PdfGraphicsState = appearance.graphics.save();
-                    appearance.graphics.setTransparency(opacity);
                     this.renderDynamicStamp(rubberStampAnnotation, icon, text, textBrush, rectangle, pens, page);
-                    appearance.graphics.restore(state);
                     rubberStampAnnotation._dictionary.set('Name', _PdfName.get('#23D' + icon.split(' ').join('')));
                 }
                 else {
                     this.retriveDefaultWidth(icon.trim());
-                    const state: PdfGraphicsState = appearance.graphics.save();
-                    appearance.graphics.setTransparency(opacity);
                     this.renderSignHereStamp(rubberStampAnnotation, rectangle, icon, textBrush, page, pens, graphicsPath);
-                    appearance.graphics.restore(state);
                 }
+                appearance.graphics.restore(state);
                 rubberStampAnnotation.rotationAngle = 0;
                 this.setRotateAngle(this.getRubberStampRotateAngle(page.rotation, rotateAngle), rubberStampAnnotation);
             }
@@ -1535,8 +1594,14 @@ export class AnnotationRenderer {
             if (measureShapeAnnotation.allowedInteractions && measureShapeAnnotation['allowedInteractions'] != null){
                 lineAnnotation.setValues('AllowedInteractions', JSON.stringify(measureShapeAnnotation['allowedInteractions']));
             }
+            if (measureShapeAnnotation.annotationSelectorSettings && measureShapeAnnotation['annotationSelectorSettings'] != null) {
+                lineAnnotation.setValues('AnnotationSelectorSettings', JSON.stringify(measureShapeAnnotation['annotationSelectorSettings']));
+            }
             if (measureShapeAnnotation.originalName) {
                 lineAnnotation.name = measureShapeAnnotation.originalName;
+            }
+            if (!isNullOrUndefined(measureShapeAnnotation.isPrint)) {
+                lineAnnotation._dictionary.set('IsPrint', measureShapeAnnotation.isPrint);
             }
             lineAnnotation.setAppearance(true);
             page.annotations.add(lineAnnotation);
@@ -1625,8 +1690,14 @@ export class AnnotationRenderer {
             if (measureShapeAnnotation.allowedInteractions && measureShapeAnnotation['allowedInteractions'] !== null){
                 polylineAnnotation.setValues('AllowedInteractions', JSON.stringify(measureShapeAnnotation['allowedInteractions']));
             }
+            if (measureShapeAnnotation.annotationSelectorSettings && measureShapeAnnotation['annotationSelectorSettings'] != null) {
+                polylineAnnotation.setValues('AnnotationSelectorSettings', JSON.stringify(measureShapeAnnotation['annotationSelectorSettings']));
+            }
             if (measureShapeAnnotation.originalName) {
                 polylineAnnotation.name = measureShapeAnnotation.originalName;
+            }
+            if (!isNullOrUndefined(measureShapeAnnotation.isPrint)) {
+                polylineAnnotation._dictionary.set('IsPrint', measureShapeAnnotation.isPrint);
             }
             polylineAnnotation.setAppearance(true);
             page.annotations.add(polylineAnnotation);
@@ -1724,8 +1795,14 @@ export class AnnotationRenderer {
             if (measureShapeAnnotation.allowedInteractions && measureShapeAnnotation['allowedInteractions'] != null){
                 polygonAnnotation.setValues('AllowedInteractions', JSON.stringify(measureShapeAnnotation['allowedInteractions']));
             }
+            if (measureShapeAnnotation.annotationSelectorSettings && measureShapeAnnotation['annotationSelectorSettings'] != null) {
+                polygonAnnotation.setValues('AnnotationSelectorSettings', JSON.stringify(measureShapeAnnotation['annotationSelectorSettings']));
+            }
             if (measureShapeAnnotation.originalName) {
                 polygonAnnotation.name = measureShapeAnnotation.originalName;
+            }
+            if (!isNullOrUndefined(measureShapeAnnotation.isPrint)) {
+                polygonAnnotation._dictionary.set('IsPrint', measureShapeAnnotation.isPrint);
             }
             polygonAnnotation.setAppearance(true);
             page.annotations.add(polygonAnnotation);
@@ -1792,6 +1869,9 @@ export class AnnotationRenderer {
         }
         if (popUpAnnotation.originalName) {
             annotation.name = popUpAnnotation.originalName;
+        }
+        if (!isNullOrUndefined(popUpAnnotation.isPrint)) {
+            annotation.setValues('IsPrint', popUpAnnotation.isPrint);
         }
         page.annotations.add(annotation);
     }
@@ -1969,8 +2049,15 @@ export class AnnotationRenderer {
         {
             annotation.setValues('AllowedInteractions', JSON.stringify(freeTextAnnotation.allowedInteractions));
         }
+        if (Object.prototype.hasOwnProperty.call(freeTextAnnotation, 'annotationSelectorSettings') && !isNullOrUndefined(freeTextAnnotation['annotationSelectorSettings']))
+        {
+            annotation.setValues('AnnotationSelectorSettings', JSON.stringify(freeTextAnnotation['annotationSelectorSettings']));
+        }
         if (freeTextAnnotation.originalName) {
             annotation.name = freeTextAnnotation.originalName;
+        }
+        if (!isNullOrUndefined(freeTextAnnotation.isPrint)) {
+            annotation._dictionary.set('IsPrint', freeTextAnnotation.isPrint);
         }
         page.annotations.add(annotation);
     }
@@ -2142,11 +2229,11 @@ export class AnnotationRenderer {
         if (hasUniCode) {
             stampFont = new PdfTrueTypeFont(getArialFontData(),
                                             Browser.isDevice && Browser.isAndroid ?
-                                                this.pdfViewer.annotationModule.calculateFontSize(icon.toUpperCase(), rectangle) - 10 :
-                                                this.pdfViewer.annotationModule.calculateFontSize(icon.toUpperCase(), rectangle) - 5,
+                                                this.pdfViewer.annotationModule.calculateFontSize(icon.toUpperCase(), rectangle, true) - 2 :
+                                                this.pdfViewer.annotationModule.calculateFontSize(icon.toUpperCase(), rectangle, true) - 2,
                                             PdfFontStyle.bold | PdfFontStyle.italic);
             detailsFont =  new PdfTrueTypeFont(getArialFontData(),
-                                               this.pdfViewer.annotationModule.calculateFontSize(text.toUpperCase(), rectangle) - 5,
+                                               this.pdfViewer.annotationModule.calculateFontSize(text.toUpperCase(), rectangle) - 2,
                                                PdfFontStyle.bold | PdfFontStyle.italic);
         }
         else {
@@ -2507,6 +2594,12 @@ export class AnnotationRenderer {
         }
         if (!isNullOrUndefined(measureShapeAnnotation.customData)) {
             circleAnnotation.setValues('CustomData', JSON.stringify(measureShapeAnnotation.customData));
+        }
+        if (!isNullOrUndefined(measureShapeAnnotation.annotationSelectorSettings) && measureShapeAnnotation['annotationSelectorSettings'] != null) {
+            circleAnnotation.setValues('AnnotationSelectorSettings', JSON.stringify(measureShapeAnnotation['annotationSelectorSettings']));
+        }
+        if (!isNullOrUndefined(measureShapeAnnotation.isPrint)) {
+            circleAnnotation._dictionary.set('IsPrint', measureShapeAnnotation.isPrint);
         }
         circleAnnotation.setAppearance(true);
         return circleAnnotation;
@@ -2910,6 +3003,13 @@ export class AnnotationRenderer {
                 signature.ExistingCustomData = customData;
             }
         }
+        if ((inkAnnot._dictionary.has('AnnotationSelectorSettings') || inkAnnot._dictionary.has('annotationselectorsettings')) && (!isNullOrUndefined(inkAnnot._dictionary.get('AnnotationSelectorSettings') || !isNullOrUndefined(inkAnnot._dictionary.get('annotationselectorsettings'))))) {
+            const AnnotationSelectorSettings: any = inkAnnot._dictionary.get('AnnotationSelectorSettings') ? inkAnnot._dictionary.get('AnnotationSelectorSettings') : inkAnnot._dictionary.get('annotationselectorsettings');
+            signature.AnnotationSelectorSettings = AnnotationSelectorSettings;
+        }
+        if (inkAnnot._dictionary.has('IsPrint')) {
+            signature.IsPrint = inkAnnot._dictionary.get('IsPrint');
+        }
         return signature;
     }
 
@@ -3013,6 +3113,13 @@ export class AnnotationRenderer {
             if (customData != null) {
                 shapeAnnotation.ExistingCustomData = customData;
             }
+        }
+        if ((squareAnnot._dictionary.has('AnnotationSelectorSettings') || squareAnnot._dictionary.has('annotationselectorsettings')) && (!isNullOrUndefined(squareAnnot._dictionary.get('AnnotationSelectorSettings') || !isNullOrUndefined(squareAnnot._dictionary.get('annotationselectorsettings'))))) {
+            const AnnotationSelectorSettings: any = squareAnnot._dictionary.get('AnnotationSelectorSettings') ? squareAnnot._dictionary.get('AnnotationSelectorSettings') : squareAnnot._dictionary.get('annotationselectorsettings');
+            shapeAnnotation.AnnotationSelectorSettings = AnnotationSelectorSettings;
+        }
+        if (squareAnnot._dictionary.has('IsPrint')) {
+            shapeAnnotation.IsPrint = squareAnnot._dictionary.get('IsPrint');
         }
         return shapeAnnotation;
     }
@@ -3241,6 +3348,13 @@ export class AnnotationRenderer {
                 shapeAnnotation.ExistingCustomData = customData;
             }
         }
+        if ((lineAnnot._dictionary.has('AnnotationSelectorSettings') || lineAnnot._dictionary.has('annotationselectorsettings')) && (!isNullOrUndefined(lineAnnot._dictionary.get('AnnotationSelectorSettings') || !isNullOrUndefined(lineAnnot._dictionary.get('annotationselectorsettings'))))) {
+            const AnnotationSelectorSettings: any = lineAnnot._dictionary.get('AnnotationSelectorSettings') ? lineAnnot._dictionary.get('AnnotationSelectorSettings') : lineAnnot._dictionary.get('annotationselectorsettings');
+            shapeAnnotation.AnnotationSelectorSettings = AnnotationSelectorSettings;
+        }
+        if (lineAnnot._dictionary.has('IsPrint')) {
+            shapeAnnotation.IsPrint = lineAnnot._dictionary.get('IsPrint');
+        }
         if (lineAnnot.lineIntent === PdfLineIntent.lineArrow || !lineAnnot._dictionary.has('Measure')) {
             return shapeAnnotation;
         } else {
@@ -3272,6 +3386,13 @@ export class AnnotationRenderer {
                 if (customData != null) {
                     measureShapeAnnotation.ExistingCustomData = customData;
                 }
+            }
+            if ((lineAnnot._dictionary.has('AnnotationSelectorSettings') || lineAnnot._dictionary.has('annotationselectorsettings')) && (!isNullOrUndefined(lineAnnot._dictionary.get('AnnotationSelectorSettings') || !isNullOrUndefined(lineAnnot._dictionary.get('annotationselectorsettings'))))) {
+                const AnnotationSelectorSettings: any = lineAnnot._dictionary.get('AnnotationSelectorSettings') ? lineAnnot._dictionary.get('AnnotationSelectorSettings') : lineAnnot._dictionary.get('annotationselectorsettings');
+                measureShapeAnnotation.AnnotationSelectorSettings = AnnotationSelectorSettings;
+            }
+            if (lineAnnot._dictionary.has('IsPrint')) {
+                measureShapeAnnotation.IsPrint = lineAnnot._dictionary.get('IsPrint');
             }
             return measureShapeAnnotation;
         }
@@ -3417,6 +3538,13 @@ export class AnnotationRenderer {
                 shapeAnnotation.ExistingCustomData = customData;
             }
         }
+        if ((ellipseAnnot._dictionary.has('AnnotationSelectorSettings') || ellipseAnnot._dictionary.has('annotationselectorsettings')) && (!isNullOrUndefined(ellipseAnnot._dictionary.get('AnnotationSelectorSettings') || !isNullOrUndefined(ellipseAnnot._dictionary.get('annotationselectorsettings'))))) {
+            const AnnotationSelectorSettings: any = ellipseAnnot._dictionary.get('AnnotationSelectorSettings') ? ellipseAnnot._dictionary.get('AnnotationSelectorSettings') : ellipseAnnot._dictionary.get('annotationselectorsettings');
+            shapeAnnotation.AnnotationSelectorSettings = AnnotationSelectorSettings;
+        }
+        if (ellipseAnnot._dictionary.has('IsPrint')) {
+            shapeAnnotation.IsPrint = ellipseAnnot._dictionary.get('IsPrint');
+        }
         if (ellipseAnnot._dictionary.has('Measure')) {
             shapeAnnotation.FillColor = 'rgba(' + ellipseAnnot.innerColor.r + ',' + ellipseAnnot.innerColor.g + ',' + ellipseAnnot.innerColor.b + ',' + fillOpacity + ')';
             const measureShapeAnnotation: MeasureShapeAnnotationBase = new MeasureShapeAnnotationBase(shapeAnnotation);
@@ -3446,6 +3574,13 @@ export class AnnotationRenderer {
                 if (customData != null) {
                     measureShapeAnnotation.ExistingCustomData = customData;
                 }
+            }
+            if ((ellipseAnnot._dictionary.has('AnnotationSelectorSettings') || ellipseAnnot._dictionary.has('annotationselectorsettings')) && (!isNullOrUndefined(ellipseAnnot._dictionary.get('AnnotationSelectorSettings') || !isNullOrUndefined(ellipseAnnot._dictionary.get('annotationselectorsettings'))))) {
+                const AnnotationSelectorSettings: any = ellipseAnnot._dictionary.get('AnnotationSelectorSettings') ? ellipseAnnot._dictionary.get('AnnotationSelectorSettings') : ellipseAnnot._dictionary.get('annotationselectorsettings');
+                shapeAnnotation.AnnotationSelectorSettings = AnnotationSelectorSettings;
+            }
+            if (ellipseAnnot._dictionary.has('IsPrint')) {
+                measureShapeAnnotation.IsPrint = ellipseAnnot._dictionary.get('IsPrint');
             }
             return measureShapeAnnotation;
         }
@@ -3566,6 +3701,13 @@ export class AnnotationRenderer {
             const text: any = allowedInteractions[0];
             shapeAnnotation.AllowedInteractions = JSON.parse(text);
         }
+        if ((polygonAnnot._dictionary.has('AnnotationSelectorSettings') || polygonAnnot._dictionary.has('annotationselectorsettings')) && (!isNullOrUndefined(polygonAnnot._dictionary.get('AnnotationSelectorSettings') || !isNullOrUndefined(polygonAnnot._dictionary.get('annotationselectorsettings'))))) {
+            const AnnotationSelectorSettings: any = polygonAnnot._dictionary.get('AnnotationSelectorSettings') ? polygonAnnot._dictionary.get('AnnotationSelectorSettings') : polygonAnnot._dictionary.get('annotationselectorsettings');
+            shapeAnnotation.AnnotationSelectorSettings = AnnotationSelectorSettings;
+        }
+        if (polygonAnnot._dictionary.has('IsPrint')) {
+            shapeAnnotation.IsPrint = polygonAnnot._dictionary.get('IsPrint');
+        }
         if (polygonAnnot._dictionary.has('Measure')) {
             const measureShapeAnnotation: MeasureShapeAnnotationBase = new MeasureShapeAnnotationBase(shapeAnnotation);
             if (polygonAnnot._dictionary.has('IT') && !isNullOrUndefined(polygonAnnot._dictionary.get('IT'))) {
@@ -3598,6 +3740,13 @@ export class AnnotationRenderer {
                 if (!isNullOrUndefined(customData)) {
                     measureShapeAnnotation.ExistingCustomData = customData;
                 }
+            }
+            if ((polygonAnnot._dictionary.has('AnnotationSelectorSettings') || polygonAnnot._dictionary.has('annotationselectorsettings')) && (!isNullOrUndefined(polygonAnnot._dictionary.get('AnnotationSelectorSettings') || !isNullOrUndefined(polygonAnnot._dictionary.get('annotationselectorsettings'))))) {
+                const AnnotationSelectorSettings: any = polygonAnnot._dictionary.get('AnnotationSelectorSettings') ? polygonAnnot._dictionary.get('AnnotationSelectorSettings') : polygonAnnot._dictionary.get('annotationselectorsettings');
+                measureShapeAnnotation.AnnotationSelectorSettings = AnnotationSelectorSettings;
+            }
+            if (polygonAnnot._dictionary.has('IsPrint')) {
+                measureShapeAnnotation.IsPrint = polygonAnnot._dictionary.get('IsPrint');
             }
             return measureShapeAnnotation;
         } else {
@@ -3717,6 +3866,13 @@ export class AnnotationRenderer {
             const text: any = allowedInteractions[0];
             shapeAnnotation.AllowedInteractions = JSON.parse(text);
         }
+        if ((polyLineAnnot._dictionary.has('AnnotationSelectorSettings') || polyLineAnnot._dictionary.has('annotationselectorsettings')) && (!isNullOrUndefined(polyLineAnnot._dictionary.get('AnnotationSelectorSettings') || !isNullOrUndefined(polyLineAnnot._dictionary.get('annotationselectorsettings'))))) {
+            const AnnotationSelectorSettings: any = polyLineAnnot._dictionary.get('AnnotationSelectorSettings') ? polyLineAnnot._dictionary.get('AnnotationSelectorSettings') : polyLineAnnot._dictionary.get('annotationselectorsettings');
+            shapeAnnotation.AnnotationSelectorSettings = AnnotationSelectorSettings;
+        }
+        if (polyLineAnnot._dictionary.has('IsPrint')) {
+            shapeAnnotation.IsPrint = polyLineAnnot._dictionary.get('IsPrint');
+        }
         if (polyLineAnnot._dictionary.has('Measure')) {
             shapeAnnotation.FillColor = 'rgba(' + polyLineAnnot.innerColor.r + ',' + polyLineAnnot.innerColor.g + ',' + polyLineAnnot.innerColor.b + ',' + fillOpacity + ')';
             const measureShapeAnnotation: MeasureShapeAnnotationBase = new MeasureShapeAnnotationBase(shapeAnnotation);
@@ -3746,6 +3902,13 @@ export class AnnotationRenderer {
                 if (customData != null) {
                     measureShapeAnnotation.ExistingCustomData = customData;
                 }
+            }
+            if ((polyLineAnnot._dictionary.has('AnnotationSelectorSettings') || polyLineAnnot._dictionary.has('annotationselectorsettings')) && (!isNullOrUndefined(polyLineAnnot._dictionary.get('AnnotationSelectorSettings') || !isNullOrUndefined(polyLineAnnot._dictionary.get('annotationselectorsettings'))))) {
+                const AnnotationSelectorSettings: any = polyLineAnnot._dictionary.get('AnnotationSelectorSettings') ? polyLineAnnot._dictionary.get('AnnotationSelectorSettings') : polyLineAnnot._dictionary.get('annotationselectorsettings');
+                measureShapeAnnotation.AnnotationSelectorSettings = AnnotationSelectorSettings;
+            }
+            if (polyLineAnnot._dictionary.has('IsPrint')) {
+                measureShapeAnnotation.IsPrint = polyLineAnnot._dictionary.get('IsPrint');
             }
             return measureShapeAnnotation;
         }
@@ -4217,6 +4380,13 @@ export class AnnotationRenderer {
             const text: any = allowedInteractions[0];
             freeTextAnnotation.AllowedInteractions = JSON.parse(text);
         }
+        if ((freeTextAnnot._dictionary.has('AnnotationSelectorSettings') || freeTextAnnot._dictionary.has('annotationselectorsettings')) && (!isNullOrUndefined(freeTextAnnot._dictionary.get('AnnotationSelectorSettings') || !isNullOrUndefined(freeTextAnnot._dictionary.get('annotationselectorsettings'))))) {
+            const AnnotationSelectorSettings: any = freeTextAnnot._dictionary.get('AnnotationSelectorSettings') ? freeTextAnnot._dictionary.get('AnnotationSelectorSettings') : freeTextAnnot._dictionary.get('annotationselectorsettings');
+            freeTextAnnotation.AnnotationSelectorSettings = AnnotationSelectorSettings;
+        }
+        if (freeTextAnnot._dictionary.has('IsPrint')) {
+            freeTextAnnotation.IsPrint = freeTextAnnot._dictionary.get('IsPrint');
+        }
         return freeTextAnnotation;
     }
 
@@ -4605,6 +4775,9 @@ export class AnnotationRenderer {
             if (!isNullOrUndefined(textMarkupData)) {
                 markupAnnotation.TextMarkupContent = textMarkupData[0];
             }
+        }
+        if (textMarkup._dictionary.has('IsPrint')) {
+            markupAnnotation.IsPrint = (textMarkup._dictionary.get('IsPrint')) as boolean;
         }
         return markupAnnotation;
     }

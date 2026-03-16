@@ -114,7 +114,7 @@ export class FileMenu {
      * @returns {void}
      */
     public onFileMenuItemSelect(args: MenuEventArgs): void {
-        const id: string = this.container.element.id + "_ribbon";
+        const id:string=this.container.element.id + "_ribbon";
         if (args.item && args.item.id) {
             switch (args.item.id) {
             case id +'new':

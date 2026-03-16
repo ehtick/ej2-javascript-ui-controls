@@ -2,7 +2,7 @@ import { Dialog } from '@syncfusion/ej2-popups';
 import { ExecCommandOptions, LinkData } from '../../../common/interface';
 import { BlockModel, ContentModel, ILinkContentSettings } from '../../../models/index';
 import { NodeSelection } from '../../../selection/selection';
-import { denormalizeUrl, getBlockContentElement, getBlockModelById, getClosestContentElementInDocument, getContentModelById, normalizeUrl } from '../../../common/utils/index';
+import { denormalizeUrl, getBlockContentElement, normalizeUrl } from '../../../common/utils/index';
 import { findClosestParent } from '../../../common/utils/dom';
 import { events } from '../../../common/constant';
 import * as constants from '../../../common/constant';
@@ -55,6 +55,21 @@ export class LinkModule {
         insertButton.addEventListener('click', this.handleLinkInsertDeletion.bind(this));
         removeButton.addEventListener('click', this.handleLinkInsertDeletion.bind(this, true));
         cancelButton.addEventListener('click', () => this.hideLinkPopup());
+        const linkDialog: HTMLElement = this.parent.rootEditorElement.querySelector('#' + this.parent.rootEditorElement.id + constants.LINKDIALOG_ID) as HTMLElement;
+        const urlInput: HTMLInputElement = linkDialog && linkDialog.querySelector('#linkUrl') as HTMLInputElement;
+        if (urlInput) {
+            urlInput.addEventListener('input', () => this.syncButtonsByUrlField());
+            // Allow Enter to submit when URL has content, but do NOT steal focus while typing
+            urlInput.addEventListener('keydown', (e: KeyboardEvent) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const hasText: boolean = (urlInput.value || '').trim().length > 0;
+                    if (hasText) {
+                        this.handleLinkInsertDeletion(e);
+                    }
+                }
+            });
+        }
         this.popupElement.addEventListener('keydown', (e: KeyboardEvent) => {
             const target: HTMLElement = e.target as HTMLElement;
             if (e.key === 'Enter') {
@@ -74,7 +89,7 @@ export class LinkModule {
     }
 
     private formattingPerformed(e: ExecCommandOptions): void {
-        if (e.subCommand === 'Link') {
+        if (e.subCommand === 'link') {
             this.hideLinkPopup();
         }
     }
@@ -150,21 +165,21 @@ export class LinkModule {
             urlInput.value = linkInfo.url;
             titleInput.value = linkInfo.title;
         }
-        // Ensure Remove button reflects the (programmatically set) URL value
-        this.syncRemoveButtonByUrlField();
+        // Ensure Remove button reflects whether a link existed in selection
+        const removeBtn: HTMLButtonElement = this.popupElement.querySelector('.e-remove-link-btn') as HTMLButtonElement;
+        if (linkInfo) { removeBtn.removeAttribute('disabled'); }
+        else { removeBtn.setAttribute('disabled', ''); }
+        // Sync Insert button based on URL input
+        this.syncButtonsByUrlField();
     }
 
-    private syncRemoveButtonByUrlField(): void {
+    private syncButtonsByUrlField(): void {
         const linkDialog: HTMLElement = this.parent.rootEditorElement.querySelector('#' + this.parent.rootEditorElement.id + constants.LINKDIALOG_ID) as HTMLElement;
         const urlInput: HTMLInputElement = linkDialog.querySelector('#linkUrl') as HTMLInputElement;
-        const removeBtn: HTMLButtonElement = this.popupElement.querySelector('.e-remove-link-btn') as HTMLButtonElement;
-
+        const insertBtn: HTMLButtonElement = this.popupElement.querySelector('.e-insert-link-btn') as HTMLButtonElement;
         const hasText: boolean = urlInput.value.trim().length > 0;
-        if (hasText) {
-            removeBtn.removeAttribute('disabled');
-        } else {
-            removeBtn.setAttribute('disabled', '');
-        }
+        if (hasText) { insertBtn.removeAttribute('disabled'); }
+        else { insertBtn.setAttribute('disabled', ''); }
     }
 
     /**
@@ -193,7 +208,10 @@ export class LinkModule {
         textInput.value = '';
         urlInput.value = '';
         titleInput.value = '';
-        this.syncRemoveButtonByUrlField();
+        // Disable Remove button when inputs are cleared (Remove should not follow URL input)
+        const removeBtn: HTMLButtonElement = this.popupElement.querySelector('.e-remove-link-btn') as HTMLButtonElement;
+        removeBtn.setAttribute('disabled', '');
+        this.syncButtonsByUrlField();
     }
 
     private handleLinkInsertDeletion(e: Event, isRemove?: boolean): void {
@@ -203,7 +221,7 @@ export class LinkModule {
 
         this.selectionManager.restoreSelection();
         if (isRemove) {
-            this.parent.formattingAction.execCommand({ subCommand: 'Link', value: { shouldRemoveLink: true } });
+            this.parent.formattingAction.execCommand({ subCommand: 'link', value: null });
             return;
         }
 
@@ -218,7 +236,7 @@ export class LinkModule {
         }
 
         this.parent.formattingAction.execCommand({
-            subCommand: 'Link',
+            subCommand: 'link',
             value: { text: textInput.value, url, title: titleInput.value }
         });
     }

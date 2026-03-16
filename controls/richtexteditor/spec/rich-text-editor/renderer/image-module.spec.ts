@@ -6,9 +6,8 @@ import { RichTextEditor, QuickToolbar, ImageCommand, IQuickToolbar } from './../
 import { NodeSelection } from './../../../src/selection/index';
 import { DialogType } from "../../../src/common/enum";
 import { ActionBeginEventArgs, ActionCompleteEventArgs, BeforeQuickToolbarOpenArgs } from '../../../src/common/interface';
-import { renderRTE, destroy, setCursorPoint, dispatchEvent, androidUA, iPhoneUA, currentBrowserUA, ImageResizeGripper, clickImage, clickGripper, moveGripper, leaveGripper } from "./../render.spec";
-import { BASIC_MOUSE_EVENT_INIT, INSRT_IMG_EVENT_INIT } from '../../constant.spec';
-import { getImageUniqueFIle } from '../online-service.spec';
+import { renderRTE, destroy, setCursorPoint, dispatchEvent, androidUA, iPhoneUA, currentBrowserUA, ImageResizeGripper, clickImage, clickGripper, moveGripper, leaveGripper, setSelection, hostURL } from "./../render.spec";
+import { BASIC_MOUSE_EVENT_INIT, INSRT_IMG_EVENT_INIT, ENTERKEY_EVENT_INIT, TAB_KEY_EVENT_INIT } from '../../constant.spec';import { getImageUniqueFIle } from '../online-service.spec';
 import { pointInside } from '../../rich-text-editor/renderer/audio-module.spec';
 
 function getQTBarModule(rteObj: RichTextEditor): QuickToolbar {
@@ -19,6 +18,8 @@ const INIT_MOUSEDOWN_EVENT: MouseEvent = new MouseEvent('mousedown', BASIC_MOUSE
 
 const MOUSEUP_EVENT: MouseEvent = new MouseEvent('mouseup', BASIC_MOUSE_EVENT_INIT);
 
+const ENTER_KEY_DOWN_EVENT: KeyboardEvent = new KeyboardEvent('keydown', ENTERKEY_EVENT_INIT);
+const ENTER_KEY_UP_EVENT: KeyboardEvent = new KeyboardEvent('keyup', ENTERKEY_EVENT_INIT);
 describe('Image Module', () => {
 
     describe(' Quick Toolbar open testing after selecting some text', () => {
@@ -710,7 +711,7 @@ client side. Customer easy to edit the contents and get the HTML content for
     });
 
     describe('983874: Image resize bar not rendered after toggling caption via Quick Toolbar', () => {
-        let innerHTML: string = `<p>Test</p><img id="rteImg" src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png" style="width:200px; height: 300px" class="e-rte-image e-imginline" alt="ASmall_Image.png" />`;
+        let innerHTML: string = `<p>Test</p><img id="rteImg" src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png" style="width:200px; height: 300px" class="e-rte-image e-img-inline" alt="ASmall_Image.png" />`;
         let editor: RichTextEditor;
         beforeAll((done: Function) => {
             editor = renderRTE({
@@ -841,7 +842,7 @@ client side. Customer easy to edit the contents and get the HTML content for
                 toolbarSettings: {
                     items: ['Image', 'Bold']
                 },
-                value: '<a class="e-rte-anchor" href="http://adadas">syncfu<img class="e-rte-image e-imginline e-resize" alt="image" style="">sion</a>',
+                value: '<a class="e-rte-anchor" href="http://adadas">syncfu<img class="e-rte-image e-img-inline e-resize" alt="image" style="">sion</a>',
                 insertImageSettings: { resize: false }
             });
             rteEle = rteObj.element;
@@ -948,11 +949,11 @@ client side. Customer easy to edit the contents and get the HTML content for
                 let linkPop: any = <HTMLElement>document.querySelectorAll('.e-rte-quick-popup')[0];
                 let linkTBItems: any = linkPop.querySelectorAll('.e-toolbar-item');
                 expect(linkPop.querySelectorAll('.e-rte-quick-toolbar').length).toBe(1);
-                (<HTMLElement>linkTBItems.item(4)).click();
-                (<HTMLElement>linkTBItems.item(6)).click();
+                (<HTMLElement>linkTBItems.item(5)).click();
+                (<HTMLElement>linkTBItems.item(7)).click();
                 evnArg.args.item = { command: 'Images', subCommand: 'insertlink' };
                 (<any>rteObj).imageModule.dialogObj.element.querySelector('.e-update-link').click();
-                (<HTMLElement>linkTBItems.item(7)).click();
+                (<HTMLElement>linkTBItems.item(8)).click();
                 (rteObj.element.querySelector('.e-rte-image') as HTMLElement).focus();
                 done();
             }, 100);
@@ -1085,14 +1086,14 @@ client side. Customer easy to edit the contents and get the HTML content for
                     };
                     (<any>rteObj).imageModule.alignmentSelect(mouseEventArgs);
                     let img: HTMLElement = rteObj.element.querySelector('.e-rte-image') as HTMLElement;
-                    expect(img.classList.contains('e-imgleft')).toBe(true);
+                    expect(img.classList.contains('e-img-left')).toBe(true);
                     let target: HTMLElement = rteObj.inputElement.querySelector('img');
                     setCursorPoint(target, 0);
                     target.dispatchEvent(MOUSEUP_EVENT);
                     setTimeout(() => {
                         mouseEventArgs.item.subCommand = 'JustifyCenter';
                         (<any>rteObj).imageModule.alignmentSelect(mouseEventArgs);
-                        expect(img.classList.contains('e-imgcenter')).toBe(true);
+                        expect(img.classList.contains('e-img-center')).toBe(true);
                         target = rteObj.inputElement.querySelector('img');
                         setCursorPoint(target, 0);
                         target.dispatchEvent(MOUSEUP_EVENT);
@@ -1103,7 +1104,7 @@ client side. Customer easy to edit the contents and get the HTML content for
                             setCursorPoint(target, 0);
                             target.dispatchEvent(MOUSEUP_EVENT);
                             setTimeout(() => {
-                                expect(img.classList.contains('e-imgright')).toBe(true);
+                                expect(img.classList.contains('e-img-right')).toBe(true);
                                 ((<HTMLElement>imgTBItems.item(4)).firstElementChild as HTMLElement).click();
                                 popupElement = curDocument.querySelectorAll(".e-rte-dropdown-popup.e-popup-open")[1];
                                 mouseEventArgs.item.subCommand = 'Inline';
@@ -1112,10 +1113,10 @@ client side. Customer easy to edit the contents and get the HTML content for
                                 setCursorPoint(target, 0);
                                 target.dispatchEvent(MOUSEUP_EVENT);
                                 setTimeout(() => {
-                                    expect(img.classList.contains('e-imginline')).toBe(true);
+                                    expect(img.classList.contains('e-img-inline')).toBe(true);
                                     mouseEventArgs.item.subCommand = 'Break';
                                     (<any>rteObj).imageModule.alignmentSelect(mouseEventArgs);
-                                    expect(img.classList.contains('e-imgbreak')).toBe(true);
+                                    expect(img.classList.contains('e-img-break')).toBe(true);
                                     QTBarModule.imageQTBar.hidePopup();
                                     (rteObj.element.querySelector('.e-rte-image') as HTMLElement).click();
                                     (<any>rteObj).clickPoints = { clientY: 0, clientX: 0 };
@@ -1182,14 +1183,14 @@ client side. Customer easy to edit the contents and get the HTML content for
                 let quickPop: any = <HTMLElement>document.querySelectorAll('.e-rte-quick-popup')[0];
                 let quickTBItem: any = quickPop.querySelectorAll('.e-toolbar-item');
                 expect(quickPop.querySelectorAll('.e-rte-quick-toolbar').length).toBe(1);
-                quickTBItem.item(6).click();
+                quickTBItem.item(7).click();
                 (document.querySelector('.e-img-link') as any).value = 'https://www.syncfusion.com';
                 (document.querySelector('.e-update-link') as any).click();
                 target = rteObj.contentModule.getEditPanel().querySelector('img');
                 expect(closest(target, 'a')).not.toBe(null);
                 setCursorPoint(target, 0);
                 target.dispatchEvent(MOUSEUP_EVENT);
-                quickTBItem.item(8).click();
+                quickTBItem.item(9).click();
                 setTimeout(() => {
                     (document.querySelector('.e-img-link') as any).value = 'https://www.syncfusion.com';
                     (document.querySelector('.e-update-link') as any).click();
@@ -1203,7 +1204,7 @@ client side. Customer easy to edit the contents and get the HTML content for
                         target = rteObj.contentModule.getEditPanel().querySelector('img');
                         expect(target.getAttribute('alt') === 'syncfusion.png').toBe(true);
                         target.dispatchEvent(MOUSEUP_EVENT);
-                        quickTBItem.item(9).click();
+                        quickTBItem.item(10).click();
                         expect(closest(target, 'a')).toBe(null);
                         done();
                     }, 500);
@@ -1500,7 +1501,7 @@ client side. Customer easy to edit the contents and get the HTML content for
                 let quickPop: any = <HTMLElement>document.querySelectorAll('.e-rte-quick-popup')[0];
                 let quickTBItem: any = quickPop.querySelectorAll('.e-toolbar-item');
                 expect(quickPop.querySelectorAll('.e-rte-quick-toolbar').length).toBe(1);
-                quickTBItem.item(6).click();
+                quickTBItem.item(7).click();
                 (document.querySelector('.e-img-link') as any).value = 'https://www.syncfusion.com';
                 (document.querySelector('.e-update-link') as any).click();
                 target = rteObj.contentModule.getEditPanel().querySelector('img');
@@ -1532,19 +1533,19 @@ client side. Customer easy to edit the contents and get the HTML content for
                 let quickTBItem: any = quickPop.querySelectorAll('.e-toolbar-item');
                 expect(quickPop.querySelectorAll('.e-rte-quick-toolbar').length).toBe(1);
                 quickTBItem.item(1).click();
-                expect((<any>rteObj).contentModule.getEditPanel().querySelector('span.e-img-caption')).not.toBe(null);
+                expect((<any>rteObj).contentModule.getEditPanel().querySelector('span.e-img-caption-container')).not.toBe(null);
                 expect((<any>rteObj).contentModule.getEditPanel().querySelector('span.e-img-wrap')).not.toBe(null);
                 expect((<any>rteObj).imageModule.captionEle.querySelector('img').classList.contains('e-rte-image')).toBe(true);
                 keyboardEventArgs.ctrlKey = true;
                 keyboardEventArgs.keyCode = 90;
                 keyboardEventArgs.action = 'undo';
                 (<any>rteObj).formatter.editorManager.undoRedoManager.keyDown({ event: keyboardEventArgs });
-                expect((<any>rteObj).contentModule.getEditPanel().querySelector('span.e-img-caption')).toBe(null);
+                expect((<any>rteObj).contentModule.getEditPanel().querySelector('span.e-img-caption-container')).toBe(null);
                 keyboardEventArgs.ctrlKey = true;
                 keyboardEventArgs.keyCode = 89;
                 keyboardEventArgs.action = 'redo';
                 (<any>rteObj).formatter.editorManager.undoRedoManager.keyDown({ event: keyboardEventArgs });
-                expect((<any>rteObj).contentModule.getEditPanel().querySelector('span.e-img-caption')).not.toBe(null);
+                expect((<any>rteObj).contentModule.getEditPanel().querySelector('span.e-img-caption-container')).not.toBe(null);
                 done();
             }, 200);
         });
@@ -1597,7 +1598,7 @@ client side. Customer easy to edit the contents and get the HTML content for
             action: ''
         };
         let innerHTML1: string = `
-            <p>testing&nbsp;<span class="e-img-caption e-rte-img-caption e-caption-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><a href="http://www.google.com" contenteditable="true" target="_blank"><img src='https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png' style="width:200px; height: 300px"/></a><span class="e-img-inner" contenteditable="true">Caption</span></span></span></p>
+            <p>testing&nbsp;<span class="e-img-caption-container e-img-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><a href="http://www.google.com" contenteditable="true" target="_blank"><img src='https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png' style="width:200px; height: 300px"/></a><span class="e-img-caption-text" contenteditable="true">Caption</span></span></span></p>
             `;
         beforeAll(() => {
             rteObj = renderRTE({
@@ -1631,7 +1632,7 @@ client side. Customer easy to edit the contents and get the HTML content for
                 let quickTBItem: any = quickPop.querySelectorAll('.e-toolbar-item');
                 expect(quickPop.querySelectorAll('.e-rte-quick-toolbar').length).toBe(1);
                 quickTBItem.item(1).click();
-                expect((<any>rteObj).contentModule.getEditPanel().querySelector('span.e-img-caption')).toBe(null);
+                expect((<any>rteObj).contentModule.getEditPanel().querySelector('span.e-img-caption-container')).toBe(null);
                 done();
             }, 200);
         });
@@ -1654,7 +1655,7 @@ client side. Customer easy to edit the contents and get the HTML content for
             action: ''
         };
         let innerHTML1: string = `
-            <p>testing&nbsp;<span class="e-img-caption e-rte-img-caption e-caption-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><a href="http://www.google.com" contenteditable="true" target="_blank"><img src='https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png' style="width:200px; height: 300px"/></a><span class="e-img-inner" contenteditable="true">Caption</span></span></span></p>
+            <p>testing&nbsp;<span class="e-img-caption-container e-img-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><a href="http://www.google.com" contenteditable="true" target="_blank"><img src='https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png' style="width:200px; height: 300px"/></a><span class="e-img-caption-text" contenteditable="true">Caption</span></span></span></p>
             `;
         beforeAll(() => {
             rteObj = renderRTE({
@@ -1688,7 +1689,7 @@ client side. Customer easy to edit the contents and get the HTML content for
                 let quickTBItem: any = quickPop.querySelectorAll('.e-toolbar-item');
                 expect(quickPop.querySelectorAll('.e-rte-quick-toolbar').length).toBe(1);
                 quickTBItem.item(1).click();
-                expect((<any>rteObj).contentModule.getEditPanel().querySelector('span.e-img-caption')).toBe(null);
+                expect((<any>rteObj).contentModule.getEditPanel().querySelector('span.e-img-caption-container')).toBe(null);
                 done();
             }, 200);
         });
@@ -1744,7 +1745,7 @@ client side. Customer easy to edit the contents and get the HTML content for
                 let quickPop: any = <HTMLElement>document.querySelectorAll('.e-rte-quick-popup')[0];
                 let quickTBItem: any = quickPop.querySelectorAll('.e-toolbar-item');
                 expect(quickPop.querySelectorAll('.e-rte-quick-toolbar').length).toBe(1);
-                quickTBItem.item(13).click();
+                quickTBItem.item(14).click();
                 expect(rteObj.contentModule.getEditPanel().querySelector('.e-rte-image')).toBe(null);
                 done();
             }, 200);
@@ -1767,7 +1768,7 @@ client side. Customer easy to edit the contents and get the HTML content for
             code: 22,
             action: ''
         };
-        let innerHTML1: string = `<p>RTE content&nbsp;<span class="e-img-caption e-rte-img-caption e-caption-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><img src='https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png' style="width:200px; height: 300px" class="e-rte-image e-imginline" alt="ASmall_Image.png"><span class="e-img-inner" contenteditable="true">Caption</span></span></span> </p>`;
+        let innerHTML1: string = `<p>RTE content&nbsp;<span class="e-img-caption-container e-img-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><img src='https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png' style="width:200px; height: 300px" class="e-rte-image" alt="ASmall_Image.png"><span class="e-img-caption-text" contenteditable="true">Caption</span></span></span> </p>`;
         beforeAll(() => {
             rteObj = renderRTE({
                 height: 400,
@@ -1799,7 +1800,7 @@ client side. Customer easy to edit the contents and get the HTML content for
                 let quickPop: any = <HTMLElement>document.querySelectorAll('.e-rte-quick-popup')[0];
                 let quickTBItem: any = quickPop.querySelectorAll('.e-toolbar-item');
                 expect(quickPop.querySelectorAll('.e-rte-quick-toolbar').length).toBe(1);
-                quickTBItem.item(13).click();
+                quickTBItem.item(14).click();
                 expect(rteObj.contentModule.getEditPanel().querySelector('.e-rte-image')).toBe(null);
                 expect(rteObj.getRange().startContainer.textContent === `RTE content `).toBe(true);
                 expect(rteObj.getRange().startOffset === 12).toBe(true);
@@ -1808,7 +1809,7 @@ client side. Customer easy to edit the contents and get the HTML content for
         });
 
         it('Image delete using quick toolbar with caption with content in the right', (done: Function) => {
-            rteObj.value = `<p><span class="e-img-caption e-rte-img-caption e-caption-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><img src='https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png' style="width:200px; height: 300px" class="e-rte-image e-imginline" alt="ASmall_Image.png"><span class="e-img-inner" contenteditable="true">Caption</span></span></span>RTE Content</p>`;
+            rteObj.value = `<p><span class="e-img-caption-container e-img-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><img src='https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png' style="width:200px; height: 300px" class="e-rte-image" alt="ASmall_Image.png"><span class="e-img-caption-text" contenteditable="true">Caption</span></span></span>RTE Content</p>`;
             rteObj.dataBind();
             let target = <HTMLElement>rteEle.querySelectorAll(".e-content")[0]
             let clickEvent: any = document.createEvent("MouseEvents");
@@ -1825,7 +1826,7 @@ client side. Customer easy to edit the contents and get the HTML content for
                 let quickPop: any = <HTMLElement>document.querySelectorAll('.e-rte-quick-popup')[0];
                 let quickTBItem: any = quickPop.querySelectorAll('.e-toolbar-item');
                 expect(quickPop.querySelectorAll('.e-rte-quick-toolbar').length).toBe(1);
-                quickTBItem.item(13).click();
+                quickTBItem.item(14).click();
                 expect(rteObj.contentModule.getEditPanel().querySelector('.e-rte-image')).toBe(null);
                 expect(rteObj.getRange().startContainer.textContent === `RTE Content`).toBe(true);
                 expect(rteObj.getRange().startOffset === 0).toBe(true);
@@ -1839,7 +1840,7 @@ client side. Customer easy to edit the contents and get the HTML content for
         let rteObj: RichTextEditor;
         let keyBoardEvent: any = { type: 'keydown', preventDefault: () => { }, ctrlKey: true, key: 'backspace', stopPropagation: () => { }, shiftKey: false, which: 8 };
         let innerHTML1: string = `testing
-        <span class="e-img-caption e-rte-img-caption e-caption-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><img src="https://ej2.syncfusion.com/javascript/demos/src/rich-text-editor/images/RTEImage-Feather.png" class="e-rte-image e-imginline e-resize" style=""><span class="e-img-inner" contenteditable="true">image caption</span></span></span>testing`;
+        <span class="e-img-caption-container e-img-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><img src="https://ej2.syncfusion.com/javascript/demos/src/rich-text-editor/images/RTEImage-Feather.png" class="e-rte-image e-resize" style=""><span class="e-img-caption-text" contenteditable="true">image caption</span></span></span>testing`;
         beforeAll(() => {
             rteObj = renderRTE({
                 height: 400,
@@ -1861,7 +1862,7 @@ client side. Customer easy to edit the contents and get the HTML content for
             keyBoardEvent.keyCode = 8;
             keyBoardEvent.code = 'Backspace';
             (rteObj as any).keyDown(keyBoardEvent);
-            expect((<any>rteObj).inputElement.querySelector('.e-img-caption')).toBe(null);
+            expect((<any>rteObj).inputElement.querySelector('.e-img-caption-container')).toBe(null);
             done();
         });
     });
@@ -1870,7 +1871,7 @@ client side. Customer easy to edit the contents and get the HTML content for
         let rteEle: HTMLElement;
         let rteObj: RichTextEditor;
         let keyBoardEvent: any = { type: 'keydown', preventDefault: () => { }, ctrlKey: true, key: 'delete', stopPropagation: () => { }, shiftKey: false, which: 46 };
-        let innerHTML1: string = `testing<span class="e-img-caption e-rte-img-caption e-caption-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><img src="https://ej2.syncfusion.com/javascript/demos/src/rich-text-editor/images/RTEImage-Feather.png" class="e-rte-image e-imginline e-resize" style=""><span class="e-img-inner" contenteditable="true">image caption</span></span></span>testing`;
+        let innerHTML1: string = `testing<span class="e-img-caption-container e-img-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><img src="https://ej2.syncfusion.com/javascript/demos/src/rich-text-editor/images/RTEImage-Feather.png" class="e-rte-image e-resize" style=""><span class="e-img-caption-text" contenteditable="true">image caption</span></span></span>testing`;
         beforeAll(() => {
             rteObj = renderRTE({
                 height: 400,
@@ -1893,7 +1894,7 @@ client side. Customer easy to edit the contents and get the HTML content for
             keyBoardEvent.code = 'Delete';
             keyBoardEvent.action = 'delete';
             (rteObj as any).keyDown(keyBoardEvent);
-            expect((<any>rteObj).inputElement.querySelector('.e-img-caption')).toBe(null);
+            expect((<any>rteObj).inputElement.querySelector('.e-img-caption-container')).toBe(null);
             done();
         });
     });
@@ -1902,7 +1903,7 @@ client side. Customer easy to edit the contents and get the HTML content for
         let rteEle: HTMLElement;
         let rteObj: RichTextEditor;
         let keyBoardEvent: any = { type: 'keydown', preventDefault: () => { }, ctrlKey: true, key: 'backspace', stopPropagation: () => { }, shiftKey: false, which: 8 };
-        let innerHTML1: string = `<p><span class="e-img-caption e-rte-img-caption e-caption-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><img src="https://ej2.syncfusion.com/javascript/demos/src/rich-text-editor/images/RTEImage-Feather.png" class="e-rte-image e-imginline e-resize" style=""><span class="e-img-inner" contenteditable="true">image caption</span></span></span></p>`;
+        let innerHTML1: string = `<p><span class="e-img-caption-container e-img-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><img src="https://ej2.syncfusion.com/javascript/demos/src/rich-text-editor/images/RTEImage-Feather.png" class="e-rte-image e-resize" style=""><span class="e-img-caption-text" contenteditable="true">image caption</span></span></span></p>`;
         beforeAll(() => {
             rteObj = renderRTE({
                 height: 400,
@@ -1924,7 +1925,7 @@ client side. Customer easy to edit the contents and get the HTML content for
             keyBoardEvent.keyCode = 8;
             keyBoardEvent.code = 'Backspace';
             (rteObj as any).keyDown(keyBoardEvent);
-            expect((<any>rteObj).inputElement.querySelector('.e-img-caption')).toBe(null);
+            expect((<any>rteObj).inputElement.querySelector('.e-img-caption-container')).toBe(null);
             done();
         });
     });
@@ -1934,7 +1935,7 @@ client side. Customer easy to edit the contents and get the HTML content for
         let rteObj: RichTextEditor;
         let keyBoardEvent: any = { type: 'keydown', preventDefault: () => { }, ctrlKey: true, key: 'backspace', stopPropagation: () => { }, shiftKey: false, which: 8 };
         let innerHTML1: string = `testing
-        <span class="e-img-caption e-rte-img-caption e-imgbreak" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><img src="https://ej2.syncfusion.com/javascript/demos/src/rich-text-editor/images/RTEImage-Feather.png" alt="test.png" width="auto" height="auto" style="min-width: 0px; max-width: 645px; min-height: 0px;" class="e-imgbreak e-rte-image e-resize e-img-focus"><span class="e-img-inner" contenteditable="true">image caption</span></span></span>testing`;
+        <span class="e-img-caption-container e-img-break" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><img src="https://ej2.syncfusion.com/javascript/demos/src/rich-text-editor/images/RTEImage-Feather.png" alt="test.png" width="auto" height="auto" style="min-width: 0px; max-width: 645px; min-height: 0px;" class="e-rte-image e-resize e-img-focus"><span class="e-img-caption-text" contenteditable="true">image caption</span></span></span>testing`;
         beforeAll(() => {
             rteObj = renderRTE({
                 height: 400,
@@ -1951,11 +1952,11 @@ client side. Customer easy to edit the contents and get the HTML content for
         });
 
         it('Image delete action checking using backspace key', (done: Function) => {
-            expect((<any>rteObj).inputElement.querySelector('.e-imgbreak')).not.toBe(null);
+            expect((<any>rteObj).inputElement.querySelector('.e-img-break')).not.toBe(null);
             rteObj.formatter.editorManager.nodeSelection.setSelectionNode(document, (rteObj as any).inputElement.childNodes[0]);
             keyBoardEvent.code = 'Backspace';
             (rteObj as any).keyDown(keyBoardEvent);
-            expect((<any>rteObj).inputElement.querySelector('.e-imgbreak')).toBe(null);
+            expect((<any>rteObj).inputElement.querySelector('.e-img-break')).toBe(null);
             done();
         });
     });
@@ -1964,7 +1965,7 @@ client side. Customer easy to edit the contents and get the HTML content for
         let rteEle: HTMLElement;
         let rteObj: RichTextEditor;
         let keyBoardEvent: any = { type: 'keydown', preventDefault: () => { }, ctrlKey: true, key: 'delete', stopPropagation: () => { }, shiftKey: false, which: 46 };
-        let innerHTML1: string = `testing<span class="e-img-caption e-rte-img-caption e-imgbreak" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><img src="https://ej2.syncfusion.com/javascript/demos/src/rich-text-editor/images/RTEImage-Feather.png" alt="test.png" width="auto" height="auto" style="min-width: 0px; max-width: 645px; min-height: 0px;" class="e-imgbreak e-rte-image e-resize e-img-focus"><span class="e-img-inner" contenteditable="true">image caption</span></span></span>testing`;
+        let innerHTML1: string = `testing<span class="e-img-caption-container e-img-break" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><img src="https://ej2.syncfusion.com/javascript/demos/src/rich-text-editor/images/RTEImage-Feather.png" alt="test.png" width="auto" height="auto" style="min-width: 0px; max-width: 645px; min-height: 0px;" class="e-rte-image e-resize e-img-focus"><span class="e-img-caption-text" contenteditable="true">image caption</span></span></span>testing`;
         beforeAll(() => {
             rteObj = renderRTE({
                 height: 400,
@@ -1981,7 +1982,7 @@ client side. Customer easy to edit the contents and get the HTML content for
         });
 
         it('Image delete action checking using delete key', (done: Function) => {
-            expect((<any>rteObj).inputElement.querySelector('.e-imgbreak')).not.toBe(null);
+            expect((<any>rteObj).inputElement.querySelector('.e-img-break')).not.toBe(null);
             rteObj.formatter.editorManager.nodeSelection.setSelectionNode(document, (rteObj as any).inputElement.childNodes[0]);
             keyBoardEvent.keyCode = 46;
             keyBoardEvent.code = 'Delete';
@@ -2801,7 +2802,7 @@ client side. Customer easy to edit the contents and get the HTML content for
             (<any>rteObj).imageModule.uploadObj.onSelectFiles(eventArgs);
             (document.querySelector('.e-insertImage') as HTMLElement).click();
             setTimeout(() => {
-                expect(rteObj.getContent().querySelector(".e-rte-image.e-imginline").getAttribute("src").indexOf("blob") == -1).toBe(true);
+                expect(rteObj.getContent().querySelector(".e-rte-image.e-img-inline").getAttribute("src").indexOf("blob") == -1).toBe(true);
                 evnArg.selectNode = [rteObj.element];
                 (<any>rteObj).imageModule.deleteImg(evnArg);
                 done();
@@ -2837,7 +2838,7 @@ client side. Customer easy to edit the contents and get the HTML content for
             (<any>rteObj).imageModule.uploadObj.onSelectFiles(eventArgs);
             (document.querySelector('.e-insertImage') as HTMLElement).click();
             setTimeout(() => {
-                expect(rteObj.getContent().querySelector(".e-rte-image.e-imginline").getAttribute("src").indexOf("base64") == -1).toBe(true);
+                expect(rteObj.getContent().querySelector(".e-rte-image.e-img-inline").getAttribute("src").indexOf("base64") == -1).toBe(true);
                 evnArg.selectNode = [rteObj.element];
                 (<any>rteObj).imageModule.deleteImg(evnArg);
                 done();
@@ -3108,28 +3109,28 @@ client side. Customer easy to edit the contents and get the HTML content for
                 rteObj.formatter.editorManager.nodeSelection.setSelectionNode(document, rteObj.element.querySelector('#rteImg'));
                 dispatchEvent((rteObj.element.querySelector('#rteImg') as HTMLElement), 'mouseup');
                 setTimeout(() => {
-                    (document.querySelectorAll('.e-image-quicktoolbar .e-toolbar-item')[6] as HTMLElement).click();
+                    (document.querySelectorAll('.e-image-quicktoolbar .e-toolbar-item')[7] as HTMLElement).click();
                     (document.querySelector('.e-img-link') as HTMLInputElement).value = 'https://www.google.com';
                     (document.querySelector('.e-update-link') as HTMLElement).click();
                     let imgEle: Element = document.querySelector('#rteImg');
                     expect(imgEle.parentElement.nodeName).toBe('A');
                     expect(imgEle.parentElement.parentElement.classList.contains('e-img-wrap')).toBe(true);
-                    expect(imgEle.parentElement.parentElement.parentElement.classList.contains('e-img-caption')).toBe(true);
+                    expect(imgEle.parentElement.parentElement.parentElement.classList.contains('e-img-caption-container')).toBe(true);
                     expect(document.querySelector('.e-content').childNodes.item(0).nodeName).toBe('P');
                     expect(document.querySelector('.e-content').childNodes.item(1).nodeName).toBe('P');
                     expect(document.querySelector('.e-content').childNodes[1].childNodes[0].nodeName).toBe('SPAN');
-                    expect((document.querySelector('.e-content').childNodes[1].childNodes[0] as Element).classList.contains('e-img-caption')).toBe(true);
+                    expect((document.querySelector('.e-content').childNodes[1].childNodes[0] as Element).classList.contains('e-img-caption-container')).toBe(true);
                     dispatchEvent((rteObj.element.querySelector('#rteImg') as HTMLElement), 'mouseup');
                     setTimeout(() => {
-                        (document.querySelectorAll('.e-image-quicktoolbar .e-toolbar-item')[9] as HTMLElement).click();
+                        (document.querySelectorAll('.e-image-quicktoolbar .e-toolbar-item')[10] as HTMLElement).click();
                         let imgEle: Element = document.querySelector('#rteImg');
                         expect(imgEle.parentElement.nodeName).not.toBe('A');
                         expect(imgEle.parentElement.classList.contains('e-img-wrap')).toBe(true);
-                        expect(imgEle.parentElement.parentElement.classList.contains('e-img-caption')).toBe(true);
+                        expect(imgEle.parentElement.parentElement.classList.contains('e-img-caption-container')).toBe(true);
                         expect(document.querySelector('.e-content').childNodes.item(0).nodeName).toBe('P');
                         expect(document.querySelector('.e-content').childNodes.item(1).nodeName).toBe('P');
                         expect(document.querySelector('.e-content').childNodes[1].childNodes[0].nodeName).toBe('SPAN');
-                        expect((document.querySelector('.e-content').childNodes[1].childNodes[0] as Element).classList.contains('e-img-caption')).toBe(true);
+                        expect((document.querySelector('.e-content').childNodes[1].childNodes[0] as Element).classList.contains('e-img-caption-container')).toBe(true);
                         done();
                     }, 100);
                 }, 100);
@@ -3144,7 +3145,7 @@ client side. Customer easy to edit the contents and get the HTML content for
                     items: ['Image', 'Bold']
                 },
                 insertImageSettings: { resize: false },
-                value: `<p>Test</p><a class="e-rte-anchor" href="http://adadas">syncfu<img id="rteImg" class="e-rte-image e-imgbreak e-imgleft e-imgright e-imgcenter e-resize" alt="image" style="">sion</a>`
+                value: `<p>Test</p><a class="e-rte-anchor" href="http://adadas">syncfu<img id="rteImg" class="e-rte-image e-img-break e-img-left e-img-right e-img-center e-resize" alt="image" style="">sion</a>`
             });
         });
         afterAll(() => {
@@ -3203,12 +3204,12 @@ client side. Customer easy to edit the contents and get the HTML content for
                 dispatchEvent((iframeBody.querySelector('img') as HTMLElement), 'mouseup');
                 setTimeout(() => {
                     (document.querySelectorAll('.e-image-quicktoolbar .e-toolbar-item')[1] as HTMLElement).click();
-                    expect(!isNullOrUndefined(iframeBody.querySelector('.e-img-caption'))).toBe(true);
+                    expect(!isNullOrUndefined(iframeBody.querySelector('.e-img-caption-container'))).toBe(true);
                     (rteObj.contentModule.getEditPanel() as HTMLElement).focus();
                     dispatchEvent((rteObj.contentModule.getEditPanel() as HTMLElement), 'mousedown');
                     dispatchEvent((iframeBody.querySelector('img') as HTMLElement), 'mouseup');
                     setTimeout(() => {
-                        (document.querySelectorAll('.e-image-quicktoolbar .e-toolbar-item')[12] as HTMLElement).click();
+                        (document.querySelectorAll('.e-image-quicktoolbar .e-toolbar-item')[13] as HTMLElement).click();
                         dialogEle = rteObj.element.querySelector('.e-dialog');
                         (dialogEle.querySelector('.e-img-url') as HTMLInputElement).value = 'https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png';
                         (dialogEle.querySelector('.e-img-url') as HTMLInputElement).dispatchEvent(new Event("input"));
@@ -3246,7 +3247,7 @@ client side. Customer easy to edit the contents and get the HTML content for
             var event = { clientX: 40, clientY: 294, target: rteObj.contentModule.getEditPanel(), preventDefault: function () { return; } };
             let result: any = (rteObj.imageModule as any).dragStart(event);
             setTimeout(function () {
-                expect(result).toBe(true);
+                expect(isNullOrUndefined(result)).toBe(true);
                 done();
             }, 200);
         });
@@ -3349,7 +3350,7 @@ client side. Customer easy to edit the contents and get the HTML content for
         afterAll((done: Function) => {
             destroy(rteObj);
             detach(element);
-            detach(document.querySelector('.e-imginline'))
+            detach(document.querySelector('.e-img-inline'))
             done();
         });
         it(" Check image after drop", function () {
@@ -3362,26 +3363,32 @@ client side. Customer easy to edit the contents and get the HTML content for
             ele = rteObj.element.getElementsByTagName('img')[0];
             expect(rteObj.element.getElementsByTagName('img').length).toBe(1);
             expect(ele.classList.contains('e-rte-image')).toBe(true);
-            expect(ele.classList.contains('e-imginline')).toBe(true);
+            expect(ele.classList.contains('e-img-inline')).toBe(true);
             expect(ele.classList.contains('e-resize')).toBe(true);
 
         });
-        it(" Check image being removed with args.cancel as true", function (done: Function) {
+        it("Check image being removed with args.cancel as true", (done: Function) => {
             rteObj.focusIn();
             const {x, y} = pointInside(rteObj.contentModule.getEditPanel());
             size = 7;
-            let image: HTMLElement = createElement("IMG");
-            image.classList.add('upload-image');
-            var popupEle = createElement('div', { className: 'e-popup-open' });
-            rteObj.inputElement.appendChild(popupEle);
-            rteObj.inputElement.appendChild(image);
-            let event: any = { clientX: x, clientY: y, dataTransfer: { files: [] }, preventDefault: function () { return; } };
-            rteObj.notify('drop', { args: event });
-            let fileObj: File = new File(["Nice One"], "sample.png", { lastModified: 0, type: "overide/mimetype" });
-            let eventArgs = { type: 'click', target: { files: [fileObj] }, preventDefault: (): void => { } };
-            (rteObj.imageModule as any).uploadObj.onSelectFiles(eventArgs);
+            const fileObj: File = new File(["Nice One"], "sample.png", { lastModified: 0, type: "image/png" });
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(fileObj);
+            const dropEvent: DragEvent = new DragEvent('drop', {
+                bubbles: true,
+                cancelable: true,
+                clientX: x,
+                clientY: y,
+                dataTransfer
+            } as DragEventInit);
+            rteObj.contentModule.getEditPanel().dispatchEvent(dropEvent);
             setTimeout(() => {
-                expect((rteObj.inputElement.querySelectorAll("img")[0] as HTMLImageElement).classList.contains('e-rte-image')).toBe(false);
+                const img = rteObj.inputElement.querySelector('img') as HTMLImageElement;
+                if (img) {
+                    expect(img.classList.contains('e-rte-image')).toBe(false);
+                } else {
+                    expect(img).toBeNull();
+                }
                 done();
             }, 1000);
         });
@@ -3421,7 +3428,7 @@ client side. Customer easy to edit the contents and get the HTML content for
         let clickEvent: MouseEvent;
         beforeEach((done: Function) => {
             rteObj = renderRTE({
-                value: '<p><img id="rteImageID" style="width: 300px; height: 300px; transform: rotate(0deg);" alt="Logo" src="https://ej2.syncfusion.com/javascript/demos/src/rich-text-editor/images/RTEImage-Feather.png" class="e-rte-image e-imginline e-resize"></p>'
+                value: '<p><img id="rteImageID" style="width: 300px; height: 300px; transform: rotate(0deg);" alt="Logo" src="https://ej2.syncfusion.com/javascript/demos/src/rich-text-editor/images/RTEImage-Feather.png" class="e-rte-image e-img-inline e-resize"></p>'
             });
             done();
         })
@@ -3546,7 +3553,7 @@ client side. Customer easy to edit the contents and get the HTML content for
         afterAll((done: Function) => {
             destroy(rteObj);
             detach(element);
-            detach(document.querySelector('.e-imginline'))
+            detach(document.querySelector('.e-img-inline'))
             done();
         });
         it(" imageDrop event args.cancel as `true` check", function () {
@@ -3674,7 +3681,7 @@ client side. Customer easy to edit the contents and get the HTML content for
                     '<p>It is possible to add custom style on the selected image inside theRich Text Editor through quick toolbar.</p><p>It is possible to add custom style on the selected image inside theRich Text Editor through quick toolbar.</p>' +
                     '<p>It is possible to add custom style on the selected image inside theRich Text Editor through quick toolbar.</p><p>It is possible to add custom style on the selected image inside theRich Text Editor through quick toolbar.</p>' +
                     '<p>It is possible to add custom style on the selected image inside theRich Text Editor through quick toolbar.</p><p>It is possible to add custom style on the selected image inside theRich Text Editor through quick toolbar.</p>' +
-                    '<img _ngcontent-knh-c4="" alt="Tiny_Image.PNG" class="e-rte-image e-imgcenter e-resize e-rte-drag-image e-imginline" height="77" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ6hN7we0H3G7EKNkbPvZOioGzcm5nR46b63w&amp;usqp=CAU"' +
+                    '<img _ngcontent-knh-c4="" alt="Tiny_Image.PNG" class="e-rte-image e-img-center e-resize e-rte-drag-image e-img-inline" height="77" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ6hN7we0H3G7EKNkbPvZOioGzcm5nR46b63w&amp;usqp=CAU"' +
                     'style="min-width: 0px; max-width: 940px; min-height: 0px;" width="154"/>'
             });
             done();
@@ -3784,7 +3791,7 @@ client side. Customer easy to edit the contents and get the HTML content for
         afterAll((done: Function) => {
             destroy(rteObj);
             detach(element);
-            detach(document.querySelector('.e-imginline'))
+            detach(document.querySelector('.e-img-inline'))
             done();
         });
         it("EJ2-58062 - Check insertDragImage -Internal image when File data is returned", function () {
@@ -3996,7 +4003,7 @@ client side. Customer easy to edit the contents and get the HTML content for
         let rteObj: RichTextEditor;
         let keyBoardEvent: any = { type: 'keydown', preventDefault: () => { }, ctrlKey: true, key: 'backspace', stopPropagation: () => { }, shiftKey: false, which: 8 };
         let innerHTML1: string = `testing
-        <span class="e-img-caption e-rte-img-caption e-caption-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><img src="https://ej2.syncfusion.com/javascript/demos/src/rich-text-editor/images/RTEImage-Feather.png" class="e-rte-image e-imginline e-resize" style=""><span class="e-img-inner" contenteditable="true">image caption</span></span></span>testing`;
+        <span class="e-img-caption-container e-img-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><img src="https://ej2.syncfusion.com/javascript/demos/src/rich-text-editor/images/RTEImage-Feather.png" class="e-rte-image e-resize" style=""><span class="e-img-caption-text" contenteditable="true">image caption</span></span></span>testing`;
         beforeAll(() => {
             rteObj = renderRTE({
                 height: 400,
@@ -4018,7 +4025,7 @@ client side. Customer easy to edit the contents and get the HTML content for
             keyBoardEvent.keyCode = 8;
             keyBoardEvent.code = 'Backspace';
             (rteObj as any).keyDown(keyBoardEvent);
-            expect((<any>rteObj).inputElement.querySelector('.e-img-caption')).toBe(null);
+            expect((<any>rteObj).inputElement.querySelector('.e-img-caption-container')).toBe(null);
             keyBoardEvent.keyCode = 90;
             (rteObj as any).keyDown(keyBoardEvent);
             done();
@@ -4362,7 +4369,7 @@ client side. Customer easy to edit the contents and get the HTML content for
         let controlId: string;
         beforeEach((done: Function) => {
             rteObj = renderRTE({
-                value: `<p><img class='e-rte-image e-imgcenter' id="image" alt="Logo" src="https://js.syncfusion.com/demos/web/content/images/accordion/baked-chicken-and-cheese.png" style="width: 300px;">`
+                value: `<p><img class='e-rte-image e-img-center' id="image" alt="Logo" src="https://js.syncfusion.com/demos/web/content/images/accordion/baked-chicken-and-cheese.png" style="width: 300px;">`
             });
             controlId = rteObj.element.id;
             done();
@@ -4387,7 +4394,7 @@ client side. Customer easy to edit the contents and get the HTML content for
                 let insertButton: HTMLElement = dialog.querySelector('.e-insertImage.e-primary');
                 urlInput.dispatchEvent(new Event("input"));
                 insertButton.click();
-                expect((<any>rteObj).element.querySelector('.e-rte-image').classList.contains('e-imgcenter')).toBe(true);
+                expect((<any>rteObj).element.querySelector('.e-rte-image').classList.contains('e-img-center')).toBe(true);
                 done();
             }, 100);
         });
@@ -4399,7 +4406,7 @@ client side. Customer easy to edit the contents and get the HTML content for
         beforeAll(() => {
             rteObj = renderRTE({
                 height: 400,
-                value: `<ol><li>Rich Text Editor<img id="rteImageID" style="width:300px; height:300px;transform: rotate(0deg);" alt="Logo" src="./src/rich-text-editor/images/RTEImage-Feather.png" class="e-rte-image e-imginline"></li></ol>`,
+                value: `<ol><li>Rich Text Editor<img id="rteImageID" style="width:300px; height:300px;transform: rotate(0deg);" alt="Logo" src="./src/rich-text-editor/images/RTEImage-Feather.png" class="e-rte-image e-img-inline"></li></ol>`,
                 toolbarSettings: {
                     items: ['Image', 'Bold']
                 },
@@ -4491,10 +4498,10 @@ client side. Customer easy to edit the contents and get the HTML content for
         it('Should remove the image on delete key press', (done: DoneFn) => {
             let innerHTMLL: string = `
             
-                <span class="e-img-caption e-rte-img-caption e-caption-inline" draggable="false" style="width:auto">
+                <span class="e-img-caption-container e-img-inline" draggable="false" style="width:auto">
                     <span class="e-img-wrap">
-                        <img alt="Logo" src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png" style="width: 300px;" class="e-rte-image e-imginline">
-                        <span class="e-img-inner" contenteditable="true">
+                        <img alt="Logo" src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png" style="width: 300px;" class="e-rte-image">
+                        <span class="e-img-caption-text" contenteditable="true">
                             Feather
                         </span>
                     </span>
@@ -4512,7 +4519,7 @@ client side. Customer easy to edit the contents and get the HTML content for
             element.dispatchEvent(deleteKeyDown);
             element.dispatchEvent(deleteKeyUp);
             setTimeout(() => {
-                expect(rteObj.inputElement.querySelector('.e-img-caption')).toBe(null);
+                expect(rteObj.inputElement.querySelector('.e-img-caption-container')).toBe(null);
                 done();
             }, 100);
         });
@@ -4521,10 +4528,10 @@ client side. Customer easy to edit the contents and get the HTML content for
             <p>The Rich Text Editor component is a WYSIWYG ("what you see is what you get") editor that provides the best
             user experience to create and update the content. Users can format their content using standard toolbar commands.
             </p>
-            <p><span class="e-img-caption e-rte-img-caption e-caption-inline" contenteditable="true" draggable="false"
+            <p><span class="e-img-caption-container e-img-inline" contenteditable="true" draggable="false"
                     style="width:auto"><span class="e-img-wrap"><img alt="Logo"
                             src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png"
-                            style="width: 300px;" class="e-rte-image e-imginline"><span class="e-img-inner"
+                            style="width: 300px;" class="e-rte-image"><span class="e-img-caption-text"
                             contenteditable="true">Feather</span></span></span></p>
             <p><b>Key features:</b></p>
             `;
@@ -4539,7 +4546,7 @@ client side. Customer easy to edit the contents and get the HTML content for
             document.getSelection().addRange(range); element.dispatchEvent(deleteKeyDown);
             element.dispatchEvent(deleteKeyUp);
             setTimeout(() => {
-                expect(rteObj.inputElement.querySelector('.e-img-caption')).toBe(null);
+                expect(rteObj.inputElement.querySelector('.e-img-caption-container')).toBe(null);
                 expect(window.getSelection().getRangeAt(0).startContainer.nodeName).toBe('P');
                 done();
             }, 100);
@@ -4588,7 +4595,7 @@ client side. Customer easy to edit the contents and get the HTML content for
                 elements and styles(tag / Element information , Action button (Upload, Cancel))</p></li><li><p>Re-size
                 the editor support.</p></li><li><p>Provide
                 efficient public methods and client side events.</p></li><li><p>Keyboard
-                navigation support.</p></li></ol><p><span class="e-img-caption e-rte-img-caption e-caption-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><img src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png" class="w3-round-large e-rte-image e-imginline" alt="Norway" style=""><span class="e-img-inner" contenteditable="true">Caption</span></span></span></p>`
+                navigation support.</p></li></ol><p><span class="e-img-caption-container e-img-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><img src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png" class="w3-round-large e-rte-image" alt="Norway" style=""><span class="e-img-caption-text" contenteditable="true">Caption</span></span></span></p>`
             });
             scrollSpy = jasmine.createSpy('scrollhandler');
             window.addEventListener('scroll', scrollSpy);
@@ -4601,7 +4608,7 @@ client side. Customer easy to edit the contents and get the HTML content for
         });
         it("The content scrolls to the top when contenteditable is set to false in the Rich Text Editor.", (done) => {
             rteObj.focusIn();
-            const imageCaption = rteObj.element.querySelector(".e-img-caption .e-img-inner");
+            const imageCaption = rteObj.element.querySelector(".e-img-caption-container .e-img-caption-text");
             rteObj.formatter.editorManager.nodeSelection.setSelectionText(rteObj.contentModule.getDocument(), imageCaption.firstChild, imageCaption.firstChild, 0, 7);
             (rteObj.toolbarModule.getToolbarElement().querySelectorAll(".e-toolbar-wrapper .e-toolbar-item")[0] as HTMLElement).click();
             setTimeout(() => {
@@ -4629,7 +4636,7 @@ client side. Customer easy to edit the contents and get the HTML content for
                 elements and styles(tag / Element information , Action button (Upload, Cancel))</p></li><li><p>Re-size
                 the editor support.</p></li><li><p>Provide
                 efficient public methods and client side events.</p></li><li><p>Keyboard
-                navigation support.</p></li></ol><p><span class="e-img-caption e-rte-img-caption e-caption-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><img src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" class="w3-round-large e-rte-image e-imginline" alt="Norway" style="width: 300px;"><span class="e-img-inner" contenteditable="true">Caption</span></span></span></p>`
+                navigation support.</p></li></ol><p><span class="e-img-caption-container e-img-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><img src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" class="w3-round-large e-rte-image" alt="Norway" style="width: 300px;"><span class="e-img-caption-text" contenteditable="true">Caption</span></span></span></p>`
             });
             controlId = (rteObj as any).element.id;
             QTBarModule = getQTBarModule(rteObj);
@@ -4696,6 +4703,8 @@ client side. Customer easy to edit the contents and get the HTML content for
                         (rteObj as any).imageModule.pageX = 51;
                         (rteObj as any).imageModule.resizing(eventsArg);
                         expect(image.style.width).toBe('298px');
+                        //Need to check the caption element width when image is applied with caption.
+                        expect(image.parentElement.parentElement.style.width).toBe('298px');
                         // The below cases needs ensure manullay not able to check it expect - start.
                         (rteObj as any).isDestroyed = true;
                         (rteObj as any).imageModule.addEventListener();
@@ -4734,7 +4743,7 @@ client side. Customer easy to edit the contents and get the HTML content for
         let controlId: string;
         beforeEach((done: Function) => {
             rteObj = renderRTE({
-                value: `<p><img class='e-rte-image e-imgcenter' id="image" alt="Logo" src="https://cdn.syncfusion.com/content/images/home-v1/home/home-banner-v4.png" style="width: 300px;">`
+                value: `<p><img class='e-rte-image e-img-center' id="image" alt="Logo" src="https://cdn.syncfusion.com/content/images/home-v1/home/home-banner-v4.png" style="width: 300px;">`
             });
             controlId = rteObj.element.id;
             done();
@@ -5101,7 +5110,7 @@ client side. Customer easy to edit the contents and get the HTML content for
         let editor: RichTextEditor;
         beforeEach((done) => {
             editor = renderRTE({
-                value: `<p><img alt="Logo" src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png" style="width: 300px;" class="e-rte-image e-imginline"></p>`
+                value: `<p><img alt="Logo" src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png" style="width: 300px;" class="e-rte-image e-img-inline"></p>`
             });
             done();
         });
@@ -5259,7 +5268,7 @@ client side. Customer easy to edit the contents and get the HTML content for
         let controlId: string;
         beforeEach((done: Function) => {
             rteObj = renderRTE({
-                value: `<p><b>Description:</b></p><p><img class='e-rte-image e-imgcenter' id="image" alt="Logo" src="https://js.syncfusion.com/demos/web/content/images/accordion/baked-chicken-and-cheese.png" style="width: 300px;">`
+                value: `<p><b>Description:</b></p><p><img class='e-rte-image e-img-center' id="image" alt="Logo" src="https://js.syncfusion.com/demos/web/content/images/accordion/baked-chicken-and-cheese.png" style="width: 300px;">`
             });
             controlId = rteObj.element.id;
             done();
@@ -5361,7 +5370,7 @@ client side. Customer easy to edit the contents and get the HTML content for
         });
         it('Case 2: Insert by paste action', (done: DoneFn) => {
             editor.focusIn();
-            const clipBoardData: string = '<p><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 50%;" class="e-rte-image e-imginline" /></p>';
+            const clipBoardData: string = '<p><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 50%;" class="e-rte-image e-img-inline" /></p>';
             const dataTransfer: DataTransfer = new DataTransfer();
             dataTransfer.setData('text/html', clipBoardData);
             const pasteEvent: ClipboardEvent = new ClipboardEvent('paste', { clipboardData: dataTransfer } as ClipboardEventInit);
@@ -5452,7 +5461,7 @@ client side. Customer easy to edit the contents and get the HTML content for
                 target.dispatchEvent(MOUSEUP_EVENT);
                 setTimeout(() => {
                     (document.querySelectorAll('.e-image-quicktoolbar .e-toolbar-item')[1] as HTMLElement).click();
-                    expect(!isNullOrUndefined(iframeBody.querySelector('.e-img-caption'))).toBe(true);
+                    expect(!isNullOrUndefined(iframeBody.querySelector('.e-img-caption-container'))).toBe(true);
                     const target: HTMLElement = rteObj.inputElement.querySelector('img');
                     setCursorPoint(target, 0);
                     target.dispatchEvent(MOUSEUP_EVENT);
@@ -5463,7 +5472,7 @@ client side. Customer easy to edit the contents and get the HTML content for
                         setCursorPoint(target, 0);
                         target.dispatchEvent(MOUSEUP_EVENT);
                         setTimeout(() => {
-                            (document.querySelectorAll('.e-image-quicktoolbar .e-toolbar-item')[12] as HTMLElement).click();
+                            (document.querySelectorAll('.e-image-quicktoolbar .e-toolbar-item')[13] as HTMLElement).click();
                             dialogEle = rteObj.element.querySelector('.e-dialog');
                             (dialogEle.querySelector('.e-img-url') as HTMLInputElement).value = 'https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png';
                             (dialogEle.querySelector('.e-img-url') as HTMLInputElement).dispatchEvent(new Event("input"));
@@ -5472,7 +5481,8 @@ client side. Customer easy to edit the contents and get the HTML content for
                             setTimeout(() => {
                                 expect((iframeBody.querySelector('img') as HTMLImageElement).src).toBe('https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png');
                                 expect((iframeBody.querySelectorAll('img').length)).toBe(1);
-                                expect((iframeBody.querySelector('img').classList.contains('e-imgbreak'))).toBe(true);
+                                expect(!isNullOrUndefined(iframeBody.querySelector('.e-img-caption-container.e-img-break'))).toBe(true);
+                                expect(!isNullOrUndefined(iframeBody.querySelector('.e-rte-image.e-img-break'))).toBe(false);
                                 done();
                             }, 100);
                         }, 100);
@@ -5583,7 +5593,7 @@ client side. Customer easy to edit the contents and get the HTML content for
         let rteEle: HTMLElement;
         let controlId: string;
         let rteObj: RichTextEditor;
-        let innerHTML: string = `<ul> <li style="cursor: auto;"><img src="https://services.syncfusion.com/js/production/RichTextEditor/Screenshot 2024-12-03 115549.png" class="e-rte-image e-imginline" alt="Screenshot 2024-12-03 115549" width="262" height="31" style="min-width: 0px; max-width: 1106px; min-height: 0px; width: 262px; height: 31px;" /> Basic features include headings, block quotes, <img id="target-img" src="https://services.syncfusion.com/js/production/RichTextEditor/Screenshot 2024-12-05 130431.png" class="e-rte-image e-imginline" alt="Screenshot 2024-12-05 130431" width="180" height="38" style="min-width: 0px; max-width: 1106px; min-height: 0px; width: 180px; height: 38px;" /> numbered lists, bullet lists, and support to insert images, tables, audio, and video.</li></ul>`;
+        let innerHTML: string = `<ul> <li style="cursor: auto;"><img src="https://services.syncfusion.com/js/production/RichTextEditor/Screenshot 2024-12-03 115549.png" class="e-rte-image e-img-inline" alt="Screenshot 2024-12-03 115549" width="262" height="31" style="min-width: 0px; max-width: 1106px; min-height: 0px; width: 262px; height: 31px;" /> Basic features include headings, block quotes, <img id="target-img" src="https://services.syncfusion.com/js/production/RichTextEditor/Screenshot 2024-12-05 130431.png" class="e-rte-image e-img-inline" alt="Screenshot 2024-12-05 130431" width="180" height="38" style="min-width: 0px; max-width: 1106px; min-height: 0px; width: 180px; height: 38px;" /> numbered lists, bullet lists, and support to insert images, tables, audio, and video.</li></ul>`;
         beforeAll(() => {
             rteObj = renderRTE({
                 height: 400,
@@ -5610,7 +5620,7 @@ client side. Customer easy to edit the contents and get the HTML content for
                 const dropDownPopup: HTMLElement = document.body.querySelector('.e-dropdown-popup.e-popup-open');
                 (dropDownPopup.querySelectorAll('.e-item')[2] as HTMLElement).click();
                 setTimeout(() => {
-                    expect(rteObj.inputElement.querySelector('img').classList.contains('e-imgright')).toBe(true);
+                    expect(rteObj.inputElement.querySelector('img').classList.contains('e-img-right')).toBe(true);
                     setCursorPoint(target, 0);
                     target.dispatchEvent(MOUSEUP_EVENT);
                     setTimeout(function () {
@@ -5631,7 +5641,7 @@ client side. Customer easy to edit the contents and get the HTML content for
         let rteEle: HTMLElement;
         let controlId: string;
         let rteObj: RichTextEditor;
-        let innerHTML: string = `<ul> <li style="cursor: auto;"><img src="https://services.syncfusion.com/js/production/RichTextEditor/Screenshot 2024-12-03 115549.png" class="e-rte-image e-imginline" alt="Screenshot 2024-12-03 115549" width="262" height="31" style="min-width: 0px; max-width: 1106px; min-height: 0px; width: 262px; height: 31px;" /> Basic features include headings, block quotes, <img id="target-img" src="https://services.syncfusion.com/js/production/RichTextEditor/Screenshot 2024-12-05 130431.png" class="e-rte-image e-imginline" alt="Screenshot 2024-12-05 130431" width="180" height="38" style="min-width: 0px; max-width: 1106px; min-height: 0px; width: 180px; height: 38px;" /> numbered lists, bullet lists, and support to insert images, tables, audio, and video.</li></ul>`;
+        let innerHTML: string = `<ul> <li style="cursor: auto;"><img src="https://services.syncfusion.com/js/production/RichTextEditor/Screenshot 2024-12-03 115549.png" class="e-rte-image e-img-inline" alt="Screenshot 2024-12-03 115549" width="262" height="31" style="min-width: 0px; max-width: 1106px; min-height: 0px; width: 262px; height: 31px;" /> Basic features include headings, block quotes, <img id="target-img" src="https://services.syncfusion.com/js/production/RichTextEditor/Screenshot 2024-12-05 130431.png" class="e-rte-image e-img-inline" alt="Screenshot 2024-12-05 130431" width="180" height="38" style="min-width: 0px; max-width: 1106px; min-height: 0px; width: 180px; height: 38px;" /> numbered lists, bullet lists, and support to insert images, tables, audio, and video.</li></ul>`;
         beforeAll(() => {
             rteObj = renderRTE({
                 height: 400,
@@ -5666,7 +5676,7 @@ client side. Customer easy to edit the contents and get the HTML content for
             evnArg.args.item = { command: 'Images', subCommand: 'JustifyRight' };
             (<any>rteObj).imageModule.alignImage(evnArg, 'JustifyRight');
             setTimeout(function () {
-                expect((iframeBody.firstChild as HTMLElement).querySelector('#target-img').classList.contains('e-imgright')).toBe(true);
+                expect((iframeBody.firstChild as HTMLElement).querySelector('#target-img').classList.contains('e-img-right')).toBe(true);
                 setCursorPoint(target, 0);
                 dispatchEvent(target, 'mousedown');
                 target.click();
@@ -5688,7 +5698,7 @@ client side. Customer easy to edit the contents and get the HTML content for
         let rteObj: RichTextEditor;
         beforeAll(() => {
             rteObj = renderRTE({
-                value: `<p><img class='e-rte-image e-imgcenter' id="image" alt="Logo" src="https://js.syncfusion.com/demos/web/content/images/accordion/baked-chicken-and-cheese.png" style="width: 300px;">`,
+                value: `<p><img class='e-rte-image e-img-center' id="image" alt="Logo" src="https://js.syncfusion.com/demos/web/content/images/accordion/baked-chicken-and-cheese.png" style="width: 300px;">`,
                 beforeQuickToolbarOpen: function (args) {
                     args.positionX = 200;
                     args.positionY = 200;
@@ -5732,7 +5742,7 @@ client side. Customer easy to edit the contents and get the HTML content for
                 (dropDownBtn.firstElementChild as HTMLElement).click();
                 const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
                 (alignDropDown.querySelector('.e-justify-center') as HTMLElement).click();
-                expect(target.classList.contains('e-imgcenter')).toBe(true);
+                expect(target.classList.contains('e-img-center')).toBe(true);
                 setCursorPoint(target, 0);
                 target.dispatchEvent(MOUSEUP_EVENT);
                 setTimeout(() => {
@@ -5741,7 +5751,7 @@ client side. Customer easy to edit the contents and get the HTML content for
                     (dropDownBtn.firstElementChild as HTMLElement).click();
                     const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
                     (alignDropDown.querySelector('.e-justify-right') as HTMLElement).click();
-                    expect(target.classList.contains('e-imgright')).toBe(true);
+                    expect(target.classList.contains('e-img-right')).toBe(true);
                     setCursorPoint(target, 0);
                     target.dispatchEvent(MOUSEUP_EVENT);
                     setTimeout(() => {
@@ -5750,7 +5760,7 @@ client side. Customer easy to edit the contents and get the HTML content for
                         (dropDownBtn.firstElementChild as HTMLElement).click();
                         const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
                         (alignDropDown.querySelector('.e-justify-left') as HTMLElement).click();
-                        expect(target.classList.contains('e-imgleft')).toBe(true);
+                        expect(target.classList.contains('e-img-left')).toBe(true);
                         done();
                     }, 100);
                 }, 100);
@@ -5775,7 +5785,7 @@ client side. Customer easy to edit the contents and get the HTML content for
             target.dispatchEvent(MOUSEUP_EVENT);
             setTimeout(() => {
                 const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
-                const imageButton: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[6] as HTMLElement;
+                const imageButton: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[7] as HTMLElement;
                 imageButton.click();
                 setTimeout(() => {
                     const dialog: HTMLElement = document.querySelector('.e-dialog');
@@ -6000,7 +6010,7 @@ client side. Customer easy to edit the contents and get the HTML content for
         let rteObj: RichTextEditor;
         beforeAll((done: Function) => {
             rteObj = renderRTE({
-                value: `<div style="display: inline-block; width: 60%; vertical-align: top; cursor: auto;"><span class="e-img-caption e-rte-img-caption e-caption-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" width="309" style="min-width: 10px; min-height: 10px; width: 309px; height: 174px;" class="e-rte-image e-imginline" height="174"><span class="e-img-inner" contenteditable="false">Test</span></span></span></div>`
+                value: `<div style="display: inline-block; width: 60%; vertical-align: top; cursor: auto;"><span class="e-img-caption-container e-img-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" width="309" style="min-width: 10px; min-height: 10px; width: 309px; height: 174px;" class="e-rte-image" height="174"><span class="e-img-caption-text" contenteditable="false">Test</span></span></span></div>`
             });
             done();
         });
@@ -6009,7 +6019,7 @@ client side. Customer easy to edit the contents and get the HTML content for
             done();
         });
         it("The contentEditable attribute of the image caption element is correctly set to true when loading content into the RichTextEdito.", (done) => {
-            const imageCaption = rteObj.element.querySelector(".e-img-caption .e-img-inner");
+            const imageCaption = rteObj.element.querySelector(".e-img-caption-container .e-img-caption-text");
              setTimeout(function () {
                 expect(imageCaption.getAttribute('contenteditable') === 'true').toBe(true);
                 done();
@@ -6061,7 +6071,7 @@ client side. Customer easy to edit the contents and get the HTML content for
         let rteObj: RichTextEditor;
         beforeAll((done: Function) => {
             rteObj = renderRTE({
-                value: `<p><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 50%" class="e-rte-image e-imginline"></p>`
+                value: `<p><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 50%" class="e-rte-image e-img-inline"></p>`
             });
             done();
         });
@@ -6077,7 +6087,7 @@ client side. Customer easy to edit the contents and get the HTML content for
             target.dispatchEvent(MOUSEUP_EVENT);
              setTimeout(function () {
                 const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
-                const deleteButton: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[13] as HTMLElement;
+                const deleteButton: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[14] as HTMLElement;
                 deleteButton.click();
                 expect(rteObj.inputElement.innerHTML === '<p><br></p>').toBe(true);
                 done();
@@ -6085,8 +6095,1036 @@ client side. Customer easy to edit the contents and get the HTML content for
         });
     });
 
+    describe('Image Alignment, Caption and Wrap apply use cases ', () => {
+        describe('988805: caption and alignment apply and caption text restore use cases', () => {
+            let rteObj: RichTextEditor;
+            beforeEach(() => {
+                rteObj = renderRTE({
+                    value: `<h1>Welcome to the Syncfusion Rich Text Editor</h1>
+                    <p>The Rich Text Editor, a WYSIWYG (what you see is what you get) editor, is a user inter<img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 15%" class="e-rte-image e-img-inline"/> face that allows you to create, edit, and format rich text content. You can try out a demo of this editor here.</p>`
+                });
+            });
+            afterEach(() => {
+                destroy(rteObj);
+            });
+            it(" - Should apply the image caption and inline image.", (done: DoneFn) => {
+                    let inputElement: HTMLElement = rteObj.inputElement;
+                    inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                    const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                    setCursorPoint(target, 0);
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        (document.querySelectorAll('.e-image-quicktoolbar .e-toolbar-item')[1] as HTMLElement).click();
+                        expect(!isNullOrUndefined(inputElement.querySelector('.e-img-caption-container.e-img-inline'))).toBe(true);
+                        done();
+                    }, 100);
+                });
+            it(" - should apply image inline class to the image element when inline is applied on caption image", (done: DoneFn) => {
+                let inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const captionBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[1] as HTMLElement;
+                    captionBtn.click();
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                        (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                        const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        (displayDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).click();
+                        expect(!isNullOrUndefined(inputElement.querySelector('.e-img-caption-container.e-img-break'))).toBe(false);
+                        expect(!isNullOrUndefined(inputElement.querySelector('.e-img-inline .e-rte-image'))).toBe(true);
+                        done();
+                    }, 100);
+                }, 100);
+            });
+            it(" - should apply image break class to the image element and maintain image caption to the wrapper span element after applying break", (done: DoneFn) => {
+                let inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const captionBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[1] as HTMLElement;
+                    captionBtn.click();
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                        (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                        const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        (displayDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).click();
+                        expect(!isNullOrUndefined(inputElement.querySelector('.e-img-caption-container.e-img-break'))).toBe(true);
+                        expect(!isNullOrUndefined(inputElement.querySelector('.e-img-break .e-rte-image'))).toBe(true);
+                        done();
+                    }, 100);
+                }, 100);
+            });
+            it(" - should apply image inline when inline is applied on the left aligned image", (done: DoneFn) => {
+                let inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                    (dropDownBtn.firstElementChild as HTMLElement).click();
+                    const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (alignDropDown.querySelector('.e-justify-left') as HTMLElement).click();
+                    expect(!isNullOrUndefined(inputElement.querySelector('.e-rte-image.e-img-left'))).toBe(true);
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                        (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                        const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        (displayDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).click();
+                        expect(!isNullOrUndefined(inputElement.querySelector('.e-rte-image.e-img-left'))).toBe(false);
+                        expect(!isNullOrUndefined(inputElement.querySelector('.e-rte-image.e-img-inline'))).toBe(true);
+                        done();
+                    }, 100);
+                }, 100);
+            });
+            it(" - should apply image inline when inline is applied to right aligned image", (done: DoneFn) => {
+                let inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                    (dropDownBtn.firstElementChild as HTMLElement).click();
+                    const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (alignDropDown.querySelector('.e-justify-right') as HTMLElement).click();
+                    expect(!isNullOrUndefined(inputElement.querySelector('.e-rte-image.e-img-right'))).toBe(true);
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                        (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                        const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        (displayDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).click();
+                        expect(!isNullOrUndefined(inputElement.querySelector('.e-rte-image.e-img-right'))).toBe(false);
+                        expect(!isNullOrUndefined(inputElement.querySelector('.e-rte-image.e-img-inline'))).toBe(true);
+                        done();
+                    }, 100);
+                }, 100);
+            });
+            it(" - should maintain old caption content when applying inline to already captioned image and again applying caption", (done: DoneFn) => {
+                let inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const captionBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[1] as HTMLElement;
+                    captionBtn.click();
+                    expect(inputElement.querySelector('.e-img-caption-text').textContent === 'Caption').toBe(true);
+                    inputElement.querySelector('.e-img-caption-text').textContent = 'Updated Caption';
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const captionBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[1] as HTMLElement;
+                        captionBtn.click();
+                        target.dispatchEvent(MOUSEUP_EVENT);
+                        setTimeout(() => {
+                            const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                            const captionBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[1] as HTMLElement;
+                            captionBtn.click();
+                            expect(!isNullOrUndefined(inputElement.querySelector('.e-img-caption-container.e-img-inline'))).toBe(true);
+                            expect(!isNullOrUndefined(inputElement.querySelector('.e-img-caption-text'))).toBe(true);
+                            expect(inputElement.querySelector('.e-img-caption-text').textContent === 'Updated Caption').toBe(true);
+                            done();
+                        }, 100);
+                    }, 100);
+                }, 100);
+            });
+            it(" - should maintain old caption content when caption is applied to already applied captioned image to revert it and again applying caption", (done: DoneFn) => {
+                let inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const captionBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[1] as HTMLElement;
+                    captionBtn.click();
+                    inputElement.querySelector('.e-img-caption-text').textContent = 'Updated Caption';
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const captionBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[1] as HTMLElement;
+                        captionBtn.click();
+                        target.dispatchEvent(MOUSEUP_EVENT);
+                        setTimeout(() => {
+                            const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                            const captionBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[1] as HTMLElement;
+                            captionBtn.click();
+                            expect(inputElement.querySelector('.e-img-caption-text').textContent === 'Updated Caption').toBe(true);
+                            done();
+                        }, 100);
+                    }, 100);
+                }, 100);
+            });
+        });
+
+        describe('988805: check display and alignment dropdown e-active states', () => {
+            let editor: RichTextEditor;
+            beforeEach(() => {
+                editor = renderRTE({
+                    value: `<p>The Ri<img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 15%;" class="e-rte-image e-img-inline"/> ch Text Editor.</p>`
+                })
+            });
+            afterEach(() => {
+                destroy(editor);
+            });
+            it(' - Should check the active state in quick toolbar alignment and display dropdown buttons', (done: DoneFn) => {
+                const inputElement: HTMLElement = editor.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                let imgEle: HTMLElement;
+                const target: HTMLElement = editor.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                    (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                    const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    expect((displayDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).classList.contains('e-active')).toBe(true);
+                    const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                    (dropDownBtn.firstElementChild as HTMLElement).click();
+                    const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (alignDropDown.querySelector('.e-justify-center') as HTMLElement).click();
+                    imgEle = inputElement.querySelector('.e-rte-image.e-img-center');
+                    setCursorPoint(target, 0);
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                        (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                        const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        expect((displayDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).classList.contains('e-active')).toBe(true);
+                        const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                        (dropDownBtn.firstElementChild as HTMLElement).click();
+                        const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        expect((alignDropDown.querySelector('ul').childNodes[1] as HTMLElement).classList.contains('e-active')).toBe(true);
+                        (alignDropDown.querySelector('.e-justify-right') as HTMLElement).click();
+                        imgEle = inputElement.querySelector('.e-rte-image.e-img-right');
+                        setCursorPoint(target, 0);
+                        target.dispatchEvent(MOUSEUP_EVENT);
+                        setTimeout(() => {
+                            const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                            const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                            (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                            const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                            expect((displayDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).classList.contains('e-active')).toBe(true);
+                            const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                            (dropDownBtn.firstElementChild as HTMLElement).click();
+                            const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                            expect((alignDropDown.querySelector('ul').childNodes[2] as HTMLElement).classList.contains('e-active')).toBe(true);
+                            (alignDropDown.querySelector('.e-justify-left') as HTMLElement).click();
+                            imgEle = inputElement.querySelector('.e-rte-image.e-img-left');
+                            setCursorPoint(target, 0);
+                            target.dispatchEvent(MOUSEUP_EVENT);
+                            setTimeout(() => {
+                                const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                                const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                                (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                                const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                                expect((displayDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).classList.contains('e-active')).toBe(true);
+                                const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                                (dropDownBtn.firstElementChild as HTMLElement).click();
+                                const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                                expect((alignDropDown.querySelector('ul').childNodes[0] as HTMLElement).classList.contains('e-active')).toBe(true);
+                                done();
+                            }, 100);
+                        }, 100);
+                    }, 100);
+                }, 100);
+            });
+            it(' - Should check the active state in quick toolbar display dropdown buttons for wrap behavior', (done: DoneFn) => {
+                const inputElement: HTMLElement = editor.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                let imgEle: HTMLElement;
+                const target: HTMLElement = editor.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                    (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                    const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    expect((displayDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).classList.contains('e-active')).toBe(true);
+                    const wrapDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[5] as HTMLElement;
+                    (wrapDropDownBtn.firstElementChild as HTMLElement).click();
+                    const wrapDropDownPopup: Element = document.querySelectorAll('.e-dropdown-popup.e-popup-open')[1];
+                    (wrapDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).click();
+                    imgEle = inputElement.querySelector('.e-rte-image.e-img-left-wrap');
+                    setCursorPoint(target, 0);
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                        (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                        const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        expect((displayDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).classList.contains('e-active')).toBe(true);
+                        const wrapDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[5] as HTMLElement;
+                        (wrapDropDownBtn.firstElementChild as HTMLElement).click();
+                        const wrapDropDownPopup: Element = document.querySelectorAll('.e-dropdown-popup.e-popup-open')[1];
+                        (wrapDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).click();
+                        imgEle = inputElement.querySelector('.e-rte-image.e-img-right-wrap');
+                        setCursorPoint(target, 0);
+                        target.dispatchEvent(MOUSEUP_EVENT);
+                        setTimeout(() => {
+                            const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                            const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                            (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                            const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                            expect((displayDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).classList.contains('e-active')).toBe(true);
+                            done();
+                        }, 100);
+                    }, 100);
+                }, 100);
+            });
+        });
+
+        describe('988805: apply alignment and check styling', () => {
+            let editor: RichTextEditor;
+            beforeAll(() => {
+                editor = renderRTE({
+                    value: `<p>The Ri<img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 15%;" class="e-rte-image e-img-inline"/> ch Text Editor.</p>`
+                })
+            });
+            afterAll(() => {
+                destroy(editor);
+            });
+            it(' - Should check the styling in each alignment mode', (done: DoneFn) => {
+                const inputElement: HTMLElement = editor.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                let computedStyle: CSSStyleDeclaration;
+                let imgEle: HTMLElement;
+                const target: HTMLElement = editor.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                    (dropDownBtn.firstElementChild as HTMLElement).click();
+                    const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (alignDropDown.querySelector('.e-justify-center') as HTMLElement).click();
+                    imgEle = inputElement.querySelector('.e-rte-image.e-img-center');
+                    expect(!isNullOrUndefined(imgEle)).toBe(true);
+                    computedStyle = window.getComputedStyle(imgEle);
+                    expect(computedStyle.getPropertyValue('float')).toBe('none');
+                    setCursorPoint(target, 0);
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                        (dropDownBtn.firstElementChild as HTMLElement).click();
+                        const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        (alignDropDown.querySelector('.e-justify-right') as HTMLElement).click();
+                        imgEle = inputElement.querySelector('.e-rte-image.e-img-right');
+                        expect(!isNullOrUndefined(imgEle)).toBe(true);
+                        computedStyle = window.getComputedStyle(imgEle);
+                        expect(computedStyle.getPropertyValue('float')).toBe('none');
+                        setCursorPoint(target, 0);
+                        target.dispatchEvent(MOUSEUP_EVENT);
+                        setTimeout(() => {
+                            const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                            const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                            (dropDownBtn.firstElementChild as HTMLElement).click();
+                            const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                            (alignDropDown.querySelector('.e-justify-left') as HTMLElement).click();
+                            imgEle = inputElement.querySelector('.e-rte-image.e-img-left');
+                            expect(!isNullOrUndefined(imgEle)).toBe(true);
+                            computedStyle = window.getComputedStyle(imgEle);
+                            expect(computedStyle.getPropertyValue('float')).toBe('none');
+                            done();
+                        }, 100);
+                    }, 100);
+                }, 100);
+            });
+        });
+
+        describe('988805: apply alignment to a captioned image', () => {
+            let editor: RichTextEditor;
+            beforeAll(() => {
+                editor = renderRTE({
+                    value: `<p>The Ri<span class="e-img-caption-container e-img-break" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 15%;" class="e-rte-image"/><span class="e-img-caption-text" contenteditable="false">Caption</span></span></span> ch Text Editor.</p>`
+                })
+            });
+            afterAll(() => {
+                destroy(editor);
+            });
+            it(' - Should apply center and then right and then left to the captioned image', (done: DoneFn) => {
+                let inputElement: HTMLElement = editor.inputElement;
+                let imgEle: HTMLElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = editor.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                    (dropDownBtn.firstElementChild as HTMLElement).click();
+                    const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (alignDropDown.querySelector('.e-justify-center') as HTMLElement).click();
+                    imgEle = inputElement.querySelector('.e-img-center .e-rte-image');
+                    expect(!isNullOrUndefined(imgEle)).toBe(true);
+                    setCursorPoint(target, 0);
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                        (dropDownBtn.firstElementChild as HTMLElement).click();
+                        const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        (alignDropDown.querySelector('.e-justify-right') as HTMLElement).click();
+                        imgEle = inputElement.querySelector('.e-img-right .e-rte-image');
+                        expect(!isNullOrUndefined(imgEle)).toBe(true);
+                        setCursorPoint(target, 0);
+                        target.dispatchEvent(MOUSEUP_EVENT);
+                        setTimeout(() => {
+                            const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                            const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                            (dropDownBtn.firstElementChild as HTMLElement).click();
+                            const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                            (alignDropDown.querySelector('.e-justify-left') as HTMLElement).click();
+                            imgEle = inputElement.querySelector('.e-img-left .e-rte-image');
+                            expect(!isNullOrUndefined(imgEle)).toBe(true);
+                            done();
+                        }, 100);
+                    }, 100);
+                }, 100);
+            });
+        });
+
+        describe('970452: apply inline to image', () => {
+            let editor: RichTextEditor;
+            beforeEach(() => {
+                editor = renderRTE({
+                    value: `<h1>Welcome to the Syncfusion Rich Text Editor</h1>
+                    <p>The Rich Text Editor, a WYSIWYG (what you see is what you get) editor, is a user inter<img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 15%" class="e-rte-image e-img-inline"/> face that allows you to create, edit, and format rich text content. You can try out a demo of this editor here.</p>`
+                });
+            });
+            afterEach(() => {
+                destroy(editor);
+            });
+            it(' - should apply image inline class to image element when inline is applied', (done: DoneFn) => {
+                const inputElement: HTMLElement = editor.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = editor.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                    (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                    const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (displayDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).click();
+                    expect(!isNullOrUndefined(inputElement.querySelector('.e-rte-image.e-img-inline'))).toBe(true);
+                    done();
+                }, 100);
+            });
+        });
+
+        describe('970452: apply break to image', () => {
+            let editor: RichTextEditor;
+            beforeEach(() => {
+                editor = renderRTE({
+                    value: `<h1>Welcome to the Syncfusion Rich Text Editor</h1>
+                    <p>The Rich Text Editor, a WYSIWYG (what you see is what you get) editor, is a user inter<img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 15%" class="e-rte-image e-img-break"/> face that allows you to create, edit, and format rich text content. You can try out a demo of this editor here.</p>`
+                });
+            });
+            afterEach(() => {
+                destroy(editor);
+            });
+            it(' - should apply image break class to image element when break is applied', (done: DoneFn) => {
+                const inputElement: HTMLElement = editor.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = editor.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                    (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                    const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (displayDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).click();
+                    expect(!isNullOrUndefined(inputElement.querySelector('.e-rte-image.e-img-break'))).toBe(true);
+                    done();
+                }, 100);
+            });
+            it(' - should apply image break to image element when break is applied to captioned image', (done: DoneFn) => {
+                const inputElement: HTMLElement = editor.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                let imgEle: HTMLElement;
+                const target: HTMLElement = editor.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    (document.querySelectorAll('.e-image-quicktoolbar .e-toolbar-item')[1] as HTMLElement).click();
+                    setCursorPoint(target, 0);
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                        (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                        const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        (displayDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).click();
+                        expect(!isNullOrUndefined(inputElement.querySelector('.e-img-break .e-rte-image'))).toBe(true);
+                        done();
+                    }, 100);
+                }, 100);
+            });
+        });
+
+        describe('970452: left and right wrap apply to images in different modes', () => {
+            let editor: RichTextEditor;
+            beforeEach(() => {
+                editor = renderRTE({
+                    value: `<h1>Welcome to the Syncfusion Rich Text Editor</h1>
+                    <p>The Rich Text Editor, a WYSIWYG (what you see is what you get) editor, is a user inter<img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 15%" class="e-rte-image e-img-inline"/> face that allows you to create, edit, and format rich text content. You can try out a demo of this editor here.</p>
+                    <h2>Welcome to the Syncfusion Rich Text Editor</h2>`
+                });
+            });
+            afterEach(() => {
+                destroy(editor);
+            });
+            it(' - Should apply image left wrap class to image element when left wrap is applied and should check e-active state in quick toolbar dropdown', (done: DoneFn) => {
+                const inputElement: HTMLElement = editor.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                let computedStyle: CSSStyleDeclaration;
+                let imgEle: HTMLElement;
+                const target: HTMLElement = editor.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const wrapDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[5] as HTMLElement;
+                    (wrapDropDownBtn.firstElementChild as HTMLElement).click();
+                    const wrapDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (wrapDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).click();
+                    imgEle = inputElement.querySelector('.e-rte-image.e-img-left-wrap');
+                    expect(!isNullOrUndefined(imgEle)).toBe(true);
+                    setCursorPoint(target, 0);
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const wrapDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[5] as HTMLElement;
+                        (wrapDropDownBtn.firstElementChild as HTMLElement).click();
+                        const wrapDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        expect((wrapDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).classList.contains('e-active')).toBe(true);
+                        done();
+                    }, 100);
+                }, 100);
+            });
+            it(' - Should apply image right wrap class to image element when right wrap is applied and should check e-active state in quick toolbar dropdown', (done: DoneFn) => {
+                const inputElement: HTMLElement = editor.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                let computedStyle: CSSStyleDeclaration;
+                let imgEle: HTMLElement;
+                const target: HTMLElement = editor.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const wrapDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[5] as HTMLElement;
+                    (wrapDropDownBtn.firstElementChild as HTMLElement).click();
+                    const wrapDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (wrapDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).click();
+                    imgEle = inputElement.querySelector('.e-rte-image.e-img-right-wrap');
+                    expect(!isNullOrUndefined(imgEle)).toBe(true);
+                    setCursorPoint(target, 0);
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const wrapDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[5] as HTMLElement;
+                        (wrapDropDownBtn.firstElementChild as HTMLElement).click();
+                        const wrapDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        expect((wrapDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).classList.contains('e-active')).toBe(true);
+                        done();
+                    }, 100);
+                }, 100);
+            });
+            it(' - Should apply image left wrap class to image element when left wrap is applied to break applied image', (done: DoneFn) => {
+                const inputElement: HTMLElement = editor.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                let computedStyle: CSSStyleDeclaration;
+                let imgEle: HTMLElement;
+                const target: HTMLElement = editor.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                    (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                    const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (displayDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).click();
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const wrapDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[5] as HTMLElement;
+                        (wrapDropDownBtn.firstElementChild as HTMLElement).click();
+                        const wrapDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        (wrapDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).click();
+                        imgEle = inputElement.querySelector('.e-rte-image.e-img-left-wrap');
+                        expect(!isNullOrUndefined(imgEle)).toBe(true);
+                        done();
+                    }, 100);
+                }, 100);
+            });
+            it(' - Should apply image right wrap class to image element when right wrap is applied to break applied image', (done: DoneFn) => {
+                const inputElement: HTMLElement = editor.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                let computedStyle: CSSStyleDeclaration;
+                let imgEle: HTMLElement;
+                const target: HTMLElement = editor.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                    (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                    const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (displayDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).click();
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const wrapDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[5] as HTMLElement;
+                        (wrapDropDownBtn.firstElementChild as HTMLElement).click();
+                        const wrapDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        (wrapDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).click();
+                        imgEle = inputElement.querySelector('.e-rte-image.e-img-right-wrap');
+                        expect(!isNullOrUndefined(imgEle)).toBe(true);
+                        done();
+                    }, 100);
+                }, 100);
+            });
+            it(' - Should apply image left wrap class to image element when left wrap is applied to caption applied image', (done: DoneFn) => {
+                const inputElement: HTMLElement = editor.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                let computedStyle: CSSStyleDeclaration;
+                let imgEle: HTMLElement;
+                const target: HTMLElement = editor.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const captionBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[1] as HTMLElement;
+                    captionBtn.click();
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const wrapDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[5] as HTMLElement;
+                        (wrapDropDownBtn.firstElementChild as HTMLElement).click();
+                        const wrapDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        (wrapDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).click();
+                        expect(!isNullOrUndefined(inputElement.querySelector('.e-img-caption-container.e-img-break'))).toBe(false);
+                        imgEle = inputElement.querySelector('.e-img-left-wrap .e-rte-image');
+                        expect(!isNullOrUndefined(imgEle)).toBe(true);
+                        done();
+                    }, 100);
+                }, 100);
+            });
+            it(' - Should apply image right wrap class to image element when right wrap is applied to caption applied image', (done: DoneFn) => {
+                const inputElement: HTMLElement = editor.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                let computedStyle: CSSStyleDeclaration;
+                let imgEle: HTMLElement;
+                const target: HTMLElement = editor.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const captionBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[1] as HTMLElement;
+                    captionBtn.click();
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const wrapDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[5] as HTMLElement;
+                        (wrapDropDownBtn.firstElementChild as HTMLElement).click();
+                        const wrapDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        (wrapDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).click();
+                        expect(!isNullOrUndefined(inputElement.querySelector('.e-img-caption-container.e-img-break'))).toBe(false);
+                        imgEle = inputElement.querySelector('.e-img-right-wrap .e-rte-image');
+                        expect(!isNullOrUndefined(imgEle)).toBe(true);
+                        done();
+                    }, 100);
+                }, 100);
+            });
+            it(" - Should apply image left wrap class to image element when left wrap is applied to left aligned image", (done: DoneFn) => {
+                let inputElement: HTMLElement = editor.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                let imgEle: HTMLElement;
+                const target: HTMLElement = editor.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                    (dropDownBtn.firstElementChild as HTMLElement).click();
+                    const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (alignDropDown.querySelector('.e-justify-left') as HTMLElement).click();
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const wrapDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[5] as HTMLElement;
+                        (wrapDropDownBtn.firstElementChild as HTMLElement).click();
+                        const wrapDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        (wrapDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).click();
+                        expect(!isNullOrUndefined(inputElement.querySelector('.e-img-caption-container.e-img-break'))).toBe(false);
+                        imgEle = inputElement.querySelector('.e-rte-image.e-img-left-wrap');
+                        expect(!isNullOrUndefined(imgEle)).toBe(true);
+                        done();
+                    }, 100);
+                }, 100);
+            });
+            it(" - Should apply image right wrap class to image element when right wrap is applied to right aligned image", (done: DoneFn) => {
+                let inputElement: HTMLElement = editor.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                let imgEle: HTMLElement;
+                const target: HTMLElement = editor.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                    (dropDownBtn.firstElementChild as HTMLElement).click();
+                    const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (alignDropDown.querySelector('.e-justify-right') as HTMLElement).click();
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const wrapDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[5] as HTMLElement;
+                        (wrapDropDownBtn.firstElementChild as HTMLElement).click();
+                        const wrapDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        (wrapDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).click();
+                        expect(!isNullOrUndefined(inputElement.querySelector('.e-img-caption-container.e-img-break'))).toBe(false);
+                        imgEle = inputElement.querySelector('.e-rte-image.e-img-right-wrap');
+                        expect(!isNullOrUndefined(imgEle)).toBe(true);
+                        expect((imgEle.parentElement.nextElementSibling as HTMLElement).style.clear === '').toBe(true);
+                        done();
+                    }, 100);
+                }, 100);
+            });
+            it(" - should apply image inline class to image element when inline is applied to left wrapped image", (done: DoneFn) => {
+                let inputElement: HTMLElement = editor.inputElement;
+                let imgEle: HTMLElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = editor.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const wrapDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[5] as HTMLElement;
+                    (wrapDropDownBtn.firstElementChild as HTMLElement).click();
+                    const wrapDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (wrapDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).click();
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                        (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                        const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        (displayDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).click();
+                        expect(!isNullOrUndefined(inputElement.querySelector('.e-rte-image.e-img-left-wrap'))).toBe(false);
+                        expect(!isNullOrUndefined(inputElement.querySelector('.e-rte-image.e-img-inline'))).toBe(true);
+                        done();
+                    }, 100);
+                }, 100);
+            });
+            it(" - should apply image inline class to image element when inline is applied to right wrapped image", (done: DoneFn) => {
+                let inputElement: HTMLElement = editor.inputElement;
+                let imgEle: HTMLElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = editor.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const wrapDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[5] as HTMLElement;
+                    (wrapDropDownBtn.firstElementChild as HTMLElement).click();
+                    const wrapDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (wrapDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).click();
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                        (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                        const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        (displayDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).click();
+                        expect(!isNullOrUndefined(inputElement.querySelector('.e-rte-image.e-img-right-wrap'))).toBe(false);
+                        expect(!isNullOrUndefined(inputElement.querySelector('.e-rte-image.e-img-inline'))).toBe(true);
+                        done();
+                    }, 100);
+                }, 100);
+            });
+        });
+
+        describe('Alignment, Caption and Wrap apply use case inside Iframe', () => {
+            describe('988805: In Iframe - caption apply to image and restore caption use cases', () => {
+                let rteObj: RichTextEditor;
+                beforeEach(() => {
+                    rteObj = renderRTE({
+                        value: `<h1>Welcome to the Syncfusion Rich Text Editor</h1>
+                        <p>The Rich Text Editor, a WYSIWYG (what you see is what you get) editor, is a user inter<img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 15%" class="e-rte-image e-img-inline"/> face that allows you to create, edit, and format rich text content. You can try out a demo of this editor here.</p>`,
+                        iframeSettings: {
+                            enable: true
+                        }
+                    });
+                });
+                afterEach(() => {
+                    destroy(rteObj);
+                });
+                it(" - Should apply the image caption and inline image.", (done: DoneFn) => {
+                    let iframeBody: HTMLElement = (document.querySelector('iframe') as HTMLIFrameElement).contentWindow.document.body as HTMLElement;
+                    iframeBody.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                    let computedStyle: CSSStyleDeclaration;
+                    const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                    setCursorPoint(target, 0);
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        (document.querySelectorAll('.e-image-quicktoolbar .e-toolbar-item')[1] as HTMLElement).click();
+                        expect(!isNullOrUndefined(iframeBody.querySelector('.e-img-caption-container.e-img-inline'))).toBe(true);
+                        done();
+                    }, 100);
+                });
+                it(" - should check old caption content si restored afetr the captioned image is reverted and again applied", (done: DoneFn) => {
+                    let iframeBody: HTMLElement = (document.querySelector('iframe') as HTMLIFrameElement).contentWindow.document.body as HTMLElement;
+                    iframeBody.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                    let computedStyle: CSSStyleDeclaration;
+                    const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                    setCursorPoint(target, 0);
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const captionBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[1] as HTMLElement;
+                        captionBtn.click();
+                        expect(!isNullOrUndefined(iframeBody.querySelector('.e-img-caption-container.e-img-inline'))).toBe(true);
+                        expect(!isNullOrUndefined(iframeBody.querySelector('.e-img-caption-text'))).toBe(true);
+                        expect(iframeBody.querySelector('.e-img-caption-text').textContent === 'Caption').toBe(true);
+                        iframeBody.querySelector('.e-img-caption-text').textContent = 'Updated Caption';
+                        target.dispatchEvent(MOUSEUP_EVENT);
+                        setTimeout(() => {
+                            const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                            const captionBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[1] as HTMLElement;
+                            captionBtn.click();
+                            target.dispatchEvent(MOUSEUP_EVENT);
+                            setTimeout(() => {
+                                const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                                const captionBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[1] as HTMLElement;
+                                captionBtn.click();
+                                expect(!isNullOrUndefined(iframeBody.querySelector('.e-img-caption-container.e-img-inline'))).toBe(true);
+                                expect(!isNullOrUndefined(iframeBody.querySelector('.e-img-caption-text'))).toBe(true);
+                                expect(iframeBody.querySelector('.e-img-caption-text').textContent === 'Updated Caption').toBe(true);
+                                done();
+                            }, 100);
+                        }, 100);
+                    }, 100);
+                });
+            });
+
+            // Will resolve when the editor manager caption changes are reverted
+            // describe('970452: In Iframe - left and right wrap apply to images', () => {
+            //     let editor: RichTextEditor;
+            //     beforeEach(() => {
+            //         editor = renderRTE({
+            //             value: `<h1>Welcome to the Syncfusion Rich Text Editor</h1>
+            //             <p>The Rich Text Editor, a WYSIWYG (what you see is what you get) editor, is a user inter<img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 15%" class="e-rte-image e-img-inline"/> face that allows you to create, edit, and format rich text content. You can try out a demo of this editor here.</p>`,
+            //             iframeSettings: {
+            //                 enable: true
+            //             }
+            //         });
+            //     });
+            //     afterEach(() => {
+            //         destroy(editor);
+            //     });
+            //     it(' - Should check image left wrap class applied to image and check e-active state in quick toolbar and check styling', (done: DoneFn) => {
+            //         let iframeBody: HTMLElement = (document.querySelector('iframe') as HTMLIFrameElement).contentWindow.document.body as HTMLElement;
+            //         iframeBody.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+            //         let computedStyle: CSSStyleDeclaration;
+            //         let imgEle: HTMLElement;
+            //         const target: HTMLElement = iframeBody.querySelector('img');
+            //         setCursorPoint(target, 0);
+            //         target.dispatchEvent(MOUSEUP_EVENT);
+            //         setTimeout(() => {
+            //             const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+            //             const wrapDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[5] as HTMLElement;
+            //             (wrapDropDownBtn.firstElementChild as HTMLElement).click();
+            //             const wrapDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+            //             (wrapDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).click();
+            //             imgEle = iframeBody.querySelector('.e-rte-image.e-img-left-wrap');
+            //             expect(!isNullOrUndefined(imgEle)).toBe(true);
+            //             computedStyle = window.getComputedStyle(imgEle);
+            //             expect(computedStyle.getPropertyValue('float')).toBe('left');
+            //             setCursorPoint(target, 0);
+            //             target.dispatchEvent(MOUSEUP_EVENT);
+            //             setTimeout(() => {
+            //                 const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+            //                 const wrapDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[5] as HTMLElement;
+            //                 (wrapDropDownBtn.firstElementChild as HTMLElement).click();
+            //                 const wrapDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+            //                 expect((wrapDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).classList.contains('e-active')).toBe(true);
+            //                 done();
+            //             }, 100);
+            //         }, 100);
+            //     });
+            //     it(' - Should check image right wrap class applied to image and check e-active state in quick toolbar and check styling', (done: DoneFn) => {
+            //         let iframeBody: HTMLElement = (document.querySelector('iframe') as HTMLIFrameElement).contentWindow.document.body as HTMLElement;
+            //         iframeBody.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+            //         let computedStyle: CSSStyleDeclaration;
+            //         let imgEle: HTMLElement;
+            //         const target: HTMLElement = iframeBody.querySelector('img');
+            //         setCursorPoint(target, 0);
+            //         target.dispatchEvent(MOUSEUP_EVENT);
+            //         setTimeout(() => {
+            //             const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+            //             const wrapDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[5] as HTMLElement;
+            //             (wrapDropDownBtn.firstElementChild as HTMLElement).click();
+            //             const wrapDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+            //             (wrapDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).click();
+            //             imgEle = iframeBody.querySelector('.e-rte-image.e-img-right-wrap');
+            //             expect(!isNullOrUndefined(imgEle)).toBe(true);
+            //             computedStyle = window.getComputedStyle(imgEle);
+            //             expect(computedStyle.getPropertyValue('float')).toBe('right');
+            //             setCursorPoint(target, 0);
+            //             target.dispatchEvent(MOUSEUP_EVENT);
+            //             setTimeout(() => {
+            //                 const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+            //                 const wrapDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[5] as HTMLElement;
+            //                 (wrapDropDownBtn.firstElementChild as HTMLElement).click();
+            //                 const wrapDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+            //                 expect((wrapDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).classList.contains('e-active')).toBe(true);
+            //                 done();
+            //             }, 100);
+            //         }, 100);
+            //     });
+            // });
+        });
+
+        describe('970452: Insert new image and check caption restore', function () {
+            let rteObj: RichTextEditor;
+            let controlId: string;
+            beforeAll(() => {
+                rteObj = renderRTE({
+                    enableAutoUrl: true,
+                    toolbarSettings: {
+                        items: ['Image']
+                    }
+                });
+                controlId = rteObj.element.id;
+            });
+            afterAll(() => {
+                destroy(rteObj);
+            });
+            it("- should check old caption is restored when newly inserted image caption is reverted and again applied", (done: DoneFn) => {
+                let inputElement: HTMLElement = rteObj.inputElement;
+                let item: HTMLElement = rteObj.element.querySelector('#' + controlId + '_toolbar_Image');
+                item.click();
+                setTimeout(() => {
+                    let dialogEle: any = document.querySelector('.e-dialog');
+                    (dialogEle.querySelector('.e-img-url') as HTMLInputElement).value = 'https://js.syncfusion.com/demos/web/content/images/accordion/baked-chicken-and-cheese.png';
+                    (dialogEle.querySelector('.e-img-url') as HTMLInputElement).dispatchEvent(new Event("input"));
+                    expect(rteObj.element.lastElementChild.classList.contains('e-dialog')).toBe(true);
+                    (document.querySelector('.e-insertImage.e-primary') as HTMLElement).click();
+                    let trg = (document.querySelector('.e-rte-image') as HTMLElement);
+                    expect(!isNullOrUndefined(trg)).toBe(true);
+                    expect(document.querySelectorAll('img').length).toBe(1);
+                    const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                    setCursorPoint(target, 0);
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const captionBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[1] as HTMLElement;
+                        captionBtn.click();
+                        inputElement.querySelector('.e-img-caption-text').textContent = 'Updated Caption';
+                        target.dispatchEvent(MOUSEUP_EVENT);
+                        setTimeout(() => {
+                            const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                            const captionBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[1] as HTMLElement;
+                            captionBtn.click();
+                            target.dispatchEvent(MOUSEUP_EVENT);
+                            setTimeout(() => {
+                                const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                                const captionBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[1] as HTMLElement;
+                                captionBtn.click();
+                                expect(inputElement.querySelector('.e-img-caption-text').textContent === 'Updated Caption').toBe(true);
+                                done();
+                            }, 100);
+                        }, 100);
+                    }, 100);
+                }, 100);
+            });
+        });
+
+        describe('970452: Apply left wrap to an image inside ancher tag', () => {
+            let rteEle: HTMLElement;
+            let rteObj: RichTextEditor;
+            let innerHTML1: string = `
+                <p>testing&nbsp;<span class="e-img-caption-container e-img-break" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap"><a href="http://www.google.com" contenteditable="true" target="_blank"><img src='https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png' style="width:20%;" class="e-rte-image"/></a><span class="e-img-caption-text" contenteditable="true">Caption</span></span></span></p>
+                `;
+            beforeAll(() => {
+                rteObj = renderRTE({
+                    height: 400,
+                    toolbarSettings: {
+                        items: ['Image', 'Bold']
+                    },
+                    value: innerHTML1,
+                    insertImageSettings: { resize: true, minHeight: 80, minWidth: 80 }
+                });
+                rteEle = rteObj.element;
+            });
+            afterAll(() => {
+                destroy(rteObj);
+            });
+            it(' - should apply image left wrap class to image inside anchor tag', (done: Function) => {
+                let inputElement: HTMLElement = rteObj.inputElement;
+                let imgEle: HTMLElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(function () {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const wrapDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[5] as HTMLElement;
+                    (wrapDropDownBtn.firstElementChild as HTMLElement).click();
+                    const wrapDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (wrapDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).click();
+                    imgEle = inputElement.querySelector('.e-img-left-wrap .e-rte-image');
+                    expect(!isNullOrUndefined(imgEle)).toBe(true);
+                    done();
+                }, 100);
+            });
+            it('should apply image right wrap class to image inside anchor tag', (done: Function) => {
+                let inputElement: HTMLElement = rteObj.inputElement;
+                let imgEle: HTMLElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(function () {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const wrapDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[5] as HTMLElement;
+                    (wrapDropDownBtn.firstElementChild as HTMLElement).click();
+                    const wrapDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (wrapDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).click();
+                    imgEle = inputElement.querySelector('.e-img-right-wrap .e-rte-image');
+                    expect(!isNullOrUndefined(imgEle)).toBe(true);
+                    done();
+                }, 100);
+            });
+        });
+    });
+
      describe('Should maintain cursor position when image caption is applied before setting dimensions', () => {
-        let innerHTML: string = `<h1>Welcome to the Syncfusion Rich Text Editor</h1><p>The Rich Text Editor, a WYSIWYG (what you see is what you get) editor, is a user interface that allows you to create, edit, and format rich text content. You can try out a demo of this editor here.</p><p><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 50%" class="e-rte-image e-imginline" /></p>`;
+        let innerHTML: string = `<h1>Welcome to the Syncfusion Rich Text Editor</h1><p>The Rich Text Editor, a WYSIWYG (what you see is what you get) editor, is a user interface that allows you to create, edit, and format rich text content. You can try out a demo of this editor here.</p><p><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 50%" class="e-rte-image e-img-inline" /></p>`;
         let editor: RichTextEditor;
         beforeAll((done: Function) => {
             editor = renderRTE({
@@ -6139,7 +7177,7 @@ client side. Customer easy to edit the contents and get the HTML content for
                     <h2>Elevating Your Content with Images</h2>
                     <p>Images can be added to the<p>Images can be added to the editor by pasting or dragging into the editing area, using the toolbar to insert one as a URL, or uploading directly from the File Browser. Easily manage your images on the server by configuring the <a class="e-rte-anchor" href="https://ej2.syncfusion.com/documentation/api/rich-text-editor/#insertimagesettings" title="Insert Image Settings API" aria-label="Open in new window">insertImageSettings</a> to upload, save, or remove them. </p> editor by pasting or dragging into the editing area, using the toolbar to insert one as a URL, or uploading directly from the File Browser. Easily manage your images on the server by configuring the <a class="e-rte-anchor" href="https://ej2.syncfusion.com/documentation/api/rich-text-editor/#insertimagesettings" title="Insert Image Settings API" aria-label="Open in new window">insertImageSettings</a> to upload, save, or remove them. </p>
                     <p>The Editor can integrate with the Syncfusion Image Editor to crop, rotate, annotate, and apply filters to images. Check out the demos <a class="e-rte-anchor" href="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/image-editor-integration.html" title="Image Editor Demo" aria-label="Open in new window">here</a>.</p>
-                    <p><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 440px" class="e-rte-image e-imginline" /></p>`
+                    <p><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 440px" class="e-rte-image e-img-inline" /></p>`
                 ,
                 toolbarSettings: {
                     items: ['Image']
@@ -6162,30 +7200,6 @@ client side. Customer easy to edit the contents and get the HTML content for
         });
     });
 
-    describe('Bug 1004008: After resize start Video resize gripper elements position is not refreshed after mouse move.', () => {
-        let rteObj: RichTextEditor;
-        beforeAll(() => {
-            rteObj = renderRTE({
-                value: `<p><img src="blob:http://127.0.0.1:5501/54255cf7-3095-4c27-b350-bdbcd8ad1e1e" class="e-rte-image e-imginline" alt="Sample" width="362" height="362" style="min-width: 0px; max-width: 1193px; min-height: 0px;"/></p>`
-                ,
-                toolbarSettings: {
-                    items: ['Image']
-                }
-            });
-        });
-        afterAll(() => {
-            destroy(rteObj);
-        });
-        it(('checking resize bar in Image'), (done: Function) => {
-            let imgElem: HTMLElement = rteObj.inputElement.querySelector('.e-rte-image');
-            clickImage(imgElem as HTMLImageElement);
-            setTimeout(() => {
-                expect(rteObj.inputElement.querySelectorAll('.e-resize').length).toBe(1);
-                done();
-            }, 100);
-        });
-    });
-
     describe('986631: Image in checklist causing resize icon misalignment', () => {
         let rteObj: RichTextEditor;
         beforeEach(() => {
@@ -6196,7 +7210,7 @@ client side. Customer easy to edit the contents and get the HTML content for
 <ul class="e-rte-checklist">
    <li>Basic features include headings, block quotes, numbered lists, bullet lists, and support to insert images, tables, audio, and video.</li>
    <li>Inline styles include <b>bold</b>, <em>italic</em>, <span style="text-decoration: underline">underline</span>, <span style="text-decoration: line-through">strikethrough</span>, <a class="e-rte-anchor" href="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/tools.html" title="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/tools.html" aria-label="Open in new window">hyperlinks</a>, 😀 and more.</li>
-   <li>The toolbar has multi-row, expandable, <img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 15%;" class="e-rte-image e-imginline"/> and scrollable modes. The Editor supports an inline toolbar, a floating toolbar, and custom toolbar items.</li>
+   <li>The toolbar has multi-row, expandable, <img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 15%;" class="e-rte-image e-img-inline"/> and scrollable modes. The Editor supports an inline toolbar, a floating toolbar, and custom toolbar items.</li>
    <li>Integration with Syncfusion Mention control lets users tag other users. To learn more, check out the <a class="e-rte-anchor" href="https://ej2.syncfusion.com/documentation/rich-text-editor/mention-integration" title="Mention Documentation" aria-label="Open in new window">documentation</a> and <a class="e-rte-anchor" href="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/mention-integration.html" title="Mention Demos" aria-label="Open in new window">demos</a>.</li>
    <li><b>Paste from MS Word</b> - helps to reduce the effort while converting the Microsoft Word content to HTML format with format and styles. To learn more, check out the documentation <a class="e-rte-anchor" href="https://ej2.syncfusion.com/documentation/rich-text-editor/paste-cleanup" title="Paste from MS Word Documentation" aria-label="Open in new window">here</a>.</li>
    <li>Other features: placeholder text, character count, form validation, enter key configuration, resizable editor, IFrame rendering, tooltip, source code view, RTL mode, persistence, HTML Sanitizer, autosave, and <a class="e-rte-anchor" href="https://ej2.syncfusion.com/documentation/api/rich-text-editor/" title="Rich Text Editor API" aria-label="Open in new window">more</a>.</li>
@@ -6334,4 +7348,1706 @@ client side. Customer easy to edit the contents and get the HTML content for
         });
     });
 
+    describe('1001154: Multi‑Image Paste Support in Rich Text Editor', () => {
+        describe('Paste multiple images at cursor position', () => {
+            let editor: RichTextEditor;
+            beforeAll(() => {
+                editor = renderRTE({
+                    value: `<p>This is a text content.</p>`
+                });
+            });
+            afterAll(() => {
+                destroy(editor);
+            });
+            it('Should insert multiple images at the cursor position', (done: DoneFn) => {
+                editor.focusIn();
+                const p: HTMLElement = editor.inputElement.querySelector('p');
+                const textNode: Text = p.firstChild as Text;
+                setCursorPoint(textNode, 2);
+                const clipboardData: DataTransfer = new DataTransfer();
+                const file1: File = getImageUniqueFIle();
+                const file2: File = getImageUniqueFIle();
+                clipboardData.items.add(file1);
+                clipboardData.items.add(file2);
+                const pasteEvent: ClipboardEvent = new ClipboardEvent('paste', {
+                    clipboardData: clipboardData,
+                    bubbles: true,
+                    cancelable: true
+                } as ClipboardEventInit);
+                editor.inputElement.dispatchEvent(pasteEvent);
+                setTimeout(() => {
+                    const imgs: NodeListOf<HTMLImageElement> = editor.inputElement.querySelectorAll('img');
+                    expect(imgs.length).toBe(2);
+                    done();
+                }, 200);
+            });
+        });
+        describe('Paste multiple images over selection', () => {
+            let editor: RichTextEditor;
+            beforeAll(() => {
+                editor = renderRTE({
+                    value: `<p>This is a text content.</p>`
+                });
+            });
+            afterAll(() => {
+                destroy(editor);
+            });
+            it('Should replace the selection with multiple images', (done: DoneFn) => {
+                editor.focusIn();
+                const p: HTMLElement = editor.inputElement.querySelector('p');
+                const textNode: Text = p.firstChild as Text;
+                editor.formatter.editorManager.nodeSelection.setSelectionText(editor.contentModule.getDocument(), textNode, textNode, 5, 9);
+                const clipboardData: DataTransfer = new DataTransfer();
+                const file1: File = getImageUniqueFIle();
+                const file2: File = getImageUniqueFIle();
+                clipboardData.items.add(file1);
+                clipboardData.items.add(file2);
+                const pasteEvent: ClipboardEvent = new ClipboardEvent('paste', {
+                    clipboardData: clipboardData,
+                    bubbles: true,
+                    cancelable: true
+                } as ClipboardEventInit);
+                editor.inputElement.dispatchEvent(pasteEvent);
+
+                setTimeout(() => {
+                    const imgs: NodeListOf<HTMLImageElement> = editor.inputElement.querySelectorAll('img');
+                    expect(imgs.length).toBe(2);
+                    done();
+                }, 200);
+            });
+        });
+        describe('Multi‑Image paste with PasteCleanup prompt enabled', () => {
+            let editor: RichTextEditor;
+            beforeAll(() => {
+                editor = renderRTE({
+                    pasteCleanupSettings: {
+                        prompt: true,
+                    },
+                    value: '<p>Sample content</p>'
+                });
+            });
+            afterAll(() => {
+                destroy(editor);
+            });
+
+            it('Should insert multiple images at the cursor position and place cursor after the last image', (done: DoneFn) => {
+                editor.focusIn();
+                const p: HTMLElement = editor.inputElement.querySelector('p');
+                const textNode: Text = p.firstChild as Text;
+                setCursorPoint(textNode, 6);
+                const clipboardData: DataTransfer = new DataTransfer();
+                const file1: File = getImageUniqueFIle();
+                const file2: File = getImageUniqueFIle();
+                clipboardData.items.add(file1);
+                clipboardData.items.add(file2);
+                const pasteEvent: ClipboardEvent = new ClipboardEvent('paste', {
+                    clipboardData: clipboardData,
+                    bubbles: true,
+                    cancelable: true
+                } as ClipboardEventInit);
+                editor.inputElement.dispatchEvent(pasteEvent);
+                setTimeout(() => {
+                    if (editor.pasteCleanupSettings.prompt) {
+                        let keepFormat: any = document.getElementById(editor.getID() + '_pasteCleanupDialog').getElementsByClassName('e-rte-keepformat');
+                        keepFormat[0].click();
+                        let pasteOK: any = document.getElementById(editor.getID() + '_pasteCleanupDialog').getElementsByClassName('e-rte-pasteok');
+                        pasteOK[0].click();
+                    }
+                    const imgs: NodeListOf<HTMLImageElement> = editor.inputElement.querySelectorAll('img');
+                    expect(imgs.length).toBe(2);
+                    done();
+                }, 200);
+            });
+
+            it('Should replace selection with multiple images when pasting over a selection', (done: DoneFn) => {
+                editor.value = '<p>This is a text content.</p>';
+                editor.dataBind();
+                editor.focusIn();
+                const p: HTMLElement = editor.inputElement.querySelector('p');
+                const textNode: Text = p.firstChild as Text;
+                editor.formatter.editorManager.nodeSelection.setSelectionText(
+                    editor.contentModule.getDocument(),
+                    textNode, textNode, 10, 14
+                );
+                const clipboardData: DataTransfer = new DataTransfer();
+                const file1: File = getImageUniqueFIle();
+                const file2: File = getImageUniqueFIle();
+                clipboardData.items.add(file1);
+                clipboardData.items.add(file2);
+                const pasteEvent: ClipboardEvent = new ClipboardEvent('paste', {
+                    clipboardData: clipboardData,
+                    bubbles: true,
+                    cancelable: true
+                } as ClipboardEventInit);
+                editor.inputElement.dispatchEvent(pasteEvent);
+                setTimeout(() => {
+                    if (editor.pasteCleanupSettings.prompt) {
+                        let keepFormat: any = document.getElementById(editor.getID() + '_pasteCleanupDialog').getElementsByClassName('e-rte-keepformat');
+                        keepFormat[0].click();
+                        let pasteOK: any = document.getElementById(editor.getID() + '_pasteCleanupDialog').getElementsByClassName('e-rte-pasteok');
+                        pasteOK[0].click();
+                    }
+                    const imgs: NodeListOf<HTMLImageElement> = editor.inputElement.querySelectorAll('img');
+                    expect(imgs.length).toBe(2);
+                    done();
+                }, 200);
+            });
+        });
+        describe('Drag and Drop - Multiple Images', () => {
+            let editor: RichTextEditor;
+            beforeAll(() => {
+                editor = renderRTE({
+                    value: '<p>Drop here</p>'
+                });
+            });
+            afterAll(() => {
+                destroy(editor);
+            });
+
+            it('Should insert multiple images when dropping more than one file', (done: DoneFn) => {
+                const file1: File = getImageUniqueFIle();
+                const file2: File = getImageUniqueFIle();
+                const dataTransfer: DataTransfer = new DataTransfer();
+                dataTransfer.items.add(file1);
+                dataTransfer.items.add(file2);
+                const eventInit: DragEventInit = {
+                    dataTransfer: dataTransfer,
+                    bubbles: true,
+                    clientX: 40,
+                    clientY: 294,
+                };
+                const dropEvent: DragEvent = new DragEvent('drop', eventInit);
+                editor.inputElement.querySelector('p').dispatchEvent(dropEvent);
+                setTimeout(() => {
+                    const imgs: NodeListOf<HTMLImageElement> = editor.inputElement.querySelectorAll('img');
+                    expect(imgs.length).toBe(2);
+                    done();
+                }, 200);
+            });
+        });
+        describe('Multiple images drag and drop - QuickToolbar Event', () => {
+            let editor: RichTextEditor;
+            let beforeQuickToolbarOpenCount: number = 0;
+            let quickToolbarOpenCount: number = 0;
+            beforeAll(() => {
+                editor = renderRTE({
+                    value: '<p>Drop images here</p>',
+                    beforeQuickToolbarOpen: () => { beforeQuickToolbarOpenCount++; },
+                    quickToolbarOpen: () => { quickToolbarOpenCount++; },
+                });
+            });
+            afterAll(() => {
+                destroy(editor);
+            });
+            it('Should trigger quick toolbar open events only once for multiple dropped images', (done: DoneFn) => {
+                editor.focusIn();
+                const file1 = getImageUniqueFIle();
+                const file2 = getImageUniqueFIle();
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file1);
+                dataTransfer.items.add(file2);
+                const editPanel = editor.contentModule.getEditPanel() as HTMLElement;
+                const rect = editPanel.getBoundingClientRect();
+                const clientX = Math.round(rect.left + rect.width * 0.5);
+                const clientY = Math.round(rect.top + rect.height * 0.5);
+                const dropEvent = new DragEvent('drop', {
+                    bubbles: true,
+                    cancelable: true,
+                    dataTransfer,
+                    clientX,
+                    clientY,
+                    screenX: clientX + window.screenX,
+                    screenY: clientY + window.screenY
+                });
+                editPanel.dispatchEvent(dropEvent);
+                setTimeout(() => {
+                    const imgs: NodeListOf<HTMLImageElement> = editor.inputElement.querySelectorAll('img');
+                    expect(imgs.length).toBeGreaterThanOrEqual(2);
+                    const qtpops: NodeListOf<Element> = document.querySelectorAll('.e-rte-quick-popup');
+                    expect(qtpops.length).toBe(1);
+                    expect(beforeQuickToolbarOpenCount).toBe(1);
+                    expect(quickToolbarOpenCount).toBe(1);
+                    done();
+                }, 1500);
+            });
+        });
+        describe('Multiple images drag and drop when saveUrl is configured', () => {
+            let editor: RichTextEditor;
+            let beforeQuickToolbarOpenCount: number = 0;
+            let quickToolbarOpenCount: number = 0;
+            beforeAll(() => {
+                editor = renderRTE({
+                    value: '<p>Drop images here</p>',
+                    insertImageSettings: {
+                        saveUrl: 'https://ej2services.syncfusion.com/js/development/api/RichTextEditor/SaveFile',
+                        path: 'https://ej2services.syncfusion.com/js/development/RichTextEditor/',
+                    },
+                    beforeQuickToolbarOpen: () => { beforeQuickToolbarOpenCount++; },
+                    quickToolbarOpen: () => { quickToolbarOpenCount++; },
+                });
+            });
+
+            afterAll(() => {
+                destroy(editor);
+            });
+            it('Should insert two images when multiple files are dropped', (done: DoneFn) => {
+                editor.focusIn();
+                const file1 = getImageUniqueFIle();
+                const file2 = getImageUniqueFIle();
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file1);
+                dataTransfer.items.add(file2);
+                const editPanel = editor.contentModule.getEditPanel() as HTMLElement;
+                const rect = editPanel.getBoundingClientRect();
+                const clientX = Math.round(rect.left + rect.width * 0.5);
+                const clientY = Math.round(rect.top + rect.height * 0.5);
+                const dropEvent = new DragEvent('drop', {
+                    bubbles: true,
+                    cancelable: true,
+                    dataTransfer,
+                    clientX,
+                    clientY,
+                    screenX: clientX + window.screenX,
+                    screenY: clientY + window.screenY
+                });
+                // Dispatch on the edit panel itself → most reliable
+                editPanel.dispatchEvent(dropEvent);
+                setTimeout(() => {
+                    const imgs = editor.inputElement.querySelectorAll('img');
+                    expect(imgs.length).toBe(2);
+                    done();
+                }, 800);
+            });
+        });
+        describe('Pasting multiple images with saveUrl configured should create uploader per image', () => {
+            let editor: RichTextEditor;
+            let uploadingCalls = 0;
+
+            beforeAll(() => {
+                editor = renderRTE({
+                    value: `<p>Paste images here</p>`,
+                    insertImageSettings: {
+                        saveUrl: 'https://ej2services.syncfusion.com/js/development/api/RichTextEditor/SaveFile',
+                        path: 'https://ej2services.syncfusion.com/js/development/RichTextEditor/'
+                    },
+                    imageUploading: () => { uploadingCalls++; },
+                });
+            });
+
+            afterAll(() => {
+                destroy(editor);
+            });
+
+            it('Should trigger imageUploading once for each pasted image', (done: DoneFn) => {
+                editor.focusIn();
+                const p: HTMLElement = editor.inputElement.querySelector('p');
+                const textNode: Text = p.firstChild as Text;
+                setCursorPoint(textNode, 4);
+                const clipboardData: DataTransfer = new DataTransfer();
+                const file1: File = getImageUniqueFIle();
+                const file2: File = getImageUniqueFIle();
+                clipboardData.items.add(file1);
+                clipboardData.items.add(file2);
+                const pasteEvent: ClipboardEvent = new ClipboardEvent('paste', {
+                    clipboardData,
+                    bubbles: true,
+                    cancelable: true
+                } as ClipboardEventInit);
+                editor.inputElement.dispatchEvent(pasteEvent);
+                setTimeout(() => {
+                    expect(uploadingCalls).toBe(2);
+                    const imgs: NodeListOf<HTMLImageElement> = editor.inputElement.querySelectorAll('img');
+                    expect(imgs.length).toBeGreaterThanOrEqual(2);
+                    done();
+                }, 300);
+            });
+        });
+        describe('Drag and drop multiple images with saveUrl configured should create uploader per image', () => {
+            let editor: RichTextEditor;
+            let uploadingCalls = 0;
+
+            beforeAll(() => {
+                editor = renderRTE({
+                    value: `<p>Drop images here</p>`,
+                    insertImageSettings: {
+                        saveUrl: 'https://ej2services.syncfusion.com/js/development/api/RichTextEditor/SaveFile',
+                        path: 'https://ej2services.syncfusion.com/js/development/RichTextEditor/'
+                    },
+                    imageUploading: () => { uploadingCalls++; },
+                });
+            });
+
+            afterAll(() => {
+                destroy(editor);
+            });
+
+            it('Should trigger imageUploading once for each dropped image', (done: DoneFn) => {
+                editor.focusIn();
+                const file1 = getImageUniqueFIle();
+                const file2 = getImageUniqueFIle();
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file1);
+                dataTransfer.items.add(file2);
+                const editPanel = editor.contentModule.getEditPanel() as HTMLElement;
+                const rect = editPanel.getBoundingClientRect();
+                const clientX = Math.round(rect.left + rect.width * 0.5);
+                const clientY = Math.round(rect.top + rect.height * 0.5);
+                const dropEvent = new DragEvent('drop', {
+                    bubbles: true,
+                    cancelable: true,
+                    dataTransfer,
+                    clientX,
+                    clientY,
+                    screenX: clientX + window.screenX,
+                    screenY: clientY + window.screenY
+                });
+                editPanel.dispatchEvent(dropEvent);
+                setTimeout(() => {
+                    expect(uploadingCalls).toBe(2);
+                    const imgs: NodeListOf<HTMLImageElement> = editor.inputElement.querySelectorAll('img');
+                    expect(imgs.length).toBeGreaterThanOrEqual(2);
+                    done();
+                }, 300);
+            });
+        });
+        describe('Multi-Image Paste - PlainText setting', () => {
+            let editor: RichTextEditor;
+            beforeAll(() => {
+                editor = renderRTE({
+                    value: '<p>Start</p>',
+                    pasteCleanupSettings: {
+                        prompt: false,
+                        plainText: true
+                    }
+                });
+            });
+            afterAll(() => {
+                destroy(editor);
+            });
+
+            it('Should not insert images when plainText is true (clipboard with only files)', (done: DoneFn) => {
+                editor.focusIn();
+                const p: HTMLElement = editor.inputElement.querySelector('p');
+                const textNode: Text = p.firstChild as Text;
+                setCursorPoint(textNode, 5);
+                const clipboardData: DataTransfer = new DataTransfer();
+                const file1: File = getImageUniqueFIle();
+                const file2: File = getImageUniqueFIle();
+                clipboardData.items.add(file1);
+                clipboardData.items.add(file2);
+                const pasteEvent: ClipboardEvent = new ClipboardEvent('paste', {
+                    clipboardData, bubbles: true, cancelable: true
+                } as ClipboardEventInit);
+                editor.inputElement.dispatchEvent(pasteEvent);
+                setTimeout(() => {
+                    const imgs = editor.inputElement.querySelectorAll('img');
+                    expect(imgs.length).toBe(0);
+                    expect(editor.inputElement.textContent.indexOf('Start') > -1).toBe(true);
+                    done();
+                }, 200);
+            });
+        });
+        describe('Multi-Image Paste - Keep Format setting', () => {
+            let editor: RichTextEditor;
+            beforeAll(() => {
+                editor = renderRTE({
+                    value: '<p>Keep</p>',
+                    pasteCleanupSettings: {
+                        prompt: false,
+                        keepFormat: true
+                    }
+                });
+            });
+            afterAll(() => {
+                destroy(editor);
+            });
+            it('Should insert multiple images (keep format)', (done: DoneFn) => {
+                editor.focusIn();
+                const p: HTMLElement = editor.inputElement.querySelector('p');
+                const textNode: Text = p.firstChild as Text;
+                setCursorPoint(textNode, 2);
+                const clipboardData: DataTransfer = new DataTransfer();
+                const file1: File = getImageUniqueFIle();
+                const file2: File = getImageUniqueFIle();
+                clipboardData.items.add(file1);
+                clipboardData.items.add(file2);
+                const pasteEvent: ClipboardEvent = new ClipboardEvent('paste', {
+                    clipboardData, bubbles: true, cancelable: true
+                } as ClipboardEventInit);
+                editor.inputElement.dispatchEvent(pasteEvent);
+                setTimeout(() => {
+                    const imgs: NodeListOf<HTMLImageElement> = editor.inputElement.querySelectorAll('img');
+                    expect(imgs.length).toBe(2);
+                    done();
+                }, 200);
+            });
+        });
+        describe('Multi-Image Paste - Keep Format setting', () => {
+            let editor: RichTextEditor;
+            beforeAll(() => {
+                editor = renderRTE({
+                    value: '<p>Keep</p>',
+                    pasteCleanupSettings: {
+                        prompt: false,
+                        keepFormat: false
+                    }
+                });
+            });
+            afterAll(() => {
+                destroy(editor);
+            });
+            it('Should insert multiple images (keep format)', (done: DoneFn) => {
+                editor.focusIn();
+                const p: HTMLElement = editor.inputElement.querySelector('p');
+                const textNode: Text = p.firstChild as Text;
+                setCursorPoint(textNode, 2);
+                const clipboardData: DataTransfer = new DataTransfer();
+                const file1: File = getImageUniqueFIle();
+                const file2: File = getImageUniqueFIle();
+                clipboardData.items.add(file1);
+                clipboardData.items.add(file2);
+                const pasteEvent: ClipboardEvent = new ClipboardEvent('paste', {
+                    clipboardData, bubbles: true, cancelable: true
+                } as ClipboardEventInit);
+                editor.inputElement.dispatchEvent(pasteEvent);
+                setTimeout(() => {
+                    const imgs: NodeListOf<HTMLImageElement> = editor.inputElement.querySelectorAll('img');
+                    expect(imgs.length).toBe(2);
+                    done();
+                }, 200);
+            });
+        });
+        describe('Undo after multi-image paste via toolbar button', () => {
+            let editor: RichTextEditor;
+            beforeAll(() => {
+                editor = renderRTE({
+                    value: '<p>Initial content</p>',
+                    toolbarSettings: { items: ['Undo', 'Image'] },
+                    pasteCleanupSettings: { prompt: false }
+                });
+            });
+            afterAll(() => {
+                destroy(editor);
+            });
+            it('Should undo paste of multiple images using the Undo toolbar button', (done: DoneFn) => {
+                editor.focusIn();
+                const initialHtml: string = editor.inputElement.innerHTML;
+                const p: HTMLElement = editor.inputElement.querySelector('p');
+                const textNode: Text = p.firstChild as Text;
+                setSelection(textNode, 0, textNode.length - 1);
+                const data: DataTransfer = new DataTransfer();
+                data.items.add(getImageUniqueFIle());
+                data.items.add(getImageUniqueFIle());
+                const pasteEvent: ClipboardEvent = new ClipboardEvent('paste', {
+                    clipboardData: data,
+                    bubbles: true,
+                    cancelable: true
+                } as ClipboardEventInit);
+                editor.inputElement.dispatchEvent(pasteEvent);
+                setTimeout(() => {
+                    const imgs = editor.inputElement.querySelectorAll('img');
+                    expect(imgs.length).toBe(2);
+                    const undoBtn = editor.element.querySelector('#' + editor.element.id + '_toolbar_Undo') as HTMLElement;
+                    expect(undoBtn).not.toBeNull();
+                    undoBtn.click();
+                    setTimeout(() => {
+                        const imgsAfterUndo = editor.inputElement.querySelectorAll('img');
+                        expect(imgsAfterUndo.length).toBe(0);
+                        expect(editor.inputElement.innerHTML).toBe(initialHtml);
+                        done();
+                    }, 100);
+                }, 200);
+            });
+        });
+        describe('1003857: Redo after multi-image paste via toolbar button', () => {
+            let editor: RichTextEditor;
+            beforeAll(() => {
+                editor = renderRTE({
+                    value: '<p>Initial content</p>',
+                    toolbarSettings: { items: ['Undo', 'Image', 'Redo'] },
+                    pasteCleanupSettings: { prompt: false }
+                });
+            });
+            afterAll(() => {
+                destroy(editor);
+            });
+            it('Should undo paste of multiple images using the Undo toolbar button', (done: DoneFn) => {
+                editor.focusIn();
+                const initialHtml: string = editor.inputElement.innerHTML;
+                const p: HTMLElement = editor.inputElement.querySelector('p');
+                const textNode: Text = p.firstChild as Text;
+                setSelection(textNode, 0, textNode.length - 1);
+                const data: DataTransfer = new DataTransfer();
+                data.items.add(getImageUniqueFIle());
+                data.items.add(getImageUniqueFIle());
+                const pasteEvent: ClipboardEvent = new ClipboardEvent('paste', {
+                    clipboardData: data,
+                    bubbles: true,
+                    cancelable: true
+                } as ClipboardEventInit);
+                editor.inputElement.dispatchEvent(pasteEvent);
+                setTimeout(() => {
+                    const imgs = editor.inputElement.querySelectorAll('img');
+                    expect(imgs.length).toBe(2);
+                    const undoBtn = editor.element.querySelector('#' + editor.element.id + '_toolbar_Undo') as HTMLElement;
+                    expect(undoBtn).not.toBeNull();
+                    undoBtn.click();
+                    setTimeout(() => {
+                        const imgsAfterUndo = editor.inputElement.querySelectorAll('img');
+                        expect(imgsAfterUndo.length).toBe(0);
+                        expect(editor.inputElement.innerHTML).toBe(initialHtml);
+                        const redoBtn = editor.element.querySelector('#' + editor.element.id + '_toolbar_Redo') as HTMLElement;
+                        redoBtn.click();
+                        setTimeout(() => {
+                            const imgsAfterRedo = editor.inputElement.querySelectorAll('img');
+                            expect(imgsAfterRedo.length).toBe(2);
+                            done();
+                        }, 100);
+                    }, 100);
+                }, 200);
+            });
+        });
+    });
+
+    describe('1011766 - Caption misaligned when image is resized to a smaller size', () => {
+        let editor: RichTextEditor;
+        let controlId: string;
+        const htmlValue: string = `<h2>Welcome to the Syncfusion<sup>®</sup> Rich Text Editor</h2>
+<p> The Rich Text Editor, a WYSIWYG (what you see is what you get) editor, is a user interface that allows you to create, edit, and format rich text content. You can try out a demo of this editor here. </p>
+<p style="cursor: auto;"> Images can be added to the editor by pasting or dragging into the editing area, us<img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 208px;" class="e-rte-image e-img-inline" width="208"/>ing the toolbar to insert one as a URL, or uploading directly from the File Browser. Easily manage your images on the server by configuring the <a class="e-rte-anchor" href="https://ej2.syncfusion.com/documentation/api/rich-text-editor/#insertimagesettings" title="Insert Image Settings API" aria-label="Open in new window">insertImageSettings</a> to upload, save, or remove them. </p>
+<p> The Editor can integrate with the Syncfusion<sup>®</sup> Image Editor to crop, rotate, annotate, and apply filters to images. Check out the demos <a class="e-rte-anchor" href="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/image-editor-integration.html" title="Image Editor Demo" aria-label="Open in new window">here</a>. </p>`;
+        beforeEach(() => {
+            editor = renderRTE({
+                value: htmlValue,
+                insertImageSettings: { resize: true }
+            });
+            controlId = editor.element.id;
+        });
+        afterEach(() => {
+            destroy(editor);
+        });
+        it('Should keep caption width in sync with the image width after resizing the captioned image by 2px', (done: DoneFn) => {
+            const inputElement: HTMLElement = editor.inputElement;
+            inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+            const target: HTMLElement = editor.inputElement.querySelector('img');
+            setCursorPoint(target, 0);
+            target.dispatchEvent(MOUSEUP_EVENT);
+            setTimeout(() => {
+                const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                const captionBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[1] as HTMLElement;
+                captionBtn.click();
+                const imgEle: HTMLImageElement = editor.inputElement.querySelector('img') as HTMLImageElement;
+                clickImage(imgEle);
+                setTimeout(() => {
+                    const resizeBot: HTMLElement = editor.contentModule.getEditPanel().querySelector('.e-rte-botRight') as HTMLElement;
+                    clickGripper(resizeBot);
+                    moveGripper(resizeBot, -2, 0);
+                    leaveGripper(resizeBot);
+                    setTimeout(() => {
+                        const captionEle: HTMLElement = editor.inputElement.querySelector('.e-img-caption-container') as HTMLElement;
+                        const resizedImg: HTMLImageElement = editor.inputElement.querySelector('img') as HTMLImageElement;
+                        const captionWidth: number = parseFloat(captionEle.style.width);
+                        const imageWidth: number = parseFloat(resizedImg.style.width);
+                        expect(captionWidth).toBe(imageWidth);
+                        expect(imageWidth === 206);
+                        done();
+                    }, 100);
+                }, 100);
+            }, 100);
+        });
+    });
+
+    describe('1011499: Left wrap is not applying properly on captioned image - Rich Text Editor', () => {
+        let editor: RichTextEditor;
+        let controlId: string;
+        beforeAll(() => {
+            editor = renderRTE({
+                enableAutoUrl: true,
+                toolbarSettings: {
+                    items: ['Image']
+                }
+            });
+            controlId = editor.element.id;
+        });
+        afterAll(() => {
+            destroy(editor);
+        });
+        it(' - Should apply left wrap to captioned image and image root block next sibling should not have clear property', (done: DoneFn) => {
+            const inputElement: HTMLElement = editor.inputElement;
+            // set the html value with caption applied and left image
+            editor.inputElement.innerHTML = `<h1>Welcome to the Syncfusion Rich Text Editor</h1>
+                <p>The Rich Text Editor, a WYSIWYG (what you see is what you get) editor, is a user inter<span class="e-img-caption-container e-img-left" contenteditable="false" draggable="false" style="width:232.419px"><span class="e-img-wrap"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: inherit;" class="e-rte-image"/><span class="e-img-caption-text" contenteditable="false">Caption</span></span></span>face that allows you to create, edit, and format rich text content. You can try out a demo of this editor here.</p>
+                <h2>Do you know the key features of the editor?</h2>`;
+            inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+            const target: HTMLElement = editor.inputElement.querySelector('img');
+            setCursorPoint(target, 0);
+            target.dispatchEvent(MOUSEUP_EVENT);
+            setTimeout(() => {
+                const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                const wrapDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[5] as HTMLElement;
+                (wrapDropDownBtn.firstElementChild as HTMLElement).click();
+                const wrapDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                (wrapDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).click();
+                const imgEle: HTMLElement = inputElement.querySelector('.e-img-left-wrap .e-rte-image');
+                expect(!isNullOrUndefined(imgEle)).toBe(true);
+                expect(editor.inputElement.querySelector('h2').style.clear === '').toBe(true);
+                done();
+            }, 100);
+        });
+    });
+
+    describe('1012644: Need to apply alignment, inline and break.', () => {
+        describe(' For the images inside anchor tag', () => {
+            let rteObj: RichTextEditor;
+            beforeEach(() => {
+                rteObj = renderRTE({
+                    toolbarSettings: { items: ['Image'] }
+                });
+            });
+            afterEach(() => {
+                destroy(rteObj);
+            });
+            it(' - apply imageJustifyLeft to image', (done: DoneFn) => {
+                rteObj.inputElement.innerHTML = `<a href="http://www.google.com" target="_blank" aria-label="Open in new window"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px;" class="e-rte-image e-img-inline"></a>`;
+                const inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                    (dropDownBtn.firstElementChild as HTMLElement).click();
+                    const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (alignDropDown.querySelector('.e-justify-left') as HTMLElement).click();
+                    expect(rteObj.inputElement.querySelector('a').classList.contains('e-img-left')).toBe(true);
+                    done();
+                }, 100);
+            });
+            it(' - apply imageJustifyCenter to image)', (done: DoneFn) => {
+                rteObj.inputElement.innerHTML = `<a href="http://www.google.com" target="_blank" aria-label="Open in new window"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px;" class="e-rte-image e-img-inline"></a>`;
+                const inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                    (dropDownBtn.firstElementChild as HTMLElement).click();
+                    const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (alignDropDown.querySelector('.e-justify-center') as HTMLElement).click();
+                    expect(rteObj.inputElement.querySelector('a').classList.contains('e-img-center')).toBe(true);
+                    done();
+                }, 100);
+            });
+            it(' - apply imageJustifyRight to image', (done: DoneFn) => {
+                rteObj.inputElement.innerHTML = `<a href="http://www.google.com" target="_blank" aria-label="Open in new window"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px;" class="e-rte-image e-img-inline"></a>`;
+                const inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                    (dropDownBtn.firstElementChild as HTMLElement).click();
+                    const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (alignDropDown.querySelector('.e-justify-right') as HTMLElement).click();
+                    expect(rteObj.inputElement.querySelector('a').classList.contains('e-img-right')).toBe(true);
+                    done();
+                }, 100);
+            });
+            it(' - apply imageInline to image', (done: DoneFn) => {
+                rteObj.inputElement.innerHTML = `<a href="http://www.google.com" target="_blank" aria-label="Open in new window"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px;" class="e-rte-image e-img-break"></a>`;
+                const inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                    (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                    const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (displayDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).click();
+                    expect(rteObj.inputElement.querySelector('a').classList.contains('e-img-inline')).toBe(true);
+                    done();
+                }, 100);
+            });
+            it(' - apply imageBreak to image', (done: DoneFn) => {
+                rteObj.inputElement.innerHTML = `<a href="http://www.google.com" target="_blank" aria-label="Open in new window"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px;" class="e-rte-image e-img-inline"></a>`;
+                const inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                    (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                    const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (displayDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).click();
+                    expect(rteObj.inputElement.querySelector('a').classList.contains('e-img-break')).toBe(true);
+                    done();
+                }, 100);
+            });
+        });
+        describe(' For code coverage', () => {
+            let rteObj: RichTextEditor;
+            beforeEach(() => {
+                rteObj = renderRTE({
+                    toolbarSettings: { items: ['Image'] }
+                });
+            });
+            afterEach(() => {
+                destroy(rteObj);
+            });
+            it(' - apply imageJustifyLeft to image', (done: DoneFn) => {
+                rteObj.inputElement.innerHTML = `<a href="http://www.google.com" target="_blank" aria-label="Open in new window"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px;" class="e-rte-image e-img-left"></a>`;
+                const inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                    (dropDownBtn.firstElementChild as HTMLElement).click();
+                    const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (alignDropDown.querySelector('.e-justify-left') as HTMLElement).click();
+                    done();
+                }, 100);
+            });
+            it(' - apply imageJustifyCenter to image)', (done: DoneFn) => {
+                rteObj.inputElement.innerHTML = `<a href="http://www.google.com" target="_blank" aria-label="Open in new window"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px;" class="e-rte-image e-img-center"></a>`;
+                const inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                    (dropDownBtn.firstElementChild as HTMLElement).click();
+                    const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (alignDropDown.querySelector('.e-justify-center') as HTMLElement).click();
+                    done();
+                }, 100);
+            });
+            it(' - apply imageJustifyRight to image', (done: DoneFn) => {
+                rteObj.inputElement.innerHTML = `<a href="http://www.google.com" target="_blank" aria-label="Open in new window"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px;" class="e-rte-image e-img-right"></a>`;
+                const inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                    (dropDownBtn.firstElementChild as HTMLElement).click();
+                    const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (alignDropDown.querySelector('.e-justify-right') as HTMLElement).click();
+                    done();
+                }, 100);
+            });
+            it(' - apply imageInline to image', (done: DoneFn) => {
+                rteObj.inputElement.innerHTML = `<a href="http://www.google.com" target="_blank" aria-label="Open in new window"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px;" class="e-rte-image e-img-inline"></a>`;
+                const inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                    (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                    const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (displayDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).click();
+                    done();
+                }, 100);
+            });
+            it(' - apply imageBreak to image', (done: DoneFn) => {
+                rteObj.inputElement.innerHTML = `<a href="http://www.google.com" target="_blank" aria-label="Open in new window"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px;" class="e-rte-image e-img-break"></a>`;
+                const inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                    (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                    const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (displayDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).click();
+                    done();
+                }, 100);
+            });
+        });
+    });
+
+    describe('1014483: Alignment dropdown active state not maintained when caption is applied', () => {
+        let rteObj: RichTextEditor;
+        const innerHTML: string = `<p> Images can be added to the editor by pasting or dragging into the editing ar<img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 440px;" class="e-rte-image e-img-inline"/>ea, using the toolbar to insert one as a URL, or uploading directly from the File Browser. </p>`;
+        beforeAll(() => {
+            rteObj = renderRTE({
+                height: 400,
+                toolbarSettings: {
+                    items: ['Image']
+                },
+                value: innerHTML,
+            });
+        });
+        afterAll(() => {
+            destroy(rteObj);
+        });
+        it('Image caption + Inline and Break display preselects correct item', (done: DoneFn) => {
+            rteObj.inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+            const target: HTMLElement = rteObj.inputElement.querySelector('img');
+            // Apply caption through quick toolbar (use existing quick-toolbar flow)
+            setCursorPoint(target, 0);
+            target.dispatchEvent(MOUSEUP_EVENT);
+            setTimeout(() => {
+                const quickToolbar: HTMLElement = document.body.querySelector('.e-rte-quick-popup');
+                const captionBtn: HTMLElement = quickToolbar.querySelectorAll('.e-toolbar-item')[1].firstElementChild as HTMLElement;
+                captionBtn.click();
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup1: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const displayDropDownBtn: HTMLElement = quickPopup1.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                    (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                    const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (displayDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).click();
+                    setCursorPoint(target, 0);
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup1: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const displayDropDownBtn: HTMLElement = quickPopup1.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                        (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                        const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        expect((displayDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).classList.contains('e-active')).toBe(true);
+                        (displayDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).click();
+                        setCursorPoint(target, 0);
+                        target.dispatchEvent(MOUSEUP_EVENT);
+                        setTimeout(() => {
+                            const quickPopup1: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                            const displayDropDownBtn: HTMLElement = quickPopup1.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                            (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                            const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                            expect((displayDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).classList.contains('e-active')).toBe(true);
+                            done();
+                        }, 100);
+                    }, 100);
+                }, 100);
+            }, 100);
+        });
+
+        it('Image caption + Alignment left, center and right preselects correct items', (done: DoneFn) => {
+            const target: HTMLElement = rteObj.inputElement.querySelector('img');
+            // Test left, center and right alignment using the Align dropdown (matches other tests)
+            setCursorPoint(target, 0);
+            target.dispatchEvent(MOUSEUP_EVENT);
+            setTimeout(() => {
+                const imageQTBarEle = document.querySelector('.e-rte-quick-popup');
+                const alignBtn: HTMLElement = imageQTBarEle.querySelectorAll('.e-toolbar-item')[3].firstElementChild as HTMLElement;
+                (alignBtn as HTMLElement).click();
+                const dropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                // left
+                (dropDownPopup.querySelectorAll('.e-item')[0] as HTMLElement).click();
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const imageQTBarEle2 = document.querySelector('.e-rte-quick-popup');
+                    (imageQTBarEle2.querySelector("[title='Align']").firstChild as HTMLElement).click();
+                    const popup2: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    expect((popup2.querySelectorAll('.e-item')[0] as HTMLElement).classList.contains('e-active')).toBe(true);
+                    // center
+                    (popup2.querySelectorAll('.e-item')[1] as HTMLElement).click();
+                    setCursorPoint(target, 0);
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const imageQTBarEle3 = document.querySelector('.e-rte-quick-popup');
+                        (imageQTBarEle3.querySelector("[title='Align']").firstChild as HTMLElement).click();
+                        const popup3: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        expect((popup3.querySelectorAll('.e-item')[1] as HTMLElement).classList.contains('e-active')).toBe(true);
+                        // right
+                        (popup3.querySelectorAll('.e-item')[2] as HTMLElement).click();
+                        setCursorPoint(target, 0);
+                        target.dispatchEvent(MOUSEUP_EVENT);
+                        setTimeout(() => {
+                            const imageQTBarEle4 = document.querySelector('.e-rte-quick-popup');
+                            (imageQTBarEle4.querySelector("[title='Align']").firstChild as HTMLElement).click();
+                            const popup4: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                            expect((popup4.querySelectorAll('.e-item')[2] as HTMLElement).classList.contains('e-active')).toBe(true);
+                            (imageQTBarEle4.querySelector('.e-icon-right') as HTMLElement).click();
+                            done();
+                        }, 100);
+                    }, 100);
+                }, 100);
+            }, 100);
+        });
+
+        it('Image caption + Wrap left and right preselects correct items', (done: DoneFn) => {
+            const target: HTMLElement = rteObj.inputElement.querySelector('img');
+            // left wrap: open wrap dropdown and click first item
+            setCursorPoint(target, 0);
+            target.dispatchEvent(MOUSEUP_EVENT);
+            setTimeout(() => {
+                const imageQTBarEle = document.querySelector('.e-rte-quick-popup');
+                const wrapDropDownBtn: HTMLElement = imageQTBarEle.querySelectorAll('.e-toolbar-item')[5] as HTMLElement;
+                (wrapDropDownBtn.firstElementChild as HTMLElement).click();
+                const wrapDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                (wrapDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).click();
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const imageQTBarEle2 = document.querySelector('.e-rte-quick-popup');
+                    const wrapDropDownBtn2: HTMLElement = imageQTBarEle2.querySelectorAll('.e-toolbar-item')[5] as HTMLElement;
+                    (wrapDropDownBtn2.firstElementChild as HTMLElement).click();
+                    const wrapDropDownPopup2: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    expect((wrapDropDownPopup2.querySelector('ul').childNodes[0] as HTMLElement).classList.contains('e-active')).toBe(true);
+                    // right wrap
+                    (wrapDropDownPopup2.querySelector('ul').childNodes[1] as HTMLElement).click();
+                    setCursorPoint(target, 0);
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const imageQTBarEle3 = document.querySelector('.e-rte-quick-popup');
+                        const wrapDropDownBtn3: HTMLElement = imageQTBarEle3.querySelectorAll('.e-toolbar-item')[5] as HTMLElement;
+                        (wrapDropDownBtn3.firstElementChild as HTMLElement).click();
+                        const wrapDropDownPopup3: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        expect((wrapDropDownPopup3.querySelector('ul').childNodes[1] as HTMLElement).classList.contains('e-active')).toBe(true);
+                        (imageQTBarEle3.querySelector('.e-icon-right') as HTMLElement).click();
+                        done();
+                    }, 100);
+                }, 100);
+            }, 100);
+        });
+    });
+
+    describe('1014733: Caption breaks image width is a percentage (also occurs when setting % via size dialog)', function () {
+        let rteObj: RichTextEditor;
+        beforeAll(() => {
+            rteObj = renderRTE({
+                enableAutoUrl: true,
+                toolbarSettings: {
+                    items: ['Image']
+                },
+                quickToolbarSettings: {
+                    image: ['Caption', 'Dimension']
+                }
+            });
+        });
+        afterAll(() => {
+            destroy(rteObj);
+        });
+        it(' Apply caption to inline image and check the width value for both image and caption container', (done: DoneFn) => {
+            rteObj.inputElement.innerHTML = '<p><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 50%" class="e-rte-image e-imginline"></p>'
+            rteObj.inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+            const target: HTMLElement = rteObj.inputElement.querySelector('img');
+            setCursorPoint(target, 0);
+            target.dispatchEvent(MOUSEUP_EVENT);
+            setTimeout(() => {
+                const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                const captionBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[0] as HTMLElement;
+                captionBtn.click();
+                const captionWidthValue: string = (rteObj.inputElement.querySelector('.e-img-caption-container') as HTMLElement).style.width;
+                const imageWidthValue: string = (rteObj.inputElement.querySelector('.e-rte-image') as HTMLElement).style.width;
+                expect(captionWidthValue.indexOf('%') === -1).toBe(true);
+                expect(imageWidthValue.indexOf('%') === -1).toBe(true);
+                done();
+            }, 100);
+        });
+        it('Should change the image width of % value using image change size toolbar action.', (done: DoneFn) => {
+            rteObj.inputElement.innerHTML = `<p><span class="e-img-caption-container e-img-inline" contenteditable="false" draggable="false" style="width: 150px"><span class="e-img-wrap"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px; height: 200px" class="e-rte-image e-imginline"><span class="e-img-inner" contenteditable="true">Caption</span></span></span></p>`;
+            rteObj.inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+            const target: HTMLElement = rteObj.inputElement.querySelector('img');
+            setCursorPoint(target, 0);
+            target.dispatchEvent(MOUSEUP_EVENT);
+            setTimeout(() => {
+                const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                const sizeButton: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[1] as HTMLElement;
+                sizeButton.click();
+                setTimeout(() => {
+                    const imageDialog: HTMLElement = rteObj.element.querySelector('.e-rte-img-dialog');
+                    const widthInput: HTMLInputElement = imageDialog.querySelector('#imgwidth');
+                    widthInput.value = '50%';
+                    const inputEvent: Event = new Event('input');
+                    widthInput.dispatchEvent(inputEvent);
+                    const primaryButton: HTMLButtonElement = imageDialog.querySelector('.e-footer-content .e-primary');
+                    primaryButton.click();
+                    setTimeout(() => {
+                        const captionWidthValue: string = (rteObj.inputElement.querySelector('.e-img-caption-container') as HTMLElement).style.width;
+                        const imageWidthValue: string = (rteObj.inputElement.querySelector('.e-rte-image') as HTMLElement).style.width;
+                        expect(captionWidthValue.indexOf('%') === -1).toBe(true);
+                        expect(imageWidthValue.indexOf('%') === -1).toBe(true);
+                        done();
+                    }, 100);
+                }, 100);
+            }, 100);
+        });
+        it('Should change the image width of auto value using image change size toolbar action.', (done: DoneFn) => {
+            rteObj.inputElement.innerHTML = `<p><span class="e-img-caption-container e-img-inline" contenteditable="false" draggable="false" style="width: 150px"><span class="e-img-wrap"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px; height: 200px" class="e-rte-image e-imginline"><span class="e-img-inner" contenteditable="true">Caption</span></span></span></p>`;
+            rteObj.inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+            const target: HTMLElement = rteObj.inputElement.querySelector('img');
+            setCursorPoint(target, 0);
+            target.dispatchEvent(MOUSEUP_EVENT);
+            setTimeout(() => {
+                const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                const sizeButton: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[1] as HTMLElement;
+                sizeButton.click();
+                setTimeout(() => {
+                    const imageDialog: HTMLElement = rteObj.element.querySelector('.e-rte-img-dialog');
+                    const widthInput: HTMLInputElement = imageDialog.querySelector('#imgwidth');
+                    widthInput.value = 'auto';
+                    const inputEvent: Event = new Event('input');
+                    widthInput.dispatchEvent(inputEvent);
+                    const primaryButton: HTMLButtonElement = imageDialog.querySelector('.e-footer-content .e-primary');
+                    primaryButton.click();
+                    setTimeout(() => {
+                        const captionWidthValue: string = (rteObj.inputElement.querySelector('.e-img-caption-container') as HTMLElement).style.width;
+                        const imageWidthValue: string = (rteObj.inputElement.querySelector('.e-rte-image') as HTMLElement).style.width;
+                        expect(captionWidthValue === '').toBe(true);
+                        expect(imageWidthValue === '').toBe(true);
+                        done();
+                    }, 100);
+                }, 100);
+            }, 100);
+        });
+    });
+
+    describe('1012644: Mock test case coverage for Blazor-mode: image command else-branches', () => {
+        describe(' with only image', () => {
+            let rteObj: RichTextEditor;
+            beforeEach(() => {
+                rteObj = renderRTE({
+                    toolbarSettings: { items: ['Image'] }
+                });
+            });
+            afterEach(() => {
+                destroy(rteObj);
+            });
+            it(' - cover imageJustifyLeft else branch (Blazor)', (done: DoneFn) => {
+                // Enable Blazor mode on the editor manager
+                rteObj.formatter.editorManager.isBlazor = true;
+                // set caption DOM
+                rteObj.inputElement.innerHTML = `<img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px" class="e-rte-image e-imginline">`;
+                const inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                    (dropDownBtn.firstElementChild as HTMLElement).click();
+                    const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (alignDropDown.querySelector('.e-justify-left') as HTMLElement).click();
+                    // Trigger display dropdown to convert left aligned to inline
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup2: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const displayDropDownBtn: HTMLElement = quickPopup2.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                        (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                        const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        (displayDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).click();
+                        done();
+                    }, 100);
+                }, 100);
+            });
+            it(' - cover imageJustifyCenter else branch (Blazor)', (done: DoneFn) => {
+                rteObj.formatter.editorManager.isBlazor = true;
+                rteObj.inputElement.innerHTML = `<img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px" class="e-rte-image e-imginline">`;
+                const inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                    (dropDownBtn.firstElementChild as HTMLElement).click();
+                    const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (alignDropDown.querySelector('.e-justify-center') as HTMLElement).click();
+                    done();
+                }, 100);
+            });
+            it(' - cover imageJustifyRight else branch (Blazor)', (done: DoneFn) => {
+                rteObj.formatter.editorManager.isBlazor = true;
+                rteObj.inputElement.innerHTML = `<img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px" class="e-rte-image e-imginline">`;
+                const inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                    (dropDownBtn.firstElementChild as HTMLElement).click();
+                    const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (alignDropDown.querySelector('.e-justify-right') as HTMLElement).click();
+                    // convert right aligned to inline
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup2: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const displayDropDownBtn: HTMLElement = quickPopup2.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                        (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                        const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        (displayDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).click();
+                        done();
+                    }, 100);
+                }, 100);
+            });
+            it(' - cover imageInline else branch (Blazor)', (done: DoneFn) => {
+                rteObj.formatter.editorManager.isBlazor = true;
+                rteObj.inputElement.innerHTML = `<img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px" class="e-rte-image e-imginline">`;
+                const inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                    (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                    const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    // choose inline option
+                    (displayDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).click();
+                    done();
+                }, 100);
+            });
+            it(' - cover imageBreak else branch (Blazor)', (done: DoneFn) => {
+                rteObj.formatter.editorManager.isBlazor = true;
+                // use caption dom
+                rteObj.inputElement.innerHTML = `<img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px" class="e-rte-image e-imginline">`;
+                const inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                    (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                    const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    // choose break option
+                    (displayDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).click();
+                    done();
+                }, 100);
+            });
+        });
+        describe(' with only caption', () => {
+            let rteObj: RichTextEditor;
+            beforeEach(() => {
+                rteObj = renderRTE({
+                    toolbarSettings: { items: ['Image'] }
+                });
+            });
+            afterEach(() => {
+                destroy(rteObj);
+            });
+            it(' - cover imageJustifyLeft else branch (Blazor)', (done: DoneFn) => {
+                // Enable Blazor mode on the editor manager
+                rteObj.formatter.editorManager.isBlazor = true;
+                // set caption DOM
+                rteObj.inputElement.innerHTML = `<span class="e-img-caption e-rte-img-caption e-caption-inline" contenteditable="false" draggable="false" style="width: 150px"><span class="e-img-wrap"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px;" class="e-rte-image e-imginline"><span class="e-img-inner" contenteditable="true">Caption</span></span></span>`;
+                const inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                    (dropDownBtn.firstElementChild as HTMLElement).click();
+                    const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (alignDropDown.querySelector('.e-justify-left') as HTMLElement).click();
+                    // Trigger display dropdown to convert left aligned to inline
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup2: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const displayDropDownBtn: HTMLElement = quickPopup2.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                        (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                        const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        (displayDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).click();
+                        done();
+                    }, 100);
+                }, 100);
+            });
+            it(' - cover imageJustifyCenter else branch (Blazor)', (done: DoneFn) => {
+                rteObj.formatter.editorManager.isBlazor = true;
+                rteObj.inputElement.innerHTML = `<span class="e-img-caption e-rte-img-caption e-caption-inline" contenteditable="false" draggable="false" style="width: 150px"><span class="e-img-wrap"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px;" class="e-rte-image e-imginline"><span class="e-img-inner" contenteditable="true">Caption</span></span></span>`;
+                const inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                    (dropDownBtn.firstElementChild as HTMLElement).click();
+                    const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (alignDropDown.querySelector('.e-justify-center') as HTMLElement).click();
+                    done();
+                }, 100);
+            });
+            it(' - cover imageJustifyRight else branch (Blazor)', (done: DoneFn) => {
+                rteObj.formatter.editorManager.isBlazor = true;
+                rteObj.inputElement.innerHTML = `<span class="e-img-caption e-rte-img-caption e-caption-inline" contenteditable="false" draggable="false" style="width: 150px"><span class="e-img-wrap"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px;" class="e-rte-image e-imginline"><span class="e-img-inner" contenteditable="true">Caption</span></span></span>`;
+                const inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const dropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[3] as HTMLElement;
+                    (dropDownBtn.firstElementChild as HTMLElement).click();
+                    const alignDropDown: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    (alignDropDown.querySelector('.e-justify-right') as HTMLElement).click();
+                    // convert right aligned to inline
+                    target.dispatchEvent(MOUSEUP_EVENT);
+                    setTimeout(() => {
+                        const quickPopup2: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                        const displayDropDownBtn: HTMLElement = quickPopup2.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                        (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                        const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                        (displayDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).click();
+                        done();
+                    }, 100);
+                }, 100);
+            });
+            it(' - cover imageInline else branch (Blazor)', (done: DoneFn) => {
+                rteObj.formatter.editorManager.isBlazor = true;
+                rteObj.inputElement.innerHTML = `<span class="e-img-caption e-rte-img-caption e-caption-inline" contenteditable="false" draggable="false" style="width: 150px"><span class="e-img-wrap"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px;" class="e-rte-image e-imginline"><span class="e-img-inner" contenteditable="true">Caption</span></span></span>`;
+                const inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                    (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                    const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    // choose inline option
+                    (displayDropDownPopup.querySelector('ul').childNodes[0] as HTMLElement).click();
+                    done();
+                }, 100);
+            });
+            it(' - cover imageBreak else branch (Blazor)', (done: DoneFn) => {
+                rteObj.formatter.editorManager.isBlazor = true;
+                // use caption dom
+                rteObj.inputElement.innerHTML = `<span class="e-img-caption e-rte-img-caption e-caption-inline" contenteditable="false" draggable="false" style="width: 150px"><span class="e-img-wrap"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px;" class="e-rte-image e-imginline"><span class="e-img-inner" contenteditable="true">Caption</span></span></span>`;
+                const inputElement: HTMLElement = rteObj.inputElement;
+                inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const displayDropDownBtn: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[4] as HTMLElement;
+                    (displayDropDownBtn.firstElementChild as HTMLElement).click();
+                    const displayDropDownPopup: HTMLElement = document.querySelector('.e-dropdown-popup.e-popup-open');
+                    // choose break option
+                    (displayDropDownPopup.querySelector('ul').childNodes[1] as HTMLElement).click();
+                    done();
+                }, 100);
+            });
+        });
+        describe('1014733: Caption breaks image width is a percentage (also occurs when setting % via size dialog)', function () {
+            let rteObj: RichTextEditor;
+            beforeAll(() => {
+                rteObj = renderRTE({
+                    enableAutoUrl: true,
+                    toolbarSettings: {
+                        items: ['Image']
+                    },
+                    quickToolbarSettings: {
+                        image: ['Caption', 'Dimension']
+                    }
+                });
+            });
+            afterAll(() => {
+                destroy(rteObj);
+            });
+            it('Should change the image width and height using image change size toolbar action.', (done: DoneFn) => {
+                rteObj.formatter.editorManager.isBlazor = true;
+                rteObj.inputElement.innerHTML = `<p><span class="e-img-caption e-rte-img-caption e-caption-inline" contenteditable="false" draggable="false" style="width: 150px"><span class="e-img-wrap"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px; height: 200px" class="e-rte-image e-imginline"><span class="e-img-inner" contenteditable="true">Caption</span></span></span></p>`;
+                rteObj.inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const sizeButton: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[1] as HTMLElement;
+                    sizeButton.click();
+                    setTimeout(() => {
+                        const imageDialog: HTMLElement = rteObj.element.querySelector('.e-rte-img-dialog');
+                        const widthInput: HTMLInputElement = imageDialog.querySelector('#imgwidth');
+                        const heightInput: HTMLInputElement = imageDialog.querySelector('#imgheight');
+                        widthInput.value = 'auto';
+                        heightInput.value = 'auto';
+                        const inputEvent: Event = new Event('input');
+                        widthInput.dispatchEvent(inputEvent);
+                        heightInput.dispatchEvent(inputEvent);
+                        const primaryButton: HTMLButtonElement = imageDialog.querySelector('.e-footer-content .e-primary');
+                        primaryButton.click();
+                        done();
+                    }, 100);
+                }, 100);
+            });
+            it('Should change the image width and height using image change size toolbar action.', (done: DoneFn) => {
+                rteObj.formatter.editorManager.isBlazor = true;
+                rteObj.inputElement.innerHTML = `<p><span class="e-img-caption e-rte-img-caption e-caption-inline" contenteditable="false" draggable="false" style="width: 150px"><span class="e-img-wrap"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px; height: 200px" class="e-rte-image e-imginline"><span class="e-img-inner" contenteditable="true">Caption</span></span></span></p>`;
+                rteObj.inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const sizeButton: HTMLElement = quickPopup.querySelectorAll('.e-toolbar-item')[1] as HTMLElement;
+                    sizeButton.click();
+                    setTimeout(() => {
+                        const imageDialog: HTMLElement = rteObj.element.querySelector('.e-rte-img-dialog');
+                        const widthInput: HTMLInputElement = imageDialog.querySelector('#imgwidth');
+                        const heightInput: HTMLInputElement = imageDialog.querySelector('#imgheight');
+                        widthInput.value = '50px';
+                        heightInput.value = '50px';
+                        const inputEvent: Event = new Event('input');
+                        widthInput.dispatchEvent(inputEvent);
+                        heightInput.dispatchEvent(inputEvent);
+                        const primaryButton: HTMLButtonElement = imageDialog.querySelector('.e-footer-content .e-primary');
+                        primaryButton.click();
+                        done();
+                    }, 100);
+                }, 100);
+            });
+        });
+        describe('1014616: Replacing an image resets its display from “Break” to “Inline”', () => {
+            let editor: RichTextEditor;
+            function onActionBegin(e: ActionBeginEventArgs) {
+                if (e.requestType === 'Replace') {
+                    const url: string = e.itemCollection.url;
+                    if (url.indexOf('?path') > -1) {
+                        const newURL: string = url.replace('?path=', '');
+                        e.itemCollection.url = newURL;
+                    }
+                }
+            }
+            beforeAll(() => {
+                editor = renderRTE({
+                    fileManagerSettings: {
+                        enable: true,
+                        path: '/Pictures/Employees',
+                        ajaxSettings: {
+                            url: hostURL + 'api/RichTextEditor/FileOperations',
+                            getImageUrl: hostURL + 'api/RichTextEditor/GetImage',
+                            uploadUrl: hostURL + 'api/RichTextEditor/Upload'
+                        }
+                    },
+                    actionBegin: onActionBegin,
+                });
+            });
+            afterAll(() => {
+                destroy(editor);
+            });
+            it('Check the image src when replace image', (done: DoneFn) => {
+                editor.formatter.editorManager.isBlazor = true;
+                editor.inputElement.innerHTML = '<p><img src="https://ej2services.syncfusion.com/js/development/api/RichTextEditor/GetImage/Pictures/Employees/Adam.png" class="e-rte-image e-imgbreak" style="width: 150px; height: 400px;"/></p>';
+                const INIT_MOUSEDOWN_EVENT: MouseEvent = new MouseEvent('mousedown', BASIC_MOUSE_EVENT_INIT);
+                editor.inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const target: HTMLElement = editor.inputElement.querySelector('img');
+                const MOUSEUP_EVENT: MouseEvent = new MouseEvent('mouseup', BASIC_MOUSE_EVENT_INIT);
+                setCursorPoint(target, 0);
+                target.dispatchEvent(MOUSEUP_EVENT);
+                setTimeout(() => {
+                    let pop: Element = document.body.querySelector('.e-rte-quick-popup');
+                    (pop.querySelectorAll('.e-toolbar-item')[13].firstElementChild as HTMLElement).click();
+                    setTimeout(() => {
+                        (editor.fileManagerModule as any).fileObj.trigger('fileSelect', { fileDetails: { filterPath: '\\Pictures\\Employees\\', name: 'Andrew.png', isFile: true, type: '.png' } });
+                        let insertBtn: HTMLButtonElement = document.body.querySelector('.e-rte-file-manager-dialog button.e-primary');
+                        insertBtn.click();
+                            done();
+                    }, 100);
+                }, 500);
+            });
+        });
+    });
+
+    describe('1014427: Image class normalization in SourceCode -> Preview', () => {
+        let rteObj: RichTextEditor;
+        beforeEach(() => {
+            rteObj = renderRTE({
+                toolbarSettings: { items: ['SourceCode', 'Image'] }
+            });
+        });
+        afterEach(() => {
+            destroy(rteObj);
+        });
+        it('Use case 1 - caption wrapper classes normalized after switching from code view to preview', (done: DoneFn) => {
+            const innerHTML = `<h3>Elevating Your Content with Images</h3>
+<p> Images can be added to the editor by pasting or dragging into the editing area, using the toolbar to insert one as a URL, or uploading directly from the File Browser. Easily manage your images on the server by configuring the <a class="e-rte-anchor" href="https://ej2.syncfusion.com/documentation/api/rich-text-editor/#insertimagesettings" title="Insert Image Settings API" aria-label="Open in new window">insertImageSettings</a> to upload, save, or remove them. </p>
+<p> The Editor can integrate with the Syncfusion<sup>®</sup> Image Editor to crop, rotate, annotate, and apply filters to images. Check out the demos <a class="e-rte-anchor" href="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/image-editor-integration.html" title="Image Editor Demo" aria-label="Open in new window">here</a>. </p>
+<p><span class="e-img-caption e-rte-img-caption e-imgbreak e-imgleft" draggable="false" style="width:auto"><span class="e-img-wrap"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 440px" class="e-rte-image e-imgleft"/><span class="e-img-inner" contenteditable="false">Caption</span></span></span></p>
+<blockquote>
+   <p><em>Easily access Audio, Image, Link, Video, and Table operations through the quick toolbar by right-clicking on the corresponding element with your mouse.</em></p>
+</blockquote>`;
+            const controlId = rteObj.element.id;
+            (rteObj.element.querySelector('#' + controlId + '_toolbar_SourceCode') as HTMLElement).click();
+            const src = rteObj.element.querySelector('.e-rte-srctextarea') as HTMLTextAreaElement;
+            src.value = innerHTML;
+            (rteObj.element.querySelector('#' + controlId + '_toolbar_Preview') as HTMLElement).click();
+            setTimeout(() => {
+                const caption = rteObj.inputElement.querySelector('.e-img-caption-container') as HTMLElement;
+                expect(!isNullOrUndefined(caption)).toBe(true);
+                expect(!isNullOrUndefined(caption.querySelector('.e-img-caption-text'))).toBe(true);
+                expect(caption.classList.contains('e-img-left')).toBe(true);
+                const img = rteObj.inputElement.querySelector('img') as HTMLImageElement;
+                expect(img.classList.contains('e-rte-image')).toBe(true);
+                // old/legacy classes should not be present
+                expect(img.classList.contains('e-imgleft')).toBe(false);
+                expect(caption.classList.contains('e-img-caption')).toBe(false);
+                expect(caption.classList.contains('e-imgbreak')).toBe(false);
+                done();
+            }, 100);
+        });
+        it('Use case 2 - standalone image without caption normalized after switching from code view to preview', (done: DoneFn) => {
+            const innerHTML = `<h3>Elevating Your Content with Images</h3>
+<p> Images can be added to the editor by pasting or dragging into the editing area, using the toolbar to insert one as a URL, or uploading directly from the File Browser. Easily manage your images on the server by configuring the <a class="e-rte-anchor" href="https://ej2.syncfusion.com/documentation/api/rich-text-editor/#insertimagesettings" title="Insert Image Settings API" aria-label="Open in new window">insertImageSettings</a> to upload, save, or remove them. </p>
+<p> The Editor can integrate with the Syncfusion<sup>®</sup> Image Editor to crop, rotate, annotate, and apply filters to images. Check out the demos <a class="e-rte-anchor" href="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/image-editor-integration.html" title="Image Editor Demo" aria-label="Open in new window">here</a>. </p>
+<p><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 440px;" class="e-imgbreak e-rte-image"/></p>
+<blockquote>
+   <p><em>Easily access Audio, Image, Link, Video, and Table operations through the quick toolbar by right-clicking on the corresponding element with your mouse.</em></p>
+</blockquote>`;
+            const controlId = rteObj.element.id;
+            (rteObj.element.querySelector('#' + controlId + '_toolbar_SourceCode') as HTMLElement).click();
+            const src = rteObj.element.querySelector('.e-rte-srctextarea') as HTMLTextAreaElement;
+            src.value = innerHTML;
+            (rteObj.element.querySelector('#' + controlId + '_toolbar_Preview') as HTMLElement).click();
+            setTimeout(() => {
+                const img = rteObj.inputElement.querySelector('img') as HTMLImageElement;
+                expect(img.classList.contains('e-rte-image')).toBe(true);
+                expect(img.classList.contains('e-img-break')).toBe(true);
+                // legacy class should be removed
+                expect(img.classList.contains('e-imgbreak')).toBe(false);
+                done();
+            }, 100);
+        });
+    });
+
+    describe('1014616 Replacing an image resets its display from “Break” to “Inline”', function () {
+        let rteObj: RichTextEditor;
+        let controlId: string;
+        beforeAll(() => {
+            rteObj = renderRTE({
+                toolbarSettings: {
+                    items: ['Image']
+                },
+                iframeSettings: {
+                    enable: true
+                }
+            });
+            controlId = rteObj.element.id;
+        });
+        afterAll(() => {
+            destroy(rteObj);
+        });
+        it(" replace the image and check the custom class name maintaining with image alone", (done: DoneFn) => {
+            rteObj.inputElement.innerHTML = '<p><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 440px;" class="e-rte-image e-custom-class"/></p>';
+            rteObj.inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+            let iframeBody: HTMLElement = (document.querySelector('iframe') as HTMLIFrameElement).contentWindow.document.body as HTMLElement;
+            const target: HTMLElement = rteObj.inputElement.querySelector('img');
+            setCursorPoint(target, 0);
+            target.dispatchEvent(MOUSEUP_EVENT);
+            setTimeout(() => {
+                (document.querySelectorAll('.e-image-quicktoolbar .e-toolbar-item')[13] as HTMLElement).click();
+                const dialogEle: HTMLElement = rteObj.element.querySelector('.e-dialog');
+                (dialogEle.querySelector('.e-img-url') as HTMLInputElement).value = 'https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png';
+                (dialogEle.querySelector('.e-img-url') as HTMLInputElement).dispatchEvent(new Event("input"));
+                expect(rteObj.element.lastElementChild.classList.contains('e-dialog')).toBe(true);
+                (document.querySelector('.e-insertImage.e-primary') as HTMLElement).click();
+                setTimeout(() => {
+                    expect(!isNullOrUndefined(iframeBody.querySelector('.e-rte-image.e-img-inline.e-custom-class'))).toBe(true);
+                    done();
+                }, 100);
+            }, 100);
+        });
+        it(" replace the image and check the custom class name maintaining with caption", (done: DoneFn) => {
+            rteObj.inputElement.innerHTML = '<p><span class="e-img-caption-container" contenteditable="false" draggable="false" style="width: 150px"><span class="e-img-wrap"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 150px; height: 200px" class="e-rte-image e-custom-class"><span class="e-img-inner" contenteditable="true">Caption</span></span></span></p>';
+            rteObj.inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+            let iframeBody: HTMLElement = (document.querySelector('iframe') as HTMLIFrameElement).contentWindow.document.body as HTMLElement;
+            const target: HTMLElement = rteObj.inputElement.querySelector('img');
+            setCursorPoint(target, 0);
+            target.dispatchEvent(MOUSEUP_EVENT);
+            setTimeout(() => {
+                (document.querySelectorAll('.e-image-quicktoolbar .e-toolbar-item')[13] as HTMLElement).click();
+                const dialogEle: HTMLElement = rteObj.element.querySelector('.e-dialog');
+                (dialogEle.querySelector('.e-img-url') as HTMLInputElement).value = 'https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png';
+                (dialogEle.querySelector('.e-img-url') as HTMLInputElement).dispatchEvent(new Event("input"));
+                expect(rteObj.element.lastElementChild.classList.contains('e-dialog')).toBe(true);
+                (document.querySelector('.e-insertImage.e-primary') as HTMLElement).click();
+                setTimeout(() => {
+                    expect(!isNullOrUndefined(iframeBody.querySelector('.e-img-caption-container.e-img-inline'))).toBe(true);
+                    expect(!isNullOrUndefined(iframeBody.querySelector('.e-rte-image.e-custom-class'))).toBe(true);
+                    done();
+                }, 100);
+            }, 100);
+        });
+    });
+
+    describe('1011644: Enter and Shift+Enter press after the image do not work in the Editor.', () => {
+        let rteObj: RichTextEditor;
+        let rteEle: HTMLElement;
+        beforeAll(() => {
+            rteObj = renderRTE({
+                height: 400,
+                toolbarSettings: { items: ['Image'] }
+            });
+            rteEle = rteObj.element;
+        });
+        afterAll(() => {
+            destroy(rteObj);
+        });
+
+        it('should create a new paragraph after image caption when Enter is pressed', (done: Function) => {
+            (rteObj.contentModule.getEditPanel() as HTMLElement).focus();
+            (<HTMLElement>rteEle.querySelectorAll('.e-toolbar-item')[0] as HTMLElement).click();
+            let dialogEle: any = rteObj.element.querySelector('.e-dialog');
+            (dialogEle.querySelector('.e-img-url') as HTMLInputElement).value = 'https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png';
+            (dialogEle.querySelector('.e-img-url') as HTMLInputElement).dispatchEvent(new Event('input'));
+            (document.querySelector('.e-insertImage.e-primary') as HTMLElement).click();
+            setTimeout(() => {
+                const target: HTMLElement = rteObj.inputElement.querySelector('img');
+                clickImage(target as HTMLImageElement);
+                setTimeout(() => {
+                    const quickPopup: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                    const captionBtn = quickPopup.querySelectorAll('.e-toolbar-item')[1] as HTMLElement;
+                    captionBtn.click();
+                    setTimeout(() => {
+                        const caption = rteObj.contentModule.getEditPanel().querySelector('span.e-img-caption-container') as HTMLElement;
+                        expect(caption).not.toBe(null);
+                        const textNode = caption.nextSibling as HTMLElement;
+                        setCursorPoint(textNode, 1);
+                        rteObj.inputElement.dispatchEvent(ENTER_KEY_DOWN_EVENT);
+                        rteObj.inputElement.dispatchEvent(ENTER_KEY_UP_EVENT);
+                        setTimeout(() => {
+                            const next = caption.parentElement.nextSibling as HTMLElement;
+                            expect(next && next.nodeName === 'P').toBe(true);
+                            done();
+                        }, 100);
+                    }, 100);
+                }, 100);
+            }, 100);
+        });
+    });
+
+    describe('1014738: Image becomes hidden after pressing Tab twice after inserting image in RichTextEditor', () => {
+        describe('Image alone - Tab key while image selected', () => {
+            let rteObj: RichTextEditor;
+            let tabDown: KeyboardEvent;
+            beforeAll(() => {
+                rteObj = renderRTE({
+                    enableTabKey: true,
+                    value: `<p>The Rich Text Editor, a WYSIWYG (what you see is what you get) editor, is a user inter<img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 20%" class="e-rte-image e-img-inline"/>face that allows you to create, edit, and format rich text content. You can try out a demo of this editor here.</p>`
+                });
+            });
+            afterAll(() => {
+                destroy(rteObj);
+            });
+            it('should handle Tab when image is selected', (done: DoneFn) => {
+                rteObj.focusIn();
+                const imageElement: HTMLElement = rteObj.inputElement.querySelector('img.e-rte-image');
+                imageElement.dispatchEvent(new MouseEvent('mousedown', BASIC_MOUSE_EVENT_INIT));
+                imageElement.dispatchEvent(new MouseEvent('mouseup', BASIC_MOUSE_EVENT_INIT));
+                setTimeout(() => {
+                    tabDown = new KeyboardEvent('keydown', TAB_KEY_EVENT_INIT);
+                    rteObj.inputElement.dispatchEvent(tabDown);
+                    setTimeout(() => {
+                        expect(tabDown.defaultPrevented).toBe(true);
+                        done();
+                    }, 100);
+                }, 100);
+            });
+        });
+        describe('Caption image - Tab key while caption image selected', () => {
+            let rteObj: RichTextEditor;
+            let tabDown: KeyboardEvent;
+            beforeAll(() => {
+                rteObj = renderRTE({
+                    enableTabKey: true,
+                    value: `<p>The Rich Text Editor, a WYSIWYG (what you see is what you get) editor, is a user inter<span class="e-img-caption-container e-img-inline" contenteditable="false" draggable="false" style="width: 306.867px"><span class="e-img-wrap"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 306.867px;" class="e-rte-image"/><span class="e-img-caption-text" contenteditable="false">Caption</span></span></span>face that allows you to create, edit, and format rich text content. You can try out a demo of this editor here.</p>`
+                });
+            });
+            afterAll(() => {
+                destroy(rteObj);
+            });
+            it('should handle Tab when caption image is selected', (done: DoneFn) => {
+                rteObj.focusIn();
+                const captionImg: HTMLElement = rteObj.inputElement.querySelector('.e-img-caption-container img');
+                captionImg.dispatchEvent(new MouseEvent('mousedown', BASIC_MOUSE_EVENT_INIT));
+                captionImg.dispatchEvent(new MouseEvent('mouseup', BASIC_MOUSE_EVENT_INIT));
+                setTimeout(() => {
+                    tabDown = new KeyboardEvent('keydown', TAB_KEY_EVENT_INIT);
+                    rteObj.inputElement.dispatchEvent(tabDown);
+                    setTimeout(() => {
+                        expect(tabDown.defaultPrevented).toBe(true);
+                        done();
+                    }, 100);
+                }, 100);
+            });
+        });
+        describe('Normal video - Tab key while video selected', () => {
+            let rteObj: RichTextEditor;
+            let tabDown: KeyboardEvent;
+            beforeAll(() => {
+                rteObj = renderRTE({
+                    enableTabKey: true,
+                    value: `<p>The Rich Text Editor, a WYSIWYG (what you see is what you get) editor, is a user inter<span class="e-video-wrap" contenteditable="false" title="Video.mp4" style="cursor: pointer;"><video class="e-rte-video e-video-inline" controls width="auto" height="auto" style="min-width: 200px; max-width: 1535px; min-height: 90px; width: 1558.32px; height: 408px; max-height: 313px;"><source src="blob:http://127.0.0.1:5501/73c017e4-be1c-4848-8027-de3b08028e97" type="video/mp4"/></video></span> face that allows you to create, edit, and format rich text content. You can try out a demo of this editor here.</p>`
+                });
+            });
+            afterAll(() => {
+                destroy(rteObj);
+            });
+            it('should handle Tab when video is selected', (done: DoneFn) => {
+                rteObj.focusIn();
+                const videoElement: HTMLElement = rteObj.inputElement.querySelector('video.e-rte-video');
+                videoElement.dispatchEvent(new MouseEvent('mousedown', BASIC_MOUSE_EVENT_INIT));
+                videoElement.dispatchEvent(new MouseEvent('mouseup', BASIC_MOUSE_EVENT_INIT));
+                setTimeout(() => {
+                    tabDown = new KeyboardEvent('keydown', TAB_KEY_EVENT_INIT);
+                    rteObj.inputElement.dispatchEvent(tabDown);
+                    setTimeout(() => {
+                        expect(tabDown.defaultPrevented).toBe(true);
+                        done();
+                    }, 100);
+                }, 100);
+            });
+        });
+        describe('Embed video (iframe) - Tab key while embed selected', () => {
+            let rteObj: RichTextEditor;
+            let tabDown: KeyboardEvent;
+            beforeAll(() => {
+                rteObj = renderRTE({
+                    enableTabKey: true,
+                    value: `<p>The Rich Text Editor, a WYSIWYG (what you see is what you get) editor, is a user inter<span class="e-embed-video-wrap" contenteditable="false" style="display: inline-block;"><span class="e-video-clickelem"><iframe width="auto" height="auto" src="https://www.youtube.com/embed/N7CAo5lWS8c?si=44NxG9au9zbZ9oxM" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen class="e-video-inline e-rte-embed-url" style="min-width: 0px; max-width: 1535px; min-height: 0px;">&amp;ZeroWidthSpace;</iframe></span></span> face that allows you to create, edit, and format rich text content. You can try out a demo of this editor here.</p>`
+                });
+            });
+            afterAll(() => {
+                destroy(rteObj);
+            });
+            it('should handle Tab when embed video is selected', (done: DoneFn) => {
+                rteObj.focusIn();
+                const iframeEl: HTMLElement = rteObj.inputElement.querySelector('iframe.e-rte-embed-url');
+                const clickableWrap: HTMLElement = iframeEl.closest('.e-embed-video-wrap') as HTMLElement;
+                setSelection(clickableWrap, 0, 1);
+                tabDown = new KeyboardEvent('keydown', TAB_KEY_EVENT_INIT);
+                rteObj.inputElement.dispatchEvent(tabDown);
+                setTimeout(() => {
+                    expect(tabDown.defaultPrevented).toBe(true);
+                    done();
+                }, 100);
+            });
+        });
+    });
 });

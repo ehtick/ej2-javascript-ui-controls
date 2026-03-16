@@ -2,47 +2,67 @@
 
 ## [Unreleased]
 
-## 32.2.9 (2026-03-10)
+## 33.1.44 (2026-03-16)
 
 ### Chart
 
-#### Bug Fixes
+#### Features
 
-- `#I815160` - The scrollbar is now properly rendered when `isInversed` is enabled
+- **Series Label** – Added support for displaying series names directly on the chart. This update allows you to show series‑level labels with options to adjust their position and appearance for improved clarity and readability.
 
-## 32.2.8 (2026-03-03)
+- **Tooltip Distance** - Added the ability to adjust the distance between the tooltip and data points. This update allows for optimal tooltip placement, preventing overlap with chart elements and improving overall readability.
 
-### Chart
+- `#I620756` - **Crosshair Label Render Event** – Implemented a new event that provides full control over crosshair label customization during rendering.
 
-#### Bug Fixes
+- **Split Tooltip** – Enabled split tooltips for multi-series charts. When hovering over data points, each series now displays its own dedicated tooltip, offering clearer and uncluttered access to detailed information.
 
-- `I811385` - The chart data label now display correctly in the top and bottom positions when the angle is set to 90 degree.
+- **Follow Pointer** – Added support for pointer-following tooltips, delivering a more intuitive and interactive experience when exploring data. Tooltips now track the cursor movement for better context and visibility.
 
-## 32.1.25 (2026-01-24)
+- **Linear and Radial Gradient** - Added support for applying a gradient fill to chart series, trendlines, and technical indicators. Configure linear or radial gradients with customizable colors and gradient properties to deliver improved visual depth and a more polished appearance across all chart elements.
 
-### Chart
+- **Legend Template** – Added support for customizing legend items using templates. Define custom HTML or text templates for legend entries to fully control legend item rendering and achieve tailored visualizations.
 
-#### Bug Fixes
+### Accumulation Chart
 
-- The `columnWidthInPixel` property works correctly when the `enableSideBySidePlacement` property is disabled.
+#### Features
 
-## 32.1.24 (2026-01-20)
+- **Linear and Radial Gradient** - Added support for applying a gradient fill to chart series and individual points. Configure linear or radial gradients with customizable colors and gradient properties to deliver improved visual depth and a more polished appearance across all chart elements.
 
-### Chart
+- **Legend Template** - Added support for customizing legend items in the accumulation chart using templates. Define custom HTML or text templates for legend entries to fully control legend item rendering, enabling tailored and visually rich representations of the accumulation chart.
 
-#### Bug Fixes
+### Stock Chart
 
-- `I801695` - Multi-series chart data now exports properly to Excel.
+#### Features
 
-## 32.1.20 (2025-12-20)
+- **Linear and Radial Gradient** - Added support for applying a gradient fill to chart series, trendlines, and technical indicators. Configure linear or radial gradients with customizable colors and gradient properties to deliver improved visual depth and a more polished appearance across all chart elements.
 
-### Chart
+- **Legend Template** - Added support for customizing legend items in the stock chart using templates. Define custom HTML or text templates for legend entries to fully control legend item rendering, enabling tailored and visually rich representations of the stock chart.
 
-#### Bug Fixes
+### Sankey
 
-- `I798374` - Fixed an issue where series animations did not animate from right to left when RTL mode was enabled.
+The Syncfusion Sankey chart is a powerful flow‑visualization component designed to illustrate the movement and relationships between entities within a system. It is particularly effective for visualizing energy transfers, material flows, cost distributions, and process workflows. The chart uses nodes to represent entities and weighted links to depict the magnitude of flow between them, making it easy to analyze complex interactions and quantities at a glance.
 
-## 32.1.19 (2025-12-16)
+Explore the demo [here](https://ej2.syncfusion.com/demos/#/material3/sankey/default.html)
+
+#### Features
+
+- **Nodes** – Define key stages and entities in your flow diagram with customizable nodes that serve as anchor points for data visualization.
+
+- **Weighted Links** – Visualize flow magnitude with proportional link widths, making it easy to identify primary and secondary pathways at a glance.
+
+- **Smart Labels** – Add contextual information with customizable labels that clarify node purposes and enhance data comprehension.
+
+- **Descriptive Titles** – Provide clear context with chart titles and subtitles that communicate your data story effectively.
+
+- **Interactive Experience** – Engage users with built-in tooltips, hover effects, and legend highlighting for dynamic data exploration.
+
+- **Customizable Legends** – Configure legends to display node information, color coding, and categorical data for improved clarity.
+
+- **Responsive & Adaptive** – Automatically adjusts to different screen sizes and devices, ensuring optimal viewing on desktop, tablet, and mobile.
+
+- **Flexible Layouts** – Switch between horizontal and vertical orientations to best suit your data presentation needs.
+
+- **Export & Print** – Export charts as images (PNG, JPEG, SVG) or PDF, and print directly for reports and presentations.
 
 ### Chart
 

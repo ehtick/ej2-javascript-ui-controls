@@ -1,4 +1,3 @@
-
 /**
  * Gantt taskbaredit spec
  */

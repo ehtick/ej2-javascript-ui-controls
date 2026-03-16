@@ -138,11 +138,11 @@ describe('Alignments plugin', () => {
             let end: HTMLElement = elem.querySelectorAll('p')[2];
             editorObj.nodeSelection.setSelectionText(document, start.childNodes[0], end, 0, 0);
             editorObj.execCommand("Alignments", 'JustifyRight', null);
-            expect(end.lastElementChild.classList.contains('e-imgright')).toBe(true);
+            expect(end.lastElementChild.classList.contains('e-img-right')).toBe(true);
             editorObj.execCommand("Alignments", 'JustifyRight', null);
-            expect(end.lastElementChild.classList.contains('e-imgright')).toBe(true);
+            expect(end.lastElementChild.classList.contains('e-img-right')).toBe(true);
             editorObj.execCommand("Alignments", 'JustifyCenter', null);
-            expect(end.lastElementChild.classList.contains('e-imgcenter')).toBe(true);
+            expect(end.lastElementChild.classList.contains('e-img-center')).toBe(true);
         });
         afterAll(() => {
             detach(elem);
@@ -173,11 +173,11 @@ describe('Alignments plugin', () => {
             let end: HTMLElement = document.getElementById('content-edit');
             editorObj.nodeSelection.setSelectionText(document, start.childNodes[0], end, 0, 0);
             editorObj.execCommand("Alignments", 'JustifyRight', null);
-            expect(end.lastElementChild.classList.contains('e-imgright')).toBe(true);
+            expect(end.lastElementChild.classList.contains('e-img-right')).toBe(true);
             editorObj.execCommand("Alignments", 'JustifyRight', null);
-            expect(end.lastElementChild.classList.contains('e-imgright')).toBe(true);
+            expect(end.lastElementChild.classList.contains('e-img-right')).toBe(true);
             editorObj.execCommand("Alignments", 'JustifyCenter', null);
-            expect(end.lastElementChild.classList.contains('e-imgcenter')).toBe(true);
+            expect(end.lastElementChild.classList.contains('e-img-center')).toBe(true);
         });
         afterAll(() => {
             detach(elem);

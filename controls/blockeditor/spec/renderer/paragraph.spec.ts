@@ -22,7 +22,7 @@ describe('Paragraph Block', () => {
             editorElement = createElement('div', { id: 'editor' });
             document.body.appendChild(editorElement);
             const blocks: BlockModel[] = [
-                { id: 'paragraph', blockType: BlockType.Paragraph, content: [{ id: 'paragraph-content', contentType: ContentType.Text, content: 'Hello world' }] }
+                { id: 'paragraph', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Hello world' }] }
             ];
             editor = createEditor({ blocks: blocks });
             editor.appendTo('#editor');
@@ -52,7 +52,8 @@ describe('Paragraph Block', () => {
         });
 
         it('should update the block model on interaction', (done) => {
-            const paragraph = editorElement.querySelector('#paragraph-content');
+            const blockElement = editorElement.querySelector('.e-block');
+            const paragraph = blockElement.querySelector('p');
             paragraph.textContent = 'Updated content';
             editor.blockManager.setFocusToBlock(paragraph.closest('.e-block') as HTMLElement);
             editor.blockManager.stateManager.updateContentOnUserTyping(paragraph.closest('.e-block') as HTMLElement);

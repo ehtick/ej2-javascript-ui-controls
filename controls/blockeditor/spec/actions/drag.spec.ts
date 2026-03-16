@@ -1,6 +1,6 @@
 import { createElement, remove } from '@syncfusion/ej2-base';
 import { BlockType, ContentType } from '../../src/models/enums';
-import { BlockModel } from '../../src/models/index';
+import { BlockModel, ITableBlockSettings } from '../../src/models/index';
 import { BlockDragEventArgs } from '../../src/models/eventargs';
 import { BlockEditor } from '../../src/index';
 
@@ -23,9 +23,9 @@ describe('DragAndDrop', () => {
             editorElement = createElement('div', { id: 'editor' });
             document.body.appendChild(editorElement);
             const blocks: BlockModel[] = [
-                { id: 'block1', blockType: BlockType.BulletList, content: [{ id: 'content1', contentType: ContentType.Text, content: 'Block 1 content' }] },
-                { id: 'block2', blockType: BlockType.BulletList, content: [{ id: 'content2', contentType: ContentType.Text, content: 'Block 2 content' }] },
-                { id: 'block3', blockType: BlockType.Paragraph, content: [{ id: 'content3', contentType: ContentType.Text, content: 'Block 3 content' }] }
+                { id: 'block1', blockType: BlockType.BulletList, content: [{ contentType: ContentType.Text, content: 'Block 1 content' }] },
+                { id: 'block2', blockType: BlockType.BulletList, content: [{ contentType: ContentType.Text, content: 'Block 2 content' }] },
+                { id: 'block3', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Block 3 content' }] }
             ];
     
             editor = new BlockEditor({ 
@@ -353,8 +353,8 @@ describe('DragAndDrop', () => {
         });
         it('dynamic prop handling enableDragAndDrop', (done) => {
             const blocks: BlockModel[] = [
-                { id: 'block1', blockType: BlockType.Paragraph, content: [{ id: 'content1', contentType: ContentType.Text, content: 'Block 1 content' }] },
-                { id: 'block2', blockType: BlockType.Paragraph, content: [{ id: 'content2', contentType: ContentType.Text, content: 'Block 2 content' }] }
+                { id: 'block1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Block 1 content' }] },
+                { id: 'block2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Block 2 content' }] }
             ];
     
             editor = new BlockEditor({ 
@@ -398,8 +398,8 @@ describe('DragAndDrop', () => {
         });
         it('dynamic prop handling enableDragAndDrop false to true', (done) => {
             const blocks: BlockModel[] = [
-                { id: 'block1', blockType: BlockType.Paragraph, content: [{ id: 'content1', contentType: ContentType.Text, content: 'Block 1 content' }] },
-                { id: 'block2', blockType: BlockType.Paragraph, content: [{ id: 'content2', contentType: ContentType.Text, content: 'Block 2 content' }] }
+                { id: 'block1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Block 1 content' }] },
+                { id: 'block2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Block 2 content' }] }
             ];
     
             editor = new BlockEditor({ 
@@ -443,8 +443,8 @@ describe('DragAndDrop', () => {
         });
         it('should cancel drag operation on blockDragStart if event args.cancel is true', (done) => {
             const blocks: BlockModel[] = [
-                { id: 'block1', blockType: BlockType.Paragraph, content: [{ id: 'content1', contentType: ContentType.Text, content: 'Block 1 content' }] },
-                { id: 'block2', blockType: BlockType.Paragraph, content: [{ id: 'content2', contentType: ContentType.Text, content: 'Block 2 content' }] }
+                { id: 'block1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Block 1 content' }] },
+                { id: 'block2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Block 2 content' }] }
             ];
             editor = new BlockEditor({ 
                 blocks: blocks,
@@ -481,8 +481,8 @@ describe('DragAndDrop', () => {
         });
         it('should cancel drop operation on blockDrag if event args.cancel is true', (done) => {
             const blocks: BlockModel[] = [
-                { id: 'block1', blockType: BlockType.Paragraph, content: [{ id: 'content1', contentType: ContentType.Text, content: 'Block 1 content' }] },
-                { id: 'block2', blockType: BlockType.Paragraph, content: [{ id: 'content2', contentType: ContentType.Text, content: 'Block 2 content' }] }
+                { id: 'block1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Block 1 content' }] },
+                { id: 'block2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Block 2 content' }] }
             ];
             editor = new BlockEditor({ 
                 blocks: blocks,
@@ -521,11 +521,11 @@ describe('DragAndDrop', () => {
             editorElement = createElement('div', { id: 'editor' });
             document.body.appendChild(editorElement);
             const blocks: BlockModel[] = [
-                { id: 'block1', blockType: BlockType.Paragraph, content: [{ id: 'content1', contentType: ContentType.Text, content: 'Block 1 content' }] },
-                { id: 'block2', blockType: BlockType.Paragraph, content: [{ id: 'content2', contentType: ContentType.Text, content: 'Block 2 content' }] },
-                { id: 'block3', blockType: BlockType.Paragraph, content: [{ id: 'content3', contentType: ContentType.Text, content: 'Block 3 content' }] },
-                { id: 'block4', blockType: BlockType.Paragraph, content: [{ id: 'content4', contentType: ContentType.Text, content: 'Block 4 content' }] },
-                { id: 'block5', blockType: BlockType.Paragraph, content: [{ id: 'content5', contentType: ContentType.Text, content: 'Block 5 content' }] }
+                { id: 'block1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Block 1 content' }] },
+                { id: 'block2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Block 2 content' }] },
+                { id: 'block3', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Block 3 content' }] },
+                { id: 'block4', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Block 4 content' }] },
+                { id: 'block5', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Block 5 content' }] }
             ];
 
             editor = new BlockEditor({ 
@@ -826,6 +826,781 @@ describe('DragAndDrop', () => {
                     expect(editor.blocks[4].id).toBe('block3');
                     done();
                 }, 100);
+            }, 100);
+        });
+
+        it('drag different block block1 and block2 while multiple blocks are selected - only dragged block should move', (done) => {
+            // Select blocks 1 and 2
+            simulateMultiBlockSelection(block1, block2);
+
+            // Move mouse to block3 (different block) to trigger drag icon
+            triggerMouseMove(block3, 10, 10);
+            const dragIcon = editor.floatingIconRenderer.floatingIconContainer.querySelector('.e-block-drag-icon') as HTMLElement;
+            expect(dragIcon).not.toBeNull();
+
+            const dataTransfer = new DataTransfer();
+            // Start dragging block3 (not the selected blocks)
+            triggerDragEvent(dragIcon, 'dragstart', 10, 10, dataTransfer);
+            triggerDragEvent(block5, 'dragover', 75, block5.offsetTop + 10, dataTransfer);
+            triggerDragEvent(dragIcon, 'drag', 75, block5.offsetTop + (block5.offsetHeight/2) + 10, dataTransfer);
+
+            setTimeout(() => {
+                triggerDragEvent(dragIcon, 'dragend', 0, 0, dataTransfer);
+
+                setTimeout(() => {
+                    const updatedBlocks = editor.element.querySelectorAll('.e-block');
+                    // Only block3 should move to after block5
+                    // Blocks 1 and 2 remain in their original positions
+                    expect(updatedBlocks.length).toBe(5);
+                    expect(updatedBlocks[0].id).toBe('block1');
+                    expect(updatedBlocks[1].id).toBe('block2');
+                    expect(updatedBlocks[2].id).toBe('block4');
+                    expect(updatedBlocks[3].id).toBe('block5');
+                    expect(updatedBlocks[4].id).toBe('block3');
+                    expect(editor.element.querySelector('.e-be-dragging-clone') as HTMLElement).toBeNull();
+
+                    expect(editor.blocks.length).toBe(5);
+                    expect(editor.blocks[0].id).toBe('block1');
+                    expect(editor.blocks[1].id).toBe('block2');
+                    expect(editor.blocks[2].id).toBe('block4');
+                    expect(editor.blocks[3].id).toBe('block5');
+                    expect(editor.blocks[4].id).toBe('block3');
+                    done();
+                }, 100);
+            }, 100);
+        });
+
+        it('drag different block while multiple blocks are selected - only dragged block should move', (done) => {
+            // Select blocks 2 and 3
+            simulateMultiBlockSelection(block2, block3);
+
+            // Move mouse to block1 (different block) to trigger drag icon
+            triggerMouseMove(block1, 10, 10);
+            const dragIcon = editor.floatingIconRenderer.floatingIconContainer.querySelector('.e-block-drag-icon') as HTMLElement;
+            expect(dragIcon).not.toBeNull();
+
+            const dataTransfer = new DataTransfer();
+            // Start dragging block1 (not the selected blocks)
+            triggerDragEvent(dragIcon, 'dragstart', 10, 10, dataTransfer);
+            triggerDragEvent(block5, 'dragover', 75, block5.offsetTop + 10, dataTransfer);
+            triggerDragEvent(dragIcon, 'drag', 75, block5.offsetTop + (block5.offsetHeight/2) + 10, dataTransfer);
+
+            setTimeout(() => {
+                triggerDragEvent(dragIcon, 'dragend', 0, 0, dataTransfer);
+
+                setTimeout(() => {
+                    const updatedBlocks = editor.element.querySelectorAll('.e-block');
+                    // Only block1 should move to after block5
+                    // Blocks 2 and 3 remain in their original positions
+                    expect(updatedBlocks.length).toBe(5);
+                    expect(updatedBlocks[0].id).toBe('block2');
+                    expect(updatedBlocks[1].id).toBe('block3');
+                    expect(updatedBlocks[2].id).toBe('block4');
+                    expect(updatedBlocks[3].id).toBe('block5');
+                    expect(updatedBlocks[4].id).toBe('block1');
+                    expect(editor.element.querySelector('.e-be-dragging-clone') as HTMLElement).toBeNull();
+
+                    expect(editor.blocks.length).toBe(5);
+                    expect(editor.blocks[0].id).toBe('block2');
+                    expect(editor.blocks[1].id).toBe('block3');
+                    expect(editor.blocks[2].id).toBe('block4');
+                    expect(editor.blocks[3].id).toBe('block5');
+                    expect(editor.blocks[4].id).toBe('block1');
+                    done();
+                }, 100);
+            }, 100);
+        });
+    });
+
+    describe('DragAndDrop with Table Blocks', () => {
+        it('drag last paragraph and drop above table → inserts before table', (done) => {
+            // Ensure editor container exists for this isolated test
+            editorElement = createElement('div', { id: 'editor' });
+            document.body.appendChild(editorElement);
+
+            // Setup blocks: para1 → table → para2
+            const blocks: BlockModel[] = [
+                // First paragraph
+                { 
+                    id: 'para1', 
+                    blockType: BlockType.Paragraph, 
+                    content: [{ contentType: ContentType.Text, content: 'First paragraph' }] 
+                },
+                // Table block (using proper nested structure)
+                { 
+                    id: 'table1', 
+                    blockType: BlockType.Table, 
+                    properties: {
+                        enableHeader: true,
+                        enableRowNumbers: true,
+                        columns: [
+                            { id: 'c1', headerText: 'Column A' },
+                            { id: 'c2', headerText: 'Column B' }
+                        ],
+                        rows: [
+                            {
+                                cells: [
+                                    { 
+                                        columnId: 'c1', 
+                                        blocks: [{ 
+                                            id: 'cell-p1', 
+                                            blockType: BlockType.Paragraph, 
+                                            content: [{ contentType: ContentType.Text, content: 'Row 1 Col 1' }] 
+                                        }] 
+                                    },
+                                    { 
+                                        columnId: 'c2', 
+                                        blocks: [{ 
+                                            id: 'cell-p2', 
+                                            blockType: BlockType.Paragraph, 
+                                            content: [{ contentType: ContentType.Text, content: 'Row 1 Col 2' }] 
+                                        }] 
+                                    }
+                                ]
+                            },
+                            {
+                                cells: [
+                                    { 
+                                        columnId: 'c1', 
+                                        blocks: [{ 
+                                            id: 'cell-p3', 
+                                            blockType: BlockType.Paragraph, 
+                                            content: [{ contentType: ContentType.Text, content: 'Row 2 Col 1' }] 
+                                        }] 
+                                    },
+                                    { 
+                                        columnId: 'c2', 
+                                        blocks: [{ 
+                                            id: 'cell-p4', 
+                                            blockType: BlockType.Paragraph, 
+                                            content: [{ contentType: ContentType.Text, content: 'Row 2 Col 2' }] 
+                                        }] 
+                                    }
+                                ]
+                            }
+                        ]
+                    } as ITableBlockSettings
+                },
+                // Last paragraph (the one we'll drag)
+                { 
+                    id: 'para2', 
+                    blockType: BlockType.Paragraph, 
+                    content: [{ contentType: ContentType.Text, content: 'Last paragraph - will be moved' }] 
+                }
+            ];
+        
+            editor = new BlockEditor({ 
+                blocks: blocks,
+                enableDragAndDrop: true
+            });
+            editor.appendTo('#editor');
+        
+            // Get DOM elements
+            const para1 = document.getElementById('para1');
+            const tableBlock = document.getElementById('table1');
+            const para2 = document.getElementById('para2');
+        
+            expect(para1).not.toBeNull('para1 not found');
+            expect(tableBlock).not.toBeNull('table1 not found');
+            expect(para2).not.toBeNull('para2 not found');
+        
+            // Show drag handle
+            triggerMouseMove(para2, 10, 10);
+            const dragIcon = editor.floatingIconRenderer.floatingIconContainer
+                .querySelector('.e-block-drag-icon') as HTMLElement;
+            expect(dragIcon).not.toBeNull('Drag icon not visible');
+        
+            const dataTransfer = new DataTransfer();
+        
+            // Start dragging the last paragraph
+            triggerDragEvent(dragIcon, 'dragstart', 10, 10, dataTransfer);
+        
+            // Drop target: near the **top** of the table block
+            // → should insert BEFORE the table
+            const dropY = tableBlock.offsetTop + 15; // small offset from top to target "above"
+        
+            triggerDragEvent(tableBlock, 'dragenter', 75, dropY, dataTransfer);
+            triggerDragEvent(tableBlock, 'dragover', 75, dropY, dataTransfer);
+            triggerDragEvent(dragIcon, 'drag', 75, dropY, dataTransfer);
+        
+            setTimeout(() => {
+                // Complete the drop
+                triggerDragEvent(dragIcon, 'dragend', 0, 0, dataTransfer);
+            
+                setTimeout(() => {
+                    const updatedBlocks = editor.element.querySelectorAll('.e-block-container > .e-block');
+                    const modelBlocks = editor.blocks;
+                    expect(updatedBlocks.length).toBe(3);
+                    expect(modelBlocks.length).toBe(3);
+                
+                    // Expected final order: para1 → para2 → table1
+                    expect(updatedBlocks[0].id).toBe('para1');
+                    expect(updatedBlocks[1].id).toBe('para2');
+                    expect(updatedBlocks[2].id).toBe('table1');
+                    
+                
+                    // Also verify model order
+                    expect(editor.blocks.map(b => b.id)).toEqual(['para1', 'para2', 'table1']);
+                
+                    // Cleanup check
+                    expect(editor.element.querySelector('.e-be-dragging-clone')).toBeNull();
+                
+                    // Optional: basic content verification
+                    expect(updatedBlocks[0].textContent).toBe('First paragraph');
+                    expect(updatedBlocks[1].textContent).toBe('Last paragraph - will be moved');
+                    expect(updatedBlocks[2].textContent).toContain('Row 1 Col 1'); // table content visible
+                    expect(modelBlocks[0].content[0].content).toBe('First paragraph');
+                    expect(modelBlocks[1].content[0].content).toBe('Last paragraph - will be moved');
+
+                    // cleanup
+                    editor.destroy();
+                    remove(editorElement);
+
+                    done();
+                }, 80);
+            }, 120);
+        });
+    });
+
+    describe('DragAndDrop Nested Block Restrictions', () => {
+        beforeEach(() => {
+            editorElement = createElement('div', { id: 'editor' });
+            document.body.appendChild(editorElement);
+        });
+
+        afterEach(() => {
+            if (editor) {
+                editor.destroy();
+                editor = undefined;
+            }
+            remove(editorElement);
+        });
+
+        it('should hide drop indicator when dragging a Quote over another Quote', (done) => {
+            const blocks: BlockModel[] = [
+                { 
+                    id: 'quote1', 
+                    blockType: BlockType.Quote,
+                    properties: {
+                        children: [{
+                            blockType: BlockType.Paragraph,
+                            parentId: 'quote1',
+                            content: [{ contentType: ContentType.Text, content: 'First quote' }]
+                        }]
+                    }
+                },
+                { 
+                    id: 'quote2', 
+                    blockType: BlockType.Quote,
+                    properties: {
+                        children: [{
+                            blockType: BlockType.Paragraph,
+                            parentId: 'quote2',
+                            content: [{ contentType: ContentType.Text, content: 'Second quote' }]
+                        }]
+                    }
+                },
+                { id: 'para1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Paragraph' }] }
+            ];
+
+            editor = new BlockEditor({ 
+                blocks: blocks,
+                enableDragAndDrop: true
+            });
+            editor.appendTo('#editor');
+
+            const quote1 = document.getElementById('quote1');
+            const quote2 = document.getElementById('quote2');
+
+            triggerMouseMove(quote1, 10, 10);
+            const dragIcon = editor.floatingIconRenderer.floatingIconContainer.querySelector('.e-block-drag-icon') as HTMLElement;
+            expect(dragIcon).not.toBeNull();
+
+            const dataTransfer = new DataTransfer();
+            triggerDragEvent(dragIcon, 'dragstart', 10, 10, dataTransfer);
+            triggerDragEvent(quote2, 'dragover', 75, quote2.offsetTop + 10, dataTransfer);
+            triggerDragEvent(dragIcon, 'drag', 75, quote2.offsetTop + 10, dataTransfer);
+
+            setTimeout(() => {
+                // Check that drop indicator is not visible (cleaned up)
+                const dropIndicator = editor.element.querySelector('.e-be-drop-indicator');
+                expect(dropIndicator).toBeNull('Drop indicator should be hidden for nested quote over quote');
+
+                triggerDragEvent(dragIcon, 'dragend', 0, 0, dataTransfer);
+                
+                setTimeout(() => {
+                    expect(editor.element.querySelector('.e-be-dragging-clone')).toBeNull();
+                    done();
+                }, 50);
+            }, 100);
+        });
+
+        it('should hide drop indicator when dragging a Callout over a Callout', (done) => {
+            const blocks: BlockModel[] = [
+                { 
+                    id: 'callout1', 
+                    blockType: BlockType.Callout,
+                    properties: {
+                        children: [{
+                            blockType: BlockType.Paragraph,
+                            parentId: 'callout1',
+                            content: [{ contentType: ContentType.Text, content: 'First callout' }]
+                        }]
+                    }
+                },
+                { 
+                    id: 'callout2', 
+                    blockType: BlockType.Callout,
+                    properties: {
+                        children: [{
+                            blockType: BlockType.Paragraph,
+                            parentId: 'callout2',
+                            content: [{ contentType: ContentType.Text, content: 'Second callout' }]
+                        }]
+                    }
+                }
+            ];
+
+            editor = new BlockEditor({ 
+                blocks: blocks,
+                enableDragAndDrop: true
+            });
+            editor.appendTo('#editor');
+
+            const callout1 = document.getElementById('callout1');
+            const callout2 = document.getElementById('callout2');
+
+            triggerMouseMove(callout1, 10, 10);
+            const dragIcon = editor.floatingIconRenderer.floatingIconContainer.querySelector('.e-block-drag-icon') as HTMLElement;
+            expect(dragIcon).not.toBeNull();
+
+            const dataTransfer = new DataTransfer();
+            triggerDragEvent(dragIcon, 'dragstart', 10, 10, dataTransfer);
+            triggerDragEvent(callout2, 'dragover', 75, callout2.offsetTop + 10, dataTransfer);
+            triggerDragEvent(dragIcon, 'drag', 75, callout2.offsetTop + 10, dataTransfer);
+
+            setTimeout(() => {
+                const dropIndicator = editor.element.querySelector('.e-be-drop-indicator');
+                expect(dropIndicator).toBeNull('Drop indicator should be hidden for nested callout over callout');
+
+                triggerDragEvent(dragIcon, 'dragend', 0, 0, dataTransfer);
+                
+                setTimeout(() => {
+                    expect(editor.element.querySelector('.e-be-dragging-clone')).toBeNull();
+                    done();
+                }, 50);
+            }, 100);
+        });
+
+        it('should hide drop indicator when dragging CollapsibleParagraph over CollapsibleHeading', (done) => {
+            const blocks: BlockModel[] = [
+                { 
+                    id: 'collPara1', 
+                    blockType: BlockType.CollapsibleParagraph,
+                    properties: {
+                        children: [{
+                            blockType: BlockType.Paragraph,
+                            parentId: 'collPara1',
+                            content: [{ contentType: ContentType.Text, content: 'Collapsible paragraph' }]
+                        }]
+                    }
+                },
+                { 
+                    id: 'collHead1', 
+                    blockType: BlockType.CollapsibleHeading,
+                    properties: {
+                        children: [{
+                            blockType: BlockType.Paragraph,
+                            parentId: 'collHead1',
+                            content: [{ contentType: ContentType.Text, content: 'Collapsible heading' }]
+                        }]
+                    }
+                }
+            ];
+
+            editor = new BlockEditor({ 
+                blocks: blocks,
+                enableDragAndDrop: true
+            });
+            editor.appendTo('#editor');
+
+            const collPara1 = document.getElementById('collPara1');
+            const collHead1 = document.getElementById('collHead1');
+
+            triggerMouseMove(collPara1, 10, 10);
+            const dragIcon = editor.floatingIconRenderer.floatingIconContainer.querySelector('.e-block-drag-icon') as HTMLElement;
+            expect(dragIcon).not.toBeNull();
+
+            const dataTransfer = new DataTransfer();
+            triggerDragEvent(dragIcon, 'dragstart', 10, 10, dataTransfer);
+            triggerDragEvent(collHead1, 'dragover', 75, collHead1.offsetTop + 10, dataTransfer);
+            triggerDragEvent(dragIcon, 'drag', 75, collHead1.offsetTop + 10, dataTransfer);
+
+            setTimeout(() => {
+                const dropIndicator = editor.element.querySelector('.e-be-drop-indicator');
+                expect(dropIndicator).toBeNull('Drop indicator should be hidden for nested collapsible blocks');
+
+                triggerDragEvent(dragIcon, 'dragend', 0, 0, dataTransfer);
+                
+                setTimeout(() => {
+                    expect(editor.element.querySelector('.e-be-dragging-clone')).toBeNull();
+                    done();
+                }, 50);
+            }, 100);
+        });
+
+        it('should show drop indicator when dragging a Paragraph over a Quote', (done) => {
+            const blocks: BlockModel[] = [
+                { id: 'para1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Paragraph to drag' }] },
+                { 
+                    id: 'quote1', 
+                    blockType: BlockType.Quote,
+                    properties: {
+                        children: [{
+                            blockType: BlockType.Paragraph,
+                            parentId: 'quote1',
+                            content: [{ contentType: ContentType.Text, content: 'Quote block' }]
+                        }]
+                    }
+                }
+            ];
+
+            editor = new BlockEditor({ 
+                blocks: blocks,
+                enableDragAndDrop: true
+            });
+            editor.appendTo('#editor');
+
+            const para1 = document.getElementById('para1');
+            const quote1 = document.getElementById('quote1');
+
+            triggerMouseMove(para1, 10, 10);
+            const dragIcon = editor.floatingIconRenderer.floatingIconContainer.querySelector('.e-block-drag-icon') as HTMLElement;
+            expect(dragIcon).not.toBeNull();
+
+            const dataTransfer = new DataTransfer();
+            triggerDragEvent(dragIcon, 'dragstart', 10, 10, dataTransfer);
+            triggerDragEvent(quote1, 'dragover', 75, quote1.offsetTop + 10, dataTransfer);
+            triggerDragEvent(dragIcon, 'drag', 75, quote1.offsetTop + (quote1.offsetHeight / 2) + 10, dataTransfer);
+
+            setTimeout(() => {
+                // Check that drop indicator IS visible (not cleaned up)
+                const dropIndicator = editor.element.querySelector('.e-be-drop-indicator');
+                expect(dropIndicator).not.toBeNull('Drop indicator should be visible for non-nested block over nested block');
+
+                triggerDragEvent(dragIcon, 'dragend', 0, 0, dataTransfer);
+                
+                setTimeout(() => {
+                    expect(editor.element.querySelector('.e-be-dragging-clone')).toBeNull();
+                    done();
+                }, 50);
+            }, 100);
+        });
+
+        it('should show drop indicator when dragging a Quote next to (not inside) another Quote', (done) => {
+            const blocks: BlockModel[] = [
+                { 
+                    id: 'quote1', 
+                    blockType: BlockType.Quote,
+                    properties: {
+                        children: [{
+                            blockType: BlockType.Paragraph,
+                            parentId: 'quote1',
+                            content: [{ contentType: ContentType.Text, content: 'First quote' }]
+                        }]
+                    }
+                },
+                { id: 'para1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Paragraph separator' }] },
+                { 
+                    id: 'quote2', 
+                    blockType: BlockType.Quote,
+                    properties: {
+                        children: [{
+                            blockType: BlockType.Paragraph,
+                            parentId: 'quote2',
+                            content: [{ contentType: ContentType.Text, content: 'Second quote' }]
+                        }]
+                    }
+                }
+            ];
+
+            editor = new BlockEditor({ 
+                blocks: blocks,
+                enableDragAndDrop: true
+            });
+            editor.appendTo('#editor');
+
+            const quote1 = document.getElementById('quote1');
+            const para1 = document.getElementById('para1');
+
+            triggerMouseMove(quote1, 10, 10);
+            const dragIcon = editor.floatingIconRenderer.floatingIconContainer.querySelector('.e-block-drag-icon') as HTMLElement;
+            expect(dragIcon).not.toBeNull();
+
+            const dataTransfer = new DataTransfer();
+            triggerDragEvent(dragIcon, 'dragstart', 10, 10, dataTransfer);
+            // Drag to a non-nested block (para1), not to another nested block
+            triggerDragEvent(para1, 'dragover', 75, para1.offsetTop + 10, dataTransfer);
+            triggerDragEvent(dragIcon, 'drag', 75, para1.offsetTop + (para1.offsetHeight / 2) + 10, dataTransfer);
+
+            setTimeout(() => {
+                // Drop indicator should be visible when dropping outside nested context
+                const dropIndicator = editor.element.querySelector('.e-be-drop-indicator');
+                expect(dropIndicator).not.toBeNull('Drop indicator should be visible for nested block dropping outside nested context');
+
+                triggerDragEvent(dragIcon, 'dragend', 0, 0, dataTransfer);
+                
+                setTimeout(() => {
+                    expect(editor.element.querySelector('.e-be-dragging-clone')).toBeNull();
+                    done();
+                }, 50);
+            }, 100);
+        });
+
+        it('should hide drop indicator when dragging multiple blocks including a Callout over a Quote', (done) => {
+            const blocks: BlockModel[] = [
+                { id: 'para1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Paragraph' }] },
+                { 
+                    id: 'callout1', 
+                    blockType: BlockType.Callout,
+                    properties: {
+                        children: [{
+                            blockType: BlockType.Paragraph,
+                            parentId: 'callout1',
+                            content: [{ contentType: ContentType.Text, content: 'Callout' }]
+                        }]
+                    }
+                },
+                { 
+                    id: 'quote1', 
+                    blockType: BlockType.Quote,
+                    properties: {
+                        children: [{
+                            blockType: BlockType.Paragraph,
+                            parentId: 'quote1',
+                            content: [{ contentType: ContentType.Text, content: 'Quote' }]
+                        }]
+                    }
+                }
+            ];
+
+            editor = new BlockEditor({ 
+                blocks: blocks,
+                enableDragAndDrop: true
+            });
+            editor.appendTo('#editor');
+
+            const para1 = document.getElementById('para1');
+            const callout1 = document.getElementById('callout1');
+            const quote1 = document.getElementById('quote1');
+
+            // Simulate selection of para1 and callout1
+            const range = document.createRange();
+            range.setStartBefore(para1);
+            range.setEndAfter(callout1);
+            
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+
+            const allBlocks = editor.blockManager.getEditorBlocks();
+            const selectedBlocks = allBlocks.slice(0, 2);
+            spyOn(editor, 'getSelectedBlocks').and.returnValue(selectedBlocks);
+
+            triggerMouseMove(para1, 10, 10);
+            const dragIcon = editor.floatingIconRenderer.floatingIconContainer.querySelector('.e-block-drag-icon') as HTMLElement;
+            expect(dragIcon).not.toBeNull();
+
+            const dataTransfer = new DataTransfer();
+            triggerDragEvent(dragIcon, 'dragstart', 10, 10, dataTransfer);
+            triggerDragEvent(quote1, 'dragover', 75, quote1.offsetTop + 10, dataTransfer);
+            triggerDragEvent(dragIcon, 'drag', 75, quote1.offsetTop + 10, dataTransfer);
+
+            setTimeout(() => {
+                // Drop indicator should be hidden because draggedBlocks includes a Callout (nested-capable)
+                // and quote1 is itself a nested-capable block
+                const dropIndicator = editor.element.querySelector('.e-be-drop-indicator');
+                expect(dropIndicator).toBeNull('Drop indicator should be hidden when mixed selection includes nested block');
+
+                triggerDragEvent(dragIcon, 'dragend', 0, 0, dataTransfer);
+                
+                setTimeout(() => {
+                    expect(editor.element.querySelector('.e-be-dragging-clone')).toBeNull();
+                    done();
+                }, 50);
+            }, 100);
+        });
+
+        it('should show drop indicator when dragging multiple non-nested blocks over a Callout', (done) => {
+            const blocks: BlockModel[] = [
+                { id: 'para1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Paragraph 1' }] },
+                { id: 'para2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Paragraph 2' }] },
+                { 
+                    id: 'callout1', 
+                    blockType: BlockType.Callout,
+                    properties: {
+                        children: [{
+                            blockType: BlockType.Paragraph,
+                            parentId: 'callout1',
+                            content: [{ contentType: ContentType.Text, content: 'Callout' }]
+                        }]
+                    }
+                }
+            ];
+
+            editor = new BlockEditor({ 
+                blocks: blocks,
+                enableDragAndDrop: true
+            });
+            editor.appendTo('#editor');
+
+            const para1 = document.getElementById('para1');
+            const para2 = document.getElementById('para2');
+            const callout1 = document.getElementById('callout1');
+
+            // Simulate selection of para1 and para2
+            const range = document.createRange();
+            range.setStartBefore(para1);
+            range.setEndAfter(para2);
+            
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+
+            const allBlocks = editor.blockManager.getEditorBlocks();
+            const selectedBlocks = allBlocks.slice(0, 2);
+            spyOn(editor, 'getSelectedBlocks').and.returnValue(selectedBlocks);
+
+            triggerMouseMove(para1, 10, 10);
+            const dragIcon = editor.floatingIconRenderer.floatingIconContainer.querySelector('.e-block-drag-icon') as HTMLElement;
+            expect(dragIcon).not.toBeNull();
+
+            const dataTransfer = new DataTransfer();
+            triggerDragEvent(dragIcon, 'dragstart', 10, 10, dataTransfer);
+            triggerDragEvent(callout1, 'dragover', 75, callout1.offsetTop + 10, dataTransfer);
+            triggerDragEvent(dragIcon, 'drag', 75, callout1.offsetTop + (callout1.offsetHeight / 2) + 10, dataTransfer);
+
+            setTimeout(() => {
+                // Drop indicator should be visible because all dragged blocks are non-nested
+                const dropIndicator = editor.element.querySelector('.e-be-drop-indicator');
+                expect(dropIndicator).not.toBeNull('Drop indicator should be visible when dragging only non-nested blocks');
+
+                triggerDragEvent(dragIcon, 'dragend', 0, 0, dataTransfer);
+                
+                setTimeout(() => {
+                    expect(editor.element.querySelector('.e-be-dragging-clone')).toBeNull();
+                    done();
+                }, 50);
+            }, 100);
+        });
+
+        it('should hide drop indicator when dragging a Quote over CollapsibleHeading inside Callout', (done) => {
+            // This tests deep nesting: Quote → over CollapsibleHeading that is inside Callout
+            const blocks: BlockModel[] = [
+                { 
+                    id: 'quote1', 
+                    blockType: BlockType.Quote,
+                    properties: {
+                        children: [{
+                            blockType: BlockType.Paragraph,
+                            parentId: 'quote1',
+                            content: [{ contentType: ContentType.Text, content: 'Quote to drag' }]
+                        }]
+                    }
+                },
+                { 
+                    id: 'callout1', 
+                    blockType: BlockType.Callout,
+                    properties: {
+                        children: [{
+                            id: 'collHead1',
+                            blockType: BlockType.CollapsibleHeading,
+                            parentId: 'callout1',
+                            content: [{ contentType: ContentType.Text, content: 'Collapsible inside' }]
+                        }]
+                    }
+                }
+            ];
+
+            editor = new BlockEditor({ 
+                blocks: blocks,
+                enableDragAndDrop: true
+            });
+            editor.appendTo('#editor');
+
+            const quote1 = document.getElementById('quote1');
+            const collHead1 = document.getElementById('collHead1');
+
+            triggerMouseMove(quote1, 10, 10);
+            const dragIcon = editor.floatingIconRenderer.floatingIconContainer.querySelector('.e-block-drag-icon') as HTMLElement;
+            expect(dragIcon).not.toBeNull();
+
+            const dataTransfer = new DataTransfer();
+            triggerDragEvent(dragIcon, 'dragstart', 10, 10, dataTransfer);
+            triggerDragEvent(collHead1, 'dragover', 75, collHead1.offsetTop + 10, dataTransfer);
+            triggerDragEvent(dragIcon, 'drag', 75, collHead1.offsetTop + 10, dataTransfer);
+
+            setTimeout(() => {
+                // Drop indicator should be hidden because:
+                // - quote1 is a nested-capable block (Quote)
+                // - collHead1 is a nested-capable block
+                const dropIndicator = editor.element.querySelector('.e-be-drop-indicator');
+                expect(dropIndicator).toBeNull('Drop indicator should be hidden for quote over nested-capable block');
+
+                triggerDragEvent(dragIcon, 'dragend', 0, 0, dataTransfer);
+                
+                setTimeout(() => {
+                    expect(editor.element.querySelector('.e-be-dragging-clone')).toBeNull();
+                    done();
+                }, 50);
+            }, 100);
+        });
+
+        it('should show drop indicator when dragging a Heading over a Quote (non-nested block)', (done) => {
+            const blocks: BlockModel[] = [
+                { id: 'heading1', blockType: BlockType.Heading, content: [{ contentType: ContentType.Text, content: 'Heading to drag' }] },
+                { 
+                    id: 'quote1', 
+                    blockType: BlockType.Quote,
+                    properties: {
+                        children: [{
+                            blockType: BlockType.Paragraph,
+                            parentId: 'quote1',
+                            content: [{ contentType: ContentType.Text, content: 'Quote' }]
+                        }]
+                    }
+                }
+            ];
+
+            editor = new BlockEditor({ 
+                blocks: blocks,
+                enableDragAndDrop: true
+            });
+            editor.appendTo('#editor');
+
+            const heading1 = document.getElementById('heading1');
+            const quote1 = document.getElementById('quote1');
+
+            triggerMouseMove(heading1, 10, 10);
+            const dragIcon = editor.floatingIconRenderer.floatingIconContainer.querySelector('.e-block-drag-icon') as HTMLElement;
+            expect(dragIcon).not.toBeNull();
+
+            const dataTransfer = new DataTransfer();
+            triggerDragEvent(dragIcon, 'dragstart', 10, 10, dataTransfer);
+            triggerDragEvent(quote1, 'dragover', 75, quote1.offsetTop + 10, dataTransfer);
+            triggerDragEvent(dragIcon, 'drag', 75, quote1.offsetTop + (quote1.offsetHeight / 2) + 10, dataTransfer);
+
+            setTimeout(() => {
+                // Drop indicator should be visible because Heading is not a nested-capable block
+                const dropIndicator = editor.element.querySelector('.e-be-drop-indicator');
+                expect(dropIndicator).not.toBeNull('Drop indicator should be visible for non-nested block (Heading) over nested block');
+
+                triggerDragEvent(dragIcon, 'dragend', 0, 0, dataTransfer);
+                
+                setTimeout(() => {
+                    expect(editor.element.querySelector('.e-be-dragging-clone')).toBeNull();
+                    done();
+                }, 50);
             }, 100);
         });
     });

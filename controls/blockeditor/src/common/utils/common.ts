@@ -1,5 +1,6 @@
 import { compile, select } from '@syncfusion/ej2-base';
 import { StyleModel } from '../../models/index';
+import { getDeepestNodeAndOffset } from './dom';
 
 /**
  * Generates a unique ID with an optional prefix.
@@ -84,42 +85,31 @@ export function getTemplateFunction(template: string | HTMLElement | Function): 
 }
 
 /**
- * Normalizes the range to handle edge cases where selection spans element boundaries
+ * Normalizes a selection range to ensure accurate text-node-based start/end.
+ * Handles deep nesting, partial selections, and boundary cases without over-expansion.
  *
- * @param {Range} range - The range to normalize.
- * @returns {Range} - The normalized range.
+ * @param {Range} range - The raw selection range
+ * @returns {void} Normalized range with text-node containers
  */
 export function normalizeRange(range: Range): Range {
-    // Clone the range to avoid modifying the original
-    const newRange: Range = range.cloneRange();
+    if (range.collapsed) { return range.cloneRange(); }
 
-    // Case 1: Selection starts at end of one element and ends at start of another
-    if (
-        range.startContainer !== range.endContainer &&
-        range.startOffset === (range.startContainer.nodeType === Node.TEXT_NODE ? (range.startContainer as Text).length : 0)) {
+    const normalized: Range = range.cloneRange();
 
-        // Adjust to select only the end container
-        newRange.setStart(range.endContainer, 0);
-        newRange.setEnd(
-            range.endContainer,
-            range.endContainer.nodeType === Node.TEXT_NODE ? (range.endContainer as Text).length : 0
-        );
+    // Normalize start
+    const start: { node: Text; offset: number } = getDeepestNodeAndOffset(range.startContainer, range.startOffset);
+    normalized.setStart(start.node, start.offset);
+
+    // Normalize end
+    const end: { node: Text; offset: number } = getDeepestNodeAndOffset(range.endContainer, range.endOffset);
+    normalized.setEnd(end.node, end.offset);
+
+    // Preserve direction (forward/backward selection)
+    if (normalized.collapsed && !range.collapsed) {
+        normalized.collapse(range.startOffset <= range.endOffset);
     }
-    // Case 2: Partial selection across element boundaries
-    else if (range.startContainer !== range.endContainer) {
-        // Check if we should expand to full elements
-        const startTextSelected: boolean = range.startOffset > 0;
-        const endTextSelected: boolean =
-            range.endOffset <
-            (range.endContainer.nodeType === Node.TEXT_NODE ? (range.endContainer as Text).length : 0);
 
-        if (startTextSelected || endTextSelected) {
-            // Expand to include full elements
-            newRange.setStartBefore(range.startContainer);
-            newRange.setEndAfter(range.endContainer);
-        }
-    }
-    return newRange;
+    return normalized;
 }
 
 /**
@@ -158,7 +148,7 @@ export function decoupleReference<T>(item: T): T {
     /* eslint-enable @typescript-eslint/no-explicit-any */
 }
 
-export function getInverseStyle(style: keyof StyleModel): keyof StyleModel {
+export function getInverseStyle(style: string): keyof StyleModel {
     const oppositeStyleMap: Record<string, keyof StyleModel> = {
         superscript: 'subscript',
         subscript: 'superscript',

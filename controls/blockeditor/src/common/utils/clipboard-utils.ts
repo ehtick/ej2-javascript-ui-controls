@@ -1,10 +1,9 @@
 import { BlockType } from '../../models/enums';
 import { BlockModel, ContentModel, TableCellModel, TableColumnModel, ITableBlockSettings, TableRowModel } from '../../models/index';
-import { BlockFactory } from '../../block-manager/services/index';
+import { BlockFactory } from '../../block-manager/services/block-factory';
 import { TableClipboardPayload } from '../../block-manager/base/interface';
 import * as constants from '../../common/constant';
-import { getModifierKey } from './data';
-import { toModelRow } from './table-utils';
+import { toDomCol, toModelRow } from './table-utils';
 
 /**
  * Generates plain text representation of blocks for external clipboard
@@ -148,27 +147,54 @@ export function buildTableClipboardPayload(tableBlockEl: HTMLElement, blockModel
     if (!tableBlockEl || !blockModel) { return null; }
     const tableEl: HTMLTableElement = tableBlockEl.querySelector('table');
     const props: ITableBlockSettings = blockModel.properties as ITableBlockSettings;
+    let focusedCells: HTMLTableCellElement[] = [];
+    const selectedRows: NodeListOf<HTMLElement> = tableEl.querySelectorAll('tr.e-row-selected');
+    const selectedCols: NodeListOf<HTMLElement> = tableBlockEl.querySelectorAll('td.e-col-selected, th.e-col-selected');
 
-    // Detect row and column selection
-    const selectedRow: HTMLElement = tableEl.querySelector('tr.e-row-selected');
-    const selectedCol: HTMLElement = tableBlockEl.querySelector('td.e-col-selected');
+    let targetEle: HTMLElement;
+    let selector: string;
 
-    // Detect focused cells (TABLE_CELL_FOCUS)
-    const targetEle: HTMLElement = (selectedRow || tableEl) as HTMLElement;
-    const selector: string = selectedRow
-        ? 'td:not(.e-row-number)'
-        : (selectedCol ? ('td.e-col-selected') : (`td.${constants.TABLE_CELL_FOCUS}`));
-    const focusedCells: HTMLTableCellElement[] = Array.from(targetEle.querySelectorAll(selector));
+    if (selectedRows.length > 0) {
+        // Multi-row: collect cells from ALL selected rows
+        const allFocusedCells: HTMLTableCellElement[] = [];
+        selectedRows.forEach((row: HTMLElement) => {
+            allFocusedCells.push(...Array.from(row.querySelectorAll('td:not(.e-row-number)')) as HTMLTableCellElement[]);
+        });
+        targetEle = tableEl; // Use whole table as base
+        selector = 'td:not(.e-row-number)';
+        focusedCells = allFocusedCells;
+    } else if (selectedCols.length > 0) {
+        // skips header row for column copy
+        focusedCells = [];
+        // Loop only over body rows (tBodies[0])
+        const bodyRows: HTMLCollectionOf<HTMLTableRowElement> = tableEl.tBodies[0].rows;
+        for (let i: number = 0; i < bodyRows.length; i++) {
+            const row: HTMLTableRowElement = bodyRows[parseInt(i.toString(), 10)];
+            const colIndex: number = parseInt(selectedCols[0].dataset.col || '0', 10);
+            const domCol: number = toDomCol(colIndex, props.enableRowNumbers);
+            const cell: HTMLTableCellElement = row.cells[parseInt(domCol.toString(), 10)];
+            if (cell && !cell.classList.contains('e-row-number')) {
+                focusedCells.push(cell as HTMLTableCellElement);
+            }
+        }
+    } else {
+        // Individual cell focus
+        targetEle = tableEl;
+        selector = `td.${constants.TABLE_CELL_FOCUS}, th.${constants.TABLE_CELL_FOCUS}`;
+        focusedCells = Array.from(targetEle.querySelectorAll(selector)) as HTMLTableCellElement[];
+    }
 
     type DataPos = { r: number, c: number };
     const dataPositions: DataPos[] = focusedCells.map((td: HTMLTableCellElement) => ({
         r: toModelRow(parseInt(td.dataset.row, 10), props.enableHeader),
         c: parseInt(td.dataset.col, 10)
     }));
+
     const minR: number = Math.min(...dataPositions.map((p: DataPos) => p.r));
     const maxR: number = Math.max(...dataPositions.map((p: DataPos) => p.r));
     const minC: number = Math.min(...dataPositions.map((p: DataPos) => p.c));
     const maxC: number = Math.max(...dataPositions.map((p: DataPos) => p.c));
+
     const height: number = maxR - minR + 1;
     const width: number = maxC - minC + 1;
     const cells: BlockModel[][][] = [];

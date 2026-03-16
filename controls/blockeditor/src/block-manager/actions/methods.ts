@@ -1,7 +1,7 @@
 import { Browser, createElement, detach, isNullOrUndefined, print as printWindow } from '@syncfusion/ej2-base';
 import { BlockType, CommandName } from '../../models/enums';
 import { BlockModel, IChecklistBlockSettings, StyleModel } from '../../models/index';
-import { getBlockContentElement, getBlockModelById, getInlineToolbarItems, getSelectedRange, isListTypeBlock, sanitizeBlock, setCursorPosition, setSelectionRange } from '../../common/utils/index';
+import { decoupleReference, getBlockContentElement, getBlockModelById, getInlineToolbarItems, getSelectedRange, hasActiveTableSelection, isListTypeBlock, setCursorPosition, setSelectionRange } from '../../common/utils/index';
 import { convertHtmlElementToBlocks, getBlockDataAsHTML } from '../../common/utils/html-parser';
 import * as constants from '../../common/constant';
 import { BlockManager } from '../base/block-manager';
@@ -38,7 +38,8 @@ export class BlockEditorMethods {
             state: {
                 blockElement: blockElement,
                 isMethod: true,
-                isUndoRedoAction: false
+                isUndoRedoAction: false,
+                preventMinimumOne: true
             }
         });
     }
@@ -77,14 +78,31 @@ export class BlockEditorMethods {
         let wrapper: HTMLElement = this.parent.blockContainer;
         if (parentBlock) {
             const parentBlockElement: HTMLElement = this.parent.getBlockElementById(parentBlock.id);
-            const selector: string = parentBlock.blockType === BlockType.Callout
-                ? '.' + constants.CALLOUT_CONTENT_CLS
-                : '.' + constants.TOGGLE_CONTENT_CLS;
-            wrapper = parentBlockElement.querySelector(selector);
+            let selector: string = '';
+
+            switch (parentBlock.blockType) {
+            case BlockType.Callout:
+                selector = '.' + constants.CALLOUT_CONTENT_CLS;
+                break;
+            case BlockType.Quote:
+                selector = '.' + constants.QUOTE_CONTENT_CLS;
+                break;
+            default:
+                if (parentBlock.blockType.toString().startsWith('Collapsible')) {
+                    selector = '.' + constants.TOGGLE_CONTENT_CLS;
+                }
+                break;
+            }
+
+            if (selector) {
+                wrapper = parentBlockElement.querySelector(selector) as HTMLElement;
+            }
         }
 
-        wrapper.insertBefore(newBlockElement, oldBlockElement);
-        detach(oldBlockElement);
+        if (wrapper) {
+            wrapper.insertBefore(newBlockElement, oldBlockElement);
+            detach(oldBlockElement);
+        }
 
         if (isListTypeBlock(updatedBlockModel.blockType)) {
             this.parent.listPlugin.recalculateMarkersForListItems();
@@ -107,10 +125,9 @@ export class BlockEditorMethods {
         }
     }
 
-    public setSelection(contentId: string, start: number, end: number): void {
-        const contentElement: HTMLElement = this.parent.blockContainer.querySelector(`#${contentId}`);
-        if (contentElement) {
-            setSelectionRange((contentElement.lastChild as HTMLElement), start, end);
+    public setSelection(node: Node, start: number, end: number): void {
+        if (node) {
+            setSelectionRange(node, start, end);
         }
     }
 
@@ -127,7 +144,7 @@ export class BlockEditorMethods {
         if (!range) { return null; }
         const tableBlk: HTMLElement = this.parent.currentFocusedBlock &&
             this.parent.currentFocusedBlock.closest(`.${constants.TABLE_BLOCK_CLS}`) as HTMLElement;
-        if (tableBlk && this.parent.tableSelectionManager.hasActiveTableSelection(tableBlk)) {
+        if (tableBlk && hasActiveTableSelection(tableBlk)) {
             return this.parent.tableSelectionManager.getSelectedCellBlocks(tableBlk);
         }
 
@@ -139,7 +156,7 @@ export class BlockEditorMethods {
             ? (parent as HTMLElement)
             : (parent.parentElement as HTMLElement);
         const isSelectionInsideChild: boolean = !!(element && element.closest(
-            `.${constants.CALLOUT_CONTENT_CLS}, .${constants.TOGGLE_CONTENT_CLS}, .${constants.TABLE_CELL_BLK_CONTAINER}`
+            `.${constants.CALLOUT_CONTENT_CLS}, .${constants.QUOTE_CONTENT_CLS}, .${constants.TOGGLE_CONTENT_CLS}, .${constants.TABLE_CELL_BLK_CONTAINER}`
         ));
         blockElements.forEach((blockElement: HTMLElement) => {
             const blockRange: Range = document.createRange();
@@ -148,6 +165,7 @@ export class BlockEditorMethods {
             const block: BlockModel = getBlockModelById(blockElement.id, editorBlocks);
             const isChildrenRootParent: boolean = isSelectionInsideChild &&
                 (blockElement.classList.contains(constants.CALLOUT_BLOCK_CLS) ||
+                blockElement.classList.contains(constants.QUOTE_BLOCK_CLS) ||
                 blockElement.classList.contains(constants.TOGGLE_BLOCK_CLS) ||
                 blockElement.classList.contains(constants.TABLE_BLOCK_CLS));
             const tableRootBlk: HTMLElement = blockElement.closest(`.${constants.TABLE_BLOCK_CLS}`) as HTMLElement;
@@ -223,15 +241,14 @@ export class BlockEditorMethods {
         ids.forEach((id: string) => {
             items.forEach((it: string | IToolbarItemModel) => {
                 if (typeof it === 'string') {
-                    if (it.toLowerCase === id.toLowerCase) {
+                    if (it.toLowerCase() === id.toLowerCase()) {
                         const defaults: IToolbarItemModel[] = getInlineToolbarItems();
                         const match: IToolbarItemModel = defaults.find((d: IToolbarItemModel) =>
                             d.command && d.command.toLowerCase() === it.toLowerCase());
-                        tbarItemModels.push(match);
+                        if (match) { tbarItemModels.push(match); }
                     }
-                }
-                else {
-                    if (it.id === id) {
+                } else {
+                    if (it.id === id || (it as any).command === id) {
                         tbarItemModels.push(it);
                     }
                 }
@@ -239,21 +256,24 @@ export class BlockEditorMethods {
         });
 
         tbarItemModels.forEach((item: IToolbarItemModel) => {
-            const element: HTMLElement = toolbarPopup.querySelector(`[data-command=${item.command}]`) as HTMLElement;
-            parentToolbarElements.push(element);
+            if (!item || !(item as any).command) { return; }
+            const element: HTMLElement = toolbarPopup.querySelector(`[data-command=${(item as any).command}]`) as HTMLElement;
+            if (element) { parentToolbarElements.push(element); }
         });
-        this.parent.observer.notify('enableDisableTbarItems', {
-            items: parentToolbarElements,
-            isEnable: enable
-        });
+        if (parentToolbarElements.length > 0) {
+            this.parent.observer.notify('enableDisableTbarItems', {
+                items: parentToolbarElements,
+                isEnable: enable
+            });
+        }
     }
 
     public getDataAsJson(blockId?: string): BlockModel | BlockModel[] {
         if (blockId) {
             const block: BlockModel = getBlockModelById(blockId, this.parent.getEditorBlocks());
-            return block ? sanitizeBlock(block) : null;
+            return block ? decoupleReference(block) : null;
         } else {
-            return this.parent.getEditorBlocks().map((block: BlockModel) => sanitizeBlock(block));
+            return this.parent.getEditorBlocks().map((block: BlockModel) => decoupleReference(block));
         }
     }
 
@@ -281,7 +301,7 @@ export class BlockEditorMethods {
 
             const blocks: BlockModel[] = this.extractBlocks(blocksJson);
 
-            const sanitizedBlocks: BlockModel[] = blocks.map((block: BlockModel) => sanitizeBlock(block));
+            const sanitizedBlocks: BlockModel[] = blocks.map((block: BlockModel) => decoupleReference(block));
             this.parent.stateManager.populateUniqueIds(sanitizedBlocks);
             const populatedBlocks: BlockModel[] = BlockFactory.populateBlockProperties(sanitizedBlocks);
 

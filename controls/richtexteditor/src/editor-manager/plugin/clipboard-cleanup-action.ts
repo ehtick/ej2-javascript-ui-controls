@@ -206,6 +206,25 @@ export class ClipBoardCleanupAction {
         let htmlContent : string = '';
         let plainTextContent : string = '';
         htmlContent = this.getHTMLFromSelectionRange(range);
+        const startContainer: HTMLElement = range.startContainer.nodeType === Node.TEXT_NODE ?
+            range.startContainer.parentElement : range.startContainer as HTMLElement;
+        const endContainer: HTMLElement = range.endContainer.nodeType === Node.TEXT_NODE ?
+            range.endContainer.parentElement : range.endContainer as HTMLElement;
+        const startRootTableContainer: HTMLElement = this.locateOutermostTableAncestor(range.startContainer, range);
+        const endRootTableContainer: HTMLElement = this.locateOutermostTableAncestor(range.endContainer, range);
+        const isSelectionNestedTable: boolean = startRootTableContainer && endRootTableContainer &&
+            startRootTableContainer === endRootTableContainer;
+        //handle nested table html content retrival
+        if (isSelectionNestedTable && startContainer.closest('table') !== endContainer.closest('table')) {
+            const isStartEndBothNestedTable: boolean = startContainer.closest('table') !== startRootTableContainer &&
+                startRootTableContainer !== endContainer.closest('table');
+            const isStartInsideNestedTable: boolean = isStartEndBothNestedTable ? false :
+                startRootTableContainer !== startContainer.closest('table') ? true : false;
+            const nestedTable: HTMLElement | null = isStartEndBothNestedTable ? null : isStartInsideNestedTable ?
+                startContainer.closest('table') : endContainer.closest('table');
+            htmlContent = this.handleNestedTableHtmlContent(
+                startRootTableContainer, nestedTable, isStartInsideNestedTable, startContainer, endContainer, htmlContent);
+        }
         const temporaryContainer: HTMLElement = createElement('div');
         temporaryContainer.innerHTML = htmlContent;
         htmlContent = this.normalizeInlineElementWrapping(range, htmlContent);
@@ -215,6 +234,70 @@ export class ClipBoardCleanupAction {
             plainTextContent = this.extractTextFromHtmlNode(temporaryContainer);
         }
         return { htmlContent, plainTextContent };
+    }
+
+    /* Handle the outer html retrival when selection inside nested table */
+    private handleNestedTableHtmlContent(
+        rootTableContainer: HTMLElement,
+        nestedTable: HTMLElement,
+        isStartInsideNestedTable: boolean,
+        startContainer: HTMLElement,
+        endContainer: HTMLElement,
+        htmlContent: string): string {
+        const tableContainer: HTMLElement = createElement('table');
+        tableContainer.classList.add('e-rte-table');
+        const tableHeadContainer: HTMLElement = createElement('thead');
+        const tableBodyContainer: HTMLElement = createElement('tbody');
+        const tableChildElements: ChildNode[] = Array.from(rootTableContainer.childNodes);
+        let rootHeadContainer: HTMLElement;
+        let rootBodyContainer: HTMLElement;
+        tableChildElements.forEach((childNode: Node) => {
+            if (childNode.nodeName === 'THEAD') {
+                rootHeadContainer = childNode as HTMLElement;
+            } else if (childNode.nodeName === 'TBODY') {
+                rootBodyContainer = childNode as HTMLElement;
+            }
+        });
+        if (rootHeadContainer && rootHeadContainer.contains(startContainer) &&
+            rootHeadContainer.contains(endContainer)) {
+            //contain inside table header alone
+            if (this.isClosestToSameTableCellEle(startContainer, endContainer, nestedTable, isStartInsideNestedTable, 'th')) {
+                return htmlContent;
+            }
+            tableHeadContainer.innerHTML = htmlContent;
+            tableContainer.appendChild(tableHeadContainer);
+            htmlContent = tableContainer.outerHTML;
+        } else if (rootBodyContainer && rootBodyContainer.contains(startContainer) &&
+            rootBodyContainer.contains(endContainer)) {
+            //contain inside table body alone
+            if (this.isClosestToSameTableCellEle(startContainer, endContainer, nestedTable, isStartInsideNestedTable, 'td')) {
+                return htmlContent;
+            }
+            tableBodyContainer.innerHTML = htmlContent;
+            tableContainer.appendChild(tableBodyContainer);
+            htmlContent = tableContainer.outerHTML;
+        } else if (rootHeadContainer && rootBodyContainer &&
+            rootHeadContainer.contains(startContainer) && rootBodyContainer.contains(endContainer)) {
+            //contain inside table header and body both
+            tableContainer.innerHTML = htmlContent;
+            htmlContent = tableContainer.outerHTML;
+        }
+        return htmlContent;
+    }
+
+    /* Check if selection inside same table cell element ('th' or 'td').*/
+    private isClosestToSameTableCellEle(
+        startContainer: HTMLElement,
+        endContainer: HTMLElement,
+        nestedTable: HTMLElement,
+        isStartInsideNestedTable: boolean,
+        tableCellNodeName: string): boolean {
+        if (nestedTable) {
+            const processEle: HTMLElement = !isStartInsideNestedTable ? startContainer : endContainer;
+            return processEle.closest(tableCellNodeName) === nestedTable.parentElement;
+        } else {
+            return startContainer.closest('table').parentElement === endContainer.closest('table').parentElement;
+        }
     }
 
     /* Extracts HTML content and ensures inline elements are properly wrapped if present in the selection.*/

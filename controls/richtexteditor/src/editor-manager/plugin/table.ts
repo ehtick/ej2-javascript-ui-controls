@@ -42,6 +42,19 @@ export class TableCommand {
     public tblHeader: HTMLElement;
     private resizeIconPositionTime: number;
     public tablePastingObj: TablePasting;
+    private selectTableRowBoundFn: (trElement: HTMLElement) => void;
+    private selectTableColBoundFn: (expectedIndex: number, tableElement: HTMLElement) => void;
+    private selectEntireTableBoundFn: (tableElement: HTMLElement) => void;
+    // Store dynamic args as class properties
+    private currentRowTarget: HTMLElement = null;
+    private currentColIndex: number = -1;
+    private currentColTable: HTMLElement = null;
+    private currentEntireTable: HTMLElement = null;
+    // Stable handler references - read from class properties
+    private rowIconClickHandler: () => void;
+    private colIconClickHandler: () => void;
+    private tableIconClickHandler: () => void;
+
 
     /**
      * Constructor for creating the Formats plugin
@@ -57,6 +70,12 @@ export class TableCommand {
         this.tablePastingObj = new TablePasting();
         this.tableModel = tableModel;
         this.iframeSettings = iframeSettings;
+        this.selectTableRowBoundFn = this.selectTableRow.bind(this);
+        this.selectTableColBoundFn = this.selectTableColumn.bind(this);
+        this.selectEntireTableBoundFn = this.selectEntireTable.bind(this);
+        this.rowIconClickHandler = () => this.selectTableRowBoundFn(this.currentRowTarget);
+        this.colIconClickHandler = () => this.selectTableColBoundFn(this.currentColIndex, this.currentColTable);
+        this.tableIconClickHandler = () => this.selectEntireTableBoundFn(this.currentEntireTable);
         this.addEventListener();
     }
 
@@ -121,7 +140,7 @@ export class TableCommand {
      * @public
      * @hidden
      */
-    public copy(isCut: boolean): string  {
+    public copy(isCut: boolean): string {
         const copyTable: HTMLTableElement = this.extractSelectedTable(this.curTable, isCut);
         if (copyTable) {
             const tableHtml: string = cleanupInternalElements(copyTable.outerHTML, this.tableModel.editorMode);
@@ -2896,6 +2915,9 @@ export class TableCommand {
             EventHandler.add(this.tableModel.getDocument(), Browser.touchEndEvent, this.resizeEnd, this);
             this.isResizeBind = false;
         }
+        if (this.tableModel.tableSelectionFeature) {
+            this.removeSelectionWrappers(true);
+        }
     }
 
     /*
@@ -3073,8 +3095,11 @@ export class TableCommand {
             this.removeResizeElement();
             this.tableResizeEleCreation(this.curTable, e as PointerEvent);
             this.handleRowColumnAddIcon(target, this.curTable);
-        } else {
+        } else if (!this.tableModel.tableSelectionFeature || e.target === this.tableModel.getEditPanel()) {
             this.hideRowColumnAddIcons(target);
+        }
+        if (this.tableModel.tableSelectionFeature) {
+            this.tableSelection(e);
         }
     }
 
@@ -3276,10 +3301,11 @@ export class TableCommand {
      * @returns {void} - Does not return anything.
      * @private
      */
-    public removeResizeElement(): void {
+    public removeResizeElement(e?: boolean): void {
         const selector: string = '.e-column-resize, .e-row-resize, .e-table-box, .e-table-rhelper, .e-tb-col-insert, .e-tb-row-insert';
+        const tableSelector: string = '.e-column-resize, .e-row-resize, .e-table-box, .e-table-rhelper';
         const editPanel: Element = this.tableModel.getEditPanel();
-        const items: NodeListOf<Element> = editPanel.querySelectorAll(selector);
+        const items: NodeListOf<Element> = e ? editPanel.querySelectorAll(tableSelector) : editPanel.querySelectorAll(selector);
         if (items && items.length > 0) {
             for (let i: number = 0; i < items.length; i++) {
                 const item: Element = items[i as number];
@@ -3743,12 +3769,14 @@ export class TableCommand {
         insertIcon: HTMLElement,
         e: MouseEvent
     ): void {
-        const relatedTarget: Node | null = e.relatedTarget as Node;
+        if (!this.tableModel.tableSelectionFeature) {
+            const relatedTarget: Node | null = e.relatedTarget as Node;
 
-        if (relatedTarget &&
-            !insertIcon.contains(relatedTarget) &&
-            insertIcon.style.opacity === '1') {
-            this.removeResizeElement();
+            if (relatedTarget &&
+                !insertIcon.contains(relatedTarget) &&
+                insertIcon.style.opacity === '1') {
+                this.removeResizeElement();
+            }
         }
     }
 
@@ -3781,6 +3809,75 @@ export class TableCommand {
 
         const cellType: string = isColumn ? 'column' : 'row';
         this.insertTableElement(cellType, indexValue, allCells);
+        if (this.tableModel.tableSelectionFeature) {
+            this.removeSelectionWrappers(true);
+        }
+    }
+
+    private resetInsertIconState(insertIcon: HTMLElement, dataAttr: string): void {
+        const circleAddIcon: HTMLElement = insertIcon.querySelector('.e-circle-add');
+        if (circleAddIcon) {
+            EventHandler.remove(circleAddIcon, 'mousedown', this.handleIconMouseDown);
+            detach(circleAddIcon);
+        }
+        // Add regular circle icon
+        const isRTL: boolean = this.tableModel.enableRtl;
+        const className: string = isRTL ? 'e-circle e-insert-cell-rtl' : 'e-circle';
+        const circleIcon: HTMLElement = this.createIcon(className);
+        insertIcon.appendChild(circleIcon);
+        insertIcon.style.opacity = '1';
+        // Get the helper element and convert back to resize element
+        const attrValue: string = insertIcon.getAttribute(dataAttr);
+        const isColumn: boolean = dataAttr === 'data-col';
+        const helperClass: string = isColumn ? 'e-column-helper' : 'e-row-helper';
+        const resizeClass: string = isColumn ? 'e-column-resize' : 'e-row-resize';
+        const selector: string = `span[${dataAttr}="${attrValue}"].e-table-rhelper.${helperClass}`;
+        const editPanel: HTMLElement = this.tableModel.getEditPanel() as HTMLElement;
+        const helperElement: HTMLElement | null = editPanel.querySelector(selector) as HTMLElement;
+        if (!helperElement) {
+            return;
+        }
+        // Convert helper back to resize element
+        helperElement.classList.remove('e-table-rhelper', helperClass);
+        helperElement.classList.add('e-rte-table-resize', resizeClass);
+        // Reset styles
+        if (isColumn) {
+            this.resetColumnResizeStyles(helperElement);
+        } else {
+            this.resetRowResizeStyles(helperElement, isRTL);
+        }
+    }
+
+    /*
+     * Resets styles for column resize elements
+     */
+    private resetColumnResizeStyles(element: HTMLElement): void {
+        element.style.width = '4px';
+        const currentHeight: number = this.parseNumericStyle(element.style.height);
+        element.style.height = (currentHeight + 0.5) + 'px';
+
+        const currentTop: number = this.parseNumericStyle(element.style.top);
+        element.style.top = (currentTop - 0.5) + 'px';
+
+        const currentLeft: number = this.parseNumericStyle(element.style.left);
+        element.style.left = (currentLeft - 1) + 'px';
+    }
+
+    /*
+     * Resets styles for row resize elements
+     */
+    private resetRowResizeStyles(element: HTMLElement, isRTL: boolean): void {
+        element.style.height = '4px';
+
+        if (!isRTL) {
+            const currentWidth: number = this.parseNumericStyle(element.style.width);
+            element.style.width = (currentWidth + 0.5) + 'px';
+            const currentLeft: number = this.parseNumericStyle(element.style.left);
+            element.style.left = (currentLeft - 0.5) + 'px';
+        }
+
+        const currentTop: number = this.parseNumericStyle(element.style.top);
+        element.style.top = (currentTop - 1) + 'px';
     }
 
     /*
@@ -3932,6 +4029,216 @@ export class TableCommand {
         this.parent.undoRedoManager.saveData();
         this.tableModel.enableUndo();
     }
+    private createSpan(classNames: string[] = []): HTMLElement {
+        const el: HTMLElement = createElement('span');
+        el.contentEditable = 'false';
+        el.setAttribute('unselectable', 'on');
+        if (classNames.length) {
+            el.classList.add(...classNames);
+        }
+        return el;
+    }
+    private tableSelection(e: any): void {
+        // creating rowIcon and column gripper icon along with the wrapper
+        const rowIcon: HTMLElement = this.createSpan(['e-icons', 'e-drag-and-drop']);
+        const colIcon: HTMLElement = this.createSpan(['e-icons', 'e-drag-and-drop']);
+        const tableIcon: HTMLElement = this.createSpan(['e-icons', 'e-move']);
+        const wrapperRowSpan: HTMLElement = this.createSpan(['e-row-wrapper']);
+        const wrapperColSpan: HTMLElement = this.createSpan(['e-col-wrapper']);
+        const tableIconWrapper: HTMLElement = this.createSpan(['e-table-wrapper']);
+        const isRTL: boolean = this.tableModel.enableRtl;
+        const isTableElement: boolean = this.isTableNode(e.target);
+        // since method is bounded with mouseover only allows futher onl;y the the cursor is in the table elements
+        if (isTableElement) {
+            const allRowInsertIcons: NodeListOf<Element> = (this.tableModel.getEditPanel() as HTMLElement).querySelectorAll('.e-tb-row-insert');
+            const allColInsertIcons: NodeListOf<Element> = (this.tableModel.getEditPanel() as HTMLElement).querySelectorAll('.e-tb-col-insert');
+            // icon is removed when the moved of one table element to another
+            this.removeSelectionWrappers(true);
+            const trElement: HTMLElement = e.target.parentElement;
+            const children: Element[] = Array.from(trElement.children);
+            const index: number = children.indexOf(e.target);
+            const table: HTMLElement = (e.target).closest('table');
+            // Filter out elements that have the e-circle class
+            const resizeGripperElementsRow: Element[] = Array.from(allRowInsertIcons).filter((el: Element) => el.querySelector('.e-circle'));
+            // renders the row icon gripppers if ther are only the circle to add the icon
+            if (resizeGripperElementsRow.length === 1 || resizeGripperElementsRow.length === 2) {
+                rowIcon.style.height = e.target.offsetHeight + 'px';
+                const cellRect: ClientRect = (trElement.children[0] as HTMLElement).getBoundingClientRect();
+                const panelRect: ClientRect = (this.tableModel.getEditPanel() as HTMLElement).getBoundingClientRect();
+                // Account for scroll position
+                const scrollElement: HTMLElement = this.tableModel.getEditPanel() as HTMLElement;
+                wrapperRowSpan.style.left = `${cellRect.left - panelRect.left - 14}px`;
+                wrapperRowSpan.style.top = `${cellRect.top - panelRect.top + scrollElement.scrollTop}px`;
+                wrapperRowSpan.appendChild(rowIcon);
+                this.tableModel.getEditPanel().append(wrapperRowSpan);
+                if (isRTL) {
+                    wrapperRowSpan.style.left = `${cellRect.left - panelRect.left + cellRect.width}px`;
+                    const rowSelectIcon: Element = (this.tableModel.getEditPanel() as HTMLElement).querySelector('.e-drag-and-drop');
+                    if (rowSelectIcon) {
+                        addClass([rowSelectIcon], 'e-rtl');
+                    }
+                }
+                this.currentRowTarget = trElement;
+                rowIcon.addEventListener('click', this.rowIconClickHandler);
+            }
+            const resizeGripperElementsCol: Element[] = Array.from(allColInsertIcons).filter((el: Element) => el.querySelector('.e-circle'));
+            // renders the col icon gripppers if ther are only the circle to add the icon
+            if (resizeGripperElementsCol.length === 1 || resizeGripperElementsCol.length === 2) {
+                this.currentColIndex = index;
+                this.currentColTable = table;
+                colIcon.addEventListener('click', this.colIconClickHandler);
+                colIcon.style.width = e.target.offsetWidth + 'px';
+                const trElement: HTMLElement = table.querySelector('tr');
+                const cellRect: ClientRect = (trElement.children[index as number] as HTMLElement).getBoundingClientRect();
+                const panelRect: ClientRect = (this.tableModel.getEditPanel() as HTMLElement).getBoundingClientRect();
+                const scrollElement: HTMLElement = this.tableModel.getEditPanel() as HTMLElement;
+                wrapperColSpan.style.left = `${cellRect.left - panelRect.left}px`;
+                wrapperColSpan.style.top = `${ scrollElement.scrollTop + cellRect.top - panelRect.top - 14.1}px`;
+                wrapperColSpan.appendChild(colIcon);
+                this.tableModel.getEditPanel().append(wrapperColSpan);
+            }
+            // code for the entire table slect icon appending
+            this.currentEntireTable = table;
+            tableIcon.addEventListener('click', this.tableIconClickHandler);
+            const cellRect: ClientRect = (table.querySelector('tr') as HTMLElement).getBoundingClientRect();
+            const panelRect: ClientRect = (this.tableModel.getEditPanel() as HTMLElement).getBoundingClientRect();
+            const scrollElement: HTMLElement = this.tableModel.getEditPanel() as HTMLElement;
+            tableIconWrapper.style.left = `${cellRect.left - panelRect.left - 14}px`;
+            tableIconWrapper.style.top = `${scrollElement.scrollTop + cellRect.top - panelRect.top - 14}px`;
+            if (isRTL) {
+                tableIconWrapper.style.left = `${cellRect.left - panelRect.left + cellRect.width}px`;
+            }
+            tableIconWrapper.appendChild(tableIcon);
+            this.tableModel.getEditPanel().append(tableIconWrapper);
+        }
+        // handles for the case of removing the gipper pnly if the cursor moved out of table via bottom
+        if (e.target === this.tableModel.getEditPanel()) {
+            this.removeSelectionWrappers(true);
+        }
+        const circleAddIcon: HTMLElement = this.tableModel.getEditPanel().querySelector('.e-circle-add');
+        if ((e.target.matches('.e-icons.e-move') || e.target.matches('.e-icons.e-drag-and-drop') || e.target.tagName === 'TD' || e.target.tagName === 'TH') && circleAddIcon) {
+            // Find the parent insert icon element
+            const insertIcon: HTMLElement = circleAddIcon.closest('.e-rte-table-resize') as HTMLElement;
+
+            if (insertIcon) {
+                const dataAttr: string = insertIcon.hasAttribute('data-col') ? 'data-col' : 'data-row';
+                // Use the method to reset the icon state
+                this.resetInsertIconState(insertIcon, dataAttr);
+            }
+        }
+    }
+
+    private removeSelectionWrappers(removetableIcon: boolean): void {
+        const rowselectIcon: HTMLElement = (this.tableModel.getEditPanel() as HTMLElement).querySelector('.e-row-wrapper');
+        const colselectIcon: HTMLElement = (this.tableModel.getEditPanel() as HTMLElement).querySelector('.e-col-wrapper');
+        const tableselectIcon: HTMLElement = (this.tableModel.getEditPanel() as HTMLElement).querySelector('.e-table-wrapper');
+        if (rowselectIcon) {
+            rowselectIcon.children[0].removeEventListener('click', this.rowIconClickHandler);
+            rowselectIcon.remove();
+        }
+        if (colselectIcon) {
+            colselectIcon.children[0].removeEventListener('click', this.colIconClickHandler);
+            colselectIcon.remove();
+        }
+        if (tableselectIcon && removetableIcon) {
+            tableselectIcon.children[0].removeEventListener('click', this.tableIconClickHandler);
+            tableselectIcon.remove();
+        }
+    }
+    /**
+     * For internal use only - keydown the event handler;
+     *
+     * @param {HTMLElement} trElement - specifies the event.
+     * @returns {void}
+     * @hidden
+     */
+    public selectTableRow(trElement: HTMLElement): void {
+        const rowselectIcon: HTMLElement = (this.tableModel.getEditPanel() as HTMLElement).querySelector('.e-drag-and-drop');
+        const children: Element[] = Array.from(trElement.children);
+        let isActive: boolean = false;
+        if (rowselectIcon) {
+            isActive = rowselectIcon.classList.contains('e-active');
+        }
+        if (isActive) {
+            rowselectIcon.classList.remove('e-active');
+            children.forEach((element: HTMLElement) => {
+                element.classList.remove('e-cell-select', 'e-multi-cells-select', 'e-cell-select-end');
+            });
+        } else {
+            if (rowselectIcon) {
+                addClass([rowselectIcon], 'e-active');
+            }
+            children.forEach((element: HTMLElement, index: number) => {
+                addClass([element], ['e-cell-select', 'e-multi-cells-select']);
+                if (index === children.length - 1) {
+                    element.classList.add('e-cell-select-end');
+                }
+            });
+        }
+    }
+    private selectTableColumn(expectedIndex: number, tableElement: HTMLElement): void {
+        const colselectIcon: HTMLElement = ((this.tableModel.getEditPanel() as HTMLElement).querySelectorAll('.e-drag-and-drop')[1]) as HTMLElement;
+        const colgroupTag: NodeListOf<HTMLElement> = tableElement.querySelectorAll('tr');
+        let isActive: boolean = false;
+        if (colselectIcon) {
+            isActive = colselectIcon.classList.contains('e-active');
+        }
+        if (isActive) {
+            colselectIcon.classList.remove('e-active');
+            colgroupTag.forEach((tr: HTMLElement) => {
+                const children: HTMLElement[] = Array.from(tr.children) as HTMLElement[];
+                children[expectedIndex as number].classList.remove('e-cell-select', 'e-multi-cells-select', 'e-cell-select-end');
+            });
+        } else {
+            if (colselectIcon) {
+                addClass([colselectIcon], 'e-active');
+            }
+            colgroupTag.forEach((tr: HTMLElement, index: number) => {
+                const children: Element[] = Array.from(tr.children);
+                if (children[expectedIndex as number]) {
+                    addClass([children[expectedIndex as number] as HTMLElement], ['e-cell-select', 'e-multi-cells-select']);
+                }
+                // If this is the LAST ROW → add one more class
+                if (index === colgroupTag.length - 1) {
+                    children[expectedIndex as number].classList.add('e-cell-select-end');
+                }
+            });
+        }
+    }
+    /**
+     * For internal use only - keydown the event handler;
+     *
+     * @param {HTMLElement} tableElement - specifies the event.
+     * @returns {void}
+     * @hidden
+     */
+    public selectEntireTable(tableElement: HTMLElement): void {
+        this.removeSelectionWrappers(false);
+        const entireTableSelection: HTMLElement = (this.tableModel.getEditPanel() as HTMLElement).querySelector('.e-move');
+        const cellElements: NodeListOf<HTMLTableCellElement> = tableElement.querySelectorAll('td, th');
+        let isActive: boolean = false;
+        if (entireTableSelection) {
+            isActive = entireTableSelection.classList.contains('e-active');
+        }
+        if (isActive) {
+            // Remove active state
+            entireTableSelection.classList.remove('e-active');
+            cellElements.forEach((td: HTMLElement) => {
+                td.classList.remove('e-cell-select', 'e-multi-cells-select', 'e-cell-select-end');
+            });
+        } else {
+            if (entireTableSelection) {
+                addClass([entireTableSelection], 'e-active');
+            }
+            cellElements.forEach((td: HTMLElement, index: number) => {
+                addClass([td], ['e-cell-select', 'e-multi-cells-select']);
+                if (index === cellElements.length - 1) {
+                    td.classList.add('e-cell-select-end');
+                }
+            });
+        }
+    }
+
 
     /*
      * Creates row resizer handles.
@@ -4768,8 +5075,7 @@ export class TableCommand {
      */
     private handleTableDeleteOperations(event: KeyboardEventArgs, range: Range, ele: HTMLElement): void {
         const isDeleteKey: boolean = event.keyCode === 8 || event.keyCode === 46;
-        const isCutOperation: boolean = event.ctrlKey && event.keyCode === 88;
-        if (isDeleteKey || isCutOperation) {
+        if (isDeleteKey) {
             if (ele && ele.tagName === 'TBODY') {
                 if (!isNOU(this.parent) && this.tableModel.getDocument() &&
                     this.tableModel.getDocument()) {
@@ -4849,7 +5155,11 @@ export class TableCommand {
     private handleSelectAll(): void {
         this.cancelResizeAction();
         const selectedCells: NodeListOf<Element> = this.tableModel.getEditPanel().querySelectorAll('.' + CLS_TABLE_SEL);
+        const multiSelectedCells: NodeListOf<Element> = this.tableModel.getEditPanel().querySelectorAll('.' + CLS_TABLE_SEL);
+        const selectedCellsEnd: NodeListOf<Element> = this.tableModel.getEditPanel().querySelectorAll('.' + CLS_TABLE_SEL);
         removeClassWithAttr(selectedCells, CLS_TABLE_SEL);
+        removeClassWithAttr(multiSelectedCells, CLS_TABLE_MULTI_CELL);
+        removeClassWithAttr(selectedCellsEnd, CLS_TABLE_SEL_END);
         this.removeTableSelection();
     }
 
@@ -5490,7 +5800,9 @@ export class TableCommand {
         if (!Browser.isDevice) {
             this.isTableMoveActive = true;
         }
-        this.removeResizeElement();
+        if (!this.tableModel.tableSelectionFeature) {
+            this.removeResizeElement();
+        }
         if (this.helper && this.tableModel.getEditPanel().contains(this.helper)) {
             detach(this.helper);
         }
@@ -5591,6 +5903,10 @@ export class TableCommand {
         if (this.curTable) {
             this.resizeIconPositionTime = setTimeout(() => {
                 this.updateResizeIconPosition();
+                if (this.tableModel.tableSelectionFeature) {
+                    this.updateSelectionWrappers();
+                    this.updateLastInsertIconPositions();
+                }
             }, 1);
         }
     }
@@ -5606,6 +5922,49 @@ export class TableCommand {
                 tableReBox.style.cssText = 'top: ' + (tablePosition.top + parseInt(getComputedStyle(this.curTable).height, 10) - 4) +
                     'px; left:' + (tablePosition.left + (this.tableModel.enableRtl ? 0 : parseInt(getComputedStyle(this.curTable).width, 10)) - 4) + 'px;';
             }
+        }
+    }
+    private setWrapperPosition( wrapper: HTMLElement, icon: HTMLElement, setWidth: boolean, setHeight: boolean): void {
+        const cellRect: ClientRect = wrapper.getBoundingClientRect();
+        if (setHeight) {
+            (icon.firstChild as HTMLElement).style.height = `${cellRect.height}px`;
+        }
+        if (setWidth) {
+            (icon.firstChild as HTMLElement).style.width = `${cellRect.width}px`;
+        }
+    }
+    private updateSelectionWrappers(): void {
+        if (this.curTable) {
+            const rowWrapper: HTMLElement = (this.tableModel.getEditPanel() as HTMLElement).querySelector('.e-row-wrapper');
+            const colWrapper: HTMLElement = (this.tableModel.getEditPanel() as HTMLElement).querySelector('.e-col-wrapper');
+            const activeCell: HTMLElement = (this.tableModel.getEditPanel() as HTMLElement).querySelector('.e-cell-select');
+            if (activeCell && rowWrapper) {
+                this.setWrapperPosition(activeCell, rowWrapper, false, true);
+            }
+            if (activeCell && rowWrapper) {
+                this.setWrapperPosition(activeCell, colWrapper, true, false);
+            }
+        }
+    }
+    private updateLastInsertIconPositions(): void {
+        const allRowInsertIconCircles: NodeListOf<HTMLElement> = this.tableModel.getEditPanel().querySelectorAll('.e-rte-table-resize.e-tb-row-insert .e-icons.e-circle');
+        const allColInsertIconCircles: NodeListOf<HTMLElement> = this.tableModel.getEditPanel().querySelectorAll('.e-rte-table-resize.e-tb-col-insert .e-icons.e-circle');
+        const activeCell: HTMLElement = this.tableModel.getEditPanel().querySelector('.e-cell-select');
+        const rowWrapperEle: HTMLElement = this.tableModel.getEditPanel().querySelector('.e-row-wrapper');
+        const colWrapperEle: HTMLElement = this.tableModel.getEditPanel().querySelector('.e-col-wrapper');
+        // Update the last row insert icon top position based on row wrapper
+        if (allRowInsertIconCircles.length > 0 && activeCell && rowWrapperEle) {
+            const lastRowInsertIcon: HTMLElement = allRowInsertIconCircles[allRowInsertIconCircles.length - 1];
+            const rowWrapperTop: number = parseFloat(rowWrapperEle.style.top);
+            const rowIconHeight: number = parseFloat((rowWrapperEle.childNodes[0] as HTMLElement).style.height);
+            lastRowInsertIcon.parentElement.style.top = (rowWrapperTop + rowIconHeight - 11) + 'px';
+        }
+        // Update the last column insert icon left position based on column wrapper
+        if (allColInsertIconCircles.length > 0 && activeCell && colWrapperEle) {
+            const lastColInsertIcon: HTMLElement = allColInsertIconCircles[allColInsertIconCircles.length - 1];
+            const colWrapperLeft: number = parseFloat(colWrapperEle.style.left);
+            const colIconWidth: number = parseFloat((colWrapperEle.childNodes[0] as HTMLElement).style.width);
+            lastColInsertIcon.parentElement.style.left = (colWrapperLeft + colIconWidth - 11) + 'px';
         }
     }
 }

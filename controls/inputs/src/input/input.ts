@@ -132,28 +132,30 @@ export namespace Input {
         args.element.addEventListener('blur', blurHandler);
         args.element.addEventListener('input', inputHandler);
 
-        (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['inputFocusHandler'] = { focusHandler };
-        (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['inputBlurHandler'] = { blurHandler };
-        (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['inputHandler'] = { inputHandler };
+        (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.inputFocusHandler = focusHandler;
+        (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.inputBlurHandler = blurHandler;
+        (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.inputHandler = inputHandler;
     }
 
     function unbindInitialEvent(args: InputArgs): void {
         if (!isNullOrUndefined(args.element)) {
             if (!isNullOrUndefined((args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers)) {
-                if (!isNullOrUndefined((args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['inputFocusHandler'])
-                    && !isNullOrUndefined((args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['inputBlurHandler'])
-                    && !isNullOrUndefined((args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['inputHandler'])) {
-                    const focusHandler: any = (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['inputFocusHandler'].focusHandler;
-                    const blurHandler: any = (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['inputBlurHandler'].blurHandler;
-                    const inputHandler: any = (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['inputHandler'].inputHandler;
+                if (!isNullOrUndefined((args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.inputFocusHandler)
+                    && !isNullOrUndefined((args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.inputBlurHandler)
+                    && !isNullOrUndefined((args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.inputHandler)) {
+                    const focusHandler: any = (args.element as HTMLInputElement & { __eventHandlers?: any })
+                        .__eventHandlers.inputFocusHandler;
+                    const blurHandler: any = (args.element as HTMLInputElement & { __eventHandlers?: any })
+                        .__eventHandlers.inputBlurHandler;
+                    const inputHandler: any = (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.inputHandler;
                     args.element.removeEventListener('focus', focusHandler);
                     args.element.removeEventListener('blur', blurHandler);
                     args.element.removeEventListener('input', inputHandler);
 
                     // Clean up stored bound functions
-                    delete (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['inputFocusHandler'];
-                    delete (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['inputBlurHandler'];
-                    delete (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['inputHandler'];
+                    (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.inputFocusHandler = null;
+                    (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.inputBlurHandler = null;
+                    (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.inputHandler = null;
                 }
             }
         }
@@ -279,8 +281,8 @@ export namespace Input {
             args.element.addEventListener('blur', blurFloatHandler);
 
             // Store the event handler functions to remove them later
-            (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['floatInputHandler'] = { inputFloatHandler };
-            (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['floatBlurHandler'] = { blurFloatHandler };
+            (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.floatInputHandler = inputFloatHandler;
+            (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.floatBlurHandler = blurFloatHandler;
         } else {
             unWireFloatLabelEvents(args);
         }
@@ -291,20 +293,20 @@ export namespace Input {
     function unWireFloatLabelEvents(args: InputArgs): void {
         if (!isNullOrUndefined(args.element) &&
             !isNullOrUndefined((args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers)
-            && !isNullOrUndefined((args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['floatInputHandler'])
-            && !isNullOrUndefined((args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['floatBlurHandler'])) {
+            && !isNullOrUndefined((args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.floatInputHandler)
+            && !isNullOrUndefined((args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.floatBlurHandler)) {
             const inputFloatHandler: any =
-                (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['floatInputHandler'].inputFloatHandler;
+                (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.floatInputHandler;
             const blurFloatHandler: any =
-                (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['floatBlurHandler'].blurFloatHandler;
+                (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.floatBlurHandler;
 
             // Remove the event listeners using the defined functions
             args.element.removeEventListener('input', inputFloatHandler);
             args.element.removeEventListener('blur', blurFloatHandler);
 
             // Clean up stored event handler functions
-            delete (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['floatInputHandler'];
-            delete (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['floatBlurHandler'];
+            (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.floatInputHandler = null;
+            (args.element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.floatBlurHandler = null;
         }
     }
 
@@ -430,7 +432,7 @@ export namespace Input {
         if (isBindClearAction === undefined || isBindClearAction) {
             const clickHandlerEvent: (e: MouseEvent) => void = (e: MouseEvent): void => clickHandler(e, element, button);
             button.addEventListener('click', clickHandlerEvent);
-            (element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['clearClickHandler'] = { clickHandlerEvent };
+            (element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.clearClickHandler = clickHandlerEvent;
         }
 
         const inputHandlerEvent: () => void = (): void => inputHandler(element, button);
@@ -442,28 +444,28 @@ export namespace Input {
         element.addEventListener('blur', blurHandlerEvent);
 
         // Store the bound functions to remove them later
-        (element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['clearInputHandler'] = { inputHandlerEvent };
-        (element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['clearFocusHandler'] = { focusHandlerEvent };
-        (element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['clearBlurHandler'] = { blurHandlerEvent };
+        (element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.clearInputHandler = inputHandlerEvent;
+        (element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.clearFocusHandler = focusHandlerEvent;
+        (element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.clearBlurHandler = blurHandlerEvent;
     }
     function unWireClearBtnEvents(element: HTMLInputElement | HTMLTextAreaElement, button: HTMLElement): void {
         if (!isNullOrUndefined(element) &&
             !isNullOrUndefined((element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers)) {
-            if (!isNullOrUndefined((element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['clearClickHandler'])) {
-                const clickHandlerEvent: any = (element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['clearClickHandler'].clickHandlerEvent;
+            if (!isNullOrUndefined((element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.clearClickHandler)) {
+                const clickHandlerEvent: any = (element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.clearClickHandler;
                 if (isBindClearAction === undefined || isBindClearAction) {
                     if (!isNullOrUndefined(button)) {
                         button.removeEventListener('click', clickHandlerEvent);
                     }
                 }
-                delete (element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['clearClickHandler'];
+                (element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.clearClickHandler = null;
             }
-            if (!isNullOrUndefined((element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['clearInputHandler'])
-                && !isNullOrUndefined((element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['clearFocusHandler'])
-                && !isNullOrUndefined((element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['clearBlurHandler'])) {
-                const inputHandlerEvent: any = (element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['clearInputHandler'].inputHandlerEvent;
-                const focusHandlerEvent: any = (element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['clearFocusHandler'].focusHandlerEvent;
-                const blurHandlerEvent: any = (element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['clearBlurHandler'].blurHandlerEvent;
+            if (!isNullOrUndefined((element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.clearInputHandler)
+                && !isNullOrUndefined((element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.clearFocusHandler)
+                && !isNullOrUndefined((element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.clearBlurHandler)) {
+                const inputHandlerEvent: any = (element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.clearInputHandler;
+                const focusHandlerEvent: any = (element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.clearFocusHandler;
+                const blurHandlerEvent: any = (element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.clearBlurHandler;
 
 
                 element.removeEventListener('input', inputHandlerEvent);
@@ -472,9 +474,9 @@ export namespace Input {
 
                 // Clean up stored Event functions
 
-                delete (element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['clearInputHandler'];
-                delete (element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['clearFocusHandler'];
-                delete (element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers['clearBlurHandler'];
+                (element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.clearInputHandler = null;
+                (element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.clearFocusHandler = null;
+                (element as HTMLInputElement & { __eventHandlers?: any }).__eventHandlers.clearBlurHandler = null;
             }
         }
     }
@@ -653,7 +655,11 @@ export namespace Input {
      * @param {string} placeholder - Placeholder value which is need to add.
      * @param {HTMLInputElement | HTMLTextAreaElement} element - The element on which the placeholder is need to add.
      */
-    export function setPlaceholder(placeholder: string, element: HTMLInputElement | HTMLTextAreaElement): void {
+    export function setPlaceholder(placeholder: string, element: HTMLInputElement | HTMLTextAreaElement, moduleName?: string): void {
+        const modules: string[] = [
+            'textbox', 'numerictextbox', 'textarea', 'combobox',
+            'datepicker', 'daterangepicker', 'datetimepicker'
+        ];
         placeholder = encodePlaceHolder(placeholder);
         const parentElement: HTMLElement = getParentNode(element);
         if (parentElement.classList.contains(CLASSNAMES.FLOATINPUT)) {
@@ -661,7 +667,11 @@ export namespace Input {
                 const floatTextContent: Element = parentElement.getElementsByClassName('e-float-text-content')[0];
                 if (floatTextContent && floatTextContent.children[0]) {
                     floatTextContent.children[0].textContent = placeholder;
-                } else {
+                }
+                else if (modules.indexOf(moduleName) !== -1 && floatTextContent) {
+                    floatTextContent.textContent = placeholder;
+                }
+                else {
                     const floatText: Element = parentElement.getElementsByClassName(CLASSNAMES.FLOATTEXT)[0];
                     if (!isNullOrUndefined(floatText)) {
                         floatText.textContent = placeholder;

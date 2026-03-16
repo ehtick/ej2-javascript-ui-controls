@@ -1,5 +1,4 @@
 @use 'ej2-base/styles/common/mixin' as *;
-@use './theme-variables' as *;
 @include export-module('aiassistview-layout') {
   .e-aiassistview {
     border: $ai-assist-border solid;
@@ -98,9 +97,7 @@
       }
     }
     .e-output {
-      gap: $output-gap;
       width: inherit;
-      margin-bottom: $output-margin-bottom;
     }
     .e-prompt-toolbar {
       .e-toolbar .e-toolbar-items:not(.e-tbar-pos):not(.e-toolbar-multirow) .e-toolbar-item:first-child {
@@ -178,9 +175,15 @@
     }
     .e-content-container {
       margin-top: $content-container-margin-top;
+      position: relative;
       font-size: $content-container-font-size;
       justify-content: space-between;
       flex: 1 1 auto;
+    }
+    .e-scroll-down-btn {
+      position: sticky;
+      top: 0;
+      align-self: flex-end;
     }
     .e-prompt-text {
       white-space: pre-wrap;
@@ -241,6 +244,7 @@
     .e-views {
       display: flex;
       justify-content: space-around;
+      scroll-behavior: smooth;
       .e-content-body {
         line-height: $content-body-line-height;
         border-radius: $content-body-border-radius;
@@ -325,7 +329,16 @@
       }
       .e-content-body > *:first-child {
         margin-block-start: 0;
+        margin-block-end: .5em;
       }
+      .e-content-body > *:last-child,
+      .e-content-body > *:only-child {
+        margin-block-start: 0;
+        margin-block-end: 0;
+      }
+    }
+    .e-view-container .e-fab-hidden {
+      display: none;
     }
     .e-views,
     .e-custom-view,
@@ -420,6 +433,7 @@
           .e-toolbar-item {
             min-height: unset;
             min-width: unset;
+            max-height: $assist-footer-tbar-min-height;
             .e-tbar-btn:focus-visible .e-icons:not(.disabled) {
               outline: 1px solid;
               padding: 4px;
@@ -752,7 +766,20 @@
         display: none;
       }
     }
+
+    .e-toolbar-item .e-assistview-speech-to-text {
+      border: none;
+      box-shadow: none;
+    }
+
+    .e-toolbar-item .e-assistview-speech-to-text:hover,
+    .e-toolbar-item .e-assistview-speech-to-text:focus,
+    .e-toolbar-item .e-assistview-speech-to-text:active {
+      background: none;
+      box-shadow: none;
+    }
   }
+
   @media (max-width: 760px) {
     .e-aiassistview {
       .e-view-container {

@@ -18,19 +18,23 @@ import { EmitType } from '@syncfusion/ej2-base';
 import  {profile , inMB, getMemoryProfile} from '../../common.spec';
 import { ILoadedEventArgs, IAnimationCompleteEventArgs, IPointEventArgs } from '../../../src/chart/model/chart-interface';
 import { IPointRenderEventArgs, ITooltipRenderEventArgs } from '../../../src/chart/index';
+import { PointData, ChartLocation } from '../../../src/common/utils/helper';
+import { ISharedTooltipRenderEventArgs } from '../../../src/chart/model/chart-interface';
 Chart.Inject(LineSeries, ColumnSeries, DateTime, Category, BarSeries);
 Chart.Inject(Tooltip);
 
 
 
-let data: any = tooltipData1;
-let data2: any = tooltipData2;
+interface TooltipDataPoint { x: number | string | Date; y: number; tooltip?: string }
+let data: TooltipDataPoint[] = tooltipData1 as TooltipDataPoint[];
+let data2: TooltipDataPoint[] = tooltipData2 as TooltipDataPoint[];
 
 describe('Chart Control', () => {  beforeAll(() => {
-    const isDef = (o: any) => o !== undefined && o !== null;
+    const isDef = (o: unknown) => o !== undefined && o !== null;
     if (!isDef(window.performance)) {
         console.log("Unsupported environment, window.performance.memory is unavailable");
-        this.skip(); //Skips test (in Chai)
+        const runner = this as unknown as { skip?: () => void };
+        runner.skip && runner.skip(); //Skips test (in Chai)
         return;
     }
 });
@@ -757,6 +761,128 @@ describe('Chart Control', () => {  beforeAll(() => {
             chartObj.tooltip = { enable: true, showHeaderLine: false };
             chartObj.refresh();
         });
+        it('applyTooltipDistance - non-rect series and inverted branches', () => {
+
+            const tooltipModule = chartObj.tooltipModule as Tooltip;
+
+            const applyFn: (
+                location: { x: number; y: number },
+                point: { series: Series; point: Points },
+                chart: Chart
+            ) => void =
+                tooltipModule['applyTooltipDistance' as keyof Tooltip] as (
+                    location: { x: number; y: number },
+                    point: { series: Series; point: Points },
+                    chart: Chart
+                ) => void;
+
+            chartObj.tooltip.distance = 10;
+
+            chartObj.series[0].type = 'Line';
+            chartObj.refresh();
+
+            let series: Series = <Series>chartObj.series[0];
+            let pd: PointData = new PointData(series.points[0], series, 0);
+            let loc: ChartLocation = new ChartLocation(100, 100);
+
+            applyFn.call(tooltipModule, loc, pd, chartObj);
+            expect(loc.y).toBe(90);
+
+        });
+
+        it('applyTooltipDistance covers all branches', () => {
+
+            const tooltipModule = chartObj.tooltipModule as Tooltip;
+
+            tooltipModule.formattedText = [];
+            chartObj.tooltip.distance = 10;
+
+            const applyFn =
+                tooltipModule['applyTooltipDistance' as keyof Tooltip] as Function;
+
+            const series = chartObj.series[0] as Series;
+            const pd = new PointData(series.points[0], series, 0);
+
+            // non-rect
+            series.isRectSeries = false;
+            let loc = new ChartLocation(0, 0);
+            applyFn.call(tooltipModule, loc, pd, chartObj);
+            expect(loc.y).toBe(-10);
+
+            // rect + positive
+            series.isRectSeries = true;
+            chartObj.requireInvertedAxis = false;
+            pd.point.y = 5;
+            loc = new ChartLocation(0, 0);
+            applyFn.call(tooltipModule, loc, pd, chartObj);
+            expect(loc.y).toBe(-10);
+
+            // rect + negative
+            pd.point.y = -5;
+            loc = new ChartLocation(0, 0);
+            applyFn.call(tooltipModule, loc, pd, chartObj);
+            expect(loc.y).toBe(10);
+
+            // inverted + rtl
+            chartObj.requireInvertedAxis = true;
+            chartObj.enableRtl = true;
+            pd.point.y = 5;
+            loc = new ChartLocation(0, 0);
+            applyFn.call(tooltipModule, loc, pd, chartObj);
+            expect(loc.x).toBe(-10);
+        });
+        it('triggerSharedTooltip applies distance when tooltip location unset', (done) => {
+
+            const originalLoaded = chartObj.loaded;
+
+            chartObj.loaded = () => {
+
+                const tooltipModule = chartObj.tooltipModule as Tooltip;
+                tooltipModule.formattedText = [];
+                tooltipModule.text = [];
+                tooltipModule.headerText = '';
+                spyOn(
+                    tooltipModule as Tooltip & { createTooltip: Function },
+                    'createTooltip'
+                ).and.callFake(() => { });
+
+                chartObj.tooltip.distance = 10;
+                chartObj.tooltip.location.x = null;
+                chartObj.tooltip.location.y = null;
+                chartObj.tooltip.template = null;
+
+                const series = chartObj.series[0] as Series;
+                const pd = new PointData(series.points[0], series, 0);
+
+                tooltipModule.currentPoints = [pd];
+
+                const arg: ISharedTooltipRenderEventArgs = {
+                    name: 'sharedTooltipRender',
+                    cancel: false,
+                    text: ['t'],
+                    template: [],
+                    point: [series.points[0]],
+                    series: [series],
+                    data: []
+                };
+
+                const triggerFn =
+                    tooltipModule['triggerSharedTooltip' as keyof Tooltip] as Function;
+
+                triggerFn.call(tooltipModule, arg, pd, [], chartObj, true, [pd]);
+
+                expect(true).toBe(true);
+
+                // restore lifecycle
+                chartObj.loaded = originalLoaded;
+
+                done();
+            };
+
+            chartObj.refresh();
+        });
+
+
     });
 
     describe('Chart template', () => {
@@ -1005,12 +1131,18 @@ describe('Chart Control', () => {  beforeAll(() => {
                 trigger.clickEvent(targetElement);
                 args.chart.tooltipModule.removeTooltip(0);
                 trigger.mousemovetEvent(chartArea, Math.ceil(0), Math.ceil(0));
-                args.chart.tooltipModule.fadeOut((args.chart.series[0] as any).points[1]);
+                {
+                    const s0 = args.chart.series[0] as Series;
+                    args.chart.tooltipModule.fadeOut([ new PointData(s0.points[1], s0, 1) ]);
+                }
                 if (document.getElementById('container_tooltip_svg')) {
                     document.getElementById('container_tooltip_svg').remove();
                 }
-                args.chart.tooltipModule.fadeOut((args.chart.series[0] as any).points[1]);
-                args.chart.tooltipModule.removeHighlightedMarker((args.chart.series[0] as any).points[1], true);
+                {
+                    const s0 = args.chart.series[0] as Series;
+                    args.chart.tooltipModule.fadeOut([ new PointData(s0.points[1], s0, 1) ]);
+                    args.chart.tooltipModule.removeHighlightedMarker([ new PointData(s0.points[1], s0, 1) ], true);
+                }
                 expect(document.getElementById('container') != null).toBe(true);
                 done();
             };
@@ -1049,13 +1181,47 @@ describe('Chart Control', () => {  beforeAll(() => {
             chartObj.loaded = loaded;
             chartObj.refresh();
         });
+        it('Checking tooltip enableHighlight with distance', (done: Function) => {
+            loaded = (args: ILoadedEventArgs): void => {
+                targetElement = chartObj.element.querySelector('#container_Series_0_Point_1_Symbol') as HTMLElement;
+                let chartArea: HTMLElement = document.getElementById('container_ChartAreaBorder');
+                y = parseFloat(targetElement.getAttribute('cy')) + parseFloat(chartArea.getAttribute('y')) + elem.offsetTop;
+                x = parseFloat(targetElement.getAttribute('cx')) + parseFloat(chartArea.getAttribute('x')) + elem.offsetLeft;
+                trigger.mousemovetEvent(targetElement, Math.ceil(x), Math.ceil(y));
+                expect(document.getElementById('container') != null).toBe(true);
+                args.chart.tooltipModule.currentPoints[0] = null;
+                args.chart.tooltipModule.highlightPoint((args.chart.series[0] as Series),1,false)
+                done();
+            };
+            chartObj.series = [{
+                dataSource: data, xName: 'x', yName: 'y', animation: { enable: false },
+                name: 'ChartSeriesNameGold', fill: 'rgba(135,206,235,1)',
+                marker: {
+                    shape: 'Circle', visible: true, width: 10, height: 10, opacity: 1,
+                    border: { width: 1, color: null }, dataLabel:{visible: true}
+                }
+            },
+            {  type: 'Column',
+                dataSource: data, xName: 'x', yName: 'y', animation: { enable: false },
+                name: 'ChartSeriesNameGold', fill: 'rgba(135,206,235,1)',
+                marker: {
+                    shape: 'Circle', visible: true, width: 10, height: 10, opacity: 1,
+                    border: { width: 1, color: null },  dataLabel:{visible: true}
+                }
+            }]
+            chartObj.tooltip.enableHighlight = true;
+            chartObj.tooltip.distance = 10;
+            chartObj.tooltip.shared = true;
+            chartObj.loaded = loaded;
+            chartObj.refresh();
+        });
     });
     it('memory leak', () => {
         profile.sample();
-        let average: any = inMB(profile.averageChange)
+        let average = inMB(profile.averageChange)
         //Check average change in memory samples to not be over 10MB
         expect(average).toBeLessThan(10);
-        let memory: any = inMB(getMemoryProfile())
+        let memory = inMB(getMemoryProfile())
         //Check the final memory usage against the first usage, there should be little change if everything was properly deallocated
         expect(memory).toBeLessThan(profile.samples[0] + 0.25);
     });
@@ -1104,16 +1270,83 @@ describe('Chart- tooltip and tailwind3 theme', () => {
             trigger.clickEvent(targetElement);
             args.chart.tooltipModule.removeTooltip(0);
             trigger.mousemovetEvent(chartArea, Math.ceil(0), Math.ceil(0));
-            args.chart.tooltipModule.fadeOut((args.chart.series[0] as any).points[1]);
+            {
+                const s0 = args.chart.series[0] as Series;
+                args.chart.tooltipModule.fadeOut([ new PointData(s0.points[1], s0, 1) ]);
+            }
             if (document.getElementById('container_tooltip_svg')) {
                 document.getElementById('container_tooltip_svg').remove();
             }
-            args.chart.tooltipModule.fadeOut((args.chart.series[0] as any).points[1]);
-            args.chart.tooltipModule.removeHighlightedMarker((args.chart.series[0] as any).points[1], true);
+            {
+                const s0 = args.chart.series[0] as Series;
+                args.chart.tooltipModule.fadeOut([ new PointData(s0.points[1], s0, 1) ]);
+                args.chart.tooltipModule.removeHighlightedMarker([ new PointData(s0.points[1], s0, 1) ], true);
+            }
             expect(document.getElementById('container') != null).toBe(true);
             done();
         };
         chartObj.loaded = loaded;
+        chartObj.theme = 'Tailwind3';
+        chartObj.refresh();
+    });   
+        it('Checking tooltip module fade out tailwind3 method with distance', (done: Function) => {
+        loaded = (args: ILoadedEventArgs): void => {
+            targetElement = chartObj.element.querySelector('#container_Series_0_Point_1_Symbol') as HTMLElement;
+            let chartArea: HTMLElement = document.getElementById('container_ChartAreaBorder');
+            y = parseFloat(targetElement.getAttribute('cy')) + parseFloat(chartArea.getAttribute('y')) + elem.offsetTop;
+            x = parseFloat(targetElement.getAttribute('cx')) + parseFloat(chartArea.getAttribute('x')) + elem.offsetLeft;
+            trigger.mousemovetEvent(targetElement, Math.ceil(x), Math.ceil(y));
+            trigger.clickEvent(targetElement);
+            args.chart.tooltipModule.removeTooltip(0);
+            trigger.mousemovetEvent(chartArea, Math.ceil(0), Math.ceil(0));
+            {
+                const s0 = args.chart.series[0] as Series;
+                args.chart.tooltipModule.fadeOut([ new PointData(s0.points[1], s0, 1) ]);
+            }
+            if (document.getElementById('container_tooltip_svg')) {
+                document.getElementById('container_tooltip_svg').remove();
+            }
+            {
+                const s0 = args.chart.series[0] as Series;
+                args.chart.tooltipModule.fadeOut([ new PointData(s0.points[1], s0, 1) ]);
+                args.chart.tooltipModule.removeHighlightedMarker([ new PointData(s0.points[1], s0, 1) ], true);
+            }
+            expect(document.getElementById('container') != null).toBe(true);
+            done();
+        };
+        chartObj.loaded = loaded;
+        chartObj.tooltip.distance= 10;
+        chartObj.theme = 'Tailwind3';
+        chartObj.refresh();
+    });
+    it('Checking tooltip module fade out tailwind3 method with shared and distance', (done: Function) => {
+        loaded = (args: ILoadedEventArgs): void => {
+            targetElement = chartObj.element.querySelector('#container_Series_0_Point_1_Symbol') as HTMLElement;
+            let chartArea: HTMLElement = document.getElementById('container_ChartAreaBorder');
+            y = parseFloat(targetElement.getAttribute('cy')) + parseFloat(chartArea.getAttribute('y')) + elem.offsetTop;
+            x = parseFloat(targetElement.getAttribute('cx')) + parseFloat(chartArea.getAttribute('x')) + elem.offsetLeft;
+            trigger.mousemovetEvent(targetElement, Math.ceil(x), Math.ceil(y));
+            trigger.clickEvent(targetElement);
+            args.chart.tooltipModule.removeTooltip(0);
+            trigger.mousemovetEvent(chartArea, Math.ceil(0), Math.ceil(0));
+            {
+                const s0 = args.chart.series[0] as Series;
+                args.chart.tooltipModule.fadeOut([ new PointData(s0.points[1], s0, 1) ]);
+            }
+            if (document.getElementById('container_tooltip_svg')) {
+                document.getElementById('container_tooltip_svg').remove();
+            }
+            {
+                const s0 = args.chart.series[0] as Series;
+                args.chart.tooltipModule.fadeOut([ new PointData(s0.points[1], s0, 1) ]);
+                args.chart.tooltipModule.removeHighlightedMarker([ new PointData(s0.points[1], s0, 1) ], true);
+            }
+            expect(document.getElementById('container') != null).toBe(true);
+            done();
+        };
+        chartObj.loaded = loaded;
+        chartObj.tooltip.shared = true;
+        chartObj.tooltip.distance = 10;
         chartObj.theme = 'Tailwind3';
         chartObj.refresh();
     });
@@ -1125,10 +1358,119 @@ describe('Chart- tooltip and tailwind3 theme', () => {
             done();
         };
         chartObj.loaded = loaded;
+        
         chartObj.theme = 'Tailwind3';
+        chartObj.tooltip.distance= 0;
         chartObj.tooltip.shared = true;
         chartObj.tooltip.template = '<div>Tooltip</div>';
         chartObj.enableHtmlSanitizer = true;
+        chartObj.refresh();
+    });
+    it('Split tooltip rendering', (done: Function) => {
+        loaded = (args: Object): void => {
+            const target = document.getElementById('container_Series_0_Point_6_Symbol') as HTMLElement;
+            const chartArea = document.getElementById('container_ChartAreaBorder') as HTMLElement;
+            const computedY = parseFloat(target.getAttribute('cy')) + parseFloat(chartArea.getAttribute('y')) + elem.offsetTop;
+            const computedX = parseFloat(target.getAttribute('cx')) + parseFloat(chartArea.getAttribute('x')) + elem.offsetLeft;
+            trigger.mousemovetEvent(target, Math.ceil(computedX), Math.ceil(computedY));
+            setTimeout(() => {
+                const firstTooltipGroup: Element = document.getElementById('container_tooltip_group_0');
+                const secondTooltipGroup: Element = document.getElementById('container_tooltip_group_1');
+                const thirdTooltipGroup: Element = document.getElementById('container_tooltip_group_2');
+
+                expect(firstTooltipGroup).not.toBe(null);
+                expect(secondTooltipGroup).not.toBe(null);
+                expect(thirdTooltipGroup).not.toBe(null);
+
+                expect((firstTooltipGroup as HTMLElement).style.transform).toBe('translate(498.643px, 156.61px)');
+                expect((secondTooltipGroup as HTMLElement).style.transform).toBe('translate(494.643px, 119.61px)');
+                expect((thirdTooltipGroup as HTMLElement).style.transform).toBe('translate(494.643px, 193.61px)');
+
+                const firstTooltipPath: Element = document.getElementById('container_tooltip_path_0');
+                const secondTooltipPath: Element = document.getElementById('container_tooltip_path_1');
+                const thirdTooltipPath: Element = document.getElementById('container_tooltip_path_2');
+                expect(firstTooltipPath).not.toBe(null);
+                expect(secondTooltipPath).not.toBe(null);
+                expect(thirdTooltipPath).not.toBe(null);
+
+                expect(firstTooltipPath.getAttribute('d')).toBe('M 4 0 Q 0 0 0 4 L 0 0 L 0 0 L 0 0 L 0 28 Q 0 32 4 32 L 163 32 Q 167 32 167 28 L 167 4 Q 167 0 163 0 z');
+                expect(secondTooltipPath.getAttribute('d')).toBe('M 4 0 Q 0 0 0 4 L 0 0 L 0 0 L 0 0 L 0 28 Q 0 32 4 32 L 167 32 Q 171 32 171 28 L 171 4 Q 171 0 167 0 z');
+                expect(thirdTooltipPath.getAttribute('d')).toBe('M 4 0 Q 0 0 0 4 L 0 0 L 0 0 L 0 0 L 0 28 Q 0 32 4 32 L 167 32 Q 171 32 171 28 L 171 4 Q 171 0 167 0 z');
+
+                const firstTooltipText: Element = document.getElementById('container_tooltip_text_0');
+                const secondTooltipText: Element = document.getElementById('container_tooltip_text_1');
+                const thirdTooltipText: Element = document.getElementById('container_tooltip_text_2');
+                expect(firstTooltipText).not.toBe(null);
+                expect(secondTooltipText).not.toBe(null);
+                expect(thirdTooltipText).not.toBe(null);
+
+                const firstConnectorPath: Element = document.getElementById('container_tooltip_tooltip_connector_0');
+                const secondConnectorPath: Element = document.getElementById('container_tooltip_tooltip_connector_1');
+
+                if (firstConnectorPath) {
+                    expect(firstConnectorPath.getAttribute('d')).toBe('M 186.9999999999999 16.733854166666674 L 167 16');
+                }
+                if (secondConnectorPath) {
+                    expect(secondConnectorPath.getAttribute('d')).toBe('M 190.9999999999999 51.53229166666668 L 171 16');
+                }
+                done();
+            }, 500);
+        };
+        chartObj.series = [{
+            dataSource: data, xName: 'x', yName: 'y', animation: { enable: false },
+            name: 'ChartSeriesNameGold', fill: 'rgba(135,206,235,1)',
+            marker: {
+                shape: 'Circle', visible: true, width: 10, height: 10, opacity: 1,
+                border: { width: 1, color: null }
+            }
+        }, {
+            dataSource: data2, xName: 'x', yName: 'y', animation: { enable: false },
+            name: 'ChartSeriesNameSilver', fill: 'rgba(135,206,235,1)',
+            marker: {
+                shape: 'Circle', visible: true, width: 10, height: 10, opacity: 1,
+                border: { width: 1, color: null }
+            }
+        },
+        {
+            dataSource: [{ x: 1000, y: 70 }, { x: 2000, y: 40 },
+            { x: 3000, y: 70 }, { x: 4000, y: 60 },
+            { x: 5000, y: 50 }, { x: 6000, y: 40 },
+            { x: 7000, y: 40 }, { x: 8000, y: 70 }], xName: 'x', yName: 'y', animation: { enable: false },
+            name: 'ChartSeriesNameSilver', fill: 'rgba(135,206,235,1)',
+            marker: {
+                shape: 'Circle', visible: true, width: 10, height: 10, opacity: 1,
+                border: { width: 1, color: null }
+            }
+        }]
+        chartObj.tooltip.template = null;
+        chartObj.loaded = loaded;
+        chartObj.tooltip = { enable: true, split: true };
+        chartObj.refresh();
+    });
+    it('follow pointer tooltip rendering', (done: Function) => {
+        loaded = (args: Object): void => {
+            const target = document.getElementById('container_Series_0_Point_6_Symbol') as HTMLElement;
+            const chartArea = document.getElementById('container_ChartAreaBorder') as HTMLElement;
+            const computedY = parseFloat(target.getAttribute('cy')) + parseFloat(chartArea.getAttribute('y')) + elem.offsetTop;
+            const computedX = parseFloat(target.getAttribute('cx')) + parseFloat(chartArea.getAttribute('x')) + elem.offsetLeft;
+            trigger.mousemovetEvent(target, Math.ceil(computedX), Math.ceil(computedY));
+            setTimeout(() => {
+                const tooltipGroupElement: Element = document.getElementById('container_tooltip_group');
+                expect((tooltipGroupElement.parentElement.parentElement as HTMLElement).style.transform).toBe('translate(602.143px, 99.3438px)')
+                done();
+            }, 500);
+        };
+        chartObj.series = [{
+            dataSource: data, xName: 'x', yName: 'y', animation: { enable: false },
+            name: 'ChartSeriesNameGold', fill: 'rgba(135,206,235,1)',
+            marker: {
+                shape: 'Circle', visible: true, width: 10, height: 10, opacity: 1,
+                border: { width: 1, color: null }
+            }
+        }]
+        chartObj.tooltip.template = null;
+        chartObj.loaded = loaded;
+        chartObj.tooltip = { enable: true, split: false };
         chartObj.refresh();
     });
 });

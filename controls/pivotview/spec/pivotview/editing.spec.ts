@@ -267,7 +267,7 @@ describe('- Editing', () => {
                 document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="11"]')[0].dispatchEvent(event);
                 document.querySelectorAll('.e-drillthrough-grid .e-numeric span')[1].dispatchEvent(mousedown);
                 document.querySelectorAll('.e-drillthrough-grid .e-numeric span')[1].dispatchEvent(mouseup);
-                expect(document.querySelectorAll('.e-drillthrough-grid .e-numeric input')[0].getAttribute('aria-valuenow')).toBe("12");
+                expect(document.querySelectorAll('.e-drillthrough-grid .e-numeric input')[0].getAttribute('aria-valuenow')).toBe("1");
                 document.querySelectorAll('.e-drillthrough-grid .e-tbar-btn')[3].dispatchEvent(click);
                 (document.querySelectorAll('.e-drillthrough-dialog .e-dlg-closeicon-btn')[0] as HTMLElement).click();
                 done();
@@ -284,7 +284,7 @@ describe('- Editing', () => {
         });
         it('remove tamilnadu single check', (done: Function) => {
             setTimeout(() => {
-                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="11"]')[0].textContent).toBe("28");
+                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="11"]')[0].textContent).toBe("female");
                 (document.querySelectorAll('.e-drillthrough-dialog .e-dlg-closeicon-btn')[0] as HTMLElement).click();
                 done();
             }, 1000);
@@ -357,7 +357,7 @@ describe('- Editing', () => {
         it('batch click bike-female-balance', (done: Function) => {
             document.querySelectorAll('td[aria-colindex="2"]')[1].dispatchEvent(event);
             setTimeout(() => {
-                document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="14"]')[0].dispatchEvent(event);
+                document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="5"]')[0].dispatchEvent(event);
                 document.querySelectorAll('.e-drillthrough-grid .e-numeric span')[0].dispatchEvent(mousedown);
                 document.querySelectorAll('.e-drillthrough-grid .e-numeric span')[0].dispatchEvent(mouseup);
                 done();
@@ -409,7 +409,7 @@ describe('- Editing', () => {
         });
         it('dialog click bike-female-balance check', (done: Function) => {
             setTimeout(() => {
-                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="12"]')[0].textContent).toBe("16");
+                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="12"]')[0].textContent).toBe("IDEALIS");
                 (document.querySelectorAll('.e-drillthrough-dialog .e-dlg-closeicon-btn')[0] as HTMLElement).click();
                 done();
             }, 1000);
@@ -440,7 +440,7 @@ describe('- Editing', () => {
         });
         it('cc click bike-female-balance check', (done: Function) => {
             setTimeout(() => {
-                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="11"]')[0].textContent).toBe("39");
+                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="11"]')[0].textContent).toBe("male");
                 (document.querySelectorAll('.e-drillthrough-dialog .e-dlg-closeicon-btn')[0] as HTMLElement).click();
                 done();
             }, 1000);
@@ -463,7 +463,7 @@ describe('- Editing', () => {
         });
         it('cc click california-quantity-female check', (done: Function) => {
             setTimeout(() => {
-                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="11"]')[0].textContent).toBe("21");
+                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="11"]')[0].textContent).toBe("male");
                 (document.querySelectorAll('.e-drillthrough-dialog .e-dlg-closeicon-btn')[0] as HTMLElement).click();
                 done();
             }, 1000);
@@ -499,7 +499,7 @@ describe('- Editing', () => {
         });
         it('cc click bike-female-balance check', (done: Function) => {
             setTimeout(() => {
-                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="12"]')[0].textContent).toBe("15");
+                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="12"]')[0].textContent).toBe("IDEALIS");
                 (document.querySelectorAll('.e-drillthrough-dialog .e-dlg-closeicon-btn')[0] as HTMLElement).click();
                 done();
             }, 1000);

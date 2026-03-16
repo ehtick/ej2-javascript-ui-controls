@@ -154,7 +154,8 @@ export class EmojiPicker {
         let target: HTMLElement;
         let xValue: string | number;
         let yValue: string | number;
-        if (this.parent.toolbarSettings.position === 'Bottom') {
+        const isInlineTBarInBody: boolean = this.parent.inlineMode.enable && this.parent.quickToolbarSettings.enableAppendToBody;
+        if (this.parent.toolbarSettings.position === 'Bottom' && !isInlineTBarInBody) {
             args.y = args.y - this.parent.getToolbar().getBoundingClientRect().height;
         }
         if (!isNOU((args as NotifyArgs).args as ClickEventArgs) && !this.parent.inlineMode.enable &&

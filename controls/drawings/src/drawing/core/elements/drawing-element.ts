@@ -207,6 +207,9 @@ export class DrawingElement {
     /** @private */
     public thickness?: number;
 
+    /** @private */
+    public isSharpEdge?: boolean;
+
     // public constructor() {
     //     this.id = randomId();
     // }

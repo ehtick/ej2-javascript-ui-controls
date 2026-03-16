@@ -2,31 +2,6 @@
 
 ## [Unreleased]
 
-## 32.2.9 (2026-03-10)
-
-### Common
-
-#### Bug Fixes
-
-- `#I818823` - Resolved a licensing banner issue for the chart component using the WordEditorSdk key.
-
-## 32.2.3 (2026-02-05)
-
-### Common
-
-#### Bug Fixes
-
-- `#I803798` - Resolved an issue where TreeView value selection failed and console error occurred when node ID contained space or hash (#) characters.
-
-## 32.1.23 (2026-01-13)
-
-### Common
-
-#### Bug Fixes
-
-- `#I798285` - Resolved an issue where the Time Picker control became read-only when switching the culture to Traditional Chinese.
-- `#I798573` - Resolved Date Parsing Error Where "01/01/0001" Was Incorrectly Normalized to "01/01/2001" in DatePicker
-
 ## 32.1.19 (2025-12-16)
 
 ### Common

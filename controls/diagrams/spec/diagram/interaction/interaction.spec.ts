@@ -1439,7 +1439,6 @@ describe('Diagram Control', () => {
             ele.remove();
         });
         it('Checking single node resizing - top center', (done : Function)=>{
-            //debugger;
             diagram.clearSelection();
             let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
             
@@ -1467,18 +1466,18 @@ describe('Diagram Control', () => {
             expect(diagram.nodes[1].width==80).toBe(true);
             done();
         });   
-        // it('Checking single node resizing - bottom center', (done : Function)=>{  
-        //     diagram.clearSelection();
-        //     let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-        //     let offsetLeft: number = diagram.element.offsetLeft;
-        //     let offsetTop: number = diagram.element.offsetTop;
-        //     //increasing size
-        //     let bottomCenter: PointModel = (diagram.nodes[2] as NodeModel).wrapper.bounds.bottomCenter;
-        //     mouseEvents.clickEvent(diagramCanvas, 300, 600);
-        //     mouseEvents.dragAndDropEvent(diagramCanvas, bottomCenter.x + offsetLeft, bottomCenter.y + offsetTop - 1, bottomCenter.x, bottomCenter.y + 30 + offsetTop - 1);
-        //     expect(diagram.nodes[2].height==120).toBe(true);
-        //     done();
-        //});
+        it('Checking single node resizing - bottom center', (done : Function)=>{  
+            diagram.clearSelection();
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            let offsetLeft: number = diagram.element.offsetLeft;
+            let offsetTop: number = diagram.element.offsetTop;
+            //increasing size
+            let bottomCenter: PointModel = (diagram.nodes[2] as NodeModel).wrapper.bounds.bottomCenter;
+            mouseEvents.clickEvent(diagramCanvas, 300, 600);
+            mouseEvents.dragAndDropEvent(diagramCanvas, bottomCenter.x + offsetLeft, bottomCenter.y + offsetTop - 1, bottomCenter.x, bottomCenter.y + 30 + offsetTop - 1);
+            expect(diagram.nodes[2].height==120).toBe(true);
+            done();
+        });
         it('Checking single node resizing - right center',(done: Function)=>{
             diagram.clearSelection();
             let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
@@ -3442,19 +3441,20 @@ describe('Diagram Control', () => {
             }, 10);
         });
 
-        // it('Checking tooltip connector end points dragging', (done: Function) => {
-        //     let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-        //     mouseEvents.clickEvent(diagramCanvas, 350, 350);
-        //     mouseEvents.dragEvent(diagramCanvas, 300 +4, 300+ 8, 370, 300);
-        //     setTimeout(function () {
-        //         mouseEvents.dragEvent(diagramCanvas, 370 + diagram.element.offsetLeft, 300 + diagram.element.offsetTop -1, 400, 400);
-        //     }, 5);
-        //     setTimeout(() => {
-        //         let tooltipElement = document.getElementsByClassName('e-tooltip-wrap')[0];
-        //         expect(tooltipElement.firstElementChild.textContent == 'X:392 Y:392').toBe(true);
-        //         done();
-        //     }, 10);
-        // });
+        it('Checking tooltip connector end points dragging', (done: Function) => {
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            mouseEvents.clickEvent(diagramCanvas, 350, 350);
+            mouseEvents.dragEvent(diagramCanvas, 300 +4, 300+ 8, 370, 300);
+            setTimeout(function () {
+                mouseEvents.dragEvent(diagramCanvas, 370 + diagram.element.offsetLeft, 300 + diagram.element.offsetTop -1, 400, 400);
+            }, 5);
+            setTimeout(() => {
+                let tooltipElement = document.getElementsByClassName('e-tooltip-wrap')[0];
+                console.log(tooltipElement.firstElementChild.textContent);
+                expect(tooltipElement.firstElementChild.textContent == 'X:338 Y:335').toBe(true);
+                done();
+            }, 10);
+        });
 
         it('checking tooltip resizing an element', (done: Function) => {
             let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
@@ -4716,7 +4716,6 @@ describe('834641-Support to unselect the diagram element that is already selecte
         ele.remove();
     });
     it('select and unselect node and connector in Swimlane', (done: Function) => {
-        debugger
         let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
         mouseEvents.clickEvent(diagramCanvas, 220, 150);//select node in swimlane
         expect(diagram.selectedItems.nodes.length == 1).toBe(true)
@@ -4724,7 +4723,7 @@ describe('834641-Support to unselect the diagram element that is already selecte
         expect(diagram.selectedItems.nodes.length == 0).toBe(true)
         mouseEvents.clickEvent(diagramCanvas, 422, 286);//select connector in swimlane
         expect(diagram.selectedItems.connectors.length == 1).toBe(true)
-        mouseEvents.clickEvent(diagramCanvas, 422, 286);
+        mouseEvents.clickEvent(diagramCanvas, 600, 286);
         expect(diagram.selectedItems.connectors.length == 0).toBe(true)
         done();
     });
@@ -4744,38 +4743,38 @@ describe('834641-Support to unselect the diagram element that is already selecte
         expect(diagram.selectedItems.nodes.length == 0).toBe(true)
         done();
     });
-    // it('select and unselect node and connector after selecting Lane', (done: Function) => {
-    //     let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-    //     mouseEvents.clickEvent(diagramCanvas, 120, 290);//select Lane
-    //     expect(diagram.selectedItems.nodes.length == 1).toBe(true)
-    //     mouseEvents.clickEvent(diagramCanvas, 220, 150);//select node in Lane
-    //     expect(diagram.selectedItems.nodes.length == 1).toBe(true)
-    //     mouseEvents.clickEvent(diagramCanvas, 220, 150);//unselect node in Lane
-    //     expect(diagram.selectedItems.nodes.length == 0).toBe(true)
-    //     mouseEvents.clickEvent(diagramCanvas, 120, 290);//select Lane
-    //     expect(diagram.selectedItems.nodes.length == 1).toBe(true)
-    //     mouseEvents.clickEvent(diagramCanvas, 422, 286);//select connector in Lane
-    //     expect(diagram.selectedItems.connectors.length == 1).toBe(true)
-    //     mouseEvents.clickEvent(diagramCanvas, 422, 286);//unselect connector in Lane
-    //     expect(diagram.selectedItems.connectors.length == 0).toBe(true)
-    //     done();
-    // });
-    // it('select and unselect node and connector after selecting Phase', (done: Function) => {
-    //     let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-    //     mouseEvents.clickEvent(diagramCanvas, 236, 95);//select phase
-    //     expect(diagram.selectedItems.nodes.length == 1).toBe(true)
-    //     mouseEvents.clickEvent(diagramCanvas, 220, 150);//select node in phase
-    //     expect(diagram.selectedItems.nodes.length == 1).toBe(true)
-    //     mouseEvents.clickEvent(diagramCanvas, 220, 150);//unselect node in phase
-    //     expect(diagram.selectedItems.nodes.length == 0).toBe(true)
-    //     mouseEvents.clickEvent(diagramCanvas, 120, 290);//select phase
-    //     expect(diagram.selectedItems.nodes.length == 1).toBe(true)
-    //     mouseEvents.clickEvent(diagramCanvas, 422, 286);//select connector in phase
-    //     expect(diagram.selectedItems.connectors.length == 1).toBe(true)
-    //     mouseEvents.clickEvent(diagramCanvas, 422, 286);//unselect connector in phase
-    //     expect(diagram.selectedItems.connectors.length == 0).toBe(true)
-    //     done();
-    // });
+    it('select and unselect node and connector after selecting Lane', (done: Function) => {
+        let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+        mouseEvents.clickEvent(diagramCanvas, 120, 290);//select Lane
+        expect(diagram.selectedItems.nodes.length == 1).toBe(true)
+        mouseEvents.clickEvent(diagramCanvas, 220, 150);//select node in Lane
+        expect(diagram.selectedItems.nodes.length == 1).toBe(true)
+        mouseEvents.clickEvent(diagramCanvas, 220, 150);//unselect node in Lane
+        expect(diagram.selectedItems.nodes.length == 0).toBe(true)
+        mouseEvents.clickEvent(diagramCanvas, 120, 290);//select Lane
+        expect(diagram.selectedItems.nodes.length == 1).toBe(true)
+        diagram.select([diagram.connectors[1]]);//select connector in Lane
+        expect(diagram.selectedItems.connectors.length == 1).toBe(true)
+        mouseEvents.clickEvent(diagramCanvas, 600, 286);//unselect connector in Lane
+        expect(diagram.selectedItems.connectors.length == 0).toBe(true)
+        done();
+    });
+    it('select and unselect node and connector after selecting Phase', (done: Function) => {
+        let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+        mouseEvents.clickEvent(diagramCanvas, 236, 95);//select phase
+        expect(diagram.selectedItems.nodes.length == 1).toBe(true)
+        mouseEvents.clickEvent(diagramCanvas, 220, 150);//select node in phase
+        expect(diagram.selectedItems.nodes.length == 1).toBe(true)
+        mouseEvents.clickEvent(diagramCanvas, 220, 150);//unselect node in phase
+        expect(diagram.selectedItems.nodes.length == 0).toBe(true)
+        mouseEvents.clickEvent(diagramCanvas, 120, 290);//select phase
+        expect(diagram.selectedItems.nodes.length == 1).toBe(true)
+        diagram.select([diagram.connectors[1]]);//select connector in phase
+        expect(diagram.selectedItems.connectors.length == 1).toBe(true)
+        mouseEvents.clickEvent(diagramCanvas, 600, 286);//unselect connector in phase
+        expect(diagram.selectedItems.connectors.length == 0).toBe(true)
+        done();
+    });
 });
 describe('834641-Support to unselect the diagram element that is already selected in BPMN editor', () => {
     let diagram: Diagram;
@@ -4964,7 +4963,7 @@ describe('834641-Support to unselect the diagram element that is already selecte
     });
 
     it('Checking unselect action working for BPMN nodes ', (done: Function) => {
-        debugger
+        
         let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
         mouseEvents.clickEvent(diagramCanvas, 400,325);
         //Need to evaluate testcase
@@ -5082,7 +5081,7 @@ describe('ConnectTool Move after changing the sourcePointChange event', () => {
     });
 
     it('Checking whether the connector is moving after changing the sourcePointChange event in X direction', (done: Function) => {
-        debugger;
+        ;
         
         let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
         mouseEvents.clickEvent(diagramCanvas,408,353);
@@ -5099,7 +5098,7 @@ describe('ConnectTool Move after changing the sourcePointChange event', () => {
     });
 
     it('Checking whether the connector is moving after changing the sourcePointChange event in Y direction', (done: Function) => {
-        debugger;
+        ;
         
         let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
         mouseEvents.clickEvent(diagramCanvas,400,353);
@@ -5295,15 +5294,15 @@ describe('Connector Allow Drop', () => {
         diagram.destroy();
         ele.remove();
     });
-    // it("894577 - dropping node on connector after the highlighter is activated", function (done) {
-    //     let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-    //     mouseEvents.clickEvent(diagramCanvas, 490, 290);
-    //     mouseEvents.mouseDownEvent(diagramCanvas, 490, 290);
-    //     mouseEvents.mouseMoveEvent(diagramCanvas, 400, 150);
-    //     mouseEvents.mouseUpEvent(diagramCanvas, 400, 150);
-    //     expect(diagram.connectors.length === 2).toBe(true);
-    //     done();
-    // });
+    it("894577 - dropping node on connector after the highlighter is activated", function (done) {
+        let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+        mouseEvents.clickEvent(diagramCanvas, 490, 290);
+        mouseEvents.mouseDownEvent(diagramCanvas, 490, 290);
+        mouseEvents.mouseMoveEvent(diagramCanvas, 400, 150);
+        mouseEvents.mouseUpEvent(diagramCanvas, 400, 150);
+        expect(diagram.connectors.length === 2).toBe(true);
+        done();
+    });
 });
 describe('Connector Allow Drop', () => {
     let diagram: Diagram;

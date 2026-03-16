@@ -46,7 +46,7 @@ $cbox-small-lineheight: 13px !default;
 $cbox-small-width: 14px !default;
 $cbox-width: 14px !default;
 $cbox-focus-outline-offset: 0 !default;
-$cbox-focus-outline:  rgba($primary, .25) !default;
+$cbox-focus-outline:  rgba(from var(--color-sf-primary) r g b / .25) !default;
 $cbox-border-color: $border !default;
 $cbox-bgcolor: $content-bg-color !default;
 $cbox-checkmark-bgcolor: $primary !default;

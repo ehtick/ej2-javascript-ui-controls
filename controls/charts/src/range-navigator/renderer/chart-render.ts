@@ -15,6 +15,7 @@ import { getSeriesColor } from '../../common/model/theme';
 import { PathOption, Rect, measureText, Size } from '@syncfusion/ej2-svg-base';
 import { Data } from '../../common/model/data';
 import { DateTimeCategory } from '../../chart/axis/date-time-category-axis';
+import { StockSeriesModel } from '../../stock-chart';
 
 /**
  * To render Chart series
@@ -234,7 +235,15 @@ export class RangeSeries extends NiceInterval {
                 series.chart = control;
                 series.index = index;
                 series.xAxis.isInversed = control.enableRtl;
-                series.interior = series.fill || colors[index % colors.length];
+                const stockSeries: StockSeriesModel = control.stockChart && control.stockChart.series &&
+                                                      control.stockChart.series[index as number];
+                const hasGradient: boolean = (stockSeries && !isNullOrUndefined(stockSeries.linearGradient) &&
+                                              stockSeries.linearGradient.gradientColorStop.length > 0) ||
+                                             (stockSeries && !isNullOrUndefined(stockSeries.radialGradient) &&
+                                              stockSeries.radialGradient.gradientColorStop.length > 0);
+                const fillColor: string = (hasGradient && series.interior.indexOf('gradient')) > 0 ?
+                    series.interior : (series.fill || colors[index % colors.length]);
+                series.interior = fillColor;
                 this.createSeriesElement(control, series, index);
                 if (series.xAxis.valueType === 'DateTimeCategory') {
                     for (let i: number = 0; i < series.points.length; i++) {

@@ -1093,7 +1093,6 @@ export class PdfDataExtractor {
      */
     async extractImages(options: { startPageIndex?: number, endPageIndex?: number }): Promise<PdfEmbeddedImage[]>;
     async extractImages(options?: { startPageIndex?: number, endPageIndex?: number }): Promise<PdfEmbeddedImage[]> {
-        const isImageExtraction: boolean = true;
         this._document._crossReference._isDecoderSupport = true;
         let startIndex: number = 0;
         this._contentParser = new _PdfContentParserHelper(_TextProcessingMode.imageExtraction);
@@ -1120,12 +1119,12 @@ export class PdfDataExtractor {
                 if (resourceId && xObjectCache.has(resourceId)) {
                     xObjectCollection = xObjectCache.get(resourceId);
                 } else {
-                    xObjectCollection = _getXObjectResources(resource, this._crossReference, isImageExtraction, page);
+                    xObjectCollection = _getXObjectResources(resource, this._crossReference, _TextProcessingMode.imageExtraction, page);
                     if (resourceId) {
                         xObjectCache.set(resourceId, xObjectCollection);
                     }
                 }
-                await this._extractImagcollection(page, fontCollection, xObjectCollection,  graphicState);
+                await this._extractImagcollection(page, fontCollection, xObjectCollection, graphicState);
             }
             this._isRotatePage = false;
         }
@@ -1160,7 +1159,11 @@ export class PdfDataExtractor {
                 if (resourceId && xObjectCache.has(resourceId)) {
                     xObjectCollection = xObjectCache.get(resourceId);
                 } else {
-                    xObjectCollection = _getXObjectResources(resource, this._crossReference, isImageExtraction, page);
+                    let mode: _TextProcessingMode;
+                    if (typeof(isImageExtraction) === 'boolean' && isImageExtraction) {
+                        mode = _TextProcessingMode.imageExtraction;
+                    }
+                    xObjectCollection = _getXObjectResources(resource, this._crossReference, mode, page);
                     if (resourceId) {
                         xObjectCache.set(resourceId, xObjectCollection);
                     }

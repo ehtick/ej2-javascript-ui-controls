@@ -1,6 +1,5 @@
 import { MentionChangeEventArgs } from '@syncfusion/ej2-dropdowns';
 import { CommandItemModel, IHeadingBlockSettings } from '../../../models/index';
-import { getBlockModelById } from '../../../common/utils/block';
 import { BlockType } from '../../../models/enums';
 import { events } from '../../../common/constant';
 import * as constants from '../../../common/constant';
@@ -75,12 +74,8 @@ export class SlashCommandModule {
 
         const isHeadingType: boolean = selectedItem === BlockType.Heading || selectedItem === BlockType.CollapsibleHeading;
         const headingProps: IHeadingBlockSettings = isHeadingType ? this.getHeadingProps(commandItem.id) : undefined;
-        this.parent.blockCommand.handleBlockTransformation({
-            block: getBlockModelById(this.parent.currentFocusedBlock.id, this.parent.getEditorBlocks()),
-            blockElement: this.parent.currentFocusedBlock,
-            newBlockType: selectedItem,
-            props: headingProps
-        });
+
+        this.parent.blockCommand.transformBlocksForSelection(selectedItem, headingProps);
     }
 
     private updateSlashMenuPopupState(options: { isOpen: boolean }): void {

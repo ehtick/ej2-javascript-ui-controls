@@ -48,10 +48,9 @@ import { QuickToolbar } from '../actions/quick-toolbar';
 import { FullScreen } from '../actions/full-screen';
 import { PasteCleanup } from '../actions/paste-clean-up';
 import { ImportExport } from '../actions/import-export';
-import { EnterKeyAction } from '../actions/enter-key';
 import * as CONSTANT from '../../common/constant';
 import { IHtmlKeyboardEvent, IHtmlUndoRedoData, BeforeInputEvent, ILineHeightProperties } from '../../editor-manager/base/interface';
-import { dispatchEvent, getEditValue, decode, isEditableValueEmpty, getDefaultValue, sanitizeHelper, reEscapeRawTextTags } from '../base/util';
+import { dispatchEvent, getEditValue, decode, isEditableValueEmpty, getDefaultValue } from '../base/util';
 import { cleanHTMLString, scrollToCursor, getStructuredHtml, isIDevice, alignmentHtml, openPrintWindow } from '../../common/util';
 import { DialogRenderer } from '../renderer/dialog-renderer';
 import { SelectedEventArgs, RemovingEventArgs, UploadingEventArgs, BeforeUploadEventArgs } from '@syncfusion/ej2-inputs';
@@ -77,6 +76,7 @@ import { AIAssistant } from '../renderer/ai-assistant';
 import { PromptModel } from '@syncfusion/ej2-interactive-chat';
 import { PopupUploader } from '../renderer/popup-uploader-renderer';
 import { AutoFormat } from '../actions';
+import { sanitizeHelper } from '../base/util';
 
 /**
  * Represents the Rich Text Editor component.
@@ -244,12 +244,6 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
      * @hidden
      * @deprecated
      */
-    public enterKeyModule: EnterKeyAction;
-
-    /**
-     * @hidden
-     * @deprecated
-     */
     public sourceCodeModule: ViewSource;
     /**
      * @hidden
@@ -399,10 +393,11 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
      *   1. hide: The quick toolbar closes when the parent element is scrolled.
      *   2. none: The quick toolbar stays open even if the parent element is scrolled.
      * * link: Specifies items in the quick toolbar for links ('Open', 'Edit', 'UnLink').
-     * * image: Specifies items in the quick toolbar for images ('Replace', 'Align', 'Caption', 'Remove', 'InsertLink', 'Display', 'AltText', 'Dimension').
+     * * image: Specifies items in the quick toolbar for images ('Replace', 'Align', 'Caption', 'WrapText', 'Remove', 'InsertLink', 'Display', 'AltText', 'Dimension').
      * * text: Specifies items in the quick toolbar for text ('Cut', 'Copy', 'Paste').
      * * audio: Specifies items for audio ('AudioReplace', 'AudioRemove', 'AudioLayoutOption').
      * * video: Specifies items for video ('VideoReplace', 'VideoAlign', 'VideoRemove', 'VideoLayoutOption', 'VideoDimension').
+     * * enableAppendToBody: Boolean to enable or disable appending the quick toolbar to the body.
      *
      * {% codeBlock src='rich-text-editor/quick-toolbar-settings/index.md' %}{% endcodeBlock %}
      *
@@ -412,9 +407,10 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
      * actionOnScroll: 'none',
      * link: ['Open', 'Edit', 'UnLink'],
      * table: ['Tableheader', 'TableRemove', '|', 'TableRows', 'TableColumns', '|' , 'Styles', 'BackgroundColor', 'Alignments', 'TableCellVerticalAlign'],
-     * image: ['AltText', 'Caption', '|', 'Align', 'Display', '|', 'InsertLink', 'OpenImageLink', 'EditImageLink', 'RemoveImageLink', '|', 'Dimension', 'Replace', 'Remove'],
+     * image: ['AltText', 'Caption', '|', 'Align', 'Display', 'WrapText', '|', 'InsertLink', 'OpenImageLink', 'EditImageLink', 'RemoveImageLink', '|', 'Dimension', 'Replace', 'Remove'],
      * audio: ['AudioLayoutOption', 'AudioReplace', 'AudioRemove'],
      * video: ['VideoLayoutOption', 'VideoAlign', '|', 'VideoDimension', 'VideoReplace', 'VideoRemove'],
+     * enableAppendToBody: false,
      * }
      */
     @Complex<QuickToolbarSettingsModel>({}, QuickToolbarSettings)
@@ -1642,6 +1638,7 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
     private selectionTimeout: number;
     private previousRange: Range | null;
     public isRTEFocused: boolean;
+    public isSelectAll: boolean;
 
     public constructor(options?: RichTextEditorModel, element?: string | HTMLElement) {
         super(options, <HTMLElement | string>element);
@@ -2268,6 +2265,7 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
             (this.toolbarSettings.items.indexOf('Undo') > -1 && this.toolbarSettings.items.indexOf('Redo') > -1)) {
             this.disableToolbarItem(['Undo', 'Redo']);
         }
+        this.updateUIForReadOnlyState(true);
         if (this.value !== null) {
             this.valueContainer.defaultValue = this.value;
         }
@@ -2375,7 +2373,7 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
             }
         }
         if (!isNOU(closestLI) && endNode.textContent.trim().length === currentRangeEndOffset &&
-            !range.collapsed && isNOU(endNode.nextElementSibling) && !endNode.classList.contains(classes.CLS_IMG_INNER)) {
+            !range.collapsed && isNOU(endNode.nextElementSibling) && !endNode.classList.contains('e-img-caption-text')) {
             for (let i: number = 0; i < closestLI.childNodes.length; i++) {
                 if (closestLI.childNodes[i as number].nodeName === '#text' && closestLI.childNodes[i as number].textContent.trim().length === 0) {
                     detach(closestLI.childNodes[i as number]);
@@ -2398,6 +2396,17 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
             }
         }
     }
+    private isFullSelection(e: KeyboardEvent): void {
+        if ((e as KeyboardEventArgs).action === 'select-all') {
+            this.isSelectAll = true;
+        } else if (this.isSelectAll && e.key !== 'Enter') {
+            this.resetPreviousKey();
+        }
+    }
+
+    private resetPreviousKey(): void {
+        this.isSelectAll = false;
+    }
 
     /**
      * For internal use only - keydown the event handler;
@@ -2415,6 +2424,7 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
             return;
         }
         this.isSelectionStartInRTE = true;
+        this.isFullSelection(e);
         const isMacDev: boolean = this.userAgentData.getPlatform() === 'macOS';
         if (((e.ctrlKey || (e.metaKey && isMacDev)) && e.shiftKey && e.keyCode === 86) ||
             (e.metaKey && isMacDev && e.altKey && e.shiftKey && e.keyCode === 86)) {
@@ -2439,16 +2449,10 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
             }
         }
         if (this.enableTabKey) {
-            if (this.quickToolbarModule && !e.altKey && e.key !== 'F10' && (e as KeyboardEventArgs).action !== 'toolbar-focus') {
-                this.quickToolbarModule.hideQuickToolbars();
-            }
-            const isImageResize: boolean = this.imageModule && this.imageModule.imgResizeDiv ? true : false;
-            const isVideoResize: boolean = this.videoModule && this.videoModule.vidResizeDiv ? true : false;
-            if (isImageResize) {
-                this.imageModule.cancelResizeAction();
-            }
-            if (isVideoResize) {
-                this.videoModule.cancelResizeAction();
+            const hasMediaSelected: boolean = this.handleMediaTabKey(e);
+            if (hasMediaSelected) {
+                e.preventDefault();
+                return;
             }
         }
         let isCodeBlockEnter: boolean = false;
@@ -2592,6 +2596,46 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
         }
     }
 
+    private handleMediaTabKey(e: KeyboardEvent): boolean {
+        if (this.quickToolbarModule && !e.altKey && e.key !== 'F10' && (e as KeyboardEventArgs).action !== 'toolbar-focus') {
+            this.quickToolbarModule.hideQuickToolbars();
+        }
+        if (e.key === 'Tab' && this.editorMode === 'HTML') {
+            const range: Range = this.getRange();
+            const isCollapsed: boolean = range.startContainer === range.endContainer && range.startOffset === range.endOffset;
+            if (!isCollapsed) {
+                const hasMediaSelected: boolean = this.isMediaElementSelected(range);
+                if (hasMediaSelected) {
+                    const isImageResize: boolean = this.imageModule && this.imageModule.imgResizeDiv ? true : false;
+                    const isVideoResize: boolean = this.videoModule && this.videoModule.vidResizeDiv ? true : false;
+                    if (isImageResize) {
+                        this.imageModule.cancelResizeAction();
+                    }
+                    if (isVideoResize) {
+                        this.videoModule.cancelResizeAction();
+                    }
+                }
+                return hasMediaSelected;
+            }
+        }
+        return false;
+    }
+
+    private isMediaElementSelected(range: Range): boolean {
+        if (range.startContainer.nodeType !== Node.TEXT_NODE && range.endContainer.nodeType !== Node.TEXT_NODE) {
+            const closestBlockEle: HTMLElement = this.formatter.editorManager.domTree.getParentBlockNode(range.startContainer);
+            const startContainer: HTMLElement = range.startContainer as HTMLElement;
+            if (startContainer === closestBlockEle && closestBlockEle.childNodes.length > range.startOffset) {
+                return (startContainer.childNodes[range.startOffset] as Node).nodeName === 'IMG';
+            } else if (startContainer.closest('.e-img-caption-container')) {
+                return true;
+            } else if (startContainer.closest('.e-video-wrap') || startContainer.closest('.e-embed-video-wrap')) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // Clear selection timeout for keyup event triggering
     private clearSelectionTimeout(): void {
         if (this.selectionTimeout) {
@@ -2724,19 +2768,16 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
      */
     public serializeValue(value: string): string {
         if (this.editorMode === 'HTML' && !isNOU(value)) {
-            if (this.enableHtmlSanitizer) {
-                value = this.htmlEditorModule.sanitizeHelper(value.replace(/&amp;/g, '&'));
-            }
-            value = cleanHTMLString(value, this.element);
-            if (!this.enableXhtml) {
-                value = getStructuredHtml(value, this.enterKey, this.enableHtmlEncode);
-            }
             if (this.enableHtmlEncode) {
-                value = this.htmlEditorModule.sanitizeHelper(reEscapeRawTextTags(decode(value)));
+                value = this.htmlEditorModule.sanitizeHelper(decode(value));
                 value = this.encode(value);
             } else {
                 value = this.htmlEditorModule.sanitizeHelper(value);
                 value = this.enableXhtml ? this.htmlEditorModule.xhtmlValidation.selfEncloseValidation(value) : value;
+            }
+            value = cleanHTMLString(value, this.element);
+            if (!this.enableXhtml) {
+                value = getStructuredHtml(value, this.enterKey, this.enableHtmlEncode);
             }
         }
         return value;
@@ -2851,7 +2892,15 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
         const mediaTags: string[] = ['IMG', 'VIDEO', 'AUDIO', 'TABLE', 'TH', 'TD', 'TR', 'TBODY'];
         const isNotMediaElement: boolean = !(target && mediaTags.indexOf(target.tagName) !== -1 || (target.nodeName !== '#text' &&
             (target.closest('.e-audio-wrap') || target.closest('.e-video-wrap') || target.closest('.e-embed-video-wrap'))));
-        if (isNotMediaElement && this.editorMode === 'HTML' && !(Browser.isDevice || isIDevice())) {
+        let hasTableCellSelection: boolean = false;
+        if (e.target instanceof HTMLElement && e.target.parentElement && e.target.parentElement.tagName === 'SPAN') {
+            const targetEle: HTMLElement = e.target.parentElement;
+            const iconClassSets: string[][] = [['e-row-wrapper'], ['e-col-wrapper'], ['e-table-wrapper']];
+            if (iconClassSets.some((set: string[]) => set.every((cls: string) => targetEle.classList.contains(cls)))) {
+                hasTableCellSelection = true;
+            }
+        }
+        if (isNotMediaElement && !hasTableCellSelection && this.editorMode === 'HTML' && !(Browser.isDevice || isIDevice())) {
             if (!this.isSelectionInRTE()) {
                 return;
             }
@@ -3022,9 +3071,17 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
                         }
                         const file: File = e && e.clipboardData && e.clipboardData.items.length > 0 ?
                             e.clipboardData.items[0].getAsFile() : null;
+                        const files: File[] = [];
+                        if (e && e.clipboardData && e.clipboardData.items.length > 0) {
+                            for (let i: number = 0; i < e.clipboardData.items.length; i++) {
+                                // eslint-disable-next-line
+                                const currentFile: File = e.clipboardData.items[i].getAsFile();
+                                files.push(currentFile);
+                            }
+                        }
                         if (value !== null && isNOU(codeBlockPasteAction)) {
                             this.notify(events.paste, {
-                                file: file,
+                                file: files,
                                 args: e,
                                 text: value,
                                 isWordPaste: htmlValue
@@ -3193,7 +3250,6 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
             this.tableModule.tableObj.curTable &&
             this.tableModule.tableObj.curTable.contains(range.startContainer) &&
             this.tableModule.tableObj.curTable.querySelectorAll('.e-cell-select.e-multi-cells-select').length > 0) {
-            this.tableModule.tableObj.copy(isCut);
             let processedTableContent: string = this.tableModule.tableObj.copy(isCut);
             if (!isNOU(processedTableContent)) {
                 processedTableContent = sanitizeHelper(processedTableContent, this);
@@ -3443,6 +3499,8 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
                     break;
                 case 'readonly':
                     this.setReadOnly(false);
+                    this.updateUIForReadOnlyState();
+                    this.notify(events.modelChanged, { newProp: newProp, oldProp: oldProp });
                     break;
                 case 'cssClass':
                     this.element.classList.remove(oldProp[prop]);
@@ -3480,6 +3538,7 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
                     break;
                 case 'toolbarSettings':
                     this.notify(events.modelChanged, { module: 'toolbar', newProp: newProp, oldProp: oldProp });
+                    this.updateUIForReadOnlyState();
                     break;
                 case 'maxLength':
                     if (this.showCharCount) {
@@ -3556,6 +3615,105 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
         }
     }
 
+    private closeAllDialogsAndQuickToolbars(): void {
+        if (this.editorMode === 'HTML') {
+            if (this.quickToolbarModule) {
+                this.quickToolbarModule.hideQuickToolbars();
+            }
+            if (!isNOU(this.videoModule) && !isNOU(this.videoModule.dialogObj)) {
+                this.closeDialog(DialogType.InsertVideo);
+            } else if (!isNOU(this.tableModule) && !isNOU(this.tableModule.editdlgObj)) {
+                this.closeDialog(DialogType.InsertTable);
+            } else if (!isNOU(this.audioModule) && !isNOU(this.audioModule.dialogObj)) {
+                this.closeDialog(DialogType.InsertAudio);
+            } else if (!isNOU(this.emojiPickerModule) && !isNOU(this.emojiPickerModule.popupObj)) {
+                this.emojiPickerModule.popupObj.hide();
+            } else if (!isNOU(this.tableModule) && !isNOU(this.tableModule.popupObj)) {
+                this.tableModule.popupObj.hide();
+            }
+        }
+        if (!isNOU(this.imageModule) && !isNOU(this.imageModule.dialogObj)) {
+            this.closeDialog(DialogType.InsertImage);
+        } else if (!isNOU(this.linkModule) && !isNOU(this.linkModule.dialogObj)) {
+            this.closeDialog(DialogType.InsertLink);
+        }
+    }
+    private toggleOverlay(element: HTMLElement, add: boolean): void {
+        if (add) {
+            if (element && !element.classList.contains('e-overlay')) {
+                element.classList.add('e-overlay');
+            }
+        } else {
+            if (element && element.classList.contains('e-overlay')) {
+                element.classList.remove('e-overlay');
+            }
+        }
+    }
+
+    /**
+     * Syncs the toolbar and related UI with the editor's read-only state.
+     * - In read-only: hides dialogs/popups/quick toolbars, removes focus/resize UI, overlays/disable toolbar controls.
+     * - In editable: re-enables items and removes overlays, restoring scroll/nav controls as needed.
+     */
+
+    private updateUIForReadOnlyState(initialLoad?: boolean): void {
+        if (this.readonly && this.toolbarSettings.enable && !isNOU(this.getToolbar())) {
+            this.closeAllDialogsAndQuickToolbars();
+            this.toolbarModule.dropDownModule.closeOpenDropdowns();
+            if (this.getToolbarElement().querySelector('.e-rte-dropdown.e-dropdown-btn.e-active')) {
+                const targetEle: HTMLElement = this.getToolbarElement().querySelector('.e-rte-dropdown.e-dropdown-btn.e-active');
+                const hasFontColor: boolean = targetEle.classList.contains('e-rte-font-colorpicker');
+                if (hasFontColor || targetEle.classList.contains('e-rte-background-colorpicker')) {
+                    this.notify(events.showColorPicker, {
+                        toolbarClick: hasFontColor ?
+                            'fontcolor' : 'backgroundcolor'
+                    });
+                }
+            }
+            const focusElement: HTMLElement = this.element.querySelector('.e-audio-focus') || this.element.querySelector('.e-video-focus') || this.element.querySelector('.e-img-focus');
+            if (focusElement) {
+                focusElement.classList.remove('e-audio-focus', 'e-video-focus', 'e-img-focus');
+                if (focusElement.style.outline) {
+                    focusElement.style.removeProperty('outline');
+                }
+            }
+            const selectedTableCell: HTMLElement = this.element.querySelector('.e-cell-select');
+            if (selectedTableCell) {
+                selectedTableCell.classList.remove('e-cell-select');
+            }
+            this.inputElement.innerHTML = cleanupInternalElements(this.inputElement.innerHTML, this.editorMode);
+            const previewElement: HTMLElement = this.getToolbar().querySelector(`[id="${this.getID()}_toolbar_Preview"]`);
+            if (previewElement && !previewElement.parentElement.classList.contains('e-overlay')) {
+                this.toggleOverlay(previewElement.parentElement, true);
+            }
+            const maxOrMin: HTMLElement = this.getToolbar().querySelector(`[id="${this.getID()}_toolbar_Maximize`) || this.getToolbar().querySelector(`[id="${this.getID()}_toolbar_Minimize`);
+            if (maxOrMin && !maxOrMin.parentElement.classList.contains('e-overlay')) {
+                this.toggleOverlay(maxOrMin.parentElement, true);
+            }
+            this.disableToolbarItem(this.toolbarSettings.items as string[]);
+            if (!this.inlineMode.enable && this.toolbarModule && this.toolbarModule.baseToolbar) {
+                this.toolbarModule.baseToolbar.toolbarObj.disable(true);
+            }
+        } else if (!this.readonly && this.toolbarSettings.enable && !isNOU(this.getToolbar()) && !initialLoad) {
+            const previewElement: HTMLElement = this.getToolbar().querySelector(`[id="${this.getID()}_toolbar_Preview"]`);
+            if (isNOU(previewElement)) {
+                this.enableToolbarItem(this.toolbarSettings.items as string[]);
+            } else {
+                if (previewElement && previewElement.parentElement.classList.contains('e-overlay')) {
+                    this.toggleOverlay(previewElement.parentElement, false);
+                }
+                this.toggleOverlay(previewElement.parentElement, false);
+            }
+            if (!this.inlineMode.enable && this.toolbarModule && this.toolbarModule.baseToolbar) {
+                this.toolbarModule.baseToolbar.toolbarObj.disable(false);
+            }
+            const maxOrMin: HTMLElement = this.getToolbar().querySelector(`[id="${this.getID()}_toolbar_Maximize`) || this.getToolbar().querySelector(`[id="${this.getID()}_toolbar_Minimize`);
+            if (maxOrMin && maxOrMin.parentElement.classList.contains('e-overlay')) {
+                this.toggleOverlay(maxOrMin.parentElement, false);
+            }
+        }
+    }
+
     private replaceEntities(value: string): string {
         if (this.editorMode !== 'HTML' || isNOU(value) || !/&(amp;)*((times)|(divide)|(ne))/.test(value)) {
             return value === ' ' ? '<p><br></p>' : value;
@@ -3583,7 +3741,7 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
     private updatePanelValue(): void {
         this.setProperties({ value: this.replaceEntities(this.value) }, true);
         let value: string = this.editorMode === 'HTML' && !isNOU(this.value) ? this.listOrderCorrection(this.value) : this.value;
-        value = (this.enableHtmlEncode && this.value) ? reEscapeRawTextTags(decode(value)) : value;
+        value = (this.enableHtmlEncode && this.value) ? decode(value) : value;
         const getTextArea: HTMLInputElement = this.element.querySelector('.' + classes.CLS_RTE_SOURCE_CODE_TXTAREA);
         if (value) {
             if (!isNOU(getTextArea) && this.rootContainer.classList.contains('e-source-code-enabled')) {
@@ -3621,6 +3779,7 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
             this.countModule.refresh();
         }
     }
+
     private listOrderCorrection(value: string): string {
         const valueElementWrapper: HTMLElement = this.createElement('div');
         valueElementWrapper.innerHTML = value;
@@ -3857,7 +4016,6 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
         const rendererFactory: RendererFactory = this.serviceLocator.getService<RendererFactory>('rendererFactory');
         this.contentModule = rendererFactory.getRenderer(RenderType.Content);
         this.fullScreenModule = new FullScreen(this);
-        this.enterKeyModule = new EnterKeyAction(this);
         this.renderModule.render();
         this.inputElement = <HTMLElement>this.contentModule.getEditPanel();
         this.setHeight(this.height);
@@ -3885,6 +4043,7 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
             this.isModalDialog = true;
         }
     }
+
     private setIframeSettings(): void {
         if (this.iframeSettings.resources) {
             const styleSrc: string[] = this.iframeSettings.resources.styles;
@@ -4200,6 +4359,7 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
 
     private mouseDownHandler(e: MouseEvent | TouchEvent): void {
         this.isSelectionStartInRTE = true;
+        this.resetPreviousKey();
         const touch: Touch = <Touch>((e as TouchEvent).touches ? (e as TouchEvent).changedTouches[0] : e);
         addClass([this.element], [classes.CLS_FOCUS]);
         this.preventDefaultResize(e as MouseEvent);
@@ -4285,7 +4445,7 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
             const active: Element = document.activeElement;
             if (active === this.element || active === this.getToolbarElement() || active === this.contentModule.getEditPanel()
                 || ((this.iframeSettings.enable && active === this.contentModule.getPanel()) &&
-                    e.target && !(e.target as HTMLElement).classList.contains('e-img-inner')
+                    e.target && !(e.target as HTMLElement).classList.contains('e-img-caption-text')
                     && (e.target && (e.target as HTMLElement).parentElement
                         && !(e.target as HTMLElement).parentElement.classList.contains('e-img-wrap')))
                 || (!isNOU(this.getToolbarElement()) && closest(active, '.e-rte-toolbar') === this.getToolbarElement())) {
@@ -5086,7 +5246,7 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
         if (this.isSelectionInRTE() && !this.isSelectionCollapsed() && this.isSelectionStartInRTE) {
             this.isSelecting = true;
         }
-        if (this.isSelectionInRTE() && !this.isSelectionCollapsed()) {
+        if (this.isSelectionInRTE() && !this.isSelectionCollapsed() ) {
             this.updateUndoRedoStack(event, true);
         }
     }

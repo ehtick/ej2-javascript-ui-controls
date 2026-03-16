@@ -793,6 +793,13 @@ export class CalculatedField implements IAction {
             if (memberTypeDrop.value === 'Dimension') {
                 field.hierarchyUniqueName = hierarchyDrop.value as string;
             }
+            if ((this.parent as PivotView).olapEngineModule) {
+                (this.parent as PivotView).olapEngineModule.currentCalcFieldInfo = {
+                    fieldType: (memberTypeDrop.value as string),
+                    fieldName: field.name,
+                    hierarchyUniqueName: field.hierarchyUniqueName
+                };
+            }
         }
         return field;
     }
@@ -892,6 +899,9 @@ export class CalculatedField implements IAction {
             customFormat.enabled = false;
             customFormat.dataBind();
         }
+        if (this.parent && this.parent.dataType === 'olap' && (this.parent as PivotView).olapEngineModule) {
+            (this.parent as PivotView).olapEngineModule.currentCalcFieldInfo = {};
+        }
     }
 
     /**
@@ -920,6 +930,9 @@ export class CalculatedField implements IAction {
             }
         }
         this.parent.lastCalcFieldInfo = {};
+        if (this.parent.dataType === 'olap' && (this.parent as PivotView).olapEngineModule) {
+            (this.parent as PivotView).olapEngineModule.currentCalcFieldInfo = {};
+        }
         this.triggerActionCompleteEvent();
         this.parent.updateDataSource(false);
         this.isFormula = false;

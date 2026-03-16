@@ -1,5 +1,5 @@
 import { EditorExecCommand } from '../../common/types';
-import { BlockModel, TableColumnModel, ITableBlockSettings, TableRowModel, TableCellModel } from '../../models/index';
+import { BlockModel, TableColumnModel, ITableBlockSettings, TableRowModel, TableCellModel, FileUploadSuccessEventArgs } from '../../models/index';
 
 export interface CommandOptions {
     command: EditorExecCommand
@@ -42,6 +42,13 @@ export interface ITableColumnDeletionOptions {
 export interface ITableCellsClearOperation {
     blockId: string;
     cells: PayloadCell[]
+}
+
+export interface ITableColumnResizeOperation {
+    blockId: string;
+    resizedColIndex: number;
+    oldWidthValue: number;
+    newWidthValue: number;
 }
 
 export type RowMeta = { index: number; rowModel: TableRowModel };
@@ -103,4 +110,8 @@ export type PayloadCell = {
     prevBlocks: BlockModel[];
     prevHeaderText?: string;
     isHeader?: boolean;
+}
+
+export interface IFileUploadSuccessEventArgs extends FileUploadSuccessEventArgs {
+    blockId?: string
 }

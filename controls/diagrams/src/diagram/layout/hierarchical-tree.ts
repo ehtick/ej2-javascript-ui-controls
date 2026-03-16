@@ -1549,10 +1549,10 @@ export class HierarchicalTree {
             segment.length = Point.distancePoints(nodeBounds.middleLeft, point);
             segments.push(segment);
             if (targetBounds.center.y !== nodeBounds.center.y) {
-                const point: PointModel = { x: (nodeBounds.middleLeft.x - layout.verticalSpacing / 4), y: targetBounds.middleLeft.y };
+                const yPoint: PointModel = { x: (nodeBounds.middleLeft.x - layout.verticalSpacing / 4), y: targetBounds.middleLeft.y };
                 segment = new OrthogonalSegment(connector, 'segments', { type: 'Orthogonal' }, true);
-                segment.direction = Point.direction(point, point) as Direction;
-                segment.length = Point.distancePoints(point, point);
+                segment.direction = Point.direction(point, yPoint) as Direction;
+                segment.length = Point.distancePoints(point, yPoint);
                 segments.push(segment);
             }
             break;

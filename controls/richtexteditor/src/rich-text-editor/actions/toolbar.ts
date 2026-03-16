@@ -420,7 +420,7 @@ export class Toolbar {
                 baseToolbar.toolbarObj.enableItems(item, isEnable);
             }
         }
-        if (!select('.' + classes.CLS_RTE_SOURCE_CODE_TXTAREA, this.parent.element) && !muteToolbarUpdate) {
+        if (!select('.' + classes.CLS_RTE_SOURCE_CODE_TXTAREA, this.parent.element) && !muteToolbarUpdate && !this.parent.readonly) {
             updateUndoRedoStatus(baseToolbar, this.parent.formatter.editorManager.undoRedoManager.getUndoStatus());
         }
     }

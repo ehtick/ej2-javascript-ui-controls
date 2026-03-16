@@ -203,7 +203,7 @@ describe ('OnSelectionChange Event', () => {
             let rteObj: RichTextEditor;
             beforeAll(() => {
                 rteObj = renderRTE({
-                    value: `<p><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 50%;" class="e-rte-image e-imginline"></p>`,
+                    value: `<p><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 50%;" class="e-rte-image e-img-inline"></p>`,
                     toolbarSettings: {
                         items: ['Bold']
                     },

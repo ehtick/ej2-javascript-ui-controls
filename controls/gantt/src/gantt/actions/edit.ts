@@ -15,7 +15,7 @@ import { DialogEdit } from './dialog-edit';
 import { Dialog } from '@syncfusion/ej2-popups';
 import { NumericTextBoxModel } from '@syncfusion/ej2-inputs';
 import { MultiSelect, CheckBoxSelection, DropDownList } from '@syncfusion/ej2-dropdowns';
-import { ConnectorLineEdit } from './connector-line-edit';
+import { ConnectorLineEdit } from '../task-dependency/connector-line-edit';
 import { ITreeData, TreeGrid, Edit as TreeGridEdit } from '@syncfusion/ej2-treegrid';
 import { CriticalPath, UndoRedo } from '..';
 import { ITaskSegment, TaskType } from '../base/common';
@@ -78,7 +78,7 @@ export class Edit {
         if (this.parent.editSettings.allowEditing && this.parent.editSettings.mode === 'Auto') {
             this.cellEditModule = new CellEdit(this.parent);
         }
-        if (this.parent.taskFields.dependency) {
+        if (this.parent.taskFields.dependency && this.parent.editSettings.allowEditing) {
             this.parent.connectorLineEditModule = new ConnectorLineEdit(this.parent);
         }
         if (this.parent.editSettings.allowAdding || (this.parent.editSettings.allowEditing &&
@@ -684,7 +684,7 @@ export class Edit {
                         ganttObj.setRecordValue(ganttPropKey, seg, ganttData.ganttProperties, true);
                     }
                     else {
-                        if (ganttPropKey !== 'segments' || (ganttPropKey === 'segments' && isNullOrUndefined(value))) {
+                        if (ganttPropKey !== 'segments' || (ganttPropKey === 'segments' && (isNullOrUndefined(value) || (Array.isArray(value) && value.length === 0)))) {
                             ganttObj.setRecordValue(ganttPropKey, value, ganttData.ganttProperties, true);
                         }
                     }
@@ -1825,7 +1825,7 @@ export class Edit {
             }
             if (isRefreshGrid) {
                 const dataId: number | string = this.parent.viewType === 'ProjectView' ? originalData.ganttProperties.taskId : originalData.ganttProperties.rowUniqueID;
-                this.parent.treeGrid.grid.setRowData(dataId, originalData);
+                this.parent.treeGrid.setRowData(dataId, originalData);
                 const row: Row<Column> = this.parent.treeGrid.grid.getRowObjectFromUID(
                     this.parent.treeGrid.grid.getDataRows()[rowIndex as number].getAttribute('data-uid'));
                 row.data = originalData;
@@ -1882,7 +1882,7 @@ export class Edit {
             if (args.action === 'DeleteConnectorLine') {
                 this.parent.connectorLineEditModule['isPublicDependencyDelete'] = false;
                 if (this.parent.contextMenuModule) {
-                    this.parent.contextMenuModule['isCntxtMenuDependencyDelete'] = false;
+                    this.parent.contextMenuModule['isContextMenuDependencyDelete'] = false;
                 }
             }
         }
@@ -2035,7 +2035,7 @@ export class Edit {
                 }
                 ganttProps.progress = eventArg.data[taskFields.progress];
             }
-            this.parent.chartRowsModule.updateSegment(ganttProps.segments, ganttProps.taskId);
+            this.parent.chartRowsModule.updateSegment(ganttProps.segments, eventArg.data['ganttProperties'].taskId);
             if (eventArg.cancel) {
                 this.reUpdatePreviousRecords();
                 this.parent.chartRowsModule.refreshRecords([args.data]);
@@ -2327,6 +2327,7 @@ export class Edit {
         } else {
             this.taskbarEditModule.dependencyCancel = false;
             this.resetEditProperties();
+            this.parent['hideLoadingIndicator']();
         }
         if (this.parent.viewType === 'ResourceView' && this.isTreeGridRefresh) {
             this.parent.treeGrid.parentData = [];
@@ -3480,6 +3481,7 @@ export class Edit {
         this.deletedTaskDetails = [];
         this.parent.initiateEditAction(false);
         this.parent['hideLoadingIndicator']();
+        this.parent.hideSpinner();
     }
 
     /**
@@ -3711,6 +3713,8 @@ export class Edit {
                     if (this.parent.getParentTask(newRecord.parentItem).childRecords.length > 0) {
                         this.addRowSelectedItem = this.parent.getParentTask(
                             newRecord.parentItem).childRecords[this.parent.getParentTask(newRecord.parentItem).childRecords.length - 1];
+                    } else {
+                        this.addRowSelectedItem = this.parent.getParentTask(newRecord.parentItem);
                     }
                     this.backUpAndPushNewlyAddedRecord(newRecord, rowPosition, parentItem);
                     for (let i: number = 0; i < totalRecords.length; i++) {
@@ -4452,6 +4456,7 @@ export class Edit {
                             });
                         }
                     } else {
+                        this.parent.currentSelection = cAddedRecord[0];
                         if (this.parent.viewType === 'ProjectView') {
                             if ((rowPosition === 'Top' || rowPosition === 'Bottom') ||
                                 ((rowPosition === 'Above' || rowPosition === 'Below' || rowPosition === 'Child') || isNullOrUndefined(rowPosition) && !(args.data as IGanttData).parentItem)) {
@@ -4584,6 +4589,8 @@ export class Edit {
                 tempRecord[fieldName as string] = this.parent.taskType;
             } else if (ganttColumns[i as number].field === taskSettingsFields.milestone) {
                 tempRecord[fieldName as string] = null;
+            } else if (ganttColumns[i as number].field === taskSettingsFields.segments) {
+                tempRecord[this.parent.ganttColumns[i as number].field] = [];
             } else {
                 tempRecord[this.parent.ganttColumns[i as number].field] = '';
             }

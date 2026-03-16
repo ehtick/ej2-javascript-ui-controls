@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 
-## 32.2.9 (2026-03-10)
+## 33.1.44 (2026-03-16)
 
 ### PDF Data Extract
 
@@ -19,10 +19,6 @@
 - Resolved an issue where shape annotations were not properly redacted during the redaction process.
 
 ## 32.1.20 (2025-12-23)
-
-### PDF Data Extract
-
-#### Bug Fixes
 
 - Resolved a script error that occurred while adding annotations and redactions.
 - Resolved an issue where redaction was not applied correctly on rotated PDF documents.

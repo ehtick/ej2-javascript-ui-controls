@@ -26,6 +26,7 @@ export class DropDownButtons {
     public alignDropDown: DropDownButton;
     public lineHeightDropDown: DropDownButton;
     public imageAlignDropDown: DropDownButton;
+    public wrapTextDropDown: DropDownButton;
     public displayDropDown: DropDownButton;
     public tableRowsDropDown: DropDownButton;
     public tableColumnsDropDown: DropDownButton;
@@ -251,6 +252,9 @@ export class DropDownButtons {
                 case 'videoalign':
                     this.renderAlignmentDropDown(type, tbElement, targetEle, item);
                     break;
+                case 'wraptext':
+                    this.renderWrapDropDown(type, tbElement, targetEle);
+                    break;
                 case 'display':
                 case 'audiolayoutoption':
                 case 'videolayoutoption':
@@ -268,10 +272,14 @@ export class DropDownButtons {
                 case 'borderstyle': {
                     targetElement = tbElement;
                     let bdrStyle: string;
-                    for (const item of model.borderStyleItems) {
-                        if (targetEle.style.borderStyle === item.subCommand.toLowerCase()) {
-                            bdrStyle = item.text;
-                            break;
+                    if (targetEle.style.borderStyle === '' && (targetEle.nodeName === 'TD' || targetEle.nodeName === 'TH')) {
+                        bdrStyle = 'Double';
+                    } else {
+                        for (const item of model.borderStyleItems) {
+                            if (targetEle.style.borderStyle === item.subCommand.toLowerCase()) {
+                                bdrStyle = item.text;
+                                break;
+                            }
                         }
                     }
                     this.tableBorderStyleDropDown = this.toolbarRenderer.renderDropDownButton({
@@ -516,6 +524,22 @@ export class DropDownButtons {
         } as IDropDownModel);
     }
 
+    private renderWrapDropDown(type: string, tbElement: HTMLElement, targetElement: Element): void {
+        const targetEle: Element = targetElement;
+        targetElement = select('#' + this.parent.getID() + '_' + type + '_WrapText', tbElement);
+        if (targetElement.classList.contains(classes.CLS_DROPDOWN_BTN)) {
+            return;
+        }
+        this.wrapTextDropDown = this.toolbarRenderer.renderDropDownButton({
+            iconCss: 'e-left-wrap e-icons',
+            cssClass: classes.CLS_DROPDOWN_POPUP + ' ' + classes.CLS_DROPDOWN_ICONS + ' ' + classes.CLS_QUICK_DROPDOWN,
+            itemName: 'WrapText',
+            items: model.wrapTextItems,
+            element: targetElement,
+            activeElement: targetEle
+        } as IDropDownModel);
+    }
+
     private tableStylesDropDown(type: string, tbElement: HTMLElement, targetElement: Element): void {
         targetElement = select('#' + this.parent.getID() + '_' + type + '_Styles', tbElement);
         if (targetElement.classList.contains(classes.CLS_DROPDOWN_BTN)) {
@@ -571,6 +595,11 @@ export class DropDownButtons {
             this.removeDropDownClasses(this.imageAlignDropDown.element);
             this.imageAlignDropDown.destroy();
             this.imageAlignDropDown = null;
+        }
+        if (this.wrapTextDropDown) {
+            this.removeDropDownClasses(this.wrapTextDropDown.element);
+            this.wrapTextDropDown.destroy();
+            this.wrapTextDropDown = null;
         }
         if (this.displayDropDown) {
             this.removeDropDownClasses(this.displayDropDown.element);
@@ -654,6 +683,9 @@ export class DropDownButtons {
         if (this.imageAlignDropDown) {
             this.imageAlignDropDown.setProperties({ enableRtl: args.enableRtl });
         }
+        if (this.wrapTextDropDown) {
+            this.wrapTextDropDown.setProperties({ enableRtl: args.enableRtl });
+        }
         if (this.displayDropDown) {
             this.displayDropDown.setProperties({ enableRtl: args.enableRtl });
         }
@@ -681,8 +713,9 @@ export class DropDownButtons {
     private setCssClass(e: ICssClassArgs): void {
         const dropDownObj: DropDownButton[] = [
             this.formatDropDown, this.fontNameDropDown, this.fontSizeDropDown, this.alignDropDown, this.imageAlignDropDown,
-            this.displayDropDown, this.numberFormatListDropDown, this.bulletFormatListDropDown, this.tableRowsDropDown,
-            this.tableColumnsDropDown, this.tableCellDropDown, this.tableCellVerticalAlignDropDown, this.tableBorderStyleDropDown
+            this.wrapTextDropDown, this.displayDropDown, this.numberFormatListDropDown, this.bulletFormatListDropDown,
+            this.tableRowsDropDown, this.tableColumnsDropDown, this.tableCellDropDown,
+            this.tableCellVerticalAlignDropDown, this.tableBorderStyleDropDown
         ];
         for (let i: number = 0; i < dropDownObj.length; i++) {
             this.updateCss(dropDownObj[i as number], e);
@@ -721,13 +754,14 @@ export class DropDownButtons {
         }
     }
 
-    private closeOpenDropdowns(): void {
+    public closeOpenDropdowns(): void {
         const dropdowns: DropDownButton[] = [
             this.formatDropDown,
             this.fontNameDropDown,
             this.fontSizeDropDown,
             this.alignDropDown,
             this.imageAlignDropDown,
+            this.wrapTextDropDown,
             this.displayDropDown,
             this.numberFormatListDropDown,
             this.bulletFormatListDropDown,

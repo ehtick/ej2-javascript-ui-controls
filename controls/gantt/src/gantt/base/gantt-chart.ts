@@ -430,23 +430,24 @@ export class GanttChart {
             const wrapper: HTMLElement = getValue('virtualTrack', this.parent.ganttChartModule.virtualRender);
             wrapper.style.height = (this.parent.treeGrid.element.getElementsByClassName('e-virtualtrack')[0] as HTMLElement).style.height;
             const wrapper1: HTMLElement = getValue('wrapper', this.parent.ganttChartModule.virtualRender);
-            let treegridVirtualHeight: string = (this.parent.treeGrid.element.getElementsByClassName('e-virtualtable')[0] as HTMLElement).style.transform;
+            const treegridVirtualHeight: string = (this.parent.treeGrid.element.getElementsByClassName('e-virtualtable')[0] as HTMLElement).style.transform;
             const virtualTable: string = (document.getElementsByClassName('e-virtualtable')[1] as HTMLElement).style.transform;
             if (this.parent.enableTimelineVirtualization) {
                 let translateXValue: string;
-                // Firefox whitespace issue, Firefox omit y axis value if both axis values are 0 and returns translate(0px)-Task(888356)
-                if (treegridVirtualHeight === 'translate(0px)' && navigator.userAgent.includes('Firefox')) {
-                    treegridVirtualHeight = 'translate(0px, 0px)';
-                }
+                // eslint-disable-next-line no-useless-escape
+                const transformRegex: RegExp = /translate(?:3d)?\(([^\)]+)\)/;
                 if (virtualTable !== '') {
                     translateXValue = virtualTable.match(/translate.*\((.+)\)/)[1].split(', ')[0];
                 }
                 else {
                     const chartTransform: string = (this.parent.ganttChartModule.scrollElement.getElementsByClassName('e-virtualtable')[0] as HTMLElement).style.transform;
-                    translateXValue = chartTransform.match(/translate.*\((.+)\)/)[1].split(', ')[0];
+                    const match: RegExpMatchArray = chartTransform.match(transformRegex);
+                    translateXValue = match ? match[1].split(',')[0].trim() : '0px';
                 }
-                const translateYValue: string = treegridVirtualHeight.match(/translate.*\((.+)\)/)[1].split(', ')[1];
-                wrapper1.style.transform = `translate(${translateXValue}, ${translateYValue})`;
+                const match: RegExpMatchArray = treegridVirtualHeight.match(transformRegex);
+                const parts: string[] = match ? match[1].split(',') : [];
+                const translateYValue: string = parts.length > 1 ? parts[1].trim() : '0px';
+                wrapper1.style.transform = `translate3d(${translateXValue}, ${translateYValue}, 0px) translateZ(0)`;
             }
             else {
                 wrapper1.style.transform = treegridVirtualHeight;
@@ -582,6 +583,10 @@ export class GanttChart {
                 this.parent.editModule.taskbarEditModule.removeFalseLine(true);
             }
         }
+        if (this.parent.element.querySelectorAll('.e-editedbatchcell').length > 0 && e.target &&
+            closest(e.target as Element, '.' + cls.ganttChartPane)) {
+            this.parent.treeGrid.saveCell();
+        }
         if (this.parent.editSettings.allowTaskbarEditing) {
             this.parent.notify('chartMouseUp', e);
         }
@@ -698,6 +703,10 @@ export class GanttChart {
             this.initPinchDistance = null;
             this.isPinching = false;
             this.previousPinchDistance = 0;
+        }
+        if (this.parent.element.querySelectorAll('.e-editedbatchcell').length > 0 && e.target &&
+            closest(e.target as Element, '.' + cls.ganttChartPane)) {
+            this.parent.treeGrid.saveCell();
         }
         this.isGanttElement = true;
         if ((e.target as HTMLElement).classList.contains('e-treegridexpand') ||
@@ -1237,7 +1246,7 @@ export class GanttChart {
             this.parent.treeGrid.collapseAll();
             if (this.isCollapseAll && !this.parent.allowTaskbarOverlap) {
                 const treeGridContentHeight: number = this.parent.enableRtl ? this.parent['element'].getElementsByClassName('e-content')[2].children[0]['offsetHeight'] :
-                    this.parent['element'].getElementsByClassName('e-content')[0].children[0]['offsetHeight'];
+                    this.parent['element'].getElementsByClassName('e-content')['offsetHeight'];
                 this.parent.contentHeight = treeGridContentHeight;
                 document.getElementsByClassName('e-chart-rows-container')[0]['style'].height = this.parent.contentHeight + 'px';
             }
@@ -1664,30 +1673,15 @@ export class GanttChart {
                     const fmodule: FocusStrategy = getValue('focusModule', this.parent.treeGrid.grid);
                     if ((nextElement.classList.contains('e-rowcell') && $target.nextElementSibling)
                         || $target.classList.contains('e-right-label-container')) {
+                        const gridRowElement: any = nextElement.parentElement.classList.contains('e-chart-row-cell') ? nextElement.parentElement.parentElement : nextElement.parentElement;
                         if (!$target.classList.contains('e-rowcell')) {
                             this.parent.treeGrid.grid.notify('key-pressed', e);
-                            // Handle Tab key action to select the row when navigating to the next row - Task946137
-                            if (this.parent.selectionModule) {
-                                const rowIndex: number = this.parent.enableVirtualization
-                                    ? this.parent.currentViewData[(nextElement.parentElement as any).rowIndex].index
-                                    : (nextElement.parentElement as any).rowIndex;
-                                this.parent.selectionModule.selectRow(rowIndex);
-                                if (this.parent.selectionSettings.mode !== 'Cell') {
-                                    const selectedRows: Element[] = this.parent.selectionModule.getSelectedRows();
-                                    if (selectedRows.length > 0) {
-                                        const focusedCells: NodeListOf<Element> = selectedRows[0].querySelectorAll('.e-focus, .e-focused');
-                                        if (focusedCells.length > 0) {
-                                            removeClass([focusedCells[0] as HTMLElement], ['e-focus', 'e-focused']);
-                                        }
-                                    }
-                                }
-                            }
                         }
                         this.manageFocus(nextElement as HTMLElement, 'add', false);
                         fmodule.currentInfo.element = nextElement as HTMLElement;
                         fmodule.currentInfo.elementToFocus = nextElement as HTMLElement;
                         /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-                        fmodule.content.matrix.current = [(nextElement.parentElement as any).rowIndex, (nextElement as any).cellIndex];
+                        fmodule.content.matrix.current = [(gridRowElement as any).rowIndex, (nextElement as any).cellIndex];
 
                     } else {
                         if (nextElement && (nextElement.classList.contains('e-toolbar-item') || nextElement.classList.contains('e-headercell')

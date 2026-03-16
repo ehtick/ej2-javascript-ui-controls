@@ -600,6 +600,9 @@ export class BaseHistoryInfo {
                 if (startInlineObj && startInlineObj.element instanceof TextElementBox) {
                     const exactText: string = this.owner.spellChecker.manageSpecialCharacters(startInlineObj.element.text, undefined, true);
                     const textIndex: number = startInlineObj.element.ignoreOnceItems.indexOf(exactText);
+                    if (!this.documentHelper.owner.spellChecker.errorWordCollection.containsKey(exactText)) {
+                        startInlineObj.element.isChangeDetected = true;
+                    }
                     if (this.editorHistory.isUndoing) {
                         if (textIndex !== -1) {
                             startInlineObj.element.ignoreOnceItems.splice(textIndex, 1);

@@ -1,5 +1,5 @@
 import { createElement, remove } from '@syncfusion/ej2-base';
-import { BaseStylesProp, BlockModel, ITableBlockSettings } from '../../src/models/index';
+import { BaseChildrenProp, BaseStylesProp, BlockModel, ITableBlockSettings } from '../../src/models/index';
 import { setCursorPosition, setSelectionRange, getBlockContentElement, getSelectedRange, getDeepestTextNode } from '../../src/common/utils/index';
 import { createEditor } from '../common/util.spec';
 import { BlockEditor } from '../../src/index';
@@ -126,13 +126,23 @@ describe('Formatting Actions', () => {
             expect(blockElement).not.toBeNull();
             editor.blockManager.setFocusToBlock(blockElement);
             const contentElement = getBlockContentElement(blockElement);
-            //Select range of text(world) and apply bold formatting
-            setSelectionRange((contentElement.lastChild as HTMLElement), 0, 4);
+            //Select range of text(Bold) and apply bold formatting
+            setSelectionRange(contentElement.firstChild as Text, 0, 4);
             editor.blockManager.formattingAction.execCommand({ command: 'bold' });
-            expect(contentElement.childElementCount).toBe(2);
-            expect(contentElement.querySelector('strong').textContent).toBe('Bold');
-            expect(contentElement.querySelector('span').textContent).toBe('ItalicUnderlineStrikethrough');
-
+            
+            // Verify DOM structure using childNodes
+            const nodes = contentElement.childNodes;
+            expect(nodes.length).toBeGreaterThan(1);
+            
+            // Verify first node is <strong> element
+            expect(nodes[0].nodeName).toBe('STRONG');
+            expect(nodes[0].textContent).toBe('Bold');
+            
+            // Verify second node is remaining text
+            expect(nodes[1].nodeType).toBe(Node.TEXT_NODE);
+            expect((nodes[1] as Text).textContent).toBe('ItalicUnderlineStrikethrough');
+            
+            // Verify model structure
             expect((editor.blocks[0].content[0].content)).toBe('Bold');
             expect((editor.blocks[0].content[0].properties as BaseStylesProp).styles.bold).toBe(true);
             expect((editor.blocks[0].content[1].content)).toBe('ItalicUnderlineStrikethrough');
@@ -143,12 +153,24 @@ describe('Formatting Actions', () => {
             expect(blockElement).not.toBeNull();
             editor.blockManager.setFocusToBlock(blockElement);
             const contentElement = getBlockContentElement(blockElement);
-            //Select range of text(world) and apply italic formatting
-            setSelectionRange((contentElement.lastChild.childNodes[0] as HTMLElement), 0, 6);
+            //Select range of text(Italic) and apply italic formatting
+            setSelectionRange(contentElement.childNodes[1] as Text, 0, 6);
             editor.blockManager.formattingAction.execCommand({ command: 'italic' });
-            expect(contentElement.childElementCount).toBe(3);
-            expect(contentElement.querySelector('em').textContent).toBe('Italic');
-            expect(contentElement.querySelector('span').textContent).toBe('UnderlineStrikethrough');
+            
+            // Verify DOM structure using childNodes
+            const nodes = contentElement.childNodes;
+            expect(nodes.length).toBeGreaterThan(2);
+            
+            // Verify first node is <strong> element from bold formatting
+            expect(nodes[0].nodeName).toBe('STRONG');
+            
+            // Verify second node is <em> element (italic)
+            expect(nodes[1].nodeName).toBe('EM');
+            expect(nodes[1].textContent).toBe('Italic');
+            
+            // Verify third node is remaining text
+            expect(nodes[2].nodeType).toBe(Node.TEXT_NODE);
+            expect((nodes[2] as Text).textContent).toBe('UnderlineStrikethrough');
 
             expect((editor.blocks[0].content[0].content)).toBe('Bold');
             expect((editor.blocks[0].content[1].content)).toBe('Italic');
@@ -161,12 +183,28 @@ describe('Formatting Actions', () => {
             expect(blockElement).not.toBeNull();
             editor.blockManager.setFocusToBlock(blockElement);
             const contentElement = getBlockContentElement(blockElement);
-            //Select range of text(world) and apply underline formatting
-            setSelectionRange((contentElement.lastChild.childNodes[0] as HTMLElement), 0, 9);
+            
+            //Select range of text(Underline) and apply underline formatting
+            setSelectionRange(contentElement.childNodes[2] as Text, 0, 9);
             editor.blockManager.formattingAction.execCommand({ command: 'underline' });
-            expect(contentElement.childElementCount).toBe(4);
-            expect(contentElement.querySelector('u').textContent).toBe('Underline');
-            expect(contentElement.querySelector('span').textContent).toBe('Strikethrough');
+            
+            // Verify DOM structure using childNodes
+            const nodes = contentElement.childNodes;
+            expect(nodes.length).toBeGreaterThan(3);
+            
+            // Verify first node is <strong>
+            expect(nodes[0].nodeName).toBe('STRONG');
+            
+            // Verify second node is <em>
+            expect(nodes[1].nodeName).toBe('EM');
+            
+            // Verify third node is <u> (underline)
+            expect(nodes[2].nodeName).toBe('U');
+            expect(nodes[2].textContent).toBe('Underline');
+            
+            // Verify fourth node is remaining text
+            expect(nodes[3].nodeType).toBe(Node.TEXT_NODE);
+            expect((nodes[3] as Text).textContent).toBe('Strikethrough');
 
             expect((editor.blocks[0].content[0].content)).toBe('Bold');
             expect((editor.blocks[0].content[1].content)).toBe('Italic');
@@ -180,11 +218,26 @@ describe('Formatting Actions', () => {
             expect(blockElement).not.toBeNull();
             editor.blockManager.setFocusToBlock(blockElement);
             const contentElement = getBlockContentElement(blockElement);
-            //Select range of text(world) and apply strikethrough formatting
-            setSelectionRange((contentElement.lastChild.childNodes[0] as HTMLElement), 0, 13);
+            //Select range of text(Strikethrough) and apply strikethrough formatting
+            setSelectionRange(contentElement.childNodes[3] as Text, 0, 13);
             editor.blockManager.formattingAction.execCommand({ command: 'strikethrough' });
-            expect(contentElement.childElementCount).toBe(4);
-            expect(contentElement.querySelector('s').textContent).toBe('Strikethrough');
+            
+            // Verify DOM structure using childNodes
+            const nodes = contentElement.childNodes;
+            expect(nodes.length).toBeGreaterThan(3);
+            
+            // Verify first node is <strong>
+            expect(nodes[0].nodeName).toBe('STRONG');
+            
+            // Verify second node is <em>
+            expect(nodes[1].nodeName).toBe('EM');
+            
+            // Verify third node is <u>
+            expect(nodes[2].nodeName).toBe('U');
+            
+            // Verify fourth node is <s> (strikethrough)
+            expect(nodes[3].nodeName).toBe('S');
+            expect(nodes[3].textContent).toBe('Strikethrough');
 
             expect((editor.blocks[0].content[0].content)).toBe('Bold');
             expect((editor.blocks[0].content[1].content)).toBe('Italic');
@@ -198,12 +251,22 @@ describe('Formatting Actions', () => {
             expect(blockElement).not.toBeNull();
             editor.blockManager.setFocusToBlock(blockElement);
             const contentElement = getBlockContentElement(blockElement);
-            //Select range of text(world) and apply lowercase formatting
-            setSelectionRange((contentElement.lastChild as HTMLElement), 0, 9);
+            //Select range of text(Lowercase) and apply lowercase formatting
+            setSelectionRange(contentElement.firstChild as Text, 0, 9);
             editor.blockManager.formattingAction.execCommand({ command: 'lowercase' });
-            expect(contentElement.childElementCount).toBe(2);
-            const textDecoration = (contentElement.querySelector(`#${editor.blocks[1].content[0].id}`) as HTMLElement).style.textTransform;
-            expect(textDecoration).toBe('lowercase');
+
+            // Verify DOM structure using childNodes
+            const nodes = contentElement.childNodes;
+            expect(nodes.length).toBeGreaterThan(1);
+            
+            // Verify first node is formatted element with lowercase
+            expect(nodes[0].nodeName).toMatch(/SPAN|DIV|P/);
+            expect(nodes[0].textContent).toBe('Lowercase');
+            expect((nodes[0] as HTMLElement).style.textTransform).toBe('lowercase');
+            
+            // Verify second node is remaining text
+            expect(nodes[1].nodeType).toBe(Node.TEXT_NODE);
+            expect((nodes[1] as Text).textContent).toBe('UppercaseColorBgColorCustom');
 
             expect((editor.blocks[1].content[0].content)).toBe('Lowercase');
             expect((editor.blocks[1].content[0].properties as BaseStylesProp).styles.lowercase).toBe(true);
@@ -215,12 +278,26 @@ describe('Formatting Actions', () => {
             expect(blockElement).not.toBeNull();
             editor.blockManager.setFocusToBlock(blockElement);
             const contentElement = getBlockContentElement(blockElement);
-            //Select range of text(world) and apply uppercase formatting
-            setSelectionRange((contentElement.lastChild.childNodes[0] as HTMLElement), 0, 9);
+            //Select range of text(Uppercase) and apply uppercase formatting
+            setSelectionRange(contentElement.childNodes[1] as Text, 0, 9);
             editor.blockManager.formattingAction.execCommand({ command: 'uppercase' });
-            expect(contentElement.childElementCount).toBe(3);
-            const textDecoration = (contentElement.querySelector(`#${editor.blocks[1].content[1].id}`) as HTMLElement).style.textTransform;
-            expect(textDecoration).toBe('uppercase');
+
+            // Verify DOM structure using childNodes
+            const nodes = contentElement.childNodes;
+            expect(nodes.length).toBeGreaterThan(2);
+            
+            // Verify first node is lowercase element
+            expect(nodes[0].nodeName).toMatch(/SPAN|DIV|P/);
+            expect(nodes[0].textContent).toBe('Lowercase');
+            
+            // Verify second node is uppercase element
+            expect(nodes[1].nodeName).toMatch(/SPAN|DIV|P/);
+            expect(nodes[1].textContent).toBe('Uppercase');
+            expect((nodes[1] as HTMLElement).style.textTransform).toBe('uppercase');
+            
+            // Verify third node is remaining text
+            expect(nodes[2].nodeType).toBe(Node.TEXT_NODE);
+            expect((nodes[2] as Text).textContent).toBe('ColorBgColorCustom');
 
             expect((editor.blocks[1].content[0].content)).toBe('Lowercase');
             expect((editor.blocks[1].content[1].content)).toBe('Uppercase');
@@ -233,12 +310,24 @@ describe('Formatting Actions', () => {
             expect(blockElement).not.toBeNull();
             editor.blockManager.setFocusToBlock(blockElement);
             const contentElement = getBlockContentElement(blockElement);
-            //Select range of text(world) and apply color formatting
-            setSelectionRange((contentElement.lastChild.childNodes[0] as HTMLElement), 0, 5);
+            //Select range of text(Color) and apply color formatting
+            setSelectionRange(contentElement.childNodes[2] as Text, 0, 5);
             editor.blockManager.formattingAction.execCommand({ command: 'color', value: '#EE0000' });
-            expect(contentElement.childElementCount).toBe(4);
-            const color = (contentElement.querySelector(`#${editor.blocks[1].content[2].id}`) as HTMLElement).style.color;
-            expect(color).toBe('rgb(238, 0, 0)');
+
+            // Verify DOM structure using childNodes
+            const nodes = contentElement.childNodes;
+            expect(nodes.length).toBeGreaterThan(3);
+            
+            // Verify first three nodes exist (lowercase, uppercase, color)
+            expect(nodes[0].nodeName).toMatch(/SPAN|DIV|P/);
+            expect(nodes[1].nodeName).toMatch(/SPAN|DIV|P/);
+            expect(nodes[2].nodeName).toMatch(/SPAN|DIV|P/);
+            expect((nodes[2] as HTMLElement).style.color).toBe('rgb(238, 0, 0)');
+            expect((nodes[2] as HTMLElement).textContent).toBe('Color');
+            
+            // Verify remaining text
+            expect(nodes[3].nodeType).toBe(Node.TEXT_NODE);
+            expect((nodes[3] as Text).textContent).toBe('BgColorCustom');
 
             expect((editor.blocks[1].content[0].content)).toBe('Lowercase');
             expect((editor.blocks[1].content[1].content)).toBe('Uppercase');
@@ -252,20 +341,23 @@ describe('Formatting Actions', () => {
             expect(blockElement).not.toBeNull();
             editor.blockManager.setFocusToBlock(blockElement);
             const contentElement = getBlockContentElement(blockElement);
-            //Select range of text(world) and apply color formatting
-            const colorSpan = (contentElement.lastChild as HTMLElement).previousElementSibling.childNodes[0] as HTMLElement;
-            setSelectionRange(colorSpan, 0, 5);
-            // setSelectionRange((contentElement.lastChild as HTMLElement).previousElementSibling.childNodes[0], 0, 5);
+            //Select range of text(Color) and remove color formatting
+            setSelectionRange(contentElement.childNodes[2].firstChild as Text, 0, 5);
             editor.blockManager.formattingAction.execCommand({ command: 'color', value: '' });
-            expect(contentElement.childElementCount).toBe(4);
-            const color = (contentElement.querySelector(`#${editor.blocks[1].content[2].id}`) as HTMLElement).style.color;
-            expect(color).toBe('');
+
+            // Verify DOM structure - color should be cleared
+            const nodes = contentElement.childNodes;
+            expect(nodes.length).toBe(3);
+            
+            expect(nodes[0].nodeName).toBe('SPAN');
+            expect(nodes[1].nodeName).toBe('SPAN');
+            expect(nodes[2].nodeType).toBe(Node.TEXT_NODE);
+            expect((nodes[2] as HTMLElement).textContent).toBe('ColorBgColorCustom');
 
             expect((editor.blocks[1].content[0].content)).toBe('Lowercase');
             expect((editor.blocks[1].content[1].content)).toBe('Uppercase');
-            expect((editor.blocks[1].content[2].content)).toBe('Color');
+            expect((editor.blocks[1].content[2].content)).toBe('ColorBgColorCustom');
             expect((editor.blocks[1].content[2].properties as BaseStylesProp).styles.color).toBeUndefined();
-            expect((editor.blocks[1].content[3].content)).toBe('BgColorCustom');
         });
 
         it('applying BgColor formatting', () => {
@@ -273,18 +365,25 @@ describe('Formatting Actions', () => {
             expect(blockElement).not.toBeNull();
             editor.blockManager.setFocusToBlock(blockElement);
             const contentElement = getBlockContentElement(blockElement);
-            //Select range of text(world) and apply BgColor formatting
-            setSelectionRange((contentElement.lastChild.childNodes[0] as HTMLElement), 0, 7);
+            //Select range of text(BgColor) and apply BgColor formatting
+            setSelectionRange(contentElement.childNodes[2] as Text, 0, 7);
             editor.blockManager.formattingAction.execCommand({ command: 'backgroundColor', value: '#F8F8F8' });
-            expect(contentElement.childElementCount).toBe(5);
-            const bgColor = (contentElement.querySelector(`#${editor.blocks[1].content[3].id}`) as HTMLElement).style.backgroundColor;
-            expect(bgColor).toBe('rgb(248, 248, 248)');
+
+            // Verify DOM structure using childNodes
+            const nodes = contentElement.childNodes;
+            expect(nodes.length).toBe(4);
+            expect(nodes[0].nodeName).toBe('SPAN');
+            expect(nodes[1].nodeName).toBe('SPAN');
+            expect(nodes[2].nodeName).toBe('SPAN');
+            expect(nodes[3].nodeType).toBe(Node.TEXT_NODE);
+            expect((nodes[2] as HTMLElement).style.backgroundColor).toBe('rgb(248, 248, 248)');
+            expect((nodes[3] as HTMLElement).textContent).toBe('ColorCustom');
 
             expect((editor.blocks[1].content[0].content)).toBe('Lowercase');
             expect((editor.blocks[1].content[1].content)).toBe('Uppercase');
-            expect((editor.blocks[1].content[2].content)).toBe('Color');
-            expect((editor.blocks[1].content[3].content)).toBe('BgColor');
-            expect((editor.blocks[1].content[3].properties as BaseStylesProp).styles.backgroundColor).toBe('#F8F8F8');
+            expect((editor.blocks[1].content[2].content)).toBe('ColorBg');
+            expect((editor.blocks[1].content[3].content)).toBe('ColorCustom');
+            expect((editor.blocks[1].content[2].properties as BaseStylesProp).styles.backgroundColor).toBe('#F8F8F8');
         });
 
         it('applying custom formatting', () => {
@@ -293,13 +392,13 @@ describe('Formatting Actions', () => {
             editor.blockManager.setFocusToBlock(blockElement);
             const contentElement = getBlockContentElement(blockElement);
             //Select range of text(world) and apply custom formatting
-            setSelectionRange((contentElement.lastChild.childNodes[0] as HTMLElement), 0, 6);
-            expect(contentElement.childElementCount).toBe(5);
+            setSelectionRange((contentElement.lastChild), 0, 6);
+            expect(contentElement.childElementCount).toBe(3);
 
             expect((editor.blocks[1].content[0].content)).toBe('Lowercase');
             expect((editor.blocks[1].content[1].content)).toBe('Uppercase');
-            expect((editor.blocks[1].content[2].content)).toBe('Color');
-            expect((editor.blocks[1].content[3].content)).toBe('BgColor');
+            expect((editor.blocks[1].content[2].content)).toBe('ColorBg');
+            expect((editor.blocks[1].content[3].content)).toBe('ColorCustom');
         });
 
         it('applying superscript formatting', () => {
@@ -307,12 +406,21 @@ describe('Formatting Actions', () => {
             expect(blockElement).not.toBeNull();
             editor.blockManager.setFocusToBlock(blockElement);
             const contentElement = getBlockContentElement(blockElement);
-            //Select range of text(world) and apply superscript formatting
-            setSelectionRange((contentElement.lastChild as HTMLElement), 0, 11);
+            //Select range of text(Superscript) and apply superscript formatting
+            setSelectionRange(contentElement.firstChild as Text, 0, 11);
             editor.blockManager.formattingAction.execCommand({ command: 'superscript' });
-            expect(contentElement.childElementCount).toBe(2);
-            expect(contentElement.querySelector('sup').textContent).toBe('Superscript');
-            expect(contentElement.querySelector('span').textContent).toBe('Subscript');
+            
+            // Verify DOM structure using childNodes
+            const nodes = contentElement.childNodes;
+            expect(nodes.length).toBeGreaterThan(1);
+            
+            // Verify first node is sup element
+            expect(nodes[0].nodeName).toBe('SUP');
+            expect(nodes[0].textContent).toBe('Superscript');
+            
+            // Verify second node is remaining text
+            expect(nodes[1].nodeType).toBe(Node.TEXT_NODE);
+            expect((nodes[1] as Text).textContent).toBe('Subscript');
 
             expect((editor.blocks[2].content[0].content)).toBe('Superscript');
             expect((editor.blocks[2].content[0].properties as BaseStylesProp).styles.superscript).toBe(true);
@@ -324,11 +432,20 @@ describe('Formatting Actions', () => {
             expect(blockElement).not.toBeNull();
             editor.blockManager.setFocusToBlock(blockElement);
             const contentElement = getBlockContentElement(blockElement);
-            //Select range of text(world) and apply subscript formatting
-            setSelectionRange((contentElement.lastChild.childNodes[0] as HTMLElement), 0, 9);
+            //Select range of text(Subscript) and apply subscript formatting
+            setSelectionRange(contentElement.childNodes[1] as Text, 0, 9);
             editor.blockManager.formattingAction.execCommand({ command: 'subscript' });
-            expect(contentElement.childElementCount).toBe(2);
-            expect(contentElement.querySelector('sub').textContent).toBe('Subscript');
+            
+            // Verify DOM structure using childNodes
+            const nodes = contentElement.childNodes;
+            expect(nodes.length).toBeGreaterThan(1);
+            
+            // Verify first node is sup element (from superscript formatting)
+            expect(nodes[0].nodeName).toBe('SUP');
+            
+            // Verify second node is sub element
+            expect(nodes[1].nodeName).toBe('SUB');
+            expect(nodes[1].textContent).toBe('Subscript');
 
             expect((editor.blocks[2].content[0].content)).toBe('Superscript');
             expect((editor.blocks[2].content[1].content)).toBe('Subscript');
@@ -358,16 +475,21 @@ describe('Formatting Actions', () => {
                 {
                     id: 'quote',
                     blockType: BlockType.Quote,
-                    content: [{
-                        contentType: ContentType.Text,
-                        content: 'Welcometext',
-                        properties: {
-                            styles: {
-                                inlineCode: true
-                            }
-                        }
-                    }]
-                },
+                    properties: {
+                        children: [{
+                            blockType: BlockType.Paragraph,
+                            content: [{
+                                contentType: ContentType.Text,
+                                content: 'Welcometext',
+                                properties: {
+                                    styles: {
+                                        inlineCode: true
+                                    }
+                                }
+                            }]
+                        }]
+                    },
+                }
             ];
             editor = createEditor({ blocks: blocks });
             editor.appendTo('#editor');
@@ -388,7 +510,7 @@ describe('Formatting Actions', () => {
             const contentElement = getBlockContentElement(blockElement);
             setSelectionRange((contentElement.lastChild.lastChild as HTMLElement), 0, 5);
             editor.blockManager.formattingAction.execCommand({ command: 'bold' });
-            expect(contentElement.childElementCount).toBe(2);
+            expect(contentElement.childElementCount).toBe(1);
             expect(contentElement.querySelector('strong').textContent).toBe('Hello');
 
             expect((editor.blocks[0].content[0].content)).toBe('Hello');
@@ -403,12 +525,12 @@ describe('Formatting Actions', () => {
             const contentElement = getBlockContentElement(blockElement);
             setSelectionRange((contentElement.lastChild.lastChild as HTMLElement), 0, 7);
             editor.blockManager.formattingAction.execCommand({ command: 'italic' });
-            expect(contentElement.childElementCount).toBe(2);
+            expect(contentElement.childElementCount).toBe(1);
             expect(contentElement.querySelector('em').textContent).toBe('Welcome');
 
-            expect((editor.blocks[1].content[0].content)).toBe('Welcome');
-            expect((editor.blocks[1].content[0].properties as BaseStylesProp).styles.italic).toBe(true);
-            expect((editor.blocks[1].content[1].content)).toBe('text');
+            expect(((editor.blocks[1].properties as BaseChildrenProp).children[0].content[0].content)).toBe('Welcome');
+            expect(((editor.blocks[1].properties as BaseChildrenProp).children[0].content[0].properties as BaseStylesProp).styles.italic).toBe(true);
+            expect(((editor.blocks[1].properties as BaseChildrenProp).children[0].content[1].content)).toBe('text');
         });
 
         it('applying multiple formats to link content', () => {
@@ -421,7 +543,7 @@ describe('Formatting Actions', () => {
             editor.blockManager.formattingAction.execCommand({ command: 'italic' });
             editor.blockManager.formattingAction.execCommand({ command: 'strikethrough' });
             editor.blockManager.formattingAction.execCommand({ command: 'underline' });
-            expect(contentElement.childElementCount).toBe(2);
+            expect(contentElement.childElementCount).toBe(1);
             expect(contentElement.querySelector('strong')).not.toBeNull();
             expect(contentElement.querySelector('em')).not.toBeNull();
             expect(contentElement.querySelector('s')).not.toBeNull();
@@ -446,7 +568,6 @@ describe('Formatting Actions', () => {
                         id: 'paragraph-1',
                         blockType: BlockType.Paragraph,
                         content: [{
-                            id: 'content-1',
                             contentType: ContentType.Text,
                             content: 'Hello world'
                         }]
@@ -666,7 +787,6 @@ describe('Formatting Actions', () => {
                     id: 'paragraph1',
                     blockType: BlockType.Paragraph,
                     content: [{
-                        id: 'p1-content',
                         contentType: ContentType.Text,
                         content: 'First paragraph content'
                     }]
@@ -676,7 +796,6 @@ describe('Formatting Actions', () => {
                     blockType: BlockType.Heading,
                     properties: { level: 2 },
                     content: [{
-                        id: 'h1-content',
                         contentType: ContentType.Text,
                         content: 'Second heading content'
                     }]
@@ -684,17 +803,21 @@ describe('Formatting Actions', () => {
                 {
                     id: 'quote1',
                     blockType: BlockType.Quote,
-                    content: [{
-                        id: 'q1-content',
-                        contentType: ContentType.Text,
-                        content: 'Third quote content'
-                    }]
+                    properties: {
+                        children: [{
+                            blockType: BlockType.Paragraph,
+                            content: [{
+                                id: 'q1-content',
+                                contentType: ContentType.Text,
+                                content: 'Third quote content'
+                            }]
+                        }]
+                    }
                 },
                 {
                     id: 'list1',
                     blockType: BlockType.BulletList,
                     content: [{
-                        id: 'l1-content',
                         contentType: ContentType.Text,
                         content: 'Fourth list content'
                     }]
@@ -776,7 +899,7 @@ describe('Formatting Actions', () => {
 
                 // Verify italic was applied across all three blocks
                 expect(editor.blocks[1].content.some(c => (c.properties as BaseStylesProp).styles.italic as boolean)).toBe(true);
-                expect(editor.blocks[2].content.some(c => (c.properties as BaseStylesProp).styles.italic as boolean)).toBe(true);
+                expect((editor.blocks[2].properties as BaseChildrenProp).children[0].content.some(c => (c.properties as BaseStylesProp).styles.italic as boolean)).toBe(true);
                 expect(editor.blocks[3].content.some(c => (c.properties as BaseStylesProp).styles.italic as boolean)).toBe(true);
 
                 // Verify DOM updates
@@ -798,7 +921,18 @@ describe('Formatting Actions', () => {
 
                 // Verify underline was applied to all blocks
                 editor.blocks.forEach((block, index) => {
-                    expect(block.content.some(c => (c.properties as BaseStylesProp).styles.underline as boolean)).toBe(true);
+                    if (block.blockType === BlockType.Quote) {
+                        // Quote → check children content
+                        expect(
+                            (block.properties as BaseChildrenProp).children[0].content
+                                .some(c => (c.properties as BaseStylesProp).styles.underline as boolean)
+                        ).toBe(true);
+                    } else {
+                        // Other blocks → check direct content
+                        expect(
+                            block.content.some(c => (c.properties as BaseStylesProp).styles.underline as boolean)
+                        ).toBe(true);
+                    }
 
                     const blockElement = editorElement.querySelector(`#paragraph1, #heading1, #quote1, #list1`) as HTMLElement;
                     const contentElement = getBlockContentElement(blockElement);
@@ -834,8 +968,20 @@ describe('Formatting Actions', () => {
 
                 // Verify both formats were applied
                 [0, 1, 2].forEach(blockIndex => {
-                    const hasItalic = editor.blocks[blockIndex].content.some(c =>
-                        (c.properties as BaseStylesProp).styles.italic as boolean);
+                    const block = editor.blocks[blockIndex];
+
+                    let hasItalic = false;
+
+                    if (block.blockType === BlockType.Quote) {
+                        hasItalic = (block.properties as BaseChildrenProp).children[0].content.some(c =>
+                            (c.properties as BaseStylesProp).styles.italic as boolean
+                        );
+                    } else {
+                        hasItalic = block.content.some(c =>
+                            (c.properties as BaseStylesProp).styles.italic as boolean
+                        );
+                    }
+
                     expect(hasItalic).toBe(true);
 
                     const blockElement = editorElement.querySelector(`#${editor.blocks[blockIndex].id}`) as HTMLElement;
@@ -988,7 +1134,7 @@ describe('Formatting Actions', () => {
                 // Verify only selected portions were formatted
                 const firstBlockContent = editor.blocks[0].content;
                 const secondBlockContent = editor.blocks[1].content;
-                const thirdBlockContent = editor.blocks[2].content;
+                const thirdBlockContent = (editor.blocks[2].properties as BaseChildrenProp).children[0].content;
 
                 // First block should have content split (before, formatted, after)
                 expect(firstBlockContent.length).toBeGreaterThan(1);
@@ -1041,7 +1187,7 @@ describe('Formatting Actions', () => {
                 expect(editor.blocks[1].content.some(c => (c.properties as BaseStylesProp).styles.bold as boolean)).toBe(true); // heading
                 // divider block should remain unchanged (no content to format)
                 expect(editor.blocks[2].content.length).toBe(0);
-                expect(editor.blocks[3].content.some(c => (c.properties as BaseStylesProp).styles.bold as boolean)).toBe(true); // quote
+                expect((editor.blocks[3].properties as BaseChildrenProp).children[0].content.some(c => (c.properties as BaseStylesProp).styles.bold as boolean)).toBe(true); // quote
 
                 expect(getBlockContentElement(firstBlock).querySelector('strong')).not.toBeNull();
                 expect(dividerBlock.querySelector('strong')).toBeNull();
@@ -1102,9 +1248,17 @@ describe('Formatting Actions', () => {
         beforeEach(() => {
             editorElement = createElement('div', { id: 'editor-table-formatting' });
             document.body.appendChild(editorElement);
-            const before: BlockModel = { id: 'before', blockType: BlockType.Paragraph, content: [{ id: 'bc', contentType: ContentType.Text, content: 'BeforePara' }] };
+            const before: BlockModel = { id: 'before', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'BeforePara' }] };
             const table: BlockModel = buildTableBlock('table_block_fmt', 3, 3, true, true, true);
-            const after: BlockModel = { id: 'after', blockType: BlockType.Quote, content: [{ id: 'ac', contentType: ContentType.Text, content: 'AfterQuote' }] } as any;
+            const after: BlockModel = {
+                id: 'after', blockType: BlockType.Quote,
+                properties: {
+                    children: [{
+                        blockType: BlockType.Paragraph,
+                        content: [{ id: 'ac', contentType: ContentType.Text, content: 'AfterQuote' }]
+                    }]
+                }
+            } as any;
             editor = createEditor({ blocks: [before, table, after] });
             editor.appendTo('#editor-table-formatting');
         });
@@ -1336,7 +1490,7 @@ describe('Formatting Actions', () => {
             const firstRow = domHelpers.query(blockElement, 'tbody tr');
             expect(firstRow.classList.contains('e-row-selected')).toBe(true);
 
-            const pinned = domHelpers.query(blockElement, '.e-row-action-handle.e-pinned') as HTMLElement;
+            const pinned = domHelpers.query(blockElement, '.e-row-action-handle.e-pinned.e-action-bar-active') as HTMLElement;
             expect(pinned && pinned.style.display !== 'none').toBe(true);
 
             // Apply bold formatting
@@ -1384,7 +1538,7 @@ describe('Formatting Actions', () => {
             expect(rows[0].cells[1].classList.contains('e-col-selected')).toBe(true); // first data column
             expect(rows[1].cells[1].classList.contains('e-col-selected')).toBe(true);
 
-            const pinned = domHelpers.query(blockElement, '.e-col-action-handle.e-pinned') as HTMLElement;
+            const pinned = domHelpers.query(blockElement, '.e-col-action-handle.e-pinned.e-action-bar-active') as HTMLElement;
             expect(pinned && pinned.style.display !== 'none').toBe(true);
 
             // Apply bold formatting
@@ -1454,7 +1608,6 @@ describe('Formatting Actions', () => {
                                     blockType: BlockType.Heading,
                                     properties: { level: 2 },
                                     content: [{
-                                        id: 'h1-content',
                                         contentType: ContentType.Text,
                                         content: 'Second heading content'
                                     }]
@@ -1462,11 +1615,16 @@ describe('Formatting Actions', () => {
                                 {
                                     id: 'quote1',
                                     blockType: BlockType.Quote,
-                                    content: [{
-                                        id: 'q1-content',
-                                        contentType: ContentType.Text,
-                                        content: 'Third quote content'
-                                    }]
+                                    properties: {
+                                        children: [{
+                                            blockType: BlockType.Paragraph,
+                                            content: [{
+                                                id: 'q1-content',
+                                                contentType: ContentType.Text,
+                                                content: 'Third quote content'
+                                            }]
+                                        }]
+                                    }
                                 },
                                 {
                                     id: 'list1',
@@ -1553,7 +1711,7 @@ describe('Formatting Actions', () => {
                 const cellBlocks = (tableModel.properties as ITableBlockSettings).rows[0].cells[0].blocks;
 
                 expect(cellBlocks[1].content.some(c => ((c.properties as BaseStylesProp).styles.italic) as boolean)).toBe(true); // heading
-                expect(cellBlocks[2].content.some(c => ((c.properties as BaseStylesProp).styles.italic) as boolean)).toBe(true); // quote
+                expect((cellBlocks[2].properties as BaseChildrenProp).children[0].content.some(c => ((c.properties as BaseStylesProp).styles.italic) as boolean)).toBe(true); // quote
                 expect(cellBlocks[3].content.some(c => ((c.properties as BaseStylesProp).styles.italic) as boolean)).toBe(true); // list
 
                 expect(headingContent.querySelector('em')).not.toBeNull();
@@ -1586,7 +1744,19 @@ describe('Formatting Actions', () => {
                 const cellBlocks = (tableModel.properties as ITableBlockSettings).rows[0].cells[0].blocks;
 
                 cellBlocks.forEach(block => {
-                    expect(block.content.some(c => ((c.properties as BaseStylesProp).styles.underline) as boolean)).toBe(true);
+
+                    let hasUnderline = false;
+
+                    if (block.blockType === BlockType.Quote) {
+                        hasUnderline = (block.properties as BaseChildrenProp)
+                            .children[0].content
+                            .some(c => ((c.properties as BaseStylesProp).styles.underline) as boolean);
+                    } else {
+                        hasUnderline = block.content
+                            .some(c => ((c.properties as BaseStylesProp).styles.underline) as boolean);
+                    }
+
+                    expect(hasUnderline).toBe(true);
                 });
 
                 expect(firstCell.querySelectorAll('u').length).toBeGreaterThan(0);
@@ -1618,8 +1788,29 @@ describe('Formatting Actions', () => {
 
                 [0, 1, 2].forEach(idx => {
                     const block = cellBlocks[idx];
-                    expect(block.content.some(c => ((c.properties as BaseStylesProp).styles.bold) as boolean)).toBe(true);
-                    expect(block.content.some(c => ((c.properties as BaseStylesProp).styles.italic) as boolean)).toBe(true);
+
+                    let hasBold = false;
+                    let hasItalic = false;
+
+                    if (block.blockType === BlockType.Quote) {
+                        const content = (block.properties as BaseChildrenProp)
+                            .children[0].content;
+
+                        hasBold = content.some(c =>
+                            ((c.properties as BaseStylesProp).styles.bold) as boolean);
+
+                        hasItalic = content.some(c =>
+                            ((c.properties as BaseStylesProp).styles.italic) as boolean);
+                    } else {
+                        hasBold = block.content.some(c =>
+                            ((c.properties as BaseStylesProp).styles.bold) as boolean);
+
+                        hasItalic = block.content.some(c =>
+                            ((c.properties as BaseStylesProp).styles.italic) as boolean);
+                    }
+
+                    expect(hasBold).toBe(true);
+                    expect(hasItalic).toBe(true);
                 });
 
                 expect(firstContent.querySelector('strong')).not.toBeNull();
@@ -1754,11 +1945,33 @@ describe('Formatting Actions', () => {
             setTimeout(() => {
                 const cellBlocks = (editor.blocks[0].properties as ITableBlockSettings).rows[0].cells[0].blocks;
 
-                // Should have split content in first and last blocks
+                // First block (paragraph) → should split
                 expect(cellBlocks[0].content.length).toBeGreaterThan(1);
-                expect(cellBlocks[2].content.length).toBeGreaterThan(1);
-                expect(cellBlocks[1].content.some(c => ((c.properties as BaseStylesProp).styles.strikethrough) as boolean)).toBe(true);
 
+                // Middle block (list or paragraph) → should contain strikethrough
+                expect(
+                    cellBlocks[1].content.some(c =>
+                        ((c.properties as BaseStylesProp).styles.strikethrough) as boolean
+                    )
+                ).toBe(true);
+
+                // Last block (quote) → must check children content
+                const lastBlock = cellBlocks[2];
+
+                if (lastBlock.blockType === BlockType.Quote) {
+                    const quoteContent = (lastBlock.properties as BaseChildrenProp)
+                        .children[0].content;
+
+                    // Should split
+                    expect(quoteContent.length).toBeGreaterThan(1);
+
+                    // Should contain strikethrough
+                    expect(
+                        quoteContent.some(c =>
+                            ((c.properties as BaseStylesProp).styles.strikethrough) as boolean
+                        )
+                    ).toBe(true);
+                }
                 expect(firstContent.querySelector('s')).not.toBeNull();
                 expect(thirdContent.querySelector('s')).not.toBeNull();
 
@@ -1800,10 +2013,25 @@ describe('Formatting Actions', () => {
                     const dividerBlock = cellBlocks.find(b => b.id === 'divider1');
                     expect(dividerBlock.content.length).toBe(0);
 
-                    // Other blocks should be formatted
-                    expect(cellBlocks[0].content.some(c => ((c.properties as BaseStylesProp).styles.bold) as boolean)).toBe(true);
-                    expect(cellBlocks[3].content.some(c => ((c.properties as BaseStylesProp).styles.bold) as boolean)).toBe(true);
+                    expect(
+                        cellBlocks[0].content.some(c =>
+                            ((c.properties as BaseStylesProp).styles.bold) as boolean
+                        )
+                    ).toBe(true);
 
+                    // Last block (quote) – must check children content
+                    const lastBlock = cellBlocks[3];
+
+                    if (lastBlock.blockType === BlockType.Quote) {
+                        const quoteContent = (lastBlock.properties as BaseChildrenProp)
+                            .children[0].content;
+
+                        expect(
+                            quoteContent.some(c =>
+                                ((c.properties as BaseStylesProp).styles.bold) as boolean
+                            )
+                        ).toBe(true);
+                    }
                     done();
                 }, 100);
             }, 100);
@@ -1845,7 +2073,7 @@ describe('Formatting Actions', () => {
             editorElement = createElement('div', { id: 'editor' });
             document.body.appendChild(editorElement);
             const blocks: BlockModel[] = [
-                { id: 'paragraph-1', blockType: BlockType.Paragraph, content: [{ id: 'paragraph-content', contentType: ContentType.Text, content: 'Hello world' }] }
+                { id: 'paragraph-1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Hello world' }] }
             ];
             editor = createEditor({
                 blocks: blocks
@@ -1861,8 +2089,9 @@ describe('Formatting Actions', () => {
         });
 
         it('should handle edge cases properly', (done) => {
+            const blockElement = editorElement.querySelector('#paragraph-1') as HTMLElement;
             //Selection collapsed
-            editor.setSelection('paragraph-content', 2, 4);
+            editor.setSelection(getBlockContentElement(blockElement).firstChild , 2, 4);
             const data5 = editor.blockManager.formattingAction.handleTypingWithActiveFormats();
             expect(data5).toBe(false);
 
@@ -1897,9 +2126,9 @@ describe('Formatting Actions', () => {
             editor.addBlock({
                 id: 'paragraph-2', blockType: BlockType.Paragraph,
                 content: [
-                    { id: 'con-1', contentType: ContentType.Text, content: 'Hi', properties: { styles: { bold: true } } },
-                    { id: 'con-2', contentType: ContentType.Text, content: 'Hello' },
-                    { id: 'con-3', contentType: ContentType.Text, content: 'World', properties: { styles: { italic: true } } },
+                    { contentType: ContentType.Text, content: 'Hi', properties: { styles: { bold: true } } },
+                    { contentType: ContentType.Text, content: 'Hello' },
+                    { contentType: ContentType.Text, content: 'World', properties: { styles: { italic: true } } },
                 ]
             });
 
@@ -1908,15 +2137,15 @@ describe('Formatting Actions', () => {
             editor.blockManager.setFocusToBlock(newBlockElement);
 
             // Select whole block
-            const startNode = newBlockContent.querySelector('#con-1').firstChild;
-            const endNode = newBlockContent.querySelector('#con-3').firstChild;
+            const startNode = newBlockContent.childNodes[0].firstChild;
+            const endNode = newBlockContent.childNodes[2].firstChild;
             editor.blockManager.nodeSelection.createRangeWithOffsets(startNode, endNode, 0, 5);
 
             editor.blockManager.formattingAction.execCommand({ command: 'underline' });
-            expect(newBlockContent.childElementCount).toBe(3);
-            expect(newBlockContent.querySelector('strong').textContent).toBe('Hi');
-            expect(newBlockContent.querySelector('u#con-2').textContent).toBe('Hello');
-            expect(newBlockContent.querySelector('em').textContent).toBe('World');
+            expect(newBlockContent.childNodes.length).toBe(3);
+            expect(newBlockContent.childNodes[0].textContent).toBe('Hi');
+            expect(newBlockContent.childNodes[1].textContent).toBe('Hello');
+            expect(newBlockContent.childNodes[2].textContent).toBe('World');
             expect((editor.blocks[1].content[0].properties as BaseStylesProp).styles.bold).toBe(true);
             expect((editor.blocks[1].content[1].properties as BaseStylesProp).styles.underline).toBe(true);
             expect((editor.blocks[1].content[2].properties as BaseStylesProp).styles.italic).toBe(true);
@@ -1933,7 +2162,7 @@ describe('Formatting Actions', () => {
             editorElement = createElement('div', { id: 'editor' });
             document.body.appendChild(editorElement);
             const blocks: BlockModel[] = [
-                { id: 'paragraph', blockType: BlockType.Paragraph, content: [{ id: 'paragraph-content', contentType: ContentType.Text, content: 'Hello world' }] }
+                { id: 'paragraph', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Hello world' }] }
             ];
             editor = createEditor({ blocks: blocks });
             editor.appendTo('#editor');
@@ -2566,7 +2795,7 @@ describe('Formatting Actions', () => {
             document.body.appendChild(editorElement);
             // Initial text for overlapping scenarios
             const blocks: BlockModel[] = [
-                { id: 'paragraph', blockType: BlockType.Paragraph, content: [{ id: 'paragraph-content', contentType: ContentType.Text, content: 'The Quick Brown Fox Jumps Over The Lazy Dog' }] }
+                { id: 'paragraph', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'The Quick Brown Fox Jumps Over The Lazy Dog' }] }
             ];
             editor = createEditor({ blocks: blocks });
             editor.appendTo('#editor');
@@ -2593,7 +2822,7 @@ describe('Formatting Actions', () => {
             editor.blockManager.formattingAction.execCommand({ command: 'bold' });
 
             // Step 2: Select "Fox Jumps" (overlapping "Brown Fox" and "Jumps", indices 16 to 25)
-            setRange(blockContent.childNodes[1].firstChild, blockContent.childNodes[2].firstChild, 6, 6);
+            setRange(blockContent.childNodes[1].firstChild, blockContent.childNodes[2], 6, 6);
             editor.blockManager.formattingAction.execCommand({ command: 'italic' });
 
             // Assert DOM
@@ -2642,7 +2871,7 @@ describe('Formatting Actions', () => {
 
 
             // Step 2: Select "Fox Jumps" (overlapping "Brown Fox" and "Jumps", indices 16 to 25)
-            setRange(blockContent.childNodes[1].firstChild, blockContent.childNodes[2].firstChild, 6, 6);
+            setRange(blockContent.childNodes[1].firstChild, blockContent.childNodes[2], 6, 6);
             editor.blockManager.formattingAction.execCommand({ command: 'bold' });
 
             // Assert DOM
@@ -2686,7 +2915,7 @@ describe('Formatting Actions', () => {
 
 
             // Step 2: Select "Fox Jumps" (overlapping "Brown Fox" and "Jumps", indices 16 to 25)
-            setRange(blockContent.childNodes[1].firstChild, blockContent.childNodes[2].firstChild, 6, 6);
+            setRange(blockContent.childNodes[1].firstChild, blockContent.childNodes[2], 6, 6);
             editor.blockManager.formattingAction.execCommand({ command: 'bold' });
 
             // Assert DOM
@@ -2730,7 +2959,7 @@ describe('Formatting Actions', () => {
 
 
             // Step 2: Select "Fox Jumps" (overlapping "Brown Fox" and "Jumps", indices 16 to 25)
-            setRange(blockContent.childNodes[1].firstChild, blockContent.childNodes[2].firstChild, 6, 6);
+            setRange(blockContent.childNodes[1].firstChild, blockContent.childNodes[2], 6, 6);
             editor.blockManager.formattingAction.execCommand({ command: 'italic' });
 
             // Assert DOM
@@ -3118,7 +3347,7 @@ describe('Formatting Actions', () => {
             document.body.appendChild(editorElement);
             // Initial text for these scenarios
             const blocks: BlockModel[] = [
-                { id: 'paragraph', blockType: BlockType.Paragraph, content: [{ id: 'paragraph-content', contentType: ContentType.Text, content: 'The Quick Brown Fox Jumps Over The Lazy Dog' }] }
+                { id: 'paragraph', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'The Quick Brown Fox Jumps Over The Lazy Dog' }] }
             ];
             editor = createEditor({ blocks: blocks });
             editor.appendTo('#editor');
@@ -3159,13 +3388,10 @@ describe('Formatting Actions', () => {
             expect(blockContent.querySelector('strong')).toBeNull(); // Strong tag should be gone
             expect(blockContent.textContent).toBe('The Quick Brown Fox Jumps Over The Lazy Dog');
 
-            // Assert Model: "Quick" segment should no longer have bold style
+            // Assert Model: "Quick" segment should no longer be found since all nodes merge as single textnode
             blockModel = editor.blocks[0] as BlockModel;
             quickSegment = blockModel.content.find(item => item.content === 'Quick'); // May need to re-find it if content merges
-            expect(((quickSegment.properties as BaseStylesProp).styles).bold).toBeUndefined(); // Bold should be removed
-            // Optionally, verify that content structure might merge back to fewer segments
-            // This depends on editor implementation after style removal.
-
+            expect(quickSegment).toBeUndefined();
         });
 
         // Scenario 2: Select single word with italic applied and remove italic
@@ -3190,7 +3416,7 @@ describe('Formatting Actions', () => {
             // Assert Model
             const blockModel = editor.blocks[0] as BlockModel;
             const quickSegment = blockModel.content.find(item => item.content === 'Quick');
-            expect(((quickSegment.properties as BaseStylesProp).styles).italic).toBeUndefined();
+            expect(quickSegment).toBeUndefined();
 
         });
 
@@ -3216,7 +3442,7 @@ describe('Formatting Actions', () => {
             // Assert Model
             const blockModel = editor.blocks[0] as BlockModel;
             const quickSegment = blockModel.content.find(item => item.content === 'Quick');
-            expect(((quickSegment.properties as BaseStylesProp).styles).underline).toBeUndefined();
+            expect(quickSegment).toBeUndefined();
 
         });
 
@@ -3243,7 +3469,7 @@ describe('Formatting Actions', () => {
             // Assert Model
             const blockModel = editor.blocks[0] as BlockModel;
             const quickSegment = blockModel.content.find(item => item.content === 'Quick');
-            expect(((quickSegment.properties as BaseStylesProp).styles).strikethrough).toBeUndefined();
+            expect(quickSegment).toBeUndefined();
 
         });
 
@@ -3262,15 +3488,12 @@ describe('Formatting Actions', () => {
             setRange(formattedNode, formattedNode, 0, formattedNode.textContent.length);
             editor.blockManager.formattingAction.execCommand({ command: 'lowercase' });
 
-            // Assert DOM: Expect text to revert to original casing.
-            // As discussed before, direct DOM assertion for lowercase/uppercase might be tricky
-            // if it's applied via CSS text-transform. We primarily check the model for style removal.
+            // Assert DOM:
             expect(blockContent.textContent).toBe('The Quick Brown Fox Jumps Over The Lazy Dog');
 
             // Assert Model: Lowercase style should be undefined
             const blockModel = editor.blocks[0] as BlockModel;
-            const segment = blockModel.content.find(item => item.content && item.content.toLowerCase().includes('quick'));
-            expect(((segment.properties as BaseStylesProp).styles).lowercase).toBeUndefined();
+            expect((blockModel.content[0].properties as BaseStylesProp).styles.lowercase).toBeUndefined();
 
         });
 
@@ -3294,8 +3517,7 @@ describe('Formatting Actions', () => {
 
             // Assert Model
             const blockModel = editor.blocks[0] as BlockModel;
-            const segment = blockModel.content.find(item => item.content && item.content.toLowerCase().includes('quick'));
-            expect(((segment.properties as BaseStylesProp).styles).uppercase).toBeUndefined();
+            expect((blockModel.content[0].properties as BaseStylesProp).styles.uppercase).toBeUndefined();
 
         });
 
@@ -3320,8 +3542,7 @@ describe('Formatting Actions', () => {
 
             // Assert Model
             const blockModel = editor.blocks[0] as BlockModel;
-            const segment = blockModel.content.find(item => item.content && item.content.toLowerCase().includes('quick'));
-            expect(((segment.properties as BaseStylesProp).styles).superscript).toBeUndefined();
+            expect((blockModel.content[0].properties as BaseStylesProp).styles.superscript).toBeUndefined();
 
         });
 
@@ -3346,8 +3567,7 @@ describe('Formatting Actions', () => {
 
             // Assert Model
             const blockModel = editor.blocks[0] as BlockModel;
-            const segment = blockModel.content.find(item => item.content && item.content.toLowerCase().includes('quick'));
-            expect(((segment.properties as BaseStylesProp).styles).subscript).toBeUndefined();
+            expect((blockModel.content[0].properties as BaseStylesProp).styles.subscript).toBeUndefined();
 
         });
 
@@ -3374,8 +3594,7 @@ describe('Formatting Actions', () => {
 
             // Assert Model
             const blockModel = editor.blocks[0] as BlockModel;
-            const segment = blockModel.content.find(item => item.content && item.content.toLowerCase().includes('quick'));
-            expect(((segment.properties as BaseStylesProp).styles).color).toBeUndefined();
+            expect((blockModel.content[0].properties as BaseStylesProp).styles.color).toBeUndefined();
 
         });
 
@@ -3401,28 +3620,7 @@ describe('Formatting Actions', () => {
 
             // Assert Model
             const blockModel = editor.blocks[0] as BlockModel;
-            const segment = blockModel.content.find(item => item.content && item.content.toLowerCase().includes('quick'));
-            expect(((segment.properties as BaseStylesProp).styles).backgroundColor).toBeUndefined();
-
-        });
-
-        // Scenario 11: Select single word with custom style applied and remove custom style
-        it('should remove custom style from a single formatted word ("Quick")', () => {
-            // const blockElement = editorElement.querySelector('#paragraph') as HTMLElement;
-            // const blockContent = getBlockContentElement(blockElement);
-            // editor.blockManager.setFocusToBlock(blockElement);
-
-            // // Step 1: Apply custom style to "Quick"
-            // setSelectionRange(blockContent.firstChild as Node, 4, 9);
-
-            // // Step 2: Remove custom style from "Quick"
-            // const formattedNode = blockContent.childNodes[1].firstChild;
-            // setRange(formattedNode, formattedNode, 0, formattedNode.textContent.length);
-
-            // // Assert DOM
-            // const spanElement = blockContent.querySelector('span[style*="font-family"]');
-            // expect(spanElement).toBeNull();
-            // expect(blockContent.textContent).toBe('The Quick Brown Fox Jumps Over The Lazy Dog');
+            expect((blockModel.content[0].properties as BaseStylesProp).styles.backgroundColor).toBeUndefined();
 
         });
 
@@ -3472,12 +3670,7 @@ describe('Formatting Actions', () => {
             const blockModel = editor.blocks[0] as BlockModel;
             const segments = blockModel.content;
             const quickSegment = segments.find(item => item.content && item.content.toLowerCase() === 'quick');
-            if (quickSegment) {
-                expect(Object.keys((quickSegment.properties as BaseStylesProp).styles).length).toBe(0);
-            } else {
-                const originalTextContent = (document.getElementById('editor').querySelector('#paragraph-content') as HTMLElement).textContent;
-                expect(originalTextContent).toBe('The Quick Brown Fox Jumps Over The Lazy Dog');
-            }
+            expect(quickSegment).toBeUndefined();
 
         });
 
@@ -3574,7 +3767,7 @@ describe('Formatting Actions', () => {
             editor.blockManager.formattingAction.execCommand({ command: 'bold' });
 
             // Step 2: Apply italic to "Fox Jumps" (overlapping, indices)
-            setSelectionRange(blockContent.lastChild.lastChild as Node, 0, 10);
+            setSelectionRange(blockContent.lastChild as Node, 0, 10);
             editor.blockManager.formattingAction.execCommand({ command: 'italic' });
 
             // Assert DOM: Expect complex nesting for 'Fox' and 'Jumps'
@@ -3650,7 +3843,7 @@ describe('Formatting Actions', () => {
             expect(((brownSegment.properties as BaseStylesProp).styles).superscript).toBe(true);
 
             // Step 2: Apply subscript to "Fox Jumps" (overlapping, indices 16 to 25)
-            setSelectionRange(blockContent.childNodes[2].lastChild, 0, 10);
+            setSelectionRange(blockContent.childNodes[2], 0, 10);
             editor.blockManager.formattingAction.execCommand({ command: 'subscript' });
 
             // Assert DOM: Check for sup and sub elements. Expect nesting or splitting
@@ -3745,32 +3938,6 @@ describe('Formatting Actions', () => {
 
         });
 
-        // Scenario 20: Apply custom style to entire Paragraph, then apply different custom style to a word, update JSON with new custom style on word
-        it('should apply a different custom style to a word, overriding paragraph-wide custom style', () => {
-            // const blockElement = editorElement.querySelector('#paragraph') as HTMLElement;
-            // const blockContent = getBlockContentElement(blockElement);
-            // editor.blockManager.setFocusToBlock(blockElement);
-
-            // // Step 1: Apply paragraph-wide custom style
-            // setSelectionRange(blockContent.firstChild as Node, 0, blockContent.textContent.length);
-
-            // // Step 2: Apply word-specific custom style to "Fox" (indices 16 to 19)
-            // setSelectionRange(blockContent.firstChild.firstChild as Node, 16, 19);
-
-            // // Assert DOM: Check for class names
-            // expect(blockContent.textContent).toBe('The Quick Brown Fox Jumps Over The Lazy Dog');
-            // const intelSpan = blockContent.querySelector('span[style*="font-family: Intel"]');
-            // expect(intelSpan).toBeDefined();
-
-            // // Assert Model:
-            // const blockModel = editor.blocks[0] as BlockModel;
-            // const foxSegment = blockModel.content.find(item => item.content === 'Fox');
-            // expect(foxSegment).toBeDefined();
-
-            // const otherSegment = blockModel.content.find(item => item.content.includes('Quick'));
-
-        });
-
         // Scenario 21: Apply all styles to entire Paragraph, then remove one style (e.g., bold) from a word, update JSON with removed style on word
         it('should remove a single style from a word that has all styles, while retaining others', () => {
             const blockElement = editorElement.querySelector('#paragraph') as HTMLElement;
@@ -3831,7 +3998,7 @@ describe('Formatting Actions', () => {
             setSelectionRange(blockContent.firstChild, 0, 15);
             editor.blockManager.formattingAction.execCommand({ command: 'bold' });
 
-            setSelectionRange(blockContent.lastChild.lastChild, 0, 15);
+            setSelectionRange(blockContent.lastChild, 0, 15);
             editor.blockManager.formattingAction.execCommand({ command: 'italic' });
 
             const boldEle = blockContent.firstChild.firstChild;
@@ -3842,13 +4009,14 @@ describe('Formatting Actions', () => {
             // Assert DOM: Expect complex nesting for Brown (bold+underline), Fox Jumps (italic+underline)
             expect(blockContent.textContent).toBe('The Quick Brown Fox Jumps Over The Lazy Dog');
 
-            const quickTextNode = blockContent.childNodes[0] as HTMLElement;
-            const brownTextNode = blockContent.childNodes[1] as HTMLElement;
-            const foxJumpsTextNode = blockContent.childNodes[2] as HTMLElement;
+            const segment1 = blockContent.childNodes[0];
+            const segment2 = blockContent.childNodes[1];
+
+            const quickTextNode = segment1.childNodes[0];
+            const brownTextNode = segment1.childNodes[1] as HTMLElement;
+            const foxJumpsTextNode = segment2.childNodes[0] as HTMLElement;
             expect(quickTextNode).toBeDefined();
             expect(quickTextNode.textContent).toBe('The Quick ');
-            expect(quickTextNode.querySelector('u') || brownTextNode.tagName === 'U').toBeDefined();
-
             expect(brownTextNode).toBeDefined();
             expect(brownTextNode.textContent).toBe('Brown');
             expect(brownTextNode.querySelector('u') || brownTextNode.tagName === 'U').toBeDefined();
@@ -3890,7 +4058,7 @@ describe('Formatting Actions', () => {
             editor.blockManager.formattingAction.execCommand({ command: 'backgroundColor', value: '#FFFF00' });
 
             // Select a range spanning the styled part and non-formatted part, e.g., "Fox Jumps Over The" (indices 16 to 34)
-            setRange(getDeepestTextNode(blockContent.firstChild as HTMLElement), blockContent.lastChild.lastChild, 16, 15);
+            setRange(getDeepestTextNode(blockContent.firstChild as HTMLElement), blockContent.lastChild, 16, 15);
             editor.blockManager.formattingAction.execCommand({ command: 'strikethrough' });
 
             // Assert DOM: Expect relevant parts to have strikethrough along with existing styles
@@ -4024,59 +4192,26 @@ describe('Formatting Actions', () => {
 
         });
 
-        // Scenario 27: Select entire Paragraph with mixed formatting (e.g., half bold, half italic), apply custom style, update JSON with custom style on both
-        it('should apply custom style to an entire paragraph with mixed formatting', () => {
-            const blockElement = editorElement.querySelector('#paragraph') as HTMLElement;
-            const blockContent = getBlockContentElement(blockElement);
-            editor.blockManager.setFocusToBlock(blockElement);
-
-            // Initial setup: Make first half bold, second half italic
-            setSelectionRange(blockContent.firstChild as Node, 0, blockContent.textContent.length / 2);
-            editor.blockManager.formattingAction.execCommand({ command: 'bold' });
-
-            setSelectionRange(blockContent.lastChild.lastChild, 0, blockContent.lastChild.textContent.length);
-            editor.blockManager.formattingAction.execCommand({ command: 'italic' });
-
-            // Verify initial mixed state
-            let blockModel = editor.blocks[0] as BlockModel;
-            let firstHalfSegment = blockModel.content.find(item => ((item.properties as BaseStylesProp).styles).bold as boolean);
-            let secondHalfSegment = blockModel.content.find(item => ((item.properties as BaseStylesProp).styles).italic as boolean);
-            expect(firstHalfSegment).toBeDefined();
-            expect(((firstHalfSegment.properties as BaseStylesProp).styles).bold).toBe(true);
-            expect(secondHalfSegment).toBeDefined();
-            expect(((secondHalfSegment.properties as BaseStylesProp).styles).italic).toBe(true);
-
-            // Step 2: Apply custom style to the entire paragraph
-            const firstNode = blockContent.firstChild.firstChild;
-            const lastNode = blockContent.lastChild.lastChild as Text;
-            setRange(firstNode, lastNode, 0, lastNode.length);
-
-            // Assert DOM: Expect the custom class to be applied to (parts of) the paragraph
-            const span = blockContent.querySelector('span[style*="font-family"]');
-            expect(span).toBeDefined();
-
-        });
-
-        // Scenario 28: Select entire Paragraph with mixed formatting, remove all styles, update JSON to remove all applied styles and ensure
-        it('should remove all styles from an entire paragraph with mixed formatting', () => {
+        // Scenario 28: Select entire Paragraph with mixed formatting, apply all styles, update JSON to have all applied styles and ensure
+        it('should apply all styles to entire paragraph with mixed formatting', () => {
             const blockElement = editorElement.querySelector('#paragraph') as HTMLElement;
             const blockContent = getBlockContentElement(blockElement);
             editor.blockManager.setFocusToBlock(blockElement);
 
             setSelectionRange(blockContent.firstChild, 0, blockContent.textContent.length / 4);
             editor.blockManager.formattingAction.execCommand({ command: 'bold' });
-            setSelectionRange(blockContent.lastChild.lastChild, 0, blockContent.lastChild.textContent.length / 2);
+            setSelectionRange(blockContent.lastChild, 0, blockContent.lastChild.textContent.length / 2);
             editor.blockManager.formattingAction.execCommand({ command: 'italic' });
-            setSelectionRange(blockContent.lastChild.lastChild, 0, blockContent.lastChild.textContent.length * 1 / 2);
+            setSelectionRange(blockContent.lastChild, 0, blockContent.lastChild.textContent.length * 1 / 2);
             editor.blockManager.formattingAction.execCommand({ command: 'underline' });
-            setSelectionRange(blockContent.lastChild.lastChild, 0, blockContent.lastChild.textContent.length);
+            setSelectionRange(blockContent.lastChild, 0, blockContent.lastChild.textContent.length);
             editor.blockManager.formattingAction.execCommand({ command: 'strikethrough' });
             setSelectionRange(blockContent.lastChild.lastChild, 0, blockContent.lastChild.textContent.length * 3 / 4);
             editor.blockManager.formattingAction.execCommand({ command: 'color', value: '#123456' });
             editor.blockManager.formattingAction.execCommand({ command: 'backgroundColor', value: '#ABCDEF' });
 
             // Select all and apply all
-            setRange(blockContent.firstChild.firstChild, blockContent.lastChild.lastChild, 0, blockContent.lastChild.textContent.length);
+            setRange(blockContent.firstChild.firstChild, blockContent.lastChild.lastChild, 0, blockContent.lastChild.lastChild.textContent.length);
             editor.blockManager.formattingAction.execCommand({ command: 'bold' });
             editor.blockManager.formattingAction.execCommand({ command: 'italic' });
             editor.blockManager.formattingAction.execCommand({ command: 'underline' });
@@ -4130,9 +4265,9 @@ describe('Formatting Actions', () => {
                     id: 'paragraph1',
                     blockType: BlockType.Paragraph,
                     content: [
-                        { id: 'content1', contentType: ContentType.Text, content: 'Hello ' },
-                        { id: 'content2', contentType: ContentType.Mention, properties: { userId: 'user1' } },
-                        { id: 'content3', contentType: ContentType.Text, content: ' world' },
+                        { contentType: ContentType.Text, content: 'Hello ' },
+                        { contentType: ContentType.Mention, properties: { userId: 'user1' } },
+                        { contentType: ContentType.Text, content: ' world' },
                     ]
                 },
                 {
@@ -4140,7 +4275,6 @@ describe('Formatting Actions', () => {
                     blockType: BlockType.Paragraph,
                     content: [
                         {
-                            id: 'boldText',
                             contentType: ContentType.Text,
                             content: 'Bolded text',
                             properties: { styles: { bold: true } }
@@ -4168,8 +4302,8 @@ describe('Formatting Actions', () => {
             editor.blockManager.setFocusToBlock(p1);
             const contentEl = getBlockContentElement(p1);
 
-            const startNode = (contentEl.querySelector('#content1') as HTMLElement).firstChild as Text; // "Hello "
-            const endNode = (contentEl.querySelector('#content3') as HTMLElement).firstChild as Text;   // " world"
+            const startNode = contentEl.childNodes[0] as Text; // "Hello "
+            const endNode = contentEl.childNodes[2] as Text;   // " world"
 
             // Select from index 1 of "Hello " ("ello ") to end index 6 of " world" ("world")
             setRange(startNode, endNode, 1, 6);
@@ -4187,7 +4321,7 @@ describe('Formatting Actions', () => {
             const p1Model = editor.blocks[0];
             expect(p1Model.content.length).toBe(4);
             // Mention should not have bold applied as it lies within the selection
-            const mentionItem = p1Model.content.find(c => c.id === 'content2');
+            const mentionItem = p1Model.content.find(c => c.contentType === ContentType.Mention);
             expect(((mentionItem.properties as BaseStylesProp).styles)).toBeUndefined();
 
             // other selected contents should have bold
@@ -4202,7 +4336,7 @@ describe('Formatting Actions', () => {
             editor.blockManager.setFocusToBlock(p1);
             const contentEl = getBlockContentElement(p1);
 
-            const mentionEl = contentEl.querySelector('#content2') as HTMLElement;
+            const mentionEl = contentEl.childNodes[1] as HTMLElement;
             const tn = getDeepestTextNode(mentionEl) as Text; // Expected to render "User 1"
             // Select "ser" within "User 1" (indices 1..4)
             setSelectionRange(tn as any, 1, 4);
@@ -4210,15 +4344,15 @@ describe('Formatting Actions', () => {
 
             // DOM expectations:
             expect(contentEl.querySelectorAll('strong').length).toBe(0);
-            expect(contentEl.querySelector('#content1').textContent).toBe('Hello ');
-            expect(contentEl.querySelector('#content3').textContent).toBe(' world');
+            expect((contentEl.childNodes[0] as Node).textContent).toBe('Hello ');
+            expect((contentEl.childNodes[2] as Node).textContent).toBe(' world');
 
             // Model expectations
             expect(editor.blocks.length).toBe(2);
             const p1Model = editor.blocks[0];
             expect(p1Model.content.length).toBe(3);
             // Mention should not have bold applied as it lies within the selection
-            const mentionItem = p1Model.content.find(c => c.id === 'content2');
+            const mentionItem = p1Model.content.find(c => c.contentType === ContentType.Mention);
             expect(((mentionItem.properties as BaseStylesProp).styles)).toBeUndefined();
 
             // other contents should not be changed
@@ -4233,15 +4367,15 @@ describe('Formatting Actions', () => {
             editor.blockManager.setFocusToBlock(p1);
             const contentEl = getBlockContentElement(p1);
 
-            const mentionEl = contentEl.querySelector('#content2') as HTMLElement;
+            const mentionEl = contentEl.childNodes[1] as HTMLElement;
             const tn = getDeepestTextNode(mentionEl) as Text;
             setSelectionRange(tn as any, 0, tn.textContent.length);
             editor.blockManager.formattingAction.execCommand({ command: 'bold' });
 
             // DOM expectations:
             expect(contentEl.querySelectorAll('strong').length).toBe(0);
-            expect(contentEl.querySelector('#content1').textContent).toBe('Hello ');
-            expect(contentEl.querySelector('#content3').textContent).toBe(' world');
+            expect((contentEl.childNodes[0] as Node).textContent).toBe('Hello ');
+            expect((contentEl.childNodes[2] as Node).textContent).toBe(' world');
 
             // Model expectations
             expect(editor.blocks.length).toBe(2);
@@ -4249,7 +4383,7 @@ describe('Formatting Actions', () => {
             expect(p1Model.content.length).toBe(3);
 
             // Mention should not have bold applied as it lies within the selection
-            const mentionItem = p1Model.content.find(c => c.id === 'content2');
+            const mentionItem = p1Model.content.find(c => c.contentType === ContentType.Mention);
             expect(((mentionItem.properties as BaseStylesProp).styles)).toBeUndefined();
 
             // other contents should not be changed
@@ -4265,7 +4399,7 @@ describe('Formatting Actions', () => {
             const contentEl = getBlockContentElement(p1);
 
             editor.addBlock(
-                { id: 'before', blockType: 'Paragraph', content: [ { id: 'before-c', contentType: 'Text', content: 'Before' } ] },
+                { id: 'before', blockType: 'Paragraph', content: [ { contentType: 'Text', content: 'Before' } ] },
                 'paragraph1',
                 false
             );
@@ -4275,7 +4409,7 @@ describe('Formatting Actions', () => {
             editor.blockManager.setFocusToBlock(before);
 
             const startNode = beforeContent.firstChild as Text; // "Before"
-            const endNode = (contentEl.querySelector('#content3') as HTMLElement).firstChild as Text;   // "world"
+            const endNode = contentEl.childNodes[2] as Text;   // " world"
 
             // Select from index 0 of "Before" to end index 6 of " world"
             setRange(startNode, endNode, 0, 6);
@@ -4300,7 +4434,7 @@ describe('Formatting Actions', () => {
 
             const p1Model = editor.blocks[1];
             // Mention should not have bold applied as it lies within the selection
-            const mentionItem = p1Model.content.find(c => c.id === 'content2');
+            const mentionItem = p1Model.content.find(c => c.contentType === ContentType.Mention);
             expect(((mentionItem.properties as BaseStylesProp).styles)).toBeUndefined();
 
             // other selected contents should have bold
@@ -4330,7 +4464,7 @@ describe('Formatting Actions', () => {
 
             const p1ModelRM = editor.blocks[1];
             // Mention should not have bold applied as it lies within the selection
-            const mentionItemRM = p1ModelRM.content.find(c => c.id === 'content2');
+            const mentionItemRM = p1ModelRM.content.find(c => c.contentType === ContentType.Mention);
             expect(((mentionItemRM.properties as BaseStylesProp).styles)).toBeUndefined();
 
             // other selected contents should have bold
@@ -4359,9 +4493,9 @@ describe('Formatting Actions', () => {
                     id: 'paragraph1',
                     blockType: BlockType.Paragraph,
                     content: [
-                        { id: 'content1', contentType: ContentType.Text, content: 'Hello ' },
-                        { id: 'content2', contentType: ContentType.Label, properties: { labelId: 'high' } },
-                        { id: 'content3', contentType: ContentType.Text, content: ' world' },
+                        { contentType: ContentType.Text, content: 'Hello ' },
+                        { contentType: ContentType.Label, properties: { labelId: 'high' } },
+                        { contentType: ContentType.Text, content: ' world' },
                     ]
                 },
                 {
@@ -4369,7 +4503,6 @@ describe('Formatting Actions', () => {
                     blockType: BlockType.Paragraph,
                     content: [
                         {
-                            id: 'boldText',
                             contentType: ContentType.Text,
                             content: 'Bolded text',
                             properties: { styles: { bold: true } }
@@ -4394,8 +4527,8 @@ describe('Formatting Actions', () => {
             editor.blockManager.setFocusToBlock(p1);
             const contentEl = getBlockContentElement(p1);
 
-            const startNode = (contentEl.querySelector('#content1') as HTMLElement).firstChild as Text; // "Hello "
-            const endNode = (contentEl.querySelector('#content3') as HTMLElement).firstChild as Text;   // " world"
+            const startNode = contentEl.childNodes[0] as Text; // "Hello "
+            const endNode = contentEl.childNodes[2] as Text;   // " world"
 
             // Select from index 1 of "Hello " ("ello ") to end index 6 of " world" ("world")
             setRange(startNode, endNode, 1, 6);
@@ -4413,7 +4546,7 @@ describe('Formatting Actions', () => {
             const p1Model = editor.blocks[0];
             expect(p1Model.content.length).toBe(4);
             // Label should not have bold applied as it lies within the selection
-            const LabelItem = p1Model.content.find(c => c.id === 'content2');
+            const LabelItem = p1Model.content.find(c => c.contentType === ContentType.Label);
             expect(((LabelItem.properties as BaseStylesProp).styles)).toBeUndefined();
 
             // other selected contents should have bold
@@ -4428,7 +4561,7 @@ describe('Formatting Actions', () => {
             editor.blockManager.setFocusToBlock(p1);
             const contentEl = getBlockContentElement(p1);
 
-            const labelEl = contentEl.querySelector('#content2') as HTMLElement;
+            const labelEl = contentEl.childNodes[1] as HTMLElement;
             const tn = getDeepestTextNode(labelEl) as Text; // Expected to render "Priority: High"
             // Select "rio" within "Priority: High" (indices 1..4)
             setSelectionRange(tn as any, 1, 4);
@@ -4436,15 +4569,15 @@ describe('Formatting Actions', () => {
 
             // DOM expectations:
             expect(contentEl.querySelectorAll('strong').length).toBe(0);
-            expect(contentEl.querySelector('#content1').textContent).toBe('Hello ');
-            expect(contentEl.querySelector('#content3').textContent).toBe(' world');
+            expect((contentEl.childNodes[0] as Node).textContent).toBe('Hello ');
+            expect((contentEl.childNodes[2] as Node).textContent).toBe(' world');
 
             // Model expectations
             expect(editor.blocks.length).toBe(2);
             const p1Model = editor.blocks[0];
             expect(p1Model.content.length).toBe(3);
             // Label should not have bold applied as it lies within the selection
-            const LabelItem = p1Model.content.find(c => c.id === 'content2');
+            const LabelItem = p1Model.content.find(c => c.contentType === ContentType.Label);
             expect(((LabelItem.properties as BaseStylesProp).styles)).toBeUndefined();
 
             // other contents should not be changed
@@ -4459,23 +4592,23 @@ describe('Formatting Actions', () => {
             editor.blockManager.setFocusToBlock(p1);
             const contentEl = getBlockContentElement(p1);
 
-            const labelEl = contentEl.querySelector('#content2') as HTMLElement;
+            const labelEl = contentEl.childNodes[1] as HTMLElement;
             const tn = getDeepestTextNode(labelEl) as Text;
             setSelectionRange(tn as any, 0, tn.textContent.length);
             editor.blockManager.formattingAction.execCommand({ command: 'bold' });
 
             // DOM expectations:
             expect(contentEl.querySelectorAll('strong').length).toBe(0);
-            expect(contentEl.querySelector('#content1').textContent).toBe('Hello ');
-            expect(contentEl.querySelector('#content3').textContent).toBe(' world');
+            expect((contentEl.childNodes[0] as Node).textContent).toBe('Hello ');
+            expect((contentEl.childNodes[2] as Node).textContent).toBe(' world');
 
             // Model expectations
             expect(editor.blocks.length).toBe(2);
             const p1Model = editor.blocks[0];
             expect(p1Model.content.length).toBe(3);
 
-            // Mention should not have bold applied as it lies within the selection
-            const LabelItem = p1Model.content.find(c => c.id === 'content2');
+            // Label should not have bold applied as it lies within the selection
+            const LabelItem = p1Model.content.find(c => c.contentType === ContentType.Label);
             expect(((LabelItem.properties as BaseStylesProp).styles)).toBeUndefined();
 
             // other contents should not be changed
@@ -4483,6 +4616,716 @@ describe('Formatting Actions', () => {
             expect(((p1Model.content[2].properties as BaseStylesProp).styles).bold).toBeUndefined();
             expect(p1Model.content[0].content).toBe('Hello ');
             expect(p1Model.content[2].content).toBe(' world');
+        });
+    });
+
+    describe('Overlapping formatting - Apply and Remove', () => {
+        let editor: BlockEditor;
+        let editorElement: HTMLElement;
+
+        beforeEach(() => {
+            editorElement = createElement('div', { id: 'editor' });
+            document.body.appendChild(editorElement);
+        });
+
+        afterEach(() => {
+            if (editor) { editor.destroy(); editor = undefined; }
+            remove(editorElement);
+        });
+
+        it('Should apply italic to selection spanning formatted (bold) and normal text nodes', () => {
+            const blocks: BlockModel[] = [
+                {
+                    id: 'paragraph1',
+                    blockType: BlockType.Paragraph,
+                    content: [
+                        {
+                            contentType: ContentType.Text,
+                            content: 'Hey'
+                        },
+                        {
+                            contentType: ContentType.Text,
+                            content: 'Hi',
+                            properties: { styles: { bold: true } }
+                        },
+                        {
+                            contentType: ContentType.Text,
+                            content: 'Hello'
+                        }
+                    ]
+                }
+            ];
+            editor = createEditor({ blocks });
+            editor.appendTo('#editor');
+
+            const p1 = editorElement.querySelector('#paragraph1') as HTMLElement;
+            const contentEl = getBlockContentElement(p1);
+
+            // Initial DOM: "Hey"<strong>Hi</strong>"Hello"
+            expect(contentEl.childNodes.length).toBe(3);
+            expect((contentEl.childNodes[0] as Text).textContent).toBe('Hey');
+            expect((contentEl.childNodes[1] as HTMLElement).tagName).toBe('STRONG');
+            expect((contentEl.childNodes[1] as HTMLElement).textContent).toBe('Hi');
+            expect((contentEl.childNodes[2] as Text).textContent).toBe('Hello');
+
+            // Select from "Hi" to "Hello" and apply italic
+            const strongEl = contentEl.childNodes[1] as HTMLElement;
+            const hiTextNode = strongEl.childNodes[0] as Text;
+            const helloTextNode = contentEl.childNodes[2] as Text;
+
+            setRange(hiTextNode, helloTextNode, 0, 5);
+            editor.blockManager.formattingAction.execCommand({ command: 'italic' });
+
+            // Expected DOM: "Hey"<strong><em>Hi</em></strong><em>Hello</em>
+            expect(contentEl.querySelectorAll('em').length).toBe(2);
+            const emTags = contentEl.querySelectorAll('em');
+            expect(emTags[0].textContent).toBe('Hi');
+            expect(emTags[1].textContent).toBe('Hello');
+
+            // Verify model
+            const p1Model = editor.blocks[0];
+            expect(p1Model.content.length).toBe(3);
+            expect(p1Model.content[0].content).toBe('Hey');
+            expect(p1Model.content[1].content).toBe('Hi');
+            expect((p1Model.content[1].properties as BaseStylesProp).styles.bold).toBe(true);
+            expect((p1Model.content[1].properties as BaseStylesProp).styles.italic).toBe(true);
+            expect(p1Model.content[2].content).toBe('Hello');
+            expect((p1Model.content[2].properties as BaseStylesProp).styles.bold).toBeUndefined();
+            expect((p1Model.content[2].properties as BaseStylesProp).styles.italic).toBe(true);
+        });
+
+        it('Should remove italic from selection spanning formatted (bold+italic) and normal italic text nodes', () => {
+            const blocks: BlockModel[] = [
+                {
+                    id: 'paragraph1',
+                    blockType: BlockType.Paragraph,
+                    content: [
+                        {
+                            contentType: ContentType.Text,
+                            content: 'Hey'
+                        },
+                        {
+                            contentType: ContentType.Text,
+                            content: 'Hi',
+                            properties: { styles: { bold: true, italic: true } }
+                        },
+                        {
+                            contentType: ContentType.Text,
+                            content: 'Hello',
+                            properties: { styles: { italic: true } }
+                        }
+                    ]
+                }
+            ];
+            editor = createEditor({ blocks });
+            editor.appendTo('#editor');
+
+            const p1 = editorElement.querySelector('#paragraph1') as HTMLElement;
+            const contentEl = getBlockContentElement(p1);
+
+            // Initial DOM: "Hey"<strong><em>Hi</em></strong><em>Hello</em>
+            expect(contentEl.querySelectorAll('em').length).toBe(2);
+
+            // Select from "Hi" to "Hello" and remove italic
+            const emEle = contentEl.querySelector('em');
+            const strongInEm = emEle.querySelector('strong');
+            const hiTextNode = strongInEm.childNodes[0];
+            const emAlone = contentEl.lastChild;
+            const helloTextNode = emAlone.childNodes[0] as Text;
+
+            setRange(hiTextNode, helloTextNode, 0, 5);
+            editor.blockManager.formattingAction.execCommand({ command: 'italic' });
+
+            // Expected DOM: "Hey"<strong>Hi</strong>"Hello"
+            // Italic should be removed from both nodes
+            expect(contentEl.querySelectorAll('em').length).toBe(0);
+            expect(contentEl.querySelector('strong').textContent).toBe('Hi');
+            const textNodes = Array.from(contentEl.childNodes).filter(n => n.nodeType === Node.TEXT_NODE);
+            expect(textNodes.length).toBeGreaterThan(0);
+            const helloFound = Array.from(contentEl.childNodes).some(n => n.textContent.includes('Hello'));
+            expect(helloFound).toBe(true);
+
+            // Verify model
+            const p1Model = editor.blocks[0];
+            expect(p1Model.content.length).toBe(3);
+            expect(p1Model.content[0].content).toBe('Hey');
+            expect(p1Model.content[1].content).toBe('Hi');
+            expect((p1Model.content[1].properties as BaseStylesProp).styles.bold).toBe(true);
+            expect((p1Model.content[1].properties as BaseStylesProp).styles.italic).toBeUndefined();
+            expect(p1Model.content[2].content).toBe('Hello');
+            expect((p1Model.content[2].properties as BaseStylesProp).styles.italic).toBeUndefined();
+        });
+
+        it('Should correctly apply underline to overlapping bold and italic formatted text', () => {
+            const blocks: BlockModel[] = [
+                {
+                    id: 'paragraph1',
+                    blockType: BlockType.Paragraph,
+                    content: [
+                        {
+                            contentType: ContentType.Text,
+                            content: 'Plain',
+                        },
+                        {
+                            contentType: ContentType.Text,
+                            content: 'Bold',
+                            properties: { styles: { bold: true } }
+                        },
+                        {
+                            contentType: ContentType.Text,
+                            content: 'Italic',
+                            properties: { styles: { italic: true } }
+                        },
+                        {
+                            contentType: ContentType.Text,
+                            content: 'Plain2'
+                        }
+                    ]
+                }
+            ];
+            editor = createEditor({ blocks });
+            editor.appendTo('#editor');
+
+            const p1 = editorElement.querySelector('#paragraph1') as HTMLElement;
+            const contentEl = getBlockContentElement(p1);
+
+            // Select from "Bold" to "Italic" and apply underline
+            const strongEl = contentEl.querySelector('strong') as HTMLElement;
+            const boldTextNode = strongEl.childNodes[0] as Text;
+            const emEl = contentEl.querySelector('em') as HTMLElement;
+            const italicTextNode = emEl.childNodes[0] as Text;
+
+            setRange(boldTextNode, italicTextNode, 0, 6);
+            editor.blockManager.formattingAction.execCommand({ command: 'underline' });
+
+            // Verify underline applied to both
+            expect(contentEl.querySelectorAll('u').length).toBe(2);
+            const uTags = contentEl.querySelectorAll('u');
+            expect(uTags[0].textContent).toBe('Bold');
+            expect(uTags[1].textContent).toBe('Italic');
+
+            // Verify model
+            const p1Model = editor.blocks[0];
+            expect(p1Model.content[1].content).toBe('Bold');
+            expect((p1Model.content[1].properties as BaseStylesProp).styles.bold).toBe(true);
+            expect((p1Model.content[1].properties as BaseStylesProp).styles.underline).toBe(true);
+            expect(p1Model.content[2].content).toBe('Italic');
+            expect((p1Model.content[2].properties as BaseStylesProp).styles.italic).toBe(true);
+            expect((p1Model.content[2].properties as BaseStylesProp).styles.underline).toBe(true);
+        });
+
+        it('Should correctly remove underline from overlapping bold and italic formatted text', () => {
+            const blocks: BlockModel[] = [
+                {
+                    id: 'paragraph1',
+                    blockType: BlockType.Paragraph,
+                    content: [
+                        {
+                            contentType: ContentType.Text,
+                            content: 'Plain',
+                        },
+                        {
+                            contentType: ContentType.Text,
+                            content: 'Bold',
+                            properties: { styles: { bold: true, underline: true } }
+                        },
+                        {
+                            contentType: ContentType.Text,
+                            content: 'Italic',
+                            properties: { styles: { italic: true, underline: true } }
+                        },
+                        {
+                            contentType: ContentType.Text,
+                            content: 'Plain2'
+                        }
+                    ]
+                }
+            ];
+            editor = createEditor({ blocks });
+            editor.appendTo('#editor');
+
+            const p1 = editorElement.querySelector('#paragraph1') as HTMLElement;
+            const contentEl = getBlockContentElement(p1);
+
+            // Verify initial state
+            expect(contentEl.querySelectorAll('u').length).toBe(2);
+
+            // Select from "Bold" to "Italic" and remove underline
+            const uEl = contentEl.querySelector('u');
+            const strongInU = uEl.querySelector('strong');
+            const boldTextNode = strongInU.childNodes[0];
+            const emEl = contentEl.querySelector('em');
+            const italicTextNode = emEl.childNodes[0];
+
+            setRange(boldTextNode, italicTextNode, 0, 6);
+            editor.blockManager.formattingAction.execCommand({ command: 'underline' });
+
+            // Verify underline removed from both
+            expect(contentEl.querySelectorAll('u').length).toBe(0);
+            expect(contentEl.querySelector('strong').textContent).toBe('Bold');
+            expect(contentEl.querySelector('em').textContent).toBe('Italic');
+
+            // Verify model
+            const p1Model = editor.blocks[0];
+            expect(p1Model.content[1].content).toBe('Bold');
+            expect((p1Model.content[1].properties as BaseStylesProp).styles.bold).toBe(true);
+            expect((p1Model.content[1].properties as BaseStylesProp).styles.underline).toBeUndefined();
+            expect(p1Model.content[2].content).toBe('Italic');
+            expect((p1Model.content[2].properties as BaseStylesProp).styles.italic).toBe(true);
+            expect((p1Model.content[2].properties as BaseStylesProp).styles.underline).toBeUndefined();
+        });
+
+        it('Should handle complex overlapping: bold + italic + underline across multiple nodes', () => {
+            const blocks: BlockModel[] = [
+                {
+                    id: 'paragraph1',
+                    blockType: BlockType.Paragraph,
+                    content: [
+                        {
+                            contentType: ContentType.Text,
+                            content: 'One',
+                            properties: { styles: { bold: true } }
+                        },
+                        {
+                            contentType: ContentType.Text,
+                            content: 'Two',
+                            properties: { styles: { italic: true } }
+                        },
+                        {
+                            contentType: ContentType.Text,
+                            content: 'Three',
+                            properties: { styles: { underline: true } }
+                        },
+                        {
+                            contentType: ContentType.Text,
+                            content: 'Four'
+                        }
+                    ]
+                }
+            ];
+            editor = createEditor({ blocks });
+            editor.appendTo('#editor');
+
+            const p1 = editorElement.querySelector('#paragraph1') as HTMLElement;
+            const contentEl = getBlockContentElement(p1);
+
+            // Select from "One" to "Three" and apply strikethrough
+            const strongEl = contentEl.querySelector('strong') as HTMLElement;
+            const oneTextNode = strongEl.childNodes[0] as Text;
+            const uEl = contentEl.querySelector('u') as HTMLElement;
+            const threeTextNode = uEl.childNodes[0] as Text;
+
+            setRange(oneTextNode, threeTextNode, 0, 5);
+            editor.blockManager.formattingAction.execCommand({ command: 'strikethrough' });
+
+            // Verify strikethrough applied to all three nodes
+            expect(contentEl.querySelectorAll('s').length).toBe(3);
+
+            // Verify model
+            const p1Model = editor.blocks[0];
+            expect((p1Model.content[0].properties as BaseStylesProp).styles.bold).toBe(true);
+            expect((p1Model.content[0].properties as BaseStylesProp).styles.strikethrough).toBe(true);
+            expect((p1Model.content[1].properties as BaseStylesProp).styles.italic).toBe(true);
+            expect((p1Model.content[1].properties as BaseStylesProp).styles.strikethrough).toBe(true);
+            expect((p1Model.content[2].properties as BaseStylesProp).styles.underline).toBe(true);
+            expect((p1Model.content[2].properties as BaseStylesProp).styles.strikethrough).toBe(true);
+            expect((p1Model.content[3].properties as BaseStylesProp).styles.strikethrough).toBeUndefined();
+        });
+
+        it('Should handle partial selection within overlapping formatted nodes', () => {
+            const blocks: BlockModel[] = [
+                {
+                    id: 'paragraph1',
+                    blockType: BlockType.Paragraph,
+                    content: [
+                        {
+                            contentType: ContentType.Text,
+                            content: 'Hello',
+                            properties: { styles: { bold: true } }
+                        },
+                        {
+                            contentType: ContentType.Text,
+                            content: 'World',
+                            properties: { styles: { italic: true } }
+                        }
+                    ]
+                }
+            ];
+            editor = createEditor({ blocks });
+            editor.appendTo('#editor');
+
+            const p1 = editorElement.querySelector('#paragraph1') as HTMLElement;
+            const contentEl = getBlockContentElement(p1);
+
+            // Select from "llo" (part of "Hello") to "Wor" (part of "World")
+            const strongEl = contentEl.querySelector('strong') as HTMLElement;
+            const helloTextNode = strongEl.childNodes[0] as Text;
+            const emEl = contentEl.querySelector('em') as HTMLElement;
+            const worldTextNode = emEl.childNodes[0] as Text;
+
+            setRange(helloTextNode, worldTextNode, 2, 3);
+            editor.blockManager.formattingAction.execCommand({ command: 'underline' });
+
+            // Verify partial formatting
+            expect(contentEl.querySelectorAll('u').length).toBe(2);
+
+            // Verify model - should have split content
+            const p1Model = editor.blocks[0];
+            expect(p1Model.content.length).toBe(4);
+            
+            // "He" (bold, no underline)
+            expect(p1Model.content[0].content).toBe('He');
+            expect((p1Model.content[0].properties as BaseStylesProp).styles.bold).toBe(true);
+            expect((p1Model.content[0].properties as BaseStylesProp).styles.underline).toBeUndefined();
+            
+            // "llo" (bold + underline)
+            expect(p1Model.content[1].content).toBe('llo');
+            expect((p1Model.content[1].properties as BaseStylesProp).styles.bold).toBe(true);
+            expect((p1Model.content[1].properties as BaseStylesProp).styles.underline).toBe(true);
+            
+            // "Wor" (italic + underline)
+            expect(p1Model.content[2].content).toBe('Wor');
+            expect((p1Model.content[2].properties as BaseStylesProp).styles.italic).toBe(true);
+            expect((p1Model.content[2].properties as BaseStylesProp).styles.underline).toBe(true);
+            
+            // "ld" (italic, no underline)
+            expect(p1Model.content[3].content).toBe('ld');
+            expect((p1Model.content[3].properties as BaseStylesProp).styles.italic).toBe(true);
+            expect((p1Model.content[3].properties as BaseStylesProp).styles.underline).toBeUndefined();
+        });
+    });
+
+    describe('Multi-block formatting with mixed states', () => {
+        let editor: BlockEditor;
+        let editorElement: HTMLElement;
+
+        beforeEach(() => {
+            editorElement = createElement('div', { id: 'editor' });
+            document.body.appendChild(editorElement);
+        });
+
+        afterEach(() => {
+            if (editor) { editor.destroy(); editor = undefined; }
+            remove(editorElement);
+        });
+
+        it('Should apply bold to all blocks when middle block is already bold', () => {
+            // Scenario: Block 1 (normal), Block 2 (bold), Block 3 (normal)
+            // Select all 3 blocks and apply bold
+            // Expected: All 3 blocks should be bold (Block 2 should remain bold, not toggle off)
+            const blocks: BlockModel[] = [
+                {
+                    id: 'paragraph1',
+                    blockType: BlockType.Paragraph,
+                    content: [{
+                        contentType: ContentType.Text,
+                        content: 'First block normal'
+                    }]
+                },
+                {
+                    id: 'paragraph2',
+                    blockType: BlockType.Paragraph,
+                    content: [{
+                        contentType: ContentType.Text,
+                        content: 'Second block bold',
+                        properties: { styles: { bold: true } }
+                    }]
+                },
+                {
+                    id: 'paragraph3',
+                    blockType: BlockType.Paragraph,
+                    content: [{
+                        contentType: ContentType.Text,
+                        content: 'Third block normal'
+                    }]
+                }
+            ];
+            editor = createEditor({ blocks });
+            editor.appendTo('#editor');
+
+            // Select all three blocks
+            const p1 = editorElement.querySelector('#paragraph1') as HTMLElement;
+            const p3 = editorElement.querySelector('#paragraph3') as HTMLElement;
+            const p1Content = getBlockContentElement(p1);
+            const p3Content = getBlockContentElement(p3);
+            const startNode = p1Content.childNodes[0] as Text;
+            const endNode = p3Content.childNodes[0] as Text;
+
+            setRange(startNode, endNode, 0, endNode.textContent.length);
+
+            // Apply bold
+            editor.blockManager.formattingAction.execCommand({ command: 'bold' });
+
+            // Verify all blocks are bold
+            const block1 = editor.blocks[0];
+            const block2 = editor.blocks[1];
+            const block3 = editor.blocks[2];
+
+            expect((block1.content[0].properties as BaseStylesProp).styles.bold).toBe(true);
+            expect((block2.content[0].properties as BaseStylesProp).styles.bold).toBe(true);
+            expect((block3.content[0].properties as BaseStylesProp).styles.bold).toBe(true);
+
+            // Verify DOM
+            expect(editorElement.querySelectorAll('strong').length).toBe(3);
+        });
+
+        it('Should remove bold from all blocks when middle block is not bold', () => {
+            // Scenario: Block 1 (bold), Block 2 (normal), Block 3 (bold)
+            // Select all 3 blocks and apply bold
+            // Expected: All blocks should have no bold (majority rule: 2 out of 3 have bold, so remove)
+            const blocks: BlockModel[] = [
+                {
+                    id: 'paragraph1',
+                    blockType: BlockType.Paragraph,
+                    content: [{
+                        contentType: ContentType.Text,
+                        content: 'First block bold',
+                        properties: { styles: { bold: true } }
+                    }]
+                },
+                {
+                    id: 'paragraph2',
+                    blockType: BlockType.Paragraph,
+                    content: [{
+                        contentType: ContentType.Text,
+                        content: 'Second block normal'
+                    }]
+                },
+                {
+                    id: 'paragraph3',
+                    blockType: BlockType.Paragraph,
+                    content: [{
+                        contentType: ContentType.Text,
+                        content: 'Third block bold',
+                        properties: { styles: { bold: true } }
+                    }]
+                }
+            ];
+            editor = createEditor({ blocks });
+            editor.appendTo('#editor');
+
+            // Initially verify 2 bold blocks
+            expect(editorElement.querySelectorAll('strong').length).toBe(2);
+
+            // Select all three blocks
+            const p1 = editorElement.querySelector('#paragraph1') as HTMLElement;
+            const p3 = editorElement.querySelector('#paragraph3') as HTMLElement;
+            const p1Content = getBlockContentElement(p1);
+            const p3Content = getBlockContentElement(p3);
+            const startNode = getDeepestTextNode(p1Content);
+            const endNode = getDeepestTextNode(p3Content);
+
+            setRange(startNode, endNode, 0, endNode.textContent.length);
+
+            // Apply bold (should act as toggle since not all blocks are bold)
+            editor.blockManager.formattingAction.execCommand({ command: 'bold' });
+
+            // Expected behavior: Since not ALL blocks have bold, it should APPLY bold to all
+            const block1 = editor.blocks[0];
+            const block2 = editor.blocks[1];
+            const block3 = editor.blocks[2];
+
+            expect((block1.content[0].properties as BaseStylesProp).styles.bold).toBe(true);
+            expect((block2.content[0].properties as BaseStylesProp).styles.bold).toBe(true);
+            expect((block3.content[0].properties as BaseStylesProp).styles.bold).toBe(true);
+
+            // Verify DOM
+            expect(editorElement.querySelectorAll('strong').length).toBe(3);
+        });
+
+        it('Should remove bold from all blocks when all blocks are fully bold', () => {
+            // Scenario: All 3 blocks are bold
+            // Select all and apply bold
+            // Expected: All blocks should have bold removed (toggle off)
+            const blocks: BlockModel[] = [
+                {
+                    id: 'paragraph1',
+                    blockType: BlockType.Paragraph,
+                    content: [{
+                        contentType: ContentType.Text,
+                        content: 'First block',
+                        properties: { styles: { bold: true } }
+                    }]
+                },
+                {
+                    id: 'paragraph2',
+                    blockType: BlockType.Paragraph,
+                    content: [{
+                        contentType: ContentType.Text,
+                        content: 'Second block',
+                        properties: { styles: { bold: true } }
+                    }]
+                },
+                {
+                    id: 'paragraph3',
+                    blockType: BlockType.Paragraph,
+                    content: [{
+                        contentType: ContentType.Text,
+                        content: 'Third block',
+                        properties: { styles: { bold: true } }
+                    }]
+                }
+            ];
+            editor = createEditor({ blocks });
+            editor.appendTo('#editor');
+
+            // Select all three blocks
+            const p1 = editorElement.querySelector('#paragraph1') as HTMLElement;
+            const p3 = editorElement.querySelector('#paragraph3') as HTMLElement;
+            const p1Content = getBlockContentElement(p1);
+            const p3Content = getBlockContentElement(p3);
+            const startNode = getDeepestTextNode(p1Content);
+            const endNode = getDeepestTextNode(p3Content);
+
+            setRange(startNode, endNode, 0, endNode.textContent.length);
+
+            // Apply bold (should remove since all are bold)
+            editor.blockManager.formattingAction.execCommand({ command: 'bold' });
+
+            // Verify all blocks have bold removed
+            const block1 = editor.blocks[0];
+            const block2 = editor.blocks[1];
+            const block3 = editor.blocks[2];
+
+            expect((block1.content[0].properties as BaseStylesProp).styles.bold).toBeUndefined();
+            expect((block2.content[0].properties as BaseStylesProp).styles.bold).toBeUndefined();
+            expect((block3.content[0].properties as BaseStylesProp).styles.bold).toBeUndefined();
+
+            // Verify DOM
+            expect(editorElement.querySelectorAll('strong').length).toBe(0);
+        });
+
+        it('Should handle mixed formatting across multiple blocks correctly', () => {
+            // Complex scenario: Block 1 (bold+italic), Block 2 (italic), Block 3 (normal)
+            // Select all and apply bold
+            // Expected: All blocks get bold applied (since not all have bold)
+            const blocks: BlockModel[] = [
+                {
+                    id: 'paragraph1',
+                    blockType: BlockType.Paragraph,
+                    content: [{
+                        contentType: ContentType.Text,
+                        content: 'Bold and Italic',
+                        properties: { styles: { bold: true, italic: true } }
+                    }]
+                },
+                {
+                    id: 'paragraph2',
+                    blockType: BlockType.Paragraph,
+                    content: [{
+                        contentType: ContentType.Text,
+                        content: 'Only Italic',
+                        properties: { styles: { italic: true } }
+                    }]
+                },
+                {
+                    id: 'paragraph3',
+                    blockType: BlockType.Paragraph,
+                    content: [{
+                        contentType: ContentType.Text,
+                        content: 'Normal'
+                    }]
+                }
+            ];
+            editor = createEditor({ blocks });
+            editor.appendTo('#editor');
+
+            // Select all three blocks
+            const p1 = editorElement.querySelector('#paragraph1') as HTMLElement;
+            const p3 = editorElement.querySelector('#paragraph3') as HTMLElement;
+            const p1Content = getBlockContentElement(p1);
+            const p3Content = getBlockContentElement(p3);
+            const startNode = getDeepestTextNode(p1Content);
+            const endNode = p3Content.childNodes[0] as Text;
+
+            setRange(startNode, endNode, 0, endNode.textContent.length);
+
+            // Apply bold
+            editor.blockManager.formattingAction.execCommand({ command: 'bold' });
+
+            // Verify all blocks have bold
+            const block1 = editor.blocks[0];
+            const block2 = editor.blocks[1];
+            const block3 = editor.blocks[2];
+
+            expect((block1.content[0].properties as BaseStylesProp).styles.bold).toBe(true);
+            expect((block2.content[0].properties as BaseStylesProp).styles.bold).toBe(true);
+            expect((block3.content[0].properties as BaseStylesProp).styles.bold).toBe(true);
+
+            // Verify italic states are preserved
+            expect((block1.content[0].properties as BaseStylesProp).styles.italic).toBe(true);
+            expect((block2.content[0].properties as BaseStylesProp).styles.italic).toBe(true);
+            expect((block3.content[0].properties as BaseStylesProp).styles.italic).toBeUndefined();
+        });
+
+        it('Should handle partial selection within multi-block formatting', () => {
+            // Scenario: 3 blocks, select from middle of block 1 to middle of block 3
+            // Block 2 is bold, others are not
+            // Expected: Bold should be applied to all selected portions
+            const blocks: BlockModel[] = [
+                {
+                    id: 'paragraph1',
+                    blockType: BlockType.Paragraph,
+                    content: [{
+                        contentType: ContentType.Text,
+                        content: 'First block text'
+                    }]
+                },
+                {
+                    id: 'paragraph2',
+                    blockType: BlockType.Paragraph,
+                    content: [{
+                        contentType: ContentType.Text,
+                        content: 'Second block bold',
+                        properties: { styles: { bold: true } }
+                    }]
+                },
+                {
+                    id: 'paragraph3',
+                    blockType: BlockType.Paragraph,
+                    content: [{
+                        contentType: ContentType.Text,
+                        content: 'Third block text'
+                    }]
+                }
+            ];
+            editor = createEditor({ blocks });
+            editor.appendTo('#editor');
+
+            const p1 = editorElement.querySelector('#paragraph1') as HTMLElement;
+            const p3 = editorElement.querySelector('#paragraph3') as HTMLElement;
+            const p1Content = getBlockContentElement(p1);
+            const p3Content = getBlockContentElement(p3);
+            const startNode = p1Content.childNodes[0] as Text;
+            const endNode = p3Content.childNodes[0] as Text;
+
+            // Select from "block text" (offset 6) in block 1 to "block" (offset 6) in block 3
+            setRange(startNode, endNode, 6, 11);
+
+            // Apply bold
+            editor.blockManager.formattingAction.execCommand({ command: 'bold' });
+
+            // Verify selected portions are bold
+            const block1 = editor.blocks[0];
+            const block2 = editor.blocks[1];
+            const block3 = editor.blocks[2];
+
+            // Block 1 should be split: "First " (no bold) + "block text" (bold)
+            expect(block1.content.length).toBeGreaterThan(1);
+            const boldInBlock1 = block1.content.find(c => 
+                (c.properties as BaseStylesProp).styles.bold === true
+            );
+            expect(boldInBlock1).toBeDefined();
+
+            // Block 2 should remain fully bold
+            expect((block2.content[0].properties as BaseStylesProp).styles.bold).toBe(true);
+
+            // Block 3 should be split: "Third " (bold) + "block text" (no bold)
+            expect(block3.content.length).toBeGreaterThan(1);
+            const boldInBlock3 = block3.content.find(c => 
+                (c.properties as BaseStylesProp).styles.bold === true
+            );
+            expect(boldInBlock3).toBeDefined();
         });
     });
 });

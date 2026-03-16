@@ -1,9 +1,12 @@
+import { ContextMenu as Context } from '@syncfusion/ej2-navigations';
+
 /**
  * ContextMenu module is used to handle the context menus used in the control.
  *
  * @hidden
  */
 export interface IContextMenu {
+    contextMenuObj?: Context
     contextMenuElement: HTMLElement
     currentTarget: HTMLElement
     previousAction: string

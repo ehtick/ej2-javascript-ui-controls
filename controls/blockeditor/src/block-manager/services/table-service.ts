@@ -1,11 +1,14 @@
 import { BlockManager } from '../base/block-manager';
 import * as constants from '../../common/constant';
 import { ITableBlockSettings, TableRowModel, TableColumnModel, TableCellModel, BlockModel } from '../../models/index';
-import { setCursorPosition, decoupleReference, generateUniqueId, getBlockContentElement, getBlockModelById, sanitizeBlock, removeFocusFromAllCells } from '../../common/utils/index';
+import { setCursorPosition, decoupleReference, generateUniqueId, getBlockContentElement, getBlockModelById,
+    removeFocusFromAllCells, projectEqualPercentFits, applyEqualPercent, changeColWidthToPxUnits, getWidthMode,
+    getColgroupChildren } from '../../common/utils/index';
 import { createElement } from '@syncfusion/ej2-base';
 import { BlockFactory } from './block-factory';
 import { findClosestParent } from '../../common/utils/dom';
 import { ITableColumnDeletionOptions, ITableColumnInsertOptions, ITableRowDeletionOptions, ITableRowInsertOptions, PayloadCell } from '../base/interface';
+import { TableUIManager } from '../plugins/table/ui-manager';
 
 
 /**
@@ -44,6 +47,7 @@ export class TableService {
     ): HTMLTableRowElement {
         const rowEl: HTMLTableRowElement = createElement('tr') as HTMLTableRowElement;
         const columns: TableColumnModel[] = settings.columns;
+        rowEl.dataset.row = visualRowIndex.toString();
 
         // Row number cell
         if (settings.enableRowNumbers) {
@@ -90,7 +94,7 @@ export class TableService {
      */
     public addRowAt(options: ITableRowInsertOptions): void {
         const { blockId, rowIndex, rowModel, isUndoRedoAction } = options;
-        const oldBlock: BlockModel = decoupleReference(sanitizeBlock(getBlockModelById(blockId, this.parent.getEditorBlocks())));
+        const oldBlock: BlockModel = decoupleReference(getBlockModelById(blockId, this.parent.getEditorBlocks()));
         const blockElement: HTMLElement = this.parent.getBlockElementById(blockId);
         const table: HTMLTableElement = blockElement.querySelector('table.e-table-element');
         const block: BlockModel = getBlockModelById(blockId, this.parent.getEditorBlocks());
@@ -106,7 +110,8 @@ export class TableService {
         const rows: HTMLTableRowElement[] = Array.from(tbody.rows);
         tbody.insertBefore(newRowEl, rows[rowIndex as number]);
         // Update dataset indices
-        Array.from(tbody.rows).forEach((row: HTMLTableRowElement, rIdx: number) => {
+        Array.from(tbody.rows).forEach(( row: HTMLTableRowElement, rIdx: number ) => {
+            row.dataset.row = settings.enableHeader ? (rIdx + 1).toString() : rIdx.toString();
             Array.from(row.cells).forEach((cell: HTMLTableCellElement) => {
                 if (cell.tagName === 'TD') {
                     cell.dataset.row = (rIdx + 1).toString();
@@ -134,7 +139,7 @@ export class TableService {
      */
     public addColumnAt(options: ITableColumnInsertOptions): void {
         const { blockId, colIndex, columnModel, columnCells, isUndoRedoAction } = options;
-        const oldBlock: BlockModel = decoupleReference(sanitizeBlock(getBlockModelById(blockId, this.parent.getEditorBlocks())));
+        const oldBlock: BlockModel = decoupleReference(getBlockModelById(blockId, this.parent.getEditorBlocks()));
         const blockElement: HTMLElement = this.parent.getBlockElementById(blockId);
         const table: HTMLTableElement = blockElement.querySelector('table.e-table-element');
         const block: BlockModel = getBlockModelById(blockId, this.parent.getEditorBlocks());
@@ -143,11 +148,15 @@ export class TableService {
         const settings: ITableBlockSettings = block.properties as ITableBlockSettings;
         const colIndicator: HTMLElement = tableBlockElement.querySelector('.e-col-insert-handle');
         const colLine: HTMLElement = tableBlockElement.querySelector('.e-col-hover-line');
+        const colResizeHandle: HTMLElement = tableBlockElement.querySelector('.e-col-resize-handle');
+        const mode: 'px' | 'percent' = getWidthMode(table);
+        const containerWidth: number = table.clientWidth;
         this.updateDataColCount(table, false);
         const newCount: number = parseInt(table.getAttribute('data-col-counter'), 10);
         table.setAttribute('data-col-counter', newCount.toString());
-        if (colIndicator) { (colIndicator as HTMLElement).style.display = 'none'; }
-        if (colLine) { (colLine as HTMLElement).style.display = 'none'; }
+        colIndicator.style.display = 'none';
+        colLine.style.display = 'none';
+        colResizeHandle.style.display = 'none';
 
         // Insert TableColumnModel into settings.columns
         const newColModel: TableColumnModel = columnModel || this.createColumnModel(newCount);
@@ -165,8 +174,24 @@ export class TableService {
         // Update colgroup visuals
         const colgroup: HTMLElement = table.querySelector('colgroup');
         const newColEl: HTMLTableColElement = createElement('col') as HTMLTableColElement;
-        newColEl.style.width = this.setColumnWidth(colgroup, true);
         colgroup.insertBefore(newColEl, colgroup.children[(settings.enableRowNumbers ? targetColIndex + 1 : targetColIndex) as number]);
+
+        if (mode === 'percent') {
+            // Decide if we can keep equal percent after insertion
+            const n: number = settings.columns.length;
+            const canStayPercent: boolean = projectEqualPercentFits(containerWidth, n, constants.TABLE_NEW_COL_WIDTH);
+            if (canStayPercent) {
+                // Equal % distribution
+                applyEqualPercent(table, settings);
+            } else {
+                // Switch to px mode: keep existing px widths and give new column 120px
+                changeColWidthToPxUnits(table, settings, { index: targetColIndex, width: constants.TABLE_NEW_COL_WIDTH });
+            }
+        } else {
+            // Already in px mode: keep existing px widths, assign 120px to new col
+            const dataCols: HTMLTableColElement[] = getColgroupChildren(table);
+            dataCols[targetColIndex as number].style.width = `${constants.TABLE_NEW_COL_WIDTH}px`;
+        }
 
         // Update rows DOM
         const rowsEl: HTMLTableRowElement[] = Array.from(table.rows);
@@ -202,6 +227,8 @@ export class TableService {
             }
         });
 
+        this.assertColDataset(table);
+
         // Focus first cell of the newly added column in the first body row
         const firstBodyRow: HTMLTableRowElement = table.tBodies[0].rows[0];
         if (firstBodyRow) {
@@ -227,7 +254,7 @@ export class TableService {
      */
     public deleteRowAt(options: ITableRowDeletionOptions): void {
         const { blockId , modelIndex, isUndoRedoAction  } = options;
-        const oldBlock: BlockModel = decoupleReference(sanitizeBlock(getBlockModelById(blockId, this.parent.getEditorBlocks())));
+        const oldBlock: BlockModel = decoupleReference(getBlockModelById(blockId, this.parent.getEditorBlocks()));
         const blockElement: HTMLElement = this.parent.getBlockElementById(blockId);
         const table: HTMLTableElement = blockElement.querySelector('table');
         const block: BlockModel = getBlockModelById(blockId, this.parent.getEditorBlocks());
@@ -240,8 +267,9 @@ export class TableService {
         const previousRowEle: HTMLTableRowElement = rowEl.previousElementSibling as HTMLTableRowElement;
         this.removeCellFocus(table);
         if (rowEl) { rowEl.remove(); }
-        Array.from(tbody.rows).forEach((r: HTMLTableRowElement, rIdx: number) => {
-            Array.from(r.cells).forEach((cell: HTMLTableCellElement) => {
+        Array.from(tbody.rows).forEach((row: HTMLTableRowElement, rIdx: number) => {
+            row.dataset.row = props.enableHeader ? (rIdx + 1).toString() : rIdx.toString();
+            Array.from(row.cells).forEach((cell: HTMLTableCellElement) => {
                 if (cell.tagName === 'TD') {
                     const vis: number = props.enableHeader ? rIdx + 1 : rIdx;
                     cell.dataset.row = vis.toString();
@@ -249,7 +277,21 @@ export class TableService {
                 }
             });
         });
-        this.addCellFocus(tbody.rows[modelIndex - (modelIndex > 0 ? 1 : 0)].cells[0], true);
+        if (tbody.rows.length > 0){
+            this.addCellFocus(tbody.rows[modelIndex - (modelIndex > 0 ? 1 : 0)].cells[0], true);
+        }
+        else{
+            if (props.enableHeader){
+                const headerRow: HTMLTableRowElement = table.querySelector('thead tr') as HTMLTableRowElement;
+                const firstHeaderCell: HTMLTableCellElement = headerRow.cells[props.enableRowNumbers ? 1 : 0] as HTMLTableCellElement;
+                this.addCellFocus(firstHeaderCell, true);
+            }
+            else {
+                const nextBlock: HTMLElement = blockElement.nextElementSibling as HTMLElement;
+                const previousBlock: HTMLElement = blockElement.previousElementSibling as HTMLElement;
+                this.parent.setFocusToBlock(nextBlock || previousBlock);
+            }
+        }
         this.updateRowNumbers(table, props);
         const deCoupledRowModel: TableRowModel = decoupleReference(rowModel);
         this.parent.undoRedoAction.trackTableRowDeletionForUndoRedo({
@@ -269,28 +311,40 @@ export class TableService {
      */
     public deleteColumnAt(options: ITableColumnDeletionOptions): void {
         const { blockId, colIndex, isUndoRedoAction } = options;
-        const oldBlock: BlockModel = decoupleReference(sanitizeBlock(getBlockModelById(blockId, this.parent.getEditorBlocks())));
+        const oldBlock: BlockModel = decoupleReference(getBlockModelById(blockId, this.parent.getEditorBlocks()));
         const blockElement: HTMLElement = this.parent.getBlockElementById(blockId);
         const table: HTMLTableElement = blockElement.querySelector('table');
         const tbody: HTMLTableSectionElement = table.tBodies[0];
         const rowElToUpdateCellFocus: HTMLTableRowElement = tbody.rows[0 as number] as HTMLTableRowElement;
         const block: BlockModel = getBlockModelById(blockId, this.parent.getEditorBlocks());
         const props: ITableBlockSettings = block.properties as ITableBlockSettings;
-        const colgroup: HTMLTableColElement | null = table.querySelector('colgroup');
         const colModel: TableRowModel = props.columns[colIndex as number];
         const deletedColCells: TableCellModel[] = [];
+        const mode: 'px' | 'percent' = getWidthMode(table);
+
+        // Model
         props.columns.splice(colIndex, 1);
         props.rows.forEach((r: TableRowModel) => { if (r.cells[colIndex as number]) {
             deletedColCells.push(decoupleReference(r.cells[colIndex as number]));
             r.cells.splice(colIndex, 1); }
         });
+
+        //DOM
         this.removeCellFocus(table);
+        const colgroup: HTMLTableColElement = table.querySelector('colgroup');
         const colChildren: HTMLElement[] = Array.from(colgroup.children).filter(
             (col: HTMLElement) => !col.classList.contains('e-col-row-number')) as HTMLElement[];
         if (colChildren[colIndex as number]) {
             colgroup.removeChild(colChildren[colIndex as number]);
         }
-        colChildren.forEach((child: HTMLElement) => child.style.width = this.setColumnWidth(colgroup));
+
+        if (mode === 'percent') {
+            // Stay in percent: redistribute equally after deletion
+            applyEqualPercent(table, props);
+        } else {
+            changeColWidthToPxUnits(table, props);
+        }
+
         Array.from(table.rows).forEach((row: HTMLTableRowElement) => {
             const cells: HTMLTableCellElement[] = Array.from(row.cells).filter((cell: HTMLElement) => !cell.classList.contains('e-row-number'));
             const indexToDelete: number = Array.from(row.cells).indexOf(cells[colIndex as number]);
@@ -301,6 +355,14 @@ export class TableService {
                 if (cell && cell.dataset.col) { cell.dataset.col = i.toString(); }
             }
         });
+
+        this.assertColDataset(table);
+
+        const uiManager: TableUIManager = this.parent.blockRenderer.tableRenderer.getManager(blockId);
+        if (uiManager) {
+            uiManager.hideAllPinnedColBars();  // Removes all .e-col-action-handle.e-pinned
+            uiManager.removeRowColSelection(table);
+        }
         this.addCellFocus(rowElToUpdateCellFocus.cells[colIndex as number], true);
         this.updateDataColCount(table, true);
         const deCoupledColModel: TableColumnModel = decoupleReference(colModel);
@@ -308,6 +370,18 @@ export class TableService {
             blockId, colIndex: colIndex, columnModel: deCoupledColModel, columnCells: deletedColCells, isUndoRedoAction
         });
         this.triggerBlockUpdate(block, oldBlock);
+    }
+
+    private assertColDataset(table: HTMLTableElement): void {
+        Array.from(table.rows).forEach((row: HTMLTableRowElement) => {
+            const dataCells: HTMLTableCellElement[] = Array.from(row.cells).filter(
+                (cell: HTMLTableCellElement) => !cell.classList.contains('e-row-number')
+            ) as HTMLTableCellElement[];
+
+            dataCells.forEach((cell: HTMLTableCellElement, dataColIdx: number) => {
+                cell.dataset.col = dataColIdx.toString();
+            });
+        });
     }
 
     /**
@@ -321,7 +395,7 @@ export class TableService {
      */
     public clearCellContents(table: HTMLTableElement, domCells: HTMLTableCellElement[] | NodeListOf<HTMLTableCellElement>): void {
         const blockId: string = table.getAttribute('data-block-id');
-        const oldBlock: BlockModel = decoupleReference(sanitizeBlock(getBlockModelById(blockId, this.parent.getEditorBlocks())));
+        const oldBlock: BlockModel = decoupleReference(getBlockModelById(blockId, this.parent.getEditorBlocks()));
         const block: BlockModel = getBlockModelById(blockId, this.parent.getEditorBlocks());
         const props: ITableBlockSettings = block.properties as ITableBlockSettings;
 

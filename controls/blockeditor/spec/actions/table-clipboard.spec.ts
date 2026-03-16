@@ -2,7 +2,7 @@ import { createElement } from '@syncfusion/ej2-base';
 import { BlockEditor } from '../../src/index';
 import { BlockModel, ITableBlockSettings, TableRowModel, TableCellModel, TableColumnModel } from '../../src/models/index';
 import { BlockType, ContentType } from '../../src/models/enums';
-import { createEditor } from '../common/util.spec';
+import { createEditor, selectFullColumns } from '../common/util.spec';
 import { getBlockContentElement, setCursorPosition } from '../../src/common/index';
 
 interface Blob {
@@ -21,7 +21,7 @@ function buildTableBlock(id: string, cols: number, rows: number, withDistinctTex
         cells: columns.map((c, cIdx) => ({
             id: `cell_${r + 1}_${cIdx + 1}`,
             columnId: c.id,
-            blocks: [{ id: `b_${r + 1}_${cIdx + 1}`, blockType: BlockType.Paragraph, content: [{ id: `c_${r + 1}_${cIdx + 1}`, contentType: ContentType.Text, content: withDistinctText ? `R${r + 1}C${cIdx + 1}` : '' }] }]
+            blocks: [{ id: `b_${r + 1}_${cIdx + 1}`, blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: withDistinctText ? `R${r + 1}C${cIdx + 1}` : '' }] }]
         } as TableCellModel))
     } as TableRowModel));
     const props: ITableBlockSettings = { columns, rows: bodyRows, width: '100%', enableHeader, enableRowNumbers } as ITableBlockSettings;
@@ -59,9 +59,9 @@ describe('Table Clipboard actions: ', () => {
         editorElement = createElement('div', { id: 'editor-v1' });
         document.body.appendChild(editorElement);
 
-        const before: BlockModel = { id: 'before', blockType: BlockType.Paragraph, content: [{ id: 'bc', contentType: ContentType.Text, content: 'Before' }] };
+        const before: BlockModel = { id: 'before', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Before' }] };
         const table: BlockModel = buildTableBlock('table_block', 3, 3, true, true, true);
-        const after: BlockModel = { id: 'after', blockType: BlockType.Paragraph, content: [{ id: 'ac', contentType: ContentType.Text, content: 'After' }] };
+        const after: BlockModel = { id: 'after', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'After' }] };
 
         editor = createEditor({ blocks: [before, table, after] });
         editor.appendTo('#editor-v1');
@@ -210,7 +210,7 @@ describe('Table Clipboard actions: ', () => {
         const targetBlock = targetCell.querySelector('.e-block') as HTMLElement;
         const content = getBlockContentElement(targetBlock);
         editor.blockManager.setFocusToBlock(targetBlock);
-        editor.setSelection(content.id, 0, content.textContent.length);
+        editor.setSelection(content.firstChild, 0, content.textContent.length);
 
         editor.blockManager.clipboardAction.performCutOperation();
 
@@ -375,10 +375,10 @@ describe('Table Clipboard actions: ', () => {
         const props = (editor.blocks[1] as BlockModel).properties as ITableBlockSettings;
         expect(props.rows.length).toBe(3);
         expect(props.columns.length).toBe(3);
-        expect(props.rows[0].cells[0].blocks[0].content.length).toBe(0);
-        expect(props.rows[0].cells[1].blocks[0].content.length).toBe(0);
-        expect(props.rows[1].cells[0].blocks[0].content.length).toBe(0);
-        expect(props.rows[1].cells[1].blocks[0].content.length).toBe(0);
+        expect(props.rows[0].cells[0].blocks[0].content.length).toBe(1);
+        expect(props.rows[0].cells[1].blocks[0].content.length).toBe(1);
+        expect(props.rows[1].cells[0].blocks[0].content.length).toBe(1);
+        expect(props.rows[1].cells[1].blocks[0].content.length).toBe(1);
 
         expect(getDataCellEl(editorElement, 1, 0).textContent.trim()).toBe('');
         expect(getDataCellEl(editorElement, 1, 1).textContent.trim()).toBe('');
@@ -558,6 +558,37 @@ describe('Table Clipboard actions: ', () => {
         expect(getDataCellEl(editorElement, 2, 1).textContent!.trim()).toBe('R2C1');
         expect(getDataCellEl(editorElement, 3, 1).textContent!.trim()).toBe('R3C1');
     });
+
+    it('Copy full column (Ctrl+C) and paste via getTablePayload at column start', () => {
+        // Use selectFullColumns to select the entire column 0 (including header and all body cells)
+        selectFullColumns(editorElement, 0, 0);
+        const tableBlockElement = editorElement.querySelector('.e-table-block') as HTMLElement;
+        const copyPayload = editor.blockManager.clipboardAction.getTablePayload(tableBlockElement);
+
+        // Verify payload has column data
+        expect(copyPayload.payload.type).toBe('table');
+        expect(copyPayload.payload.mode).toContain('cells');
+
+        // Paste at column 2 (different location)
+        const targetCell = getDataCellEl(editorElement, 1, 2);
+        const targetBlock = targetCell.querySelector('.e-block') as HTMLElement;
+        editor.blockManager.setFocusToBlock(targetBlock);
+        setCursorPosition(getBlockContentElement(targetBlock), 0);
+
+        editor.blockManager.clipboardAction.performPasteOperation(copyPayload);
+
+        const model = editor.blocks[1] as BlockModel;
+        const props = model.properties as ITableBlockSettings;
+        // Column 0 (R1C1, R2C1, R3C1) should be pasted into column 2
+        expect(props.rows[0].cells[2].blocks[0].content[0].content).toBe('R1C1');
+        expect(props.rows[1].cells[2].blocks[0].content[0].content).toBe('R2C1');
+        expect(props.rows[2].cells[2].blocks[0].content[0].content).toBe('R3C1');
+
+        // DOM assertions
+        expect(getDataCellEl(editorElement, 1, 2).textContent!.trim()).toBe('R1C1');
+        expect(getDataCellEl(editorElement, 2, 2).textContent!.trim()).toBe('R2C1');
+        expect(getDataCellEl(editorElement, 3, 2).textContent!.trim()).toBe('R3C1');
+    });
 })
 
 describe('Table Clipboard Overlapping and growth scenarios: ', () => {
@@ -567,9 +598,9 @@ describe('Table Clipboard Overlapping and growth scenarios: ', () => {
     beforeEach(() => {
         editorElement = createElement('div', { id: 'editor-v1-overlap' });
         document.body.appendChild(editorElement);
-        const before: BlockModel = { id: 'before-ov', blockType: BlockType.Paragraph, content: [{ id: 'bc-ov', contentType: ContentType.Text, content: 'Before' }] };
+        const before: BlockModel = { id: 'before-ov', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Before' }] };
         const table: BlockModel = buildTableBlock('table_block_ov', 4, 4, true, true, true);
-        const after: BlockModel = { id: 'after-ov', blockType: BlockType.Paragraph, content: [{ id: 'ac-ov', contentType: ContentType.Text, content: 'After' }] };
+        const after: BlockModel = { id: 'after-ov', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'After' }] };
         editor = createEditor({ blocks: [before, table, after] });
         editor.appendTo('#editor-v1-overlap');
     });
@@ -939,9 +970,9 @@ describe('Table Clipboard Combinations: ', () => {
         editorElement = createElement('div', { id: 'editor-v1-combo' });
         document.body.appendChild(editorElement);
 
-        const before: BlockModel = { id: 'before', blockType: BlockType.Paragraph, content: [{ id: 'bc', contentType: ContentType.Text, content: 'Before' }] };
+        const before: BlockModel = { id: 'before', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Before' }] };
         const table: BlockModel = buildTableBlock('table_block', 3, 3, true, true, true);
-        const after: BlockModel = { id: 'after', blockType: BlockType.Paragraph, content: [{ id: 'ac', contentType: ContentType.Text, content: 'After' }] };
+        const after: BlockModel = { id: 'after', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'After' }] };
 
         editor = createEditor({ blocks: [before, table, after] });
         editor.appendTo('#editor-v1-combo');
@@ -1210,9 +1241,9 @@ describe('Table Clipboard Undo Redo', () => {
         editorElement = createElement('div', { id: 'editor-undo-redo' });
         document.body.appendChild(editorElement);
 
-        const before: BlockModel = { id: 'before-ur', blockType: BlockType.Paragraph, content: [{ id: 'bc-ur', contentType: ContentType.Text, content: 'Before' }] };
+        const before: BlockModel = { id: 'before-ur', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Before' }] };
         const table: BlockModel = buildTableBlock('table_block_ur', 3, 3, true, true, true);
-        const after: BlockModel = { id: 'after-ur', blockType: BlockType.Paragraph, content: [{ id: 'ac-ur', contentType: ContentType.Text, content: 'After' }] };
+        const after: BlockModel = { id: 'after-ur', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'After' }] };
 
         editor = createEditor({ blocks: [before, table, after] });
         editor.appendTo('#editor-undo-redo');
@@ -1241,7 +1272,11 @@ describe('Table Clipboard Undo Redo', () => {
 
             // Assert cleared (model + DOM)
             let props = (editor.blocks[1] as BlockModel).properties as ITableBlockSettings;
-            expect(props.rows[0].cells[0].blocks[0].content.length).toBe(0);
+            expect(props.rows[0].cells[0].blocks[0].blockType).toBe(BlockType.Paragraph);
+            expect(props.rows[0].cells[0].blocks[0].content.length).toBe(1);
+            expect(props.rows[0].cells[0].blocks[0].content[0].content).toBe('');
+            expect(props.rows[0].cells[0].blocks[0].content[0].contentType).toBe(ContentType.Text);
+
             expect(getDataCellEl(editorElement, 1, 0).textContent!.trim()).toBe('');
 
             // Undo
@@ -1257,7 +1292,10 @@ describe('Table Clipboard Undo Redo', () => {
 
             // Assert cleared again
             props = (editor.blocks[1] as BlockModel).properties as ITableBlockSettings;
-            expect(props.rows[0].cells[0].blocks[0].content.length).toBe(0);
+            expect(props.rows[0].cells[0].blocks[0].blockType).toBe(BlockType.Paragraph);
+            expect(props.rows[0].cells[0].blocks[0].content.length).toBe(1);
+            expect(props.rows[0].cells[0].blocks[0].content[0].content).toBe('');
+            expect(props.rows[0].cells[0].blocks[0].content[0].contentType).toBe(ContentType.Text);
             expect(getDataCellEl(editorElement, 1, 0).textContent!.trim()).toBe('');
         });
 
@@ -1280,10 +1318,22 @@ describe('Table Clipboard Undo Redo', () => {
 
             // Assert cleared
             let props = (editor.blocks[1] as BlockModel).properties as ITableBlockSettings;
-            expect(props.rows[0].cells[0].blocks[0].content.length).toBe(0);
-            expect(props.rows[0].cells[1].blocks[0].content.length).toBe(0);
-            expect(props.rows[1].cells[0].blocks[0].content.length).toBe(0);
-            expect(props.rows[1].cells[1].blocks[0].content.length).toBe(0);
+            expect(props.rows[0].cells[0].blocks[0].blockType).toBe(BlockType.Paragraph);
+            expect(props.rows[0].cells[0].blocks[0].content.length).toBe(1);
+            expect(props.rows[0].cells[0].blocks[0].content[0].content).toBe('');
+            expect(props.rows[0].cells[0].blocks[0].content[0].contentType).toBe(ContentType.Text);
+            expect(props.rows[0].cells[1].blocks[0].blockType).toBe(BlockType.Paragraph);
+            expect(props.rows[0].cells[1].blocks[0].content.length).toBe(1);
+            expect(props.rows[0].cells[1].blocks[0].content[0].content).toBe('');
+            expect(props.rows[0].cells[1].blocks[0].content[0].contentType).toBe(ContentType.Text);
+            expect(props.rows[1].cells[0].blocks[0].blockType).toBe(BlockType.Paragraph);
+            expect(props.rows[1].cells[0].blocks[0].content.length).toBe(1);
+            expect(props.rows[1].cells[0].blocks[0].content[0].content).toBe('');
+            expect(props.rows[1].cells[0].blocks[0].content[0].contentType).toBe(ContentType.Text);
+            expect(props.rows[1].cells[1].blocks[0].blockType).toBe(BlockType.Paragraph);
+            expect(props.rows[1].cells[1].blocks[0].content.length).toBe(1);
+            expect(props.rows[1].cells[1].blocks[0].content[0].content).toBe('');
+            expect(props.rows[1].cells[1].blocks[0].content[0].contentType).toBe(ContentType.Text);
             expect(getDataCellEl(editorElement, 1, 0).textContent!.trim()).toBe('');
             expect(getDataCellEl(editorElement, 1, 1).textContent!.trim()).toBe('');
             expect(getDataCellEl(editorElement, 2, 0).textContent!.trim()).toBe('');
@@ -1304,10 +1354,22 @@ describe('Table Clipboard Undo Redo', () => {
             // Redo re-applies clear
             editor.blockManager.undoRedoAction.redo();
             props = (editor.blocks[1] as BlockModel).properties as ITableBlockSettings;
-            expect(props.rows[0].cells[0].blocks[0].content.length).toBe(0);
-            expect(props.rows[0].cells[1].blocks[0].content.length).toBe(0);
-            expect(props.rows[1].cells[0].blocks[0].content.length).toBe(0);
-            expect(props.rows[1].cells[1].blocks[0].content.length).toBe(0);
+            expect(props.rows[0].cells[0].blocks[0].blockType).toBe(BlockType.Paragraph);
+            expect(props.rows[0].cells[0].blocks[0].content.length).toBe(1);
+            expect(props.rows[0].cells[0].blocks[0].content[0].content).toBe('');
+            expect(props.rows[0].cells[0].blocks[0].content[0].contentType).toBe(ContentType.Text);
+            expect(props.rows[0].cells[1].blocks[0].blockType).toBe(BlockType.Paragraph);
+            expect(props.rows[0].cells[1].blocks[0].content.length).toBe(1);
+            expect(props.rows[0].cells[1].blocks[0].content[0].content).toBe('');
+            expect(props.rows[0].cells[1].blocks[0].content[0].contentType).toBe(ContentType.Text);
+            expect(props.rows[1].cells[0].blocks[0].blockType).toBe(BlockType.Paragraph);
+            expect(props.rows[1].cells[0].blocks[0].content.length).toBe(1);
+            expect(props.rows[1].cells[0].blocks[0].content[0].content).toBe('');
+            expect(props.rows[1].cells[0].blocks[0].content[0].contentType).toBe(ContentType.Text);
+            expect(props.rows[1].cells[1].blocks[0].blockType).toBe(BlockType.Paragraph);
+            expect(props.rows[1].cells[1].blocks[0].content.length).toBe(1);
+            expect(props.rows[1].cells[1].blocks[0].content[0].content).toBe('');
+            expect(props.rows[1].cells[1].blocks[0].content[0].contentType).toBe(ContentType.Text);
             expect(getDataCellEl(editorElement, 1, 0).textContent!.trim()).toBe('');
             expect(getDataCellEl(editorElement, 1, 1).textContent!.trim()).toBe('');
             expect(getDataCellEl(editorElement, 2, 0).textContent!.trim()).toBe('');
@@ -1333,10 +1395,22 @@ describe('Table Clipboard Undo Redo', () => {
 
             // Assert cleared
             let props = (editor.blocks[1] as BlockModel).properties as ITableBlockSettings;
-            expect(props.rows[1].cells[1].blocks[0].content.length).toBe(0);
-            expect(props.rows[1].cells[2].blocks[0].content.length).toBe(0);
-            expect(props.rows[2].cells[1].blocks[0].content.length).toBe(0);
-            expect(props.rows[2].cells[2].blocks[0].content.length).toBe(0);
+            expect(props.rows[1].cells[1].blocks[0].blockType).toBe(BlockType.Paragraph);
+            expect(props.rows[1].cells[1].blocks[0].content.length).toBe(1);
+            expect(props.rows[1].cells[1].blocks[0].content[0].content).toBe('');
+            expect(props.rows[1].cells[1].blocks[0].content[0].contentType).toBe(ContentType.Text);
+            expect(props.rows[1].cells[2].blocks[0].blockType).toBe(BlockType.Paragraph);
+            expect(props.rows[1].cells[2].blocks[0].content.length).toBe(1);
+            expect(props.rows[1].cells[2].blocks[0].content[0].content).toBe('');
+            expect(props.rows[1].cells[2].blocks[0].content[0].contentType).toBe(ContentType.Text);
+            expect(props.rows[2].cells[1].blocks[0].blockType).toBe(BlockType.Paragraph);
+            expect(props.rows[2].cells[1].blocks[0].content.length).toBe(1);
+            expect(props.rows[2].cells[1].blocks[0].content[0].content).toBe('');
+            expect(props.rows[2].cells[1].blocks[0].content[0].contentType).toBe(ContentType.Text);
+            expect(props.rows[2].cells[2].blocks[0].blockType).toBe(BlockType.Paragraph);
+            expect(props.rows[2].cells[2].blocks[0].content.length).toBe(1);
+            expect(props.rows[2].cells[2].blocks[0].content[0].content).toBe('');
+            expect(props.rows[2].cells[2].blocks[0].content[0].contentType).toBe(ContentType.Text);
             expect(getDataCellEl(editorElement, 2, 1).textContent!.trim()).toBe('');
             expect(getDataCellEl(editorElement, 2, 2).textContent!.trim()).toBe('');
             expect(getDataCellEl(editorElement, 3, 1).textContent!.trim()).toBe('');
@@ -1357,10 +1431,22 @@ describe('Table Clipboard Undo Redo', () => {
             // Redo
             editor.blockManager.undoRedoAction.redo();
             props = (editor.blocks[1] as BlockModel).properties as ITableBlockSettings;
-            expect(props.rows[1].cells[1].blocks[0].content.length).toBe(0);
-            expect(props.rows[1].cells[2].blocks[0].content.length).toBe(0);
-            expect(props.rows[2].cells[1].blocks[0].content.length).toBe(0);
-            expect(props.rows[2].cells[2].blocks[0].content.length).toBe(0);
+            expect(props.rows[1].cells[1].blocks[0].blockType).toBe(BlockType.Paragraph);
+            expect(props.rows[1].cells[1].blocks[0].content.length).toBe(1);
+            expect(props.rows[1].cells[1].blocks[0].content[0].content).toBe('');
+            expect(props.rows[1].cells[1].blocks[0].content[0].contentType).toBe(ContentType.Text);
+            expect(props.rows[1].cells[2].blocks[0].blockType).toBe(BlockType.Paragraph);
+            expect(props.rows[1].cells[2].blocks[0].content.length).toBe(1);
+            expect(props.rows[1].cells[2].blocks[0].content[0].content).toBe('');
+            expect(props.rows[1].cells[2].blocks[0].content[0].contentType).toBe(ContentType.Text);
+            expect(props.rows[2].cells[1].blocks[0].blockType).toBe(BlockType.Paragraph);
+            expect(props.rows[2].cells[1].blocks[0].content.length).toBe(1);
+            expect(props.rows[2].cells[1].blocks[0].content[0].content).toBe('');
+            expect(props.rows[2].cells[1].blocks[0].content[0].contentType).toBe(ContentType.Text);
+            expect(props.rows[2].cells[2].blocks[0].blockType).toBe(BlockType.Paragraph);
+            expect(props.rows[2].cells[2].blocks[0].content.length).toBe(1);
+            expect(props.rows[2].cells[2].blocks[0].content[0].content).toBe('');
+            expect(props.rows[2].cells[2].blocks[0].content[0].contentType).toBe(ContentType.Text);
             expect(getDataCellEl(editorElement, 2, 1).textContent!.trim()).toBe('');
             expect(getDataCellEl(editorElement, 2, 2).textContent!.trim()).toBe('');
             expect(getDataCellEl(editorElement, 3, 1).textContent!.trim()).toBe('');

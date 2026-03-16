@@ -434,7 +434,7 @@ describe('Undo and Redo module', () => {
                 toolbarSettings: {
                     items: ['Undo', 'Redo']
                 },
-                value: `<p><img src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png" style="width: 300px; height: 200px; outline: rgb(74, 144, 226) solid 2px;" class="e-rte-image e-imginline e-resize e-img-focus"></p>
+                value: `<p><img src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png" style="width: 300px; height: 200px; outline: rgb(74, 144, 226) solid 2px;" class="e-rte-image e-img-inline e-resize e-img-focus"></p>
                         <span class="e-img-resize" id="insertMediaRTE_imgResize"><span class="e-rte-imageboxmark e-rte-topLeft" style="cursor: nwse-resize; left: 15px; top: 10px;"></span><span class="e-rte-imageboxmark e-rte-topRight" style="cursor: nesw-resize; left: 317px; top: 10px;"></span><span class="e-rte-imageboxmark e-rte-botLeft" style="cursor: nesw-resize; left: 15px; top: 210px;"></span><span class="e-rte-imageboxmark e-rte-botRight" style="cursor: nwse-resize; left: 317px; top: 210px;"></span></span>`
             });
         });

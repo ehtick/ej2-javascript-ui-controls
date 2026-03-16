@@ -5,6 +5,7 @@ import { bindVisioConnectors, VisioConnections, VisioConnector } from './visio-c
 import { IMPORT_LIMITATIONS, UNIT_CONVERSION } from './visio-constants';
 import { ensureArray } from './visio-core';
 import { exportToVsdxFile } from './visio-export';
+import { VisioMemoryStream } from './visio-memory-stream';
 import { parserVisioRelationship, parseVisioDocumentSettings, parseVisioMaster, parseVisioPage, parseVisioTheme, parseVisioWindow } from './visio-model-parsers';
 import { VisioDiagramData, VisioLayer, VisioPage, VisioRelationship, VisioShape, VisioTheme, VisioWindow } from './visio-models';
 import { parserVisioShape } from './visio-node-parser';
@@ -12,6 +13,7 @@ import { convertVisioShapeToNode } from './visio-nodes';
 import { VisioPackageReader } from './visio-package-reader';
 import { BPMNActivityShape, BPMNShape, DiagramAddInfo, DocumentSettingsElement, MasterElement, OneOrMany, ParsedXmlObject, ShapeCache, ThemeElements, VisioCell, VisioDocumentStructure, VisioMedia, VisioNode, VisioPageContent, VisioShapeData, WindowRootElement, XmlRelationship } from './visio-types';
 import { MinimalZipReader } from './zipReader';
+import { VisioPropertiesManager } from './visio-theme';
 
 /**
  * Main class for importing and exporting Visio VSDX files.
@@ -35,6 +37,9 @@ import { MinimalZipReader } from './zipReader';
 export class ImportAndExportVisio {
     /** Instance of VisioPackageReader for reading and extracting VSDX file contents */
     private packageReader: VisioPackageReader;
+
+    /** Active parsing context for current import/export operation */
+    private context?: ParsingContext;
 
     /**
      * Creates a new instance of the ImportAndExportVisio class.
@@ -74,9 +79,9 @@ export class ImportAndExportVisio {
      */
     public exportVSDX(diagram: Diagram, options?: VisioExportOptions): void {
         // Create a new, clean context for this parsing operation.
-        const context: ParsingContext = new ParsingContext(diagram);
+        this.context = new ParsingContext(diagram);
         const args: IExportingEventArgs = { status: 'started' };
-        context.triggerEvent('Export', { status: 'started' });
+        this.context.triggerEvent('Export', { status: 'started' });
 
         // Check if export was cancelled by event handlers
         if (args.cancel) {
@@ -95,7 +100,7 @@ export class ImportAndExportVisio {
      *
      * @private
      * @async
-     * @param {File} file - The VSDX file to import (from HTML file input).
+     * @param {File | Blob} file - The VSDX file to import (from HTML file input).
      * @param {Diagram} diagram - The Syncfusion Diagram instance to populate.
      * @param {VisioImportOptions} [options] - Optional import configuration.
      * @param {number} [options.pageIndex=0] - Zero-based index of the page to import.
@@ -130,12 +135,19 @@ export class ImportAndExportVisio {
      * ```
      */
     public async importVSDX(
-        file: File,
+        file: File | Blob,
         diagram: Diagram,
         options?: VisioImportOptions
     ): Promise<ImportResult> {
+
+        // Dispose previous context before creating new one
+        if (this.context && this.context.propertyManager) {
+            this.context.propertyManager.dispose();
+            this.context = undefined;
+        }
         // Create a new, clean context for this parsing operation.
-        const context: ParsingContext = new ParsingContext(diagram);
+        let context: ParsingContext = this.context;
+        context = new ParsingContext(diagram);
 
         // Validate file parameter
         if (!file) {
@@ -144,6 +156,7 @@ export class ImportAndExportVisio {
         }
 
         try {
+            VisioMemoryStream.clear();
             // Step 1: Read file as ArrayBuffer
             const arrayBuffer: ArrayBuffer = await this.readFileAsArrayBuffer(file);
 
@@ -165,6 +178,8 @@ export class ImportAndExportVisio {
 
             // Store parsed XML structure in context for use during parsing
             context.entries = visioObj;
+            // Store file in memory stream for use it in export
+            VisioMemoryStream.set((file as File).name, arrayBuffer, pageIndex);
 
             // Step 3: Parse raw XML object into clean data model
             const diagramData: VisioDiagramData = await parseVisioData(visioObj, context);
@@ -213,7 +228,7 @@ export class ImportAndExportVisio {
      * // buffer is now an ArrayBuffer containing file contents
      * ```
      */
-    private readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
+    private readFileAsArrayBuffer(file: File | Blob): Promise<ArrayBuffer> {
         return new Promise((resolve: (value: ArrayBuffer) => void, reject: (reason?: any) => void) => {
             const reader: FileReader = new FileReader();
 
@@ -252,11 +267,12 @@ export class ImportAndExportVisio {
      * @returns {void}
      *
      * @remarks
-     * Currently a placeholder for future resource cleanup logic.
      * Can be extended to clean up file readers, cached data, etc.
      */
     public destroy(): void {
-        // Cleanup logic can be added here if needed.
+        if (this.context && this.context.propertyManager) {
+            this.context.propertyManager.dispose();
+        }
     }
 }
 
@@ -417,6 +433,13 @@ export class ParsingContext {
     public get currentPage(): VisioPage | undefined {
         return this.data.currentPage;
     }
+
+    /**
+     * Parsed XML document structure from the VSDX file.
+     * Contains all extracted XML data organized by type.
+     * @private
+     */
+    public propertyManager: VisioPropertiesManager;
 }
 
 /**
@@ -560,6 +583,96 @@ export async function parseVisioData(visioObj: VisioDocumentStructure, context: 
         return base64;
     }
 
+    /**
+     * Extracts the first 'Solid' shape from the immediate background page (if present).
+     * Resolves entries.__BackgroundPageFiles[0], loads that page from entries.__Parts,
+     * parses its Shapes, and returns the first VisioShape with name === 'Solid'.
+     *
+     * @param {VisioDocumentStructure} entries - Consolidated document structure with parts bag
+     * @param {ParsingContext} parseContext - Parsing context used by parserVisioShape
+     * @returns {VisioShape | null} First 'Solid' shape from background page or null
+     */
+    function extractImmediateBackgroundSolid(
+        entries: VisioDocumentStructure,
+        parseContext: ParsingContext
+    ): VisioShape | null {
+        // -- Guard: validate inputs --
+        if (!entries || typeof entries !== 'object') {
+            return null;
+        }
+        if (!parseContext || typeof parseContext !== 'object') {
+            return null;
+        }
+
+        // -- Read __Parts safely --
+        const partsDescriptor: PropertyDescriptor | undefined = Object.getOwnPropertyDescriptor(entries as ParsedXmlObject, '__Parts');
+        if (!partsDescriptor || !partsDescriptor.value) {
+            return null;
+        }
+        const partsBag: ParsedXmlObject = partsDescriptor.value as ParsedXmlObject;
+
+        // -- Read first background page file from __BackgroundPageFiles safely --
+        let backgroundFilePath: string = '';
+        const bgListDescriptor: PropertyDescriptor | undefined = Object.getOwnPropertyDescriptor(entries as ParsedXmlObject, '__BackgroundPageFiles');
+        if (bgListDescriptor && bgListDescriptor.value && Array.isArray(bgListDescriptor.value)) {
+            const listUnknown: unknown[] = bgListDescriptor.value as unknown[];
+            if (listUnknown.length > 0) {
+                const firstEntry: unknown = listUnknown[0];
+                if (typeof firstEntry === 'string') {
+                    backgroundFilePath = firstEntry;
+                }
+            }
+        }
+        if (!backgroundFilePath) {
+            return null;
+        }
+
+        // -- Sanitize path to avoid traversal/null-byte issues --
+        if (backgroundFilePath.indexOf('..') >= 0) {
+            return null;
+        }
+        if (backgroundFilePath.indexOf('\0') >= 0) {
+            return null;
+        }
+
+        // -- Resolve the background page JS object from parts bag --
+        if (!Object.prototype.hasOwnProperty.call(partsBag, backgroundFilePath)) {
+            return null;
+        }
+        const bgPageDescriptor: PropertyDescriptor | undefined = Object.getOwnPropertyDescriptor(partsBag, backgroundFilePath);
+        if (!bgPageDescriptor || !bgPageDescriptor.value) {
+            return null;
+        }
+        const backgroundPageJs: ParsedXmlObject = bgPageDescriptor.value as ParsedXmlObject;
+
+        // -- Normalize 'Shapes' to an array of ParsedXmlObject blocks --
+        const rawShapesBlocks: unknown = (backgroundPageJs as ParsedXmlObject)['Shapes'];
+        if (!rawShapesBlocks) {
+            return null;
+        }
+        const shapesBlocks: ParsedXmlObject[] = Array.isArray(rawShapesBlocks)
+            ? (rawShapesBlocks as ParsedXmlObject[])
+            : [rawShapesBlocks as ParsedXmlObject];
+
+        // -- Parse each shapes block and return the first shape named 'Solid' --
+        for (let i: number = 0; i < shapesBlocks.length; i += 1) {
+            const block: ParsedXmlObject = shapesBlocks[parseInt(i.toString(), 10)];
+            const parsedShapes: VisioShape[] = parserVisioShape(block, parseContext);
+            if (parsedShapes && parsedShapes.length > 0) {
+                for (let k: number = 0; k < parsedShapes.length; k += 1) {
+                    const candidateShape: VisioShape = parsedShapes[parseInt(k.toString(), 10)];
+                    // -- Guard: ensure candidate has a name field before comparing --
+                    if (candidateShape && (candidateShape as { name?: string }).name === 'Solid') {
+                        return candidateShape;
+                    }
+                }
+            }
+        }
+
+        // -- Fallback: nothing found --
+        return null;
+    }
+
     // ========================================
     // PARSE PAGES (must be done before shapes)
     // ========================================
@@ -648,7 +761,12 @@ export async function parseVisioData(visioObj: VisioDocumentStructure, context: 
                         }
 
                         // Retrieve binary data
-                        const binaryData: Uint8Array = context.entries.__BinaryParts[`${binaryKey}`];
+                        let binaryData: Uint8Array | undefined;
+                        const binaryParts: Record<string, Uint8Array> = context.entries.__BinaryParts;
+                        if (binaryParts && Object.prototype.hasOwnProperty.call(binaryParts, binaryKey)) {
+                            const descriptor: PropertyDescriptor = Object.getOwnPropertyDescriptor(binaryParts, binaryKey);
+                            binaryData = descriptor ? descriptor.value as Uint8Array : undefined;
+                        }
 
                         if (binaryData) {
                             // Create media object with binary data
@@ -664,7 +782,9 @@ export async function parseVisioData(visioObj: VisioDocumentStructure, context: 
                             media.dataUrl = `data:${media.type};base64,${base64}`;
 
                             // Store in context media collection
-                            context.data.medias[mediaObj.Id] = media;
+                            if (mediaObj && mediaObj.Id != null) {
+                                context.data.medias[String(mediaObj.Id)] = media;
+                            }
                         }
                     }
                 }
@@ -703,39 +823,56 @@ export async function parseVisioData(visioObj: VisioDocumentStructure, context: 
     // ========================================
     // PARSE SHAPES AND CONNECTORS
     // ========================================
-    if (visioObj.Shapes) {
-        const shapesArr: ParsedXmlObject[] = Array.isArray(visioObj.Shapes) ? visioObj.Shapes : [visioObj.Shapes];
-        const shapes: VisioShape[] = [];
-
-        // Parse all shapes first
-        for (const shapeObj of shapesArr) {
-            shapes.push(...parserVisioShape(shapeObj, context));
-        }
-
-        // Filter out empty shapes
-        const nonEmptyShapes: VisioShape[] = shapes.filter(
-            (shape: VisioShape) =>
-                (Array.isArray(shape) && shape.length > 0) ||
-                (shape && typeof shape === 'object' && Object.keys(shape).length > 0 && !Array.isArray(shape))
-        );
-
-        // Add non-empty shapes to context
-        if (nonEmptyShapes.length > 0) {
-            context.data.shapes.push(...nonEmptyShapes);
-        }
-
-        // Validate that at least one page exists
-        if (context.data.pages.length === 0) {
-            return undefined;
-        }
-
-        // Parse connectors from shapes
-        const connectors: VisioConnector[] = [];
-        for (const connectorObj of shapesArr) {
-            connectors.push(...VisioConnector.fromJs(connectorObj, context));
-        }
-        context.data.connectors.push(...connectors);
+    // Map of vsdx package internal paths -> parsed JS objects.
+    const packageFiles: any = (context.entries && (context.entries as any).__Parts) ? (context.entries as any).__Parts : {};
+    // Path of the selected Visio page file.
+    const selectedPageKey: string = (context.entries && (context.entries as any).__SelectedPageFile) ? String((context.entries as any).__SelectedPageFile) : '';
+    // Parsed JS content of the selected page.
+    let selectedPageContent: any = {};
+    if (selectedPageKey && Object.prototype.hasOwnProperty.call(packageFiles, selectedPageKey)) {
+        const descriptor: PropertyDescriptor = Object.getOwnPropertyDescriptor(packageFiles, selectedPageKey);
+        selectedPageContent = descriptor ? descriptor.value : {};
     }
+
+    // Normalize page Shapes and Connects to arrays
+    const selectedPageShapesArr: ParsedXmlObject[] = selectedPageContent && selectedPageContent.Shapes
+        ? (Array.isArray(selectedPageContent.Shapes) ? selectedPageContent.Shapes : [selectedPageContent.Shapes])
+        : [];
+
+    const shapes: VisioShape[] = [];
+
+    // -- Extract and prepend the selected page's background Solid (if present) --
+    const backgroundSolid: VisioShape | null = extractImmediateBackgroundSolid(context.entries, context);
+    if (backgroundSolid) {
+        context.data.shapes.push(backgroundSolid);
+    }
+
+    // Parse only the selected page's shapes
+    for (const shapeObj of selectedPageShapesArr) {
+        shapes.push(...parserVisioShape(shapeObj, context));
+    }
+
+    // Filter out empty shapes and add to context
+    const nonEmptyShapes: VisioShape[] = shapes.filter(
+        (shape: VisioShape) =>
+            ((Array.isArray(shape) && shape.length > 0) ||
+                (shape && typeof shape === 'object' && Object.keys(shape).length > 0 && !Array.isArray(shape)))
+    );
+    if (nonEmptyShapes.length > 0) {
+        context.data.shapes.push(...nonEmptyShapes);
+    }
+
+    // Validate at least one page exists
+    if (context.data.pages.length === 0) {
+        return undefined;
+    }
+
+    // Parse connectors only from page
+    const connectors: VisioConnector[] = [];
+    for (const connectorObj of selectedPageShapesArr) {
+        connectors.push(...VisioConnector.fromJs(connectorObj, context));
+    }
+    context.data.connectors.push(...connectors);
 
     return context.data;
 }
@@ -877,15 +1014,18 @@ export async function loadVisioDataIntoDiagram(
 
         // Convert each shape to a node and add to diagram
         shapeGroup.forEach((shapeItem: VisioShape) => {
-            // Skip Solid background shape and special BPMN shapes
             if (shapeItem.name !== 'Solid') {
-                if ((shapeItem.shape && (shapeItem as VisioShapeData).shape.type !== 'Member')
-                    && (shapeItem.shape && (shapeItem as VisioShapeData).shape.type !== 'Separator')) {
+                const isGroup: boolean = Array.isArray((shapeItem as any).children) && (shapeItem as any).children.length > 0;
+                const shapeType: string | undefined = (shapeItem as any).shape ? (shapeItem as any).shape.type : undefined;
+                const isBlockedBpmnPart: boolean = shapeType === 'Member' || shapeType === 'Separator';
+
+                // Allow groups OR any non-blocked normal shape
+                if (isGroup || !isBlockedBpmnPart) {
                     // Convert Visio shape to Syncfusion node
                     const node: NodeModel = convertVisioShapeToNode(shapeItem, context, shapeGroup);
 
                     // Log warning for BPMN shapes (visual differences expected)
-                    if ((node.shape as BpmnShapeModel).type === 'Bpmn') {
+                    if (shapeType && (node.shape as BpmnShapeModel).type === 'Bpmn') {
                         context.addWarning('[WARNING] :: BPMN shapes visually differ from visio.');
                     }
 
@@ -894,6 +1034,7 @@ export async function loadVisioDataIntoDiagram(
                 }
             }
         });
+
     }
 
     // Add connectors to diagram
@@ -913,7 +1054,9 @@ export async function loadVisioDataIntoDiagram(
 
     // Save and reload diagram to apply all changes
     const data: string = diagram.saveDiagram();
+    VisioMemoryStream.isClearVisio = false;
     diagram.loadDiagram(data);
+    VisioMemoryStream.isClearVisio = true;
 
     // Activate the active layer if one was marked
     const activeLayer: VisioLayer = currentPage.layers.find((l: VisioLayer) => l.active);

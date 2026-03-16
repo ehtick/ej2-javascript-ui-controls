@@ -1979,7 +1979,6 @@ describe("EJ2-971747 Script error when frozen rows are enabled in collapsing aft
     destroy(gridObj);
   });
 });
-
 describe("Issue: Records expand on clearing filter when the type is Excel filter.", () => {
     let gridObj: TreeGrid;
     let actionComplete: () => void;

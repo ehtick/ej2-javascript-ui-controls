@@ -146,13 +146,21 @@ export class CodeBlock {
         }
         const isDeleteKey: boolean = keyboardEvent.which === 8 || keyboardEvent.which === 46;
         const isCodeBlockShortcut: boolean = keyboardEvent.action === 'code-block';
+        const range: Range = this.parent.formatter.editorManager.nodeSelection.getRange(
+            this.parent.inputElement.ownerDocument
+        );
+        if (keyboardEvent.action === 'enter') {
+            const codeBlockPasteAction: Element = (this.codeBlockObj.isValidCodeBlockStructure(range.startContainer) ||
+                this.codeBlockObj.isValidCodeBlockStructure(range.endContainer));
+            if (!isNOU(codeBlockPasteAction)) {
+                this.codeBlockEnter(e);
+                return;
+            }
+        }
         // Only process delete/backspace keys or code block shortcut
         if (!isDeleteKey && !isCodeBlockShortcut) {
             return;
         }
-        const range: Range = this.parent.formatter.editorManager.nodeSelection.getRange(
-            this.parent.inputElement.ownerDocument
-        );
         // Skip if selection contains all content
         if (this.isSelectionAllContent(range)) {
             return;

@@ -9,11 +9,12 @@ import { AccumulationType } from '../model/enum';
 import { BaseLegend, LegendOptions } from '../../common/legend/legend';
 import { LegendSettingsModel } from '../../common/legend/legend-model';
 import { Rect, Size, measureText } from '@syncfusion/ej2-svg-base';
-import { ChartLocation, textTrim, getElement} from '../../common/utils/helper';
+import { ChartLocation, textTrim, getElement, getAncestorElement, measureLegendTemplateSize} from '../../common/utils/helper';
 import { IAccLegendRenderEventArgs, IAccLegendClickEventArgs } from '../../accumulation-chart/model/pie-interface';
 import { LegendTitlePosition } from '../../common/utils/enum';
 import { textWrap } from '../../common/utils/helper';
 import { legendClick } from '../../common/model/constants';
+
 /**
  * The `AccumulationLegend` module is used to render the `Legend` for the Accumulation chart.
  */
@@ -66,8 +67,11 @@ export class AccumulationLegend extends BaseLegend {
             if ((<AccumulationChart>this.chart).accumulationHighlightModule && (<AccumulationChart>this.chart).highlightMode !== 'None') {
                 if (!(<AccumulationChart>this.chart).legendSettings.toggleVisibility) { this.click(e); }
                 const legendItemsId: string[] = [this.legendID + '_text_', this.legendID + '_shape_marker_',
-                    this.legendID + '_shape_', this.legendID + '_g_'];
-                const targetId: string = (<HTMLElement>e.target).id;
+                    this.legendID + '_shape_', this.legendID + '_g_', this.legendID + '_template_'];
+                let targetId: string = (<HTMLElement>e.target).id;
+                if (!targetId && targetId.indexOf(this.legendID + '_template_') === -1) {
+                    targetId = getAncestorElement(e, this.legendID);
+                }
                 let index: number;
                 for (const id of legendItemsId) {
                     if (targetId.indexOf(id) > -1) {
@@ -91,6 +95,7 @@ export class AccumulationLegend extends BaseLegend {
             this.move(e);
         }
     }
+
     /**
      * Get the legend options.
      *
@@ -118,6 +123,11 @@ export class AccumulationLegend extends BaseLegend {
                         seriesType, point.legendImageUrl, null, null,
                         point.index, series[i as number].index, null, point.x.toString()
                     ));
+                    if (chart.legendSettings.template) {
+                        const sz: Size = measureLegendTemplateSize(this.legendID, chart, i, point);
+                        this.legendCollections[point.index].templateSize = sz;
+                        this.legendCollections[point.index].textSize = sz;
+                    }
                 }
             }
             if (this.isReverse) {
@@ -167,6 +177,7 @@ export class AccumulationLegend extends BaseLegend {
         let pageRowWidth : number = 0;
         let previousRowCount : number = 0;
         let columnHeight: number = 0;
+        let pageIndex: number = 1;
         let legendWidth: number = 0;
         let titleHeight: number = 0;
         this.maxItemHeight = Math.max(measureText('MeasureText', legend.textStyle, this.chart.themeStyle.legendLabelFont).height, legend.shapeHeight);
@@ -183,10 +194,15 @@ export class AccumulationLegend extends BaseLegend {
         }
         for (let i: number = 0; i < this.legendCollections.length; i++) {
             legendOption = this.legendCollections[i as number];
-            legendEventArgs = { fill: legendOption.fill, text : legendOption.text, shape : legendOption.shape,
-                name: 'legendRender', cancel: false };
+            legendEventArgs = {
+                fill: legendOption.fill, text:
+                    legendOption.text,
+                shape: legendOption.shape,
+                name: 'legendRender', cancel: false, template: legendOption.template ? (legendOption.template as HTMLElement).innerHTML : ''
+            };
             this.chart.trigger('legendRender', legendEventArgs);
             legendOption.render = !legendEventArgs.cancel;
+            legendOption.template = legendEventArgs.template;
             legendOption.text = legendOption.originalText = ((legendEventArgs.text.indexOf('&') > -1) ?
                 this.convertHtmlEntities(legendEventArgs.text) : legendEventArgs.text);
             if (legendOption.fill !== legendEventArgs.fill) {
@@ -194,7 +210,9 @@ export class AccumulationLegend extends BaseLegend {
             }
             legendOption.fill = legendEventArgs.fill;
             legendOption.shape = legendEventArgs.shape;
-            legendOption.textSize = measureText(legendOption.text, legend.textStyle, this.chart.themeStyle.legendLabelFont);
+            legendOption.textSize = legendOption.templateSize
+                ? legendOption.templateSize
+                : measureText(legendOption.text, legend.textStyle, this.chart.themeStyle.legendLabelFont);
             if (legendOption.render && legendOption.text !== '') {
                 render = true;
                 legendWidth = legend.fixedWidth ? this.maxColumnWidth : shapeWidth + shapePadding +
@@ -208,6 +226,7 @@ export class AccumulationLegend extends BaseLegend {
                         rowWidth = rowWidth + maximumWidth;
                         pageRowWidth = this.getPageWidth(pageWidth);
                         this.totalPages = Math.max(rowCount, this.totalPages || 1);
+                        pageIndex++;
                         if  ((rowWidth - pageRowWidth + legendWidth) > legendBounds.width) {
                             pageWidth.push(rowWidth - pageRowWidth);
                             rowCount =  this.rowHeights.length;
@@ -221,6 +240,7 @@ export class AccumulationLegend extends BaseLegend {
                         columnHeight = Math.max(legendOption.textSize.height, legend.shapeHeight) + padding;
                         columnCount++;
                     }
+                    this.legendCollections[i as number].locatedPageIndex = pageIndex;
                     this.columnHeights[columnCount as number] = (this.columnHeights[columnCount as number] ?
                         this.columnHeights[columnCount as number] : 0) + Math.max(legendOption.textSize.height, legend.shapeHeight)
                          + ((i === 0) ? padding : this.itemPadding);
@@ -546,10 +566,14 @@ export class AccumulationLegend extends BaseLegend {
      * @private
      */
     public click(event: Event): void {
-        const targetId: string = (<HTMLElement>event.target).id.indexOf('_chart_legend_g_') > -1 ?
+        let targetId: string = (<HTMLElement>event.target).id.indexOf('_chart_legend_g_') > -1 ?
             (event.target as HTMLElement).firstChild['id'] : (<HTMLElement>event.target).id;
+
         const chart: AccumulationChart = this.chart as AccumulationChart;
-        const legendItemsId: string[] = [this.legendID + '_text_', this.legendID + '_shape_', this.legendID + '_shape_marker_'];
+        const legendItemsId: string[] = [this.legendID + '_text_', this.legendID + '_shape_', this.legendID + '_shape_marker_', this.legendID + '_template_'];
+        if (!targetId && targetId.indexOf(this.legendID + '_template_') === -1) {
+            targetId = getAncestorElement(event, this.legendID);
+        }
         // if ((<AccumulationChart>this.chart).accumulationSelectionModule) {
         //     // const selectedDataIndexes: Indexes[] = <Indexes[]>extend([], (<AccumulationChart>this.chart)
         //     //     .accumulationSelectionModule.selectedDataIndexes, null, true);

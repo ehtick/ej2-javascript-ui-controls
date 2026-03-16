@@ -1,4 +1,6 @@
 @use 'sass:color';
+@use 'ej2-base/styles/definition/bootstrap4' as *;
+@forward 'ej2-base/styles/definition/bootstrap4';
 
 /*! Bootstrap4 theme definitions and variables */
 /*! Value element styles */
@@ -75,3 +77,10 @@ $editor-rtl-nrml-btn-save-margin: 0 0 0 3px !default;
 $editor-rtl-big-btn-cancel-margin: 0 4px 0 0 !default;
 $editor-rtl-nrml-btn-cancel-margin: 0 3px 0 0 !default;
 $editor-btn-icon-color: $gray-700 !default;
+
+$padding-zero: 0;
+$editor-bgr-content-min-height: 70px !default;
+$editor-value-min-height: 38px !default;
+$editor-content-min-height: 60px !default;
+$editable-bgr-tip-width: auto !default;
+$editor-rtl-spinner-right: 5px !default;

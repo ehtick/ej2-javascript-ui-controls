@@ -167,6 +167,16 @@ export class Drawing {
             //Init default wrapper
         }
         (this.pdfViewer.nameTable as any)[(obj as PdfAnnotationBaseModel | PdfFormFieldBaseModel).id] = obj;
+        if ((obj as PdfAnnotationBaseModel).shapeAnnotationType === 'Stamp' && ((obj as PdfAnnotationBaseModel).annotationAddMode === 'Existing Annotation' ||
+            (obj as PdfAnnotationBaseModel).annotationAddMode === 'Imported Annotation') && obj.id !== 'diagram_helper'
+            && !this.isPasted && !isNullOrUndefined(this.pdfViewer.annotationModule) && !this.pdfViewer.annotationModule.isUndoRedoAction) {
+            this.nodePropertyChange(obj as PdfAnnotationBaseModel, {
+                bounds: {
+                    width: obj.bounds.width,
+                    height: obj.bounds.height
+                } as any
+            } as PdfAnnotationBaseModel);
+        }
         //Add some methodologies to add the children of group to name table
         return obj;
     }
@@ -208,7 +218,9 @@ export class Drawing {
                 obj.wrapper.children[1].isFreeText = true;
             }
         }
-
+        if (!isNullOrUndefined((obj as PdfAnnotationBaseModel)) && (obj as PdfAnnotationBaseModel).shapeAnnotationType === 'Stamp' && !isNullOrUndefined(obj.wrapper.children[2]) && obj.wrapper.children[2] && obj.wrapper.children[2] instanceof TextElement) {
+            obj.wrapper.children[2].isEJ2 = true;
+        }
         canvas.measure(new Size((obj as PdfAnnotationBaseModel | PdfFormFieldBaseModel).wrapper.width,
                                 (obj as PdfAnnotationBaseModel | PdfFormFieldBaseModel).wrapper.height));
         canvas.arrange(canvas.desiredSize);
@@ -374,10 +386,6 @@ export class Drawing {
                 const id: string = (this.pdfViewer.clipboardData.clipObject as any)[0].id;
                 copiedObject = (this.pdfViewer.nameTable as any)[`${id}`];
             }
-            if (obj && obj.annotationAddMode && obj.id === 'diagram_helper' && obj.icon !== 'Accepted' && obj.icon !== 'Rejected') {
-                obj.bounds.width = obj.bounds.width - 20;
-                obj.bounds.height = obj.bounds.height - 20;
-            }
             if (obj.isDynamicStamp) {
                 canvas.horizontalAlignment = 'Left';
                 basicElement = new DrawingElement();
@@ -399,9 +407,15 @@ export class Drawing {
                 textele.margin.left = 5;
                 textele.margin.bottom = 3;
                 textele.setOffsetWithRespectToBounds(0, 0.75, null);
+                if (isAnnotationSet) {
+                    const targetWidth: number = obj.bounds.width;
+                    const iconPadding: number = targetWidth * 0.02;
+                    const iconInnerWidth: number = Math.max(0, targetWidth - 2 * iconPadding);
+                    textele.style.fontSize = this.fontSizeCalculation(obj, textele, iconInnerWidth, textele.content);
+                }
                 if (obj.annotationAddMode === 'Existing Annotation' || obj.annotationAddMode === 'Imported Annotation') {
-                    const targetWidth: number = obj.bounds.width + 20;
-                    const targetHeight: number = obj.bounds.height + 20;
+                    const targetWidth: number = obj.bounds.width;
+                    const targetHeight: number = obj.bounds.height;
                     const iconPadding: number = targetWidth * 0.02;
                     const iconInnerWidth: number = Math.max(0, targetWidth - 2 * iconPadding);
                     textele.style.fontSize = this.fontSizeCalculation(obj, textele, iconInnerWidth, textele.content);
@@ -430,12 +444,6 @@ export class Drawing {
                 if (obj.id !== 'diagram_helper') {
                     canvas.children.push(textele);
                 }
-                if (isAnnotationSet && (obj.bounds.width > annotationMaxWidth)) {
-                    obj.bounds.width = annotationMaxWidth;
-                }
-                if (isAnnotationSet && (obj.bounds.height > annotationMaxHeight)) {
-                    obj.bounds.height = annotationMaxHeight / 2;
-                }
                 const textele1: TextElement = new TextElement();
                 textele1.style.fontFamily = 'Helvetica';
                 textele1.style.fontSize = obj.fontSize;
@@ -449,9 +457,23 @@ export class Drawing {
                 textele1.margin.left = 5;
                 textele1.margin.top = 4;
                 textele1.setOffsetWithRespectToBounds(0, 0.1, null);
+                if (isAnnotationSet) {
+                    const targetWidth: number = obj.bounds.width;
+                    let iconWidth: number = targetWidth;
+                    if (textele1.content === 'REVISED' || textele1.content === 'REVIEWED' ||
+                        textele1.content === 'RECEIVED' || textele1.content === 'APPROVED') {
+                        iconWidth = iconWidth / 2;
+                    }
+                    else if (textele1.content === 'CONFIDENTIAL' || textele1.content === 'NOT APPROVED') {
+                        iconWidth = iconWidth * (3 / 4);
+                    }
+                    const iconPadding: number = iconWidth * 0.02;
+                    const iconInnerWidth: number = Math.max(0, iconWidth - 2 * iconPadding);
+                    textele1.style.fontSize = this.fontSizeCalculation(obj, textele1, iconInnerWidth, textele1.content);
+                }
                 if (obj.annotationAddMode === 'Existing Annotation' || obj.annotationAddMode === 'Imported Annotation') {
-                    const targetWidth: number = obj.bounds.width + 20;
-                    const targetHeight: number = obj.bounds.height + 20;
+                    const targetWidth: number = obj.bounds.width;
+                    const targetHeight: number = obj.bounds.height;
                     let iconWidth: number = targetWidth;
                     if (textele1.content === 'REVISED' || textele1.content === 'REVIEWED' ||
                         textele1.content === 'RECEIVED' || textele1.content === 'APPROVED') {
@@ -482,8 +504,7 @@ export class Drawing {
                 if (this.isPasted) {
                     textele1.style.fontSize = copiedObject.wrapper.children[2].style.fontSize;
                     textele1.margin.left = copiedObject.wrapper.children[2].margin.left;
-                    textele1.margin.top = copiedObject.wrapper.children[2].margin.top -
-                        (copiedObject.wrapper.children[2].margin.top * 0.5);
+                    textele1.margin.top = copiedObject.wrapper.children[2].margin.top;
                     content.width = this.stampOriginalWidth;
                     content.height = this.stampOriginalHeight;
                 }
@@ -493,8 +514,8 @@ export class Drawing {
                     content.height = this.stampPerviousHeight;
                 }
                 else {
-                    content.width = obj.bounds.width + 20;
-                    content.height = obj.bounds.height + 20;
+                    content.width = obj.bounds.width;
+                    content.height = obj.bounds.height;
                 }
                 content.style.opacity = obj.opacity;
                 textele1.id = randomId() + '_stamp';
@@ -535,12 +556,6 @@ export class Drawing {
                     canvas.children.push(content1);
                 }
                 else{
-                    if (isAnnotationSet && (obj.bounds.width > annotationMaxWidth)) {
-                        obj.bounds.width = annotationMaxWidth;
-                    }
-                    if (isAnnotationSet && (obj.bounds.height > annotationMaxHeight)) {
-                        obj.bounds.height = annotationMaxHeight / 2;
-                    }
                     const textele1: TextElement = new TextElement();
                     textele1.style.fontFamily = 'Helvetica';
                     textele1.style.fontSize = obj.fontSize;
@@ -552,6 +567,12 @@ export class Drawing {
                     textele1.content = obj.icon.toUpperCase();
                     textele1.relativeMode = 'Point';
                     textele1.setOffsetWithRespectToBounds(0, 0.1, null);
+                    if (isAnnotationSet) {
+                        const targetWidth: number = obj.bounds.width;
+                        const paddingX: number = targetWidth * 0.05;
+                        const innerWidth: number = Math.max(0, targetWidth - 2 * paddingX);
+                        textele1.style.fontSize = this.fontSizeCalculation(obj, textele1, innerWidth, textele1.content);
+                    }
                     const metrics: {
                         width: number;
                         height: number;
@@ -560,10 +581,10 @@ export class Drawing {
                     } = this.measureTextMetrics(obj, textele1.content,
                                                 textele1.style.fontSize, textele1.style.fontFamily);
                     textele1.margin.top = 5;
-                    textele1.margin.left = ((obj.bounds.width + 20) - metrics.width) / 2;
+                    textele1.margin.left = ((obj.bounds.width) - metrics.width) / 2;
                     if (obj.annotationAddMode === 'Existing Annotation' || obj.annotationAddMode === 'Imported Annotation') {
-                        const targetWidth: number = obj.bounds.width + 20;
-                        const targetHeight: number = obj.bounds.height + 20;
+                        const targetWidth: number = obj.bounds.width;
+                        const targetHeight: number = obj.bounds.height;
                         const paddingX: number = targetWidth * 0.05;
                         const innerWidth: number = Math.max(0, targetWidth - 2 * paddingX);
                         textele1.style.fontSize = this.fontSizeCalculation(obj, textele1, innerWidth, textele1.content);
@@ -576,12 +597,15 @@ export class Drawing {
                                                     textele1.style.fontSize, textele1.style.fontFamily);
                         const leftOffset: number = (targetWidth - metrics.width) / 2;
                         textele1.margin.left = Math.max(0, leftOffset);
+                        textele1.margin.top = (targetHeight - metrics.height) / 2;
                     }
                     if (this.isPasted) {
                         textele1.style.fontSize = copiedObject.wrapper.children[1].style.fontSize;
                         textele1.margin.left = copiedObject.wrapper.children[1].margin.left;
-                        textele1.margin.top = copiedObject.wrapper.children[1].margin.top -
-                        (copiedObject.wrapper.children[1].margin.top * 0.5);
+                        // Preserve original top margin on paste to keep alignment consistent
+                        textele1.margin.top = copiedObject.wrapper.children[1].margin.top;
+                        // Preserve bottom margin as well for single-line stamps
+                        textele1.margin.bottom = copiedObject.wrapper.children[1].margin.bottom;
                         content.width = this.stampOriginalWidth;
                         content.height = this.stampOriginalHeight;
                     }
@@ -594,8 +618,8 @@ export class Drawing {
                         content.height = this.stampPerviousHeight;
                     }
                     else {
-                        content.width = obj.bounds.width + 20;
-                        content.height = obj.bounds.height + 20;
+                        content.width = obj.bounds.width;
+                        content.height = obj.bounds.height;
                     }
                     content.style.opacity = obj.opacity;
                     textele1.id = randomId() + '_stamp';
@@ -967,6 +991,9 @@ export class Drawing {
         }
         srcDecorator.id = obj.id + '_srcDec';
         targetDecorator.id = obj.id + '_tarDec';
+        if (obj.shapeAnnotationType === 'Polygon') {
+            segment.data = getPolygonPath(obj.vertexPoints);
+        }
         segment.style['fill'] = 'transparent';
         container.style.strokeColor = 'transparent';
         container.style.fill = 'transparent';
@@ -1216,7 +1243,21 @@ export class Drawing {
                             (renderElement as any).children[0].isEJ2 = true;
                             (renderElement as any).children[1].isEJ2 = true;
                         }
-                        if (uniqueObject.shapeAnnotationType === 'FreeText' && !uniqueObject.isSignatureText) {
+                        if (uniqueObject.shapeAnnotationType === 'Stamp') {
+                            if (!isNullOrUndefined((renderElement as any).children[0]) &&
+                            (renderElement as any).children[0] instanceof DrawingElement) {
+                                (renderElement as any).children[0].isEJ2 = true;
+                            }
+                            if (!isNullOrUndefined((renderElement as any).children[1]) &&
+                            (renderElement as any).children[0] instanceof TextElement) {
+                                (renderElement as any).children[1].isEJ2 = true;
+                            }
+                            if (!isNullOrUndefined((renderElement as any).children[2]) &&
+                            (renderElement as any).children[0] instanceof TextElement) {
+                                (renderElement as any).children[2].isEJ2 = true;
+                            }
+                        }
+                        if ((uniqueObject.shapeAnnotationType === 'FreeText' && !uniqueObject.isSignatureText) || uniqueObject.shapeAnnotationType === 'Stamp') {
                             refreshDiagramElements(diagramLayer, [renderElement], this.renderer, null, uniqueObject.shapeAnnotationType);
                         } else {
                             refreshDiagramElements(diagramLayer, [renderElement], this.renderer);
@@ -1342,6 +1383,9 @@ export class Drawing {
                     if (selectorModel.annotations[0].shapeAnnotationType === 'FreeText') {
                         selectorModel.wrapper.children[1].isFreeText = true;
                     }
+                }
+                if (!isNullOrUndefined(selectorModel.annotations[0]) && selectorModel.annotations[0].shapeAnnotationType === 'Stamp' && !isNullOrUndefined(selectorModel.wrapper.children[2]) && selectorModel.wrapper.children[2] && selectorModel.wrapper.children[2] instanceof TextElement) {
+                    selectorModel.wrapper.children[2].isEJ2 = true;
                 }
                 selectorModel.wrapper.measure(size);
                 const zoom: number = this.pdfViewer.viewerBase.getZoomFactor();
@@ -1567,7 +1611,17 @@ export class Drawing {
             options.height *= transform.scale;
             options.fill = 'transparent';
             const shapeType: PdfAnnotationBaseModel =
-             this.pdfViewer.selectedItems.annotations[0].shapeAnnotationType as PdfAnnotationBaseModel;
+            this.pdfViewer.selectedItems.annotations[0].shapeAnnotationType as PdfAnnotationBaseModel;
+            let selectorSettings: any;
+            if (currentSelector == null || currentSelector === '') {
+                const sel: any = (this.pdfViewer.selectedItems && this.pdfViewer.selectedItems.annotations &&
+                    this.pdfViewer.selectedItems.annotations.length > 0) ? this.pdfViewer.selectedItems.annotations[0] : null;
+                if (sel && sel.annotationSelectorSettings) {
+                    selectorSettings = sel.annotationSelectorSettings;
+                }
+                const currentSelector: any = cloneObject(selectorSettings);
+                this.pdfViewer.viewerBase.updateSelector(currentSelector, shapeType);
+            }
             if (currentSelector && (typeof (currentSelector) !== 'object') && currentSelector !== '') {
                 const annotationSelector: any = JSON.parse(currentSelector);
                 const borderColor: string = annotationSelector.selectionBorderColor === '' ? 'black' : annotationSelector.selectionBorderColor;
@@ -2695,91 +2749,68 @@ export class Drawing {
                             if (actualObject.isDynamicStamp) {
                                 const element: any = children[1] as TextElement;
                                 const iconElement: any = children[parseInt(i.toString(), 10)] as TextElement;
-                                const annotationSettings: any = this.pdfViewer.stampSettings ?
-                                    this.pdfViewer.stampSettings : this.pdfViewer.annotationSettings;
-                                if (annotationSettings && (annotationSettings.maxHeight ||
-                                     annotationSettings.maxWidth) && (actualObject.bounds.height > 60)) {
+                                let targetWidth: number;
+                                let targetHeight: number;
+                                if (actualObject.rotateAngle === 0 || (actualObject.rotateAngle > 0 && ratio !== 0))
+                                {
                                     if (ratio !== 0) {
-                                        element.style.fontSize = (actualObject.bounds.width / ratio);
-                                        iconElement.style.fontSize = (actualObject.bounds.width / ratio);
-                                    } else {
-                                        element.style.fontSize = (actualObject.wrapper.bounds.width / 20);
-                                        iconElement.style.fontSize = (actualObject.wrapper.bounds.width / 20);
+                                        targetWidth = actualObject.bounds.width;
+                                        targetHeight = actualObject.bounds.height;
                                     }
-                                } else {
-                                    let targetWidth: number;
-                                    let targetHeight: number;
-                                    if (actualObject.rotateAngle === 0 || (actualObject.rotateAngle > 0 && ratio !== 0))
-                                    {
-                                        if (ratio !== 0) {
-                                            targetWidth = actualObject.bounds.width;
-                                            targetHeight = actualObject.bounds.height;
-                                        }
-                                        else {
-                                            targetWidth = actualObject.wrapper.bounds.width;
-                                            targetHeight = actualObject.wrapper.bounds.height;
-                                        }
-                                        let iconWidth: number = targetWidth;
-                                        if (iconElement.content === 'REVISED' || iconElement.content === 'REVIEWED' || iconElement.content === 'RECEIVED' || iconElement.content === 'APPROVED') {
-                                            iconWidth = iconWidth / 2;
-                                        }
-                                        else if (iconElement.content === 'CONFIDENTIAL' || iconElement.content === 'NOT APPROVED') {
-                                            iconWidth = iconWidth * (3 / 4);
-                                        }
-                                        const elementPpadding: number = targetWidth * 0.02;
-                                        const elementInnerWidth: number = Math.max(0, targetWidth - 2 * elementPpadding);
-                                        const iconPadding: number = iconWidth * 0.02;
-                                        const iconInnerWidth: number = Math.max(0, iconWidth - 2 * iconPadding);
-                                        element.style.fontSize = this.
-                                            fontSizeCalculation(actualObject, element, elementInnerWidth, element.content);
-                                        iconElement.style.fontSize = this.
-                                            fontSizeCalculation(actualObject, iconElement, iconInnerWidth, iconElement.content);
-                                        const metrics: {
-                                            width: number;
-                                            height: number;
-                                            ascent: number;
-                                            descent: number;
-                                        } = this.measureTextMetrics(actualObject, iconElement.content,
-                                                                    iconElement.style.fontSize, iconElement.style.fontFamily);
-                                        const topOffset: number = (targetHeight * 0.75 - metrics.height) / 4;
-                                        iconElement.margin.top = Math.max(0, topOffset);
-                                        if (iconElement.content === 'CONFIDENTIAL' || iconElement.content === 'NOT APPROVED') {
-                                            iconElement.margin.left = (targetWidth - (metrics.width * (4 / 3))) / 2;
-                                        }
-                                        else {
-                                            iconElement.margin.left = (targetWidth - (metrics.width * 2)) / 2;
-                                        }
-                                        iconElement.desiredSize.width = metrics.width;
-                                        iconElement.desiredSize.height = metrics.height;
-                                        const elementMetrics: {
-                                            width: number;
-                                            height: number;
-                                            ascent: number;
-                                            descent: number;
-                                        } = this.measureTextMetrics(actualObject, element.content,
-                                                                    element.style.fontSize, element.style.fontFamily);
-                                        const bottomOffset: number = (targetHeight * 0.25 - elementMetrics.height) / 8;
-                                        element.margin.bottom = Math.max(0, bottomOffset);
-                                        if (element.margin.bottom < 1) {
-                                            element.margin.bottom = 4;
-                                        }
-                                        element.margin.left = (targetWidth - elementMetrics.width) / 2;
-                                        element.desiredSize.height = elementMetrics.height;
+                                    else {
+                                        targetWidth = actualObject.wrapper.bounds.width;
+                                        targetHeight = actualObject.wrapper.bounds.height;
                                     }
+                                    let iconWidth: number = targetWidth;
+                                    if (iconElement.content === 'REVISED' || iconElement.content === 'REVIEWED' || iconElement.content === 'RECEIVED' || iconElement.content === 'APPROVED') {
+                                        iconWidth = iconWidth / 2;
+                                    }
+                                    else if (iconElement.content === 'CONFIDENTIAL' || iconElement.content === 'NOT APPROVED') {
+                                        iconWidth = iconWidth * (3 / 4);
+                                    }
+                                    const elementPpadding: number = targetWidth * 0.02;
+                                    const elementInnerWidth: number = Math.max(0, targetWidth - 2 * elementPpadding);
+                                    const iconPadding: number = iconWidth * 0.02;
+                                    const iconInnerWidth: number = Math.max(0, iconWidth - 2 * iconPadding);
+                                    element.style.fontSize = this.
+                                        fontSizeCalculation(actualObject, element, elementInnerWidth, element.content);
+                                    iconElement.style.fontSize = this.
+                                        fontSizeCalculation(actualObject, iconElement, iconInnerWidth, iconElement.content);
+                                    const metrics: {
+                                        width: number;
+                                        height: number;
+                                        ascent: number;
+                                        descent: number;
+                                    } = this.measureTextMetrics(actualObject, iconElement.content,
+                                                                iconElement.style.fontSize, iconElement.style.fontFamily);
+                                    const topOffset: number = (targetHeight * 0.75 - metrics.height) / 4;
+                                    iconElement.margin.top = Math.max(0, topOffset);
+                                    if (iconElement.content === 'CONFIDENTIAL' || iconElement.content === 'NOT APPROVED') {
+                                        iconElement.margin.left = (targetWidth - (metrics.width * (4 / 3))) / 2;
+                                    }
+                                    else {
+                                        iconElement.margin.left = (targetWidth - (metrics.width * 2)) / 2;
+                                    }
+                                    iconElement.desiredSize.width = metrics.width;
+                                    iconElement.desiredSize.height = metrics.height;
+                                    const elementMetrics: {
+                                        width: number;
+                                        height: number;
+                                        ascent: number;
+                                        descent: number;
+                                    } = this.measureTextMetrics(actualObject, element.content,
+                                                                element.style.fontSize, element.style.fontFamily);
+                                    const bottomOffset: number = (targetHeight * 0.25 - elementMetrics.height) / 8;
+                                    element.margin.bottom = Math.max(0, bottomOffset);
+                                    if (element.margin.bottom < 1) {
+                                        element.margin.bottom = 1;
+                                    }
+                                    element.margin.left = (targetWidth - elementMetrics.width) / 2;
+                                    element.desiredSize.height = elementMetrics.height;
                                 }
                             } else {
                                 const element: any = children[parseInt(i.toString(), 10)] as TextElement;
-                                const annotationSettings: any = this.pdfViewer.stampSettings ?
-                                    this.pdfViewer.stampSettings : this.pdfViewer.annotationSettings;
-                                if (annotationSettings && (annotationSettings.maxHeight ||
-                                     annotationSettings.maxWidth) && (actualObject.bounds.height > 60)) {
-                                    if (ratio !== 0) {
-                                        element.style.fontSize = (actualObject.bounds.width / ratio);
-                                    } else {
-                                        element.style.fontSize = (actualObject.wrapper.bounds.width / 20);
-                                    }
-                                }
-                                else if (isNullOrUndefined(element.content)) {
+                                if (isNullOrUndefined(element.content)) {
                                     children[parseInt(i.toString(), 10)].width = actualObject.bounds.width;
                                     children[parseInt(i.toString(), 10)].height = actualObject.bounds.height;
                                     children[parseInt(i.toString(), 10)].offsetX = actualObject.wrapper.offsetX;
@@ -3190,11 +3221,14 @@ export class Drawing {
                     if (actualObject.wrapper.children[parseInt(i.toString(), 10)] instanceof TextElement) {
                         actualObject.wrapper.children[parseInt(i.toString(), 10)].style.fill = actualObject.labelFillColor;
                     }
-                    if ((actualObject.wrapper.children[parseInt(i.toString(), 10)] instanceof PathElement && actualObject.measureType === 'Perimeter')) {
+                    if ((actualObject.wrapper.children[parseInt(i.toString(), 10)] instanceof PathElement && actualObject.measureType === 'Perimeter' &&
+                        !(childElement.id && (childElement.id.toLowerCase().endsWith('srcdec') || childElement.id.toLowerCase().endsWith('tardec'))))) {
                         actualObject.wrapper.children[parseInt(i.toString(), 10)].style.fill = 'transparent';
                     }
                 } else {
-                    if ((actualObject.wrapper.children[parseInt(i.toString(), 10)] instanceof PathElement && actualObject.measureType === 'Perimeter') || actualObject.wrapper.children[parseInt(i.toString(), 10)] instanceof TextElement) {
+                    if ((actualObject.wrapper.children[parseInt(i.toString(), 10)] instanceof PathElement && actualObject.measureType === 'Perimeter' &&
+                        !(childElement.id && (childElement.id.toLowerCase().endsWith('srcdec') || childElement.id.toLowerCase().endsWith('tardec')))) ||
+                        actualObject.wrapper.children[parseInt(i.toString(), 10)] instanceof TextElement) {
                         actualObject.wrapper.children[parseInt(i.toString(), 10)].style.fill = 'transparent';
                     }
                 }
@@ -3252,6 +3286,11 @@ export class Drawing {
             if (actualObject.shapeAnnotationType === 'FreeText') {
                 actualObject.wrapper.children[1].isFreeText = true;
             }
+        }
+        if (!isNullOrUndefined(actualObject) && actualObject.shapeAnnotationType === 'Stamp' &&
+            !isNullOrUndefined(actualObject.wrapper.children[2]) && actualObject.wrapper.children[2] &&
+            actualObject.wrapper.children[2] instanceof TextElement) {
+            actualObject.wrapper.children[2].isEJ2 = true;
         }
         if (actualObject && actualObject.shapeAnnotationType === 'FreeText' && this.pdfViewer.annotationModule.stickyNotesAnnotationModule.textFromCommentPanel) {
             actualObject.wrapper.width = undefined;
@@ -4109,6 +4148,15 @@ export class Drawing {
                                         addedAnnot.wrapper.children[1].horizontalAlignment = 'Auto';
                                     }
                                     this.nodePropertyChange(addedAnnot, {});
+                                } else if (addedAnnot && newNode.shapeAnnotationType === 'Stamp') {
+                                    // Force a deterministic text layout recompute for stamps so paste matches
+                                    // the same calculation used after resize/move in nodePropertyChange.
+                                    this.nodePropertyChange(addedAnnot as PdfAnnotationBaseModel, {
+                                        bounds: {
+                                            width: newNode.wrapper.actualSize.width,
+                                            height: newNode.wrapper.actualSize.height
+                                        } as any
+                                    } as PdfAnnotationBaseModel);
                                 }
                                 if (addedAnnot.formFieldAnnotationType && addedAnnot.pageIndex === index) {
                                     this.pdfViewer.formFieldCollection.push(addedAnnot);
@@ -4152,7 +4200,9 @@ export class Drawing {
                                                                                 (addedAnnot as PdfFormFieldBaseModel).pageIndex,
                                                                                 this.pdfViewer, fieldId);
                                 }
-                                this.pdfViewer.select([newNode.id], this.pdfViewer.annotationSelectorSettings);
+                                const selectorSettings: any = cloneObject(newNode && newNode.annotationSelectorSettings);
+                                this.pdfViewer.viewerBase.updateSelector(selectorSettings, newNode.shapeAnnotationType);
+                                this.pdfViewer.select([newNode.id], selectorSettings);
                                 if (!addedAnnot.formFieldAnnotationType) {
                                     this.pdfViewer.annotationModule.triggerAnnotationAddEvent(newNode);
                                 }

@@ -2,10 +2,10 @@ import { extend, isNullOrUndefined as isNOU, KeyboardEventArgs, Browser, closest
 import * as CONSTANT from '../base/constant';
 import { updateUndoRedoStatus } from '../base/util';
 import { isIDevice } from '../../common/util';
-import { ActionBeginEventArgs, IDropDownItemModel, IShowPopupArgs, IVideoCommandsArgs } from './../../common/interface';
+import { ActionBeginEventArgs, IDropDownItemModel, IHTMLEnterKeyCallBack, IShowPopupArgs, IVideoCommandsArgs } from './../../common/interface';
 import { IRichTextEditor } from './../base/interface';
 import { IHtmlFormatterCallBack, IMarkdownFormatterCallBack, IUndoCallBack, IEditorModel, IItemCollectionArgs } from './../../common/interface';
-import { KEY_DOWN, KEY_UP } from './../../common/constant';
+import { KEY_DOWN, KEY_UP, ENTER_KEYDOWN_HANLDER } from './../../common/constant';
 import { MarkdownUndoRedoData } from '../../markdown-parser/base/interface';
 import { IHtmlUndoRedoData } from '../../editor-manager/base/interface';
 import { NodeSelection } from '../../selection/selection';
@@ -127,9 +127,10 @@ export class Formatter {
                     }
                     this.editorManager.observer.notify((event.type === 'keydown' ? KEY_DOWN : KEY_UP), {
                         event: event,
-                        callBack: this.onSuccess.bind(this, self),
+                        callBack: event.which === 13 && self.editorMode === 'HTML' && event.type === 'keydown' ? this.enterKeyActionBeginHandler.bind(this, self) : this.onSuccess.bind(this, self),
                         value: value,
                         enterAction: self.enterKey,
+                        shiftEnterKey: self.shiftEnterKey,
                         enableTabKey: self.enableTabKey,
                         maxLength: self.maxLength
                     });
@@ -151,7 +152,7 @@ export class Formatter {
                     }
                     self.isBlur = false;
                     const quickToolbarAction: boolean = !isNOU(event) && !isNOU(event.target) && (!isNOU(closest(event.target as HTMLElement, '.e-rte-elements.e-dropdown-popup.e-rte-dropdown-popup.e-quick-dropdown.e-popup-open')) || !isNOU(closest(event.target as HTMLElement, '.e-rte-elements.e-rte-quick-popup.e-popup-open')));
-                    if (isNOU(saveSelection) || (!quickToolbarAction && (isNOU(closest(saveSelection.range.startContainer.parentElement, '.e-img-caption')) ? true : !((closest(saveSelection.range.startContainer.parentElement, '.e-img-caption') as Element).getAttribute('contenteditable') === 'false'))) && !(Browser.userAgent.indexOf('Firefox') !== -1)) {
+                    if (isNOU(saveSelection) || (!quickToolbarAction && (isNOU(closest(saveSelection.range.startContainer.parentElement, '.e-img-caption-container')) ? true : !((closest(saveSelection.range.startContainer.parentElement, '.e-img-caption-container') as Element).getAttribute('contenteditable') === 'false'))) && !(Browser.userAgent.indexOf('Firefox') !== -1)) {
                         (self.contentModule.getEditPanel() as HTMLElement).focus({preventScroll: true});
                     }
                     if (self.editorMode === 'HTML' && !isKeyboardVideoInsert) {
@@ -224,6 +225,31 @@ export class Formatter {
             if (events.requestType === 'Paste') {
                 self.notify(CONSTANT.execCommandCallBack, events);
                 this.enableUndo(self);
+            } else if (events.requestType === 'Images' && self.imageModule.isMultiImagePaste) {
+                // Collect the current image element(s) - handle both array and single element
+                const currentElements: Element[] | Element = (events as IHtmlFormatterCallBack).elements;
+                if (currentElements) {
+                    // Check if currentElements is an array or a single element
+                    if (Array.isArray(currentElements)) {
+                        // If it's an array, spread it into collectedElements
+                        self.imageModule.collectedImageElements.push(...(currentElements as Element[]));
+                    } else {
+                        // If it's a single element, push it directly
+                        self.imageModule.collectedImageElements.push(currentElements as Element);
+                    }
+                }
+                // Decrement the counter for each processed image
+                let remainingPastedImages: number = self.imageModule.remainingPastedImages;
+                if (remainingPastedImages > 0) {
+                    remainingPastedImages--;
+                }
+                // When all images are processed (remainingPastedImages reaches 0), save data
+                if (remainingPastedImages === 0) {
+                    this.enableUndo(self);
+                    (events as IHtmlFormatterCallBack).elements = self.imageModule.collectedImageElements;
+                    self.notify(CONSTANT.execCommandCallBack, events);
+                    self.imageModule.collectedImageElements = [];
+                }
             } else {
                 this.enableUndo(self);
                 self.notify(CONSTANT.execCommandCallBack, events);
@@ -257,6 +283,7 @@ export class Formatter {
         if (callbackArgs.requestType === 'VideosPlayPause') {
             self.notify('editAreaClick', { args: event });
         }
+        self.isSelectAll = false;
         self.autoResize();
     }
     /**
@@ -332,4 +359,33 @@ export class Formatter {
     public clearUndoRedoStack(): void {
         this.editorManager.undoRedoManager.clear();
     }
+
+    private enterKeyActionBeginHandler(self: IRichTextEditor, args: IHTMLEnterKeyCallBack): void {
+        if (args.isEnterAction) {
+            const actionBeginArgs: ActionBeginEventArgs = {
+                cancel: false,
+                name: CONSTANT.actionBegin,
+                requestType: args.isShiftEnterAction ? 'ShiftEnterAction' : 'EnterAction',
+                originalEvent: args.event
+            };
+            self.trigger(CONSTANT.actionBegin, actionBeginArgs, (successArgs: ActionBeginEventArgs) => {
+                if (!successArgs.cancel) {
+                    if (this.getUndoRedoStack().length === 0) {
+                        this.saveData();
+                    }
+                    this.editorManager.observer.notify(ENTER_KEYDOWN_HANLDER, {
+                        requestType: 'EnterKey',
+                        enterAction: self.enterKey,
+                        shiftEnterAction: self.shiftEnterKey,
+                        isEnterAction: true,
+                        cancel: false,
+                        event: args.event,
+                        isSelectAll: self.isSelectAll,
+                        callBack: this.onSuccess.bind(this, self)
+                    });
+                }
+            });
+        }
+    }
 }
+

@@ -428,7 +428,8 @@ export class BpmnDiagrams {
         innerEvtNode.horizontalAlignment = 'Center';
         innerEvtNode.verticalAlignment = 'Center';
         innerEvtNode.relativeMode = 'Object';
-        this.setStyle(innerEvtNode, node);
+        // set style strokeColor
+        innerEvtNode.style.strokeColor = node.style.strokeColor;
         //childNode1
         const outerEvtNode: PathElement = new PathElement();
         outerEvtNode.data = pathdata; outerEvtNode.id = id + '_1_event';
@@ -439,6 +440,13 @@ export class BpmnDiagrams {
         // set style opacity & strokeColor
         outerEvtNode.style.strokeColor = node.style.strokeColor;
         outerEvtNode.style.opacity = node.style.opacity;
+        if ((node.shape as BpmnShape).event.event !== 'NonInterruptingStart'
+            && (node.shape as BpmnShape).event.event !== 'Start'
+        ) {
+            this.setStyle(outerEvtNode, node, true);
+        } else {
+            this.setStyle(innerEvtNode, node, true);
+        }
         //childNode2
         const triggerNode: PathElement = new PathElement();
         const triggerNodeData: string = getBpmnTriggerShapePathData(trigger);
@@ -459,18 +467,22 @@ export class BpmnDiagrams {
             outerEvtNode.visible = false;
             break;
         case 'Intermediate':
-            innerEvtNode.style.fill = node.style.fill;
+            innerEvtNode.style.fill = 'white';
+            outerEvtNode.style.fill = node.style.fill;
             innerEvtNode.style.gradient = null;
             break;
         case 'NonInterruptingIntermediate':
-            innerEvtNode.style.fill = node.style.fill;
+            innerEvtNode.style.fill = 'white';
+            outerEvtNode.style.fill = node.style.fill;
             innerEvtNode.style.gradient = null;
             innerEvtNode.style.strokeDashArray = '2 3';
             outerEvtNode.style.strokeDashArray = '2 3';
             break;
         case 'ThrowingIntermediate':
         case 'End':
-            innerEvtNode.style.fill = event !== 'End' ? node.style.fill : node.style.fill !== 'white' ? node.style.fill : 'black';
+            innerEvtNode.style.fill = event !== 'End' ? 'white' : 'black';
+            outerEvtNode.style.fill = sub ? (node.style.fill === 'none' || node.style.fill === 'transparent') ? 'white'
+                : node.style.fill : node.style.fill;
             innerEvtNode.style.gradient = null;
             triggerNode.style.fill = 'black';
             triggerNode.style.strokeColor = 'white';
@@ -822,7 +834,8 @@ export class BpmnDiagrams {
             for (let i: number = 0; i < (source.shape as BpmnShapeModel).activity.subProcess.processes.length; i++) {
                 this.updateIndex(diagram, source);
                 const processes: string = (source.shape as BpmnShapeModel).activity.subProcess.processes[parseInt(i.toString(), 10)];
-                if (diagram.nameTable[`${processes}`].shape.activity.subProcess.processes.length > 0) {
+                const nestedProcesses: string[] = diagram.nameTable[`${processes}`].shape.activity.subProcess.processes;
+                if (nestedProcesses && nestedProcesses.length > 0) {
 
                     this.updateSubprocessNodeIndex(diagram.nameTable[`${processes}`], diagram, target);
                 } else {
@@ -980,9 +993,11 @@ export class BpmnDiagrams {
                     (node.margin.left + node.width * node.pivot.x);
                 const nodeOffsetY: number = (parentNode.offsetY - parentNode.height * parentNode.pivot.y) +
                     (node.margin.top + node.height * node.pivot.y);
-                if (node.offsetX !== nodeOffsetX || node.offsetY !== nodeOffsetY) {
-                    node.offsetX = nodeOffsetX;
-                    node.offsetY = nodeOffsetY;
+                if (!isNaN(nodeOffsetX) && !isNaN(nodeOffsetY)) {
+                    if (node.offsetX !== nodeOffsetX || node.offsetY !== nodeOffsetY) {
+                        node.offsetX = nodeOffsetX;
+                        node.offsetY = nodeOffsetY;
+                    }
                 }
                 diagram.protectPropertyChange(false);
             }
@@ -1161,7 +1176,7 @@ export class BpmnDiagrams {
         pathElement.width = node.width;
         pathElement.height = node.height;
         // 941045 - Issue with syles update at runtime for bpmn TextAnnotation shape.
-        pathElement.style.fill = ((node.style.fill === 'white') ? 'transparent' : node.style.fill);
+        pathElement.style.fill = 'transparent';
         pathElement.style.strokeDashArray = (node.style.strokeDashArray ? node.style.strokeDashArray : '');
         pathElement.style.gradient = (node.style.gradient ? node.style.gradient : null);
         pathElement.style.strokeWidth = node.style.strokeWidth;
@@ -1214,23 +1229,20 @@ export class BpmnDiagrams {
         default:
             //To check the text annotation has parent and update the path element.
             if (bpmnShape.textAnnotation.textAnnotationTarget !== '') {
-                if (diagram.nameTable[bpmnShape.textAnnotation.textAnnotationTarget]) {
-                    const node2: Node = diagram.nameTable[bpmnShape.textAnnotation.textAnnotationTarget];
-                    (node2 as any).hasTextAnnotation = true;
-                    const wrapper2: DiagramElement = node2.wrapper;
+                const targetId: string = bpmnShape.textAnnotation.textAnnotationTarget;
+                const parentNode: NodeModel = diagram.nameTable[`${targetId}`] || this.fetchTextAnnotationParent(diagram, targetId);
+                if (parentNode) {
+                    (parentNode as any).hasTextAnnotation = true;
+                    const doubleValue: number = parentNode.width;
+                    const doubleValue2: number = parentNode.height;
+                    let targetBounds: Rect = new Rect(0.0, 0.0, 0.0, 0.0);
 
-                    if (wrapper2 !== null) {
-                        const doubleValue: number = node2.width;
-                        const doubleValue2: number = node2.height;
-                        let targetBounds: Rect = new Rect(0.0, 0.0, 0.0, 0.0);
-
-                        if (doubleValue !== 0.0 && doubleValue2 !== 0.0) {
-                            targetBounds = new Rect(node2.offsetX - doubleValue / 2, node2.offsetY - doubleValue2 / 2,
-                                                    doubleValue, doubleValue2);
-                        }
-
-                        this.setAnnotationPosition(targetBounds, node, sourceBounds, pathElement);
+                    if (doubleValue !== 0.0 && doubleValue2 !== 0.0) {
+                        targetBounds = new Rect(parentNode.offsetX - doubleValue / 2, parentNode.offsetY - doubleValue2 / 2,
+                                                doubleValue, doubleValue2);
                     }
+
+                    this.setAnnotationPosition(targetBounds, node, sourceBounds, pathElement);
                 }
             } else if (bpmnShape.textAnnotation.textAnnotationTarget === '') {
                 pathElement.data = 'M10,20 L0,20 L0,0 L10,0';
@@ -1293,6 +1305,10 @@ export class BpmnDiagrams {
                 };
         }
     }
+    /**@private */
+    public fetchTextAnnotationParent(diagram: Diagram, targetID: string): NodeModel {
+        return diagram.nodes.find((obj: NodeModel) => obj.id === targetID);
+    }
 
 
     // /** @private */
@@ -1348,11 +1364,13 @@ export class BpmnDiagrams {
         return count;
     }
     /** @private */
-    private setStyle(child: DiagramElement, node: Node): void {
+    private setStyle(child: DiagramElement, node: Node, isEvent?: boolean): void {
         //set style
         child.style.fill = node.style.fill; child.style.strokeColor = node.style.strokeColor;
         child.style.strokeWidth = node.style.strokeWidth;
-        child.style.strokeDashArray = node.style.strokeDashArray;
+        if (!isEvent) {
+            child.style.strokeDashArray = node.style.strokeDashArray;
+        }
         child.style.opacity = node.style.opacity; child.style.gradient = node.style.gradient;
         //941052: Issue with visible property doesn't hide shadows
         if ((node.constraints & NodeConstraints.Shadow) !== 0 && node.visible) {
@@ -1450,6 +1468,7 @@ export class BpmnDiagrams {
         if (changedProp.style) {
             //941045: update styles for bpmn group shape
             let containerChild: DiagramElement = elementWrapper;
+            let isEvent: boolean = false;
             if (elementWrapper instanceof GroupableView) {
                 if (!isBlazor() && (actualObject.shape as BpmnShape).shape === 'Activity') {
                     containerChild = (elementWrapper.children[0] as GroupableView).children[0];
@@ -1461,10 +1480,20 @@ export class BpmnDiagrams {
                     containerChild = elementWrapper;
                 }
                 else {
-                    containerChild = elementWrapper.children[0];
+                    if ((actualObject.shape as BpmnShape).shape === 'Event'
+                        && (actualObject.shape as BpmnShape).event.event !== 'NonInterruptingStart'
+                        && (actualObject.shape as BpmnShape).event.event !== 'Start'
+                    ) {
+                        containerChild = elementWrapper.children[1];
+                        isEvent = true;
+                    } else {
+                        containerChild = elementWrapper.children[0];
+                    }
                 }
             }
-            updateStyle(changedProp.style, containerChild);
+            if (actualShape !== 'TextAnnotation' || (actualShape === 'TextAnnotation' && !changedProp.style.fill)) {
+                updateStyle(changedProp.style, containerChild, false, isEvent);
+            }
             //937170: Stroke width not applied for transaction sucess, failure, cancel events
             if ((elementWrapper as GroupableView) && (elementWrapper as GroupableView).children !== undefined &&
                 (elementWrapper as GroupableView).children.length > 0) {
@@ -1474,8 +1503,31 @@ export class BpmnDiagrams {
                     const transactionChild: GroupableView
                     = ((elementWrapper as GroupableView).children[0] as GroupableView).children[2] as GroupableView;
                     for (let i: number = 0; i < transactionChild.children.length; i++) {
-                        const child: DiagramElement = (transactionChild.children[parseInt(i.toString(), 10)] as GroupableView).children[0];
-                        updateStyle(changedProp.style, child);
+                        let eventType: string = '';
+                        switch (i) {
+                        case 0:
+                            eventType = (actualObject.shape as BpmnShape).activity.subProcess.transaction.success.event;
+                            break;
+                        case 2:
+                            eventType = (actualObject.shape as BpmnShape).activity.subProcess.transaction.cancel.event;
+                            break;
+                        case 3:
+                            eventType = (actualObject.shape as BpmnShape).activity.subProcess.transaction.failure.event;
+                            break;
+                        }
+                        if (changedProp.style.fill && eventType !== 'Start') {
+                            const child: DiagramElement
+                            = (transactionChild.children[parseInt(i.toString(), 10)] as GroupableView).children[1];
+                            const textElement: TextElement = child as TextElement;
+                            child.canApplyStyle = true;
+                            child.style.fill = changedProp.style.fill;
+                            if (child instanceof TextElement) {
+                                textElement.refreshTextElement();
+                            }
+                        }
+                        const isTransactionChild: boolean = (eventType !== 'Start') && (eventType !== 'NonInterruptingStart');
+                        const child: DiagramElement = (transactionChild.children[parseInt(i.toString(), 10)] as GroupableView).children[1];
+                        updateStyle(changedProp.style, child, isTransactionChild, true);
                     }
                     if (changedProp.style.strokeColor){
                         for (let i: number = 0; i < transactionChild.children.length; i++) {

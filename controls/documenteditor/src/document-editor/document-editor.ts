@@ -2391,7 +2391,6 @@ export class DocumentEditor extends Component<HTMLElement> implements INotifyPro
         const eventArgs: DocumentChangeEventArgs = { source: this };
         this.trigger(documentChangeEvent, eventArgs);
     }
-
     private removeSpinner(element: HTMLElement): void {
         const spinnerPane = element.querySelector('.e-spinner-pane') as HTMLElement;
         if (spinnerPane) {

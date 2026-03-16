@@ -42,6 +42,8 @@ export enum actionType {
     blockMoved = 'blockMoved',
     multipleBlocksDeleted = 'multipleBlocksDeleted',
     blockTransformed = 'blockTransformed',
+    multipleBlocksTransformed = 'multipleBlocksTransformed',
+    imageInsertion = 'imageInsertion',
     clipboardPaste = 'clipboardPaste',
     tableRowInserted = 'tableRowInserted',
     tableRowDeleted = 'tableRowDeleted',
@@ -51,7 +53,8 @@ export enum actionType {
     tableCellsPasted = 'tableCellsPasted',
     tableRowsDeleted = 'tableRowsDeleted',
     tableColumnsDeleted = 'tableColumnsDeleted',
-    tableHeaderInput = 'tableHeaderInput'
+    tableHeaderInput = 'tableHeaderInput',
+    tableColumnResized = 'tableColumnResized'
 }
 
 /* Commands */
@@ -82,12 +85,16 @@ export const INDENT_KEY: string = '--block-indent';
 export const BLOCK_CLS: string = 'e-block';
 export const CONTENT_CLS: string = 'e-block-content';
 export const CALLOUT_BLOCK_CLS: string = 'e-callout-block';
+export const QUOTE_BLOCK_CLS: string = 'e-quote-block';
 export const TOGGLE_BLOCK_CLS: string = 'e-toggle-block';
 export const CALLOUT_CONTENT_CLS: string = 'e-callout-content';
+export const QUOTE_CONTENT_CLS: string = 'e-quote-content';
 export const TOGGLE_CONTENT_CLS: string = 'e-toggle-content';
 export const TABLE_BLOCK_CLS: string = 'e-table-block';
 export const TABLE_CELL_BLK_CONTAINER: string = 'e-cell-blocks-container';
 export const TABLE_CELL_FOCUS: string = 'e-cell-focus';
+export const TABLE_COL_MIN_WIDTH: number = 60;
+export const TABLE_NEW_COL_WIDTH: number = 120;
 
 export const BLOCKACTION_MENUBAR_ID: string = '_blockaction-menubar';
 export const BLOCKACTION_POPUP_ID: string = '_blockaction-popup';

@@ -15,7 +15,7 @@ import { NotifyArgs, IDropDownItemModel, ResizeArgs, ITableArgs, IToolbarItemMod
 import { Dialog, Popup, DialogModel, Tooltip, TooltipEventArgs } from '@syncfusion/ej2-popups';
 import { Button } from '@syncfusion/ej2-buttons';
 import { ChangeEventArgs, NumericTextBox } from '@syncfusion/ej2-inputs';
-import { ClickEventArgs } from '@syncfusion/ej2-navigations';
+import { ClickEventArgs, KeyDownEventArgs } from '@syncfusion/ej2-navigations';
 
 // Internal modules
 import * as events from '../base/constant';
@@ -30,12 +30,14 @@ import { TableCommand } from '../../editor-manager/plugin/table';
 import { DialogRenderer } from './dialog-renderer';
 import { ColorPickerInput } from '../actions/color-picker';
 import { DropDownButtons } from '../actions';
+import { DropDownButton, ItemModel, MenuEventArgs } from '@syncfusion/ej2-splitbuttons';
 
 // Utility functions
 import { dispatchEvent, parseHtml, hasClass } from '../base/util';
-import { removeClassWithAttr } from '../../common/util';
+import { convertPixelToPercentage, insertColGroupWithSizes, removeClassWithAttr } from '../../common/util';
 import { ToolbarType } from '../../common/enum';
 import { RichTextEditorModel } from '../base';
+import { DOMMethods } from '../../editor-manager/plugin/dom-tree';
 
 /*
  * `Table` module is used to handle table actions.
@@ -56,20 +58,38 @@ export class Table {
     private rowTextBox: NumericTextBox;
     private columnTextBox: NumericTextBox;
     private tableWidthNum: NumericTextBox;
+    private tableHeightNum: NumericTextBox;
     private tableCellPadding: NumericTextBox;
     private tableCellSpacing: NumericTextBox;
     private tableBorderWidth: NumericTextBox;
     private tableBorderColor: ColorPickerInput;
     private tableBackgroundColor: ColorPickerInput;
     private tableBorderStyle: DropDownButtons
-    private tableElement: HTMLElement;
+    private selectedItem: HTMLElement;
+    private multiSelectedItems: NodeListOf<HTMLElement>;
+    private isMultiSelection: boolean = false;
     private tableCellPaddingValue: string = '';
+    private tableCellVerticalAlignValue: string = '';
+    private tableCellHorizontalAlignValue: string = '';
+    private tableCellHeightValue: string = '';
     private tableStyles: { [key: string]: string } = {};
+    private multipleSelectionCellStyles: IMultipleCellStyles[] = [];
+    private colElementsInitialWidths: Map<HTMLElement, string> = new Map();
     private l10n: L10n;
     private dialogRenderObj: DialogRenderer;
     private isDestroyed: boolean;
+    private createdButtons: Button[] = [];
+    private createdDropdownButtons: DropDownButton[] = [];
+    private alignmentButtonHandlers: IAlignmentButtonHandler[] = [];
     private createTablePopupBoundFn: () => void
     private selectionTimeout: number;
+    private heightValue: string = '';
+    private widthValue: string = '';
+    private savedSelectionForDialog: NodeSelection = null;
+    /**
+     * @private
+     */
+    private selectionStage: number = 0;
 
     private constructor(parent?: IRichTextEditor, serviceLocator?: ServiceLocator) {
         this.parent = parent;
@@ -235,6 +255,7 @@ export class Table {
             enterKey: this.parent.enterKey,
             editorMode: this.parent.editorMode,
             quickToolbarSettings: this.parent.quickToolbarSettings,
+            tableSelectionFeature: true,
             // Method for retrieving CSS class name
             getCssClass: (isSpace?: boolean) => {
                 return this.parent.getCssClass(isSpace);
@@ -407,6 +428,7 @@ export class Table {
             this.columnTextBox,
             this.rowTextBox,
             this.tableWidthNum,
+            this.tableHeightNum,
             this.tableCellPadding,
             this.tableCellSpacing,
             this.tableBorderWidth
@@ -432,9 +454,17 @@ export class Table {
             const actionBeginArgs: ActionBeginEventArgs = { cancel: false, requestType: 'BorderStyle' };
             this.parent.trigger(events.actionBegin, actionBeginArgs, (actionBeginArgs: ActionBeginEventArgs) => {
                 if (!actionBeginArgs.cancel) {
-                    const borderDropDown: HTMLElement = this.parent.contentModule.getPanel().ownerDocument.getElementById(this.parent.getID() + '_borderStyle') as HTMLElement;
+                    const isTable: boolean = this.selectedItem.nodeName === 'TABLE';
+                    const borderDropDown: HTMLElement = this.parent.contentModule.getPanel().ownerDocument.getElementById(this.parent.getID() + (isTable ? '_borderStyle' : '_cellborderStyle')) as HTMLElement;
                     (borderDropDown.firstChild as HTMLElement).innerHTML = '<span class="e-rte-dropdown-btn-text" >' + item.text + '</span>';
-                    this.tableElement.style.cssText += `border-style: ${item.subCommand.toLowerCase()};`;
+                    if (this.isMultiSelection) {
+                        for (let i: number = 0; i < this.multiSelectedItems.length; i++) {
+                            this.multiSelectedItems[i as number].style.cssText += `border-style: ${item.subCommand.toLowerCase()};`;
+                        }
+                    } else {
+                        this.selectedItem.style.cssText += `border-style: ${item.subCommand.toLowerCase()};`;
+                    }
+                    this.applyBorderStyleAndWidth();
                     this.parent.trigger(events.actionComplete, { requestType: 'BorderStyle' });
                 }
             });
@@ -512,6 +542,30 @@ export class Table {
      */
     private keyDown(e: NotifyArgs): void {
         const event: KeyboardEventArgs = e.args as KeyboardEventArgs;
+        const selectedCell: Element = this.contentModule.getDocument().querySelector('.e-cell-select');
+        if ((event.ctrlKey || event.metaKey) && event.code === 'KeyA' && selectedCell) {
+            if (this.selectionStage === 0) {
+                event.preventDefault();
+                addClass([selectedCell], 'e-multi-cells-select');
+                this.selectionStage = 1;
+            } else if (this.selectionStage === 1) {
+                // Stage 2: select the row
+                const row: HTMLElement = selectedCell.closest('tr');
+                if (row) {
+                    event.preventDefault();
+                    this.tableObj.selectTableRow(row);
+                    this.selectionStage = 2;
+                }
+            } else if (this.selectionStage === 2) {
+                event.preventDefault();
+                const table: HTMLElement = selectedCell.closest('table');
+                this.tableObj.selectEntireTable(table);
+                this.selectionStage = 3;
+            }
+            else {
+                this.selectionStage = 0;
+            }
+        }
         this.handleSpecialActions(event, e);
         if (this.tableObj) {
             if (this.tableObj.isTableInteractionPossible(event)) {
@@ -520,7 +574,9 @@ export class Table {
             if (this.parent.editorMode === 'HTML') {
                 this.tableObj.handleShiftKeyTableSelection(event);
             }
-            this.tableObj.handleGlobalKeyboardShortcuts(event);
+            if (this.selectionStage === 0) {
+                this.tableObj.handleGlobalKeyboardShortcuts(event);
+            }
             this.tableObj.handleTableDeletion(event);
             this.tableObj.handleDeselectionOnTyping(event);
         }
@@ -657,11 +713,29 @@ export class Table {
             this.removeTable(args.selection, args.args as ClickEventArgs);
             break;
         case 'TableEditProperties':
-            this.tableElement = (closest(args.selectParent[0], 'table') as HTMLElement);
-            if (this.tableElement) {
-                const style: CSSStyleDeclaration = this.tableElement.style;
-                this.tableCellPaddingValue = this.tableElement.querySelector('td') ?
-                    (this.tableElement.querySelector('td') as HTMLElement).style.padding : '';
+        case 'TableCellProperties':
+            if (((args.args as ClickEventArgs).item as IToolbarItemModel).subCommand === 'TableEditProperties') {
+                this.selectedItem = (closest(args.selectParent[0], 'table') as HTMLElement);
+            } else {
+                this.widthValue = 'px';
+                this.heightValue = 'px';
+                this.selectedItem = (closest(args.selectParent[0], 'td') as HTMLElement) || (closest(args.selectParent[0], 'th') as HTMLElement);
+                this.multiSelectedItems = this.parent.inputElement.querySelectorAll('.e-cell-select') as NodeListOf<HTMLElement>;
+                if (this.multiSelectedItems.length > 1) {
+                    this.isMultiSelection = true;
+                }
+            }
+            if (this.selectedItem && !this.isMultiSelection) {
+                const style: CSSStyleDeclaration = this.selectedItem.style;
+                if (this.selectedItem.tagName === 'TABLE') {
+                    this.tableCellPaddingValue = this.selectedItem.querySelector('td') ?
+                        (this.selectedItem.querySelector('td') as HTMLElement).style.padding : '';
+                } else if (this.selectedItem.tagName === 'TD' || this.selectedItem.tagName === 'TH') {
+                    this.tableCellPaddingValue = this.selectedItem.style.padding;
+                    this.tableCellVerticalAlignValue = this.selectedItem.style.verticalAlign;
+                    this.tableCellHorizontalAlignValue = this.selectedItem.style.textAlign;
+                    this.tableCellHeightValue = this.selectedItem.style.height;
+                }
                 this.tableStyles = {
                     borderStyle: style.borderStyle,
                     borderColor: style.borderColor,
@@ -671,11 +745,32 @@ export class Table {
                     borderSpacing: style.borderSpacing,
                     borderCollapse: style.borderCollapse
                 };
-                if (!this.tableElement.style.borderWidth) {
-                    this.tableElement.style.cssText += 'border-width: 1px;';
+                if (!this.selectedItem.style.borderWidth && this.selectedItem.tagName === 'TABLE') {
+                    this.selectedItem.style.cssText += 'border-width: 1px;';
                 }
-                if (!this.tableElement.style.borderStyle) {
-                    this.tableElement.style.cssText += 'border-style: double;';
+                if (!this.selectedItem.style.borderStyle && this.selectedItem.tagName === 'TABLE') {
+                    this.selectedItem.style.cssText += 'border-style: double;';
+                }
+            } else if (this.isMultiSelection) {
+                for (let i: number = 0; i < this.multiSelectedItems.length; i++) {
+                    const style: CSSStyleDeclaration = this.multiSelectedItems[i as number].style;
+                    this.multipleSelectionCellStyles.push({
+                        borderStyle: style.borderStyle,
+                        borderColor: style.borderColor,
+                        backgroundColor: style.backgroundColor,
+                        borderWidth: style.borderWidth,
+                        width: style.width,
+                        height: style.height,
+                        tableCellPaddingValue: this.multiSelectedItems[i as number].style.padding,
+                        tableCellVerticalAlignValue: this.multiSelectedItems[i as number].style.verticalAlign,
+                        tableCellHorizontalAlignValue: this.multiSelectedItems[i as number].style.textAlign
+                    });
+                    if (!this.multiSelectedItems[i as number].style.borderWidth && this.selectedItem.tagName === 'TABLE') {
+                        this.multiSelectedItems[i as number].style.cssText += 'border-width: 1px;';
+                    }
+                    if (!this.multiSelectedItems[i as number].style.borderStyle && this.selectedItem.tagName === 'TABLE') {
+                        this.multiSelectedItems[i as number].style.cssText += 'border-style: double;';
+                    }
                 }
             }
             this.editTable(args);
@@ -753,15 +848,29 @@ export class Table {
      * Handles click event inside editable area to show or hide the table quick toolbar.
      */
     private editAreaClickHandler(e: ITableNotifyArgs): void {
+        this.selectionStage = 0;
+        if (this.parent.quickToolbarModule && this.parent.quickToolbarModule.tableQTBar) {
+            this.quickToolObj = this.parent.quickToolbarModule;
+        }
         if (this.shouldSkipQuickToolbar(e)) {
             return;
         }
         if (this.parent.editorMode === 'HTML' && this.parent.quickToolbarModule && this.parent.quickToolbarModule.tableQTBar) {
-            this.quickToolObj = this.parent.quickToolbarModule;
             const args: MouseEvent = e.args as MouseEvent;
-            const target: HTMLElement = args.target as HTMLElement;
+            let target: HTMLElement = args.target as HTMLElement;
             this.contentModule = this.rendererFactory.getRenderer(RenderType.Content);
-            const range: Range = this.parent.formatter.editorManager.nodeSelection.getRange(this.contentModule.getDocument());
+            let range: Range = this.parent.formatter.editorManager.nodeSelection.getRange(this.contentModule.getDocument());
+            const stringArray: string[] = [ 'e-icons e-drag-and-drop e-active', 'e-icons e-move e-active'  ];
+            const gripper: boolean = stringArray.some((cls: string) => target.className.includes(cls));
+            if (gripper) {
+                target = this.contentModule.getDocument().querySelector('.e-cell-select-end');
+                const domMethods: DOMMethods = new DOMMethods(this.parent.inputElement as HTMLDivElement);
+                let lastNode: HTMLElement = domMethods.getLastTextNode(target) as HTMLElement;
+                lastNode = !isNOU(lastNode) ? lastNode : target;
+                const offset: number = !isNOU(lastNode) ? lastNode.textContent.length : 0;
+                this.parent.formatter.editorManager.nodeSelection.setCursorPoint(this.contentModule.getDocument(), lastNode, offset);
+                range = this.parent.formatter.editorManager.nodeSelection.getRange(this.contentModule.getDocument());
+            }
             if (this.shouldShowQuickToolbar(args, target, range)) {
                 this.showTableQuickToolbar(e, args, target, range);
             } else {
@@ -780,12 +889,19 @@ export class Table {
             return true;
         }
         const target: Element = (e.args as MouseEvent).target as Element;
-        if (!isNOU(closest(target, '.e-img-caption'))) {
+        if (!isNOU(closest(target, '.' + classes.CLS_IMG_CAPTION_CONTAINER))) {
             return true;
         }
         const args: MouseEvent = e.args as MouseEvent;
         const showOnRightClick: boolean = this.parent.quickToolbarSettings.showOnRightClick;
         // Right-click / left-click logic
+        // Custom condition: only skip on right-click if a certain class exists in DOM
+        const stringArray: string[] = [ 'e-icons e-drag-and-drop e-active', 'e-icons e-move e-active'  ];
+        if (((e.args as MouseEvent).target as HTMLElement).nodeType === Node.ELEMENT_NODE) {
+            const gripper: boolean = stringArray.some((cls: string) =>
+                ((e.args as MouseEvent).target as HTMLElement).className.includes(cls));
+            if (showOnRightClick && gripper) { return false; }
+        }
         return (args.which === 2 || (showOnRightClick && args.which === 1) || (!showOnRightClick && args.which === 3));
     }
 
@@ -1108,7 +1224,6 @@ export class Table {
             viewPortElement: this.parent.element,
             position: { X: 'left', Y: 'bottom' },
             enableRtl: this.parent.enableRtl,
-            zIndex: 10001,
             close: () => {
                 EventHandler.remove(btnEle, 'click', this.insertTableDialog);
                 this.dlgDiv.removeEventListener('keydown', this.createTablePopupBoundFn);
@@ -1125,7 +1240,7 @@ export class Table {
                 this.popupObj = null;
             }
         });
-        addClass([this.popupObj.element], 'e-popup-open');
+        this.popupObj.show();
         this.popupObj.element.parentElement.style.zIndex = '11';
         if (!isNOU(this.parent.cssClass)) {
             addClass([this.popupObj.element], this.parent.getCssClass());
@@ -1198,7 +1313,11 @@ export class Table {
             if (this.tableObj && target && target.classList && !target.classList.contains(EVENTS.CLS_TB_COL_RES) &&
                 !target.classList.contains(EVENTS.CLS_TB_ROW_RES) && !target.classList.contains(EVENTS.CLS_TB_BOX_RES) &&
                 !(Browser.isDevice && target.nodeName !== '#text' && target.closest('.e-cell-select'))) {
-                this.tableObj.removeResizeElement();
+                this.tableObj.removeResizeElement(true);
+                const tableSelection: Element = this.contentModule.getDocument().querySelector('.e-icons.e-move');
+                if (target instanceof HTMLElement && target.classList.contains('e-icons') && target.classList.contains('e-move') && this.contentModule.getDocument().querySelector('.e-rte-table-resize') && tableSelection) {
+                    this.tableObj.removeResizeElement();
+                }
             }
         }
     }
@@ -1214,22 +1333,15 @@ export class Table {
             if (this.popupObj) {
                 this.popupObj.hide();
             }
-            if (this.editdlgObj && !target.closest('.e-border-style-btn') && !target.closest('.e-rte-border-colorpicker') && !target.closest('.e-rte-table-bg-colorpicker')) {
-                if (this.editdlgObj.element.querySelector('.e-rte-edit-table-content')) {
+            if (this.editdlgObj && !target.closest('.e-border-style-btn') && !target.closest('.e-rte-border-colorpicker') && !target.closest('.e-rte-table-bg-colorpicker') && !target.closest('.e-rte-edit-cell-dropdown')) {
+                const dialogElement: HTMLElement = this.selectedItem ? this.selectedItem.nodeName === 'TABLE' ? this.editdlgObj.element.querySelector('.e-rte-edit-table-content') : this.editdlgObj.element.querySelector('.e-rte-edit-tablecell-dialog') : null;
+                if (dialogElement) {
                     for (const property in this.tableStyles) {
                         if (Object.prototype.hasOwnProperty.call(this.tableStyles, property)) {
-                            (this.tableElement.style as CSSStyleDeclaration)[property as any] = this.tableStyles[property as string];
+                            (this.selectedItem.style as CSSStyleDeclaration)[property as any] = this.tableStyles[property as string];
                         }
                     }
-                    const tdElements: NodeListOf<HTMLTableCellElement> = this.tableElement.querySelectorAll('td,th');
-                    for (let i: number = 0; i < tdElements.length; i++) {
-                        if (this.tableCellPaddingValue) {
-                            tdElements[i as number].style.padding = this.tableCellPaddingValue;
-                        }
-                        else {
-                            tdElements[i as number].style.padding = '';
-                        }
-                    }
+                    this.applyTableCellPropertiesOnDialogClose();
                 }
                 const colorPickerPopup: HTMLElement = this.parent.contentModule.getDocument().querySelector('.e-colorpicker-popup.e-popup-open');
                 if (colorPickerPopup) {
@@ -1238,9 +1350,14 @@ export class Table {
                 }
                 this.parent.notify(events.documentClickClosedBy, { closedBy: 'outside click' });
                 this.editdlgObj.hide();
+                this.isMultiSelection = false;
+                this.multiSelectedItems = {} as NodeListOf<HTMLElement>;
+                this.multipleSelectionCellStyles .length = 0;
             }
-            this.parent.isBlur = true;
-            dispatchEvent(this.parent.element, 'focusout');
+            if (!target.closest('.e-border-style-btn') && !target.closest('.e-rte-border-colorpicker') && !target.closest('.e-rte-table-bg-colorpicker') && !target.closest('.e-rte-edit-cell-dropdown')) {
+                this.parent.isBlur = true;
+                dispatchEvent(this.parent.element, 'focusout');
+            }
         }
         const closestEle: Element = closest(target, 'td') || closest(target, 'th');
         const isExist: boolean = closestEle && this.parent.contentModule.getEditPanel().contains(closestEle) ? true : false;
@@ -1264,7 +1381,11 @@ export class Table {
         if (this.tableObj && target && target.classList && !target.classList.contains(EVENTS.CLS_TB_COL_RES) &&
             !target.classList.contains(EVENTS.CLS_TB_ROW_RES) && !target.classList.contains(EVENTS.CLS_TB_BOX_RES) &&
             !(Browser.isDevice && target.nodeName !== '#text' && target.closest('.e-cell-select'))) {
-            this.tableObj.removeResizeElement();
+            this.tableObj.removeResizeElement(true);
+            const tableSelection: Element = this.contentModule.getDocument().querySelector('.e-icons.e-move');
+            if (target instanceof HTMLElement && target.classList.contains('e-icons') && target.classList.contains('e-move') && this.contentModule.getDocument().querySelector('.e-rte-table-resize') && tableSelection) {
+                this.tableObj.removeResizeElement();
+            }
         }
     }
 
@@ -1300,10 +1421,21 @@ export class Table {
      */
     private editTable(args: ITableArgs): void {
         this.createDialog();
+        // Save the editor selection before the dialog steals focus
+        const currentRange: Range = this.parent.formatter.editorManager.nodeSelection
+            .getRange(this.contentModule.getDocument());
+        this.savedSelectionForDialog = this.parent.formatter.editorManager.nodeSelection
+            .save(currentRange, this.contentModule.getDocument());
+        this.storeInitialColWidths();
         const editContent: HTMLElement = this.tableDlgContent(args);
         const update: string = this.l10n.getConstant('dialogUpdate');
         const cancel: string = this.l10n.getConstant('dialogCancel');
-        const editHeader: string = this.l10n.getConstant('tableEditHeader');
+        const headerKeyMap: Record<string, string> = {
+            TABLE: 'tableEditHeader',
+            TD: 'tableCellHeader',
+            TH: 'tableCellHeader'
+        };
+        const editHeader: string = this.l10n.getConstant(headerKeyMap[this.selectedItem.nodeName]);
         this.editdlgObj.setProperties({
             height: 'initial', width: '390px', content: editContent, header: editHeader,
             buttons: [{
@@ -1474,25 +1606,22 @@ export class Table {
             close: (event: { [key: string]: object }) => {
                 (event as any).preventFocus = true;
                 this.parent.isBlur = false;
-                if (this.editdlgObj.element.querySelector('.e-rte-edit-table-content') && (event.closedBy.toString() === 'escape' || event.closedBy.toString() === 'close icon')) {
+                const dialogElement: HTMLElement = this.selectedItem ? this.selectedItem.nodeName === 'TABLE' ? this.editdlgObj.element.querySelector('.e-rte-edit-table-content') : this.editdlgObj.element.querySelector('.e-rte-edit-tablecell-dialog') : null;
+                if (dialogElement && (event.closedBy.toString() === 'escape' || event.closedBy.toString() === 'close icon')) {
                     for (const property in this.tableStyles) {
                         if (Object.prototype.hasOwnProperty.call(this.tableStyles, property)) {
-                            (this.tableElement.style as CSSStyleDeclaration)[property as any] = this.tableStyles[property as string];
+                            (this.selectedItem.style as CSSStyleDeclaration)[property as any] = this.tableStyles[property as string];
                         }
                     }
-                    const tdElements: NodeListOf<HTMLTableCellElement> = this.tableElement.querySelectorAll('td,th');
-                    for (let i: number = 0; i < tdElements.length; i++) {
-                        if (this.tableCellPaddingValue) {
-                            tdElements[i as number].style.padding = this.tableCellPaddingValue;
-                        }
-                        else {
-                            tdElements[i as number].style.padding = '';
-                        }
-                    }
+                    this.applyTableCellPropertiesOnDialogClose();
                 }
+                this.cleanupAlignmentButtons();
                 this.editdlgObj.destroy();
                 detach(this.editdlgObj.element);
                 this.dialogRenderObj.close(event);
+                this.isMultiSelection = false;
+                this.multiSelectedItems = {} as NodeListOf<HTMLElement>;
+                this.multipleSelectionCellStyles .length = 0;
                 this.editdlgObj = null;
             }
         };
@@ -1504,6 +1633,101 @@ export class Table {
         if (this.quickToolObj && this.quickToolObj.textQTBar &&
             this.parent.element.ownerDocument.body.contains(this.quickToolObj.textQTBar.element)) {
             this.quickToolObj.textQTBar.hidePopup();
+        }
+    }
+
+    private applyTableCellPropertiesOnDialogClose(): void {
+        if (this.selectedItem.nodeName === 'TABLE') {
+            const tdElements: NodeListOf<HTMLTableCellElement> = this.selectedItem.querySelectorAll('td,th');
+            for (let i: number = 0; i < tdElements.length; i++) {
+                if (this.tableCellPaddingValue) {
+                    tdElements[i as number].style.padding = this.tableCellPaddingValue;
+                }
+                else {
+                    tdElements[i as number].style.padding = '';
+                }
+            }
+        } else if (this.selectedItem.nodeName === 'TD' || this.selectedItem.nodeName === 'TH') {
+            const colgroupElement: HTMLTableColElement = this.selectedItem.closest('table').querySelector('colgroup');
+            let colElements: NodeListOf<HTMLTableColElement>;
+            if (colgroupElement) {
+                colElements = colgroupElement.querySelectorAll('col');
+            }
+            if (this.isMultiSelection) {
+                for (let i: number = 0; i < this.multiSelectedItems.length; i++) {
+                    if (this.multipleSelectionCellStyles[i as number].tableCellPaddingValue) {
+                        this.multiSelectedItems[i as number].style.padding =
+                            this.multipleSelectionCellStyles[i as number].tableCellPaddingValue;
+                    } else {
+                        this.multiSelectedItems[i as number].style.padding = '';
+                    }
+                    if (this.multipleSelectionCellStyles[i as number].tableCellVerticalAlignValue) {
+                        this.multiSelectedItems[i as number].style.verticalAlign =
+                            this.multipleSelectionCellStyles[i as number].tableCellVerticalAlignValue;
+                    } else {
+                        this.multiSelectedItems[i as number].style.verticalAlign = '';
+                    }
+                    if (this.multipleSelectionCellStyles[i as number].tableCellHorizontalAlignValue) {
+                        this.multiSelectedItems[i as number].style.textAlign =
+                            this.multipleSelectionCellStyles[i as number].tableCellHorizontalAlignValue;
+                    } else {
+                        this.multiSelectedItems[i as number].style.textAlign = '';
+                    }
+                    this.multiSelectedItems[i as number].style.borderStyle =
+                        this.multipleSelectionCellStyles[i as number].borderStyle;
+                    this.multiSelectedItems[i as number].style.borderWidth =
+                        this.multipleSelectionCellStyles[i as number].borderWidth;
+                    this.multiSelectedItems[i as number].style.borderColor =
+                        this.multipleSelectionCellStyles[i as number].borderColor;
+                    this.multiSelectedItems[i as number].style.backgroundColor =
+                        this.multipleSelectionCellStyles[i as number].backgroundColor;
+                    this.multiSelectedItems[i as number].style.height =
+                        this.multipleSelectionCellStyles[i as number].height;
+                    if (colElements && colElements.length > 0) {
+                        for (let i: number = 0; i < this.multiSelectedItems.length; i++) {
+                            const index: number = (this.multiSelectedItems[i as number] as HTMLTableCellElement).cellIndex;
+                            const colElement: HTMLElement = colElements[index as number];
+
+                            if (colElement && this.colElementsInitialWidths.has(colElement)) {
+                                const initialWidth: string = this.colElementsInitialWidths.get(colElement);
+                                colElement.style.width = initialWidth || '';
+                            }
+                        }
+                    }
+                }
+            } else {
+                const tdElement: HTMLTableCellElement = this.selectedItem as HTMLTableCellElement;
+                if (this.tableCellPaddingValue) {
+                    tdElement.style.padding = this.tableCellPaddingValue;
+                }
+                else {
+                    tdElement.style.padding = '';
+                }
+                if (this.tableCellVerticalAlignValue) {
+                    tdElement.style.verticalAlign = this.tableCellVerticalAlignValue;
+                } else {
+                    tdElement.style.verticalAlign = '';
+                }
+                if (this.tableCellHorizontalAlignValue) {
+                    tdElement.style.textAlign = this.tableCellHorizontalAlignValue;
+                } else {
+                    tdElement.style.textAlign = '';
+                }
+                if (this.tableCellHeightValue) {
+                    tdElement.style.height = this.tableCellHeightValue;
+                } else {
+                    tdElement.style.height = '';
+                }
+                if (colElements && colElements.length > 0) {
+                    const index: number = (this.selectedItem as HTMLTableCellElement).cellIndex;
+                    const colElement: HTMLElement = colElements[index as number];
+
+                    if (colElement && this.colElementsInitialWidths.has(colElement)) {
+                        const initialWidth: string = this.colElementsInitialWidths.get(colElement);
+                        colElement.style.width = initialWidth || '';
+                    }
+                }
+            }
         }
     }
 
@@ -1531,21 +1755,17 @@ export class Table {
         if (isEditTable) {
             for (const property in this.tableStyles) {
                 if (Object.prototype.hasOwnProperty.call(this.tableStyles, property)) {
-                    (this.tableElement.style as CSSStyleDeclaration)[property as any] = this.tableStyles[property as string];
+                    (this.selectedItem.style as CSSStyleDeclaration)[property as any] = this.tableStyles[property as string];
                 }
             }
-            const tdElements: NodeListOf<HTMLTableCellElement> = this.tableElement.querySelectorAll('td,th');
-            for (let i: number = 0; i < tdElements.length; i++) {
-                if (this.tableCellPaddingValue) {
-                    tdElements[i as number].style.padding = this.tableCellPaddingValue;
-                }
-                else {
-                    tdElements[i as number].style.padding = '';
-                }
-            }
+            this.applyTableCellPropertiesOnDialogClose();
         }
+        this.cleanupAlignmentButtons();
         this.parent.isBlur = false;
         this.editdlgObj.hide({ returnValue: true } as Event);
+        this.isMultiSelection = false;
+        this.multiSelectedItems = {} as NodeListOf<HTMLElement>;
+        this.multipleSelectionCellStyles .length = 0;
     }
 
     /*
@@ -1559,7 +1779,13 @@ export class Table {
                     if (colorPickerArgs.value === '') {
                         colorPickerArgs.value = 'transparent';
                     }
-                    this.tableElement.style.cssText += `background-color: ${colorPickerArgs.value};`;
+                    if (this.isMultiSelection) {
+                        for (let i: number = 0; i < this.multiSelectedItems.length; i++) {
+                            this.multiSelectedItems[i as number].style.cssText += `background-color: ${colorPickerArgs.value};`;
+                        }
+                    } else {
+                        this.selectedItem.style.cssText += `background-color: ${colorPickerArgs.value};`;
+                    }
                     this.parent.trigger(events.actionComplete, { requestType: 'TableBackgroundColor' });
                 }
             });
@@ -1571,10 +1797,62 @@ export class Table {
                     if (colorPickerArgs.value === '') {
                         colorPickerArgs.value = 'transparent';
                     }
-                    this.tableElement.style.cssText += `border-color: ${colorPickerArgs.value};`;
+                    if (this.isMultiSelection) {
+                        for (let i: number = 0; i < this.multiSelectedItems.length; i++) {
+                            this.multiSelectedItems[i as number].style.cssText += `border-color: ${colorPickerArgs.value};`;
+                        }
+                    }
+                    else {
+                        this.selectedItem.style.cssText += `border-color: ${colorPickerArgs.value};`;
+                    }
+                    this.applyBorderStyleAndWidth(true);
                     this.parent.trigger(events.actionComplete, { requestType: 'BorderColor' });
                 }
             });
+        }
+    }
+
+    private getBorderWidthValue(): number {
+        if (this.tableBorderWidth && this.tableBorderWidth.value) {
+            return this.tableBorderWidth.value;
+        } else {
+            return null;
+        }
+    }
+
+    private applyBorderStyleAndWidth(iscolorPickerChange?: boolean): void {
+        const borderWidthValue: number = this.getBorderWidthValue();
+        if (this.isMultiSelection) {
+            for (let i: number = 0; i < this.multiSelectedItems.length; i++) {
+                const currentItem: HTMLElement = this.multiSelectedItems[i as number];
+                if (!currentItem.style.borderStyle && !this.selectedItem.style.borderStyle) {
+                    currentItem.style.cssText += 'border-style: double;';
+                } else if (this.selectedItem.style.borderStyle && currentItem.style.borderStyle !== this.selectedItem.style.borderStyle) {
+                    currentItem.style.cssText += `border-style: ${this.selectedItem.style.borderStyle};`;
+                } else if (currentItem.style.borderStyle && !this.selectedItem.style.borderStyle) {
+                    currentItem.style.cssText += 'border-style: double;';
+                }
+                if (!currentItem.style.borderWidth && !borderWidthValue) {
+                    currentItem.style.cssText += 'border-width: 1px;';
+                } else if (borderWidthValue && parseFloat(currentItem.style.borderWidth) !== borderWidthValue) {
+                    currentItem.style.cssText += `border-width: ${borderWidthValue}px;`;
+                }
+                if (!iscolorPickerChange) {
+                    if (this.selectedItem.style.borderColor && currentItem.style.borderColor !== this.selectedItem.style.borderColor) {
+                        currentItem.style.cssText += `border-color: ${this.selectedItem.style.borderColor};`;
+                    } else if (!this.selectedItem.style.borderColor && currentItem.style.borderColor) {
+                        currentItem.style.borderColor = '';
+                    }
+                }
+            }
+        }
+        else {
+            if (!this.selectedItem.style.borderStyle) {
+                this.selectedItem.style.cssText += 'border-style: double;';
+            }
+            if (!this.selectedItem.style.borderWidth) {
+                this.selectedItem.style.cssText += 'border-width: 1px;';
+            }
         }
     }
 
@@ -1583,8 +1861,587 @@ export class Table {
      * Applies the table properties from the dialog to the selected table.
      */
     private saveProperties(): void {
+        if (this.savedSelectionForDialog) {
+            this.savedSelectionForDialog.restore();
+            this.savedSelectionForDialog = null;
+        }
         this.parent.formatter.saveData();
+        this.cleanupAlignmentButtons();
         this.editdlgObj.hide({ returnValue: true } as Event);
+        this.isMultiSelection = false;
+        this.multiSelectedItems = {} as NodeListOf<HTMLElement>;
+        this.multipleSelectionCellStyles .length = 0;
+    }
+
+    private applyHorizontalAlign(align: string, btn: Element): void {
+        if (this.isMultiSelection) {
+            for (let i: number = 0; i < this.multiSelectedItems.length; i++) {
+                this.multiSelectedItems[i as number].style.textAlign = align;
+            }
+        } else {
+            this.selectedItem.style.textAlign = align;
+        }
+        this.removeActiveClass(btn.parentElement as HTMLElement);
+        btn.classList.add('e-active');
+    }
+
+    private applyVerticalAlign(align: string, btn: Element): void {
+        if (this.isMultiSelection) {
+            for (let i: number = 0; i < this.multiSelectedItems.length; i++) {
+                this.multiSelectedItems[i as number].style.verticalAlign = align;
+            }
+        } else {
+            this.selectedItem.style.verticalAlign = align;
+        }
+        this.removeActiveClass(btn.parentElement as HTMLElement);
+        btn.classList.add('e-active');
+    }
+
+    private removeActiveClass(parentElement: HTMLElement): void {
+        for (let i: number = 0; i < parentElement.childNodes.length; i++) {
+            if (parentElement.childNodes[i as number].nodeName === 'BUTTON') {
+                (parentElement.childNodes[i as number] as HTMLElement).classList.remove('e-active');
+            }
+        }
+    }
+
+    private addActiveClass(align: string, btn: Element): void {
+        if (this.selectedItem.style.textAlign === align) {
+            btn.classList.add('e-active');
+        } else if (this.selectedItem.style.verticalAlign === align) {
+            btn.classList.add('e-active');
+        }
+    }
+
+    private createButtons(): Button {
+        const button: Button = new Button({
+            isToggle: true,
+            cssClass: this.parent.getCssClass(),
+            enableRtl: this.parent.enableRtl, locale: this.parent.locale
+        });
+        // track for later cleanup
+        this.createdButtons.push(button);
+        return button;
+    }
+
+    private createButtonWithActiveClass(btn: HTMLElement, alignState: string, alignPosition: string): void {
+        const button: Button = this.createButtons();
+        if (this.isMultiSelection && this.isMultiSelectionPropertySame(alignState, alignPosition)) {
+            this.addActiveClass(alignPosition, btn);
+        } else if (!this.isMultiSelection) {
+            this.addActiveClass(alignPosition, btn);
+        }
+        button.appendTo(btn);
+        const handler: () => void = alignState === 'textAlign'
+            ? () => this.applyHorizontalAlign(alignPosition, btn)
+            : () => this.applyVerticalAlign(alignPosition, btn);
+        // Add event listener
+        btn.addEventListener('click', handler);
+        // Store reference for cleanup
+        this.alignmentButtonHandlers.push({
+            element: btn,
+            eventType: 'click',
+            handler: handler
+        });
+    }
+
+    /*
+      Removes event listeners from alignment buttons to prevent memory leaks
+     This method properly cleans up by removing stored event listener references
+     */
+    private cleanupAlignmentButtons(): void {
+        if (this.alignmentButtonHandlers && this.alignmentButtonHandlers.length > 0) {
+            for (let i: number = 0; i < this.alignmentButtonHandlers.length; i++) {
+                const handlerInfo: IAlignmentButtonHandler = this.alignmentButtonHandlers[i as number];
+                if (handlerInfo && handlerInfo.element && handlerInfo.handler) {
+                    // Properly remove the event listener using the stored reference
+                    handlerInfo.element.removeEventListener(handlerInfo.eventType, handlerInfo.handler);
+                }
+            }
+            // Clear the array
+            this.alignmentButtonHandlers = [];
+        }
+    }
+
+    private addEventHandler(tableWrap: HTMLElement): void {
+        const selectorPropMaps: { selector: string; prop: string; align: string }[] = [
+            { selector: '.e-rte-tableCell-horizontal-align-left', prop: 'textAlign', align: 'left' },
+            { selector: '.e-rte-tableCell-horizontal-align-center', prop: 'textAlign', align: 'center' },
+            { selector: '.e-rte-tableCell-horizontal-align-right', prop: 'textAlign', align: 'right' },
+            { selector: '.e-rte-tableCell-horizontal-align-full', prop: 'textAlign', align: 'justify' },
+            { selector: '.e-rte-tableCell-vertical-align-top', prop: 'verticalAlign', align: 'top' },
+            { selector: '.e-rte-tableCell-vertical-align-middle', prop: 'verticalAlign', align: 'middle' },
+            { selector: '.e-rte-tableCell-vertical-align-bottom', prop: 'verticalAlign', align: 'bottom' }
+        ];
+
+        for (const m of selectorPropMaps ) {
+            const btn: HTMLElement = tableWrap.querySelector(m.selector);
+            if (btn) {
+                this.createButtonWithActiveClass(btn, m.prop, m.align);
+            }
+        }
+    }
+
+    private ConvertTableWidthHeightPxToPercent(value: number, heightOrWidth: string): number {
+        const parentElement: HTMLElement = this.selectedItem.closest('table') as HTMLElement;
+        return (value / (heightOrWidth === 'width' ? parentElement.getBoundingClientRect().width : parentElement.getBoundingClientRect().height)) * 100;
+    }
+
+    private ConvertTableWidthHeightPercentToPx(value: number, heightOrWidth: string): number {
+        const parentElement: HTMLElement = this.selectedItem.closest('table') as HTMLElement;
+        return (value / 100) * (heightOrWidth === 'width' ? parentElement.getBoundingClientRect().width : parentElement.getBoundingClientRect().height);
+    }
+
+    private uniformColumnWidth(colGroupElement: HTMLElement): boolean {
+        if (this.isMultiSelection) {
+            let colElement: HTMLElement;
+            let isSameWidth: boolean = true;
+            let colwidth: string = '';
+            for (let i: number = 0; i < this.multiSelectedItems.length; i++) {
+                const index: number = (this.multiSelectedItems[i as number] as HTMLTableCellElement).cellIndex;
+                colElement = colGroupElement.querySelectorAll('col')[index as number] as HTMLElement;
+                if (i === 0) {
+                    colwidth = colElement.style.width;
+                } else {
+                    if (colwidth !== colElement.style.width) {
+                        isSameWidth = false;
+                        break;
+                    } else {
+                        isSameWidth = true;
+                    }
+                }
+            }
+            return isSameWidth;
+        }
+        return false;
+    }
+
+    private extractUnitFromValue(value: string): string {
+        if (value.endsWith('px')) {
+            value = 'px';
+        } else if (value.endsWith('%')) {
+            value = '%';
+        } else if (value === 'auto') {
+            value = 'auto';
+        } else {
+            value = 'px';
+        }
+        return value;
+    }
+
+    private valuecontent(value: string): string {
+        return '<span class="e-rte-dropdown-btn-content-text">' + value + '</span>';
+    }
+
+    private dropDownWidthButtonContent(): string {
+        let colGroupElement: HTMLElement = this.selectedItem.closest('table').querySelector('colgroup') as HTMLElement;
+        if (!colGroupElement) {
+            insertColGroupWithSizes(this.selectedItem.closest('table'));
+            colGroupElement = this.selectedItem.closest('table').querySelector('colgroup') as HTMLElement;
+            this.storeInitialColWidths();
+        }
+        if (this.isMultiSelection) {
+            const isSameWidth: boolean = this.uniformColumnWidth(colGroupElement);
+            let value: string;
+            const index: number = (this.selectedItem as HTMLTableCellElement).cellIndex;
+            const colElement: HTMLElement = colGroupElement.querySelectorAll('col')[index as number] as HTMLElement;
+            if (isSameWidth) {
+                value = this.extractUnitFromValue(colElement.style.width);
+                this.widthValue = value;
+                return this.valuecontent(value);
+            } else {
+                this.widthValue = 'px';
+                return this.valuecontent('px');
+            }
+
+        } else {
+            const index: number = (this.selectedItem as HTMLTableCellElement).cellIndex;
+            const colElement: HTMLElement = colGroupElement.querySelectorAll('col')[index as number] as HTMLElement;
+            const value: string = this.extractUnitFromValue(colElement.style.width);
+            this.widthValue = value;
+            return this.valuecontent(value);
+        }
+    }
+
+    private dropDownHeightButtonContent(): string {
+        if (this.isMultiSelection) {
+            let isSameHeight: boolean = true;
+            let height: string = '';
+            for (let i: number = 0; i < this.multiSelectedItems.length; i++) {
+                if (i === 0) {
+                    height = (this.multiSelectedItems[0] as HTMLTableCellElement).style.height;
+                } else {
+                    if (height !== (this.multiSelectedItems[i as number] as HTMLTableCellElement).style.height) {
+                        isSameHeight = false;
+                        break;
+                    } else {
+                        isSameHeight = true;
+                    }
+                }
+            }
+            if (isSameHeight) {
+                height = this.extractUnitFromValue(height);
+                this.heightValue = height;
+                return this.valuecontent(height);
+            } else {
+                this.heightValue = 'px';
+                return this.valuecontent('px');
+            }
+        } else {
+            const height: string = this.extractUnitFromValue(this.selectedItem.style.height);
+            this.heightValue = height;
+            return this.valuecontent(height);
+        }
+    }
+
+    private updateMultiSelctionHeight(): void {
+        let sameValue: boolean = true;
+        for (let i: number = 0; i < this.multiSelectedItems.length; i++) {
+            if (this.multiSelectedItems[i as number].style.height !== this.multiSelectedItems[0 as number].style.height) {
+                sameValue = false;
+                break;
+            }
+        }
+        if (sameValue) {
+            const convertedValue: number = this.ConvertTableWidthHeightPercentToPx(this.tableHeightNum.value, 'height');
+            this.tableHeightNum.value = convertedValue;
+            for (let i: number = 0; i < this.multiSelectedItems.length; i++) {
+                this.multiSelectedItems[i as number].style.cssText += `height: ${Math.round(convertedValue)}px;`;
+            }
+        } else {
+            this.tableHeightNum.value = null;
+        }
+    }
+
+    private dropDownSelctionForHeight(args: MenuEventArgs, btnObj2: DropDownButton): void {
+        if (args.item.text === 'Pixel' && this.heightValue !== 'px') {
+            btnObj2.content = this.valuecontent('px');
+            this.heightValue = 'px';
+            if (!this.tableHeightNum.enabled) {
+                this.tableHeightNum.enabled = true;
+            }
+            if (this.isMultiSelection) {
+                this.updateMultiSelctionHeight();
+            } else {
+                this.tableHeightNum.value = this.ConvertTableWidthHeightPercentToPx(this.tableHeightNum.value, 'height');
+                this.selectedItem.style.cssText += `height: ${Math.round(this.tableHeightNum.value)}px;`;
+            }
+        } else if (args.item.text === 'Percent' && this.heightValue !== '%') {
+            btnObj2.content = this.valuecontent('%');
+            this.heightValue = '%';
+            if (!this.tableHeightNum.enabled) {
+                this.tableHeightNum.enabled = true;
+            }
+            if (this.isMultiSelection) {
+                this.updateMultiSelctionHeight();
+            } else {
+                this.tableHeightNum.value = this.ConvertTableWidthHeightPxToPercent(this.tableHeightNum.value, 'height');
+                this.selectedItem.style.cssText += `height: ${Math.round(this.tableHeightNum.value)}%;`;
+            }
+        } else if (args.item.text === 'Auto' && this.heightValue !== 'auto') {
+            btnObj2.content = this.valuecontent('Auto');
+            this.heightValue = 'auto';
+            this.tableHeightNum.enabled = false;
+            this.tableHeightNum.value = null;
+            if (this.isMultiSelection) {
+                for (let i: number = 0; i < this.multiSelectedItems.length; i++) {
+                    this.multiSelectedItems[i as number].style.height = 'auto';
+                }
+            } else {
+                this.selectedItem.style.height = 'auto';
+            }
+        }
+        this.updateTitleForDropDownButton(btnObj2.element, this.heightValue);
+    }
+
+    private updateMultiSelectionWidth(): void {
+        let sameValue: boolean = true;
+        for (let i: number = 0; i < this.multiSelectedItems.length; i++) {
+            if (this.multiSelectedItems[i as number].style.width !== this.multiSelectedItems[0 as number].style.width) {
+                sameValue = false;
+                break;
+            }
+        }
+        if (sameValue) {
+            const convertedValue: number = this.ConvertTableWidthHeightPercentToPx(this.tableWidthNum.value, 'width');
+            this.tableWidthNum.value = convertedValue;
+        } else {
+            this.tableWidthNum.value = null;
+        }
+    }
+
+    private dropDownSelctionForWidth(args: MenuEventArgs, btnObj1: DropDownButton): void {
+        if (args.item.text === 'Pixel' && this.widthValue !== 'px') {
+            btnObj1.content = this.valuecontent('px');
+            this.widthValue = 'px';
+            if (!this.tableWidthNum.enabled) {
+                this.tableWidthNum.enabled = true;
+            }
+            if (this.isMultiSelection) {
+                this.updateMultiSelectionWidth();
+            } else {
+                this.tableWidthNum.value = this.ConvertTableWidthHeightPercentToPx(this.tableWidthNum.value, 'width');
+            }
+
+        } else if (args.item.text === 'Percent' && this.widthValue !== '%') {
+            btnObj1.content = this.valuecontent('%');
+            this.widthValue = '%';
+            if (!this.tableWidthNum.enabled) {
+                this.tableWidthNum.enabled = true;
+            }
+            if (this.isMultiSelection) {
+                this.updateMultiSelectionWidth();
+            } else {
+                this.tableWidthNum.value = this.ConvertTableWidthHeightPxToPercent(this.tableWidthNum.value, 'width');
+            }
+        } else if (args.item.text === 'Auto' && this.widthValue !== 'auto') {
+            btnObj1.content = this.valuecontent('Auto');
+            this.widthValue = 'auto';
+            this.tableWidthNum.enabled = false;
+            this.tableWidthNum.value = null;
+            let colGroupElement: HTMLElement = this.selectedItem.closest('table').querySelector('colgroup') as HTMLElement;
+            if (!colGroupElement) {
+                insertColGroupWithSizes(this.selectedItem.closest('table'));
+                colGroupElement = this.selectedItem.closest('table').querySelector('colgroup') as HTMLElement;
+                this.storeInitialColWidths();
+            }
+            if (this.isMultiSelection) {
+                for (let i: number = 0; i < this.multiSelectedItems.length; i++) {
+                    const index: number = (this.multiSelectedItems[i as number] as HTMLTableCellElement).cellIndex;
+                    const colElement: HTMLElement = colGroupElement.querySelectorAll('col')[index as number] as HTMLElement;
+                    if (colElement) {
+                        colElement.style.width = 'auto';
+                    }
+                }
+            }
+            else {
+                const index: number = (this.selectedItem as HTMLTableCellElement).cellIndex;
+                const colElement: HTMLElement = this.selectedItem.closest('table').querySelectorAll('col')[index as number] as HTMLElement;
+                if (colElement) {
+                    colElement.style.width = 'auto';
+                }
+            }
+        }
+        this.updateTitleForDropDownButton(btnObj1.element, this.widthValue);
+    }
+
+    private addActiveClassToDropdownItem(args: MenuEventArgs, isWidthOrHeight: string): void {
+        const currentWidthHeightUnit: string = isWidthOrHeight === 'width' ? this.widthValue : this.heightValue;
+        let activeItemText: string = '';
+        if (currentWidthHeightUnit === 'px') {
+            activeItemText = 'Pixel';
+        } else if (currentWidthHeightUnit === '%') {
+            activeItemText = 'Percent';
+        } else if (currentWidthHeightUnit === 'auto') {
+            activeItemText = 'Auto';
+        }
+        if (args.item.text === activeItemText) {
+            args.element.classList.add('e-active'); // Adds class before item is shown
+        }
+    }
+
+    private updateTitleForDropDownButton(button: HTMLElement, value: string): void {
+        if (value === 'px') {
+            button.title = 'Pixel';
+        } else if (value === '%') {
+            button.title = 'Percent';
+        } else if (value === 'auto') {
+            button.title = 'Auto';
+        }
+    }
+
+    private dropDownButtonsRendering(tableWrap: HTMLElement): void {
+        const items: ItemModel[] = [
+            { text: 'Pixel' },
+            { text: 'Percent' },
+            { text: 'Auto' }];
+        const btnObj1: DropDownButton = new DropDownButton({
+            items: items,
+            content: this.dropDownWidthButtonContent(),
+            enableRtl: this.parent.enableRtl,
+            cssClass: classes.CLS_EDIT_CELL_DROPDOWN + ' ' + classes.CLS_RTE_ELEMENTS + this.parent.getCssClass(true),
+            beforeItemRender: (args: MenuEventArgs) => {
+                this.addActiveClassToDropdownItem(args, 'width');
+            },
+            select: (args: MenuEventArgs) => {
+                this.dropDownSelctionForWidth(args, btnObj1);
+            }
+        });
+        const widthDropDownbtn: HTMLElement = tableWrap.querySelector('#widthValueBtn') as HTMLElement;
+        this.updateTitleForDropDownButton(widthDropDownbtn, this.widthValue);
+        btnObj1.appendTo(widthDropDownbtn);
+        this.createdDropdownButtons.push(btnObj1);
+        const btnObj2: DropDownButton = new DropDownButton({
+            items: items,
+            content: this.dropDownHeightButtonContent(),
+            enableRtl: this.parent.enableRtl,
+            cssClass: classes.CLS_EDIT_CELL_DROPDOWN + ' ' + classes.CLS_RTE_ELEMENTS + this.parent.getCssClass(true),
+            beforeItemRender: (args: MenuEventArgs) => {
+                this.addActiveClassToDropdownItem(args, 'height');
+            },
+            select: (args: MenuEventArgs) => {
+                this.dropDownSelctionForHeight(args, btnObj2);
+            }
+        });
+        const heightDropDownbtn: HTMLElement = tableWrap.querySelector('#heightValueBtn') as HTMLElement;
+        this.updateTitleForDropDownButton(heightDropDownbtn, this.heightValue);
+        btnObj2.appendTo(heightDropDownbtn);
+        this.createdDropdownButtons.push(btnObj2);
+    }
+
+    private extractNumericValue(value: string): number | null {
+        if (value.endsWith('px')) {
+            return parseFloat(value.slice(0, -2));
+        } else if (value.endsWith('%')) {
+            return parseFloat(value.slice(0, -1));
+        } else if (value === 'auto') {
+            return null;
+        }
+        return null;
+    }
+
+    private formatWidthValue(): number {
+        const colElement: HTMLElement = this.selectedItem.closest('table').querySelectorAll('col')[(this.selectedItem as HTMLTableCellElement).cellIndex] as HTMLElement;
+        const value: string = colElement ? colElement.style.width : '';
+        return this.extractNumericValue(value);
+    }
+
+
+    private formatHeightValue(): number {
+        const value: string = this.selectedItem.style.height;
+        return this.extractNumericValue(value);
+    }
+
+    private renderCellPaddingNumericTextBox(padVal: string, tableWrap: HTMLElement): void {
+        this.tableCellPadding = new NumericTextBox({
+            format: '### px',
+            min: 0,
+            value: (this.isMultiSelection && !this.isMultiSelectionPropertySame('padding', padVal)) ? null : padVal !== '' ? parseInt(padVal, 10) : 0,
+            floatLabelType: 'Auto',
+            enableRtl: this.parent.enableRtl, locale: this.parent.locale,
+            cssClass: this.parent.getCssClass(),
+            change: (args: ChangeEventArgs): void => {
+                if (this.selectedItem.nodeName === 'TABLE') {
+                    const tdElm: NodeListOf<HTMLElement> = this.selectedItem.querySelectorAll('td,th');
+                    for (let i: number = 0; i < tdElm.length; i++) {
+                        let padVal: string = '';
+                        if (tdElm[i as number].style.padding === '') {
+                            padVal = (tdElm[i as number].getAttribute('style') ? tdElm[i as number].getAttribute('style') : '') + ' padding:' +
+                                args.value + 'px;';
+                        } else {
+                            tdElm[i as number].style.padding = args.value + 'px';
+                            padVal = tdElm[i as number].getAttribute('style');
+                        }
+                        tdElm[i as number].style.cssText = padVal;
+                    }
+                } else if (this.selectedItem.nodeName === 'TD' || this.selectedItem.nodeName === 'TH') {
+                    if (this.isMultiSelection) {
+                        for (let i: number = 0; i < this.multiSelectedItems.length; i++) {
+                            const tdElm: HTMLElement = this.multiSelectedItems[i as number];
+                            let padVal: string = '';
+                            if (tdElm.style.padding === '') {
+                                padVal = (tdElm.getAttribute('style') ? tdElm.getAttribute('style') : '') + ' padding:' +
+                                    args.value + 'px;';
+                            } else {
+                                tdElm.style.padding = args.value + 'px';
+                                padVal = tdElm.getAttribute('style');
+                            }
+                            tdElm.style.cssText = padVal;
+                        }
+                    } else {
+                        let padVal: string = '';
+                        const tdElm: HTMLElement = this.selectedItem;
+                        if (tdElm.style.padding === '') {
+                            padVal = (tdElm.getAttribute('style') ? tdElm.getAttribute('style') : '') + ' padding:' +
+                                args.value + 'px;';
+                        } else {
+                            tdElm.style.padding = args.value + 'px';
+                            padVal = tdElm.getAttribute('style');
+                        }
+                        tdElm.style.cssText = padVal;
+                    }
+                }
+            }
+        });
+        this.tableCellPadding.isStringTemplate = true;
+        this.tableCellPadding.appendTo(tableWrap.querySelector('#' + this.parent.getID() + '_cellPadding') as HTMLElement);
+    }
+
+    private renderHeightNumericTextBox(heightVal: number, tableWrap: HTMLElement): void {
+        this.tableHeightNum = new NumericTextBox({
+            format: '###',
+            min: 0,
+            value: (this.isMultiSelection && !this.isMultiSelectionPropertySame('height', heightVal)) ? null : this.formatHeightValue(),
+            floatLabelType: 'Auto',
+            enableRtl: this.parent.enableRtl, locale: this.parent.locale,
+            cssClass: this.parent.getCssClass(),
+            enabled: this.selectedItem.nodeName !== 'TABLE' && this.heightValue === 'auto' ? false : true,
+            width: '100',
+            change: (args: ChangeEventArgs): void => {
+                if (this.isMultiSelection) {
+                    for (let i: number = 0; i < this.multiSelectedItems.length; i++) {
+                        this.multiSelectedItems[i as number].style.cssText += `height: ${Math.round(args.value)}` + this.heightValue;
+                    }
+                } else {
+                    this.selectedItem.style.cssText += `height: ${Math.round(args.value)}` + this.heightValue;
+                }
+            }
+        });
+        this.tableHeightNum.isStringTemplate = true;
+        this.tableHeightNum.appendTo(tableWrap.querySelector('#' + this.parent.getID() + ('_tableCellHeight')) as HTMLElement);
+    }
+
+    private renderWidthNumericTextBox(widthVal: number, tableWrap: HTMLElement, isTable: boolean): void {
+        this.tableWidthNum = new NumericTextBox({
+            format: this.selectedItem.nodeName !== 'TABLE' ? '###' : '### px',
+            min: 0,
+            value: this.selectedItem.nodeName === 'TABLE' ? widthVal : (this.isMultiSelection && !this.isMultiSelectionPropertySame('width', widthVal)) ? null : this.formatWidthValue(),
+            floatLabelType: 'Auto',
+            enableRtl: this.parent.enableRtl, locale: this.parent.locale,
+            cssClass: this.parent.getCssClass(),
+            enabled: this.selectedItem.nodeName !== 'TABLE' && this.widthValue === 'auto' ? false : true,
+            width: this.selectedItem.nodeName !== 'TABLE' ? '100' : null,
+            change: (args: ChangeEventArgs): void => {
+                if (this.selectedItem.nodeName === 'TABLE') {
+                    this.selectedItem.style.cssText += `width: ${Math.round(args.value)}px;`;
+                } else if (this.selectedItem.nodeName === 'TD' || this.selectedItem.nodeName === 'TH') {
+                    let colGroupElement: HTMLElement = this.selectedItem.closest('table').querySelector('colgroup') as HTMLElement;
+                    if (!colGroupElement) {
+                        insertColGroupWithSizes(this.selectedItem.closest('table'));
+                        colGroupElement = this.selectedItem.closest('table').querySelector('colgroup') as HTMLElement;
+                        this.storeInitialColWidths();
+                    }
+                    if (this.isMultiSelection) {
+                        for (let i: number = 0; i < this.multiSelectedItems.length; i++) {
+                            const index: number = (this.multiSelectedItems[i as number] as HTMLTableCellElement).cellIndex;
+                            const colElement: HTMLElement = colGroupElement.querySelectorAll('col')[index as number] as HTMLElement;
+                            if (colElement) {
+                                if (this.widthValue === 'px') {
+                                    const tbWidth: number = this.selectedItem.closest('table').getClientRects()[0].width;
+                                    colElement.style.width = convertPixelToPercentage(Math.round(args.value), Math.round(tbWidth)).toFixed(4) + '%';
+                                } else if (this.widthValue === '%') {
+                                    colElement.style.width = Math.round(args.value) + '%';
+                                }
+                            }
+                        }
+                    }
+                    else {
+                        const index: number = (this.selectedItem as HTMLTableCellElement).cellIndex;
+                        const colElement: HTMLElement = this.selectedItem.closest('table').querySelectorAll('col')[index as number] as HTMLElement;
+                        if (colElement) {
+                            if (this.widthValue === 'px') {
+                                const tbWidth: number = this.selectedItem.closest('table').getClientRects()[0].width;
+                                colElement.style.width = convertPixelToPercentage(Math.round(args.value), Math.round(tbWidth)).toFixed(4) + '%';
+                            } else if (this.widthValue === '%') {
+                                colElement.style.width = Math.round(args.value) + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        this.tableWidthNum.isStringTemplate = true;
+        this.tableWidthNum.appendTo(tableWrap.querySelector('#' + this.parent.getID() + (isTable ? '_tableWidth' : '_tableCellWidth')) as HTMLElement);
     }
 
     /*
@@ -1598,109 +2455,190 @@ export class Table {
         const borderWidth: string = this.l10n.getConstant('borderWidth');
         const borderColor: string = this.l10n.getConstant('borderColor');
         const borderLabel: string = this.l10n.getConstant('borderLabel');
+        const tableHeight: string = this.l10n.getConstant('tableHeight');
+        const tableHorizontalAlign: string = this.l10n.getConstant('tableHorizontalAlign');
+        const tableVerticalAlign: string = this.l10n.getConstant('tableVerticalAlign');
         const backgroundColor: string = this.l10n.getConstant('tableBackgroundColor');
+        const justifyLeft: string = this.l10n.getConstant('justifyLeft');
+        const justifyCenter: string = this.l10n.getConstant('justifyCenter');
+        const justifyRight: string = this.l10n.getConstant('justifyRight');
+        const justifyFull: string = this.l10n.getConstant('justifyFull');
+        const alignMiddle: string = this.l10n.getConstant('tablealignmiddle');
+        const alignTop: string = this.l10n.getConstant('tablealigntop');
+        const alignBottom: string = this.l10n.getConstant('tablealignbottom');
         const borderStyle: string = this.l10n.getConstant('borderStyle');
         const borderWidthtooltip: string = this.l10n.getConstant('borderWidthTooltip');
         const borderColortooltip: string = this.l10n.getConstant('borderColorTooltip');
         const borderStyletooltip: string = this.l10n.getConstant('borderStyleTooltip');
         const tableWrap: HTMLElement = this.parent.createElement('div', { className: 'e-table-sizewrap' + this.parent.getCssClass(true) });
-        const widthVal: string | number = closest(selectNode, 'table').getClientRects()[0].width;
-        const padVal: string | number = closest(selectNode, 'td') ? (closest(selectNode, 'td') as HTMLElement).style.padding : (closest(selectNode, 'th') as HTMLElement).style.padding;
-        const brdSpcVal: string | number = (closest(selectNode, 'table') as HTMLElement).style.borderSpacing;
-        const borderWidthVal: string | number = (closest(selectNode, 'table') as HTMLElement).style.borderWidth;
-        const content: string = '<div class="e-rte-edit-table-content' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-cell' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-tablewidth' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-widthlabel' + this.parent.getCssClass(true) + '"><label>' + tableWidth + '</label></div><div class="e-rte-edit-table-field' + this.parent.getCssClass(true) + '" title="' + tableWidth + '"><input type="text" data-role ="none" id="' + this.parent.getID() + '_tableWidth" class="e-table-width' + this.parent.getCssClass(true) + '" ' + ' /></div></div>'
-            + '<div class="e-rte-edit-table-bgcolor' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-bgcolorlabel' + this.parent.getCssClass(true) + '"><label>' + backgroundColor + '</label></div><div class="e-rte-edit-table-field' + this.parent.getCssClass(true) + '" title="' + backgroundColor + '"><input type="color" data-role ="none" id="' + this.parent.getID() + '_backgroundColor" role="combobox" aria-label="Background Color Picker" data-testid="rte-bg-color-picker" class="e-background-color e-rte-bg-color-picker e-colorpicker' + this.parent.getCssClass(true) + '" /></div></div></div>'
-            + '<div class="e-rte-edit-table-cell e-rte-edit-table-element' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-cellpadding' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-cellpaddinglabel' + this.parent.getCssClass(true) + '"><label>' + cellPadding + '</label></div><div class="e-rte-edit-table-field' + this.parent.getCssClass(true) + '" title="' + cellPadding + '"><input type="text" data-role ="none" id="' + this.parent.getID() + '_cellPadding" class="e-cell-padding' + this.parent.getCssClass(true) + '" /></div></div><div class="e-rte-edit-table-cellspacing' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-cellspacinglabel' + this.parent.getCssClass(true) + '"><label>' + cellSpacing + '</label></div><div class="e-rte-edit-table-field' + this.parent.getCssClass(true) + '" title="' + cellSpacing + '"><input type="text" data-role ="none" id="' + this.parent.getID() + '_cellSpacing" class="e-cell-spacing' + this.parent.getCssClass(true) + '" /></div></div></div>'
-            + '<div class="e-rte-edit-table-border e-rte-edit-table-element' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-borderlabel' + this.parent.getCssClass(true) + '"><label>' + borderLabel + '</label></div>'
-            + '<div class="e-rte-edit-table-borderfields e-rte-edit-table-element' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-borderwidth' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-borderwidthlabel' + this.parent.getCssClass(true) + '"><label>' + borderWidth + '</label></div><div class="e-rte-edit-table-field' + this.parent.getCssClass(true) + '" title="' + borderWidthtooltip + '"><input type="text" data-role ="none" id="' + this.parent.getID() + '_borderWidth" role="spinbutton" aria-label="Border Width in pixels" min="0" max="10" step="0.5" value="1" data-testid="rte-border-width-numeric" class="e-border-width e-rte-border-width-numeric e-numerictextbox' + this.parent.getCssClass(true) + '" /></div></div>'
-            + '<div class="e-rte-edit-table-borderstyle' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-borderstylelabel' + this.parent.getCssClass(true) + '"><label>' + borderStyle + '</label></div><div class="e-rte-edit-table-field' + this.parent.getCssClass(true) + '" title="' + borderStyletooltip + '"><button role="group" aria-label="Table Styles Configuration" data-testid="rte-styles-section" class="e-border-style e-rte-table-styles" tabindex="0" id="' + this.parent.getID() + '_borderStyle"></button></div></div>'
-            + '<div class="e-rte-edit-table-bordercolor' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-borderwidthlabel' + this.parent.getCssClass(true) + '"><label>' + borderColor + '</label></div><div class="e-rte-edit-table-field' + this.parent.getCssClass(true) + '" title="' + borderColortooltip + '"><input type="color" data-role ="none" id="' + this.parent.getID() + '_borderColor" role="combobox" aria-label="Border Color Picker" data-testid="rte-border-color-picker" class="e-border-color e-rte-border-color-picker e-colorpicker' + this.parent.getCssClass(true) + '" /></div></div></div></div>'
-            + '</div>';
+        const widthVal: string | number = this.selectedItem.getClientRects()[0].width;
+        const heightVal: string | number = this.selectedItem.getClientRects()[0].height;
+        const padVal: string | number = this.selectedItem.style.padding;
+        const brdSpcVal: string | number = this.selectedItem.style.borderSpacing;
+        const borderWidthVal: string | number = this.selectedItem.style.borderWidth;
+        const isTable: boolean = this.selectedItem.nodeName === 'TABLE';
+        let content: string = '';
+        if (this.selectedItem.nodeName === 'TABLE') {
+            content = '<div class="e-rte-edit-table-content' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-cell' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-tablewidth' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-widthlabel' + this.parent.getCssClass(true) + '"><label>' + tableWidth + '</label></div><div class="e-rte-edit-table-field' + this.parent.getCssClass(true) + '" title="' + tableWidth + '"><input type="text" data-role ="none" id="' + this.parent.getID() + '_tableWidth" class="e-table-width' + this.parent.getCssClass(true) + '" ' + ' /></div></div>'
+                + '<div class="e-rte-edit-table-bgcolor' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-bgcolorlabel' + this.parent.getCssClass(true) + '"><label>' + backgroundColor + '</label></div><div class="e-rte-edit-table-field' + this.parent.getCssClass(true) + '" title="' + backgroundColor + '"><input type="color" data-role ="none" id="' + this.parent.getID() + '_backgroundColor" role="combobox" aria-label="Background Color Picker" data-testid="rte-bg-color-picker" class="e-background-color e-rte-bg-color-picker e-colorpicker' + this.parent.getCssClass(true) + '" /></div></div></div>'
+                + '<div class="e-rte-edit-table-cell e-rte-edit-table-element' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-cellpadding' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-cellpaddinglabel' + this.parent.getCssClass(true) + '"><label>' + cellPadding + '</label></div><div class="e-rte-edit-table-field' + this.parent.getCssClass(true) + '" title="' + cellPadding + '"><input type="text" data-role ="none" id="' + this.parent.getID() + '_cellPadding" class="e-cell-padding' + this.parent.getCssClass(true) + '" /></div></div><div class="e-rte-edit-table-cellspacing' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-cellspacinglabel' + this.parent.getCssClass(true) + '"><label>' + cellSpacing + '</label></div><div class="e-rte-edit-table-field' + this.parent.getCssClass(true) + '" title="' + cellSpacing + '"><input type="text" data-role ="none" id="' + this.parent.getID() + '_cellSpacing" class="e-cell-spacing' + this.parent.getCssClass(true) + '" /></div></div></div>'
+                + '<div class="e-rte-edit-table-border e-rte-edit-table-element' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-borderlabel' + this.parent.getCssClass(true) + '"><label>' + borderLabel + '</label></div>'
+                + '<div class="e-rte-edit-table-borderfields e-rte-edit-table-element' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-borderwidth' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-borderwidthlabel' + this.parent.getCssClass(true) + '"><label>' + borderWidth + '</label></div><div class="e-rte-edit-table-field' + this.parent.getCssClass(true) + '" title="' + borderWidthtooltip + '"><input type="text" data-role ="none" id="' + this.parent.getID() + '_borderWidth" role="spinbutton" aria-label="Border Width in pixels" min="0" max="10" step="0.5" value="1" data-testid="rte-border-width-numeric" class="e-border-width e-rte-border-width-numeric e-numerictextbox' + this.parent.getCssClass(true) + '" /></div></div>'
+                + '<div class="e-rte-edit-table-borderstyle' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-borderstylelabel' + this.parent.getCssClass(true) + '"><label>' + borderStyle + '</label></div><div class="e-rte-edit-table-field' + this.parent.getCssClass(true) + '" title="' + borderStyletooltip + '"><button role="group" aria-label="Table Styles Configuration" data-testid="rte-styles-section" class="e-border-style e-rte-table-styles" tabindex="0" id="' + this.parent.getID() + '_borderStyle"></button></div></div>'
+                + '<div class="e-rte-edit-table-bordercolor' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-borderwidthlabel' + this.parent.getCssClass(true) + '"><label>' + borderColor + '</label></div><div class="e-rte-edit-table-field' + this.parent.getCssClass(true) + '" title="' + borderColortooltip + '"><input type="color" data-role ="none" id="' + this.parent.getID() + '_borderColor" role="combobox" aria-label="Border Color Picker" data-testid="rte-border-color-picker" class="e-border-color e-rte-border-color-picker e-colorpicker' + this.parent.getCssClass(true) + '" /></div></div></div></div>'
+                + '</div>';
+        } else {
+            content = '<div class="e-rte-edit-tablecell-dialog' + this.parent.getCssClass(true) + '">'
+                + '<div class="e-rte-edit-tablecell-row' + this.parent.getCssClass(true) + '">'
+                + '<div class="e-rte-edit-table-tablewidth' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-widthlabel' + this.parent.getCssClass(true) + '"><label>' + tableWidth + '</label></div><div class="e-rte-edit-table-field e-rte-edit-table-field-flex' + this.parent.getCssClass(true) + '" title="' + tableWidth + '"><input type="text" data-role ="none" id="' + this.parent.getID() + '_tableCellWidth" class="e-table-width' + this.parent.getCssClass(true) + '" ' + ' /><div class="e-rte-edit-table-widthValue"><button id="widthValueBtn"></button></div></div></div>'
+                + '<div class="e-rte-edit-table-tableheight' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-heightlabel' + this.parent.getCssClass(true) + '"><label>' + tableHeight + '</label></div><div class="e-rte-edit-table-field e-rte-edit-table-field-flex' + this.parent.getCssClass(true) + '" title="' + tableHeight + '"><input type="text" data-role ="none" id="' + this.parent.getID() + '_tableCellHeight" class="e-table-height' + this.parent.getCssClass(true) + '" ' + ' /><div class="e-rte-edit-table-heightValue"><button id="heightValueBtn">px</button></div></div></div>'
+                + '</div>'
+                + '<div class="e-rte-edit-tablecell-row e-rte-edit-table-element' + this.parent.getCssClass(true) + '">'
+                + '<div class="e-rte-edit-table-cellpadding' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-cellpaddinglabel' + this.parent.getCssClass(true) + '"><label>' + cellPadding + '</label></div><div class="e-rte-edit-table-field' + this.parent.getCssClass(true) + '" title="' + cellPadding + '"><input type="text" data-role ="none" id="' + this.parent.getID() + '_cellPadding" class="e-cell-padding' + this.parent.getCssClass(true) + '" /></div></div>'
+                + '<div class="e-rte-edit-table-bgcolor' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-bgcolorlabel' + this.parent.getCssClass(true) + '"><label>' + backgroundColor + '</label></div><div class="e-rte-edit-table-field' + this.parent.getCssClass(true) + '" title="' + backgroundColor + '"><input type="color" data-role ="none" id="' + this.parent.getID() + '_cellbackgroundColor" role="combobox" aria-label="Background Color Picker" data-testid="rte-bg-color-picker" class="e-background-color e-rte-bg-color-picker e-colorpicker' + this.parent.getCssClass(true) + '" /></div></div>'
+                + '</div>'
+                + '<div class="e-rte-edit-tablecell-align-container">'
+                + '<div class="e-rte-edit-tablecell-horizontal-align"><div class="e-rte-edit-tablecell-align-label"><label>' + tableHorizontalAlign + '</label></div><div class="e-btn-group e-rte-toolbar e-rte-edit-tablecell-btn-group"><button aria-label="justify-left" title="' + justifyLeft + '" id="' + this.parent.getID() + '_tableCellHorizontalAlignLeft" class="e-rte-tableCell-horizontal-align-left e-icon-btn e-outline e-secondary e-rte-tablecell-align-btn"><span class="e-menu-icon e-icons e-justify-left"></span></button><button aria-label="justify-center" title="' + justifyCenter + '" id="' + this.parent.getID() + '_tableCellHorizontalAlignCenter" class="e-rte-tableCell-horizontal-align-center e-icon-btn e-outline e-secondary e-rte-tablecell-align-btn"><span class="e-menu-icon e-icons e-justify-center"></span></button><button aria-label="justify-right" title="' + justifyRight + '" id="' + this.parent.getID() + '_tableCellHorizontalAlignRight" class="e-rte-tableCell-horizontal-align-right e-icon-btn e-outline e-secondary e-rte-tablecell-align-btn"><span class="e-menu-icon e-icons e-justify-right"></span></button><button aria-label="justify-full" title="' + justifyFull + '" id="' + this.parent.getID() + '_tableCellHorizontalAlignFull" class="e-rte-tableCell-horizontal-align-full e-icon-btn e-outline e-secondary e-rte-tablecell-align-btn"><span class="e-menu-icon e-icons e-justify-full"></span></button></div></div>'
+                + '<div class="e-rte-edit-tablecell-vertical-align"><div class="e-rte-edit-tablecell-align-label"><label>' + tableVerticalAlign + '</label></div><div class="e-btn-group e-rte-edit-tablecell-btn-group"><button aria-label="align-top" title="' + alignTop + '" id="' + this.parent.getID() + '_tableCellVerticalAlignTop" class="e-rte-tableCell-vertical-align-top e-icon-btn e-outline e-secondary e-rte-tablecell-align-btn"><span class="e-menu-icon e-icons e-align-top"></span></button><button aria-label="align-middle" title="' + alignMiddle + '" id="' + this.parent.getID() + '_tableCellVerticalAlignMiddle" class="e-rte-tableCell-vertical-align-middle e-icon-btn e-outline e-secondary e-rte-tablecell-align-btn"><span class="e-menu-icon e-icons e-align-middle"></span></button><button aria-label="align-bottom" title="' + alignBottom + '" id="' + this.parent.getID() + '_tableCellVerticalAlignBottom" class="e-rte-tableCell-vertical-align-bottom e-icon-btn e-outline e-secondary e-rte-tablecell-align-btn"><span class="e-menu-icon e-icons e-align-bottom"></span></button></div></div>'
+                + '</div>'
+                + '<div class="e-rte-edit-table-border e-rte-edit-table-element' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-borderlabel' + this.parent.getCssClass(true) + '"><label>' + borderLabel + '</label></div>'
+                + '<div class="e-rte-edit-table-borderfields e-rte-edit-table-element' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-borderwidth' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-borderwidthlabel' + this.parent.getCssClass(true) + '"><label>' + borderWidth + '</label></div><div class="e-rte-edit-table-field' + this.parent.getCssClass(true) + '" title="' + borderWidthtooltip + '"><input type="text" data-role ="none" id="' + this.parent.getID() + '_cellborderWidth" role="spinbutton" aria-label="Border Width in pixels" min="0" max="10" step="0.5" value="1" data-testid="rte-border-width-numeric" class="e-border-width e-rte-border-width-numeric e-numerictextbox' + this.parent.getCssClass(true) + '" /></div></div>'
+                + '<div class="e-rte-edit-table-borderstyle' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-borderstylelabel' + this.parent.getCssClass(true) + '"><label>' + borderStyle + '</label></div><div class="e-rte-edit-table-field' + this.parent.getCssClass(true) + '" title="' + borderStyletooltip + '"><button role="group" aria-label="Table Styles Configuration" data-testid="rte-styles-section" class="e-border-style e-rte-table-styles" tabindex="0" id="' + this.parent.getID() + '_cellborderStyle"></button></div></div>'
+                + '<div class="e-rte-edit-table-bordercolor' + this.parent.getCssClass(true) + '"><div class="e-rte-edit-table-borderwidthlabel' + this.parent.getCssClass(true) + '"><label>' + borderColor + '</label></div><div class="e-rte-edit-table-field' + this.parent.getCssClass(true) + '" title="' + borderColortooltip + '"><input type="color" data-role ="none" id="' + this.parent.getID() + '_cellborderColor" role="combobox" aria-label="Border Color Picker" data-testid="rte-border-color-picker" class="e-border-color e-rte-border-color-picker e-colorpicker' + this.parent.getCssClass(true) + '" /></div></div></div></div>'
+                + '</div>';
+        }
         const contentElem: DocumentFragment = parseHtml(content);
         tableWrap.appendChild(contentElem);
+        const borderWidthContainer: HTMLElement = tableWrap.querySelector('.e-border-width');
         const styleContainer: HTMLElement = tableWrap.querySelector('.e-border-style');
         const borderColorContainer: HTMLElement = tableWrap.querySelector('.e-border-color');
         const bgColorContainer: HTMLElement = tableWrap.querySelector('.e-background-color');
-        this.tableWidthNum = new NumericTextBox({
-            format: 'n0',
-            min: 0,
-            value: widthVal,
-            floatLabelType: 'Auto',
-            enableRtl: this.parent.enableRtl, locale: this.parent.locale,
-            cssClass: this.parent.getCssClass(),
-            change: (args: ChangeEventArgs): void => {
-                this.tableElement.style.cssText += `width: ${args.value}px;`;
-            }
-        });
-        this.tableWidthNum.isStringTemplate = true;
-        this.tableWidthNum.appendTo(tableWrap.querySelector('#' + this.parent.getID() + '_tableWidth') as HTMLElement);
-        this.tableCellPadding = new NumericTextBox({
-            format: 'n0',
-            min: 0,
-            value: padVal !== '' ? parseInt(padVal, 10) : 0,
-            floatLabelType: 'Auto',
-            enableRtl: this.parent.enableRtl, locale: this.parent.locale,
-            cssClass: this.parent.getCssClass(),
-            change: (args: ChangeEventArgs): void => {
-                const tdElm: NodeListOf<HTMLElement> = this.tableElement.querySelectorAll('td,th');
-                for (let i: number = 0; i < tdElm.length; i++) {
-                    let padVal: string = '';
-                    if (tdElm[i as number].style.padding === '') {
-                        padVal = (tdElm[i as number].getAttribute('style') ? tdElm[i as number].getAttribute('style') : '') + ' padding:' +
-                            args.value + 'px;';
-                    } else {
-                        tdElm[i as number].style.padding = args.value + 'px';
-                        padVal = tdElm[i as number].getAttribute('style');
+        if (this.selectedItem.nodeName === 'TD' || this.selectedItem.nodeName === 'TH') {
+            this.addEventHandler(tableWrap);
+            this.dropDownButtonsRendering(tableWrap);
+        }
+        this.renderWidthNumericTextBox(widthVal, tableWrap, isTable);
+        if (this.selectedItem.nodeName !== 'TABLE') {
+            // height
+            this.renderHeightNumericTextBox(heightVal, tableWrap);
+        }
+        this.renderCellPaddingNumericTextBox(padVal, tableWrap);
+        if (this.selectedItem.tagName === 'TABLE') {
+            this.tableCellSpacing = new NumericTextBox({
+                format: '### px',
+                min: 0,
+                value: brdSpcVal !== '' && !isNOU(brdSpcVal) ? parseInt(brdSpcVal, 10) : 0,
+                floatLabelType: 'Auto',
+                enableRtl: this.parent.enableRtl, locale: this.parent.locale,
+                cssClass: this.parent.getCssClass(),
+                change: (args: ChangeEventArgs): void => {
+                    if (args.value > 0 && this.selectedItem.style.borderCollapse !== 'separate') {
+                        // Remove any existing border-collapse declaration from cssText
+                        this.selectedItem.style.cssText = this.selectedItem.style.cssText.replace(/border-collapse\s*:\s*[^;]+;?/gi, '');
+                        // Append the new border-collapse value
+                        this.selectedItem.style.cssText += 'border-collapse: separate;';
                     }
-                    tdElm[i as number].style.cssText = padVal;
+                    this.selectedItem.style.cssText += `border-spacing: ${args.value}px;`;
                 }
-            }
-        });
-        this.tableCellPadding.isStringTemplate = true;
-        this.tableCellPadding.appendTo(tableWrap.querySelector('#' + this.parent.getID() + '_cellPadding') as HTMLElement);
-        this.tableCellSpacing = new NumericTextBox({
-            format: 'n0',
-            min: 0,
-            value: brdSpcVal !== '' && !isNOU(brdSpcVal) ? parseInt(brdSpcVal, 10) : 0,
-            floatLabelType: 'Auto',
-            enableRtl: this.parent.enableRtl, locale: this.parent.locale,
-            cssClass: this.parent.getCssClass(),
-            change: (args: ChangeEventArgs): void => {
-                if (args.value > 0 && this.tableElement.style.borderCollapse !== 'separate') {
-                    // Remove any existing border-collapse declaration from cssText
-                    this.tableElement.style.cssText = this.tableElement.style.cssText.replace(/border-collapse\s*:\s*[^;]+;?/gi, '');
-                    // Append the new border-collapse value
-                    this.tableElement.style.cssText += 'border-collapse: separate;';
-                }
-                this.tableElement.style.cssText += `border-spacing: ${args.value}px;`;
-            }
-        });
-        this.tableCellSpacing.isStringTemplate = true;
-        this.tableCellSpacing.appendTo(tableWrap.querySelector('#' + this.parent.getID() + '_cellSpacing') as HTMLElement);
+            });
+            this.tableCellSpacing.isStringTemplate = true;
+            this.tableCellSpacing.appendTo(tableWrap.querySelector('#' + this.parent.getID() + '_cellSpacing') as HTMLElement);
+        }
         this.tableBorderWidth = new NumericTextBox({
-            format: 'n1',
+            format: '##.# px',
             min: 0,
             max: 10,
             step: 0.5,
-            value: borderWidthVal !== '' && !isNOU(borderWidthVal) ? parseInt(borderWidthVal, 10) : 1,
+            value: (this.isMultiSelection && !this.isMultiSelectionPropertySame('borderWidth', borderWidthVal)) ? 1 : borderWidthVal !== '' && !isNOU(borderWidthVal) ? parseInt(borderWidthVal, 10) : 1,
             floatLabelType: 'Auto',
             enableRtl: this.parent.enableRtl, locale: this.parent.locale,
             cssClass: this.parent.getCssClass(),
             change: (args: ChangeEventArgs): void => {
-                this.tableElement.style.cssText += `border-width: ${args.value}px;`;
+                if (this.isMultiSelection) {
+                    for (let i: number = 0; i < this.multiSelectedItems.length; i++) {
+                        this.multiSelectedItems[i as number].style.cssText += `border-width: ${args.value}px;`;
+                    }
+                } else {
+                    this.selectedItem.style.cssText += `border-width: ${args.value}px;`;
+                }
+                this.applyBorderStyleAndWidth();
             }
         });
+        const closestElement: string = this.selectedItem.tagName.toLowerCase();
         this.tableBorderWidth.isStringTemplate = true;
-        this.tableBorderWidth.appendTo(tableWrap.querySelector('#' + this.parent.getID() + '_borderWidth') as HTMLElement);
-        this.tableBorderColor.renderColorPickerInput({ container: borderColorContainer, containerType: 'quick', items: ['bordercolor'] } as IColorPickerRenderArgs, closest(selectNode, 'table') as HTMLElement);
+        this.tableBorderWidth.appendTo(tableWrap.querySelector('#' + this.parent.getID() + (isTable ? '_borderWidth' : '_cellborderWidth')) as HTMLElement);
+        this.tableBorderColor.renderColorPickerInput({ container: borderColorContainer, containerType: 'quick', items: ['bordercolor'] } as IColorPickerRenderArgs, closest(selectNode, closestElement) as HTMLElement);
         borderColorContainer.setAttribute('aria-label', 'Border Color Picker');
-        this.tableBackgroundColor.renderColorPickerInput({ container: bgColorContainer, containerType: 'quick', items: ['tablebackgroundcolor'] } as IColorPickerRenderArgs, closest(selectNode, 'table') as HTMLElement);
+        this.tableBackgroundColor.renderColorPickerInput({ container: bgColorContainer, containerType: 'quick', items: ['tablebackgroundcolor'] } as IColorPickerRenderArgs, closest(selectNode, closestElement) as HTMLElement);
         bgColorContainer.setAttribute('aria-label', 'Background Color Picker');
-        this.tableBorderStyle.renderDropDowns({ container: styleContainer, containerType: 'quick', items: ['borderstyle'] }, closest(selectNode, 'table') as HTMLElement);
+        this.tableBorderStyle.renderDropDowns({ container: styleContainer, containerType: 'quick', items: ['borderstyle'] }, closest(selectNode, closestElement) as HTMLElement);
         styleContainer.setAttribute('aria-label', 'Table Styles Configuration');
         styleContainer.setAttribute('tabindex', '0');
 
         return tableWrap;
+    }
+
+    private storeInitialColWidths(): void {
+        this.colElementsInitialWidths.clear();
+        if (this.selectedItem && (this.selectedItem.nodeName === 'TD' || this.selectedItem.nodeName === 'TH')) {
+            const table: HTMLElement = this.selectedItem.closest('table');
+            const colgroup: HTMLElement = table.querySelector('colgroup');
+            if (colgroup) {
+                const colElements: NodeListOf<HTMLElement> = colgroup.querySelectorAll('col');
+                colElements.forEach((col: HTMLElement) => {
+                    this.colElementsInitialWidths.set(col, col.style.width);
+                });
+            }
+        }
+    }
+
+    /*
+     * Checks if all multi-selected items have the same value for a specific CSS property
+     * Supports numeric values (width, height, borderWidth, padding) and string values (verticalAlign, textAlign)
+     *
+     * @param propertyName - CSS property name (e.g., 'width', 'height', 'borderWidth', 'padding', 'verticalAlign', 'textAlign')
+     * @param value - The value to check against (numeric or string)
+     * @returns true if all items have the same value or if multi-selection is empty, false otherwise
+     */
+    private isMultiSelectionPropertySame(propertyName: string, value: number | string): boolean {
+        // Check if all multi-selected items have the same value
+        for (let i: number = 0; i < this.multiSelectedItems.length; i++) {
+            const element: HTMLElement = this.multiSelectedItems[i as number];
+            let elementValue: string | number;
+
+            // Get the property value based on property name
+            switch (propertyName) {
+            case 'width': {
+                let colGroupElement: HTMLElement = this.selectedItem.closest('table').querySelector('colgroup') as HTMLElement;
+                if (!colGroupElement) {
+                    insertColGroupWithSizes(this.selectedItem.closest('table'));
+                    colGroupElement = this.selectedItem.closest('table').querySelector('colgroup') as HTMLElement;
+                    this.storeInitialColWidths();
+                }
+                const isSame: boolean = this.uniformColumnWidth(colGroupElement);
+                return isSame;
+            }
+            case 'height':
+                elementValue = element.getClientRects()[0].height;
+                break;
+            case 'borderWidth':
+                elementValue = element.style.borderWidth;
+                break;
+            case 'padding':
+                elementValue = element.style.padding;
+                break;
+            case 'verticalAlign':
+                elementValue = element.style.verticalAlign;
+                break;
+            case 'textAlign':
+                elementValue = element.style.textAlign;
+                break;
+            }
+            if (elementValue !== value) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -1725,6 +2663,10 @@ export class Table {
         if (this.tableWidthNum && !this.tableWidthNum.isDestroyed) {
             this.tableWidthNum.destroy();
             this.tableWidthNum = null;
+        }
+        if (this.tableHeightNum && !this.tableHeightNum.isDestroyed) {
+            this.tableHeightNum.destroy();
+            this.tableHeightNum = null;
         }
         if (this.rowTextBox && !this.rowTextBox.isDestroyed) {
             this.rowTextBox.destroy();
@@ -1754,6 +2696,25 @@ export class Table {
             this.tableBorderStyle.destroyDropDowns();
             this.tableBorderStyle = null;
         }
+        if (this.createdButtons && this.createdButtons.length > 0) {
+            for (let i: number = 0; i < this.createdButtons.length; i++) {
+                const btn: Button = this.createdButtons[i as number];
+                if (btn && !btn.isDestroyed) {
+                    btn.destroy();
+                }
+            }
+            this.createdButtons.length = 0;
+        }
+        if (this.createdDropdownButtons && this.createdDropdownButtons.length > 0) {
+            for (let i: number = 0; i < this.createdDropdownButtons.length; i++) {
+                const dropBtn: DropDownButton = this.createdDropdownButtons[i as number];
+                if (dropBtn && !dropBtn.isDestroyed) {
+                    dropBtn.destroy();
+                }
+            }
+            this.createdDropdownButtons.length = 0;
+        }
+        this.cleanupAlignmentButtons();
         this.createTablePopupBoundFn = null;
         this.isDestroyed = true;
     }
@@ -1768,9 +2729,12 @@ export class Table {
     /*
      * Updates the table resize handles after a key is pressed.
      */
-    private afterKeyDown(): void {
+    private afterKeyDown(e: KeyboardEventArgs): void {
         if (this.tableObj) {
-            this.tableObj.afterKeyDown();
+            const isUndoRedoAction: boolean = (e).action === 'undo' || (e).action === 'redo';
+            if (!isUndoRedoAction) {
+                this.tableObj.afterKeyDown();
+            }
         }
     }
 
@@ -1786,4 +2750,26 @@ export class Table {
             tableToolbarButton.focus({ preventScroll: true });
         }
     }
+}
+/**
+ * Interface representing the style properties for multiple selected table cells
+ */
+interface IMultipleCellStyles {
+    borderStyle: string;
+    borderColor: string;
+    backgroundColor: string;
+    borderWidth: string;
+    width: string;
+    height: string;
+    tableCellPaddingValue: string;
+    tableCellVerticalAlignValue: string;
+    tableCellHorizontalAlignValue: string;
+}
+/**
+ * Interface for tracking event handlers attached to alignment buttons
+ */
+interface IAlignmentButtonHandler {
+    element: HTMLElement;
+    eventType: 'click';
+    handler: () => void;
 }

@@ -12,7 +12,7 @@ import { AccumulationDataLabel } from '../../../src/accumulation-chart/renderer/
 import { piedata, pieColorMapping} from '../../chart/base/data.spec';
 import { getLocations, SliceOption} from '../base/util.spec';
 import { MouseEvents } from '../../chart/base/events.spec';
-import { IAccLoadedEventArgs } from '../../../src/accumulation-chart/model/pie-interface';
+import { IAccLoadedEventArgs, IAccPointRenderEventArgs } from '../../../src/accumulation-chart/model/pie-interface';
 import '../../../node_modules/es6-promise/dist/es6-promise';
 import { profile, inMB, getMemoryProfile } from '../../common.spec';
 import { AccumulationSeries } from '../../../src/accumulation-chart/model/acc-base';
@@ -1131,3 +1131,251 @@ describe('Pie Series - Checking animation on data changes.', () => {
 
 });
 
+describe('Pie Series - Checking radial gradient', () => {
+    let ele: HTMLElement;
+    let pie: AccumulationChart;
+    let id: string = 'ej2container';
+    let chartElement: HTMLElement;
+    const categoryData = [
+        { Category: 'Electronics', Share: 22.5, DataLabelMappingName: 'Electronics: 22.5%' },
+        { Category: 'Fashion', Share: 18.0, DataLabelMappingName: 'Fashion: 18.0%' },
+        { Category: 'Home & Kitchen', Share: 15.5, DataLabelMappingName: 'Home & Kitchen: 15.5%' },
+        { Category: 'Beauty & Health', Share: 10.0, DataLabelMappingName: 'Beauty & Health: 10.0%' },
+        { Category: 'Sports & Outdoors', Share: 9.5, DataLabelMappingName: 'Sports & Outdoors: 9.5%' },
+        { Category: 'Books', Share: 8.0, DataLabelMappingName: 'Books: 8.0%' },
+        { Category: 'Toys & Games', Share: 7.0, DataLabelMappingName: 'Toys & Games: 7.0%' },
+        { Category: 'Groceries', Share: 6.0, DataLabelMappingName: 'Groceries: 6.0%' },
+        { Category: 'Other', Share: 3.5, DataLabelMappingName: 'Other: 3.5%' }
+    ];
+    const pointRadialGradients = [
+        { cx: 0.4, cy: 0.4, r: 0.7, fx: 0.3, fy: 0.3, colors: ['#FF6B6B', '#FF8E72', '#FFA87C'] },
+        { cx: 0.5, cy: 0.5, r: 0.6, fx: 0.5, fy: 0.5, colors: ['#FFA500', '#FFB84D', '#FFCC99'] },
+        { cx: 0.6, cy: 0.4, r: 0.65, fx: 0.7, fy: 0.3, colors: ['#4ECDC4', '#62D9D0', '#7AE2DC'] },
+        { cx: 0.4, cy: 0.6, r: 0.68, fx: 0.3, fy: 0.7, colors: ['#95E1D3', '#A8EAE0', '#BBF3ED'] },
+        { cx: 0.5, cy: 0.5, r: 0.55, fx: 0.5, fy: 0.5, colors: ['#F38181', '#F5A3A3', '#F7C5C5'] },
+        { cx: 0.3, cy: 0.5, r: 0.72, fx: 0.2, fy: 0.5, colors: ['#AA96DA', '#BDB2E1', '#CECEE8'] },
+        { cx: 0.7, cy: 0.5, r: 0.6, fx: 0.8, fy: 0.5, colors: ['#FCBAD3', '#FDCDE0', '#FDD5E5'] },
+        { cx: 0.5, cy: 0.3, r: 0.65, fx: 0.5, fy: 0.2, colors: ['#A8D8EA', '#B8E0EE', '#C8E8F2'] },
+        { cx: 0.5, cy: 0.7, r: 0.6, fx: 0.5, fy: 0.8, colors: ['#AA96DA', '#C9B7E0', '#D4C5E6'] }
+    ];
+    beforeAll((): void => {
+        ele = createElement('div', { id: id });
+        document.body.appendChild(ele);
+        pie = new AccumulationChart({
+            title: 'Point-Level Radial Gradients',
+            series: [
+                {
+                    dataSource: categoryData,
+                    xName: 'Category',
+                    yName: 'Share',
+                    type: 'Pie',
+                    name: 'Share by Category',
+                    border: {
+                        color: 'transparent',
+                        width: 0
+                    },
+                    dataLabel: {
+                        visible: true,
+                        position: 'Outside',
+                        name: 'DataLabelMappingName'
+                    }
+                }
+            ],
+            legendSettings: {
+                visible: true
+            },
+            tooltip: {
+                enable: true
+            },
+            pointRender: (args: IAccPointRenderEventArgs) => {
+                if (args.point && args.point.index !== undefined) {
+                    const gradientConfig = pointRadialGradients[args.point.index % pointRadialGradients.length];
+                    args.radialGradient = {
+                        cx: gradientConfig.cx,
+                        cy: gradientConfig.cy,
+                        r: gradientConfig.r,
+                        fx: gradientConfig.fx,
+                        fy: gradientConfig.fy,
+                        gradientColorStop: [
+                            { offset: 0, color: gradientConfig.colors[0], opacity: 1, lighten: 0.2, brighten: 0.1 },
+                            { offset: 50, color: gradientConfig.colors[1], opacity: 0.8, lighten: 0.2, brighten: 0.1 },
+                            { offset: 100, color: gradientConfig.colors[2], opacity: 1, lighten: 0.2, brighten: 0.1 }
+                        ]
+                    };
+                }
+            }
+        });
+        pie.appendTo('#' + id);
+    });
+    afterAll((): void => {
+        pie.loaded = null;
+        pie.destroy();
+        removeElement(id);
+    });
+    it('checking radial gradient with point series', (done: Function) => {
+        pie.loaded = function (args) {
+            chartElement = document.getElementById('ej2container_Series_0_Point_0');
+            expect(chartElement.getAttribute('fill') == 'url(#ej2container_series_0_point_0_radial_gradient)').toBe(true);
+            chartElement = document.getElementById('ej2container_series_0_point_0_radial_gradient');
+            expect(chartElement.getAttribute('cx') == '0.4');
+            expect(chartElement.getAttribute('cy') == '0.4');
+            expect(chartElement.getAttribute('fx') == '0.3');
+            expect(chartElement.getAttribute('fy') == '0.3');
+            expect(chartElement.getAttribute('r') == '0.7');
+            done();
+        };
+        pie.refresh();
+    });
+
+    it('checking radial gradient with series', (done: Function) => {
+        pie.loaded = function (args) {
+            chartElement = document.getElementById('ej2container_Series_0_Point_0');
+            expect(chartElement.getAttribute('fill') == 'url(#ej2container_series_0_radial_gradient)').toBe(true);
+            done();
+        };
+        pie.pointRender = null;
+        pie.series[0].radialGradient.cx = 0.5;
+        pie.series[0].radialGradient.cy = 0.5;
+        pie.series[0].radialGradient.r = 1;
+        pie.series[0].radialGradient.fx = 0.5;
+        pie.series[0].radialGradient.fy = 0.5;
+        pie.series[0].radialGradient.gradientColorStop[0] = { color: 'red', offset: 0, opacity: 1, lighten: 0.2, brighten: 0.1 };
+        pie.series[0].radialGradient.gradientColorStop[1] = { color: 'blue', offset: 50, opacity: 1, lighten: 0.2, brighten: 0.1 };
+        pie.series[0].radialGradient.gradientColorStop[2] = { color: 'green', offset: 100, opacity: 1, lighten: 0.2, brighten: 0.1 };
+        pie.refresh();
+    });
+});
+
+describe('Pie Series - Checking linear gradient', () => {
+  let ele: HTMLElement;
+  let pie: AccumulationChart;
+  let id: string = 'ej2container';
+  let chartElement: HTMLElement;
+  
+  const categoryData = [
+    { Category: 'Electronics', Share: 22.5, DataLabelMappingName: 'Electronics: 22.5%' },
+    { Category: 'Fashion', Share: 18.0, DataLabelMappingName: 'Fashion: 18.0%' },
+    { Category: 'Home & Kitchen', Share: 15.5, DataLabelMappingName: 'Home & Kitchen: 15.5%' },
+    { Category: 'Beauty & Health', Share: 10.0, DataLabelMappingName: 'Beauty & Health: 10.0%' },
+    { Category: 'Sports & Outdoors', Share: 9.5, DataLabelMappingName: 'Sports & Outdoors: 9.5%' },
+    { Category: 'Books', Share: 8.0, DataLabelMappingName: 'Books: 8.0%' },
+    { Category: 'Toys & Games', Share: 7.0, DataLabelMappingName: 'Toys & Games: 7.0%' },
+    { Category: 'Groceries', Share: 6.0, DataLabelMappingName: 'Groceries: 6.0%' },
+    { Category: 'Other', Share: 3.5, DataLabelMappingName: 'Other: 3.5%' }
+  ];
+  
+  const pointLinearGradients = [
+    { x1: 0, y1: 0, x2: 1, y2: 1, colors: ['#FF6B6B', '#FF8E72', '#FFA87C'] },
+    { x1: 0, y1: 0, x2: 1, y2: 0, colors: ['#FFA500', '#FFB84D', '#FFCC99'] },
+    { x1: 0.5, y1: 0, x2: 0.5, y2: 1, colors: ['#4ECDC4', '#62D9D0', '#7AE2DC'] },
+    { x1: 1, y1: 0, x2: 0, y2: 1, colors: ['#95E1D3', '#A8EAE0', '#BBF3ED'] },
+    { x1: 0, y1: 0.5, x2: 1, y2: 0.5, colors: ['#F38181', '#F5A3A3', '#F7C5C5'] },
+    { x1: 0, y1: 1, x2: 1, y2: 0, colors: ['#AA96DA', '#BDB2E1', '#CECEE8'] },
+    { x1: 1, y1: 1, x2: 0, y2: 0, colors: ['#FCBAD3', '#FDCDE0', '#FDD5E5'] },
+    { x1: 0.5, y1: 0, x2: 0.5, y2: 1, colors: ['#A8D8EA', '#B8E0EE', '#C8E8F2'] },
+    { x1: 0, y1: 0.5, x2: 1, y2: 0.5, colors: ['#AA96DA', '#C9B7E0', '#D4C5E6'] }
+  ];
+  
+  beforeAll((): void => {
+    ele = createElement('div', { id: id });
+    document.body.appendChild(ele);
+    pie = new AccumulationChart({
+      title: 'Point-Level Linear Gradients',
+      series: [
+        {
+          dataSource: categoryData,
+          xName: 'Category',
+          yName: 'Share',
+          type: 'Pie',
+          name: 'Share by Category',
+          border: {
+            color: 'transparent',
+            width: 0
+          },
+          dataLabel: {
+            visible: true,
+            position: 'Outside',
+            name: 'DataLabelMappingName'
+          }
+        }
+      ],
+      legendSettings: {
+        visible: true
+      },
+      tooltip: {
+        enable: true
+      },
+      pointRender: (args: IAccPointRenderEventArgs) => {
+        if (args.point && args.point.index !== undefined) {
+          const gradientConfig = pointLinearGradients[args.point.index % pointLinearGradients.length];
+          args.linearGradient = {
+            x1: gradientConfig.x1,
+            y1: gradientConfig.y1,
+            x2: gradientConfig.x2,
+            y2: gradientConfig.y2,
+            gradientColorStop: [
+              { offset: 0, color: gradientConfig.colors[0], opacity: 1, lighten: 0.2, brighten: 0.1 },
+              { offset: 50, color: gradientConfig.colors[1], opacity: 0.8, lighten: 0.2, brighten: 0.1 },
+              { offset: 100, color: gradientConfig.colors[2], opacity: 1, lighten: 0.2, brighten: 0.1 }
+            ]
+          };
+        }
+      }
+    });
+    pie.appendTo('#' + id);
+  });
+  
+  afterAll((): void => {
+    pie.loaded = null;
+    pie.destroy();
+    removeElement(id);
+  });
+  
+  it('checking linear gradient with point series', (done: Function) => {
+    pie.loaded = function (args) {
+      chartElement = document.getElementById('ej2container_Series_0_Point_0');
+      expect(chartElement.getAttribute('fill') == 'url(#ej2container_series_0_point_0_linear_gradient)').toBe(true);
+      
+      chartElement = document.getElementById('ej2container_series_0_point_0_linear_gradient');
+      expect(chartElement.getAttribute('x1') == '0');
+      expect(chartElement.getAttribute('y1') == '0');
+      expect(chartElement.getAttribute('x2') == '1');
+      expect(chartElement.getAttribute('y2') == '1');
+      done();
+    };
+    pie.refresh();
+  });
+
+  it('checking linear gradient with series', (done: Function) => {
+    pie.loaded = function (args) {
+      chartElement = document.getElementById('ej2container_Series_0_Point_0');
+      expect(chartElement.getAttribute('fill') == 'url(#ej2container_series_0_linear_gradient)').toBe(true);
+      done();
+    };
+    pie.pointRender = null;
+    pie.series[0].linearGradient.x1 = 0;
+    pie.series[0].linearGradient.y1 = 0;
+    pie.series[0].linearGradient.x2 = 0;
+    pie.series[0].linearGradient.y2 = 1;
+    pie.series[0].linearGradient.gradientColorStop[0] = {color: 'red', offset: 0, opacity: 1, lighten: 0.2, brighten: 0.1};
+    pie.series[0].linearGradient.gradientColorStop[1] = {color: 'blue', offset: 50, opacity: 1, lighten: 0.2, brighten: 0.1};
+    pie.series[0].linearGradient.gradientColorStop[2] = {color: 'green', offset: 100, opacity: 1, lighten: 0.2, brighten: 0.1};
+    pie.refresh();
+  });
+
+  it('checking linear gradient with null stop color', (done: Function) => {
+    pie.loaded = function (args) {
+      chartElement = document.getElementById('ej2container_Series_0_Point_0');
+      expect(chartElement.getAttribute('fill') == 'url(#ej2container_series_0_linear_gradient)').toBe(true);
+      done();
+    };
+    pie.series[0].linearGradient.x1 = 0;
+    pie.series[0].linearGradient.y1 = 0;
+    pie.series[0].linearGradient.x2 = 0;
+    pie.series[0].linearGradient.y2 = 1;
+    pie.series[0].linearGradient.gradientColorStop[0] = {color: null, offset: 0, opacity: 1, lighten: 0.2, brighten: 0.1};
+    pie.series[0].linearGradient.gradientColorStop[1] = {color: 'blue', offset: null, opacity: 1, lighten: 0.2, brighten: 0.1};
+    pie.series[0].linearGradient.gradientColorStop[2] = {color: 'green', offset: 100, opacity: 1, lighten: 0.2, brighten: 0.1};
+    pie.refresh();
+  });
+});

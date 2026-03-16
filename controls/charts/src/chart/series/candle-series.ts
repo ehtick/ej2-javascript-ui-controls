@@ -5,6 +5,7 @@ import { Series, Points } from './chart-series';
 import { ColumnBase } from './column-base';
 import { IPointRenderEventArgs } from '../../chart/model/chart-interface';
 import { BorderModel } from '../../common/model/base-model';
+import { isNullOrUndefined } from '@syncfusion/ej2-base';
 
 /**
  * The `CandleSeries` module is used to render the candle series.
@@ -110,16 +111,20 @@ export class CandleSeries extends ColumnBase {
      */
     private getCandleColor(point: Points, series: Series): string {
         const previousPoint: Points = series.points[point.index - 1];
+        const hasGradient: boolean = (series.linearGradient && series.linearGradient.gradientColorStop.length > 0) ||
+                                     (series.radialGradient && series.radialGradient.gradientColorStop.length > 0);
+        const bearFill: string = hasGradient ? series.interior : series.bearFillColor;
+        const bullFill: string = hasGradient ? series.interior : series.bullFillColor;
         if (series.enableSolidCandles === false) {
             if (!previousPoint) {
-                return <string>series.bearFillColor || series.chart.themeStyle.bearFillColor;
+                return <string>bearFill || series.chart.themeStyle.bearFillColor;
             } else {
-                return <number>previousPoint.close > <number>point.close ? <string>series.bullFillColor
-                || series.chart.themeStyle.bullFillColor : <string>series.bearFillColor || series.chart.themeStyle.bearFillColor;
+                return <number>previousPoint.close > <number>point.close ? <string>bullFill
+                || series.chart.themeStyle.bullFillColor : <string>bearFill || series.chart.themeStyle.bearFillColor;
             }
         } else {
-            return <number>point.open > <number>point.close ? <string>series.bullFillColor || series.chart.themeStyle.bullFillColor :
-            <string>series.bearFillColor || series.chart.themeStyle.bearFillColor;
+            return <number>point.open > <number>point.close ? <string>bullFill || series.chart.themeStyle.bullFillColor :
+            <string>bearFill || series.chart.themeStyle.bearFillColor;
         }
     }
 
@@ -179,8 +184,11 @@ export class CandleSeries extends ColumnBase {
         if (check <= 0) {
             return null;
         }
+        const hasGradient: boolean = (!isNullOrUndefined(series.linearGradient) && series.linearGradient.gradientColorStop.length > 0) ||
+                                     (!isNullOrUndefined(series.radialGradient) && series.radialGradient.gradientColorStop.length > 0);
+        const fillColor: string = hasGradient ? series.interior : argsData.fill;
         const fill: string = !series.enableSolidCandles ?
-            (<number>point.open > <number>point.close ? argsData.fill : 'transparent') : argsData.fill;
+            (<number>point.open > <number>point.close ? fillColor : 'transparent') : fillColor;
 
         argsData.border.color = argsData.fill;
 

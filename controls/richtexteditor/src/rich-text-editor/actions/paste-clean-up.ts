@@ -50,6 +50,8 @@ export class PasteCleanup {
     private failureTime: number;
     private plainTextContent: string = '';
     private isDestroyed: boolean;
+    private pendingPasteQueue: string[] = [];
+    private validFiles: File[] = [];
     public constructor(parent?: IRichTextEditor, serviceLocator?: ServiceLocator) {
         this.parent = parent;
         this.locator = serviceLocator;
@@ -104,6 +106,8 @@ export class PasteCleanup {
         }
         this.isDestroyed = true;
         this.plainTextContent = '';
+        this.pendingPasteQueue = [];
+        this.validFiles = [];
     }
     private removeEventListener(): void {
         this.parent.off(events.pasteClean, this.pasteClean);
@@ -274,20 +278,24 @@ export class PasteCleanup {
         processedValue = processedValue.replace(/>/g, '&gt;');
         this.containsHtml = htmlRegex.test(processedValue);
         this.plainTextContent = processedValue;
-        // Check for image file in clipboard
-        const file: File = this.pasteObj.extractFileFromClipboard(e);
-        // Validate image type if file exists
-        if (file) {
-            const fileNameParts: string = file.name;
-            const imgType: string = fileNameParts.substring(fileNameParts.lastIndexOf('.'));
+        // Collect clipboard files
+        const clipboardData: DataTransfer = (e.args as ClipboardEvent).clipboardData;
+        const clipboardFiles: File[] = clipboardData && clipboardData.files && clipboardData.files.length ?
+            Array.from(clipboardData.files) : [];
+        // Filter valid image files
+        const validImageFiles: File[] = [];
+        for (const file of clipboardFiles) {
+            const fileName: string = file.name || '';
+            const imgType: string = fileName.substring(fileName.lastIndexOf('.'));
             if (this.isInvalidImageType(imgType, allowedTypes)) {
-                (e.args as ClipboardEvent).preventDefault();
-                return { value: processedValue, shouldContinue: false }; // Signal to stop processing
+                continue;
             }
+            validImageFiles.push(file);
         }
-        // Process paste with potential image
+        this.validFiles = validImageFiles;
+        // Process the image pasting with validImageFiles
         const result: { value: string, shouldContinue: boolean } =
-            this.processPasteWithImage(e, file, processedValue, args, imageproperties, htmlRegex);
+            this.processPasteWithImage(e, validImageFiles, processedValue, args, imageproperties, htmlRegex);
         return result;
     }
 
@@ -298,7 +306,7 @@ export class PasteCleanup {
 
     /* Processes paste operation that may contain an image */
     private processPasteWithImage(
-        e: NotifyArgs, file: File, value: string,
+        e: NotifyArgs, file: File | File[], value: string,
         args: { [key: string]: string | NotifyArgs },
         imageproperties: string | object,
         htmlRegex: RegExp
@@ -811,14 +819,25 @@ export class PasteCleanup {
         const range: Range = this.nodeSelectionObj.getRange(currentDocument);
         this.saveSelection = this.nodeSelectionObj.save(range, currentDocument);
         const settings: PasteCleanupSettingsModel = this.parent.pasteCleanupSettings;
+        // queue this image and open prompt
+        this.pendingPasteQueue.push(imageValue);
+        const isImageQueueCompleted: boolean = (this.validFiles.length === 0) || (this.pendingPasteQueue.length === this.validFiles.length);
+        if (!isImageQueueCompleted) {
+            return;
+        }
+        const combinedHtml: string = this.pendingPasteQueue.join('');
         if (settings.prompt) {
-            this.pasteDialog(imageValue, pasteArgs);
+            this.pasteDialog(combinedHtml, pasteArgs);
+            return;
         } else if (settings.plainText) {
-            this.plainFormatting(imageValue, pasteArgs);
+            this.plainFormatting(combinedHtml, pasteArgs);
+            this.pendingPasteQueue = [];
         } else if (settings.keepFormat) {
-            this.formatting(imageValue, false, pasteArgs);
+            this.formatting(combinedHtml, false, pasteArgs);
+            this.pendingPasteQueue = [];
         } else {
-            this.formatting(imageValue, true, pasteArgs);
+            this.formatting(combinedHtml, true, pasteArgs);
+            this.pendingPasteQueue = [];
         }
     }
 
@@ -929,6 +948,8 @@ export class PasteCleanup {
         const dialogRef: Dialog = this.dialogObj;
         this.dialogRenderObj.close(dialogRef);
         this.dialogObj.destroy();
+        // Reset the image Queue
+        this.pendingPasteQueue = [];
     }
 
     /* Returns the HTML content for the dialog. */

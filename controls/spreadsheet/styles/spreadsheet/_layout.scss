@@ -4292,7 +4292,8 @@
       word-break: break-word;
     }
 
-    .formula-item:hover .e-formula-description{
+    .formula-item:hover .e-formula-description,
+    .e-list-item.e-item-focus .formula-item .e-formula-description{
       display: inline-block;
       max-width: 100%;
       text-indent: 0;
@@ -4301,7 +4302,7 @@
     }
 
     .e-list-item:not(:hover) .e-formula-description{
-      display: none !important; /* stylelint-disable-line declaration-no-important */
+      display: none;
     }
 
     .formula-item {

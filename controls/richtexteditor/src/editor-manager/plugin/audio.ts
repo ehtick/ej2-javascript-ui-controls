@@ -104,6 +104,19 @@ export class AudioCommand {
             if (!isNOU(e.item.selection)) {
                 e.item.selection.restore();
             }
+            const isPasteCleanup: boolean = !isNOU(e.selector) && e.selector === 'pasteCleanupModule';
+            if (isPasteCleanup) {
+                if (!isNOU(this.parent.currentDocument)) {
+                    e.callBack({
+                        requestType: 'Audios',
+                        editorMode: 'HTML',
+                        event: e.event,
+                        range: this.parent.nodeSelection.getRange(this.parent.currentDocument),
+                        elements: [audElement]
+                    });
+                }
+                return;
+            }
             InsertHtml.Insert(this.parent.currentDocument, wrapElement, this.parent.editableElement);
             if (!isNOU(e.item.selection)) {
                 const range: Range = e.item.selection.getRange(this.parent.currentDocument);

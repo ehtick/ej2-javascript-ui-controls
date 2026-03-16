@@ -17,7 +17,7 @@ import { RendererFactory } from '../services/renderer-factory';
 export class ColorPickerInput {
     private fontColorPicker: ColorPicker;
     private backgroundColorPicker: ColorPicker;
-    private borderColorPicker: ColorPicker;
+    public borderColorPicker: ColorPicker;
     private tableBackgroundColorPicker: ColorPicker;
     protected parent: IRichTextEditor;
     protected locator: ServiceLocator;

@@ -35,7 +35,9 @@ export function setElementStype(obj: PdfAnnotationBaseModel | PdfFormFieldBaseMo
             }
         } else {
             let fillColor: string = ((obj as PdfAnnotationBaseModel).fillColor === '#ffffff00' ? 'transparent' : (obj as PdfAnnotationBaseModel).fillColor);
-            element.style.fill = fillColor ? fillColor : 'white';
+            const isSrcTarDec: boolean = (obj as PdfAnnotationBaseModel).measureType !== 'Perimeter' ? true : element.id &&
+            (element.id.toLowerCase().includes('srcdec') || element.id.toLowerCase().includes('tardec')) ? true : false;
+            element.style.fill = fillColor && isSrcTarDec ? fillColor : 'transparent';
             if ((obj as PdfAnnotationBaseModel).shapeAnnotationType === 'Redaction') {
                 fillColor = updateColorWithOpacity((obj as PdfAnnotationBaseModel).markerFillColor as string,
                                                    (obj as PdfAnnotationBaseModel).markerOpacity as number);

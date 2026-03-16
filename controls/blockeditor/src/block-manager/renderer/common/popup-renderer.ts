@@ -33,7 +33,7 @@ export class PopupRenderer {
         }
         const popupObj: Popup = new Popup(element, {
             targetType: 'relative',
-            relateTo: this.editorElement,
+            relateTo: args.relateTo || this.editorElement,
             content: args.content,
             collision: { X: 'fit', Y: 'fit' },
             actionOnScroll: 'hide',
@@ -60,6 +60,7 @@ export class PopupRenderer {
         const isInlineTbar: boolean = popup.element.classList.contains('e-blockeditor-inline-toolbar-popup');
         const isblkActionPopup: boolean = popup.element.classList.contains('e-blockeditor-blockaction-popup');
         const isTableGripperPopup: boolean = popup.element.classList.contains('e-table-gripper-action-popup');
+        const isImageUploadPopup: boolean = popup.element.classList.contains('e-image-upload-popup');
         if (isblkActionPopup) {
             this.positionBlockActionPopup(target, popup as Popup);
         }
@@ -68,6 +69,9 @@ export class PopupRenderer {
         }
         else if (isTableGripperPopup) {
             this.positionTableGripperActionPopup(target as HTMLElement, popup as Popup);
+        }
+        else if (isImageUploadPopup) {
+            this.positionImageUploadPopup(target as HTMLElement, popup as Popup);
         }
     }
 
@@ -86,6 +90,64 @@ export class PopupRenderer {
         popup.position.X = adjustedX;
         popup.position.Y = adjustedY;
         removeClass([popup.element], 'e-be-action-popup-hide');
+        popup.dataBind();
+    }
+
+    /**
+     * Positions the image upload popup relative to the placeholder element.
+     * The popup will appear below the placeholder if there's space, otherwise above.
+     * Handles scroll offsets correctly.
+     *
+     * @param {HTMLElement} target - The placeholder element (target for positioning)
+     * @param {Popup} popup - The image upload popup object
+     * @returns {void}
+     * @private
+     */
+    private positionImageUploadPopup(target: HTMLElement, popup: Popup): void {
+        // Hide popup temporarily while calculating position
+        addClass([popup.element], 'e-image-popup-hide');
+
+        // Get the block element (parent of placeholder)
+        const blockElement: HTMLElement = target.closest('.e-block') as HTMLElement;
+        if (!blockElement || !target) {
+            return;
+        }
+
+        // Get dimensions and positions
+        const blockRect: DOMRect = blockElement.getBoundingClientRect() as DOMRect;
+        const targetRect: DOMRect = target.getBoundingClientRect() as DOMRect;
+        const popupRect: DOMRect = popup.element.getBoundingClientRect() as DOMRect;
+        const editorRect: DOMRect = getElementRect(this.editorElement);
+        const viewportHeight: number = window.innerHeight;
+
+        // Calculate scroll offset
+        const editorScrollTop: number = this.editorElement.scrollTop || 0;
+
+        // Calculate relative X position (align with left edge of block)
+        const adjustedX: number = targetRect.left - editorRect.left;
+
+        // Calculate space available below and above the block
+        const spaceBelow: number = viewportHeight - blockRect.bottom;
+        const spaceAbove: number = blockRect.top;
+
+        // Determine Y position based on available space
+        let adjustedY: number;
+        const popupOffset: number = 4; // Gap between block and popup
+
+        if (spaceBelow >= popupRect.height || spaceBelow >= spaceAbove) {
+            // Position below the block
+            adjustedY = targetRect.bottom - editorRect.top + editorScrollTop + popupOffset;
+        } else {
+            // Position above the block
+            adjustedY = targetRect.top - editorRect.top + editorScrollTop - popupRect.height - popupOffset;
+        }
+
+        // Set popup position
+        popup.position.X = adjustedX;
+        popup.position.Y = adjustedY;
+
+        // Show popup and apply position
+        removeClass([popup.element], 'e-image-popup-hide');
         popup.dataBind();
     }
 

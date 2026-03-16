@@ -9,7 +9,7 @@ import { IAction, PivotButtonArgs, MemberFilteringEventArgs, PivotActionInfo } f
 import { FieldRemoveEventArgs, FieldDragStartEventArgs } from '../../common/base/interface';
 import { IFieldOptions, IFilter, IField, IDataOptions, PivotEngine, IMembers, FieldItemInfo } from '../../base/engine';
 import { IPivotRows, IAxisSet, INumberIndex } from '../../base/engine';
-import { Button } from '@syncfusion/ej2-buttons';
+import { Button, ButtonModel } from '@syncfusion/ej2-buttons';
 import { DragAndDropEventArgs, NodeCheckEventArgs, SelectEventArgs } from '@syncfusion/ej2-navigations';
 import { ButtonPropsModel, showSpinner, hideSpinner } from '@syncfusion/ej2-popups';
 import { Operators, FilterType } from '../../base/types';
@@ -138,6 +138,9 @@ export class PivotButton implements IAction {
                                     axis === 'filters' ? this.parent.localeObj.getConstant('filterAxisPrompt') :
                                         this.parent.localeObj.getConstant('allFields') : '');
                         element.appendChild(axisPrompt);
+                    } else if (axis === 'values' && element.classList.contains(cls.GROUP_CHART_VALUE) &&
+                        (this.parent as PivotView).pivotChartModule) {
+                        this.createChartValueDropdown(element, []);
                     }
                 }
             } else {
@@ -184,39 +187,22 @@ export class PivotButton implements IAction {
                     }
                 }
                 if (axis === 'values') {
-                    let valueFiedDropDownList: DropDownList = select('.' + cls.GROUP_CHART_VALUE_DROPDOWN_DIV, this.parentElement) ?
-                        getInstance(select('.' + cls.GROUP_CHART_VALUE_DROPDOWN_DIV, this.parentElement), DropDownList) as DropDownList : null;
+                    const parent: PivotView = this.parent as PivotView;
+                    const valueData: { text: string, value: string }[] = field.map((item: IFieldOptions) =>
+                        ({ text: item.caption ? item.caption : item.name, value: item.name })
+                    );
+                    const ddlSelector: string = '.' + cls.GROUP_CHART_VALUE_DROPDOWN_DIV;
                     for (let i: number = 0; i < currentAxisElements.length; i++) {
                         const element: Element = currentAxisElements[i as number];
-                        if (element.classList.contains(cls.GROUP_CHART_VALUE) && (this.parent as PivotView).pivotChartModule) {
-                            const valueData: { text: string, value: string }[] = field.map((item: IFieldOptions) => {
-                                return { text: item.caption ? item.caption : item.name, value: item.name };
-                            });
-                            const parent: PivotView = this.parent as PivotView;
-                            if (valueFiedDropDownList && element.querySelector('.' + cls.GROUP_CHART_VALUE_DROPDOWN_DIV)) {
+                        if (element.classList.contains(cls.GROUP_CHART_VALUE) && parent.pivotChartModule) {
+                            const dropdownElement: HTMLElement | null = element.querySelector(ddlSelector) as HTMLElement;
+                            if (dropdownElement) {
+                                const valueFiedDropDownList: DropDownList = getInstance(dropdownElement, DropDownList) as DropDownList;
                                 valueFiedDropDownList.dataSource = valueData;
                                 valueFiedDropDownList.value = !parent.chartSettings.enableMultipleAxis ?
                                     parent.pivotChartModule.currentMeasure : valueData[0].value;
                             } else {
-                                const ddlDiv: HTMLElement = createElement('div', { className: cls.GROUP_CHART_VALUE_DROPDOWN_DIV });
-                                element.appendChild(ddlDiv);
-                                valueFiedDropDownList = new DropDownList({
-                                    dataSource: valueData,
-                                    enableRtl: this.parent.enableRtl,
-                                    locale: this.parent.locale,
-                                    value: !parent.chartSettings.enableMultipleAxis ?
-                                        parent.pivotChartModule.currentMeasure : valueData[0].value,
-                                    width: this.parent.isAdaptive ? 150 : 200,
-                                    fields: { value: 'value', text: 'text' },
-                                    cssClass: cls.GROUP_CHART_VALUE_DROPDOWN + (this.parent.cssClass ? (' ' + this.parent.cssClass) : ''),
-                                    change: (args: ChangeEventArgs) => {
-                                        if (args.e && args.e !== null) {
-                                            parent.chartSettings.value = args.value as string;
-                                        }
-                                    }
-                                });
-                                valueFiedDropDownList.isStringTemplate = true;
-                                valueFiedDropDownList.appendTo(ddlDiv);
+                                this.createChartValueDropdown(element, valueData);
                             }
                         }
                     }
@@ -461,7 +447,7 @@ export class PivotButton implements IAction {
         text = this.parent.enableHtmlSanitizer ? SanitizeHtmlHelper.sanitize(text) : text;
         const buttonText: HTMLElement = createElement('span', {
             attrs: {
-                title: axis === 'filters' ? (this.parent.dataType === 'olap' && fieldObj && fieldObj.type === 'CalculatedField') ?
+                title: axis === 'filters' ? (this.parent.dataType === 'olap' && engineModule.fieldList[field[i as number].name].type === 'CalculatedField') ?
                     text : (text + ' (' + filterMem + ')') : (this.parent.dataType === 'olap' ?
                     text : (((!this.parent.dataSourceSettings.showAggregationOnValueField || axis !== 'values' || aggregation === 'CalculatedField') ?
                         text : this.parent.localeObj.getConstant(aggregation) + ' ' + this.parent.localeObj.getConstant('of') + ' ' + text))),
@@ -528,6 +514,34 @@ export class PivotButton implements IAction {
         pivotButton.appendChild(spanElement);
         return spanElement;
     }
+
+    private createChartValueDropdown(element: Element, valueData: { text: string, value: string }[] = []): DropDownList {
+        const parent: PivotView = this.parent as PivotView;
+        const ddlDiv: HTMLElement = createElement('div', { className: cls.GROUP_CHART_VALUE_DROPDOWN_DIV });
+        element.appendChild(ddlDiv);
+        const dropdownValue: string = valueData.length > 0 ? (
+            !parent.chartSettings.enableMultipleAxis ? parent.pivotChartModule.currentMeasure : valueData[0].value
+        ) : null;
+        const valueFiedDropDownList: DropDownList = new DropDownList({
+            dataSource: valueData,
+            enableRtl: this.parent.enableRtl,
+            locale: this.parent.locale,
+            value: dropdownValue,
+            width: this.parent.isAdaptive ? 150 : 200,
+            fields: { value: 'value', text: 'text' },
+            cssClass: cls.GROUP_CHART_VALUE_DROPDOWN + (this.parent.cssClass ? (' ' + this.parent.cssClass) : ''),
+            placeholder: this.parent.localeObj.getConstant('valueAxisPrompt'),
+            change: (args: ChangeEventArgs) => {
+                if (args.e && args.e !== null) {
+                    parent.chartSettings.value = args.value as string;
+                }
+            }
+        });
+        valueFiedDropDownList.isStringTemplate = true;
+        valueFiedDropDownList.appendTo(ddlDiv);
+        return valueFiedDropDownList;
+    }
+
     private createMenuOption(args: MouseEventArgs): void {
         this.menuOption.render(args, this.parentElement);
         this.parent.pivotButtonModule = this;
@@ -1068,8 +1082,6 @@ export class PivotButton implements IAction {
         if (this.parent.pivotCommon.filterDialog.allowExcelLikeFilter && this.parent.pivotCommon.filterDialog.tabObj) {
             this.index = this.parent.pivotCommon.filterDialog.tabObj.selectedItem;
             this.updateDialogButtonEvents();
-            this.parent.pivotCommon.filterDialog.dialogPopUp.buttons = this.buttonModel();
-            this.parent.pivotCommon.filterDialog.dialogPopUp.dataBind();
             this.parent.pivotCommon.filterDialog.tabObj.selected = this.tabSelect.bind(this);
         } else if (this.parent.dataSourceSettings.allowMemberFilter) {
             this.index = 0;
@@ -1117,6 +1129,14 @@ export class PivotButton implements IAction {
     private updateDialogButtonEvents(): void {
         this.parent.pivotCommon.filterDialog.dialogPopUp.buttons = this.buttonModel();
         this.parent.pivotCommon.filterDialog.dialogPopUp.dataBind();
+        const clearBtnElement: HTMLElement = this.parent.pivotCommon.filterDialog.dialogPopUp
+            .element.querySelector('.e-clear-filter-button') as HTMLElement;
+        if (clearBtnElement) {
+            const clearBtnModel: ButtonModel = this.parent.pivotCommon.filterDialog.dialogPopUp.buttons[0].buttonModel;
+            if (clearBtnModel && clearBtnModel.content) {
+                clearBtnElement.setAttribute('title', clearBtnModel.content.toString());
+            }
+        }
     }
     private updateCustomFilter(): void {
         const dialogElement: HTMLElement =
@@ -1644,6 +1664,15 @@ export class PivotButton implements IAction {
                 let pivotButton: Element = element.querySelector('.' + cls.PIVOT_BUTTON_CLASS);
                 if (pivotButton) {
                     EventHandler.remove(pivotButton, 'click', this.updateSorting);
+                    const draggableElements: NodeListOf<Element> = pivotButton.querySelectorAll('.' + cls.BUTTON_DRAGGABLE);
+                    for (let j: number = 0; j < draggableElements.length; j++) {
+                        let draggableInstance: Draggable =
+                            getInstance(draggableElements[j as number] as HTMLElement, Draggable) as Draggable;
+                        if (draggableInstance && !draggableInstance.isDestroyed) {
+                            draggableInstance.destroy();
+                            draggableInstance = null;
+                        }
+                    }
                     let buttonInstance: Button = getInstance(pivotButton as HTMLElement, Button) as Button;
                     if (buttonInstance && !buttonInstance.isDestroyed) {
                         buttonInstance.destroy();

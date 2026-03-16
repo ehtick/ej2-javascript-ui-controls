@@ -1651,6 +1651,7 @@ export function deserialize(model: string|Object, diagram: Diagram): Object {
     diagram.selectedItems = dataObj.selectedItems;
     diagram.enableServerDataBinding(true);
     diagram.canLayout = true;
+    diagram.enableCollaborativeEditing = dataObj.enableCollaborativeEditing;
     diagram.swimlaneChildTable = {};
     diagram.swimlaneZIndexTable = {};
     // EJ2-913802 Sub process child won't get serialized when it is a child of a lane.
@@ -1798,9 +1799,11 @@ export function updateScrollSettingsOffset(diagram: Diagram): void {
  * @returns {void } updateStyle method .\
  * @param {TextStyleModel} changedObject - provide the changedObject  value.
  * @param {DiagramElement} target - provide the target  value.
+ * @param {boolean} isTransactionChild - provide the details about it is transaction or not.
+ * @param {boolean} isEvent - provide the details about it is event or not.
  * @private
  */
-export function updateStyle(changedObject: TextStyleModel, target: DiagramElement): void {
+export function updateStyle(changedObject: TextStyleModel, target: DiagramElement, isTransactionChild?: boolean, isEvent?: boolean): void {
     //since text style model is the super set of shape style model, we used text style model
     const style: TextStyleModel = target.style as TextStyleModel;
     const textElement: TextElement = target as TextElement;
@@ -1808,7 +1811,9 @@ export function updateStyle(changedObject: TextStyleModel, target: DiagramElemen
     for (const key of Object.keys(changedObject)) {
         switch (key) {
         case 'fill':
-            style.fill = changedObject.fill;
+            if (!isTransactionChild) {
+                style.fill = changedObject.fill;
+            }
             if (style instanceof StrokeStyle) {
                 /* tslint:disable:no-string-literal */
                 style['fill'] = 'transparent';
@@ -1824,7 +1829,9 @@ export function updateStyle(changedObject: TextStyleModel, target: DiagramElemen
             style.strokeColor = changedObject.strokeColor;
             break;
         case 'strokeDashArray':
-            style.strokeDashArray = changedObject.strokeDashArray;
+            if (!isEvent) {
+                style.strokeDashArray = changedObject.strokeDashArray;
+            }
             break;
         case 'strokeWidth':
             style.strokeWidth = changedObject.strokeWidth;
@@ -2098,8 +2105,18 @@ export function updateContent(newValues: Node, actualObject: Node, diagram: Diag
             (actualObject.wrapper.children[0] as PathModel).data = (newValues.shape as PathModel).data;
         } else if (actualObject.shape.type === 'Text' && (newValues.shape as TextModel).content !== undefined) {
             (actualObject.wrapper.children[0] as TextModel).content = (newValues.shape as TextModel).content;
-        } else if (actualObject.shape.type === 'Image' && (newValues.shape as ImageModel).source !== undefined) {
-            (actualObject.wrapper.children[0] as ImageModel).source = (newValues.shape as ImageModel).source;
+        } else if (actualObject.shape.type === 'Image') {
+            const newImg: ImageModel = newValues.shape as ImageModel;
+            const wrapperImg = actualObject.wrapper.children[0] as ImageElement;
+            if (newImg.source !== undefined) {
+                wrapperImg.source = newImg.source;
+            }
+            if (newImg.scale !== undefined) {
+                wrapperImg.imageScale = newImg.scale;
+            }
+            if (newImg.align !== undefined) {
+                wrapperImg.imageAlign = newImg.align;
+            }
         } else if (actualObject.shape.type === 'Native') {
             let nativeElement: HTMLElement;
             for (let i: number = 0; i < diagram.views.length; i++) {
@@ -2138,9 +2155,13 @@ export function updateContent(newValues: Node, actualObject: Node, diagram: Diag
             } else {
                 (actualObject.wrapper.children[0] as BasicShapeModel).cornerRadius = (newValues.shape as BasicShapeModel).cornerRadius;
             }
-        } else if (actualObject.shape.type === 'Basic' && (oldObject && (oldObject.shape as BasicShape).shape === 'Rectangle')) {
+        } else if (actualObject.shape.type === 'Basic') {
             const basicshape: PathElement = new PathElement();
-            const basicshapedata: string = getBasicShape((actualObject.shape as BasicShape).shape);
+            // EJ2-1012648: When changing from Rectangle to Polygon, getBasicShape returns undefined for 'Polygon'
+            // because Polygon paths are computed dynamically from user-supplied points via getPolygonPath.
+            const basicshapedata: string = ((actualObject.shape as BasicShape).shape === 'Polygon')
+                ? getPolygonPath((actualObject.shape as BasicShape).points) as string
+                : getBasicShape((actualObject.shape as BasicShape).shape);
             basicshape.data = basicshapedata;
             const content: DiagramElement = basicshape;
             updateShapeContent(content, actualObject, diagram);
@@ -2662,8 +2683,16 @@ export function arrangeChild(obj: Node, x: number, y: number, nameTable: {}, dro
             if (node.children) {
                 arrangeChild(node, x, y, nameTable, drop, diagram);
             } else {
-                node.offsetX -= x;
-                node.offsetY -= y;
+                // Bug 974410: Updated child node offset adjustment to properly align group node at cursor position during palette drag‑and‑drop
+                if (drop) {
+                    const width: number = obj.width ? obj.width : obj.wrapper.actualSize.width;
+                    const height: number = obj.height ? obj.height : obj.wrapper.actualSize.height;
+                    node.offsetX = node.offsetX - x - width / 2;
+                    node.offsetY = node.offsetY - y - height / 2;
+                } else {
+                    node.offsetX -= x;
+                    node.offsetY -= y;
+                }
                 if (!drop) {
                     //let content: DiagramElement;
                     //let container: Container;
@@ -3373,6 +3402,7 @@ export let updatePathElement: Function = (anglePoints: PointModel[], connector: 
         pathseqData = findPath(anglePoints[j], anglePoints[j + 1]);
         pathElement.data = pathseqData[0];
         pathElement.id = connector.id + '_' + ((connector.shape as BpmnFlow).sequence);
+        pathElement.style.strokeColor = connector.style.strokeColor;
         //Bug 860251: Bpmn message flow and sequence flow connector child path is not rendered properly.
         //To get the offset of default sequence path.
         var pathOffset = getPathOffset(anglePoints, connector);
@@ -3570,7 +3600,10 @@ export function findParentInSwimlane(node: Node, diagram: Diagram, parent: strin
  * @private
  */
 export function selectionHasConnector(diagram: Diagram, selector: Selector): boolean {
-    if (diagram.selectedItems.connectors.length > 1 && diagram.selectedItems.nodes.length === 0 && selector.rotateAngle !== 0) {
+    // Return true if there are any connectors in the selection and rotation is active
+    // This handles both pure connector selections and mixed node+connector selections
+    // EJ2-1009090 - Detect any connector in selection to fix selector jitter when rotating mixed node+connector selections
+    if (diagram.selectedItems.connectors.length > 0 && selector.rotateAngle !== 0) {
         return true;
     }
     return false;

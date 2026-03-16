@@ -12,5 +12,5 @@
 @use 'ej2-grids/styles/grid/tailwind-dark-definition' as *;
 @use 'grid-chart/tailwind-dark-definition' as *;
 @use 'grid-chart/icons/tailwind-dark' as *;
-@use 'grid-chart/all' as *;
-@use 'grid-chart/bigger' as *;
+@use 'grid-chart/all.tailwind-dark' as *;
+@use 'grid-chart/bigger.tailwind-dark' as *;

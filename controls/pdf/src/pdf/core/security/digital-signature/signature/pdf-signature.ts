@@ -13,7 +13,7 @@ import { _PdfX509CertificateParser } from '../x509/x509-certificate-parser';
 import { _PdfSignaturePrivateKey } from './signature-privatekey';
 import { _PdfCryptographicMessageSyntaxSigner } from './cryptographic-signer';
 import { PdfForm } from '../../../form/form';
-import { ExternalSignatureCallback, Rectangle } from './../../../pdf-type';
+import { ExternalSignatureCallback, Rectangle, TimestampCallback } from './../../../pdf-type';
 import { Save } from '@syncfusion/ej2-file-utils';
 /**
  * 'PdfSignature' class represents a digital signature used for signing a PDF document.
@@ -52,7 +52,6 @@ export class PdfSignature {
     _cryptographicStandard: CryptographicStandard;
     _visible: boolean = true;
     _documentPermissions: PdfCertificationFlags;
-    _isTimeStampOnly: boolean = false;
     _signedDate: Date;
     _signedName: string;
     _externalChain: Array<_PdfX509Certificate> = [];
@@ -64,6 +63,10 @@ export class PdfSignature {
     _certify: boolean;
     _certificateInfo: PdfCertificateInformation;
     _externalSignatureCallback: ExternalSignatureCallback;
+    _hasTimeStamp: boolean = false;
+    _timeStampTokenBytes: Uint8Array;
+    _isTimestampOnly: boolean = false;
+    _timestampCallback: TimestampCallback;
     /**
      * Initializes a new instance of the `PdfSignature` class.
      *
@@ -192,47 +195,156 @@ export class PdfSignature {
      * ```
      */
     static create(pfxData: Uint8Array | string, password: string, options: PdfSignatureOptions): PdfSignature;
-    static create(arg1: Uint8Array | string | ExternalSignatureCallback,
-                  arg2: string | Uint8Array[] | PdfSignatureOptions,
-                  arg3?: PdfSignatureOptions): PdfSignature {
+    /**
+     * Creates a new PDF signature with timestamp using a PFX certificate and timestamp callback.
+     *
+     * @param {Uint8Array | string} pfxData - The PFX certificate data.
+     * @param {string} password - The password for the certificate.
+     * @param {PdfSignatureOptions} options - Configuration options for the signature.
+     * @param {Function} timestamp Callback function that accesses TSA server and returns timestamp response for the request bytes.
+     * @returns {PdfSignature} - The created PDF signature instance.
+     *
+     * @example
+     * ```typescript
+     * // Load the document
+     * let document: PdfDocument = new PdfDocument(data);
+     * // Gets the first page of the document
+     * let page: PdfPage = document.getPage(0);
+     * // Access the PDF form
+     * let form: PdfForm = document.form;
+     * // Create a new signature field
+     * let field: PdfSignatureField = new PdfSignatureField(page, 'Signature', {x: 10, y: 10, width: 100, height: 50});
+     * // Create a timestamp callback
+     * async function timestampCallback(request: Uint8Array): Promise<{ response: Uint8Array }> {
+     *     // Implement timestamp response logic here
+     *     return new Uint8Array(); // Placeholder return
+     * }
+     * // Create a new signature using PFX data, private key and call back function for timestamp
+     * const sign: PdfSignature = PdfSignature.create(certData, password, { cryptographicStandard: CryptographicStandard.cms, digestAlgorithm: DigestAlgorithm.sha256 }, timestampCallback);
+     * // Sets the signature to the field
+     * field.setSignature(sign);
+     * // Add the field into PDF form
+     * form.add(field);
+     * // Save the document
+     * await document.saveAsync('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    static create(pfxData: Uint8Array | string, password: string, options: PdfSignatureOptions,
+        timestamp: TimestampCallback): PdfSignature;
+    /**
+     * Creates a new PDF timestamp signature using the provided signature and timestamp callback.
+     *
+     * @remarks
+     * This creates a timestamp signature (also known as a document timestamp) for the PDF document.
+     * Callback function is used to obtain the timestamp from a trusted timestamp authority (TSA) server.
+     *
+     * @param {PdfSignatureOptions} options - Configuration options for the signature.
+     * @param {Function} timestampCallback Callback function that accesses TSA server and returns timestamp response for the request bytes.
+     * @returns {PdfSignature} - The created PDF signature instance.
+     *
+     * @example
+     * ```typescript
+     * // Load the document
+     * let document: PdfDocument = new PdfDocument(data);
+     * // Gets the first page of the document
+     * let page: PdfPage = document.getPage(0);
+     * // Access the PDF form
+     * let form: PdfForm = document.form;
+     * // Create a new signature field
+     * let field: PdfSignatureField = new PdfSignatureField(page, 'Signature', {x: 10, y: 10, width: 100, height: 50});
+     * // Create a timestamp callback
+     * async function timestampCallback(request: Uint8Array): Promise<{ response: Uint8Array }> {
+     *     // Implement timestamp response logic here
+     *     return new Uint8Array(); // Placeholder return
+     * }
+     * // Create a new signature using signature options and call back function for timestamp
+     * const sign: PdfSignature = PdfSignature.create({ cryptographicStandard: CryptographicStandard.cms, digestAlgorithm: DigestAlgorithm.sha256 }, timestampCallback);
+     * // Sets the signature to the field
+     * field.setSignature(sign);
+     * // Add the field into PDF form
+     * form.add(field);
+     * // Save the document
+     * await document.saveAsync('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    static create(options: PdfSignatureOptions, timestampCallback: TimestampCallback): PdfSignature;
+    static create(arg1: Uint8Array | string | ExternalSignatureCallback | PdfSignatureOptions,
+                  arg2: string | Uint8Array[] | PdfSignatureOptions | TimestampCallback,
+                  arg3?: PdfSignatureOptions, arg4?: TimestampCallback): PdfSignature {
         const signature: PdfSignature = new PdfSignature();
         if (arg1 instanceof Uint8Array || typeof arg1 === 'string') {
-            const data: Uint8Array = arg1 instanceof Uint8Array ? arg1
-                : (_decode(arg1) as Uint8Array);
+            const data: Uint8Array = arg1 instanceof Uint8Array ? arg1 : (_decode(arg1 as string) as Uint8Array);
             if (!data || data.length === 0) {
                 throw new Error('Certificate data is required.');
             }
-            if (typeof arg2 !== 'string' || !arg2) {
+            const password: string = arg2 as string;
+            if (password === null || typeof password === 'undefined' || password.length === 0) {
                 throw new Error('Password is required to open the certificate.');
             }
-            const certificate: _PdfCertificate = new _PdfCertificate(data, arg2);
-            if (certificate) {
-                signature._certificate = certificate;
-                signature._certificateInfo = {
-                    issuerName: certificate._issuerName,
-                    serialNumber: certificate._serialNumber,
-                    subjectName: certificate._subjectName,
-                    validFrom: certificate._validFrom,
-                    validTo: certificate._validTo,
-                    version: certificate._version
-                };
+            const certificate: _PdfCertificate = new _PdfCertificate(data, password);
+            signature._certificate = certificate;
+            signature._certificateInfo = {
+                issuerName: certificate._issuerName,
+                serialNumber: certificate._serialNumber,
+                subjectName: certificate._subjectName,
+                validFrom: certificate._validFrom,
+                validTo: certificate._validTo,
+                version: certificate._version
+            };
+            if (arg3) {
+                signature._applySignatureOptions(arg3 as PdfSignatureOptions);
             }
-            signature._applySignatureOptions(arg3);
-        } else {
-            signature._externalSignatureCallback = arg1;
-            if (arg2 && Array.isArray(arg2) && arg2.length > 0) {
-                for (const data of arg2) {
-                    const publicCertificate: Uint8Array = data as Uint8Array;
-                    if (publicCertificate && publicCertificate.length > 0) {
-                        signature._externalChain.push(new _PdfX509CertificateParser()._readCertificate(publicCertificate));
+            if (arg4 && typeof arg4 === 'function') {
+                signature._timestampCallback = arg4 as TimestampCallback;
+            }
+            return signature;
+        }
+        if (typeof arg1 === 'function') {
+            signature._externalSignatureCallback = arg1 as ExternalSignatureCallback;
+            if (Array.isArray(arg2)) {
+                const publicCerts: Uint8Array[] = arg2 as Uint8Array[];
+                for (const data of publicCerts) {
+                    if (data && data.length > 0) {
+                        signature._externalChain.push(new _PdfX509CertificateParser()._readCertificate(data));
                     }
                 }
-                signature._applySignatureOptions(arg3);
-            } else {
-                signature._applySignatureOptions(arg2 as PdfSignatureOptions);
+                if (arg3) {
+                    signature._applySignatureOptions(arg3 as PdfSignatureOptions);
+                }
+                if (arg4 && typeof arg4 === 'function') {
+                    signature._timestampCallback = arg4 as TimestampCallback;
+                }
+                return signature;
             }
+            if (arg2 && typeof arg2 === 'object') {
+                signature._applySignatureOptions(arg2 as PdfSignatureOptions);
+                if (arg3 && typeof arg3 === 'function') {
+                    signature._timestampCallback = arg3 as TimestampCallback;
+                }
+                return signature;
+            }
+            return signature;
         }
-        return signature;
+        if (arg1 && typeof arg1 === 'object' && !Array.isArray(arg1)) {
+            signature._applySignatureOptions(arg1 as PdfSignatureOptions);
+            if (arg2 && typeof arg2 === 'function') {
+                signature._timestampCallback = arg2 as TimestampCallback;
+            }
+            signature._isTimestampOnly = true;
+            return signature;
+        }
+        if ((arg1 === null || typeof arg1 === 'undefined') && (arg2 === null || typeof arg2 === 'undefined')
+            && arg3 && arg4 && typeof arg4 === 'function') {
+            signature._applySignatureOptions(arg3 as PdfSignatureOptions);
+            signature._timestampCallback = arg4 as TimestampCallback;
+            signature._isTimestampOnly = true;
+            return signature;
+        }
+        throw new Error('Cannot create signature due to invalid arguments.');
     }
     /**
      * Gets the date when the PDF was signed.

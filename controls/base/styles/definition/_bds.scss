@@ -780,6 +780,7 @@ $overlay-bg-color: $utility-overlay-bg-color;
 $table-bg-color-hover: $bg-secondary !default;
 $table-bg-color-pressed: $bg-quaternary !default;
 $table-bg-color-selected: $bg-tertiary !default;
+$table-bg-color-selected-hover: color-mix(in srgb, rgba($bg-tertiary, 1), rgba($bg-secondary, .2)) !default;
 
 //text-color
 $content-text-color: $text-primary !default;

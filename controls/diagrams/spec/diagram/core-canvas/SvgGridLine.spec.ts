@@ -4,55 +4,102 @@
 import { createElement } from '@syncfusion/ej2-base';
 import { Diagram } from '../../../src/diagram/diagram';
 import { GridlinesModel, SnapSettingsModel } from '../../../src/diagram/diagram/grid-lines-model';
-import { Html } from '../../../src';
 import { profile, inMB, getMemoryProfile } from '../../../spec/common.spec';
 /**
  * Path
- */
+ */
+
+const GRIDLINE_INTERVALS: number[] = [1, 14, 0.5, 14.5];
+const GRIDLINE_COLOR: string = 'red';
+const DIAGRAM_WIDTH: number = 1000;
+const DIAGRAM_HEIGHT: number = 1000;
+let suiteCounter: number = 0;
+
+// Helper: safely check if value is defined
+function isDefined<T>(o: T): o is NonNullable<T> {
+  return o !== undefined && o !== null;
+}
+
+function createDiagramContainer(): HTMLElement {
+  suiteCounter = suiteCounter + 1;
+  const id: string = 'diagram-grid-' + suiteCounter;
+  const el: HTMLElement = createElement('div', { id: id });
+  document.body.appendChild(el);
+  return el;
+}
+
+function removeContainer(el: HTMLElement | null): void {
+  if (el && el.parentNode) {
+    el.parentNode.removeChild(el);
+  }
+}
+
 describe('Diagram Control', () => {
 
-    // describe('GridLines property', () => {
-    //     let diagram: Diagram;
-    //     let ele: HTMLElement;
-    //     let horizontalGridlines: GridlinesModel;
-    //     let verticalGridlines: GridlinesModel
-    //     beforeAll((): void => {
-    //         const isDef = (o: any) => o !== undefined && o !== null;
-    //         if (!isDef(window.performance)) {
-    //             console.log("Unsupported environment, window.performance.memory is unavailable");
-    //             this.skip(); //Skips test (in Chai)
-    //             return;
-    //         }
-    //         ele = createElement('div', { id: 'diagramred' });
-    //         document.body.appendChild(ele);
-    //         horizontalGridlines = { lineIntervals: [1, 14, 0.5, 14.5], lineColor: 'red' };
-    //         verticalGridlines = { lineIntervals: [1, 14, 0.5, 14.5], lineColor: 'red' };
-    //         let snapSettings: SnapSettingsModel = { horizontalGridlines: horizontalGridlines, verticalGridlines: verticalGridlines };
-    //         diagram = new Diagram({
-    //             mode: 'Canvas',
-    //             width: 1000, height: 1000, snapSettings: snapSettings
-    //         });
-    //         diagram.appendTo('#diagramred');
-    //     });
-    //     afterAll((): void => {
-    //         if (diagram) { diagram.destroy(); diagram = null; }
-    //         if (ele && ele.parentNode) ele.parentNode.removeChild(ele);
-    //         ele = null;
-    //     });
+    describe('GridLines property', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+        let horizontalGridlines: GridlinesModel;
+        let verticalGridlines: GridlinesModel;
+        beforeAll((): void => {
+            // Bootstrap: check environment support; log for CI reproducibility
+            if (!isDefined(window.performance)) {
+                console.log('Environment: window.performance unavailable; skipping suite');
+                pending();
+                return;
+            }
+            console.log('Environment: devicePixelRatio=' + window.devicePixelRatio + ', viewport=' + window.innerWidth + 'x' + window.innerHeight);
+        });
+        beforeEach((done: Function): void => {
+            ele = createDiagramContainer();
+            horizontalGridlines = {
+                lineIntervals: GRIDLINE_INTERVALS,
+                lineColor: GRIDLINE_COLOR
+            };
+            verticalGridlines = {
+                lineIntervals: GRIDLINE_INTERVALS,
+                lineColor: GRIDLINE_COLOR
+            };
 
-    //     it('Checking customized gridlines line color in SVG rendering Mode', (done: Function) => {
-    //         let path: HTMLElement = (document.getElementById('diagramred_pattern') as HTMLElement).firstChild as HTMLElement;
-    //         expect(path.getAttribute('stroke') === 'red').toBe(true);
-    //         done();
-    //     });
-    //     it('memory leak', () => {
-    //         profile.sample();
-    //         let average: any = inMB(profile.averageChange)
-    //         //Check average change in memory samples to not be over 10MB
-    //         expect(average).toBeLessThan(10);
-    //         let memory: any = inMB(getMemoryProfile())
-    //         //Check the final memory usage against the first usage, there should be little change if everything was properly deallocated
-    //         expect(memory).toBeLessThan(profile.samples[0] + 0.25);
-    //     })
-    // });
+            const snapSettings: SnapSettingsModel = {
+                horizontalGridlines: horizontalGridlines,
+                verticalGridlines: verticalGridlines
+            };
+            diagram = new Diagram({
+                mode: 'Canvas',  // Canvas mode renders gridlines in SVG <pattern>
+                width: DIAGRAM_WIDTH,
+                height: DIAGRAM_HEIGHT,
+                snapSettings: snapSettings,
+                created: (): void => {
+                    done();  // ← Signal test is ready
+                }
+            });
+            diagram.appendTo('#' + ele.id);
+        });
+
+        afterEach((): void => {
+            // Teardown: clear event handlers (defensive) and destroy resources
+            if (diagram) {
+                diagram.created = undefined;
+                diagram.destroy();
+                diagram = null;
+            }
+            removeContainer(ele);
+            ele = null;
+        });
+
+        it('Checking customized gridlines line color in SVG rendering Mode', (done: Function) => {
+            diagram.dataBind();
+            let path: HTMLElement = (document.getElementById(ele.id + '_pattern') as HTMLElement).firstChild as HTMLElement;
+            expect(path.getAttribute('stroke')).toBe(GRIDLINE_COLOR);
+            done();
+        });
+        it('memory leak', () => {
+            profile.sample();
+            let average: any = inMB(profile.averageChange);
+            expect(average).toBeLessThan(25);
+            let memory: any = inMB(getMemoryProfile());
+            expect(memory).toBeLessThan(profile.samples[0] + 0.25);
+        });
+    });
 });

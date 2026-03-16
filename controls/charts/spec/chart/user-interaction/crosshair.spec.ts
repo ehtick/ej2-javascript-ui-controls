@@ -22,6 +22,9 @@ import { unbindResizeEvents } from '../base/data.spec';
 import { EmitType } from '@syncfusion/ej2-base';
 import  {profile , inMB, getMemoryProfile } from '../../common.spec';
 import { ILoadedEventArgs,  } from '../../../src/chart/model/chart-interface';
+import { StockChart } from '../../../src/stock-chart/stock-chart';
+import { chartData, stockData } from '../../stock-chart/indicatordata.spec';
+import { ICrosshairLabelRenderEventArgs } from '../../../src/common/model/interface';
 Chart.Inject(LineSeries, ColumnSeries, DateTime, Category, Tooltip, DataEditing, SplineSeries, BarSeries, Legend);
 Chart.Inject(Crosshair, AreaSeries);
 
@@ -1070,6 +1073,258 @@ describe('Chart Crosshair', () => {
         });
     });
 
+    describe('Chart Crosshair Label Render Event', () => {
+        let chartObj: Chart;
+        const element: HTMLElement = createElement('div', { id: 'container' });
+        const trigger: MouseEvents = new MouseEvents();
+        let x: number;
+        let y: number;
+        let loaded: EmitType<ILoadedEventArgs>;
+        beforeAll(() => {
+            if (document.getElementById('container')) {
+                document.getElementById('container')!.remove();
+            }
+            document.body.appendChild(element);
+            chartObj = new Chart({
+                primaryXAxis: {
+                    title: 'Year',
+                    valueType: 'Category',
+                    crosshairTooltip: { enable: true }
+                },
+                primaryYAxis: {
+                    title: 'Efficiency',
+                    labelFormat: '{value}%',
+                    crosshairTooltip: { enable: true }
+                },
+                series: [{
+                    dataSource: categoryData,
+                    xName: 'x',
+                    yName: 'y',
+                    type: 'Column',
+                    animation: { enable: false }
+                }],
+                crosshair: { enable: true },
+                title: 'Crosshair Event Test'
+            });
+            chartObj.appendTo('#container');
+        });
+        afterAll(() => {
+            chartObj.destroy();
+            element.remove();
+        });
+        it('Customises crosshair label text via event', (done: DoneFn) => {
+            chartObj.crosshairLabelRender = (args: ICrosshairLabelRenderEventArgs) => {
+                if (args.axisOrientation === 'Horizontal') {
+                    args.text = 'Year: ' + args.text;
+                }
+                if (args.axisOrientation === 'Vertical') {
+                    args.text = 'Efficiency: ' + args.text;
+                }
+            };
+            loaded = (): void => {
+                const chartArea: HTMLElement = document.getElementById('container_ChartAreaBorder')!;
+                y = parseFloat(chartArea.getAttribute('y')!) + parseFloat(chartArea.getAttribute('height')!) / 2 + element.offsetTop;
+                x = parseFloat(chartArea.getAttribute('x')!) + parseFloat(chartArea.getAttribute('width')!) / 2 + element.offsetLeft;
+                trigger.mousemovetEvent(chartArea, Math.ceil(x), Math.ceil(y));
+                const crosshair: HTMLElement = document.getElementById('container_UserInteraction')!;
+                const crosshairElement: HTMLElement = crosshair.childNodes[2] as HTMLElement;
+                const xLabel: HTMLElement = crosshairElement.childNodes[1] as HTMLElement;
+                const yLabel: HTMLElement = crosshairElement.childNodes[3] as HTMLElement;
+                expect(xLabel.textContent!.indexOf('Year:') === 0).toBe(true);
+                expect(yLabel.textContent!.indexOf('Efficiency:') === 0).toBe(true);
+                done();
+            };
+            chartObj.loaded = loaded;
+            chartObj.refresh();
+        });
+        it('Customises crosshair label fill colour', (done: DoneFn) => {
+            chartObj.crosshairLabelRender = (args: ICrosshairLabelRenderEventArgs) => {
+                if (args.axisOrientation === 'Vertical') {
+                    args.fill = 'lightgreen';
+                }
+                if (args.axisOrientation === 'Horizontal') {
+                    args.fill = 'lightblue';
+                }
+            };
+            loaded = (): void => {
+                const chartArea: HTMLElement = document.getElementById('container_ChartAreaBorder')!;
+                y = parseFloat(chartArea.getAttribute('y')!) + parseFloat(chartArea.getAttribute('height')!) / 2 + element.offsetTop;
+                x = parseFloat(chartArea.getAttribute('x')!) + parseFloat(chartArea.getAttribute('width')!) / 2 + element.offsetLeft;
+                trigger.mousemovetEvent(chartArea, Math.ceil(x), Math.ceil(y));
+                const crosshair: HTMLElement = document.getElementById('container_UserInteraction')!;
+                const crosshairElement: HTMLElement = crosshair.childNodes[2] as HTMLElement;
+                const xShape: HTMLElement = crosshairElement.childNodes[0] as HTMLElement;
+                const yShape: HTMLElement = crosshairElement.childNodes[2] as HTMLElement;
+                expect(xShape.getAttribute('fill')).toBe('lightblue');
+                expect(yShape.getAttribute('fill')).toBe('lightgreen');
+                done();
+            };
+            chartObj.loaded = loaded;
+            chartObj.refresh();
+        });
+        it('Customises crosshair label text style', (done: DoneFn) => {
+            chartObj.crosshairLabelRender = (args: ICrosshairLabelRenderEventArgs) => {
+                args.textStyle = { color: 'red', size: '16px' };
+            };
+            loaded = (): void => {
+                const chartArea: HTMLElement = document.getElementById('container_ChartAreaBorder')!;
+                y = parseFloat(chartArea.getAttribute('y')!) + parseFloat(chartArea.getAttribute('height')!) / 2 + element.offsetTop;
+                x = parseFloat(chartArea.getAttribute('x')!) + parseFloat(chartArea.getAttribute('width')!) / 2 + element.offsetLeft;
+                trigger.mousemovetEvent(chartArea, Math.ceil(x), Math.ceil(y));
+                const crosshair: HTMLElement = document.getElementById('container_UserInteraction')!;
+                const crosshairElement: HTMLElement = crosshair.childNodes[2] as HTMLElement;
+                const xLabel: HTMLElement = crosshairElement.childNodes[1] as HTMLElement;
+                expect(xLabel.getAttribute('fill')).toBe('red');
+                expect(xLabel.getAttribute('font-size')).toBe('16px');
+                done();
+            };
+            chartObj.loaded = loaded;
+            chartObj.refresh();
+        });
+        it('Cancels crosshair label rendering', (done: DoneFn) => {
+            chartObj.crosshairLabelRender = (args: ICrosshairLabelRenderEventArgs) => {
+                args.cancel = true;
+            };
+            loaded = (): void => {
+                const chartArea: HTMLElement = document.getElementById('container_ChartAreaBorder')!;
+                y = parseFloat(chartArea.getAttribute('y')!) + parseFloat(chartArea.getAttribute('height')!) / 2 + element.offsetTop;
+                x = parseFloat(chartArea.getAttribute('x')!) + parseFloat(chartArea.getAttribute('width')!) / 2 + element.offsetLeft;
+                trigger.mousemovetEvent(chartArea, Math.ceil(x), Math.ceil(y));
+                const crosshair: HTMLElement = document.getElementById('container_UserInteraction')!;
+                const crosshairElement: HTMLElement = crosshair.childNodes[2] as HTMLElement;
+                expect(crosshairElement.childNodes.length).toBe(0);
+                done();
+            };
+            chartObj.loaded = loaded;
+            chartObj.refresh();
+        });
+    });
+
+    describe('StockChart Crosshair Label Render Event', () => {
+        let stockChartObj: StockChart;
+        const element: HTMLElement = createElement('div', { id: 'container' });
+        const trigger: MouseEvents = new MouseEvents();
+        let x: number;
+        let y: number;
+        let loaded: EmitType<ILoadedEventArgs>;
+        beforeAll(() => {
+            if (document.getElementById('container')) {
+                document.getElementById('container')!.remove();
+            }
+            document.body.appendChild(element);
+            stockChartObj = new StockChart({
+                primaryXAxis: {
+                    valueType: 'DateTime',
+                    crosshairTooltip: { enable: true }
+                },
+                primaryYAxis: {
+                    labelFormat: '{value}$',
+                    crosshairTooltip: { enable: true }
+                },
+                series: [{
+                    dataSource: chartData,
+                    xName: 'x',
+                    yName: 'close',
+                    type: 'Candle',
+                    animation: { enable: false }
+                }],
+                crosshair: { enable: true },
+                title: 'StockChart Crosshair Event Test'
+            });
+            stockChartObj.appendTo('#container');
+        });
+        afterAll(() => {
+            stockChartObj.destroy();
+            element.remove();
+        });
+        it('Customises crosshair label text via event', (done: DoneFn) => {
+            stockChartObj.crosshairLabelRender = (args: ICrosshairLabelRenderEventArgs) => {
+                if (args.axisOrientation === 'Horizontal') {
+                    args.text = 'Date: ' + args.text;
+                }
+                if (args.axisOrientation === 'Vertical') {
+                    args.text = 'Price: ' + args.text;
+                }
+            };
+            loaded = (): void => {
+                const chartArea: HTMLElement = document.getElementById('container_stockChart_chart_ChartAreaBorder')!;
+                y = parseFloat(chartArea.getAttribute('y')!) + parseFloat(chartArea.getAttribute('height')!) / 2 + element.offsetTop;
+                x = parseFloat(chartArea.getAttribute('x')!) + parseFloat(chartArea.getAttribute('width')!) / 2 + element.offsetLeft;
+                trigger.mousemovetEvent(chartArea, Math.ceil(x), Math.ceil(y));
+                const userInteraction: HTMLElement = document.getElementById('container_stockChart_chart_UserInteraction')!;
+                const crosshairElement: HTMLElement = userInteraction.childNodes[2] as HTMLElement;
+                const xLabel: HTMLElement = crosshairElement.childNodes[1] as HTMLElement;
+                const yLabel: HTMLElement = crosshairElement.childNodes[3] as HTMLElement;
+                expect(xLabel.textContent!.indexOf('Date:') === 0).toBe(true);
+                expect(yLabel.textContent!.indexOf('Price:') === 0).toBe(true);
+                done();
+            };
+            stockChartObj.loaded = loaded;
+            stockChartObj.refresh();
+        });
+        it('Customises crosshair label fill colour', (done: DoneFn) => {
+            stockChartObj.crosshairLabelRender = (args: ICrosshairLabelRenderEventArgs) => {
+                if (args.axisOrientation === 'Vertical') {
+                    args.fill = 'lightgreen';
+                }
+                if (args.axisOrientation === 'Horizontal') {
+                    args.fill = 'lightblue';
+                }
+            };
+            loaded = (): void => {
+                const chartArea: HTMLElement = document.getElementById('container_stockChart_chart_ChartAreaBorder')!;
+                y = parseFloat(chartArea.getAttribute('y')!) + parseFloat(chartArea.getAttribute('height')!) / 2 + element.offsetTop;
+                x = parseFloat(chartArea.getAttribute('x')!) + parseFloat(chartArea.getAttribute('width')!) / 2 + element.offsetLeft;
+                trigger.mousemovetEvent(chartArea, Math.ceil(x), Math.ceil(y));
+                const userInteraction: HTMLElement = document.getElementById('container_stockChart_chart_UserInteraction')!;
+                const crosshairElement: HTMLElement = userInteraction.childNodes[2] as HTMLElement;
+                const xShape: HTMLElement = crosshairElement.childNodes[0] as HTMLElement;
+                const yShape: HTMLElement = crosshairElement.childNodes[2] as HTMLElement;
+                expect(xShape.getAttribute('fill')).toBe('lightblue');
+                expect(yShape.getAttribute('fill')).toBe('lightgreen');
+                done();
+            };
+            stockChartObj.loaded = loaded;
+            stockChartObj.refresh();
+        });
+        it('Customises crosshair label text style', (done: DoneFn) => {
+            stockChartObj.crosshairLabelRender = (args: ICrosshairLabelRenderEventArgs) => {
+                args.textStyle = { color: 'red', size: '16px' };
+            };
+            loaded = (): void => {
+                const chartArea: HTMLElement = document.getElementById('container_stockChart_chart_ChartAreaBorder')!;
+                y = parseFloat(chartArea.getAttribute('y')!) + parseFloat(chartArea.getAttribute('height')!) / 2 + element.offsetTop;
+                x = parseFloat(chartArea.getAttribute('x')!) + parseFloat(chartArea.getAttribute('width')!) / 2 + element.offsetLeft;
+                trigger.mousemovetEvent(chartArea, Math.ceil(x), Math.ceil(y));
+                const userInteraction: HTMLElement = document.getElementById('container_stockChart_chart_UserInteraction')!;
+                const crosshairElement: HTMLElement = userInteraction.childNodes[2] as HTMLElement;
+                const xLabel: HTMLElement = crosshairElement.childNodes[1] as HTMLElement;
+                expect(xLabel.getAttribute('fill')).toBe('red');
+                expect(xLabel.getAttribute('font-size')).toBe('16px');
+                done();
+            };
+            stockChartObj.loaded = loaded;
+            stockChartObj.refresh();
+        });
+        it('Cancels crosshair label rendering', (done: DoneFn) => {
+            stockChartObj.crosshairLabelRender = (args: ICrosshairLabelRenderEventArgs) => {
+                args.cancel = true;
+            };
+            loaded = (): void => {
+                const chartArea: HTMLElement = document.getElementById('container_stockChart_chart_ChartAreaBorder')!;
+                y = parseFloat(chartArea.getAttribute('y')!) + parseFloat(chartArea.getAttribute('height')!) / 2 + element.offsetTop;
+                x = parseFloat(chartArea.getAttribute('x')!) + parseFloat(chartArea.getAttribute('width')!) / 2 + element.offsetLeft;
+                trigger.mousemovetEvent(chartArea, Math.ceil(x), Math.ceil(y));
+                const userInteraction: HTMLElement = document.getElementById('container_stockChart_chart_UserInteraction')!;
+                const crosshairElement: HTMLElement = userInteraction.childNodes[2] as HTMLElement;
+                expect(crosshairElement.childNodes.length).toBe(0);
+                done();
+            };
+            stockChartObj.loaded = loaded;
+            stockChartObj.refresh();
+        });
+    });
+    
     it('memory leak', () => {
         profile.sample();
         let average: any = inMB(profile.averageChange)
@@ -1080,3 +1335,4 @@ describe('Chart Crosshair', () => {
         expect(memory).toBeLessThan(profile.samples[0] + 0.25);
     })
 });
+   

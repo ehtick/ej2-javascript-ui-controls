@@ -380,8 +380,7 @@
             color: $field-list-default-header-icon-font-color;
             cursor: pointer;
             font-size: $field-list-header-icon-size;
-            padding: $field-list-spacing-0 $field-list-spacing-0 $field-list-spacing-0 $field-list-icon-to-icon-padding;
-            width: $field-list-width-20;
+            padding: $field-list-spacing-0 $field-list-spacing-0 $field-list-spacing-0 $field-list-sort-icon-to-icon-padding;
 
             &.e-selected::before {
               color: $field-list-active-color;
@@ -392,14 +391,6 @@
               font-weight: $field-list-font-weight-bold;
             }
           }
-
-          /* stylelint-disable */
-          @if ($skin-name =='FluentUI') or ($skin-name =='fluent2') {
-            .e-sort-none {
-              padding-right: $field-list-spacing-2 !important;
-            }
-          }
-          /* stylelint-enable */
         }
 
         .e-field-list-tree-outer-div {
@@ -1063,7 +1054,7 @@
           .e-sort-none,
           .e-sort-ascend,
           .e-sort-descend {
-            padding: $field-list-spacing-0 $field-list-icon-to-icon-padding $field-list-spacing-0 $field-list-spacing-0;
+            padding: $field-list-spacing-0 $field-list-spacing-0 $field-list-spacing-0 $field-list-sort-icon-to-icon-padding;
           }
         }
       }

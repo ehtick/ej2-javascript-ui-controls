@@ -382,8 +382,8 @@ export class TaskbarEdit extends DateProcessor {
                         }
                     }
                     (cloneTaskBar as HTMLElement).style.setProperty('top', 0 + 'px');
-                    createTable = this.parent.createElement('table');
-                    const tableBody: HTMLElement = this.parent.createElement('tbody');
+                    createTable = this.parent.createElement('div');
+                    const tableBody: HTMLElement = this.parent.createElement('div');
                     tableBody.appendChild(cloneTaskBar);
                     createTable.appendChild(tableBody);
                 }
@@ -2240,12 +2240,15 @@ export class TaskbarEdit extends DateProcessor {
     private setItemPosition(): void {
         if (!isNullOrUndefined(this.editElement)) {
             const currentElement: HTMLElement = this.editElement.parentElement;
+            const isSegmentedTaskbar: boolean = this.taskBarEditRecord.ganttProperties.segments &&
+            this.taskBarEditRecord.ganttProperties.segments.length > 0;
             if (this.parent.allowTaskbarDragAndDrop && this.taskBarEditAction === 'ChildDrag') {
                 currentElement.style.position = null;
             }
             else {
                 if (this.parent.enableTimelineVirtualization &&
-                    this.parent.timelineModule.wholeTimelineWidth > this.parent.element.offsetWidth * 3){
+                    this.parent.timelineModule.wholeTimelineWidth > this.parent.element.offsetWidth * 3
+                    && !isSegmentedTaskbar) {
                     currentElement.style.setProperty('position', 'relative');
                 }
                 else {
@@ -2764,7 +2767,7 @@ export class TaskbarEdit extends DateProcessor {
                 if (ganttRecord.parentItem) {
                     this.parent.editModule.updateParentProgress(ganttRecord.parentItem);
                 }
-                if (!isNullOrUndefined(taskData.segments)) {
+                if (!isNullOrUndefined(taskData.segments) && taskData.segments.length > 0) {
                     this.updateSegmentProgress(taskData);
                 }
             }
@@ -3031,6 +3034,7 @@ export class TaskbarEdit extends DateProcessor {
         const target: Element = this.getElementByPosition(e);
         const element: HTMLElement = target as HTMLElement;
         const uniqueId: string = this.parent.viewType === 'ResourceView' ? fromItem.taskId : fromItem.rowUniqueID;
+
         let predType: string;
         if (this.taskBarEditAction === 'ConnectorPointLeftDrag') {
             predType = this.parent.enableRtl ? 'F' : 'S';

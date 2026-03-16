@@ -1701,6 +1701,16 @@
 
   .e-btn.e-ripple {
     overflow: initial;
+    @if $grid-skin == 'material3' {
+      &.e-dlg-closeicon-btn {
+        .e-ripple-element {
+          display: none;
+        }
+      }
+      &.e-ressortbutton {
+        overflow: hidden;
+      }
+    }
   }
   
   .columnmenudiv {

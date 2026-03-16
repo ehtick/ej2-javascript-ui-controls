@@ -17,7 +17,7 @@ import { MarginModel } from '../../common/model/base-model';
 import { BaseLegend } from '../../common/legend/legend';
 import { StockLegend } from '../legend/legend';
 import { DataUtil } from '@syncfusion/ej2-data';
-import { VisibleRangeModel } from '../../common/model/interface';
+import { VisibleRangeModel, ICrosshairLabelRenderEventArgs  } from '../../common/model/interface';
 
 interface Range {
     start: number;
@@ -91,6 +91,9 @@ export class CartesianChart {
             },
             axisLabelRender : (args : IAxisLabelRenderEventArgs) => {
                 this.stockChart.trigger('axisLabelRender', args);
+            },
+            crosshairLabelRender : (args: ICrosshairLabelRenderEventArgs) => {
+                this.stockChart.trigger('crosshairLabelRender', args);
             },
             seriesRender : (args : ISeriesRenderEventArgs) => {
                 startValue = (this.stockChart.startValue != null && this.stockChart.isDateTimeCategory) ?

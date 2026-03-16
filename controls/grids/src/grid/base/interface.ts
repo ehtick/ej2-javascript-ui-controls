@@ -729,6 +729,7 @@ export interface IGrid extends Component<HTMLElement> {
     parentDetails?: ParentDetails;
     printGridParent?: IGrid;
     defaultChartLocale?: Object;
+    enableSeamlessScrolling?: boolean;
 
     /**
      * @hidden
@@ -1210,6 +1211,12 @@ export interface LoadEventArgs {
      * @default true
      */
     requireTemplateRef?: boolean;
+    /**
+     * Enables seamless scrolling in the grid virtualization feature to eliminate white space during fast scrollbar thumb dragging. If false, renders default scrollbar.
+     *
+     * @default true
+     */
+    enableSeamlessScrolling?: boolean;
 }
 
 export interface LazyLoadArgs {
@@ -2250,6 +2257,8 @@ export interface InterSection {
     movableContainer?: Element;
     prevTop?: number;
     prevLeft?: number;
+    verticalScrollbar?: HTMLElement;
+    horizontalScrollbar?: HTMLElement;
 }
 
 /**

@@ -41,5 +41,4 @@ describe('RTE TOOLBAR - quickToolbarSettings - ', () => {
             }, 100);
         });
     });
-
 });

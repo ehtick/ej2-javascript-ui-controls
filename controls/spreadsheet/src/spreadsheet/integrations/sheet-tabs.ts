@@ -9,7 +9,7 @@ import { isSingleCell, getRangeIndexes, getSheet, getSheetIndex, beginAction } f
 import { DropDownButton, MenuEventArgs, BeforeOpenCloseMenuEventArgs, OpenCloseMenuEventArgs } from '@syncfusion/ej2-splitbuttons';
 import { ItemModel } from '@syncfusion/ej2-splitbuttons';
 import { isCollide, OffsetPosition, calculatePosition } from '@syncfusion/ej2-popups';
-import { rippleEffect, L10n, closest, EventHandler, remove, isNullOrUndefined, select, Browser } from '@syncfusion/ej2-base';
+import { rippleEffect, L10n, closest, EventHandler, remove, isNullOrUndefined, select, Browser, detach } from '@syncfusion/ej2-base';
 import { Dialog } from '../services/index';
 import { sheetsDestroyed, activeCellChanged, workbookFormulaOperation, InsertDeleteModelArgs, checkIsFormula, sheetRenameUpdate } from '../../workbook/common/index';
 import { insertModel, refreshInsertDelete } from './../../workbook/common/index';
@@ -714,8 +714,11 @@ export class SheetTabs {
 
     private removeAggregate(): void {
         if (!isNullOrUndefined(this.aggregateDropDown)) {
+            const aggElem: HTMLElement = this.aggregateDropDown.element;
+            const popup: HTMLElement = document.getElementById(`${aggElem.id}-popup`);
             this.aggregateDropDown.destroy();
-            remove(this.aggregateDropDown.element);
+            if (popup) { detach(popup); }
+            remove(aggElem);
             this.aggregateDropDown = null;
         }
     }

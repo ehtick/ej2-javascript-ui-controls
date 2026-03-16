@@ -23,7 +23,6 @@ import { Timeline } from '../renderer/timeline';
 import { PdfGanttTaskbarCollection } from './pdf-taskbar';
 import { PdfGanttPredecessor } from './pdf-connector-line';
 
-
 /**
  * @hidden
  * `ExportHelper` for `PdfExport` & `ExcelExport`
@@ -47,6 +46,7 @@ export class ExportHelper {
     public constructor(parent: Gantt) {
         this.parent = parent;
     }
+
     private shouldProcessChart(): boolean {
         let chartWidth: number;
         let gridWidth: number;
@@ -64,7 +64,6 @@ export class ExportHelper {
         const shouldSkipProcessing: boolean = isFitToWidth && (chartWidth === 0 || gridWidth === 100);
         return !shouldSkipProcessing;
     }
-
     public processToFit(): void {
         this.beforeSinglePageExport['zoomingProjectStartDate'] = this.parent.zoomingProjectStartDate;
         this.beforeSinglePageExport['zoomingProjectEndDate'] = this.parent.zoomingProjectEndDate;
@@ -84,6 +83,8 @@ export class ExportHelper {
         this.beforeSinglePageExport['timelineRoundOffEndDate'] = this.parent.timelineModule.timelineRoundOffEndDate;
         this.beforeSinglePageExport['perDayWidth'] = this.parent.perDayWidth;
         this.beforeSinglePageExport['updatedConnectorLineCollection'] = extend([], this.parent.updatedConnectorLineCollection, null, true);
+        this.beforeSinglePageExport['cloneTimelineStartDate'] = this.parent.cloneTimelineStartDate;
+        this.beforeSinglePageExport['cloneTimelineEndDate'] = this.parent.cloneTimelineEndDate;
         this.parent.timelineModule.isZoomToFit = true;
         this.parent.timelineModule.isZooming = false;
         if (!this.parent.zoomingProjectStartDate) {
@@ -859,7 +860,7 @@ export class ExportHelper {
         row.cells.getCell(0).isHeaderCell = false;
         row.height = pixelToPoint(this.parent.rowHeight);
         this.copyStyles(this.ganttStyle.columnHeader, row.cells.getCell(0), row.isParentRow);
-        const count: number = this.columns.length;
+        const count: number = row.cells.count;
         row.cells.getCell(0).value = this.parent.localeObj.getConstant('emptyRecord');
         this.mergeCells(1, 0, count);
     }

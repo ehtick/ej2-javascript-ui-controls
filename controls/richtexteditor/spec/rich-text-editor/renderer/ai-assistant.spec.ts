@@ -504,6 +504,51 @@ describe('AI Assistant Module', ()=> {
         });
     });
 
+    describe('Bug 994891: AI Query popup is not collided with the Sample browser header.', () => {
+        let editor: RichTextEditor;
+        const value: string = `<h3>Editing and Improving</h3>
+        <p>In today’s competitive landscape, effective marketing is no longer just about selling a product—it's 
+            about building lasting relationships with customers. Brands are expected to deliver personalized 
+            experiences that resonate with their target audience. Leveraging data analytics and consumer insights 
+            has become essential for creating campaigns that not only reach people but truly engage them. As 
+            consumer expectations continue to evolve, marketers must remain agile and proactive in their strategies.</p>
+        <h2>Tone and style</h2>
+        <p>Agile methodologies have become a cornerstone for modern project management, especially in software 
+            development and digital innovation. By embracing iterative processes, cross-functional collaboration, 
+            and continuous feedback, Agile teams can respond quickly to change and deliver more value to customers. 
+            However, implementing Agile is not just about following a framework—it's about fostering a culture of 
+            adaptability, trust, and shared ownership across teams.</p>
+        <h2>Grammar</h2>
+        <p>Strong leadership is more than directing a team—it's about inspiring people toward a common vision. 
+            Effective leaders cultivate transparency, empathy, and accountability within their organizations. 
+            They empower others by encouraging autonomy and providing opportunities for growth. In times of 
+            uncertainty or rapid change, it's the leaders who stay grounded and lead with clarity who build 
+            the most resilient and high-performing teams.</p>
+        <h2>Summarization, simplification, or elaboration</h2>
+        <p>Technology continues to transform how we live and work, with advancements in artificial intelligence, 
+            cloud computing, and automation reshaping industries. Businesses that fail to adapt risk falling 
+            behind more innovative competitors. As digital transformation accelerates, it's important for 
+            organizations to not only invest in new tools but also upskill their teams. A tech-driven 
+            mindset is no longer optional—it's critical to staying relevant in a rapidly changing world.</p>`;
+        beforeAll(() => {
+            editor = renderRTE({
+                height: 700,
+                toolbarSettings: {
+                    items: ['aicommands', 'aiquery']
+                },
+                value: value
+            });
+        });
+        afterAll(() => {
+            destroy(editor);
+        });
+        it('Should show the AI Query Popup inside the editor even when content scrolled with floating toolbar', (done: DoneFn) => {
+            editor.showAIAssistantPopup();
+            expect(editor.aiAssistantModule.queryPopup.element.getBoundingClientRect().top).toBeGreaterThan(0);
+            done();
+        });
+    });
+
     describe('ExecutePrompt Public method testing', ()=> {
         let editor: RichTextEditor;
         beforeAll(()=> {
@@ -789,7 +834,7 @@ describe('AI Assistant Module', ()=> {
         afterAll(()=> {
             destroy(editor);
         });
-        it('Should update the event args with the original event', (done: DoneFn)=> {
+        it('Should update the event args with the original event.', (done: DoneFn)=> {
             (editor.getToolbarElement().querySelector('.e-toolbar-item') as HTMLElement).click();
             setTimeout(() => {
                 expect(editor.aiAssistantModule.queryPopup.element.classList.contains('e-popup-open')).toBe(true);

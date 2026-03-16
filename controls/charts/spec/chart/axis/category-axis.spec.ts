@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 
 /**
  * Category spec document
@@ -216,7 +217,6 @@ describe('Chart Control', () => {
                 let x = parseFloat(chartArea.getAttribute('x')) + parseFloat(chartArea.getAttribute('width')) / 3 + ele.offsetLeft;
                 trigger.mousemovetEvent(chartArea, Math.ceil(x), Math.ceil(y));
                 let crosshair: Element = <Element>document.getElementById('container_svg').lastChild;
-                let element1: HTMLElement;
                 expect(crosshair.childNodes.length == 3).toBe(true);
                 done();
             };

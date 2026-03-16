@@ -10,3 +10,4 @@ export * from './sparkline/sparkline';
 export * from './bullet-chart/bullet-chart';
 export * from './chart3d/chart3D';
 export * from './circularchart3d/circularchart3d';
+export * from './sankey/sankey';

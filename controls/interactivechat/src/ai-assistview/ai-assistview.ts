@@ -1,12 +1,16 @@
 // eslint-disable-next-line @typescript-eslint/triple-slash-reference
-///<reference path='../interactive-chat-base/interactive-chat-base-model.d.ts'/>
+///<reference path='../ai-assist-base/ai-assist-base-model.d.ts'/>
 import { EventHandler, INotifyPropertyChanged, Property, NotifyPropertyChanges, Collection, EmitType, Event, remove, L10n, SanitizeHtmlHelper } from '@syncfusion/ej2-base';
 import { ChildProperty, getUniqueID, isNullOrUndefined as isNOU, BaseEventArgs, Complex, removeClass, addClass } from '@syncfusion/ej2-base';
-import { AIAssistViewModel, PromptModel, ResponseToolbarSettingsModel, PromptToolbarSettingsModel, AssistViewModel, AttachmentSettingsModel, FooterToolbarSettingsModel } from './ai-assistview-model';
+import { AIAssistViewModel, PromptModel, ResponseToolbarSettingsModel, PromptToolbarSettingsModel, AssistViewModel, AttachmentSettingsModel, FooterToolbarSettingsModel, SpeechToTextSettingsModel } from './ai-assistview-model';
 import { ItemModel, Toolbar, ClickEventArgs } from '@syncfusion/ej2-navigations';
-import { InterActiveChatBase, ToolbarSettings, ToolbarItem, ToolbarItemClickedEventArgs, TextState } from '../interactive-chat-base/interactive-chat-base';
+import { ToolbarSettings, ToolbarItem, ToolbarItemClickedEventArgs, TextState } from '../interactive-chat-base/interactive-chat-base';
 import { ToolbarItemModel, ToolbarSettingsModel } from '../interactive-chat-base/interactive-chat-base-model';
-import { FileInfo, Uploader, BeforeUploadEventArgs, UploadingEventArgs } from '@syncfusion/ej2-inputs';
+import { FileInfo, Uploader, BeforeUploadEventArgs, UploadingEventArgs, StartListeningEventArgs, ErrorEventArgs, TranscriptChangedEventArgs, SpeechToText, StopListeningEventArgs, SpeechToTextState } from '@syncfusion/ej2-inputs';
+import { MarkdownConverter } from '@syncfusion/ej2-markdown-converter';
+import { ButtonSettings, ButtonSettingsModel, TooltipSettings, TooltipSettingsModel } from '@syncfusion/ej2-inputs';
+import { Fab } from '@syncfusion/ej2-buttons';
+import { AIAssistBase, ToolbarPosition } from '../ai-assist-base/ai-assist-base';
 
 const ASSISTHEADER: string = 'e-aiassist-header-text e-assist-view-header';
 /* eslint-disable @typescript-eslint/no-misused-new, no-redeclare */
@@ -76,20 +80,6 @@ export enum AssistViewType {
 }
 
 /**
- * Specifies the type of footer.
- */
-export enum ToolbarPosition {
-    /**
-     * Displays the toolbar inline with the content.
-     */
-    Inline = 'Inline',
-    /**
-     * Displays the toolbar at the bottom of the edit area.
-     */
-    Bottom = 'Bottom'
-}
-
-/**
  * The assistView property maps the customized AiAssistView.
  */
 export class AssistView extends ChildProperty<AssistView> {
@@ -135,6 +125,136 @@ export class AssistView extends ChildProperty<AssistView> {
      */
     @Property()
     public viewTemplate: string | Function;
+}
+
+/**
+ * Configuration settings for rendering Syncfusion Speech-to-Text in the AssistView footer.
+ * This property holds the settings required to initialize and display the Speech-to-Text component.
+ *
+ */
+export class SpeechToTextSettings extends ChildProperty<SpeechToTextSettings> {
+
+    /**
+     * Specifies whether speech-to-text functionality is enabled.
+     *
+     * @default false
+     */
+    @Property(false)
+    public enable: boolean;
+
+    /**
+     * Specifies whether interim results should be captured during speech recognition.
+     *
+     * @default true
+     */
+    @Property(true)
+    public allowInterimResults: boolean;
+
+    /**
+     * Specifies the language for speech recognition using ISO language codes.
+     *
+     * @default 'en-US'
+     */
+    @Property('en-US')
+    public lang: string;
+
+    /**
+     * Specifies whether the speech-to-text control is disabled.
+     *
+     * @default false
+     */
+    @Property(false)
+    public disabled: boolean;
+
+    /**
+     * Configuration object for the mic button appearance and behavior.
+     * Defines the button text, icons, position, and styling for both start and stop states.
+     *
+     * @type {ButtonSettingsModel}
+     * @default {}
+     */
+    @Complex<ButtonSettingsModel>({}, ButtonSettings)
+    public buttonSettings: ButtonSettingsModel;
+
+    /**
+     * Specifies whether to show tooltip for the mic button.
+     *
+     * @default true
+     */
+    @Property(true)
+    public showTooltip: boolean;
+
+    /**
+     * Configuration object for tooltip appearance and behavior.
+     * Defines the tooltip text and position for both listening and stop states.
+     *
+     * @type {TooltipSettingsModel}
+     * @default {}
+     */
+    @Complex<TooltipSettingsModel>({}, TooltipSettings)
+    public tooltipSettings: TooltipSettingsModel;
+
+    /**
+     * Applies custom CSS classes to the speech-to-text component.
+     *
+     * @type {string}
+     * @default ''
+     */
+    @Property('')
+    public cssClass: string;
+
+    /**
+     * Stores the recognized speech transcript.
+     * This property is read-only and updated when speech recognition results are received.
+     *
+     * @type {string}
+     * @default ''
+     */
+    @Property('')
+    public transcript: string;
+
+    /**
+     * Indicates whether the component is currently listening.
+     *
+     * @default 'Inactive'
+     */
+    @Property('Inactive')
+    public listeningState: SpeechToTextState;
+
+    /**
+     * Event raised when speech recognition starts.
+     * Triggered when the user clicks the mic button and begins speaking.
+     *
+     * @event onStart
+     */
+    @Event()
+    public onStart: EmitType<StartListeningEventArgs>;
+
+    /**
+     * Event raised when speech recognition stops.
+     * Triggered when the user stops speaking and clicks the mic button.
+     *
+     * @event onStop
+     */
+    @Event()
+    public onStop: EmitType<StopListeningEventArgs>;
+
+    /**
+     * Event raised when the transcript changes during speech recognition.
+     * Triggered for both interim results (if enabled) and final results.
+     *
+     * @event transcriptChanged
+     */
+    @Event()
+    public transcriptChanged: EmitType<TranscriptChangedEventArgs>;
+
+    /**
+     * Event raised when an error occurs during speech recognition.
+     *
+     * @event onError
+     */
+    @Event()
+    public onError: EmitType<ErrorEventArgs>;
 }
 
 /**
@@ -449,7 +569,7 @@ export interface AttachmentClickEventArgs extends BaseEventArgs {
  */
 
 @NotifyPropertyChanges
-export class AIAssistView extends InterActiveChatBase implements INotifyPropertyChanged {
+export class AIAssistView extends AIAssistBase implements INotifyPropertyChanged {
 
     /**
      * Specifies the text input prompt for the AIAssistView component.
@@ -624,6 +744,16 @@ export class AIAssistView extends InterActiveChatBase implements INotifyProperty
     public footerToolbarSettings: FooterToolbarSettingsModel;
 
     /**
+     * Configuration object for rendering Speech-to-Text in the AssistView footer.
+     * This property holds the settings required to initialize and display the Speech-to-Text component.
+     *
+     * @type {SpeechToTextSettingsModel}
+     * @default { enable: false }
+     */
+    @Complex<SpeechToTextSettingsModel>({ enable: false }, SpeechToTextSettings)
+    public speechToTextSettings: SpeechToTextSettingsModel;
+
+    /**
      * Specifies whether the attachments is enabled in the AIAssistView component.
      *
      * @type {boolean}
@@ -651,6 +781,19 @@ export class AIAssistView extends InterActiveChatBase implements INotifyProperty
      */
     @Property(false)
     public showClearButton: boolean;
+
+    /**
+     * Specifies whether to show a scroll-to-bottom indicator (typically a floating icon/button) when the user has scrolled up away from the latest message in the AI AssistView.
+     *
+     * By default, when enabled (`true`), the button appears automatically when the scroll position is not at the bottom. Clicking on it scrolls smoothly to the bottom and hides the button.
+     *
+     * When disabled(`false`), the users must manually scroll back down to see the latest messages/responses.
+     *
+     * @type {boolean}
+     * @default true
+     */
+    @Property(true)
+    public enableScrollToBottom: boolean;
 
     /**
      * Specifies the template for the footer in the AIAssistView component.
@@ -818,12 +961,116 @@ export class AIAssistView extends InterActiveChatBase implements INotifyProperty
     private lastStreamPrompt: string;
     private uploadedFiles: FileInfo[] = [];
     private uploaderObj: Uploader;
+    private speechToTextObj: SpeechToText;
     private dropArea: HTMLElement;
     private footerToolbarEle: Toolbar;
     private sendToolbarItem: ItemModel = null;
     private clearToolbarItem: ItemModel = null;
     private attachmentToolbarItem: ItemModel = null;
+    private speechToTextToolbarItem: ItemModel = null;
+    private latestResponseMinHeight: number | null = null;
+    private downArrowIcon: Fab;
 
+    /**
+     * Enhanced setup: Enforce viewport on .e-content + dynamic min-height on latest .e-output-container.
+     * Preserves structure; only inline styles on existing elements. Scrolls to prompt top.
+     * Also applies during loading by sizing the skeleton container when the final response item
+     * isn't rendered yet.
+     *
+     * @private
+     * @returns {void}
+     */
+    private setupViewportFilling(): void {
+        if (!this.contentWrapper || this.prompts.length === 0) {return; }
+        const lastIndex: number = this.prompts.length - 1;
+        const allResponseItems: HTMLElement[] = Array.from(this.contentWrapper.querySelectorAll('.e-output-container[id^="e-response-item_"]')) as HTMLElement[];
+
+        // Set auto for all previous .e-output-container (as in example)
+        for (let i: number = 0; i < allResponseItems.length; i++) {
+            const index: number = parseInt(allResponseItems[i as number].id.split('_')[1], 10);
+            if (index < lastIndex) {
+                allResponseItems[i as number].style.minHeight = 'auto';
+
+                const footerEle: HTMLElement = allResponseItems[i as number].querySelector('.e-content-footer');
+                if (footerEle) {
+                    footerEle.classList.remove('e-assist-toolbar-active');
+                }
+            }
+        }
+        // Compute dynamic min-height based on viewport and fixed chrome (header/footer/paddings)
+        const contentWrapperHeight: number = this.contentWrapper.clientHeight;
+        const promptEle: HTMLElement = this.contentWrapper.querySelector(`#e-prompt-item_${lastIndex}`) as HTMLElement | null;
+        const promptHeight: number = promptEle ? promptEle.offsetHeight : 0;
+
+        // Get the actual height of uploaded files if they exist
+        const promptFilesEle: HTMLElement = promptEle ? promptEle.querySelector('.e-prompt-uploaded-files') as HTMLElement : null;
+        const promptFilesHeight: number = promptFilesEle ? promptFilesEle.offsetHeight : 0;
+
+        // Get the actual height of prompt toolbar if it exists
+        const promptToolbarEle: HTMLElement = promptEle ? promptEle.querySelector('.e-prompt-toolbar') as HTMLElement : null;
+        const promptToolbarHeight: number = promptToolbarEle ? promptToolbarEle.offsetHeight : 0;
+
+        // Get the actual height of response toolbar if it exists
+        const lastResponseEle: HTMLElement = this.contentWrapper.querySelector(`#e-response-item_${lastIndex}`) as HTMLElement | null;
+        const responseToolbarEle: HTMLElement = lastResponseEle ? lastResponseEle.querySelector('.e-response-toolbar') as HTMLElement : null;
+        const responseToolbarHeight: number = responseToolbarEle ? responseToolbarEle.offsetHeight : 0;
+
+        // Check if suggestions are visible - if so, reserve space for them
+        const suggestionsHeight: number = (this.suggestionsElement && !this.suggestionsElement.hidden) ?
+            this.suggestionsElement.offsetHeight : 0;
+
+        let scrollToBottomBtnHeight: number = 0;
+        if (this.downArrowIcon.element) {
+            scrollToBottomBtnHeight = this.downArrowIcon.element.offsetHeight;
+        }
+
+        // Calculate minHeight to fill the content wrapper viewport completely
+        const dynamicMinHeight: number =
+        Math.max(160, contentWrapperHeight - promptHeight - promptFilesHeight - promptToolbarHeight -
+            responseToolbarHeight - suggestionsHeight - scrollToBottomBtnHeight);
+        this.latestResponseMinHeight = dynamicMinHeight;
+
+        // Apply to the actual latest response container if available; otherwise apply to loading skeleton
+        if (lastResponseEle) {
+            lastResponseEle.style.minHeight = `${dynamicMinHeight}px`;
+        } else if (this.skeletonContainer) {
+            // Ensure the loader occupies the viewport so previous chats don't remain visible while loading
+            this.skeletonContainer.style.minHeight = `${dynamicMinHeight}px`;
+        }
+    }
+
+    private renderContentElement(): void {
+        if (this.enableScrollToBottom) {
+            const scrollDownButton: HTMLButtonElement = this.createElement('button', { id: `${this.element.id}-scrollDownButton`, className: 'e-scroll-down-btn' });
+            this.downArrowIcon = new Fab({
+                iconCss: 'e-icons e-assist-scroll-down',
+                position: 'BottomRight',
+                target: this.outputElement.parentElement,
+                isPrimary: false,
+                visible: false
+            });
+            this.downArrowIcon.appendTo(scrollDownButton);
+        }
+    }
+
+    private handleScroll(): void {
+        const atBottom: boolean = this.checkScrollAtBottom(this.contentWrapper, 70);
+        this.toggleScrollIcon(atBottom);
+    }
+
+    // Toggle button visibility (show if not at bottom and enableScrollToBottom=true)
+    private toggleScrollIcon(atBottom: boolean): void {
+        if (this.isResponseRequested || !this.enableScrollToBottom || !this.downArrowIcon) { return; }
+        this.downArrowIcon.visible = !atBottom;
+        this.downArrowIcon.dataBind();
+    }
+
+    // Click handler to scroll to bottom
+    private scrollBtnClick(): void {
+        if (this.enableScrollToBottom) {
+            this.scrollToBottom();
+        }
+    }
 
     /**
      * Constructor for creating the component
@@ -1081,11 +1328,17 @@ export class AIAssistView extends InterActiveChatBase implements INotifyProperty
         const contentContainer: HTMLElement = this.element.querySelector('.e-view-container');
         this.content = this.getElement('contentContainer');
         this.getFooter();
-        this.updateFooterClass();
+        this.updateFooterClass(this.footerTemplate);
         this.renderContent();
         this.renderAssistViewFooter();
         this.updateBannerView(contentContainer);
         contentContainer.append(this.content);
+        this.checkIsScrollable();
+    }
+    private checkIsScrollable(): void {
+        if (this.enableScrollToBottom) {
+            this.downArrowIcon.visible = this.contentWrapper.scrollHeight > this.contentWrapper.clientHeight;
+        }
     }
 
     private initializeLocale(): void {
@@ -1105,14 +1358,21 @@ export class AIAssistView extends InterActiveChatBase implements INotifyProperty
         const stopIconClass: string = 'e-assist-stop';
         const stopTooltip: string = this.l10n.getConstant('stopResponseText');
         if (!this.footerTemplate) {
-            const currentIcon: string = show ? sendIconClass : stopIconClass;
-            const newIcon: string = show ? stopIconClass : sendIconClass;
-            const toolbarItem: ItemModel = this.footerToolbarEle.items.find((item: ItemModel) => item.prefixIcon === `e-icons ${currentIcon}`);
-            if (toolbarItem) {
-                toolbarItem.prefixIcon = `e-icons ${newIcon}`;
-                toolbarItem.tooltipText = show ? stopTooltip : null;
+            const currentIconClass: string = show ? sendIconClass : stopIconClass;
+            const newIconClass: string = show ? stopIconClass : sendIconClass;
+            const currentItem: ItemModel = this.footerToolbarEle.items.find((item: ItemModel) => item.prefixIcon === `e-icons ${currentIconClass}`);
+            const itemIndex: number = this.footerToolbarEle.items.indexOf(currentItem);
+            const currentToolbarItemElement: HTMLElement = this.footerToolbarEle.element.querySelector(`.e-tbar-btn .${currentIconClass}`) ?
+                this.footerToolbarEle.element.querySelector(`.e-tbar-btn .${currentIconClass}`).closest('.e-toolbar-item') as HTMLElement : null;
+            if (itemIndex !== -1 && currentItem && currentToolbarItemElement) {
+                const newItem: ItemModel = {
+                    prefixIcon: `e-icons ${newIconClass}`,
+                    align: 'Right',
+                    tooltipText: show ? stopTooltip : undefined
+                };
+                this.footerToolbarEle.addItems([newItem], itemIndex);
+                this.footerToolbarEle.removeItems(currentToolbarItemElement);
             }
-            this.footerToolbarEle.dataBind();
             this.refreshTextareaUI();
         } else {
             const currentIcon: HTMLElement = this.footer.querySelector(`.${show ? sendIconClass : stopIconClass}`) as HTMLElement;
@@ -1140,9 +1400,10 @@ export class AIAssistView extends InterActiveChatBase implements INotifyProperty
     }
 
     private renderContent(): void {
+        this.renderOutputContent();
         this.renderSuggestions(this.promptSuggestions, this.promptSuggestionsHeader, this.promptSuggestionItemTemplate,
                                'promptSuggestion', 'promptSuggestionItemTemplate', this.onSuggestionClick);
-        this.renderOutputContent();
+        this.renderContentElement();
         if (this.outputElement) { this.renderSkeleton(); }
     }
 
@@ -1175,11 +1436,6 @@ export class AIAssistView extends InterActiveChatBase implements INotifyProperty
         if (this.prompts.length === 0) {
             this.renderBannerView(this.bannerTemplate, contentContainer, 'bannerTemplate');
         }
-    }
-
-    private updateFooterClass(): void {
-        const footerClass: string = `e-footer ${this.footerTemplate ? 'e-footer-template' : ''}`;
-        this.footer.className = footerClass;
     }
 
     private renderAssistViewFooter(): void {
@@ -1223,9 +1479,10 @@ export class AIAssistView extends InterActiveChatBase implements INotifyProperty
         const customItems: ToolbarItemModel[] = this.footerToolbarSettings.items || [];
 
         for (const customItem of customItems) {
+            const isSttToolbarItem: boolean = customItem.iconCss.indexOf('e-assist-speech-to-text') !== -1;
             const mappedItem: ItemModel = {
                 type: customItem.type,
-                template: customItem.template,
+                template: isSttToolbarItem && isNOU(customItem.template) ? '<button class="e-assistview-speech-to-text e-tbar-btn"></button>' : customItem.template,
                 disabled: customItem.disabled,
                 cssClass: customItem.cssClass,
                 visible: customItem.visible,
@@ -1246,6 +1503,16 @@ export class AIAssistView extends InterActiveChatBase implements INotifyProperty
             toolbarItems.push(this.attachmentToolbarItem);
         }
 
+        if (this.speechToTextSettings.enable && !this.isDuplicatedItem('e-icons e-assist-speech-to-text', toolbarItems)) {
+            this.speechToTextToolbarItem = {
+                id: this.element.id + '_speechtotext',
+                template: '<button class="e-assistview-speech-to-text"></button>',
+                prefixIcon: 'e-icons e-assist-speech-to-text',
+                align: 'Right'
+            };
+            toolbarItems.push(this.speechToTextToolbarItem);
+        }
+
         if (this.showClearButton && !this.isDuplicatedItem('e-icons e-assist-clear-icon', toolbarItems)) {
             this.clearToolbarItem = {
                 prefixIcon: 'e-icons e-assist-clear-icon',
@@ -1262,23 +1529,6 @@ export class AIAssistView extends InterActiveChatBase implements INotifyProperty
             };
             toolbarItems.push(this.sendToolbarItem);
         }
-
-        const prevOnChange: boolean = this.isProtectedOnChange;
-        this.isProtectedOnChange = true;
-        const footerToolbarItems: ToolbarItemModel[] = toolbarItems.map((item: ItemModel) => ({
-            type: item.type,
-            text: item.text,
-            iconCss: item.prefixIcon,
-            cssClass: item.cssClass,
-            tooltip: item.tooltipText,
-            template: item.template as string | Function,
-            disabled: item.disabled,
-            visible: item.visible,
-            align: item.align,
-            tabIndex: item.tabIndex
-        }));
-        this.footerToolbarSettings.items = footerToolbarItems;
-        this.isProtectedOnChange = prevOnChange;
 
         this.footerToolbarEle = new Toolbar({
             items: toolbarItems,
@@ -1340,6 +1590,7 @@ export class AIAssistView extends InterActiveChatBase implements INotifyProperty
         this.footerToolbarEle.element.setAttribute('aria-label', 'assist-footer-toolbar');
         container.appendChild(toolbarContainer);
         this.updateAttachmentElement();
+        this.renderSpeechToText();
     }
 
     private isDuplicatedItem(iconCss: string, toolbarItems: ItemModel[]): boolean {
@@ -1375,11 +1626,76 @@ export class AIAssistView extends InterActiveChatBase implements INotifyProperty
         }
     }
 
+    private renderSpeechToText(): void {
+        if (this.speechToTextObj) {
+            this.speechToTextObj.destroy();
+            this.speechToTextObj = null;
+        }
+        if (this.speechToTextSettings.enable) {
+            this.speechToTextObj = new SpeechToText({
+                allowInterimResults: this.speechToTextSettings.allowInterimResults,
+                transcript: this.speechToTextSettings.transcript,
+                lang: this.speechToTextSettings.lang,
+                listeningState: this.speechToTextSettings.listeningState,
+                disabled: this.speechToTextSettings.disabled,
+                buttonSettings: this.speechToTextSettings.buttonSettings,
+                showTooltip: this.speechToTextSettings.showTooltip,
+                tooltipSettings: this.speechToTextSettings.tooltipSettings,
+                cssClass: this.speechToTextSettings.cssClass,
+                onStart: (args: StartListeningEventArgs) => {
+                    if (this.speechToTextSettings.onStart) {
+                        this.speechToTextSettings.onStart.call(this, args);
+                    }
+                },
+                onStop: (args: StopListeningEventArgs) => {
+                    if (this.speechToTextSettings.onStop) {
+                        this.speechToTextSettings.onStop.call(this, args);
+                    }
+                },
+                transcriptChanged: (args: TranscriptChangedEventArgs) => {
+                    const prevOnChange: boolean = this.isProtectedOnChange;
+                    this.isProtectedOnChange = true;
+                    const value: string = this.prompt.length > 0 ? this.prompt + ' ' : '';
+                    if (args.isInterimResult) {
+                        this.editableTextarea.innerHTML = value + SanitizeHtmlHelper.sanitize(args.transcript);
+                    }
+                    else {
+                        const prevPrompt: string = this.prompt;
+                        this.prompt = value + SanitizeHtmlHelper.sanitize(args.transcript);
+                        this.editableTextarea.innerHTML = this.prompt;
+                        this.speechToTextObj.transcript = '';
+                        this.editableTextarea.focus();
+                        this.setFocusAtEnd(this.editableTextarea);
+                        this.triggerPromptChanged(event, prevPrompt);
+                    }
+                    this.refreshTextareaUI();
+                    // Debounced push to undo stack
+                    this.scheduleUndoPush();
+                    this.redoStack = [];
+                    this.speechToTextSettings.transcript = args.transcript;
+                    if (this.speechToTextSettings.transcriptChanged) {
+                        this.speechToTextSettings.transcriptChanged.call(this, args);
+                    }
+                    this.isProtectedOnChange = prevOnChange;
+                },
+                onError: (args: ErrorEventArgs) => {
+                    if (this.speechToTextSettings.onError) {
+                        this.speechToTextSettings.onError.call(this, args);
+                    }
+                }
+            });
+            const speechToTextButton: HTMLElement = this.footerToolbarEle.element.querySelector('.e-assistview-speech-to-text') as HTMLElement;
+            if (speechToTextButton) {
+                this.speechToTextObj.appendTo(speechToTextButton);
+            }
+        }
+    }
+
     private renderAttachmentIcon(): void {
         this.dropArea = this.createElement('div', { attrs: { class: 'e-assist-drop-area' } });
         this.footer.prepend(this.dropArea);
         const attachmentIcon: HTMLElement = this.footerToolbarEle.element.querySelector('.e-assist-attachment-icon') as HTMLElement;
-        const uploaderElement: HTMLElement = this.createElement('input', { attrs: { class: 'e-assist-file-upload', type: 'file', id: 'fileUpload'} });
+        const uploaderElement: HTMLElement = this.createElement('input', { attrs: { class: 'e-assist-file-upload', type: 'file', name: 'UploadFiles', id: 'fileUpload'} });
         attachmentIcon.appendChild(uploaderElement);
         this.uploaderObj = new Uploader({
             asyncSettings: {
@@ -1511,13 +1827,13 @@ export class AIAssistView extends InterActiveChatBase implements INotifyProperty
             if (closeButton && (event.target === closeButton || (event.target as HTMLElement).classList.contains('e-assist-clear-icon'))) {
                 return;
             }
-            this.handleAttachmentPreview(event, fileData);
+            this.handleAttachmentPreview(fileData);
         });
         return fileItem;
     }
 
-    private handleAttachmentPreview(event: MouseEvent, file: FileInfo): void {
-        const eventArgs: AttachmentClickEventArgs = {file: file, event: event};
+    private handleAttachmentPreview(file: FileInfo): void {
+        const eventArgs: AttachmentClickEventArgs = {};
         if (this.attachmentSettings.attachmentClick) {
             this.attachmentSettings.attachmentClick.call(this, eventArgs);
         }
@@ -1564,7 +1880,7 @@ export class AIAssistView extends InterActiveChatBase implements INotifyProperty
             value: this.prompt,
             previousValue: prevPrompt,
             event: event,
-            element: (event.currentTarget as HTMLElement)
+            element: (event && event.currentTarget as HTMLElement) || this.editableTextarea
         };
         this.trigger('promptChanged', eventArgs);
     }
@@ -1577,12 +1893,50 @@ export class AIAssistView extends InterActiveChatBase implements INotifyProperty
         this.keyHandler(e, 'footer');
     }
 
+    private bindScroll(): void {
+        if (this.contentWrapper) {
+            EventHandler.add(this.contentWrapper, 'scroll', this.handleScroll, this);
+        }
+        if (this.enableScrollToBottom && this.downArrowIcon && this.downArrowIcon.element) {
+            EventHandler.add(this.downArrowIcon.element, 'click', this.scrollBtnClick, this);
+        }
+    }
+    private unBindScroll(): void {
+        if (this.contentWrapper) {
+            EventHandler.remove(this.contentWrapper, 'scroll', this.handleScroll);
+        }
+        if (this.enableScrollToBottom && this.downArrowIcon && this.downArrowIcon.element) {
+            EventHandler.remove(this.downArrowIcon.element, 'click', this.scrollBtnClick);
+        }
+    }
+
     private wireEvents(): void {
         this.wireFooterEvents(this.footerTemplate);
+        if (this.editableTextarea) {
+            const footerIconsWrapper: HTMLElement = this.footer.querySelector('.e-footer-icons-wrapper') as HTMLElement;
+            if (footerIconsWrapper) {
+                EventHandler.add(footerIconsWrapper, 'pointerdown', this.onFooterIconsPointerDown, this);
+                // Optional fallback for environments without Pointer Events
+                EventHandler.add(footerIconsWrapper, 'click', this.onFooterIconsClick, this);
+                EventHandler.add(footerIconsWrapper, 'focusout', this.onFooterIconsFocusOut, this);
+            }
+        }
+        if (this.enableScrollToBottom) {
+            this.bindScroll();
+        }
     }
     private unWireEvents(): void {
         this.unWireFooterEvents(this.footerTemplate);
+        if (this.editableTextarea) {
+            const footerIconsWrapper: HTMLElement = this.footer.querySelector('.e-footer-icons-wrapper') as HTMLElement;
+            if (footerIconsWrapper) {
+                EventHandler.remove(footerIconsWrapper, 'pointerdown', this.onFooterIconsPointerDown);
+                EventHandler.remove(footerIconsWrapper, 'click', this.onFooterIconsClick);
+                EventHandler.remove(footerIconsWrapper, 'focusout', this.onFooterIconsFocusOut);
+            }
+        }
         this.detachCodeCopyEventHandler();
+        this.unBindScroll();
     }
     private onFocusEditableTextarea(): void {
         if (this.footer) {
@@ -1641,6 +1995,11 @@ export class AIAssistView extends InterActiveChatBase implements INotifyProperty
                 break;
             }
         }
+        else if (event.key === 'Backspace' || event.key === 'Delete') {
+            if (this.speechToTextObj) {
+                this.speechToTextObj.transcript = '';
+            }
+        }
         else {
             this.handleUndoRedo(event);
         }
@@ -1650,6 +2009,9 @@ export class AIAssistView extends InterActiveChatBase implements INotifyProperty
         const prevOnChange: boolean = this.isProtectedOnChange;
         this.isProtectedOnChange = true;
         this.editableTextarea.innerText = this.prompt = '';
+        if (this.speechToTextObj) {
+            this.speechToTextObj.transcript = '';
+        }
         this.isProtectedOnChange = prevOnChange;
         this.refreshTextareaUI();
         this.editableTextarea.focus();
@@ -1696,6 +2058,9 @@ export class AIAssistView extends InterActiveChatBase implements INotifyProperty
         if (this.isResponseRequested || !(this.prompt.trim() || this.uploadedFiles.length)) {
             return;
         }
+        if (!isNOU(this.speechToTextObj)) {
+            this.speechToTextObj.stopListening();
+        }
         this.isResponseRequested = true;
         this.lastStreamPrompt = '';
         if (this.suggestionsElement) { this.suggestionsElement.hidden = true; }
@@ -1722,6 +2087,7 @@ export class AIAssistView extends InterActiveChatBase implements INotifyProperty
             this.refreshTextareaUI();
             this.pushToUndoStack(this.prompt);
         }
+        this.setupViewportFilling();
         this.trigger('promptRequest', eventArgs);
         if (this.contentWrapper) { this.scrollToBottom(); }
     }
@@ -1791,7 +2157,8 @@ export class AIAssistView extends InterActiveChatBase implements INotifyProperty
         isMethodCall?: boolean,
         isFinalUpdate?: boolean
     ): void {
-        const outputContainer: HTMLElement = this.createElement('div', { attrs: { id: `e-response-item_${index}`, class: `e-output-container ${this.responseItemTemplate ? 'e-response-item-template' : ''}` } });
+        const outputContainer: HTMLElement = this.createElement('div', { attrs: { id: `e-response-item_${index}`, class: `e-output-container ${this.responseItemTemplate ? 'e-response-item-template' : ''}`, ...(this.latestResponseMinHeight != null ?
+            {style: `min-height:${this.latestResponseMinHeight}px`} : {}) } });
         this.renderOutput(outputContainer, promptText, outputText, attachedFiles, isMethodCall, index, isFinalUpdate);
         if (promptText) {
             this.outputElement.append(this.outputSuggestionEle);
@@ -1847,7 +2214,12 @@ export class AIAssistView extends InterActiveChatBase implements INotifyProperty
         if (this.contentFooterEle) { this.contentFooterEle.classList.remove('e-assist-toolbar-active'); }
         this.outputContentBodyEle = this.createElement('div', { attrs: { class: 'e-content-body', tabindex: '0' } });
         if (!isMethodCall) {
-            this.outputContentBodyEle.innerHTML = response;
+            if (!this.enableStreaming || isFinalUpdate) {
+                const htmlResponse: string | Promise<string> = MarkdownConverter.toHtml(response);
+                this.outputContentBodyEle.innerHTML = htmlResponse as string;
+            } else {
+                this.outputContentBodyEle.innerHTML = response;
+            }
             if (isFinalUpdate) { this.renderPreTag(this.outputContentBodyEle); }
         }
         if (this.outputElement.querySelector('.e-skeleton')) {
@@ -2155,7 +2527,7 @@ SanitizeHtmlHelper.sanitize(this.prompts[parseInt(promptIndex.toString(), 10)].p
         this.updateHiddenTextarea(this.prompt);
         this.checkAndActivateSendIcon();
         this.updateFooterElementClass();
-        this.updateFooterType();
+        this.updateFooterType(this.footerToolbarSettings.toolbarPosition);
         this.toggleClearIcon();
     }
 
@@ -2190,17 +2562,6 @@ SanitizeHtmlHelper.sanitize(this.prompts[parseInt(promptIndex.toString(), 10)].p
             }
         }
     }
-
-    private updateFooterType(): void {
-        if (this.footerToolbarSettings.toolbarPosition.toLocaleLowerCase() === 'bottom') {
-            this.footer.classList.remove('e-toolbar-inline');
-            this.footer.classList.add('e-toolbar-bottom');
-        } else {
-            this.footer.classList.remove('e-toolbar-bottom');
-            this.footer.classList.add('e-toolbar-inline');
-        }
-    }
-
 
     private updateIcons(newCss: string, isPromptIconCss: boolean = false): void {
         let elements: NodeListOf<Element>;
@@ -2309,6 +2670,45 @@ SanitizeHtmlHelper.sanitize(this.prompts[parseInt(promptIndex.toString(), 10)].p
         }
     }
 
+    private streamResponse(response: string, index: number): void {
+        const prevOnChange: boolean = this.isProtectedOnChange;
+        this.isProtectedOnChange = true;
+        let i: number = 0;
+        const words: string[] = response.split(' ');
+        const wordCount: number = words.length;
+        let lastResponse: string = '';
+        const streamingResponse: () => void = (): void => {
+            if (this.isOutputRenderingStop) {
+                return;
+            }
+            if (index >= this.prompts.length) {
+                return;
+            }
+            const responseItem: HTMLDivElement = this.element.querySelector(`#e-response-item_${index}`);
+            lastResponse += (i === 0 ? '' : ' ') + words[parseInt(i.toString(), 10)];
+            i++;
+            if (this.outputElement.querySelector('.e-skeleton')) {
+                this.outputElement.removeChild(this.skeletonContainer);
+            }
+            this.updateResponse(lastResponse, index, i === wordCount, responseItem);
+            this.scrollToBottom();
+            this.setupViewportFilling();
+            if (i < wordCount) {
+                setTimeout(() => {
+                    streamingResponse();
+                }, 15);
+            } else {
+                const isFinalUpdate: boolean = lastResponse.length === response.length;
+                if (isFinalUpdate && this.hasStopResponseButton()) {
+                    this.toggleStopRespondingButton(false);
+                }
+                this.isResponseRequested = !isFinalUpdate;
+            }
+        };
+        streamingResponse();
+        this.isProtectedOnChange = prevOnChange;
+    }
+
     private updateBannerTemplate(newTemplate: string | Function): void {
         if (!isNOU(newTemplate)) {
             const contentContainer: HTMLElement = this.element.querySelector('.e-view-container');
@@ -2330,7 +2730,7 @@ SanitizeHtmlHelper.sanitize(this.prompts[parseInt(promptIndex.toString(), 10)].p
 
     private updateFooterTemplate(): void {
         this.footer.innerHTML = '';
-        this.updateFooterClass();
+        this.updateFooterClass(this.footerTemplate);
         this.unWireFooterEvents(this.footerTemplate);
         this.renderAssistViewFooter();
         if (!this.footerTemplate) {
@@ -2349,6 +2749,64 @@ SanitizeHtmlHelper.sanitize(this.prompts[parseInt(promptIndex.toString(), 10)].p
             saveUrl: !isNOU(newAttachment.saveUrl) ?  newAttachment.saveUrl : this.uploaderObj.asyncSettings.saveUrl,
             removeUrl: !isNOU(newAttachment.removeUrl) ?  newAttachment.removeUrl : this.uploaderObj.asyncSettings.removeUrl
         };
+    }
+
+    private handleSTTDynamicChange(newProp: SpeechToTextSettingsModel, oldProp: SpeechToTextSettingsModel): void {
+        if (oldProp.enable !== newProp.enable) {
+            this.updateFooterToolbar();
+            this.updateSpeechToTextSettings(newProp);
+        }
+        if (isNOU(this.speechToTextObj)) { return; }
+        if (oldProp.allowInterimResults !== newProp.allowInterimResults) {
+            this.speechToTextObj.allowInterimResults = newProp.allowInterimResults;
+        }
+        if (oldProp.buttonSettings !== newProp.buttonSettings) {
+            this.speechToTextObj.buttonSettings = newProp.buttonSettings;
+        }
+        if (oldProp.tooltipSettings !== newProp.tooltipSettings) {
+            this.speechToTextObj.tooltipSettings = newProp.tooltipSettings;
+        }
+        if (oldProp.showTooltip !== newProp.showTooltip) {
+            this.speechToTextObj.showTooltip = newProp.showTooltip;
+        }
+        if (oldProp.cssClass !== newProp.cssClass) {
+            this.speechToTextObj.cssClass = newProp.cssClass;
+        }
+        if (oldProp.disabled !== newProp.disabled) {
+            this.speechToTextObj.disabled = newProp.disabled;
+        }
+        if (oldProp.lang !== newProp.lang) {
+            this.speechToTextObj.lang = newProp.lang;
+        }
+        if (oldProp.listeningState !== newProp.listeningState) {
+            this.speechToTextObj.listeningState = newProp.listeningState;
+        }
+        this.speechToTextObj.dataBind();
+    }
+
+    private updateSpeechToTextSettings(newProps: SpeechToTextSettingsModel): void {
+        this.renderSpeechToText();
+        if (this.speechToTextObj == null) { return; }
+        this.speechToTextObj.allowInterimResults = newProps.allowInterimResults;
+        this.speechToTextObj.transcript = newProps.transcript;
+        if (!isNOU(newProps.lang)) {
+            this.speechToTextObj.lang = newProps.lang || 'en-US';
+        }
+        if (!isNOU(newProps.disabled)) {
+            this.speechToTextObj.disabled = newProps.disabled;
+        }
+        if (!isNOU(newProps.buttonSettings)) {
+            this.speechToTextObj.buttonSettings = newProps.buttonSettings;
+        }
+        if (!isNOU(newProps.showTooltip)) {
+            this.speechToTextObj.showTooltip = newProps.showTooltip;
+        }
+        if (!isNOU(newProps.tooltipSettings)) {
+            this.speechToTextObj.tooltipSettings = newProps.tooltipSettings;
+        }
+        if (!isNOU(newProps.cssClass)) {
+            this.speechToTextObj.cssClass = newProps.cssClass;
+        }
     }
 
     private updateLocale(): void {
@@ -2376,8 +2834,10 @@ SanitizeHtmlHelper.sanitize(this.prompts[parseInt(promptIndex.toString(), 10)].p
         this.unWireEvents();
         this.destroyAndNullify(this.responseToolbarEle);
         this.destroyAndNullify(this.promptToolbarEle);
+        this.destroyAndNullify(this.footerToolbarEle);
+        this.destroyAndNullify(this.downArrowIcon);
         this.destroyAndNullify(this.toolbar);
-
+        this.destroyAndNullify(this.speechToTextObj);
         this.destroyAssistView();
         //private html elements nullify
         remove(this.viewWrapper); this.viewWrapper = null;
@@ -2391,6 +2851,7 @@ SanitizeHtmlHelper.sanitize(this.prompts[parseInt(promptIndex.toString(), 10)].p
         this.suggestionHeader = null;
         this.previousElement = null;
         this.assistCustomSection = null;
+        this.speechToTextToolbarItem = null;
         this.preTagElements = [];
 
         // properties nullify
@@ -2411,6 +2872,7 @@ SanitizeHtmlHelper.sanitize(this.prompts[parseInt(promptIndex.toString(), 10)].p
             'contentFooterEle',
             'editableTextarea',
             'footer',
+            'speechToTextToolbarItem',
             'assistCustomSection',
             'content',
             'stopResponding',
@@ -2459,13 +2921,23 @@ SanitizeHtmlHelper.sanitize(this.prompts[parseInt(promptIndex.toString(), 10)].p
         if (!this.isOutputRenderingStop) {
             const responseItem: HTMLDivElement = this.element.querySelector(`#e-response-item_${this.prompts.length - 1}`);
             let lastPrompt: PromptModel = this.prompts[this.prompts.length - 1];
+            const processResponse: (rawResponse: string) => void = (rawResponse: string): void => {
+                if (this.enableStreaming) {
+                    isFinalUpdate = false;
+                    const htmlResponse: string | Promise<string> = MarkdownConverter.toHtml(rawResponse);
+                    lastPrompt.response = htmlResponse as string;
+                    this.streamResponse(lastPrompt.response, this.prompts.length - 1);
+                } else {
+                    lastPrompt.response =  rawResponse;
+                    this.updateResponse(lastPrompt.response, this.prompts.length - 1, isFinalUpdate, responseItem);
+                }
+            };
             if (typeof outputResponse === 'string') {
                 if (!this.isResponseRequested) {
                     this.prompts = [...this.prompts, { prompt: null, response: null, isResponseHelpful: null, attachedFiles: null}];
                     lastPrompt = this.prompts[this.prompts.length - 1];
                 }
-                lastPrompt.response = outputResponse;
-                this.updateResponse(lastPrompt.response, this.prompts.length - 1, isFinalUpdate, responseItem);
+                processResponse(outputResponse);
             }
             if (typeof outputResponse === 'object') {
                 const tPrompt: PromptModel = {
@@ -2476,10 +2948,9 @@ SanitizeHtmlHelper.sanitize(this.prompts[parseInt(promptIndex.toString(), 10)].p
                         (<{ isResponseHelpful: boolean }>outputResponse).isResponseHelpful
                 };
                 if (this.prompt === tPrompt.prompt || this.lastStreamPrompt === tPrompt.prompt) {
-                    lastPrompt.response = tPrompt.response;
                     lastPrompt.attachedFiles = tPrompt.attachedFiles;
                     lastPrompt.isResponseHelpful = tPrompt.isResponseHelpful;
-                    this.updateResponse(lastPrompt.response, this.prompts.length - 1, isFinalUpdate, responseItem);
+                    processResponse(tPrompt.response);
                 } else {
                     this.prompts = [...this.prompts, tPrompt];
                     this.renderOutputContainer(tPrompt.prompt, tPrompt.response, tPrompt.attachedFiles,
@@ -2489,16 +2960,25 @@ SanitizeHtmlHelper.sanitize(this.prompts[parseInt(promptIndex.toString(), 10)].p
                     this.lastStreamPrompt = tPrompt.prompt;
                 }
             }
-            if (isFinalUpdate && this.hasStopResponseButton()) {
-                this.toggleStopRespondingButton(false);
+            if (isFinalUpdate) {
+                this.setupViewportFilling();
             }
-            this.isResponseRequested = !isFinalUpdate;
+            if (!this.enableStreaming) {
+                if (isFinalUpdate && this.hasStopResponseButton()) {
+                    this.toggleStopRespondingButton(false);
+                }
+                this.isResponseRequested = !isFinalUpdate;
+            }
         }
         this.isProtectedOnChange = prevOnChange;
+        if (this.enableScrollToBottom && this.downArrowIcon && this.outputContentBodyEle && this.contentWrapper) {
+            this.downArrowIcon.visible = this.outputContentBodyEle.scrollHeight > this.contentWrapper.clientHeight;
+        }
     }
 
     /**
      * Scrolls the view to the bottom to display the most recent response in the AIAssistView component.
+     *
      * This method programmatically scrolls the view to the bottom,
      * typically used when new responses are added or to refocus on the latest response.
      *
@@ -2574,7 +3054,7 @@ SanitizeHtmlHelper.sanitize(this.prompts[parseInt(promptIndex.toString(), 10)].p
                     this.updateFooterToolbar();
                 }
                 if (newProp.footerToolbarSettings.toolbarPosition) {
-                    this.updateFooterType();
+                    this.updateFooterType(newProp.footerToolbarSettings.toolbarPosition);
                 }
                 break;
             case 'promptToolbarSettings':
@@ -2584,11 +3064,14 @@ SanitizeHtmlHelper.sanitize(this.prompts[parseInt(promptIndex.toString(), 10)].p
                 if (this.outputElement) { remove(this.outputElement); }
                 if (this.hasStopResponseButton()) { this.toggleStopRespondingButton(false); }
                 this.aiAssistViewRendered = false;
+                this.latestResponseMinHeight = null;
                 this.renderOutputContent(true);
                 this.detachCodeCopyEventHandler();
                 if (this.bannerTemplate) {
                     this.updateBannerTemplate(this.bannerTemplate);
                 }
+                this.checkIsScrollable();
+                this.setupViewportFilling();
                 break;
             case 'prompt':
                 if (!this.footerTemplate) {
@@ -2614,6 +3097,10 @@ SanitizeHtmlHelper.sanitize(this.prompts[parseInt(promptIndex.toString(), 10)].p
                 this.updateFooterTemplate();
                 break;
             }
+            case 'enableStreaming': {
+                this.enableStreaming = newProp.enableStreaming;
+                break;
+            }
             case 'enableAttachments': {
                 if (!this.footerTemplate) {
                     this.updateAttachmentToolbarItemInSettings();
@@ -2621,10 +3108,22 @@ SanitizeHtmlHelper.sanitize(this.prompts[parseInt(promptIndex.toString(), 10)].p
                 }
                 break;
             }
+            case 'enableScrollToBottom': {
+                if (this.enableScrollToBottom) {
+                    this.bindScroll();
+                }
+                else {
+                    this.unBindScroll();
+                }
+                break;
+            }
             case 'attachmentSettings':
                 this.updateAttachmentSettings(newProp.attachmentSettings);
+                break;
+            case 'speechToTextSettings':
+                this.handleSTTDynamicChange(newProp.speechToTextSettings, oldProp.speechToTextSettings);
+                break;
             }
         }
     }
 }
-

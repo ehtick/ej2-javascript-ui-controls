@@ -1,7 +1,7 @@
 import { PdfPage } from './../pdf-page';
 import { _PdfStreamWriter } from './pdf-stream-writer';
 import { _PdfBaseStream, _PdfContentStream } from './../base-stream';
-import { _floatToString, _addProcSet, _reverseMapBlendMode, _mapBlendMode, _getNewGuidString, _getBezierArc, _numberToString, _bytesToString, _stringToUnicodeArray } from './../utils';
+import { _floatToString, _addProcSet, _reverseMapBlendMode, _mapBlendMode, _getNewGuidString, _getBezierArc, _numberToString, _bytesToString, _stringToUnicodeArray, _isNullOrUndefined } from './../utils';
 import { _PdfDictionary, _PdfReference, _PdfName } from './../pdf-primitives';
 import { _PdfCrossReference } from './../pdf-cross-reference';
 import { PdfCjkStandardFont, PdfFont, PdfFontStyle, PdfStandardFont, PdfTrueTypeFont } from './../fonts/pdf-standard-font';
@@ -800,7 +800,7 @@ export class PdfGraphics {
      * let document: PdfDocument = new PdfDocument(data, password);
      * // Access the first page
      * let page: PdfPage = document.getPage(0);
-     * // Get the graphics of the PDF page
+     * // Gets the graphics of the PDF page
      * let graphics: PdfGraphics = page.graphics;
      * // Create a new pen
      * let pen: PdfPen = new PdfPen({r: 0, g: 0, b: 0}, 1);
@@ -1121,11 +1121,11 @@ export class PdfGraphics {
      * let document: PdfDocument = new PdfDocument(data, password);
      * // Access the first page
      * let page: PdfPage = document.getPage(0);
-     * // Get the first annotation of the page
+     * // Gets the first annotation of the page
      * let annotation: PdfRubberStampAnnotation = page.annotations.at(0) as PdfRubberStampAnnotation;
-     * // Get the appearance template of the annotation
+     * // Gets the appearance template of the annotation
      * let template: PdfTemplate = annotation.createTemplate();
-     * // Get the graphics of the PDF page
+     * // Gets the graphics of the PDF page
      * let graphics: PdfGraphics = page.graphics;
      * // Draw the template on the page graphics within the specified bounds
      * graphics.drawTemplate(template, { x: 10, y: 20, width: template.size.width, height: template.size.height });
@@ -1670,6 +1670,9 @@ export class PdfGraphics {
             format = arg3;
         }
         this._beginMarkContent();
+        if (font && font._document && font._document._crossReference) {
+            this._crossReference = font._document._crossReference;
+        }
         const layouter: _PdfStringLayouter = new _PdfStringLayouter();
         if (!format) {
             format = new PdfStringFormat();
@@ -2988,7 +2991,54 @@ export class PdfPen {
      * document.destroy();
      * ```
      */
-    constructor(color: PdfColor, width: number) {
+    constructor(color: PdfColor, width: number)
+    /**
+     * Initializes a new instance of the `PdfPen` class with customization properties.
+     *
+     * @remarks
+     * The `PdfPen` class is used to draw lines, curves, and outlines of shapes in a PDF document.
+     * This constructor allows you to specify the color and width, along with optional properties
+     * for advanced line styling such as dash patterns, line caps, and joins.
+     *
+     * @param {PdfColor} color - The color of the pen used for drawing.
+     * @param {number} width - The width of the pen in points (1 point = 1/72 inch).
+     * @param {object} [properties] - Optional customization properties for advanced pen styling.
+     * @param {number} [properties.dashOffset] - The offset distance from the start of a line
+     *                                           where the dash pattern begins. Measured in points.
+     * @param {number[]} [properties.dashPattern] - An array defining the dash pattern as
+     *                                              alternating lengths of dashes and gaps.
+     * @param {PdfDashStyle} [properties.dashStyle] - The predefined dash style of the pen.
+     * @param {number} [properties.miterLimit] - The limit of the miter length to the line width ratio.
+     *                                           Used when lineJoin is set to Miter. Default is typically 10.
+     * @param {PdfLineCap} [properties.lineCap] - The style applied to the ends of lines.
+     * @param {PdfLineJoin} [properties.lineJoin] - The style applied to the corners where two lines meet.
+     *
+     * @example
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data, password);
+     * // Access first page
+     * let page: PdfPage = document.getPage(0);
+     * // Gets the graphics of the PDF page
+     * let graphics: PdfGraphics = page.graphics;
+     * // Create a new pen
+     * let pen: PdfPen = new PdfPen({r: 0, g: 0, b: 0}, 4, {dashOffset: 0.5, dashPattern: [4, 2, 1, 3], dashStyle: PdfDashStyle.custom, miterLimit: 2, lineCap: PdfLineCap.round, lineJoin: PdfLineJoin.bevel});
+     * // Draw a rectangle using pen
+     * graphics.drawRectangle({x: 150, y: 50, width: 50, height: 50}, pen);
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    constructor(color: PdfColor, width: number, properties: {
+        dashOffset?: number, dashPattern?: number[], dashStyle?: PdfDashStyle,
+        miterLimit?: number, lineCap?: PdfLineCap, lineJoin?: PdfLineJoin
+    })
+    constructor(color: PdfColor, width: number, properties?: {
+        dashOffset?: number, dashPattern?: number[], dashStyle?: PdfDashStyle,
+        miterLimit?: number, lineCap?: PdfLineCap, lineJoin?: PdfLineJoin
+    }) {
         this._color = color;
         this._width = width;
         this._dashOffset = 0;
@@ -2997,6 +3047,445 @@ export class PdfPen {
         this._miterLimit = 0;
         this._lineCap = PdfLineCap.flat;
         this._lineJoin = PdfLineJoin.miter;
+        if (properties) {
+            if (_isNullOrUndefined(properties.dashOffset)) {
+                this._dashOffset = properties.dashOffset;
+            }
+            if (_isNullOrUndefined(properties.dashPattern) && Array.isArray(properties.dashPattern)) {
+                this._dashPattern = properties.dashPattern;
+            }
+            if (_isNullOrUndefined(properties.dashStyle)) {
+                this._dashStyle = properties.dashStyle;
+            }
+            if (_isNullOrUndefined(properties.miterLimit)) {
+                this._miterLimit = properties.miterLimit;
+            }
+            if (_isNullOrUndefined(properties.lineCap)) {
+                this._lineCap = properties.lineCap;
+            }
+            if (_isNullOrUndefined(properties.lineJoin)) {
+                this._lineJoin = properties.lineJoin;
+            }
+        }
+    }
+    /**
+     * Gets the pen color used for drawing.
+     *
+     * @returns {PdfColor} The current pen color.
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data, password);
+     * // Access first page
+     * let page: PdfPage = document.getPage(0);
+     * // Gets the graphics of the PDF page
+     * let graphics: PdfGraphics = page.graphics;
+     * // Create a new pen
+     * let pen: PdfPen = new PdfPen({r:0, g:0, b:0}, 4, {dashOffset: 0.5, dashPattern: [4,2,1,3], dashStyle: PdfDashStyle.custom, miterLimit:2, lineCap: PdfLineCap.round, lineJoin: PdfLineJoin.bevel});
+     * // Gets the pen color used for drawing
+     * const color: PdfColor = pen.color;
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    get color(): PdfColor {
+        return this._color;
+    }
+    /**
+     * Sets the pen color used for drawing.
+     *
+     * @param {PdfColor} value - The color to use for the pen.
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data, password);
+     * // Access first page
+     * let page: PdfPage = document.getPage(0);
+     * // Gets the graphics of the PDF page
+     * let graphics: PdfGraphics = page.graphics;
+     * // Create a new pen
+     * let pen: PdfPen = new PdfPen({r:0, g:0, b:0}, 4);
+     * // Set the pen color for drawing
+     * pen.color = {r: 255, g: 0, b: 0};
+     * // Draw using the pen
+     * graphics.drawRectangle({x: 150, y: 50, width: 50, height: 50}, pen);
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    set color(value: PdfColor) {
+        if (_isNullOrUndefined(value)) {
+            this._color = value;
+        }
+    }
+    /**
+     * Gets the width of the pen.
+     *
+     * @returns {number} The pen width in points.
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data, password);
+     * // Access first page
+     * let page: PdfPage = document.getPage(0);
+     * // Gets the graphics of the PDF page
+     * let graphics: PdfGraphics = page.graphics;
+     * // Create a new pen
+     * let pen: PdfPen = new PdfPen({r:0, g:0, b:0}, 4, {dashOffset: 0.5, dashPattern: [4,2,1,3], dashStyle: PdfDashStyle.custom, miterLimit:2, lineCap: PdfLineCap.round, lineJoin: PdfLineJoin.bevel});
+     * // Gets the width of the pen used for drawing
+     * const w: number = pen.width;
+     * // Draw a rectangle using pen
+     * graphics.drawRectangle({x: 150, y: 50, width: 50, height: 50}, pen);
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    get width(): number {
+        return this._width;
+    }
+    /**
+     * Sets the width of the pen.
+     *
+     * @param {number} value - The pen width in points.
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data, password);
+     * // Access first page
+     * let page: PdfPage = document.getPage(0);
+     * // Gets the graphics of the PDF page
+     * let graphics: PdfGraphics = page.graphics;
+     * // Create a new pen
+     * let pen: PdfPen = new PdfPen({r:0, g:0, b:0}, 1);
+     * // Sets the pen width for drawing
+     * pen.width = 2;
+     * graphics.drawRectangle({x: 150, y: 50, width: 50, height: 50}, pen);
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    set width(value: number) {
+        if (!Number.isNaN(value) && value > 0) {
+            this._width = value;
+        }
+    }
+    /**
+     * Gets the dash phase offset that shifts where the dash pattern begins. Measured in points.
+     *
+     * @returns {number} The dash offset in points.
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data, password);
+     * // Access first page
+     * let page: PdfPage = document.getPage(0);
+     * // Gets the graphics of the PDF page
+     * let graphics: PdfGraphics = page.graphics;
+     * // Create a new pen
+     * let pen: PdfPen = new PdfPen({r:0, g:0, b:0}, 4, {dashOffset: 0.5, dashPattern: [4,2,1,3], dashStyle: PdfDashStyle.custom, miterLimit:2, lineCap: PdfLineCap.round, lineJoin: PdfLineJoin.bevel});
+     * const offset = pen.dashOffset;
+     * // Draw a rectangle using pen
+     * graphics.drawRectangle({x: 150, y: 50, width: 50, height: 50}, pen);
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    get dashOffset(): number {
+        return this._dashOffset;
+    }
+    /**
+     * Sets the dash phase offset that determines where the dash pattern begins. Measured in points.
+     *
+     * @param {number} value - The dash offset in points.
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data, password);
+     * // Access first page
+     * let page: PdfPage = document.getPage(0);
+     * // Gets the graphics of the PDF page
+     * let graphics: PdfGraphics = page.graphics;
+     * // Create a new pen
+     * let pen: PdfPen = new PdfPen({r:0, g:0, b:0}, 4);
+     * //Sets the dashOffset value for drawing
+     * pen.dashOffset = 0.5;
+     * // Draw a rectangle using pen
+     * graphics.drawRectangle({x: 150, y: 50, width: 50, height: 50}, pen);
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    set dashOffset(value: number) {
+        if (!Number.isNaN(value) && value > 0) {
+            this._dashOffset = value;
+        }
+    }
+    /**
+     * Gets the dash pattern array specifying alternating dash and gap lengths in points.
+     *
+     * @returns {number[]} The dash/gap lengths array.
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data, password);
+     * // Access first page
+     * let page: PdfPage = document.getPage(0);
+     * // Gets the graphics of the PDF page
+     * let graphics: PdfGraphics = page.graphics;
+     * // Create a new pen
+     * let pen: PdfPen = new PdfPen({r:0, g:0, b:0}, 4, {dashOffset: 0.5, dashPattern: [4,2,1,3], dashStyle: PdfDashStyle.custom});
+     * // Gets the dash pattern used for drawing
+     * const pattern: number[] = pen.dashPattern;
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    get dashPattern(): number[] {
+        return this._dashPattern;
+    }
+    /**
+     * Sets the dash pattern array specifying alternating dash and gap lengths in points.
+     *
+     * @remarks
+     * The dash pattern cannot be set when the pen's `dashStyle` is `PdfDashStyle.Solid`.
+     *
+     * @param {number[]} value - Array of numbers representing dash and gap lengths.
+     * ```typescript
+     * // Create a new PDF document
+     * let document: PdfDocument = new PdfDocument();
+     * // Add a new page
+     * let page: PdfPage = document.pages.add();
+     * // Gets the graphics of the PDF page
+     * let graphics: PdfGraphics = page.graphics;
+     * // Create a pen with width 2
+     * let pen: PdfPen = new PdfPen({r:0, g:0, b:0}, 2);
+     * //Sets the dashPattern value for drawing
+     * pen.dashPattern = [3, 1, 3, 1];
+     * // Draw a rectangle using pen
+     * graphics.drawRectangle({x: 150, y: 50, width: 50, height: 50}, pen);
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    set dashPattern(value: number[]) {
+        if (Array.isArray(value) && value.length > 0) {
+            this._dashPattern = value;
+        }
+    }
+    /**
+     * Gets the dash style of the pen.
+     *
+     * @returns {PdfDashStyle} The dash style.
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data, password);
+     * // Access first page
+     * let page: PdfPage = document.getPage(0);
+     * // Gets the graphics of the PDF page
+     * let graphics: PdfGraphics = page.graphics;
+     * // Create a new pen
+     * let pen: PdfPen = new PdfPen({r:0, g:0, b:0}, 4, {dashOffset: 0.5, dashPattern: [4,2,1,3], dashStyle: PdfDashStyle.custom, miterLimit:2, lineCap: PdfLineCap.round, lineJoin: PdfLineJoin.bevel});
+     * // Gets pen dash style used for drawing
+     * const style: PdfDashStyle = pen.dashStyle;
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    get dashStyle(): PdfDashStyle {
+        return this._dashStyle;
+    }
+    /**
+     * Sets the dash style of the pen.
+     *
+     * @param {PdfDashStyle} value - The dash style to apply.
+     * ```typescript
+     * // Create a new PDF document
+     * let document: PdfDocument = new PdfDocument();
+     * // Add a new page
+     * let page: PdfPage = document.pages.add();
+     * // Gets the graphics of the PDF page
+     * let graphics: PdfGraphics = page.graphics;
+     * // Create a pen and set a dash style
+     * let pen: PdfPen = new PdfPen({r:0, g:0, b:0}, 2);
+     * // Sets the dashStyle value for drawing
+     * pen.dashStyle = PdfDashStyle.custom;
+     * // Sets the dash pattern for custom style
+     * pen.dashPattern = [4, 2, 1, 3];
+     * //Sets the dashStyle value for drawing
+     * // For custom style, set the pattern as well
+     * pen.dashStyle = PdfDashStyle.custom;
+     * pen.dashPattern = [4,2,1,3];
+     * // Draw a rectangle using pen
+     * graphics.drawRectangle({x: 150, y: 50, width: 50, height: 50}, pen);
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    set dashStyle(value: PdfDashStyle) {
+        if (!Number.isNaN(value) && value >= PdfDashStyle.solid && value <= PdfDashStyle.custom) {
+            this._dashStyle = value;
+        }
+    }
+    /**
+     * Gets the miter limit value, used when lineJoin is Miter.
+     *
+     * @returns {number} The miter limit value.
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data, password);
+     * // Access first page
+     * let page: PdfPage = document.getPage(0);
+     * // Gets the graphics of the PDF page
+     * let graphics: PdfGraphics = page.graphics;
+     * // Create a new pen
+     * let pen: PdfPen = new PdfPen({r:0, g:0, b:0}, 4);
+     * // Gets miter limit used for drawing
+     * const m: number = pen.miterLimit;
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    get miterLimit(): number {
+        return this._miterLimit;
+    }
+    /**
+     * Sets the miter limit for mitered line joins.
+     *
+     * @param {number} value - The miter limit value.
+     * ```typescript
+     * // Create a new PDF document
+     * let document: PdfDocument = new PdfDocument();
+     * // Add a new page
+     * let page: PdfPage = document.pages.add();
+     * // Gets the graphics of the PDF page
+     * let graphics: PdfGraphics = page.graphics;
+     * // Create a pen and set miter limit
+     * let pen: PdfPen = new PdfPen({r:0, g:0, b:0}, 2);
+     * // Sets the line join type as miter.
+     * pen.lineJoin = PdfLineJoin.miter;
+     * // Sets the miter limit value for drawing
+     * pen.miterLimit = 4;
+     * // Draw a rectangle using pen
+     * graphics.drawRectangle({x: 150, y: 50, width: 50, height: 50}, pen);
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    set miterLimit(value: number) {
+        if (!Number.isNaN(value) && _isNullOrUndefined(value)) {
+            this._miterLimit = value;
+        }
+    }
+    /**
+     * Gets the line cap style applied to the ends of lines.
+     *
+     * @returns {PdfLineCap} The line cap style.
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data, password);
+     * // Access first page
+     * let page: PdfPage = document.getPage(0);
+     * // Gets the graphics of the PDF page
+     * let graphics: PdfGraphics = page.graphics;
+     * // Create a new pen
+     * let pen: PdfPen = new PdfPen({r:0, g:0, b:0}, 4);
+     * // Gets line cap style used for drawing
+     * const cap: PdfLineCap = pen.lineCap; // PdfLineCap.flat | round | square
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    get lineCap(): PdfLineCap {
+        return this._lineCap;
+    }
+    /**
+     * Sets the line cap style applied to the ends of lines.
+     *
+     * @param {PdfLineCap} value - The line cap style.
+     * ```typescript
+     * // Create a new PDF document
+     * let document: PdfDocument = new PdfDocument();
+     * // Add a new page
+     * let page: PdfPage = document.pages.add();
+     * // Gets the graphics of the PDF page
+     * let graphics: PdfGraphics = page.graphics;
+     * // Create a pen and set line cap
+     * let pen: PdfPen = new PdfPen({r:0, g:0, b:0}, 2);
+     * // Sets the line cap value used for drawing
+     * pen.lineCap = PdfLineCap.round;
+     * // Draw a rectangle using pen
+     * graphics.drawRectangle({x: 150, y: 50, width: 50, height: 50}, pen);
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    set lineCap(value: PdfLineCap) {
+        if (!Number.isNaN(value) && value >= PdfLineCap.flat && value <= PdfLineCap.square) {
+            this._lineCap = value;
+        }
+    }
+    /**
+     * Gets the line join style used at intersections between line segments.
+     *
+     * @returns {PdfLineJoin} The line join style.
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data, password);
+     * // Access first page
+     * let page: PdfPage = document.getPage(0);
+     * // Gets the graphics of the PDF page
+     * let graphics: PdfGraphics = page.graphics;
+     * // Create a new pen
+     * let pen: PdfPen = new PdfPen({r:0, g:0, b:0}, 4);
+     * // Gets the line join style used for drawing
+     * const join: PdfLineJoin = pen.lineJoin; // PdfLineJoin.miter | round | bevel
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    get lineJoin(): PdfLineJoin {
+        return this._lineJoin;
+    }
+    /**
+     * Sets the line join style used at intersections between line segments.
+     *
+     * @param {PdfLineJoin} value - The line join style to set.
+     * ```typescript
+     * // Create a new PDF document
+     * let document: PdfDocument = new PdfDocument();
+     * // Add a new page
+     * let page: PdfPage = document.pages.add();
+     * // Gets the graphics of the PDF page
+     * let graphics: PdfGraphics = page.graphics;
+     * // Create a pen and set line join
+     * let pen: PdfPen = new PdfPen({r:0, g:0, b:0}, 2);
+     * // Sets the line join type for drawing
+     * pen.lineJoin = PdfLineJoin.bevel;
+     * // Draw a rectangle using pen
+     * graphics.drawRectangle({x: 150, y: 50, width: 50, height: 50}, pen);
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    set lineJoin(value: PdfLineJoin) {
+        if (!Number.isNaN(value) && value >= PdfLineJoin.miter && value <= PdfLineJoin.bevel) {
+            this._lineJoin = value;
+        }
     }
 }
 export class _PdfUnitConvertor {

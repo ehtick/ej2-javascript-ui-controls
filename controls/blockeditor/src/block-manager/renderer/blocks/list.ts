@@ -89,23 +89,20 @@ export class ListRenderer {
         const oldBlockClone: BlockModel = decoupleReference(block);
         const blockElement: HTMLElement = this.parent.getBlockElementById(block.id);
         const listItem: HTMLElement = blockElement.querySelector('li');
-        if (listItem && listItem.textContent.trim() !== '') {
-            listItem.classList.toggle('e-checked', isChecked);
+        if (listItem && listItem.textContent.trim() === '') {
+            isChecked = false;
+        }
+        listItem.classList.toggle('e-checked', isChecked);
+        const existingSvg: SVGSVGElement = blockElement.querySelector('svg');
 
-            const existingSvg: SVGSVGElement = blockElement.querySelector('svg');
-
-            if (existingSvg) {
-                while (existingSvg.firstChild) {
-                    existingSvg.removeChild(existingSvg.firstChild);
-                }
-                const svgElements: SVGElement[] = isChecked ? this.getCheckedSvgElements() : this.getUncheckedSvgElements();
-                svgElements.forEach((element: SVGElement) => existingSvg.appendChild(element));
+        if (existingSvg) {
+            while (existingSvg.firstChild) {
+                existingSvg.removeChild(existingSvg.firstChild);
             }
-            props.isChecked = isChecked;
+            const svgElements: SVGElement[] = isChecked ? this.getCheckedSvgElements() : this.getUncheckedSvgElements();
+            svgElements.forEach((element: SVGElement) => existingSvg.appendChild(element));
         }
-        else {
-            props.isChecked = false;
-        }
+        props.isChecked = isChecked;
         this.parent.stateManager.updateManagerBlocks();
         if (!isUndoRedoAction) {
             this.parent.undoRedoAction.trackCheckedStateForUndoRedo(block.id, props.isChecked);

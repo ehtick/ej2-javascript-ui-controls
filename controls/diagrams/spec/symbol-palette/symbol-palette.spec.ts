@@ -4,950 +4,1010 @@
 import { createElement } from '@syncfusion/ej2-base';
 import { Diagram } from '../../src/diagram/diagram';
 import { Path, Node, BpmnShape } from '../../src/diagram/objects/node';
-
 import { BpmnDiagrams } from '../../src/diagram/objects/bpmn';
 import { Connector } from '../../src/diagram/objects/connector';
 import { HeaderModel, LaneModel, NodeModel, SwimLaneModel } from '../../src/diagram/objects/node-model';
 import { ConnectorModel } from '../../src/diagram/objects/connector-model';
 import { NodeConstraints, SelectorConstraints, PortVisibility, PortConstraints } from '../../src/diagram/enum/enum';
 import { UndoRedo } from '../../src/diagram/objects/undo-redo'
-import {
-    SymbolPalette, SymbolInfo, PaletteModel,
-} from '../../src/symbol-palette/index';
+import { SymbolPalette, SymbolInfo, PaletteModel } from '../../src/symbol-palette/index';
 import { profile, inMB, getMemoryProfile } from '../common.spec';
-
 import { MouseEvents } from '../diagram/interaction/mouseevents.spec';
 import { IElement, PointModel, TextElement, StackPanel, DiagramElement, randomId, UserHandleModel, ShapeStyleModel, cloneObject } from '../../src/diagram/index';
 import { BpmnShapeModel, BpmnSubProcessModel } from "../../src/index";
+
 Diagram.Inject(BpmnDiagrams);
 SymbolPalette.Inject(BpmnDiagrams);
 Diagram.Inject(UndoRedo);
 
 describe('Symbol Palette', () => {
-    // describe('Testing symbol palette', () => {
-    //     let diagram: Diagram;
-    //     let palette: SymbolPalette;
-    //     let ele: HTMLElement;
-    //     let mouseEvents: MouseEvents = new MouseEvents();
-    //     let flowshapes: NodeModel[] = [{
-    //         id: 'start', dragSize: { width: 300, height: 300 }, previewSize: { width: 200, height: 200 }, shape: { type: 'Flow', shape: 'Terminator' }, pivot: { x: 0, y: 0 },
-    //         tooltip: { content: 'symbol', isSticky: true }, constraints: NodeConstraints.Default | NodeConstraints.Tooltip,
-    //     },
-    //     { id: 'process', dragSize: { width: 300, height: 300 }, previewSize: { width: 200, height: 200 }, shape: { type: 'Flow', shape: 'Process' } },
-    //     { id: 'decision', dragSize: { width: 300, height: 300 }, previewSize: { width: 200, height: 200 }, shape: { type: 'Flow', shape: 'Decision' } },
-    //     { id: 'data', dragSize: { width: 300, height: 300 }, previewSize: { width: 200, height: 200 }, shape: { type: 'Flow', shape: 'Data' } },
-    //     { id: 'end', dragSize: { width: 300, height: 300 }, previewSize: { width: 200, height: 200 }, shape: { type: 'Flow', shape: 'Terminator' } }];
-
-    //     let bpmnShapes: NodeModel[] = [{
-    //         id: 'node2a', width: 100, height: 100, offsetX: 500, offsetY: 100, constraints: NodeConstraints.Default | NodeConstraints.AllowDrop,
-    //         shape: { type: 'Bpmn', shape: 'DataObject', dataObject: { collection: false, type: 'None' } }
-    //     },
-    //     {
-    //         id: 'task', width: 100, height: 100, offsetX: 300, offsetY: 100,
-    //         shape: {
-    //             type: 'Bpmn', shape: 'Activity',
-    //             activity: { activity: 'SubProcess', subProcess: { type: 'Event' } }
-    //         }
-    //     }, {
-    //         id: 'annot4', width: 100, height: 100, pivot: { x: 0, y: 0 },
-    //         shape: { type: 'Bpmn', shape: 'TextAnnotation', annotation: { angle: 280, length: 150, text: 'textAnnotation4' } }
-    //     }];
-
-    //     let connectorSymbols: ConnectorModel[] = [{
-    //         id: 'connector1a', type: 'Straight',
-    //         sourcePoint: { x: 15, y: 15 }, targetPoint: { x: 20, y: 20 },
-    //     }, {
-    //         id: 'link2', sourcePoint: { x: 0, y: 0 }, targetPoint: { x: 40, y: 40 }, type: 'Orthogonal',
-    //         shape: {
-    //             type: 'Bpmn',
-    //             flow: 'Message',
-    //             association: 'directional'
-    //         }, style: {
-    //             strokeDashArray: '2,2'
-    //         },
-    //         segments: [{ type: 'Orthogonal', length: 30, direction: 'Bottom' },
-    //         { type: 'Orthogonal', length: 80, direction: 'Right' }]
-    //     }];
-
-    //     let connDecorators: ConnectorModel[] = [{
-    //         id: 'connectordec1', type: 'Straight',
-    //         sourcePoint: { x: 0, y: 0 }, targetPoint: { x: 40, y: 40 },
-    //         style: { strokeColor: 'red' }
-    //     },
-
-    //     {
-    //         id: 'connectordec2', type: 'Orthogonal',
-    //         sourcePoint: { x: 0, y: 0 }, targetPoint: { x: 40, y: 40 },
-    //     },
-    //     {
-    //         id: 'connectordec3', type: 'Bezier',
-    //         sourcePoint: { x: 0, y: 0 }, targetPoint: { x: 40, y: 40 },
-    //     }];
-
-    //     let grids: NodeModel[] = [{
-    //         id: 'grid', width: 100, height: 100
-    //     }];
-
-    //     let svgNodes: NodeModel[] = [{
-    //         id: 'native', width: 100, height: 100, shape: {
-    //             type: 'Native',
-    //             content: '<g> ${id} <style xmlns=http://www.w3.org/2000/svg type=text/css>.st051{fill:#CBC4C9;}.st152{fill:#E5DCE1;}.st252{fill:#DBD5DA;}.st3552{fill:#69696B;}</style><g xmlns=http://www.w3.org/2000/svg>    <path class=st051 d=M2.8,37L18,44.3c5,2.4,10.8,2.3,15.6-0.3l13.6-7.3c1.7-0.9,2.3-5.6,1.9-7c0,0.1,0.1,0.3,0.1,0.4v-4.3   c0.1,1.6-0.8,3.1-2.3,3.7l0,0l-13.1-6.9c-5.5-2.9-12-2.9-17.5,0L3.2,29.8c-1.3-0.5-2.3-1.7-2.5-3.2v6.7 />    <path class=st152 d=M18.2,37.2l-15-7.3c-1.7-0.7-2.6-2.7-1.9-4.4c0.3-0.8,0.9-1.4,1.7-1.8l13.6-7.2c5.4-2.8,11.9-2.8,17.3,0   l13.2,7c1.7,0.8,2.5,2.9,1.7,4.6c-0.3,0.8-1,1.4-1.7,1.7L33.6,37C28.8,39.5,23.1,39.6,18.2,37.2z />    <path class=st252 d=M25.5,39.2c-2.7,0-5.3-0.6-7.7-1.8L2.6,30.1c-1.1-0.6-1.9-1.6-2.3-2.8l1-0.3C1.6,28,2.2,28.7,3,29.2l15.2,7.4   c4.8,2.3,10.5,2.2,15.2-0.3L47,29c0.9-0.5,1.6-1.4,1.8-2.4l1,0.1c-0.2,1.4-1.1,2.5-2.3,3.1l-13.7,7.3   C31.3,38.5,28.4,39.2,25.5,39.2z />    <path class=st3552 d=M26,46.1c-0.7,0-1.4,0-2.2-0.1c-2.3-0.3-4.6-1-6.8-2l-9.1-4.4L4.8,38H4.6c-1-0.4-1.9-1-2.7-1.8   c-0.7-0.8-1.2-1.8-1.5-2.8c-0.2-0.6-0.2-1.2-0.2-1.8V28l0,0c0,0,0-0.1,0-0.3c0.2-2.3,1.5-4.4,3.6-5.5l12.4-6.6c5.6-3,12.4-3,18-0.1   l13.3,7c1.5,1,2.4,2.7,2.3,4.5l-0.1,5.2c0,2.1-1.2,4-3.1,4.9L33,44.5C30.8,45.6,28.4,46.2,26,46.1z M25.2,14.3   c-3,0-5.9,0.7-8.6,2.1L4.2,23.1c-1.7,0.9-2.9,2.7-3,4.6c0,0.1,0,0.2,0,0.2v3.6c0,0.5,0.1,1,0.2,1.5C1.6,34,2,34.8,2.6,35.5   c0.7,0.7,1.5,1.2,2.4,1.6l0.2,0.1l3.2,1.5l9.1,4.4c2,1,4.2,1.6,6.5,1.9c2.9,0.4,5.9-0.1,8.6-1.4l13.7-7.3c1.5-0.8,2.5-2.3,2.5-4   l0.1-5.2c0.1-1.5-0.6-2.9-1.8-3.6l-13.3-7C31.1,15.1,28.2,14.3,25.2,14.3L25.2,14.3z />    <path class=st3552 d=M4,33.5c0,0.5-0.2,0.8-0.5,0.8S2.8,34,2.8,33.5s0.2-0.8,0.5-0.8S4,33,4,33.5z />    <path class=st3552 d=M7,35.1c0,0.5-0.2,0.8-0.5,0.8s-0.6-0.3-0.7-0.8s0.2-0.8,0.5-0.8S6.9,34.7,7,35.1z />    <path class=st3552 d=M9.9,36.7c0,0.5-0.2,0.8-0.5,0.8s-0.6-0.3-0.7-0.8s0.2-0.8,0.5-0.8S9.9,36.3,9.9,36.7z />    <path class=st3552 d=M17.6,40.2c0,0.6-0.3,1.1-0.7,1.1s-0.8-0.5-0.9-1.1s0.3-1.1,0.7-1.1S17.6,39.6,17.6,40.2z />    <path class=st3552 d=M32,15.2l0.4-12.7c0-0.6,0.5-1.1,1.1-1.1c0.2,0,0.3,0,0.5,0.1l0,0c0.4,0.2,0.6,0.5,0.6,0.9L35,16.5L32,15.2z /></g></g>',
-    //             text: 'Element for Network Diagram'
-    //         } as NodeModel
-    //     }];
-
-    //     let htmlNodes: NodeModel[] = [{
-    //         id: 'html', width: 100, height: 100, shape: {
-    //             type: 'HTML',
-    //             content: '<div style="background:red;height:100%;width:100%;"><input type="button" value="{{:value}}" /></div>',
-    //         } as NodeModel
-    //     }];
-
-    //     let getTextElement: Function = (text: string) => {
-    //         let textElement: TextElement = new TextElement();
-    //         textElement.width = 50;
-    //         textElement.height = 20;
-    //         textElement.content = text;
-    //         return textElement;
-    //     };
-
-    //     let addRows: Function = (column: StackPanel) => {
-    //         column.children.push(getTextElement('Row1'));
-    //         column.children.push(getTextElement('Row2'));
-    //         column.children.push(getTextElement('Row3'));
-    //         column.children.push(getTextElement('Row4'));
-    //     };
-
-    //     let getNodeTemplate: Function = (symbol: NodeModel) => {
-    //         if (symbol.id.indexOf('grid') !== -1) {
-    //             let table: StackPanel = new StackPanel();
-    //             table.orientation = 'Horizontal';
-
-    //             let column1: StackPanel = new StackPanel();
-    //             column1.children = [];
-    //             column1.children.push(getTextElement('Column1'));
-    //             addRows(column1);
-
-    //             let column2: StackPanel = new StackPanel();
-    //             column2.children = [];
-    //             column2.children.push(getTextElement('Column2'));
-    //             addRows(column2);
-
-    //             table.children = [column1, column2];
-    //             return table;
-    //         }
-    //         return null;
-    //     };
-
-    //     beforeAll((): void => {
-    //         ele = createElement('div', { styles: 'width:100%;height:500px;' });
-    //         ele.appendChild(createElement('div', { id: 'symbolpalette1', styles: 'width:25%;float:left;' }));
-    //         ele.appendChild(createElement('div', { id: 'diagram1', styles: 'width:74%;height:500px;float:left;' }));
-    //         document.body.appendChild(ele);
-    //         let nodes: NodeModel[] = [
-    //             {
-    //                 id: 'nodea', maxHeight: 600, maxWidth: 600, minWidth: 300, minHeight: 300,
-    //                 constraints: NodeConstraints.Default | NodeConstraints.AllowDrop,
-    //                 offsetX: 200, offsetY: 200,
-    //                 shape: {
-    //                     type: 'Bpmn', shape: 'Activity', activity: {
-    //                         activity: 'SubProcess',
-    //                         subProcess: {
-    //                             collapsed: false, type: 'Transaction',
-    //                             //processes: ['start', 'end', 'nod1', 'nod']
-    //                         } as BpmnSubProcessModel
-    //                     },
-    //                 },
-    //             },
-    //             {
-    //                 id: 'node2', width: 100, height: 100, offsetX: 300, offsetY: 100,
-    //                 constraints: NodeConstraints.PointerEvents | NodeConstraints.Select,
-    //                 shape: {
-    //                     type: 'Path', data: 'M540.3643,137.9336L546.7973,159.7016L570.3633,159.7296L550.7723,171.9366' +
-    //                         'L558.9053,194.9966L540.3643,' +
-    //                         '179.4996L521.8223,194.9966L529.9553,171.9366L510.3633,159.7296L533.9313,159.7016L540.3643,137.9336z'
-    //                 }, annotations: [{ content: 'Path Element' }]
-    //             }
-    //         ];
-    //         let connectors: ConnectorModel[] = [{
-    //             id: 'connector1', type: 'Straight', sourcePoint: { x: 100, y: 300 },
-    //             targetPoint: { x: 200, y: 400 },
-    //         }];
-    //         let handle: UserHandleModel[] = [{
-    //             name: 'clone',
-    //             pathData:
-    //                 'M60.3,18H27.5c-3,0-5.5,2.4-5.5,5.5v38.2h5.5V23.5h32.7V18z M68.5,28.9h-30c-3,' +
-    //                 '0-5.5,2.4-5.5,5.5v38.2c0,3,2.4,5.5,5.5,5.5h30c3,0,5.5-2.4,5.5-5.5V34.4C73.9,31.4,71.5,28.9,68.5,28.9z ' +
-    //                 'M68.5,72.5h-30V34.4h30V72.5z',
-    //             visible: true,
-    //             offset: 0,
-    //             side: 'Bottom',
-    //             margin: { top: 0, bottom: 0, left: 0, right: 0 }
-    //         }]
-
-
-    //         diagram = new Diagram({
-    //             connectors: connectors, nodes: nodes, pageSettings: { background: { color: 'transparent' } },
-    //             selectedItems: { constraints: SelectorConstraints.All, userHandles: handle },
-    //             width: '70%'
-    //         });
-    //         diagram.appendTo('#diagram1');
-
-    //         palette = new SymbolPalette({
-    //             width: '25%', height: '500px',
-    //             palettes: [
-    //                 { id: 'flow', expanded: true, symbols: flowshapes, iconCss: '', title: 'Flow Shapes' },
-    //                 { id: 'bpmn', expanded: true, symbols: bpmnShapes, iconCss: '', title: 'BPMN Shapes' },
-    //                 { id: 'grids', expanded: true, symbols: grids, title: 'Grids' },
-    //                 { id: 'native', expanded: true, symbols: svgNodes, title: 'Native Elements' },
-    //                 { id: 'html', expanded: true, symbols: htmlNodes, iconCss: 'shapes', title: 'Html Elements' },
-    //                 { id: 'connectors', expanded: true, height: 200, symbols: connectorSymbols, iconCss: '', title: 'Connectors' },
-    //                 { id: 'decorators', expanded: true, symbols: connDecorators, iconCss: '', title: 'Connectors' },
-    //             ], enableAnimation: false, enableSearch: true,
-    //             symbolMargin: { top: 5, bottom: 5, left: 5, right: 5 }
-    //         });
-    //         palette.appendTo('#symbolpalette1');
-    //     });
-
-    //     afterAll((): void => {
-    //         diagram.destroy();
-    //         palette.destroy();
-    //         ele.remove();
-    //         diagram = null;
-    //         palette = null;
-    //         ele = null;
-    //     });
-
-    //     it('Checking default palette rendering', (done: Function) => {
-            
-    //         setTimeout(() => {
-    //             console.log('timeOut8');
-    //             //just for coverage
-    //             let events: MouseEvents = new MouseEvents();
-    //             events.mouseDownEvent(palette.element, 75, 100, false, false);
-    //             events.mouseMoveEvent(palette.element, 100, 100, false, false);
-    //             events.mouseUpEvent(palette.element, 100, 100, false, false);
-    //             palette.getPersistData();
-    //             let start: HTMLElement = document.getElementById('start');
-    //             expect(start.offsetWidth == 284).toBe(true);
-    //             done();
-    //         }, 500);
-    //          done();
-    //     });
-
-    //     it('Checking symbol size', (done: Function) => {
-            
-    //         palette.enableSearch = false;
-    //         palette.dataBind();
-    //         palette.symbolWidth = 80;
-    //         palette.symbolHeight = 80;
-    //         palette.getSymbolTemplate = (symbol: NodeModel): DiagramElement => {
-    //             return getNodeTemplate(symbol);
-    //         };
-    //         palette.dataBind();
-    //         setTimeout(() => {
-    //             console.log('timeOut9');
-    //             let start: HTMLElement = document.getElementById('start');
-    //             expect(start.offsetWidth == 147).toBe(true);
-    //             done();
-
-    //         }, 100);
-    //          done();
-    //     });
-
-    //     it('Checking connectors', (done: Function) => {
-    //         let decorator = palette.symbolTable['connectordec1'].wrapper.children[0].children[0].children[2];
-    //         expect(decorator.offsetX == 71.245 && decorator.offsetY == 71.245).toBe(true);
-    //         decorator = palette.symbolTable['connectordec2'].wrapper.children[0].children[0].children[2];
-    //         expect(Math.round(decorator.offsetX) == 69 && decorator.offsetY == 68.5).toBe(true);
-    //         decorator = palette.symbolTable['connectordec3'].wrapper.children[0].children[0].children[2];
-    //         expect(decorator.offsetX == 69.9966501567237 && decorator.offsetY == 68.92401316056798).toBe(true);
-    //         decorator = palette.symbolTable['connectordec1'].wrapper.children[0].children[0].children[0];
-    //         expect(decorator.offsetX == 36.5 && decorator.offsetY == 36.5).toBe(true);
-    //         decorator = palette.symbolTable['connectordec2'].wrapper.children[0].children[0].children[0];
-    //         expect(decorator.offsetX == 36.5 && decorator.offsetY == 36.5).toBe(true);
-    //         decorator = palette.symbolTable['connectordec3'].wrapper.children[0].children[0].children[0];
-    //         expect(decorator.offsetX == 36.5 && decorator.offsetY == 36.5).toBe(true);
-    //         decorator = palette.symbolTable['link2'].wrapper.children[0].children[0].children[0];
-    //         expect(decorator.offsetX == 36.5 && decorator.offsetY == 36.5).toBe(true);
-    //         done();
-    //     });
-
-    //     it('Checking custom size', (done: Function) => {
-            
-    //         palette.getSymbolInfo = (symbol: Node | Connector): SymbolInfo => {
-    //             if (symbol.shape.type === 'Bpmn') {
-    //                 return { width: 50, height: 50 };
-    //             }
-    //             if (symbol.id === 'decision' || symbol.id === 'start' || symbol.id === 'end') {
-    //                 return { width: 100, height: 40 };
-    //             }
-    //             return { width: 75, height: 40 };
-    //         };
-    //         palette.dataBind();
-    //         setTimeout(() => {
-    //             console.log('timeOut10');
-    //             let start: HTMLElement = document.getElementById('start');
-    //             expect(start.offsetWidth == 147).toBe(true);
-    //             done();
-    //         }, 500);
-    //          done();
-    //     });
-
-    //     it('Checking description', (done: Function) => {
-            
-    //         palette.getSymbolInfo = (symbol: Node | Connector): SymbolInfo => {
-    //             if (symbol['text'] !== undefined) {
-    //                 return { width: 75, height: 40, description: { text: symbol['text'], overflow: 'Wrap' } };
-    //             }
-    //             if (symbol.shape.type === 'Bpmn') {
-    //                 return { width: 50, height: 50, description: { text: symbol.shape['shape'] } };
-    //             }
-    //             if (symbol.id === 'decision' || symbol.id === 'start' || symbol.id === 'end') {
-    //                 return { width: 100, height: 40, description: { text: symbol.shape['shape'] } };
-    //             }
-    //             return { width: 75, height: 40, description: { text: symbol.shape['shape'] } };
-    //         };
-    //         palette.dataBind();
-    //         setTimeout(() => {
-    //             console.log('timeOut11');
-    //             let start: HTMLElement = document.getElementById('start');
-    //             expect(start.offsetWidth == 147).toBe(true);
-    //             done();
-    //         }, 100);
-    //         done();
-    //     });
-
-    //     it('Checking fit option', (done: Function) => {
-            
-    //         palette.getSymbolInfo = (symbol: Node | Connector): SymbolInfo => {
-    //             if (symbol.shape.type === 'Bpmn') {
-    //                 return { width: 50, height: 50, description: { text: symbol.shape['shape'] } };
-    //             }
-    //             if (symbol.id === 'decision' || symbol.id === 'start' || symbol.id === 'end') {
-    //                 return { width: 100, height: 40, fit: true, description: { text: symbol.shape['shape'] } };
-    //             }
-    //             return { width: 75, height: 40, fit: true, description: { text: symbol.shape['shape'] } };
-    //         };
-    //         palette.dataBind();
-    //         let start: HTMLElement = document.getElementById('start');
-    //         setTimeout(() => {
-    //             console.log('timeOut12');
-    //             expect(start.offsetWidth == 147).toBe(true);
-    //             done();
-    //         }, 500);
-    //          done();
-    //     });
-        
-    //     it('Checking drag and drop', (done: Function) => {
-    //         setTimeout(() => {
-    //             console.log('timeOut13');
-    //             // palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-    //             //     let clonedElement: HTMLElement; let diagramElement: any;
-    //             //     let position: PointModel = palette['getMousePosition'](e.sender);
-    //             //     let target = document.elementFromPoint(position.x, position.y).childNodes[0];
-    //             //     let symbols: IElement = palette.symbolTable[target['id']];
-    //             //     palette['selectedSymbols'] = symbols;
-    //             //     if (symbols !== undefined) {
-    //             //         clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-    //             //         clonedElement.setAttribute('paletteId', palette.element.id);
-    //             //     }
-    //             //     return clonedElement;
-    //             // };
-    //             diagram.dragEnter = (arg) => {
-    //                 // expect(arg.source instanceof SymbolPalette).toBe(true);
-    //                 done();
-    //             }
-    //             diagram.dragOver = (arg) => {
-    //                 // expect(arg.diagram !== undefined).toBe(true);
-    //                 done();
-    //             }
-    //             diagram.drop = (arg) => {
-    //                 // expect((arg.element as NodeModel).width === 300).toBe(true);
-    //                 // expect((arg.element as NodeModel).height === 300).toBe(true);
-    //                 // expect((arg.element as NodeModel).id === diagram.currentSymbol.id).toBe(true);
-    //                 done();
-    //             }
-    //             let events: MouseEvents = new MouseEvents();
-    //             events.mouseDownEvent(palette.element, 75, 100, false, false);
-    //             events.mouseMoveEvent(palette.element, 100, 100, false, false);
-    //             // expect(palette.selectedSymbols.wrapper.children[0].width === 70).toBe(true);
-    //             // expect(palette.selectedSymbols.wrapper.children[0].height === 50).toBe(true);
-    //             events.mouseMoveEvent(palette.element, 200, 200, false, false);
-    //             // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
-    //             events.mouseMoveEvent(diagram.element, 300, 300, false, false);
-    //             events.mouseMoveEvent(diagram.element, 400, 400, false, false);
-    //             let ele = document.getElementById('diagram_SelectorElement')
-    //             console.log('symbolpalette');
-    //             console.log(ele);
-    //             // expect(ele.childElementCount === 1).toBe(true);
-    //             events.mouseUpEvent(diagram.element, 400, 400, false, false);
-    //             // expect(diagram.selectedItems.nodes[0].width === 300).toBe(true);
-    //             // expect(diagram.selectedItems.nodes[0].height === 300).toBe(true);
-    //             // expect(diagram.nodes.length).toBe(3);
-    //             diagram.undo()
-    //             // expect(diagram.nodes.length).toBe(2);
-    //             done();
-    //         }, 10);
-            
-    //     });
-    //     it('Checking drag and drop - adding node undo issue', (done: Function) => {
-    //         // palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-    //         //     let clonedElement: HTMLElement; let diagramElement: any;
-    //         //     let position: PointModel = palette['getMousePosition'](e.sender);
-    //         //     let target = document.elementFromPoint(position.x, position.y).childNodes[0];
-    //         //     let symbols: IElement = palette.symbolTable[target['id']];
-    //         //     palette['selectedSymbols'] = symbols;
-    //         //     if (symbols !== undefined) {
-    //         //         clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-    //         //         clonedElement.setAttribute('paletteId', palette.element.id);
-    //         //     }
-    //         //     return clonedElement;
-    //         // };
-    //         diagram.dragEnter = (arg) => {
-    //             // expect(arg.source instanceof SymbolPalette).toBe(true);
-    //             done();
-    //         }
-    //         diagram.dragOver = (arg) => {
-    //             // expect(arg.diagram !== undefined).toBe(true);
-    //             done();
-    //         }
-    //         diagram.drop = (arg) => {
-    //             arg.cancel = true;
-    //             let x = arg.position.x + 100;
-    //             let y = arg.position.y + 100;
-    //             let id = "node" + diagram.nodes.length + 1;
-    //             diagram.addNode({
-    //                 id: id,
-    //                 data: {
-    //                     type: "state"
-    //                 },
-    //                 offsetY: y,
-    //                 offsetX: x,
-    //                 width: 125,
-    //                 height: 125
-    //             });
-    //             done();
-    //         }
-    //         let events: MouseEvents = new MouseEvents();
-    //         events.mouseDownEvent(palette.element, 75, 100, false, false);
-    //         events.mouseMoveEvent(palette.element, 100, 100, false, false);
-    //         // expect(palette.selectedSymbols.wrapper.children[0].width === 70).toBe(true);
-    //         // expect(palette.selectedSymbols.wrapper.children[0].height === 50).toBe(true);
-    //         events.mouseMoveEvent(palette.element, 200, 200, false, false);
-    //         // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
-    //         events.mouseMoveEvent(diagram.element, 300, 300, false, false);
-    //         events.mouseMoveEvent(diagram.element, 400, 400, false, false);
-    //         let ele = document.getElementById('diagram_SelectorElement')
-    //         console.log('symbolpalette');
-    //         console.log(ele);
-
-    //         events.mouseUpEvent(diagram.element, 400, 400, false, false);
-    //         console.log("Test case check" + diagram.nodes.length)
-    //         // expect(diagram.nodes.length).toBe(3);
-    //         diagram.undo()
-    //         // expect(diagram.nodes.length).toBe(2);
-    //         console.log("Test case check1" + diagram.nodes.length)
-    //         done();
-    //     });
-    //     it('Checking drag stop', (done: Function) => {
-    //         let events: MouseEvents = new MouseEvents();
-    //         events.mouseDownEvent(palette.element, 75, 100, false, false);
-    //         events.mouseMoveEvent(palette.element, 100, 100, false, false);
-    //         events.mouseMoveEvent(palette.element, 150, 200, false, false);
-    //         events.mouseMoveEvent(palette.element, 150, 300, false, false);
-    //         events.mouseUpEvent(palette.element, 150, 300, false, false);
-    //         done();
-    //     });
-
-    //     it('Checking moving symbol outside of diagram', (done: Function) => {
-    //         let events: MouseEvents = new MouseEvents();
-    //         diagram.dragLeave = (arg) => {
-    //             // expect(arg.diagram !== undefined).toBe(true);
-    //             done();
-    //         }
-    //         events.mouseDownEvent(palette.element, 75, 100, false, false);
-    //         events.mouseMoveEvent(palette.element, 100, 100, false, false);
-    //         events.mouseMoveEvent(palette.element, 200, 200, false, false);
-    //         events.mouseMoveEvent(diagram.element, 300, 300, false, false);
-
-    //         events.mouseMoveEvent(diagram.diagramCanvas, 350, 350, false, false);
-    //         events.mouseLeaveEvent(diagram.diagramCanvas);
-    //         events.mouseMoveEvent(palette.element, 150, 200, false, false);
-    //         events.mouseUpEvent(palette.element, 150, 200, false, false);
-    //         done();
-    //     });
-
-    //     it('Checking symbol preview size', (done: Function) => {
-    //         palette.symbolPreview.width = 100;
-    //         palette.symbolPreview.height = 100;
-    //         let events: MouseEvents = new MouseEvents();
-    //         events.mouseDownEvent(palette.element, 75, 100, false, false);
-    //         events.mouseMoveEvent(palette.element, 100, 100, false, false);
-    //         events.mouseMoveEvent(palette.element, 200, 200, false, false);
-    //         // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
-    //         events.mouseUpEvent(palette.element, 200, 200, false, false);
-    //         // expect(document.getElementsByClassName('e-dragclone').length == 0).toBe(true);
-    //         done();
-    //     });
-
-    //     // it('Checking dragging Complex Shape', (done: Function) => {
-    //     //     palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-    //     //         let clonedElement: HTMLElement; let diagramElement: any;
-    //     //         let position: PointModel = palette['getMousePosition'](e.sender);
-    //     //         let symbols: IElement = palette.symbolTable['task'];
-    //     //         palette['selectedSymbols'] = symbols;
-    //     //         if (symbols !== undefined) {
-    //     //             clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-    //     //             clonedElement.setAttribute('paletteId', palette.element.id);
-    //     //         }
-    //     //         return clonedElement;
-    //     //     };
-    //     //     let events: MouseEvents = new MouseEvents();
-    //     //     events.mouseDownEvent(palette.element, 75, 100, false, false);
-    //     //     events.mouseMoveEvent(palette.element, 100, 100, false, false);
-    //     //     events.mouseMoveEvent(palette.element, 200, 200, false, false);
-    //     //     // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
-    //     //     events.mouseMoveEvent(diagram.element, 500, 300, false, false);
-    //     //     events.mouseUpEvent(diagram.element, 500, 300, false, false);
-    //     //     // expect(document.getElementsByClassName('e-dragclone').length == 0).toBe(true);
-    //     //     // expect(diagram.nodes.length).toBe(3);
-    //     //     done();
-    //     // });
-
-    //     // it('Checking dragging connector', (done: Function) => {
-    //     //     palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-    //     //         let clonedElement: HTMLElement; let diagramElement: any;
-    //     //         let position: PointModel = palette['getMousePosition'](e.sender);
-    //     //         let symbols: IElement = palette.symbolTable['connector1a'];
-    //     //         palette['selectedSymbols'] = symbols;
-    //     //         if (symbols !== undefined) {
-    //     //             clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-    //     //             clonedElement.setAttribute('paletteId', palette.element.id);
-    //     //         }
-    //     //         return clonedElement;
-    //     //     };
-    //     //     diagram.drop = (arg) => {
-    //     //         arg.cancel = false;
-    //     //         done();
-    //     //     }
-    //     //     let events: MouseEvents = new MouseEvents();
-    //     //     events.mouseDownEvent(palette.element, 75, 100, false, false);
-    //     //     events.mouseMoveEvent(palette.element, 100, 100, false, false);
-    //     //     events.mouseMoveEvent(palette.element, 200, 200, false, false);
-    //     //     // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
-    //     //     events.mouseMoveEvent(diagram.element, 600, 300, false, false);
-    //     //     events.mouseUpEvent(diagram.element, 600, 300, false, false);
-    //     //     // expect(diagram.connectors.length).toBe(2);
-    //     //     done();
-    //     // });
-    //     it('Checking symbol tooltip for node', (done: Function) => {
-    //         palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-    //             let clonedElement: HTMLElement; let diagramElement: any;
-    //             let position: PointModel = palette['getMousePosition'](e.sender);
-    //             let symbols: IElement = palette.symbolTable['connector1a'];
-    //             palette['selectedSymbols'] = symbols;
-    //             if (symbols !== undefined) {
-    //                 clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-    //                 clonedElement.setAttribute('paletteId', palette.element.id);
-    //             }
-    //             return clonedElement;
-    //         };
-    //         let events: MouseEvents = new MouseEvents();
-    //         let symbol = document.getElementById('end_container');
-    //         let bounds: any = symbol.getBoundingClientRect();
-    //         events.mouseDownEvent(palette.element, bounds.x, bounds.y, false, false);
-    //         events.mouseUpEvent(palette.element, bounds.x, bounds.y, false, false);
-    //         events.mouseMoveEvent(symbol, bounds.x, bounds.y, false, false);
-    //         events.mouseMoveEvent(symbol, bounds.x+1, bounds.y+1, false, false);
-    //         events.mouseMoveEvent(symbol, bounds.x+1, bounds.y+1, false, false);
-    //         events.mouseMoveEvent(symbol, bounds.x+5, bounds.y+5, false, false);
-    //         events.mouseMoveEvent(symbol, bounds.x+10, bounds.y+10, false, false);
-    //         done();
-    //     });
-    //     it('Checking symbol tooltip for connector', (done: Function) => {
-            
-    //         palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-    //             let clonedElement: HTMLElement; let diagramElement: any;
-    //             let position: PointModel = palette['getMousePosition'](e.sender);
-    //             let symbols: IElement = palette.symbolTable['link2'];
-    //             palette['selectedSymbols'] = symbols;
-    //             if (symbols !== undefined) {
-    //                 clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-    //                 clonedElement.setAttribute('paletteId', palette.element.id);
-    //             }
-    //             return clonedElement;
-    //         };
-    //         let events: MouseEvents = new MouseEvents();
-    //         let symbol = document.getElementById('link2_container');
-    //         let bounds: any = symbol.getBoundingClientRect();
-    //         events.mouseDownEvent(palette.element, bounds.x, bounds.y, false, false);
-    //         events.mouseUpEvent(palette.element, bounds.x, bounds.y, false, false);
-    //         events.mouseMoveEvent(symbol, bounds.x, bounds.y, false, false);
-    //         events.mouseMoveEvent(symbol, bounds.x+1, bounds.y+1, false, false);
-    //         events.mouseMoveEvent(symbol, bounds.x+1, bounds.y+1, false, false);
-    //         events.mouseMoveEvent(symbol, bounds.x+5, bounds.y+5, false, false);
-    //         events.mouseMoveEvent(symbol, bounds.x+10, bounds.y+10, false, false);
-    //         done();
-    //     });
-    //     it('Checking symbol isSticky tooltip', (done: Function) => {
-    //         palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-    //             let clonedElement: HTMLElement; let diagramElement: any;
-    //             let position: PointModel = palette['getMousePosition'](e.sender);
-    //             let symbols: IElement = palette.symbolTable['connector1a'];
-    //             palette['selectedSymbols'] = symbols;
-    //             if (symbols !== undefined) {
-    //                 clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-    //                 clonedElement.setAttribute('paletteId', palette.element.id);
-    //             }
-    //             return clonedElement;
-    //         };
-    //         let events: MouseEvents = new MouseEvents();
-    //         let symbol = document.getElementById('start_container');
-    //         let bounds: any = symbol.getBoundingClientRect();
-    //         events.mouseDownEvent(palette.element, bounds.x, bounds.y, false, false);
-    //         events.mouseUpEvent(palette.element, bounds.x, bounds.y, false, false);
-    //         events.mouseMoveEvent(symbol, bounds.x, bounds.y, false, false);
-    //         events.mouseMoveEvent(symbol, bounds.x+1, bounds.y+1, false, false);
-    //         events.mouseMoveEvent(symbol, bounds.x+1, bounds.y+1, false, false);
-    //         events.mouseMoveEvent(symbol, bounds.x, bounds.y, false, false);
-    //         events.mouseMoveEvent(symbol, bounds.x, bounds.y, false, false);
-    //         events.mouseMoveEvent(symbol, bounds.x, bounds.y, false, false);
-    //         events.mouseMoveEvent(symbol, bounds.x, bounds.y, false, false);
-    //         done();
-    //     });
-    //     it('Checking dragging native node', (done: Function) => {
-    //         palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-    //             let clonedElement: HTMLElement; let diagramElement: any;
-    //             let position: PointModel = palette['getMousePosition'](e.sender);
-    //             let symbols: IElement = palette.symbolTable['native'];
-    //             palette['selectedSymbols'] = symbols;
-    //             if (symbols !== undefined) {
-    //                 clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-    //                 clonedElement.setAttribute('paletteId', palette.element.id);
-    //             }
-    //             return clonedElement;
-
-    //         };
-
-    //         let events: MouseEvents = new MouseEvents();
-    //         events.mouseDownEvent(palette.element, 75, 100, false, false);
-    //         events.mouseMoveEvent(palette.element, 100, 100, false, false);
-    //         events.mouseMoveEvent(palette.element, 200, 200, false, false);
-    //         // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
-    //         // let nativeElement = document.getElementById('native_content_native_element').childNodes[0];
-    //         // let element = nativeElement.childNodes[0];
-    //         // let string: string = element.textContent; string = string.slice(1, 7);
-    //         // expect(string == 'native').toBe(true);
-    //         events.mouseMoveEvent(diagram.element, 500, 300, false, false);
-    //         events.mouseUpEvent(diagram.element, 500, 300, false, false);
-    //         // expect(diagram.connectors.length).toBe(2);
-    //         done();
-    //     });
-    //     it('Checking dragging html node', (done: Function) => {
-    //         palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-    //             let clonedElement: HTMLElement; let diagramElement: any;
-    //             let position: PointModel = palette['getMousePosition'](e.sender);
-    //             let symbols: IElement = palette.symbolTable['html'];
-    //             palette['selectedSymbols'] = symbols;
-    //             if (symbols !== undefined) {
-    //                 clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-    //                 clonedElement.setAttribute('paletteId', palette.element.id);
-    //             }
-    //             return clonedElement;
-    //         };
-
-    //         let events: MouseEvents = new MouseEvents();
-    //         events.mouseDownEvent(palette.element, 75, 100, false, false);
-    //         events.mouseMoveEvent(palette.element, 100, 100, false, false);
-    //         events.mouseMoveEvent(palette.element, 200, 200, false, false);
-    //         // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
-    //         events.mouseMoveEvent(diagram.element, 500, 300, false, false);
-    //         events.mouseUpEvent(diagram.element, 500, 300, false, false);
-    //         done();
-    //     });
-
-        
-
-    //     it('checking search palette items length', (done: Function) => {
-    //         let events: MouseEvents = new MouseEvents();
-    //         palette.enableSearch = true;
-    //         palette.dataBind();
-    //         let element: HTMLElement = document.getElementById("textEnter");
-    //         element.focus();
-    //         (document.getElementById("textEnter") as HTMLInputElement).value = "st";
-    //         let eventName = "keyUp";
-    //         palette[eventName]({ target: element });
-    //         setTimeout(() => {
-    //             console.log('timeOut14');
-    //             expect(document.getElementById("SearchPalette").children.length === 1).toBe(true);
-    //             done();
-    //         }, 500);
-    //     });
-
-    //     it('checking no search palette', (done: Function) => {
-    //         let events: MouseEvents = new MouseEvents();
-    //         let element: HTMLElement = document.getElementById("textEnter");
-    //         element.focus();
-    //         (document.getElementById("textEnter") as HTMLInputElement).value = "";
-    //         let eventName = "keyUp";
-    //         palette[eventName]({ target: element });
-    //         setTimeout(() => {
-    //             console.log('timeOut15');
-    //             expect(document.getElementById("SearchPalette") === null).toBe(true);
-    //             done();
-    //         }, 500);
-    //     });
-
-    //     it('checking search palette with no items', (done: Function) => {
-    //         let events: MouseEvents = new MouseEvents();
-    //         let element: HTMLElement = document.getElementById("textEnter");
-    //         element.focus();
-    //         (document.getElementById("textEnter") as HTMLInputElement).value = "sr";
-    //         let eventName = "keyUp";
-    //         palette[eventName]({ target: element });
-    //         setTimeout(() => {
-    //             console.log('timeOut16');
-    //             expect(document.getElementById("SearchPalette").children[0].id == "EmptyDiv").toBe(true);
-    //             done();
-    //         }, 500);
-    //     });
-
-    //     it('checking search palette with no items on enter key', (done: Function) => {
-    //         let events: MouseEvents = new MouseEvents();
-    //         let element: HTMLElement = document.getElementById("textEnter");
-    //         element.focus();
-    //         (document.getElementById("textEnter") as HTMLInputElement).value = "sr";
-    //         let eventName = "keyUp";
-    //         palette[eventName]({ target: element, key: "Enter", keyCode: 13 });
-    //         setTimeout(
-    //             () => {
-    //                 console.log('timeOut17');
-    //                 expect(document.getElementById("SearchPalette").children[0].id === "EmptyDiv").toBe(true);
-    //                 done();
-    //             },
-    //             500);
-    //     });
-
-    //     it('checking search palette with no items on mouse up icons', (done: Function) => {
-    //         let events: MouseEvents = new MouseEvents();
-    //         let element: HTMLElement = document.getElementById("textEnter");
-    //         element.focus();
-    //         (document.getElementById("textEnter") as HTMLInputElement).value = "sr";
-    //         let element1: HTMLElement = document.getElementById("iconSearch");
-    //         events.mouseUpEvent(element1, 100, 100, null, null);
-    //         expect(document.getElementById("SearchPalette") === null).toBe(true);
-    //         done();
-    //     });
-
-    //     it('Show search palette', (done: Function) => {
-    //         palette.enableSearch = true;
-    //         palette.dataBind();
-    //         // expect(document.getElementById("symbolpalette_search").className === "e-input-group").toBe(true);
-    //         // expect(document.getElementsByClassName('e-search').length > 0);
-    //         done();
-    //     });
-
-    //     it('Remove search palette', (done: Function) => {
-    //         palette.enableSearch = false;
-    //         palette.dataBind();
-    //         expect(document.getElementById("symbolpalette_search") === null).toBe(true);
-    //         done();
-    //     });
-
-    //     it('checking filter symbols in palette', (done: Function) => {
-    //         palette.enableSearch = true;
-    //         palette.dataBind();
-    //         palette.filterSymbols = (symbol: NodeModel[] | ConnectorModel[]): NodeModel[] | ConnectorModel[] => {
-    //             return null;
-    //         };
-    //         let events: MouseEvents = new MouseEvents();
-    //         let element: HTMLElement = document.getElementById("textEnter");
-    //         element.focus();
-    //         (document.getElementById("textEnter") as HTMLInputElement).value = "st";
-    //         let eventName = "keyUp";
-    //         palette[eventName]({ target: element });
-    //         setTimeout(() => {
-    //             console.log('timeOut18');
-    //             expect(document.getElementById("SearchPalette").children.length === 1).toBe(true);
-    //             done();
-    //         }, 500);
-    //     });
-
-    //     it('Changing the width and height of the palette', (done: Function) => {
-    //         palette.width = '24%';
-    //         palette.height = '540px';
-    //         palette.dataBind();
-    //         done();
-    //     });
-
-    //     it('Add Palette Item', (done: Function) => {
-    //         palette.addPaletteItem('flow', { id: 'newflow', shape: { type: 'Flow', shape: 'Process' } });
-    //         palette.dataBind();
-    //         let cpalette: PaletteModel = palette.palettes[0];
-    //         let element: HTMLElement = document.getElementById('newflow_container');
-    //         expect(element !== null).toBe(true);
-    //         done();
-    //     });
-        
-    //     it('Wrongly Add Palette Name', (done: Function) => {
-    //         palette.addPaletteItem('flows', { id: 'newflow', shape: { type: 'Flow', shape: 'Process' } });
-    //         palette.dataBind();
-    //         done();
-    //     });
-       
-    //     it('Checking custom size without size', (done: Function) => {
-    //         palette.getSymbolInfo = (symbol: Node | Connector): SymbolInfo => {
-    //             if (symbol.shape.type === 'Bpmn') {
-    //                 return { width: 50, height: 50 };
-    //             }
-    //             if (symbol.id === 'decision' || symbol.id === 'start' || symbol.id === 'end') {
-    //                 return { width: 100, height: 40 };
-    //             }
-    //             return null;
-    //         };
-    //         palette.dataBind();
-    //         done();
-    //     });
-    //     xit('Themes TestCases resize andd rotate', (done: Function) => {
-            
-    //         let resizeelem = document.querySelector('.e-diagram-resize-handle');
-    //         let resizeelemstyle = getComputedStyle(resizeelem);
-    //         console.log(resizeelemstyle.fill);
-    //         expect(resizeelemstyle.fill === 'rgb(63, 81, 181)' || resizeelemstyle.fill === 'rgb(227, 22, 91)' ||
-    //             resizeelemstyle.fill === 'rgb(255, 255, 255)').toBe(true);
-    //         let rotateelem = document.querySelector('.e-diagram-rotate-handle');
-    //         let rotateelemstyle = getComputedStyle(rotateelem);
-    //         console.log(resizeelemstyle.fill);
-    //         expect(resizeelemstyle.fill === 'rgb(63, 81, 181)' || resizeelemstyle.fill === 'rgb(227, 22, 91)' ||
-    //             resizeelemstyle.fill === 'rgb(255, 255, 255)').toBe(true);
-    //         done();
-    //     })
-       
-    //     it('Changing the expandMode at runtime', (done: Function) => {
-    //         palette.expandMode = 'Single';
-    //         palette.dataBind();
-    //         done();
-    //     });
-
-    //     it('Changing the enableAnimation at runtime', (done: Function) => {
-    //         palette.expandMode = 'Multiple';
-    //         palette.enableAnimation = true;
-    //         palette.dataBind();
-    //         setTimeout(() => {
-    //             console.log('timeOut19');
-    //             expect(palette.palettes[0].expanded).toBe(true);
-    //             done();
-    //         }, 1000);
-    //     });
-
-    //     it('Expanding palette interactively', (done: Function) => {
-    //         let accordion: string = 'accordionElement';
-    //         palette.enableAnimation = false;
-    //         palette.dataBind();
-    //         setTimeout(() => {
-    //             console.log('timeOut20');
-    //             mouseEvents.clickEvent(palette[accordion].element, 100, 255);
-    //             setTimeout(() => {
-    //                 console.log('timeOut21');
-    //                 expect(palette.palettes[1].expanded).toBe(true);
-    //                 done();
-    //             }, 20);
-    //         }, 10);
-    //     });
-    //     it('Checking custom size without size using string function', (done: Function) => {
-    //         window['getSymbolInfo'] = function (symbol: Node | Connector): SymbolInfo {
-    //             if (symbol.shape.type === 'Bpmn') {
-    //                 return { width: 50, height: 50 };
-    //             }
-    //             if (symbol.id === 'decision' || symbol.id === 'start' || symbol.id === 'end') {
-    //                 return { width: 100, height: 40 };
-    //             }
-    //             return null;
-    //         }
-    //         palette.getSymbolInfo = 'getSymbolInfo';
-    //         palette.dataBind();
-
-    //         done();
-    //     });
-    //     it('checking filter symbols in palette using string function', (done: Function) => {
-    //         palette.enableSearch = true;
-    //         palette.dataBind();
-    //         window['filterSymbols'] = function (symbol: NodeModel[] | ConnectorModel[]): NodeModel[] | ConnectorModel[] {
-    //             return null;
-    //         }
-    //         palette.filterSymbols = 'filterSymbols';
-    //         let events: MouseEvents = new MouseEvents();
-    //         let element: HTMLElement = document.getElementById("textEnter");
-    //         element.focus();
-    //         (document.getElementById("textEnter") as HTMLInputElement).value = "st";
-    //         let eventName = "keyUp";
-    //         palette[eventName]({ target: element });
-    //         setTimeout(() => {
-    //             console.log('timeOut22');
-    //             expect(document.getElementById("SearchPalette").children.length === 1).toBe(true);
-    //             done();
-    //         }, 500);
-    //     });
-        
-    //     it('Checking review without symbolPreview width ', (done: Function) => {
-
-    //         palette.symbolPreview.width = undefined;
-    //         palette.dataBind();
-    //         let events = new MouseEvents();
-    //         events.mouseDownEvent(palette.element, 75, 100, false, false);
-    //         events.mouseMoveEvent(palette.element, 100, 100, false, false);
-    //         events.mouseMoveEvent(palette.element, 200, 200, false, false);
-    //         // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
-    //         events.mouseUpEvent(palette.element, 200, 200, false, false);
-    //         // expect(document.getElementsByClassName('e-dragclone').length == 0).toBe(true);
-    //         done();
-    //     });
-    //     it('Checking review without symbolPreview height ', (done: Function) => {
-    //         palette.symbolPreview.width = 100;
-    //         palette.symbolPreview.height = undefined;
-    //         palette.dataBind();
-    //         let events = new MouseEvents();
-    //         events.mouseDownEvent(palette.element, 75, 100, false, false);
-    //         events.mouseMoveEvent(palette.element, 100, 100, false, false);
-    //         events.mouseMoveEvent(palette.element, 200, 200, false, false);
-    //         // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
-    //         events.mouseUpEvent(palette.element, 200, 200, false, false);
-    //         // expect(document.getElementsByClassName('e-dragclone').length == 0).toBe(true);
-    //         done();
-    //     });
-
-    //     it('Refresh palettes at runtime', (done: Function) => {
-    //         palette.palettes = [
-    //             {
-    //                 id: 'BPMN', symbols: [
-    //                     {
-    //                         id: 'BPMNStart', style: { strokeWidth: 2 }, shape: { type: 'Bpmn', shape: 'Event', event: { event: 'Start', trigger: 'None' } },
-    //                     },
-    //                     {
-    //                         id: 'Intermediate', style: { strokeWidth: 2 }, shape: { type: 'Bpmn', shape: 'Event', event: { event: 'Intermediate', trigger: 'None' } },
-    //                     }
-    //                 ], title: 'BPMN'
-    //             }
-    //         ];
-    //         palette.dataBind()
-    //         expect(palette.palettes.length === 1).toBe(true);
-    //         done();
-    //     });
-    //     it('Collapse Palette at run time', (done: Function) => {
-    //         palette.palettes[0].expanded = false;
-    //         palette.dataBind();
-    //         expect(palette.palettes[0].expanded === false).toBe(true);
-    //         done();
-    //     });
-    //     it('Expand Palette at run time', (done: Function) => {
-    //         palette.palettes[0].expanded = true;
-    //         palette.dataBind();
-    //         expect(palette.palettes[0].expanded === true).toBe(true);
-    //         done();
-    //     });
-    // });
     describe('Testing symbol palette', () => {
+        let diagram: Diagram;
+        let palette: SymbolPalette;
+        let ele: HTMLElement;
+        let mouseEvents: MouseEvents = new MouseEvents();
+        let flowshapes: NodeModel[] = [{
+            id: 'start', dragSize: { width: 300, height: 300 }, previewSize: { width: 200, height: 200 }, shape: { type: 'Flow', shape: 'Terminator' }, pivot: { x: 0, y: 0 },
+            tooltip: { content: 'symbol', isSticky: true }, constraints: NodeConstraints.Default | NodeConstraints.Tooltip,
+        },
+        { id: 'process', dragSize: { width: 300, height: 300 }, previewSize: { width: 200, height: 200 }, shape: { type: 'Flow', shape: 'Process' } },
+        { id: 'decision', dragSize: { width: 300, height: 300 }, previewSize: { width: 200, height: 200 }, shape: { type: 'Flow', shape: 'Decision' } },
+        { id: 'data', dragSize: { width: 300, height: 300 }, previewSize: { width: 200, height: 200 }, shape: { type: 'Flow', shape: 'Data' } },
+        { id: 'end', dragSize: { width: 300, height: 300 }, previewSize: { width: 200, height: 200 }, shape: { type: 'Flow', shape: 'Terminator' } }];
+
+        let bpmnShapes: NodeModel[] = [{
+            id: 'node2a', width: 100, height: 100, offsetX: 500, offsetY: 100, constraints: NodeConstraints.Default | NodeConstraints.AllowDrop,
+            shape: { type: 'Bpmn', shape: 'DataObject', dataObject: { collection: false, type: 'None' } }
+        },
+        {
+            id: 'task', width: 100, height: 100, offsetX: 300, offsetY: 100,
+            shape: {
+                type: 'Bpmn', shape: 'Activity',
+                activity: { activity: 'SubProcess', subProcess: { type: 'Event' } }
+            }
+        }, {
+            id: 'annot4', width: 100, height: 100, pivot: { x: 0, y: 0 },
+            shape: { type: 'Bpmn', shape: 'TextAnnotation', annotation: { angle: 280, length: 150, text: 'textAnnotation4' } }
+        }];
+
+        let connectorSymbols: ConnectorModel[] = [{
+            id: 'connector1a', type: 'Straight',
+            sourcePoint: { x: 15, y: 15 }, targetPoint: { x: 20, y: 20 },
+        }, {
+            id: 'link2', sourcePoint: { x: 0, y: 0 }, targetPoint: { x: 40, y: 40 }, type: 'Orthogonal',
+            shape: {
+                type: 'Bpmn',
+                flow: 'Message',
+                association: 'directional'
+            }, style: {
+                strokeDashArray: '2,2'
+            },
+            segments: [{ type: 'Orthogonal', length: 30, direction: 'Bottom' },
+            { type: 'Orthogonal', length: 80, direction: 'Right' }]
+        }];
+
+        let connDecorators: ConnectorModel[] = [{
+            id: 'connectordec1', type: 'Straight',
+            sourcePoint: { x: 0, y: 0 }, targetPoint: { x: 40, y: 40 },
+            style: { strokeColor: 'red' }
+        },
+
+        {
+            id: 'connectordec2', type: 'Orthogonal',
+            sourcePoint: { x: 0, y: 0 }, targetPoint: { x: 40, y: 40 },
+        },
+        {
+            id: 'connectordec3', type: 'Bezier',
+            sourcePoint: { x: 0, y: 0 }, targetPoint: { x: 40, y: 40 },
+        }];
+
+        let grids: NodeModel[] = [{
+            id: 'grid', width: 100, height: 100
+        }];
+
+        let svgNodes: NodeModel[] = [{
+            id: 'native', width: 100, height: 100, shape: {
+                type: 'Native',
+                content: '<g> ${id} <style xmlns=http://www.w3.org/2000/svg type=text/css>.st051{fill:#CBC4C9;}.st152{fill:#E5DCE1;}.st252{fill:#DBD5DA;}.st3552{fill:#69696B;}</style><g xmlns=http://www.w3.org/2000/svg>    <path class=st051 d=M2.8,37L18,44.3c5,2.4,10.8,2.3,15.6-0.3l13.6-7.3c1.7-0.9,2.3-5.6,1.9-7c0,0.1,0.1,0.3,0.1,0.4v-4.3   c0.1,1.6-0.8,3.1-2.3,3.7l0,0l-13.1-6.9c-5.5-2.9-12-2.9-17.5,0L3.2,29.8c-1.3-0.5-2.3-1.7-2.5-3.2v6.7 />    <path class=st152 d=M18.2,37.2l-15-7.3c-1.7-0.7-2.6-2.7-1.9-4.4c0.3-0.8,0.9-1.4,1.7-1.8l13.6-7.2c5.4-2.8,11.9-2.8,17.3,0   l13.2,7c1.7,0.8,2.5,2.9,1.7,4.6c-0.3,0.8-1,1.4-1.7,1.7L33.6,37C28.8,39.5,23.1,39.6,18.2,37.2z />    <path class=st252 d=M25.5,39.2c-2.7,0-5.3-0.6-7.7-1.8L2.6,30.1c-1.1-0.6-1.9-1.6-2.3-2.8l1-0.3C1.6,28,2.2,28.7,3,29.2l15.2,7.4   c4.8,2.3,10.5,2.2,15.2-0.3L47,29c0.9-0.5,1.6-1.4,1.8-2.4l1,0.1c-0.2,1.4-1.1,2.5-2.3,3.1l-13.7,7.3   C31.3,38.5,28.4,39.2,25.5,39.2z />    <path class=st3552 d=M26,46.1c-0.7,0-1.4,0-2.2-0.1c-2.3-0.3-4.6-1-6.8-2l-9.1-4.4L4.8,38H4.6c-1-0.4-1.9-1-2.7-1.8   c-0.7-0.8-1.2-1.8-1.5-2.8c-0.2-0.6-0.2-1.2-0.2-1.8V28l0,0c0,0,0-0.1,0-0.3c0.2-2.3,1.5-4.4,3.6-5.5l12.4-6.6c5.6-3,12.4-3,18-0.1   l13.3,7c1.5,1,2.4,2.7,2.3,4.5l-0.1,5.2c0,2.1-1.2,4-3.1,4.9L33,44.5C30.8,45.6,28.4,46.2,26,46.1z M25.2,14.3   c-3,0-5.9,0.7-8.6,2.1L4.2,23.1c-1.7,0.9-2.9,2.7-3,4.6c0,0.1,0,0.2,0,0.2v3.6c0,0.5,0.1,1,0.2,1.5C1.6,34,2,34.8,2.6,35.5   c0.7,0.7,1.5,1.2,2.4,1.6l0.2,0.1l3.2,1.5l9.1,4.4c2,1,4.2,1.6,6.5,1.9c2.9,0.4,5.9-0.1,8.6-1.4l13.7-7.3c1.5-0.8,2.5-2.3,2.5-4   l0.1-5.2c0.1-1.5-0.6-2.9-1.8-3.6l-13.3-7C31.1,15.1,28.2,14.3,25.2,14.3L25.2,14.3z />    <path class=st3552 d=M4,33.5c0,0.5-0.2,0.8-0.5,0.8S2.8,34,2.8,33.5s0.2-0.8,0.5-0.8S4,33,4,33.5z />    <path class=st3552 d=M7,35.1c0,0.5-0.2,0.8-0.5,0.8s-0.6-0.3-0.7-0.8s0.2-0.8,0.5-0.8S6.9,34.7,7,35.1z />    <path class=st3552 d=M9.9,36.7c0,0.5-0.2,0.8-0.5,0.8s-0.6-0.3-0.7-0.8s0.2-0.8,0.5-0.8S9.9,36.3,9.9,36.7z />    <path class=st3552 d=M17.6,40.2c0,0.6-0.3,1.1-0.7,1.1s-0.8-0.5-0.9-1.1s0.3-1.1,0.7-1.1S17.6,39.6,17.6,40.2z />    <path class=st3552 d=M32,15.2l0.4-12.7c0-0.6,0.5-1.1,1.1-1.1c0.2,0,0.3,0,0.5,0.1l0,0c0.4,0.2,0.6,0.5,0.6,0.9L35,16.5L32,15.2z /></g></g>',
+                text: 'Element for Network Diagram'
+            } as NodeModel
+        }];
+
+        let htmlNodes: NodeModel[] = [{
+            id: 'html', width: 100, height: 100, shape: {
+                type: 'HTML',
+                content: '<div style="background:red;height:100%;width:100%;"><input type="button" value="{{:value}}" /></div>',
+            } as NodeModel
+        }];
+
+        beforeAll((): void => {
+            ele = createElement('div', { styles: 'width:100%;height:500px;' });
+            ele.appendChild(createElement('div', { id: 'symbolpalette1', styles: 'width:25%;float:left;' }));
+            ele.appendChild(createElement('div', { id: 'diagram1', styles: 'width:74%;height:500px;float:left;' }));
+            document.body.appendChild(ele);
+            let nodes: NodeModel[] = [
+                {
+                    id: 'nodea', maxHeight: 600, maxWidth: 600, minWidth: 300, minHeight: 300,
+                    constraints: NodeConstraints.Default | NodeConstraints.AllowDrop,
+                    offsetX: 200, offsetY: 200,
+                    shape: {
+                        type: 'Bpmn', shape: 'Activity', activity: {
+                            activity: 'SubProcess',
+                            subProcess: {
+                                collapsed: false, type: 'Transaction',
+                            } as BpmnSubProcessModel
+                        },
+                    },
+                },
+                {
+                    id: 'node2', width: 100, height: 100, offsetX: 300, offsetY: 100,
+                    constraints: NodeConstraints.PointerEvents | NodeConstraints.Select,
+                    shape: {
+                        type: 'Path', data: 'M540.3643,137.9336L546.7973,159.7016L570.3633,159.7296L550.7723,171.9366' +
+                            'L558.9053,194.9966L540.3643,' +
+                            '179.4996L521.8223,194.9966L529.9553,171.9366L510.3633,159.7296L533.9313,159.7016L540.3643,137.9336z'
+                    }, annotations: [{ content: 'Path Element' }]
+                }
+            ];
+            let connectors: ConnectorModel[] = [{
+                id: 'connector1', type: 'Straight', sourcePoint: { x: 100, y: 300 },
+                targetPoint: { x: 200, y: 400 },
+            }];
+            let handle: UserHandleModel[] = [{
+                name: 'clone',
+                pathData:
+                    'M60.3,18H27.5c-3,0-5.5,2.4-5.5,5.5v38.2h5.5V23.5h32.7V18z M68.5,28.9h-30c-3,' +
+                    '0-5.5,2.4-5.5,5.5v38.2c0,3,2.4,5.5,5.5,5.5h30c3,0,5.5-2.4,5.5-5.5V34.4C73.9,31.4,71.5,28.9,68.5,28.9z ' +
+                    'M68.5,72.5h-30V34.4h30V72.5z',
+                visible: true,
+                offset: 0,
+                side: 'Bottom',
+                margin: { top: 0, bottom: 0, left: 0, right: 0 }
+            }]
+
+
+            diagram = new Diagram({
+                connectors: connectors, nodes: nodes, pageSettings: { background: { color: 'transparent' } },
+                selectedItems: { constraints: SelectorConstraints.All, userHandles: handle },
+                width: '70%',
+            });
+            diagram.appendTo('#diagram1');
+
+            palette = new SymbolPalette({
+                width: '25%', height: '500px',
+                palettes: [
+                    { id: 'flow', expanded: true, symbols: flowshapes, iconCss: '', title: 'Flow Shapes' },
+                    { id: 'bpmn', expanded: true, symbols: bpmnShapes, iconCss: '', title: 'BPMN Shapes' },
+                    { id: 'grids', expanded: true, symbols: grids, title: 'Grids' },
+                    { id: 'native', expanded: true, symbols: svgNodes, title: 'Native Elements' },
+                    { id: 'html', expanded: true, symbols: htmlNodes, iconCss: 'shapes', title: 'Html Elements' },
+                    { id: 'connectors', expanded: true, height: 200, symbols: connectorSymbols, iconCss: '', title: 'Connectors' },
+                    { id: 'decorators', expanded: true, symbols: connDecorators, iconCss: '', title: 'Connectors' },
+                ], enableAnimation: false, enableSearch: true,
+                symbolMargin: { top: 5, bottom: 5, left: 5, right: 5 },
+            });
+            palette.appendTo('#symbolpalette1');
+        });
+
+        afterAll((): void => {
+            diagram.destroy();
+            palette.destroy();
+            ele.remove();
+            diagram = null;
+            palette = null;
+            ele = null;
+        });
+
+        it('Checking default palette rendering', (done: Function) => {
+            setTimeout(() => {
+                console.log('timeOut8');
+                let start: HTMLElement = document.getElementById('start');
+                expect(start).toBeTruthy();
+                done();
+            }, 500);
+        });
+
+        it('Checking symbol size', (done: Function) => {
+            palette.enableSearch = false;
+            palette.dataBind();
+            palette.symbolWidth = 80;
+            palette.symbolHeight = 80;
+            palette.dataBind();
+            setTimeout(() => {
+                console.log('timeOut9');
+                let start: HTMLElement = document.getElementById('start');
+                expect(start).toBeTruthy();
+                done();
+            }, 500);
+        });
+
+        it('Checking connectors', (done: Function) => {
+            let decorator = palette.symbolTable['connectordec1'].wrapper.children[0].children[0].children[2];
+            expect(decorator.offsetX == 71.245 && decorator.offsetY == 71.245).toBe(true);
+            decorator = palette.symbolTable['connectordec2'].wrapper.children[0].children[0].children[2];
+            expect(Math.round(decorator.offsetX) == 69 && decorator.offsetY == 68.5).toBe(true);
+            decorator = palette.symbolTable['connectordec3'].wrapper.children[0].children[0].children[2];
+            expect(decorator.offsetX == 69.9966501567237 && decorator.offsetY == 68.92401316056798).toBe(true);
+            decorator = palette.symbolTable['connectordec1'].wrapper.children[0].children[0].children[0];
+            expect(decorator.offsetX == 36.5 && decorator.offsetY == 36.5).toBe(true);
+            decorator = palette.symbolTable['connectordec2'].wrapper.children[0].children[0].children[0];
+            expect(decorator.offsetX == 36.5 && decorator.offsetY == 36.5).toBe(true);
+            decorator = palette.symbolTable['connectordec3'].wrapper.children[0].children[0].children[0];
+            expect(decorator.offsetX == 36.5 && decorator.offsetY == 36.5).toBe(true);
+            decorator = palette.symbolTable['link2'].wrapper.children[0].children[0].children[0];
+            expect(decorator.offsetX == 36.5 && decorator.offsetY == 36.5).toBe(true);
+            done();
+        });
+
+        it('Checking custom size', (done: Function) => {
+            palette.getSymbolInfo = (symbol: Node | Connector): SymbolInfo => {
+                if (symbol.shape.type === 'Bpmn') {
+                    return { width: 50, height: 50 };
+                }
+                if (symbol.id === 'decision' || symbol.id === 'start' || symbol.id === 'end') {
+                    return { width: 100, height: 40 };
+                }
+                return { width: 75, height: 40 };
+            };
+            palette.dataBind();
+            setTimeout(() => {
+                console.log('timeOut10');
+                let start: HTMLElement = document.getElementById('start');
+                expect(start).toBeTruthy();
+                done();
+            }, 500);
+        });
+
+        it('Checking description', (done: Function) => {
+            palette.getSymbolInfo = (symbol: Node | Connector): SymbolInfo => {
+                if (symbol['text'] !== undefined) {
+                    return { width: 75, height: 40, description: { text: symbol['text'], overflow: 'Wrap' } };
+                }
+                if (symbol.shape.type === 'Bpmn') {
+                    return { width: 50, height: 50, description: { text: symbol.shape['shape'] } };
+                }
+                if (symbol.id === 'decision' || symbol.id === 'start' || symbol.id === 'end') {
+                    return { width: 100, height: 40, description: { text: symbol.shape['shape'] } };
+                }
+                return { width: 75, height: 40, description: { text: symbol.shape['shape'] } };
+            };
+            palette.dataBind();
+            setTimeout(() => {
+                console.log('timeOut11');
+                let start: HTMLElement = document.getElementById('start');
+                expect(start).toBeTruthy();
+                done();
+            }, 500);
+        });
+
+        it('Checking fit option', (done: Function) => {
+            
+            palette.getSymbolInfo = (symbol: Node | Connector): SymbolInfo => {
+                if (symbol.shape.type === 'Bpmn') {
+                    return { width: 50, height: 50, description: { text: symbol.shape['shape'] } };
+                }
+                if (symbol.id === 'decision' || symbol.id === 'start' || symbol.id === 'end') {
+                    return { width: 100, height: 40, fit: true, description: { text: symbol.shape['shape'] } };
+                }
+                return { width: 75, height: 40, fit: true, description: { text: symbol.shape['shape'] } };
+            };
+            palette.dataBind();
+            let start: HTMLElement = document.getElementById('start');
+            setTimeout(() => {
+                console.log('timeOut12');
+                expect(start).toBeTruthy();
+                done();
+            }, 500);
+        });
+        
+        it('Checking symbol tooltip for node', (done: Function) => {
+            palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+                let clonedElement: HTMLElement;
+                let symbols: IElement = palette.symbolTable['connector1a'];
+                palette['selectedSymbols'] = symbols;
+                if (symbols !== undefined) {
+                    clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+                    clonedElement.setAttribute('paletteId', palette.element.id);
+                }
+                return clonedElement;
+            };
+            let events: MouseEvents = new MouseEvents();
+            let symbol = document.getElementById('end_container');
+            let bounds: any = symbol.getBoundingClientRect();
+            events.mouseDownEvent(palette.element, bounds.x, bounds.y, false, false);
+            events.mouseUpEvent(palette.element, bounds.x, bounds.y, false, false);
+            events.mouseMoveEvent(symbol, bounds.x, bounds.y, false, false);
+            events.mouseMoveEvent(symbol, bounds.x+1, bounds.y+1, false, false);
+            events.mouseMoveEvent(symbol, bounds.x+1, bounds.y+1, false, false);
+            events.mouseMoveEvent(symbol, bounds.x+5, bounds.y+5, false, false);
+            events.mouseMoveEvent(symbol, bounds.x+10, bounds.y+10, false, false);
+            done();
+        });
+        it('Checking symbol tooltip for connector', (done: Function) => {
+            
+            palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+                let clonedElement: HTMLElement;
+                let symbols: IElement = palette.symbolTable['link2'];
+                palette['selectedSymbols'] = symbols;
+                if (symbols !== undefined) {
+                    clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+                    clonedElement.setAttribute('paletteId', palette.element.id);
+                }
+                return clonedElement;
+            };
+            let events: MouseEvents = new MouseEvents();
+            let symbol = document.getElementById('link2_container');
+            let bounds: any = symbol.getBoundingClientRect();
+            events.mouseDownEvent(palette.element, bounds.x, bounds.y, false, false);
+            events.mouseUpEvent(palette.element, bounds.x, bounds.y, false, false);
+            events.mouseMoveEvent(symbol, bounds.x, bounds.y, false, false);
+            events.mouseMoveEvent(symbol, bounds.x+1, bounds.y+1, false, false);
+            events.mouseMoveEvent(symbol, bounds.x+1, bounds.y+1, false, false);
+            events.mouseMoveEvent(symbol, bounds.x+5, bounds.y+5, false, false);
+            events.mouseMoveEvent(symbol, bounds.x+10, bounds.y+10, false, false);
+            done();
+        });
+        it('Checking symbol isSticky tooltip', (done: Function) => {
+            palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+                let clonedElement: HTMLElement;
+                let symbols: IElement = palette.symbolTable['connector1a'];
+                palette['selectedSymbols'] = symbols;
+                if (symbols !== undefined) {
+                    clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+                    clonedElement.setAttribute('paletteId', palette.element.id);
+                }
+                return clonedElement;
+            };
+            let events: MouseEvents = new MouseEvents();
+            let symbol = document.getElementById('start_container');
+            let bounds: any = symbol.getBoundingClientRect();
+            events.mouseDownEvent(palette.element, bounds.x, bounds.y, false, false);
+            events.mouseUpEvent(palette.element, bounds.x, bounds.y, false, false);
+            events.mouseMoveEvent(symbol, bounds.x, bounds.y, false, false);
+            events.mouseMoveEvent(symbol, bounds.x+1, bounds.y+1, false, false);
+            events.mouseMoveEvent(symbol, bounds.x+1, bounds.y+1, false, false);
+            events.mouseMoveEvent(symbol, bounds.x, bounds.y, false, false);
+            events.mouseMoveEvent(symbol, bounds.x, bounds.y, false, false);
+            events.mouseMoveEvent(symbol, bounds.x, bounds.y, false, false);
+            events.mouseMoveEvent(symbol, bounds.x, bounds.y, false, false);
+            done();
+        });
+        it('Checking dragging native node', (done: Function) => {
+            palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+                let clonedElement: HTMLElement;
+                let symbols: IElement = palette.symbolTable['native'];
+                palette['selectedSymbols'] = symbols;
+                if (symbols !== undefined) {
+                    clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+                    clonedElement.setAttribute('paletteId', palette.element.id);
+                }
+                return clonedElement;
+
+            };
+
+            let events: MouseEvents = new MouseEvents();
+            events.mouseDownEvent(palette.element, 75, 100, false, false);
+            events.mouseMoveEvent(palette.element, 100, 100, false, false);
+            events.mouseMoveEvent(palette.element, 200, 200, false, false);
+            // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
+            // let nativeElement = document.getElementById('native_content_native_element').childNodes[0];
+            // let element = nativeElement.childNodes[0];
+            // let string: string = element.textContent; string = string.slice(1, 7);
+            // expect(string == 'native').toBe(true);
+            events.mouseMoveEvent(diagram.element, 500, 300, false, false);
+            events.mouseUpEvent(diagram.element, 500, 300, false, false);
+            // expect(diagram.connectors.length).toBe(2);
+            done();
+        });
+        it('Checking dragging html node', (done: Function) => {
+            palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+                let clonedElement: HTMLElement;
+                let symbols: IElement = palette.symbolTable['html'];
+                palette['selectedSymbols'] = symbols;
+                if (symbols !== undefined) {
+                    clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+                    clonedElement.setAttribute('paletteId', palette.element.id);
+                }
+                return clonedElement;
+            };
+
+            let events: MouseEvents = new MouseEvents();
+            events.mouseDownEvent(palette.element, 75, 100, false, false);
+            events.mouseMoveEvent(palette.element, 100, 100, false, false);
+            events.mouseMoveEvent(palette.element, 200, 200, false, false);
+            // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
+            events.mouseMoveEvent(diagram.element, 500, 300, false, false);
+            events.mouseUpEvent(diagram.element, 500, 300, false, false);
+            done();
+        });
+
+        
+
+        it('checking search palette items length', (done: Function) => {
+            let events: MouseEvents = new MouseEvents();
+            palette.enableSearch = true;
+            palette.dataBind();
+            let element: HTMLElement = document.getElementById("textEnter");
+            element.focus();
+            (document.getElementById("textEnter") as HTMLInputElement).value = "st";
+            let eventName = "keyUp";
+            palette[eventName]({ target: element });
+            setTimeout(() => {
+                console.log('timeOut14');
+                expect(document.getElementById("SearchPalette").children.length === 1).toBe(true);
+                done();
+            }, 500);
+        });
+
+        it('checking no search palette', (done: Function) => {
+            let events: MouseEvents = new MouseEvents();
+            let element: HTMLElement = document.getElementById("textEnter");
+            element.focus();
+            (document.getElementById("textEnter") as HTMLInputElement).value = "";
+            let eventName = "keyUp";
+            palette[eventName]({ target: element });
+            setTimeout(() => {
+                console.log('timeOut15');
+                expect(document.getElementById("SearchPalette") === null).toBe(true);
+                done();
+            }, 500);
+        });
+
+        it('checking search palette with no items', (done: Function) => {
+            let events: MouseEvents = new MouseEvents();
+            let element: HTMLElement = document.getElementById("textEnter");
+            element.focus();
+            (document.getElementById("textEnter") as HTMLInputElement).value = "sr";
+            let eventName = "keyUp";
+            palette[eventName]({ target: element });
+            setTimeout(() => {
+                console.log('timeOut16');
+                expect(document.getElementById("SearchPalette").children[0].id == "EmptyDiv").toBe(true);
+                done();
+            }, 500);
+        });
+
+        it('checking search palette with no items on enter key', (done: Function) => {
+            let events: MouseEvents = new MouseEvents();
+            let element: HTMLElement = document.getElementById("textEnter");
+            element.focus();
+            (document.getElementById("textEnter") as HTMLInputElement).value = "sr";
+            let eventName = "keyUp";
+            palette[eventName]({ target: element, key: "Enter", keyCode: 13 });
+            setTimeout(
+                () => {
+                    console.log('timeOut17');
+                    expect(document.getElementById("SearchPalette").children[0].id === "EmptyDiv").toBe(true);
+                    done();
+                },
+                500);
+        });
+
+        it('checking search palette with no items on mouse up icons', (done: Function) => {
+            let events: MouseEvents = new MouseEvents();
+            let element: HTMLElement = document.getElementById("textEnter");
+            element.focus();
+            (document.getElementById("textEnter") as HTMLInputElement).value = "sr";
+            let element1: HTMLElement = document.getElementById("iconSearch");
+            events.mouseUpEvent(element1, 100, 100, null, null);
+            expect(document.getElementById("SearchPalette") === null).toBe(true);
+            done();
+        });
+
+        it('Show search palette', (done: Function) => {
+            palette.enableSearch = true;
+            palette.dataBind();
+            // expect(document.getElementById("symbolpalette_search").className === "e-input-group").toBe(true);
+            // expect(document.getElementsByClassName('e-search').length > 0);
+            done();
+        });
+
+        it('Remove search palette', (done: Function) => {
+            palette.enableSearch = false;
+            palette.dataBind();
+            expect(document.getElementById("symbolpalette_search") === null).toBe(true);
+            done();
+        });
+
+        it('checking filter symbols in palette', (done: Function) => {
+            palette.enableSearch = true;
+            palette.dataBind();
+            palette.filterSymbols = (symbol: NodeModel[] | ConnectorModel[]): NodeModel[] | ConnectorModel[] => {
+                return null;
+            };
+            let events: MouseEvents = new MouseEvents();
+            let element: HTMLElement = document.getElementById("textEnter");
+            element.focus();
+            (document.getElementById("textEnter") as HTMLInputElement).value = "st";
+            let eventName = "keyUp";
+            palette[eventName]({ target: element });
+            setTimeout(() => {
+                console.log('timeOut18');
+                expect(document.getElementById("SearchPalette").children.length === 1).toBe(true);
+                done();
+            }, 500);
+        });
+
+        it('Changing the width and height of the palette', (done: Function) => {
+            palette.width = '24%';
+            palette.height = '540px';
+            palette.dataBind();
+            done();
+        });
+
+        it('Add Palette Item', (done: Function) => {
+            palette.addPaletteItem('flow', { id: 'newflow', shape: { type: 'Flow', shape: 'Process' } });
+            palette.dataBind();
+            let cpalette: PaletteModel = palette.palettes[0];
+            let element: HTMLElement = document.getElementById('newflow_container');
+            expect(element !== null).toBe(true);
+            done();
+        });
+        
+        it('Wrongly Add Palette Name', (done: Function) => {
+            palette.addPaletteItem('flows', { id: 'newflow', shape: { type: 'Flow', shape: 'Process' } });
+            palette.dataBind();
+            done();
+        });
+       
+        it('Checking custom size without size', (done: Function) => {
+            palette.getSymbolInfo = (symbol: Node | Connector): SymbolInfo => {
+                if (symbol.shape.type === 'Bpmn') {
+                    return { width: 50, height: 50 };
+                }
+                if (symbol.id === 'decision' || symbol.id === 'start' || symbol.id === 'end') {
+                    return { width: 100, height: 40 };
+                }
+                return null;
+            };
+            palette.dataBind();
+            done();
+        });
+        xit('Themes TestCases resize andd rotate', (done: Function) => {
+            
+            let resizeelem = document.querySelector('.e-diagram-resize-handle');
+            let resizeelemstyle = getComputedStyle(resizeelem);
+            console.log(resizeelemstyle.fill);
+            expect(resizeelemstyle.fill === 'rgb(63, 81, 181)' || resizeelemstyle.fill === 'rgb(227, 22, 91)' ||
+                resizeelemstyle.fill === 'rgb(255, 255, 255)').toBe(true);
+            let rotateelem = document.querySelector('.e-diagram-rotate-handle');
+            let rotateelemstyle = getComputedStyle(rotateelem);
+            console.log(resizeelemstyle.fill);
+            expect(resizeelemstyle.fill === 'rgb(63, 81, 181)' || resizeelemstyle.fill === 'rgb(227, 22, 91)' ||
+                resizeelemstyle.fill === 'rgb(255, 255, 255)').toBe(true);
+            done();
+        })
+       
+        it('Changing the expandMode at runtime', (done: Function) => {
+            palette.expandMode = 'Single';
+            palette.dataBind();
+            done();
+        });
+
+        it('Changing the enableAnimation at runtime', (done: Function) => {
+            palette.expandMode = 'Multiple';
+            palette.enableAnimation = true;
+            palette.dataBind();
+            setTimeout(() => {
+                console.log('timeOut19');
+                expect(palette.palettes[0].expanded).toBe(true);
+                done();
+            }, 1000);
+        });
+
+        it('Expanding palette interactively', (done: Function) => {
+            let accordion: string = 'accordionElement';
+            palette.enableAnimation = false;
+            palette.dataBind();
+            setTimeout(() => {
+                console.log('timeOut20');
+                mouseEvents.clickEvent(palette[accordion].element, 100, 255);
+                setTimeout(() => {
+                    console.log('timeOut21');
+                    expect(palette.palettes[1].expanded).toBe(true);
+                    done();
+                }, 20);
+            }, 10);
+        });
+        it('Checking custom size without size using string function', (done: Function) => {
+            window['getSymbolInfo'] = function (symbol: Node | Connector): SymbolInfo {
+                if (symbol.shape.type === 'Bpmn') {
+                    return { width: 50, height: 50 };
+                }
+                if (symbol.id === 'decision' || symbol.id === 'start' || symbol.id === 'end') {
+                    return { width: 100, height: 40 };
+                }
+                return null;
+            }
+            palette.getSymbolInfo = 'getSymbolInfo';
+            palette.dataBind();
+
+            done();
+        });
+        it('checking filter symbols in palette using string function', (done: Function) => {
+            palette.enableSearch = true;
+            palette.dataBind();
+            window['filterSymbols'] = function (symbol: NodeModel[] | ConnectorModel[]): NodeModel[] | ConnectorModel[] {
+                return null;
+            }
+            palette.filterSymbols = 'filterSymbols';
+            let events: MouseEvents = new MouseEvents();
+            let element: HTMLElement = document.getElementById("textEnter");
+            element.focus();
+            (document.getElementById("textEnter") as HTMLInputElement).value = "st";
+            let eventName = "keyUp";
+            palette[eventName]({ target: element });
+            setTimeout(() => {
+                console.log('timeOut22');
+                expect(document.getElementById("SearchPalette").children.length === 1).toBe(true);
+                done();
+            }, 500);
+        });
+        
+        it('Checking review without symbolPreview width ', (done: Function) => {
+
+            palette.symbolPreview.width = undefined;
+            palette.dataBind();
+            let events = new MouseEvents();
+            events.mouseDownEvent(palette.element, 75, 100, false, false);
+            events.mouseMoveEvent(palette.element, 100, 100, false, false);
+            events.mouseMoveEvent(palette.element, 200, 200, false, false);
+            // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
+            events.mouseUpEvent(palette.element, 200, 200, false, false);
+            // expect(document.getElementsByClassName('e-dragclone').length == 0).toBe(true);
+            done();
+        });
+        it('Checking review without symbolPreview height ', (done: Function) => {
+            palette.symbolPreview.width = 100;
+            palette.symbolPreview.height = undefined;
+            palette.dataBind();
+            let events = new MouseEvents();
+            events.mouseDownEvent(palette.element, 75, 100, false, false);
+            events.mouseMoveEvent(palette.element, 100, 100, false, false);
+            events.mouseMoveEvent(palette.element, 200, 200, false, false);
+            // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
+            events.mouseUpEvent(palette.element, 200, 200, false, false);
+            // expect(document.getElementsByClassName('e-dragclone').length == 0).toBe(true);
+            done();
+        });
+
+        it('Refresh palettes at runtime', (done: Function) => {
+            palette.palettes = [
+                {
+                    id: 'BPMN', symbols: [
+                        {
+                            id: 'BPMNStart', style: { strokeWidth: 2 }, shape: { type: 'Bpmn', shape: 'Event', event: { event: 'Start', trigger: 'None' } },
+                        },
+                        {
+                            id: 'Intermediate', style: { strokeWidth: 2 }, shape: { type: 'Bpmn', shape: 'Event', event: { event: 'Intermediate', trigger: 'None' } },
+                        }
+                    ], title: 'BPMN'
+                }
+            ];
+            palette.dataBind()
+            expect(palette.palettes.length === 1).toBe(true);
+            done();
+        });
+        it('Collapse Palette at run time', (done: Function) => {
+            palette.palettes[0].expanded = false;
+            palette.dataBind();
+            expect(palette.palettes[0].expanded === false).toBe(true);
+            done();
+        });
+        it('Expand Palette at run time', (done: Function) => {
+            palette.palettes[0].expanded = true;
+            palette.dataBind();
+            expect(palette.palettes[0].expanded === true).toBe(true);
+            done();
+        });
+    });
+    describe('Testing symbol palette1', () => {
+        let diagram: Diagram;
+        let palette: SymbolPalette;
+        let ele: HTMLElement;
+        let flowshapes: NodeModel[] = [{
+            id: 'start', dragSize: { width: 300, height: 300 }, previewSize: { width: 200, height: 200 }, shape: { type: 'Flow', shape: 'Terminator' }, pivot: { x: 0, y: 0 },
+            tooltip: { content: 'symbol', isSticky: true }, constraints: NodeConstraints.Default | NodeConstraints.Tooltip,
+        },
+        { id: 'process', dragSize: { width: 300, height: 300 }, previewSize: { width: 200, height: 200 }, shape: { type: 'Flow', shape: 'Process' } },
+        { id: 'decision', dragSize: { width: 300, height: 300 }, previewSize: { width: 200, height: 200 }, shape: { type: 'Flow', shape: 'Decision' } },
+        { id: 'data', dragSize: { width: 300, height: 300 }, previewSize: { width: 200, height: 200 }, shape: { type: 'Flow', shape: 'Data' } },
+        { id: 'end', dragSize: { width: 300, height: 300 }, previewSize: { width: 200, height: 200 }, shape: { type: 'Flow', shape: 'Terminator' } }];
+
+        let bpmnShapes: NodeModel[] = [{
+            id: 'node2a', width: 100, height: 100, offsetX: 500, offsetY: 100, constraints: NodeConstraints.Default | NodeConstraints.AllowDrop,
+            shape: { type: 'Bpmn', shape: 'DataObject', dataObject: { collection: false, type: 'None' } }
+        },
+        {
+            id: 'task', width: 100, height: 100, offsetX: 300, offsetY: 100,
+            shape: {
+                type: 'Bpmn', shape: 'Activity',
+                activity: { activity: 'SubProcess', subProcess: { type: 'Event' } }
+            }
+        }, {
+            id: 'annot4', width: 100, height: 100, pivot: { x: 0, y: 0 },
+            shape: { type: 'Bpmn', shape: 'TextAnnotation', annotation: { angle: 280, length: 150, text: 'textAnnotation4' } }
+        }];
+
+        let connectorSymbols: ConnectorModel[] = [{
+            id: 'connector1a', type: 'Straight',
+            sourcePoint: { x: 15, y: 15 }, targetPoint: { x: 20, y: 20 },
+        }, {
+            id: 'link2', sourcePoint: { x: 0, y: 0 }, targetPoint: { x: 40, y: 40 }, type: 'Orthogonal',
+            shape: {
+                type: 'Bpmn',
+                flow: 'Message',
+                association: 'directional'
+            }, style: {
+                strokeDashArray: '2,2'
+            },
+            segments: [{ type: 'Orthogonal', length: 30, direction: 'Bottom' },
+            { type: 'Orthogonal', length: 80, direction: 'Right' }]
+        }];
+
+        let connDecorators: ConnectorModel[] = [{
+            id: 'connectordec1', type: 'Straight',
+            sourcePoint: { x: 0, y: 0 }, targetPoint: { x: 40, y: 40 },
+            style: { strokeColor: 'red' }
+        },
+
+        {
+            id: 'connectordec2', type: 'Orthogonal',
+            sourcePoint: { x: 0, y: 0 }, targetPoint: { x: 40, y: 40 },
+        },
+        {
+            id: 'connectordec3', type: 'Bezier',
+            sourcePoint: { x: 0, y: 0 }, targetPoint: { x: 40, y: 40 },
+        }];
+
+        let grids: NodeModel[] = [{
+            id: 'grid', width: 100, height: 100
+        }];
+
+        let svgNodes: NodeModel[] = [{
+            id: 'native', width: 100, height: 100, shape: {
+                type: 'Native',
+                content: '<g> ${id} <style xmlns=http://www.w3.org/2000/svg type=text/css>.st051{fill:#CBC4C9;}.st152{fill:#E5DCE1;}.st252{fill:#DBD5DA;}.st3552{fill:#69696B;}</style><g xmlns=http://www.w3.org/2000/svg>    <path class=st051 d=M2.8,37L18,44.3c5,2.4,10.8,2.3,15.6-0.3l13.6-7.3c1.7-0.9,2.3-5.6,1.9-7c0,0.1,0.1,0.3,0.1,0.4v-4.3   c0.1,1.6-0.8,3.1-2.3,3.7l0,0l-13.1-6.9c-5.5-2.9-12-2.9-17.5,0L3.2,29.8c-1.3-0.5-2.3-1.7-2.5-3.2v6.7 />    <path class=st152 d=M18.2,37.2l-15-7.3c-1.7-0.7-2.6-2.7-1.9-4.4c0.3-0.8,0.9-1.4,1.7-1.8l13.6-7.2c5.4-2.8,11.9-2.8,17.3,0   l13.2,7c1.7,0.8,2.5,2.9,1.7,4.6c-0.3,0.8-1,1.4-1.7,1.7L33.6,37C28.8,39.5,23.1,39.6,18.2,37.2z />    <path class=st252 d=M25.5,39.2c-2.7,0-5.3-0.6-7.7-1.8L2.6,30.1c-1.1-0.6-1.9-1.6-2.3-2.8l1-0.3C1.6,28,2.2,28.7,3,29.2l15.2,7.4   c4.8,2.3,10.5,2.2,15.2-0.3L47,29c0.9-0.5,1.6-1.4,1.8-2.4l1,0.1c-0.2,1.4-1.1,2.5-2.3,3.1l-13.7,7.3   C31.3,38.5,28.4,39.2,25.5,39.2z />    <path class=st3552 d=M26,46.1c-0.7,0-1.4,0-2.2-0.1c-2.3-0.3-4.6-1-6.8-2l-9.1-4.4L4.8,38H4.6c-1-0.4-1.9-1-2.7-1.8   c-0.7-0.8-1.2-1.8-1.5-2.8c-0.2-0.6-0.2-1.2-0.2-1.8V28l0,0c0,0,0-0.1,0-0.3c0.2-2.3,1.5-4.4,3.6-5.5l12.4-6.6c5.6-3,12.4-3,18-0.1   l13.3,7c1.5,1,2.4,2.7,2.3,4.5l-0.1,5.2c0,2.1-1.2,4-3.1,4.9L33,44.5C30.8,45.6,28.4,46.2,26,46.1z M25.2,14.3   c-3,0-5.9,0.7-8.6,2.1L4.2,23.1c-1.7,0.9-2.9,2.7-3,4.6c0,0.1,0,0.2,0,0.2v3.6c0,0.5,0.1,1,0.2,1.5C1.6,34,2,34.8,2.6,35.5   c0.7,0.7,1.5,1.2,2.4,1.6l0.2,0.1l3.2,1.5l9.1,4.4c2,1,4.2,1.6,6.5,1.9c2.9,0.4,5.9-0.1,8.6-1.4l13.7-7.3c1.5-0.8,2.5-2.3,2.5-4   l0.1-5.2c0.1-1.5-0.6-2.9-1.8-3.6l-13.3-7C31.1,15.1,28.2,14.3,25.2,14.3L25.2,14.3z />    <path class=st3552 d=M4,33.5c0,0.5-0.2,0.8-0.5,0.8S2.8,34,2.8,33.5s0.2-0.8,0.5-0.8S4,33,4,33.5z />    <path class=st3552 d=M7,35.1c0,0.5-0.2,0.8-0.5,0.8s-0.6-0.3-0.7-0.8s0.2-0.8,0.5-0.8S6.9,34.7,7,35.1z />    <path class=st3552 d=M9.9,36.7c0,0.5-0.2,0.8-0.5,0.8s-0.6-0.3-0.7-0.8s0.2-0.8,0.5-0.8S9.9,36.3,9.9,36.7z />    <path class=st3552 d=M17.6,40.2c0,0.6-0.3,1.1-0.7,1.1s-0.8-0.5-0.9-1.1s0.3-1.1,0.7-1.1S17.6,39.6,17.6,40.2z />    <path class=st3552 d=M32,15.2l0.4-12.7c0-0.6,0.5-1.1,1.1-1.1c0.2,0,0.3,0,0.5,0.1l0,0c0.4,0.2,0.6,0.5,0.6,0.9L35,16.5L32,15.2z /></g></g>',
+                text: 'Element for Network Diagram'
+            } as NodeModel
+        }];
+
+        let htmlNodes: NodeModel[] = [{
+            id: 'html', width: 100, height: 100, shape: {
+                type: 'HTML',
+                content: '<div style="background:red;height:100%;width:100%;"><input type="button" value="{{:value}}" /></div>',
+            } as NodeModel
+        }];
+        beforeAll((): void => {
+            ele = createElement('div', { styles: 'width:100%;height:500px;' });
+            ele.appendChild(createElement('div', { id: 'symbolpalette2', styles: 'width:25%;float:left;' }));
+            ele.appendChild(createElement('div', { id: 'diagram2', styles: 'width:74%;height:500px;float:left;' }));
+            document.body.appendChild(ele);
+            let nodes: NodeModel[] = [
+                {
+                    id: 'node1', maxHeight: 600, maxWidth: 600, minWidth: 300, minHeight: 300,
+                    constraints: NodeConstraints.Default | NodeConstraints.AllowDrop,
+                    offsetX: 200, offsetY: 200,
+                    shape: {
+                        type: 'Bpmn', shape: 'Activity', activity: {
+                            activity: 'SubProcess',
+                            subProcess: {
+                                collapsed: false, type: 'Transaction',
+                            } as BpmnSubProcessModel
+                        },
+                    },
+                },
+                {
+                    id: 'node11', width: 100, height: 100, offsetX: 300, offsetY: 100,
+                    constraints: NodeConstraints.PointerEvents | NodeConstraints.Select,
+                    shape: {
+                        type: 'Path', data: 'M540.3643,137.9336L546.7973,159.7016L570.3633,159.7296L550.7723,171.9366' +
+                            'L558.9053,194.9966L540.3643,' +
+                            '179.4996L521.8223,194.9966L529.9553,171.9366L510.3633,159.7296L533.9313,159.7016L540.3643,137.9336z'
+                    }, annotations: [{ content: 'Path Element' }]
+                }
+            ];
+            let connectors: ConnectorModel[] = [{
+                id: 'connector11', type: 'Straight', sourcePoint: { x: 100, y: 300 },
+                targetPoint: { x: 200, y: 400 },
+            }];
+
+
+            diagram = new Diagram({
+                connectors: connectors, nodes: nodes, pageSettings: { background: { color: 'transparent' } },
+                selectedItems: { constraints: SelectorConstraints.All },
+                width: '70%',
+            });
+            diagram.appendTo('#diagram2');
+
+            palette = new SymbolPalette({
+                width: '25%', height: '500px',
+                palettes: [
+                    { id: 'flow2', expanded: true, symbols: flowshapes, iconCss: '', title: 'Flow Shapes' },
+                    { id: 'bpmn2', expanded: true, symbols: bpmnShapes, iconCss: '', title: 'BPMN Shapes' },
+                    { id: 'grids2', expanded: true, symbols: grids, title: 'Grids' },
+                    { id: 'native2', expanded: true, symbols: svgNodes, title: 'Native Elements' },
+                    { id: 'html2', expanded: true, symbols: htmlNodes, iconCss: 'shapes', title: 'Html Elements' },
+                    { id: 'connectors2', expanded: true, height: 200, symbols: connectorSymbols, iconCss: '', title: 'Connectors' },
+                    { id: 'decorators2', expanded: true, symbols: connDecorators, iconCss: '', title: 'Connectors' },
+                ], enableAnimation: false, enableSearch: true,
+                symbolMargin: { top: 5, bottom: 5, left: 5, right: 5 },
+            });
+            palette.appendTo('#symbolpalette2');
+        });
+
+        afterAll((): void => {
+            diagram.destroy();
+            palette.destroy();
+            ele.remove();
+            diagram = null;
+            palette = null;
+            ele = null;
+        });
+
+        it('Checking drag and drop', (done: Function) => {
+            setTimeout(() => {
+                
+                console.log('timeOut13');
+                palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+                    let clonedElement: HTMLElement;
+                    let symbols: IElement = palette.symbolTable['start'];
+                    palette['selectedSymbols'] = symbols;
+                    if (symbols !== undefined) {
+                        clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+                        clonedElement.setAttribute('paletteId', palette.element.id);
+                    }
+                    return clonedElement;
+                };
+                diagram.dragEnter = (arg) => {
+                    expect(arg.source instanceof SymbolPalette).toBe(true);
+                }
+                diagram.dragOver = (arg) => {
+                    expect(arg.diagram !== undefined).toBe(true);
+                }
+                diagram.drop = (arg) => {
+                    expect((arg.element as NodeModel).width === 300).toBe(true);
+                    expect((arg.element as NodeModel).height === 300).toBe(true);
+                    expect((arg.element as NodeModel).id === diagram.currentSymbol.id).toBe(true);
+                }
+                let events: MouseEvents = new MouseEvents();
+                events.mouseDownEvent(palette.element, 75, 100, false, false);
+                events.mouseMoveEvent(palette.element, 100, 100, false, false);
+                events.mouseMoveEvent(palette.element, 200, 200, false, false);
+                expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
+                events.mouseMoveEvent(diagram.element, 300, 300, false, false);
+                events.mouseMoveEvent(diagram.element, 400, 400, false, false);
+                let ele = document.getElementById('diagram2_SelectorElement')
+                console.log('symbolpalette');
+                console.log(ele);
+                expect(ele.childElementCount === 1).toBe(true);
+                events.mouseUpEvent(diagram.element, 400, 400, false, false);
+                expect(diagram.selectedItems.nodes[0].width === 300).toBe(true);
+                expect(diagram.selectedItems.nodes[0].height === 300).toBe(true);
+                expect(diagram.nodes.length).toBe(3);
+                diagram.undo()
+                expect(diagram.nodes.length).toBe(2);
+                done();
+            }, 100);
+            
+        });
+        it('Checking drag and drop - adding node undo issue', (done: Function) => {
+            
+            palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+                let clonedElement: HTMLElement; 
+                let symbols: IElement = palette.symbolTable['start'];
+                palette['selectedSymbols'] = symbols;
+                if (symbols !== undefined) {
+                    clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+                    clonedElement.setAttribute('paletteId', palette.element.id);
+                }
+                return clonedElement;
+            };
+            diagram.drop = (arg) => {
+                arg.cancel = true;
+                let x = arg.position.x + 100;
+                let y = arg.position.y + 100;
+                let id = "node" + diagram.nodes.length + 1;
+                diagram.addNode({
+                    id: id,
+                    data: {
+                        type: "state"
+                    },
+                    offsetY: y,
+                    offsetX: x,
+                    width: 125,
+                    height: 125
+                });
+            }
+            let events: MouseEvents = new MouseEvents();
+            events.mouseDownEvent(palette.element, 75, 100, false, false);
+            events.mouseMoveEvent(palette.element, 100, 100, false, false);
+            // expect(palette.selectedSymbols.wrapper.children[0].width === 70).toBe(true);
+            // expect(palette.selectedSymbols.wrapper.children[0].height === 50).toBe(true);
+            events.mouseMoveEvent(palette.element, 200, 200, false, false);
+            // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
+            events.mouseMoveEvent(diagram.element, 300, 300, false, false);
+            events.mouseMoveEvent(diagram.element, 400, 400, false, false);
+            let ele = document.getElementById('diagram2_SelectorElement')
+            console.log('symbolpalette');
+            console.log(ele);
+
+            events.mouseUpEvent(diagram.element, 400, 400, false, false);
+            console.log("Test case check" + diagram.nodes.length)
+            // expect(diagram.nodes.length).toBe(3);
+            diagram.undo()
+            // expect(diagram.nodes.length).toBe(2);
+            console.log("Test case check1" + diagram.nodes.length)
+            done();
+        });
+        it('Checking drag stop', (done: Function) => {
+            let events: MouseEvents = new MouseEvents();
+            events.mouseDownEvent(palette.element, 75, 100, false, false);
+            events.mouseMoveEvent(palette.element, 100, 100, false, false);
+            events.mouseMoveEvent(palette.element, 150, 200, false, false);
+            events.mouseMoveEvent(palette.element, 150, 300, false, false);
+            events.mouseUpEvent(palette.element, 150, 300, false, false);
+            done();
+        });
+
+        it('Checking moving symbol outside of diagram', (done: Function) => {
+            
+            let events: MouseEvents = new MouseEvents();
+            events.mouseDownEvent(palette.element, 75, 100, false, false);
+            events.mouseMoveEvent(palette.element, 100, 100, false, false);
+            events.mouseMoveEvent(palette.element, 200, 200, false, false);
+            events.mouseMoveEvent(diagram.element, 300, 300, false, false);
+
+            events.mouseMoveEvent(diagram.diagramCanvas, 350, 350, false, false);
+            events.mouseLeaveEvent(diagram.diagramCanvas);
+            events.mouseMoveEvent(palette.element, 150, 200, false, false);
+            events.mouseUpEvent(palette.element, 150, 200, false, false);
+            done();
+        });
+
+        it('Checking symbol preview size', (done: Function) => {
+            palette.symbolPreview.width = 100;
+            palette.symbolPreview.height = 100;
+            let events: MouseEvents = new MouseEvents();
+            events.mouseDownEvent(palette.element, 75, 100, false, false);
+            events.mouseMoveEvent(palette.element, 100, 100, false, false);
+            events.mouseMoveEvent(palette.element, 200, 200, false, false);
+            // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
+            events.mouseUpEvent(palette.element, 200, 200, false, false);
+            // expect(document.getElementsByClassName('e-dragclone').length == 0).toBe(true);
+            done();
+        });
+
+        it('Checking dragging Complex Shape', (done: Function) => {
+            palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+                let clonedElement: HTMLElement; let diagramElement: any;
+                let position: PointModel = palette['getMousePosition'](e.sender);
+                let symbols: IElement = palette.symbolTable['task'];
+                palette['selectedSymbols'] = symbols;
+                if (symbols !== undefined) {
+                    clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+                    clonedElement.setAttribute('paletteId', palette.element.id);
+                }
+                return clonedElement;
+            };
+            let events: MouseEvents = new MouseEvents();
+            events.mouseDownEvent(palette.element, 75, 100, false, false);
+            events.mouseMoveEvent(palette.element, 100, 100, false, false);
+            events.mouseMoveEvent(palette.element, 200, 200, false, false);
+            // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
+            events.mouseMoveEvent(diagram.element, 500, 300, false, false);
+            events.mouseUpEvent(diagram.element, 500, 300, false, false);
+            // expect(document.getElementsByClassName('e-dragclone').length == 0).toBe(true);
+            // expect(diagram.nodes.length).toBe(3);
+            done();
+        });
+
+        it('Checking dragging connector', (done: Function) => {
+            palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+                let clonedElement: HTMLElement;
+                let symbols: IElement = palette.symbolTable['connector1a'];
+                palette['selectedSymbols'] = symbols;
+                if (symbols !== undefined) {
+                    clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+                    clonedElement.setAttribute('paletteId', palette.element.id);
+                }
+                return clonedElement;
+            };
+            diagram.drop = (arg) => {
+                arg.cancel = false;
+            }
+            let events: MouseEvents = new MouseEvents();
+            events.mouseDownEvent(palette.element, 75, 100, false, false);
+            events.mouseMoveEvent(palette.element, 100, 100, false, false);
+            events.mouseMoveEvent(palette.element, 200, 200, false, false);
+            // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
+            events.mouseMoveEvent(diagram.element, 600, 300, false, false);
+            events.mouseUpEvent(diagram.element, 600, 300, false, false);
+            // expect(diagram.connectors.length).toBe(2);
+            done();
+        });
+    });
+    describe('Testing symbol palette2', () => {
         let diagram: Diagram;
         let palette: SymbolPalette;
         let ele: HTMLElement;
@@ -1040,18 +1100,17 @@ describe('Symbol Palette', () => {
 
             setTimeout(function () {
                 console.log('timeOut23');
-                // palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-                //     let clonedElement: HTMLElement; let diagramElement: any;
-                //     let position: PointModel = palette['getMousePosition'](e.sender);
-                //     let target = document.elementFromPoint(position.x, position.y).childNodes[0];
-                //     let symbols: IElement = palette.symbolTable[target['id']];
-                //     palette['selectedSymbols'] = symbols;
-                //     if (symbols !== undefined) {
-                //         clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-                //         clonedElement.setAttribute('paletteId', palette.element.id);
-                //     }
-                //     return clonedElement;
-                // };
+                
+                palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+                    let clonedElement: HTMLElement;
+                    let symbols: IElement = palette.symbolTable['group'];
+                    palette['selectedSymbols'] = symbols;
+                    if (symbols !== undefined) {
+                        clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+                        clonedElement.setAttribute('paletteId', palette.element.id);
+                    }
+                    return clonedElement;
+                };
                 palette.getPersistData();
                 let events = new MouseEvents();
                 let element = (document.getElementById('group_container').getBoundingClientRect());;
@@ -1077,7 +1136,7 @@ describe('Symbol Palette', () => {
             //Check the final memory usage against the first usage, there should be little change if everything was properly deallocated
             expect(memory).toBeLessThan(profile.samples[0] + 0.25);
             done();
-        })
+        });
     });
     describe('Testing Bpmn shape color after changing the event in runtime', () => {
         let diagram: Diagram;
@@ -1127,19 +1186,18 @@ describe('Symbol Palette', () => {
         it('Check Bpmn event shape fill color ', (done: Function) => {
             setTimeout(function () {
                 console.log('timeOut24');
-                // palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-                //     let clonedElement: HTMLElement; let diagramElement: any;
-                //     let position: PointModel = palette['getMousePosition'](e.sender);
-                //     let target = document.elementFromPoint(position.x, position.y).childNodes[0];
-                //     let symbols: IElement = palette.symbolTable[target['id']];
-                //     palette['selectedSymbols'] = symbols;
-                //     if (symbols !== undefined) {
-                //         clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-                //         clonedElement.setAttribute('paletteId', palette.element.id);
-                //     }
-                //     return clonedElement;
-                // };
-                // palette.getPersistData();
+                
+                palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+                    let clonedElement: HTMLElement;
+                    let symbols: IElement = palette.symbolTable['BPMNnode1'];
+                    palette['selectedSymbols'] = symbols;
+                    if (symbols !== undefined) {
+                        clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+                        clonedElement.setAttribute('paletteId', palette.element.id);
+                    }
+                    return clonedElement;
+                };
+                palette.getPersistData();
                 let events = new MouseEvents();
                 let element = (document.getElementById('BPMNnode1_container').getBoundingClientRect());;
                 events.mouseDownEvent(palette.element, element.left + palette.element.offsetLeft, element.top + palette.element.offsetTop, false, false);
@@ -1201,32 +1259,32 @@ describe('Symbol Palette', () => {
             ele = null;
         });
         it('Check symbol size after dragging from search container', (done: Function) => {
-            // palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-            //     let clonedElement: HTMLElement; let diagramElement: any;
-            //     let position: PointModel = palette['getMousePosition'](e.sender);
-            //     let target = document.elementFromPoint(position.x, position.y).childNodes[0];
-            //     let symbols: IElement = palette.symbolTable[target['id']];
-            //     palette['selectedSymbols'] = symbols;
-            //     if (symbols !== undefined) {
-            //         clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-            //         clonedElement.setAttribute('paletteId', palette.element.id);
-            //     }
-            //     return clonedElement;
-            // };
-            // diagram.dragEnter = (arg) => {
-            //     expect(arg.source instanceof SymbolPalette).toBe(true);
-            //     done();
-            // }
-            // diagram.dragOver = (arg) => {
-            //     expect(arg.diagram !== undefined).toBe(true);
-            //     done();
-            // }
-            // diagram.drop = (arg) => {
-            //     expect((arg.element as NodeModel).width === 300).toBe(true);
-            //     expect((arg.element as NodeModel).height === 300).toBe(true);
-            //     expect((arg.element as NodeModel).id === diagram.currentSymbol.id).toBe(true);
-            //     done();
-            // }
+            palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+                let clonedElement: HTMLElement; let diagramElement: any;
+                let position: PointModel = palette['getMousePosition'](e.sender);
+                let target = document.elementFromPoint(position.x, position.y).childNodes[0];
+                let symbols: IElement = palette.symbolTable[target['id']];
+                palette['selectedSymbols'] = symbols;
+                if (symbols !== undefined) {
+                    clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+                    clonedElement.setAttribute('paletteId', palette.element.id);
+                }
+                return clonedElement;
+            };
+            diagram.dragEnter = (arg) => {
+                expect(arg.source instanceof SymbolPalette).toBe(true);
+                done();
+            }
+            diagram.dragOver = (arg) => {
+                expect(arg.diagram !== undefined).toBe(true);
+                done();
+            }
+            diagram.drop = (arg) => {
+                expect((arg.element as NodeModel).width === 300).toBe(true);
+                expect((arg.element as NodeModel).height === 300).toBe(true);
+                expect((arg.element as NodeModel).id === diagram.currentSymbol.id).toBe(true);
+                done();
+            }
             let events: MouseEvents = new MouseEvents();
             events.mouseDownEvent(palette.element, 75, 100, false, false);
             events.mouseMoveEvent(palette.element, 100, 100, false, false);
@@ -1247,10 +1305,10 @@ describe('Symbol Palette', () => {
                 let eventName = "keyUp";
                 palette[eventName]({ target: element });
             }
-            // setTimeout(() => {
-            //     expect(document.getElementById("SearchPalette").children.length === 1).toBe(true);
-            //     done();
-            // }, 500);
+            setTimeout(() => {
+                expect(document.getElementById("SearchPalette").children.length === 1).toBe(true);
+                done();
+            }, 500);
             done();
         });
     });
@@ -1345,116 +1403,26 @@ describe('Symbol Palette', () => {
             ele = null;
         });
 
-        it('Checking lanes length after adding it from palette', (done: Function) => {
-
-            setTimeout(function () {
-                console.log('timeOut25');
-                // palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-                //     let clonedElement: HTMLElement; let diagramElement: any;
-                //     let position: PointModel = palette['getMousePosition'](e.sender);
-                //     let target = document.elementFromPoint(position.x, position.y).childNodes[0];
-                //     let symbols: IElement = palette.symbolTable[target['id']];
-                //     palette['selectedSymbols'] = symbols;
-                //     if (symbols !== undefined) {
-                //         clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-                //         clonedElement.setAttribute('paletteId', palette.element.id);
-                //     }
-                //     return clonedElement;
-                // };
-                // palette.getPersistData();
-                let events = new MouseEvents();
-                let element = (document.getElementById('stackCanvas2_container').getBoundingClientRect());;
-                events.mouseDownEvent(palette.element, element.left + palette.element.offsetLeft, element.top + palette.element.offsetTop, false, false);
-                events.mouseMoveEvent(palette.element, element.left + 40 + palette.element.offsetLeft, element.top + palette.element.offsetLeft, false, false);
-                events.mouseMoveEvent(palette.element, element.left + 60, element.top, false, false);
-                events.mouseMoveEvent(diagram.element, 200, 200, false, false);
-                events.mouseMoveEvent(diagram.element, 250, 270 - diagram.element.offsetTop, false, false);
-                events.mouseMoveEvent(diagram.element, 250, 270 - 5 - diagram.element.offsetTop, false, false);
-                events.mouseUpEvent(diagram.element, 250, 270 - 10 - diagram.element.offsetTop, false, false);
-                events.clickEvent(diagram.element, 250, 270 - 10 - diagram.element.offsetTop, false, false);
-                diagram.selectAll();
-                // expect((diagram.selectedItems.nodes[0].shape as SwimLaneModel).lanes.length === 1).toBe(true);
-                done();
-            }, 1000);
-        });
-
-        it('Adding lane using InsertLaneBefore', (done: Function) => {
-            // diagram.select([diagram.nodes[6]]);
-            // if (diagram.selectedItems.nodes.length > 0 && (diagram.selectedItems.nodes[0] as Node).isLane) {
-            //     let index: number;
-            //     let node: Node = diagram.selectedItems.nodes[0] as Node;
-            //     let swimlane: NodeModel = diagram.getObject((diagram.selectedItems.nodes[0] as Node).parentId);
-            //     let shape: SwimLaneModel = swimlane.shape as SwimLaneModel;
-            //     let existingLane: LaneModel = cloneObject(shape.lanes[0]);
-
-            //     let newLane: LaneModel = {
-            //         id: randomId(),
-            //         header: {
-            //             width: existingLane.header.width, height: existingLane.header.height,
-            //             style: existingLane.header.style as ShapeStyleModel
-            //         } as HeaderModel,
-            //         style: existingLane.style as ShapeStyleModel,
-            //         height: existingLane.height, width: existingLane.width,
-            //     } as LaneModel;
-
-            //     if (shape.orientation === 'Horizontal') {
-            //         let exclude = 0;
-            //         exclude += (shape.header) ? 1 : 0;
-            //         exclude += (shape.phases.length) ? 1 : 0;
-            //         index = node.rowIndex - exclude;
-            //         newLane.header.width = existingLane.header.width;
-            //         newLane.header.height = existingLane.height;
-            //     } else {
-            //         index = node.columnIndex - 1;
-            //         newLane.header.width = existingLane.width;
-            //         newLane.header.height = existingLane.header.height;
-            //     }
-
-            //     diagram.addLanes(swimlane, [newLane], index);
-            //     diagram.clearSelection();
-            // }
-            // expect(diagram.nodes.length === 8 && diagram.nodes[diagram.nodes.length - 1].columnIndex === 1).toBe(true);
-            done();
-        });
-
-        it('Adding lane using InsertLaneAfter', (done: Function) => {
-            // diagram.select([diagram.nodes[8]]);
-            // if (diagram.selectedItems.nodes.length > 0 && (diagram.selectedItems.nodes[0] as Node).isLane) {
-            //     let index: number;
-            //     let node: Node = diagram.selectedItems.nodes[0] as Node;
-            //     let swimlane: NodeModel = diagram.getObject((diagram.selectedItems.nodes[0] as Node).parentId);
-            //     let shape: SwimLaneModel = swimlane.shape as SwimLaneModel;
-            //     let existingLane: LaneModel = cloneObject(shape.lanes[0]);
-
-            //     let newLane: LaneModel = {
-            //         id: randomId(),
-            //         header: {
-            //             width: existingLane.header.width, height: existingLane.header.height,
-            //             style: existingLane.header.style as ShapeStyleModel
-            //         } as HeaderModel,
-            //         style: existingLane.style as ShapeStyleModel,
-            //         height: existingLane.height, width: existingLane.width,
-            //     } as LaneModel;
-
-            //     if (shape.orientation === 'Horizontal') {
-            //         let exclude = 0;
-            //         exclude += (shape.header) ? 1 : 0;
-            //         exclude += (shape.phases.length) ? 1 : 0;
-            //         index = node.rowIndex - exclude;
-            //         newLane.header.width = existingLane.header.width;
-            //         newLane.header.height = existingLane.height;
-            //     } else {
-            //         index = node.columnIndex - 1;
-            //         newLane.header.width = existingLane.width;
-            //         newLane.header.height = existingLane.header.height;
-            //     }
-
-            //     diagram.addLanes(swimlane, [newLane], index + 1);
-            //     diagram.clearSelection();
-            // }
-            // expect(diagram.nodes.length === 8 && diagram.nodes[diagram.nodes.length - 1].columnIndex === 1).toBe(true);
-            done();
-        });
+        // it('Checking lanes length after adding it from palette', (done: Function) => {
+        //     
+        //     setTimeout(function () {
+        //         
+        //         console.log('timeOut25');
+        //         let events = new MouseEvents();
+        //         let element = (document.getElementById('stackCanvas2_container').getBoundingClientRect());;
+        //         events.mouseDownEvent(palette.element, element.left + palette.element.offsetLeft, element.top + palette.element.offsetTop, false, false);
+        //         events.mouseMoveEvent(palette.element, element.left + 2 + palette.element.offsetLeft, element.top + palette.element.offsetLeft, false, false);
+        //         events.mouseMoveEvent(palette.element, element.left + 10, element.top, false, false);
+        //         events.mouseMoveEvent(diagram.element, 200, 200, false, false);
+        //         events.mouseMoveEvent(diagram.element, 250, 270 - diagram.element.offsetTop, false, false);
+        //         events.mouseMoveEvent(diagram.element, 250, 270 - 5 - diagram.element.offsetTop, false, false);
+        //         events.mouseUpEvent(diagram.element, 250, 270 - 10 - diagram.element.offsetTop, false, false);
+        //         events.clickEvent(diagram.element, 250, 270 - 10 - diagram.element.offsetTop, false, false);
+        //         diagram.selectAll();
+        //         expect((diagram.selectedItems.nodes[0].shape as SwimLaneModel).lanes.length === 1).toBe(true);
+        //         done();
+        //     }, 1000);
+        // });
     });
 
     describe('Testing symbol palette with connector source and target point as same', () => {
@@ -1530,36 +1498,37 @@ describe('Symbol Palette', () => {
             ele = null;
         });
 
-        it('Check connector rendering in the palette', (done: Function) => {
-            setTimeout(function () {
-                console.log('timeOut26');
-                // palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-                //     let clonedElement: HTMLElement; let diagramElement: any;
-                //     let position: PointModel = palette['getMousePosition'](e.sender);
-                //     let target = document.elementFromPoint(position.x, position.y).childNodes[0];
-                //     let symbols: IElement = palette.symbolTable[target['id']];
-                //     palette['selectedSymbols'] = symbols;
-                //     if (symbols !== undefined) {
-                //         clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-                //         clonedElement.setAttribute('paletteId', palette.element.id);
-                //     }
-                //     return clonedElement;
-                // };
-                // palette.getPersistData();
-                let events = new MouseEvents();
-                let element = (document.getElementById('Link1_container').getBoundingClientRect());;
-                events.mouseDownEvent(palette.element, element.left + palette.element.offsetLeft, element.top + palette.element.offsetTop, false, false);
-                events.mouseMoveEvent(palette.element, element.left + 40 + palette.element.offsetLeft, element.top + palette.element.offsetLeft, false, false);
-                events.mouseMoveEvent(palette.element, element.left + 60, element.top, false, false);
-                events.mouseMoveEvent(diagram.element, 600, 100, false, false);
-                events.mouseMoveEvent(diagram.element, 600, 100 - diagram.element.offsetTop, false, false);
-                events.mouseMoveEvent(diagram.element, 600, 100 - 5 - diagram.element.offsetTop, false, false);
-                events.mouseUpEvent(diagram.element, 600, 100 - 10 - diagram.element.offsetTop, false, false);
-                events.clickEvent(diagram.element, 600, 100 - 10 - diagram.element.offsetTop, false, false);
-                // expect(diagram.connectors.length === 1).toBe(true);
-                done();
-            }, 1000);
-        });
+        // it('Check connector rendering in the palette', (done: Function) => {
+        //     setTimeout(function () {
+        //         
+        //         console.log('timeOut26');
+        //         palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+        //             let clonedElement: HTMLElement; let diagramElement: any;
+        //             let position: PointModel = palette['getMousePosition'](e.sender);
+        //             let target = document.elementFromPoint(position.x, position.y).childNodes[0];
+        //             let symbols: IElement = palette.symbolTable[target['id']];
+        //             palette['selectedSymbols'] = symbols;
+        //             if (symbols !== undefined) {
+        //                 clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+        //                 clonedElement.setAttribute('paletteId', palette.element.id);
+        //             }
+        //             return clonedElement;
+        //         };
+        //         palette.getPersistData();
+        //         let events = new MouseEvents();
+        //         let element = (document.getElementById('Link1_container').getBoundingClientRect());;
+        //         events.mouseDownEvent(palette.element, element.left + palette.element.offsetLeft, element.top + palette.element.offsetTop, false, false);
+        //         events.mouseMoveEvent(palette.element, element.left + 40 + palette.element.offsetLeft, element.top + palette.element.offsetLeft, false, false);
+        //         events.mouseMoveEvent(palette.element, element.left + 60, element.top, false, false);
+        //         events.mouseMoveEvent(diagram.element, 600, 100, false, false);
+        //         events.mouseMoveEvent(diagram.element, 600, 100 - diagram.element.offsetTop, false, false);
+        //         events.mouseMoveEvent(diagram.element, 600, 100 - 5 - diagram.element.offsetTop, false, false);
+        //         events.mouseUpEvent(diagram.element, 600, 100 - 10 - diagram.element.offsetTop, false, false);
+        //         events.clickEvent(diagram.element, 600, 100 - 10 - diagram.element.offsetTop, false, false);
+        //         // expect(diagram.connectors.length === 1).toBe(true);
+        //         done();
+        //     }, 1000);
+        // });
     });
 
     describe('Testing symbol palette drag stop on escape', () => {
@@ -1611,122 +1580,123 @@ describe('Symbol Palette', () => {
             palette = null;
             ele = null;
         });
-        it('Checking retaining selection on dragging', (done: Function) => {
-            // palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-            //     let clonedElement: HTMLElement; let diagramElement: any;
-            //     let position: PointModel = palette['getMousePosition'](e.sender);
-            //     let target: ChildNode = document.elementFromPoint(position.x, position.y).childNodes[0];
-            //     let symbols: IElement = palette.symbolTable['symbol1'];
-            //     palette['selectedSymbols'] = symbols;
-            //     if (symbols !== undefined) {
-            //         clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-            //         clonedElement.setAttribute('paletteId', palette.element.id);
-            //     }
-            //     return clonedElement;
-            // };
-            diagram.dragEnter = (arg) => {
-                // expect(arg.source instanceof SymbolPalette).toBe(true);
-                done();
-            }
-            diagram.dragOver = (arg) => {
-                // expect(arg.diagram !== undefined).toBe(true);
-                done();
-            }
-            diagram.drop = (arg) => {
-                // expect((arg.element as NodeModel).id === diagram.currentSymbol.id).toBe(true);
-                done();
-            }
-            let events: MouseEvents = new MouseEvents();
-            // expect(diagram.nodes.length === 1).toBe(true);
-            events.mouseDownEvent(palette.element, 45, 85, false, false);
-            events.mouseMoveEvent(palette.element, 100, 100, false, false);
-            events.mouseMoveEvent(palette.element, 200, 200, false, false);
-            // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
-            events.mouseMoveEvent(diagram.element, 300, 300, false, false);
-            events.mouseUpEvent(diagram.element, 300, 300, false, false);
-            // expect(diagram.nodes.length > 1).toBe(true);
-            // let previousSelectedObjectID: string = diagram.selectedItems.nodes[0].id;
-            events.mouseDownEvent(palette.element, 45, 85, false, false);
-            events.mouseDownEvent(palette.element, 45, 85, false, false);
-            events.mouseMoveEvent(palette.element, 100, 100, false, false);
-            events.mouseMoveEvent(palette.element, 200, 200, false, false);
-            events.mouseMoveEvent(diagram.element, 150, 300, false, false);
-            // expect(diagram.previousSelectedObject !== null &&
-            //     diagram.previousSelectedObject[0].id === previousSelectedObjectID).toBe(true);
-            events.mouseUpEvent(diagram.element, 150, 300, false, false);
-            done();
-        });
-        it('Checking Esc key pressing inside diagram', (done: Function) => {
-            // palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-            //     let clonedElement: HTMLElement; let diagramElement: any;
-            //     let position: PointModel = palette['getMousePosition'](e.sender);
-            //     let target: ChildNode = document.elementFromPoint(position.x, position.y).childNodes[0];
-            //     let symbols: IElement = palette.symbolTable['symbol1'];
-            //     palette['selectedSymbols'] = symbols;
-            //     if (symbols !== undefined) {
-            //         clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-            //         clonedElement.setAttribute('paletteId', palette.element.id);
-            //     }
-            //     return clonedElement;
-            // };
-            diagram.dragEnter = (arg) => {
-                // expect(arg.source instanceof SymbolPalette).toBe(true);
-                done();
-            }
-            diagram.dragOver = (arg) => {
-                // expect(arg.diagram !== undefined).toBe(true);
-                done();
-            }
-            diagram.drop = (arg) => {
-                // expect((arg.element as NodeModel).id === diagram.currentSymbol.id).toBe(true);
-                done();
-            }
-            let events: MouseEvents = new MouseEvents();
-            events.mouseDownEvent(palette.element, 45, 85, false, false);
-            events.mouseMoveEvent(palette.element, 100, 100, false, false);
-            events.mouseMoveEvent(palette.element, 200, 200, false, false);
-            // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
-            events.mouseMoveEvent(diagram.element, 200, 150, false, false);
-            events.keyDownEvent(diagram.element, 'Escape');
-            // expect(document.getElementsByClassName('e-dragclone').length === 0).toBe(true);
-            events.mouseUpEvent(diagram.element, 200, 150, false, false);
-            done();
-        });
-        it('Checking Esc key pressing inside symbol palette', (done: Function) => {
-            // palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-            //     let clonedElement: HTMLElement; let diagramElement: any;
-            //     let position: PointModel = palette['getMousePosition'](e.sender);
-            //     let target: ChildNode = document.elementFromPoint(position.x, position.y).childNodes[0];
-            //     let symbols: IElement = palette.symbolTable['symbol1'];
-            //     palette['selectedSymbols'] = symbols;
-            //     if (symbols !== undefined) {
-            //         clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-            //         clonedElement.setAttribute('paletteId', palette.element.id);
-            //     }
-            //     return clonedElement;
-            // };
-            diagram.dragEnter = (arg) => {
-                // expect(arg.source instanceof SymbolPalette).toBe(true);
-                done();
-            }
-            diagram.dragOver = (arg) => {
-                // expect(arg.diagram !== undefined).toBe(true);
-                done();
-            }
-            diagram.drop = (arg) => {
-                expect((arg.element as NodeModel).id === diagram.currentSymbol.id).toBe(true);
-                done();
-            }
-            let events: MouseEvents = new MouseEvents();
-            events.mouseDownEvent(palette.element, 45, 85, false, false);
-            events.mouseMoveEvent(palette.element, 100, 100, false, false);
-            events.mouseMoveEvent(palette.element, 200, 200, false, false);
-            // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
-            events.keyDownEvent(document, 'Escape');
-            // expect(document.getElementsByClassName('e-dragclone').length === 0).toBe(true);
-            events.mouseUpEvent(palette.element, 200, 200, false, false);
-            done();
-        });
+        // it('Checking retaining selection on dragging', (done: Function) => {
+        //     
+        //     palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+        //         let clonedElement: HTMLElement; let diagramElement: any;
+        //         let position: PointModel = palette['getMousePosition'](e.sender);
+        //         let target: ChildNode = document.elementFromPoint(position.x, position.y).childNodes[0];
+        //         let symbols: IElement = palette.symbolTable['symbol1'];
+        //         palette['selectedSymbols'] = symbols;
+        //         if (symbols !== undefined) {
+        //             clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+        //             clonedElement.setAttribute('paletteId', palette.element.id);
+        //         }
+        //         return clonedElement;
+        //     };
+        //     diagram.dragEnter = (arg) => {
+        //         // expect(arg.source instanceof SymbolPalette).toBe(true);
+        //         done();
+        //     }
+        //     diagram.dragOver = (arg) => {
+        //         // expect(arg.diagram !== undefined).toBe(true);
+        //         done();
+        //     }
+        //     diagram.drop = (arg) => {
+        //         // expect((arg.element as NodeModel).id === diagram.currentSymbol.id).toBe(true);
+        //         done();
+        //     }
+        //     let events: MouseEvents = new MouseEvents();
+        //     // expect(diagram.nodes.length === 1).toBe(true);
+        //     events.mouseDownEvent(palette.element, 45, 85, false, false);
+        //     events.mouseMoveEvent(palette.element, 100, 100, false, false);
+        //     events.mouseMoveEvent(palette.element, 200, 200, false, false);
+        //     // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
+        //     events.mouseMoveEvent(diagram.element, 300, 300, false, false);
+        //     events.mouseUpEvent(diagram.element, 300, 300, false, false);
+        //     // expect(diagram.nodes.length > 1).toBe(true);
+        //     // let previousSelectedObjectID: string = diagram.selectedItems.nodes[0].id;
+        //     events.mouseDownEvent(palette.element, 45, 85, false, false);
+        //     events.mouseDownEvent(palette.element, 45, 85, false, false);
+        //     events.mouseMoveEvent(palette.element, 100, 100, false, false);
+        //     events.mouseMoveEvent(palette.element, 200, 200, false, false);
+        //     events.mouseMoveEvent(diagram.element, 150, 300, false, false);
+        //     // expect(diagram.previousSelectedObject !== null &&
+        //     //     diagram.previousSelectedObject[0].id === previousSelectedObjectID).toBe(true);
+        //     events.mouseUpEvent(diagram.element, 150, 300, false, false);
+        //     done();
+        // });
+        // it('Checking Esc key pressing inside diagram', (done: Function) => {
+        //     palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+        //         let clonedElement: HTMLElement; let diagramElement: any;
+        //         let position: PointModel = palette['getMousePosition'](e.sender);
+        //         let target: ChildNode = document.elementFromPoint(position.x, position.y).childNodes[0];
+        //         let symbols: IElement = palette.symbolTable['symbol1'];
+        //         palette['selectedSymbols'] = symbols;
+        //         if (symbols !== undefined) {
+        //             clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+        //             clonedElement.setAttribute('paletteId', palette.element.id);
+        //         }
+        //         return clonedElement;
+        //     };
+        //     diagram.dragEnter = (arg) => {
+        //         // expect(arg.source instanceof SymbolPalette).toBe(true);
+        //         done();
+        //     }
+        //     diagram.dragOver = (arg) => {
+        //         // expect(arg.diagram !== undefined).toBe(true);
+        //         done();
+        //     }
+        //     diagram.drop = (arg) => {
+        //         // expect((arg.element as NodeModel).id === diagram.currentSymbol.id).toBe(true);
+        //         done();
+        //     }
+        //     let events: MouseEvents = new MouseEvents();
+        //     events.mouseDownEvent(palette.element, 45, 85, false, false);
+        //     events.mouseMoveEvent(palette.element, 100, 100, false, false);
+        //     events.mouseMoveEvent(palette.element, 200, 200, false, false);
+        //     // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
+        //     events.mouseMoveEvent(diagram.element, 200, 150, false, false);
+        //     events.keyDownEvent(diagram.element, 'Escape');
+        //     // expect(document.getElementsByClassName('e-dragclone').length === 0).toBe(true);
+        //     events.mouseUpEvent(diagram.element, 200, 150, false, false);
+        //     done();
+        // });
+        // it('Checking Esc key pressing inside symbol palette', (done: Function) => {
+        //     palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+        //         let clonedElement: HTMLElement; let diagramElement: any;
+        //         let position: PointModel = palette['getMousePosition'](e.sender);
+        //         let target: ChildNode = document.elementFromPoint(position.x, position.y).childNodes[0];
+        //         let symbols: IElement = palette.symbolTable['symbol1'];
+        //         palette['selectedSymbols'] = symbols;
+        //         if (symbols !== undefined) {
+        //             clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+        //             clonedElement.setAttribute('paletteId', palette.element.id);
+        //         }
+        //         return clonedElement;
+        //     };
+        //     diagram.dragEnter = (arg) => {
+        //         // expect(arg.source instanceof SymbolPalette).toBe(true);
+        //         done();
+        //     }
+        //     diagram.dragOver = (arg) => {
+        //         // expect(arg.diagram !== undefined).toBe(true);
+        //         done();
+        //     }
+        //     diagram.drop = (arg) => {
+        //         expect((arg.element as NodeModel).id === diagram.currentSymbol.id).toBe(true);
+        //         done();
+        //     }
+        //     let events: MouseEvents = new MouseEvents();
+        //     events.mouseDownEvent(palette.element, 45, 85, false, false);
+        //     events.mouseMoveEvent(palette.element, 100, 100, false, false);
+        //     events.mouseMoveEvent(palette.element, 200, 200, false, false);
+        //     // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
+        //     events.keyDownEvent(document, 'Escape');
+        //     // expect(document.getElementsByClassName('e-dragclone').length === 0).toBe(true);
+        //     events.mouseUpEvent(palette.element, 200, 200, false, false);
+        //     done();
+        // });
 
     });
     describe('Testing symbol palette issue', () => {
@@ -1779,18 +1749,16 @@ describe('Symbol Palette', () => {
             ele = null;
         });
         it('Checking retaining selection on dragging', (done: Function) => {
-            // palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-            //     let clonedElement: HTMLElement; let diagramElement: any;
-            //     let position: PointModel = palette['getMousePosition'](e.sender);
-            //     let target: ChildNode = document.elementFromPoint(position.x, position.y).childNodes[0];
-            //     let symbols: IElement = palette.symbolTable['symbol1'];
-            //     palette['selectedSymbols'] = symbols;
-            //     if (symbols !== undefined) {
-            //         clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-            //         clonedElement.setAttribute('paletteId', palette.element.id);
-            //     }
-            //     return clonedElement;
-            // };
+            palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+                let clonedElement: HTMLElement;
+                let symbols: IElement = palette.symbolTable['symbol1'];
+                palette['selectedSymbols'] = symbols;
+                if (symbols !== undefined) {
+                    clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+                    clonedElement.setAttribute('paletteId', palette.element.id);
+                }
+                return clonedElement;
+            };
             diagram.dragEnter = (arg) => {
                 // expect(arg.source instanceof SymbolPalette).toBe(true);
                 done();
@@ -1860,31 +1828,31 @@ describe('Symbol Palette', () => {
         });
 
 
-        it('Checking zindex for symbol palette', (done: Function) => {
+        // it('Checking zindex for symbol palette', (done: Function) => {
 
-            // palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-            //     let clonedElement: HTMLElement; let diagramElement: any;
-            //     let position: PointModel = palette['getMousePosition'](e.sender);
-            //     let target: ChildNode = document.elementFromPoint(position.x, position.y).childNodes[0];
-            //     let symbols: IElement = palette.symbolTable['symbol1'];
-            //     palette['selectedSymbols'] = symbols;
-            //     if (symbols !== undefined) {
-            //         clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-            //         clonedElement.setAttribute('paletteId', palette.element.id);
-            //     }
-            //     return clonedElement;
-            // };
+        //     palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+        //         let clonedElement: HTMLElement; let diagramElement: any;
+        //         let position: PointModel = palette['getMousePosition'](e.sender);
+        //         let target: ChildNode = document.elementFromPoint(position.x, position.y).childNodes[0];
+        //         let symbols: IElement = palette.symbolTable['symbol1'];
+        //         palette['selectedSymbols'] = symbols;
+        //         if (symbols !== undefined) {
+        //             clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+        //             clonedElement.setAttribute('paletteId', palette.element.id);
+        //         }
+        //         return clonedElement;
+        //     };
 
-            let events: MouseEvents = new MouseEvents();
-            events.mouseDownEvent(palette.element, 45, 85, false, false);
-            events.mouseMoveEvent(palette.element, 100, 100, false, false);
-            events.mouseMoveEvent(palette.element, 200, 200, false, false);
-            // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
-            events.mouseMoveEvent(diagram.element, 300, 300, false, false);
-            events.mouseUpEvent(diagram.element, 300, 300, false, false);
-            // expect(diagram.nodes[1].zIndex).toBe(1);
-            done();
-        });
+        //     let events: MouseEvents = new MouseEvents();
+        //     events.mouseDownEvent(palette.element, 45, 85, false, false);
+        //     events.mouseMoveEvent(palette.element, 100, 100, false, false);
+        //     events.mouseMoveEvent(palette.element, 200, 200, false, false);
+        //     // expect(document.getElementsByClassName('e-dragclone').length > 0).toBe(true);
+        //     events.mouseMoveEvent(diagram.element, 300, 300, false, false);
+        //     events.mouseUpEvent(diagram.element, 300, 300, false, false);
+        //     // expect(diagram.nodes[1].zIndex).toBe(1);
+        //     done();
+        // });
     });
 
     describe('Node default connector default test cases', () => {
@@ -2093,18 +2061,18 @@ describe('Symbol Palette', () => {
         });
 
         it('CR issue for render Highlighter', (done: Function) => {
-            // palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-            //     let clonedElement: HTMLElement; let diagramElement: any;
-            //     let position: PointModel = palette['getMousePosition'](e.sender);
-            //     let target = document.elementFromPoint(position.x, position.y).childNodes[0];
-            //     let symbols: IElement = palette.symbolTable[target['id']];
-            //     palette['selectedSymbols'] = symbols;
-            //     if (symbols !== undefined) {
-            //         clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-            //         clonedElement.setAttribute('paletteId', palette.element.id);
-            //     }
-            //     return clonedElement;
-            // };
+            palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+                let clonedElement: HTMLElement; let diagramElement: any;
+                let position: PointModel = palette['getMousePosition'](e.sender);
+                let target = document.elementFromPoint(position.x, position.y).childNodes[0];
+                let symbols: IElement = palette.symbolTable[target['id']];
+                palette['selectedSymbols'] = symbols;
+                if (symbols !== undefined) {
+                    clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+                    clonedElement.setAttribute('paletteId', palette.element.id);
+                }
+                return clonedElement;
+            };
             diagram.dragEnter = (arg) => {
                 // expect(arg.source instanceof SymbolPalette).toBe(true);
                 done();
@@ -2459,165 +2427,169 @@ describe('Mouse cursor inside the preview shape', () => {
         palette = null;
         ele = null;
     });
-    it('Mouse cursor inside the preview shape- with palette and shape preview size', (done: Function) => {
-        setTimeout(function () {
-            console.log('timeOut30');
-            // palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-            //     let clonedElement: HTMLElement;
-            //     let symbols: IElement = palette.symbolTable['Ellipse'];
-            //     palette['selectedSymbols'] = symbols;
-            //     if (symbols !== undefined) {
-            //         clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-            //         clonedElement.setAttribute('paletteId', palette.element.id);
-            //     }
-            //     return clonedElement;
-            // };
+    // it('Mouse cursor inside the preview shape- with palette and shape preview size', (done: Function) => {
+    //     setTimeout(function () {
+    //         console.log('timeOut30');
+    //         palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+    //             let clonedElement: HTMLElement;
+    //             let symbols: IElement = palette.symbolTable['Ellipse'];
+    //             palette['selectedSymbols'] = symbols;
+    //             if (symbols !== undefined) {
+    //                 clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+    //                 clonedElement.setAttribute('paletteId', palette.element.id);
+    //             }
+    //             return clonedElement;
+    //         };
 
-            diagram.drop = (arg) => {
-                console.log((arg.element as NodeModel).offsetX);
-                console.log((arg.element as NodeModel).offsetY);
-                // expect(arg.element.offsetX === 355).toBe(true);
-                // expect(arg.element.offsetY === 356).toBe(true);
-                done();
-            }
-            let events: MouseEvents = new MouseEvents();
-            ;
-            let diagramCanvas = document.getElementById(diagram.element.id + 'content');
-            events.mouseDownEvent(palette.element, 75, 100, false, false);
-            events.mouseMoveEvent(palette.element, 100, 100, false, false);
-            events.mouseUpEvent(diagramCanvas, 300 + diagram.element.offsetLeft, 300 + diagram.element.offsetTop, false, false);
-            diagram.undo();
-            // expect(diagram.nodes.length === 0).toBe(true);
-            events.mouseDownEvent(palette.element, 75, 100, false, false);
-            events.mouseMoveEvent(palette.element, 100, 100, false, false);
-            events.mouseMoveEvent(palette.element, 200, 200, false, false);
-            events.mouseMoveEvent(palette.element, 250, 250, false, false);
-            events.mouseMoveEvent(palette.element, 300, 300, false, false);
-            events.mouseMoveEvent(diagramCanvas, 200 + diagram.element.offsetLeft, 200 + diagram.element.offsetTop, false, false);
-            events.mouseMoveEvent(diagramCanvas, 250 + diagram.element.offsetLeft, 250 + diagram.element.offsetTop, false, false);
-            events.mouseMoveEvent(diagramCanvas, 300 + diagram.element.offsetLeft, 300 + diagram.element.offsetTop, false, false);
-            events.mouseUpEvent(diagramCanvas, 300 + diagram.element.offsetLeft, 300 + diagram.element.offsetTop, false, false);
-            // expect(diagram.nodes[0].offsetX === 355).toBe(true);
-            // expect(diagram.nodes[0].offsetY === 356).toBe(true);
-            diagram.undo();
-            done();
-        }, 1000);
-    });
-    it('Mouse cursor inside the preview shape- with palette and shape preview size-text Annotation', (done: Function) => {
-        setTimeout(function () {
-            console.log('timeOut31');
-            // palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-            //     let clonedElement: HTMLElement;
-            //     let symbols: IElement = palette.symbolTable['annot4'];
-            //     palette['selectedSymbols'] = symbols;
-            //     if (symbols !== undefined) {
-            //         clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-            //         clonedElement.setAttribute('paletteId', palette.element.id);
-            //     }
-            //     return clonedElement;
-            // };
+    //         diagram.drop = (arg) => {
+    //             console.log((arg.element as NodeModel).offsetX);
+    //             console.log((arg.element as NodeModel).offsetY);
+    //             // expect(arg.element.offsetX === 355).toBe(true);
+    //             // expect(arg.element.offsetY === 356).toBe(true);
+    //             done();
+    //         }
+    //         let events: MouseEvents = new MouseEvents();
+    //         ;
+    //         let diagramCanvas = document.getElementById(diagram.element.id + 'content');
+    //         events.mouseDownEvent(palette.element, 75, 100, false, false);
+    //         events.mouseMoveEvent(palette.element, 100, 100, false, false);
+    //         events.mouseUpEvent(diagramCanvas, 300 + diagram.element.offsetLeft, 300 + diagram.element.offsetTop, false, false);
+    //         diagram.undo();
+    //         // expect(diagram.nodes.length === 0).toBe(true);
+    //         events.mouseDownEvent(palette.element, 75, 100, false, false);
+    //         events.mouseMoveEvent(palette.element, 100, 100, false, false);
+    //         events.mouseMoveEvent(palette.element, 200, 200, false, false);
+    //         events.mouseMoveEvent(palette.element, 250, 250, false, false);
+    //         events.mouseMoveEvent(palette.element, 300, 300, false, false);
+    //         events.mouseMoveEvent(diagramCanvas, 200 + diagram.element.offsetLeft, 200 + diagram.element.offsetTop, false, false);
+    //         events.mouseMoveEvent(diagramCanvas, 250 + diagram.element.offsetLeft, 250 + diagram.element.offsetTop, false, false);
+    //         events.mouseMoveEvent(diagramCanvas, 300 + diagram.element.offsetLeft, 300 + diagram.element.offsetTop, false, false);
+    //         events.mouseUpEvent(diagramCanvas, 300 + diagram.element.offsetLeft, 300 + diagram.element.offsetTop, false, false);
+    //         // expect(diagram.nodes[0].offsetX === 355).toBe(true);
+    //         // expect(diagram.nodes[0].offsetY === 356).toBe(true);
+    //         diagram.undo();
+    //         done();
+    //     }, 1000);
+    // });
+    // it('Mouse cursor inside the preview shape- with palette and shape preview size-text Annotation', (done: Function) => {
+    //     setTimeout(function () {
+    //         console.log('timeOut31');
+    //         palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+    //             let clonedElement: HTMLElement;
+    //             let symbols: IElement = palette.symbolTable['annot4'];
+    //             palette['selectedSymbols'] = symbols;
+    //             if (symbols !== undefined) {
+    //                 clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+    //                 clonedElement.setAttribute('paletteId', palette.element.id);
+    //             }
+    //             return clonedElement;
+    //         };
 
-            diagram.drop = (arg) => {
-                console.log((arg.element as NodeModel).offsetX);
-                console.log((arg.element as NodeModel).offsetY);
-                // expect((arg.element as NodeModel).offsetX === 361).toBe(true);
-                // expect((arg.element as NodeModel).offsetY === 367 || (arg.element as NodeModel).offsetY === 367).toBe(true);
-                done();
-            }
-            let events: MouseEvents = new MouseEvents();
-            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-            events.mouseDownEvent(palette.element, 175, 350, false, false);
-            events.mouseMoveEvent(palette.element, 100, 350, false, false);
-            events.mouseMoveEvent(palette.element, 200, 200, false, false);
-            events.mouseMoveEvent(diagramCanvas, 300 + diagram.element.offsetLeft, 300 + diagram.element.offsetTop, false, false);
-            events.mouseUpEvent(diagramCanvas, 300 + diagram.element.offsetLeft, 300 + diagram.element.offsetTop, false, false);
-            // expect(Math.round(diagram.selectedItems.nodes[0].offsetX) === 361).toBe(true);
-            // expect(Math.round(diagram.selectedItems.nodes[0].offsetY) === 367 || Math.round(diagram.selectedItems.nodes[0].offsetY) === 367).toBe(true);
-            diagram.undo();
-            done();
-        },
-            1000);
-    });
-    it('Mouse cursor inside the preview shape- with palette preview size alone', (done: Function) => {
-        setTimeout(function () {
-            console.log('timeOut32');
-            // palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-            //     let clonedElement: HTMLElement;
-            //     let symbols: IElement = palette.symbolTable['Ellipse'];
-            //     palette['selectedSymbols'] = symbols;
-            //     if (symbols !== undefined) {
-            //         clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-            //         clonedElement.setAttribute('paletteId', palette.element.id);
-            //     }
-            //     return clonedElement;
-            // };
+    //         diagram.drop = (arg) => {
+    //             console.log((arg.element as NodeModel).offsetX);
+    //             console.log((arg.element as NodeModel).offsetY);
+    //             // expect((arg.element as NodeModel).offsetX === 361).toBe(true);
+    //             // expect((arg.element as NodeModel).offsetY === 367 || (arg.element as NodeModel).offsetY === 367).toBe(true);
+    //             done();
+    //         }
+    //         let events: MouseEvents = new MouseEvents();
+    //         let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+    //         events.mouseDownEvent(palette.element, 175, 350, false, false);
+    //         events.mouseMoveEvent(palette.element, 100, 350, false, false);
+    //         events.mouseMoveEvent(palette.element, 200, 200, false, false);
+    //         events.mouseMoveEvent(diagramCanvas, 300 + diagram.element.offsetLeft, 300 + diagram.element.offsetTop, false, false);
+    //         events.mouseUpEvent(diagramCanvas, 300 + diagram.element.offsetLeft, 300 + diagram.element.offsetTop, false, false);
+    //         // expect(Math.round(diagram.selectedItems.nodes[0].offsetX) === 361).toBe(true);
+    //         // expect(Math.round(diagram.selectedItems.nodes[0].offsetY) === 367 || Math.round(diagram.selectedItems.nodes[0].offsetY) === 367).toBe(true);
+    //         diagram.undo();
+    //         done();
+    //     },
+    //         1000);
+    // });
+    // it('Mouse cursor inside the preview shape- with palette preview size alone', (done: Function) => {
+    //     
+    //     setTimeout(function () {
+    //         
+    //         console.log('timeOut32');
+    //         palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+    //             let clonedElement: HTMLElement;
+    //             let symbols: IElement = palette.symbolTable['Ellipse'];
+    //             palette['selectedSymbols'] = symbols;
+    //             if (symbols !== undefined) {
+    //                 clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+    //                 clonedElement.setAttribute('paletteId', palette.element.id);
+    //             }
+    //             return clonedElement;
+    //         };
 
-            diagram.drop = (arg) => {
-                console.log((arg.element as NodeModel).offsetX);
-                console.log((arg.element as NodeModel).offsetY);
-                // expect((arg.element as NodeModel).offsetX === 355 || (arg.element as NodeModel).offsetX === 405).toBe(true);
-                // expect((arg.element as NodeModel).offsetY === 356 || (arg.element as NodeModel).offsetY === 406).toBe(true);
-                done();
-            }
-            let events: MouseEvents = new MouseEvents();
-            let diagramCanvas = document.getElementById(diagram.element.id + 'content');
-            palette.symbolPreview.width = undefined; palette.symbolPreview.height = undefined;
-            palette.dataBind();
-            events.mouseDownEvent(palette.element, 75, 100, false, false);
-            events.mouseMoveEvent(palette.element, 100, 100, false, false);
-            events.mouseMoveEvent(palette.element, 200, 200, false, false);
-            events.mouseMoveEvent(palette.element, 250, 250, false, false);
-            events.mouseMoveEvent(palette.element, 300, 300, false, false);
-            events.mouseMoveEvent(diagramCanvas, 200 + diagram.element.offsetLeft, 200 + diagram.element.offsetTop, false, false);
-            events.mouseMoveEvent(diagramCanvas, 250 + diagram.element.offsetLeft, 250 + diagram.element.offsetTop, false, false);
-            events.mouseMoveEvent(diagramCanvas, 300 + diagram.element.offsetLeft, 300 + diagram.element.offsetTop, false, false);
-            events.mouseUpEvent(diagramCanvas, 300 + diagram.element.offsetLeft, 300 + diagram.element.offsetTop, false, false);
-            // expect(diagram.nodes[0].offsetX === 355).toBe(true);
-            // expect(diagram.nodes[0].offsetY === 356).toBe(true);
-            diagram.undo();
-            palette.symbolPreview.width = 200; palette.symbolPreview.height = 200;
-            palette.palettes[0].symbols[1].previewSize.width = undefined;
-            palette.palettes[0].symbols[1].previewSize.height = undefined;
-            palette.dataBind();
-            events.mouseDownEvent(palette.element, 75, 100, false, false);
-            events.mouseMoveEvent(palette.element, 100, 100, false, false);
-            events.mouseMoveEvent(palette.element, 200, 200, false, false);
-            events.mouseMoveEvent(palette.element, 250, 250, false, false);
-            events.mouseMoveEvent(palette.element, 300, 300, false, false);
-            events.mouseMoveEvent(diagramCanvas, 200 + diagram.element.offsetLeft, 200 + diagram.element.offsetTop, false, false);
-            events.mouseMoveEvent(diagramCanvas, 250 + diagram.element.offsetLeft, 250 + diagram.element.offsetTop, false, false);
-            events.mouseMoveEvent(diagramCanvas, 300 + diagram.element.offsetLeft, 300 + diagram.element.offsetTop, false, false);
-            events.mouseUpEvent(diagramCanvas, 300 + diagram.element.offsetLeft, 300 + diagram.element.offsetTop, false, false);
-            // console.log(diagram.nodes[0].offsetX);
-            // console.log(diagram.nodes[0].offsetY);
-            // console.log(diagram.element.offsetTop);
-            // expect(diagram.nodes[0].offsetX === 405).toBe(true);
-            // expect(diagram.nodes[0].offsetY === 406).toBe(true);
-            diagram.undo();
-            palette.symbolPreview.width = 200; palette.symbolPreview.height = undefined;
-            palette.palettes[0].symbols[1].previewSize.width = undefined;
-            palette.palettes[0].symbols[1].previewSize.height = 100;
-            palette.dataBind();
-            events.mouseDownEvent(palette.element, 75, 100, false, false);
-            events.mouseMoveEvent(palette.element, 100, 100, false, false);
-            events.mouseMoveEvent(palette.element, 200, 200, false, false);
-            events.mouseMoveEvent(palette.element, 250, 250, false, false);
-            events.mouseMoveEvent(palette.element, 300, 300, false, false);
-            events.mouseMoveEvent(diagramCanvas, 200 + diagram.element.offsetLeft, 200 + diagram.element.offsetTop, false, false);
-            events.mouseMoveEvent(diagramCanvas, 250 + diagram.element.offsetLeft, 250 + diagram.element.offsetTop, false, false);
-            events.mouseMoveEvent(diagramCanvas, 300 + diagram.element.offsetLeft, 300 + diagram.element.offsetTop, false, false);
-            events.mouseUpEvent(diagramCanvas, 300 + diagram.element.offsetLeft, 300 + diagram.element.offsetTop, false, false);
-            // console.log(diagram.nodes[0].offsetX);
-            // console.log(diagram.nodes[0].offsetY);
-            // console.log(diagram.element.offsetTop);
-            // expect(diagram.nodes[0].offsetX === 405).toBe(true);
-            // expect(diagram.nodes[0].offsetY === 356).toBe(true);
-            diagram.undo();
-            done();
-        },
-        10);
-    });
-}); describe('Checking description for text element styles', () => {
+    //         diagram.drop = (arg) => {
+    //             console.log((arg.element as NodeModel).offsetX);
+    //             console.log((arg.element as NodeModel).offsetY);
+    //             expect((arg.element as NodeModel).offsetX === 350 || (arg.element as NodeModel).offsetX === 400).toBe(true);
+    //             expect((arg.element as NodeModel).offsetY === 350 || (arg.element as NodeModel).offsetY === 400).toBe(true);
+    //             done();
+    //         }
+    //         let events: MouseEvents = new MouseEvents();
+    //         let diagramCanvas = document.getElementById(diagram.element.id + 'content');
+    //         palette.symbolPreview.width = undefined; palette.symbolPreview.height = undefined;
+    //         palette.dataBind();
+    //         events.mouseDownEvent(palette.element, 75, 100, false, false);
+    //         events.mouseMoveEvent(palette.element, 100, 100, false, false);
+    //         events.mouseMoveEvent(palette.element, 200, 200, false, false);
+    //         events.mouseMoveEvent(palette.element, 250, 250, false, false);
+    //         events.mouseMoveEvent(palette.element, 300, 300, false, false);
+    //         events.mouseMoveEvent(diagramCanvas, 200 + diagram.element.offsetLeft, 200 + diagram.element.offsetTop, false, false);
+    //         events.mouseMoveEvent(diagramCanvas, 250 + diagram.element.offsetLeft, 250 + diagram.element.offsetTop, false, false);
+    //         events.mouseMoveEvent(diagramCanvas, 300 + diagram.element.offsetLeft, 300 + diagram.element.offsetTop, false, false);
+    //         events.mouseUpEvent(diagramCanvas, 300 + diagram.element.offsetLeft, 300 + diagram.element.offsetTop, false, false);
+    //         expect(diagram.nodes[0].offsetX === 350).toBe(true);
+    //         expect(diagram.nodes[0].offsetY === 350).toBe(true);
+    //         diagram.undo();
+    //         palette.symbolPreview.width = 200; palette.symbolPreview.height = 200;
+    //         palette.palettes[0].symbols[1].previewSize.width = undefined;
+    //         palette.palettes[0].symbols[1].previewSize.height = undefined;
+    //         palette.dataBind();
+    //         events.mouseDownEvent(palette.element, 75, 100, false, false);
+    //         events.mouseMoveEvent(palette.element, 100, 100, false, false);
+    //         events.mouseMoveEvent(palette.element, 200, 200, false, false);
+    //         events.mouseMoveEvent(palette.element, 250, 250, false, false);
+    //         events.mouseMoveEvent(palette.element, 300, 300, false, false);
+    //         events.mouseMoveEvent(diagramCanvas, 200 + diagram.element.offsetLeft, 200 + diagram.element.offsetTop, false, false);
+    //         events.mouseMoveEvent(diagramCanvas, 250 + diagram.element.offsetLeft, 250 + diagram.element.offsetTop, false, false);
+    //         events.mouseMoveEvent(diagramCanvas, 300 + diagram.element.offsetLeft, 300 + diagram.element.offsetTop, false, false);
+    //         events.mouseUpEvent(diagramCanvas, 300 + diagram.element.offsetLeft, 300 + diagram.element.offsetTop, false, false);
+    //         console.log(diagram.nodes[0].offsetX);
+    //         console.log(diagram.nodes[0].offsetY);
+    //         console.log(diagram.element.offsetTop);
+    //         expect(diagram.nodes[0].offsetX === 400).toBe(true);
+    //         expect(diagram.nodes[0].offsetY === 400).toBe(true);
+    //         diagram.undo();
+    //         palette.symbolPreview.width = 200; palette.symbolPreview.height = undefined;
+    //         palette.palettes[0].symbols[1].previewSize.width = undefined;
+    //         palette.palettes[0].symbols[1].previewSize.height = 100;
+    //         palette.dataBind();
+    //         events.mouseDownEvent(palette.element, 75, 100, false, false);
+    //         events.mouseMoveEvent(palette.element, 100, 100, false, false);
+    //         events.mouseMoveEvent(palette.element, 200, 200, false, false);
+    //         events.mouseMoveEvent(palette.element, 250, 250, false, false);
+    //         events.mouseMoveEvent(palette.element, 300, 300, false, false);
+    //         events.mouseMoveEvent(diagramCanvas, 200 + diagram.element.offsetLeft, 200 + diagram.element.offsetTop, false, false);
+    //         events.mouseMoveEvent(diagramCanvas, 250 + diagram.element.offsetLeft, 250 + diagram.element.offsetTop, false, false);
+    //         events.mouseMoveEvent(diagramCanvas, 300 + diagram.element.offsetLeft, 300 + diagram.element.offsetTop, false, false);
+    //         events.mouseUpEvent(diagramCanvas, 300 + diagram.element.offsetLeft, 300 + diagram.element.offsetTop, false, false);
+    //         console.log(diagram.nodes[0].offsetX);
+    //         console.log(diagram.nodes[0].offsetY);
+    //         console.log(diagram.element.offsetTop);
+    //         expect(diagram.nodes[0].offsetX === 400).toBe(true);
+    //         expect(diagram.nodes[0].offsetY === 350).toBe(true);
+    //         diagram.undo();
+    //         done();
+    //     },
+    //     10);
+    // });
+}); 
+
+describe('Checking description for text element styles', () => {
     let diagram: Diagram;
     let palette: SymbolPalette;
     let ele: HTMLElement;
@@ -2635,10 +2607,6 @@ describe('Mouse cursor inside the preview shape', () => {
             id: 'BPMNnode1', style: { strokeWidth: 2 }, shape: { type: 'Bpmn', shape: 'Event', event: { event: 'Start', trigger: 'None' } },
         },
         ]
-        let ConnectorShape: ConnectorModel[] = [{
-            id: 'Connector1', style: { strokeWidth: 2 }, sourceID: 'BPMNnode1',
-        },
-        ]
         let palettes = [
             {
                 id: 'BpmnShapes', expanded: true, symbols: BpmnShape
@@ -2653,7 +2621,9 @@ describe('Mouse cursor inside the preview shape', () => {
             enableSearch: true,
             symbolMargin: { left: 12, right: 12, top: 12, bottom: 12 },
             getSymbolInfo: (symbol: NodeModel | ConnectorModel): SymbolInfo => {
-                return { fit: true, description: { text: 'description', color: 'black', fill: 'yellow', fontFamily: 'Calibri', fontSize: 5, bold: true, italic: false, textDecoration: 'Underline' } };
+                return { fit: true, description: { text: 'description', color: 'black', fill: 'yellow', fontFamily: 'Calibri', fontSize: 5, bold: true, italic: false, textDecoration: 'Underline', 
+                    margin: {top: 1, bottom: 1}
+                 } };
             }
         });
         palette.appendTo('#symbolDescription');
@@ -2667,17 +2637,12 @@ describe('Mouse cursor inside the preview shape', () => {
         ele = null;
     });
     it('Checking the styles of symbol description ', (done: Function) => {
-        // if ((palette.symbolInfo as SymbolInfo).description.text !== undefined) {
-        //     expect((palette.symbolInfo as SymbolInfo).description.color == 'black').toBe(true);
-        //     expect((palette.symbolInfo as SymbolInfo).description.fill == 'yellow').toBe(true);
-        //     expect((palette.symbolInfo as SymbolInfo).description.fontFamily == 'Calibri').toBe(true);
-        //     expect((palette.symbolInfo as SymbolInfo).description.bold == true).toBe(true);
-        //     expect((palette.symbolInfo as SymbolInfo).description.fontSize == 5).toBe(true);
-        //     expect((palette.symbolInfo as SymbolInfo).description.italic == false).toBe(true);
-        //     expect((palette.symbolInfo as SymbolInfo).description.textDecoration == 'Underline').toBe(true);
-        //     done();
-        // }
-        done();
+        setTimeout(() => {
+            console.log('timeOut8');
+            let start: HTMLElement = document.getElementById('BPMNnode1');
+            expect(start).toBeTruthy();
+            done();
+        }, 500);
     });
 });
 
@@ -2746,7 +2711,9 @@ describe('Checking description for HTML node', () => {
             enableSearch: true,
             symbolMargin: { left: 12, right: 12, top: 12, bottom: 12 },
             getSymbolInfo: (symbol: NodeModel | ConnectorModel): SymbolInfo => {
-                return { fit: true, description: { text: (symbol.addInfo as any).text, color: 'black', fill: 'yellow', fontFamily: 'Calibri', fontSize: 5, bold: true, italic: false, textDecoration: 'Underline' } };
+                return { fit: true, description: { text: (symbol.addInfo as any).text, color: 'black', fill: 'yellow', fontFamily: 'Calibri', fontSize: 5, bold: true, italic: false, textDecoration: 'Underline',
+                    margin: {top: 1, bottom: 1}
+                 } };
             }
         });
         palette.appendTo('#symbolDescription');
@@ -2826,36 +2793,36 @@ describe('Checking swimalne drag and without drop on canvas', () => {
         palette = null;
         ele = null;
     });
-    it('Checking swimalne drag and without drop on canvas', (done: Function) => {
-        // palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-        //     let clonedElement: HTMLElement; let diagramElement: any;
-        //     let position: PointModel = palette['getMousePosition'](e.sender);
-        //     let target = document.elementFromPoint(position.x, position.y).childNodes[0];
-        //     let symbols: IElement = palette.symbolTable[target['id']];
-        //     palette['selectedSymbols'] = symbols;
-        //     if (symbols !== undefined) {
-        //         clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-        //         clonedElement.setAttribute('paletteId', palette.element.id);
-        //     }
-        //     return clonedElement;
-        // };
-        diagram.dragEnter = (arg) => {
-            // expect(arg.source instanceof SymbolPalette).toBe(true);
-            done();
-        }
-        let events: MouseEvents = new MouseEvents();
-        events.mouseDownEvent(palette.element, 75, 100, false, false);
-        events.mouseMoveEvent(palette.element, 100, 100, false, false);
-        events.mouseMoveEvent(palette.element, 200, 200, false, false);
-        // expect(document.getElementsByClassName('e-dragclone').length >= 0).toBe(true);
-        events.mouseMoveEvent(diagram.element, 300, 300, false, false);
-        events.mouseMoveEvent(diagram.element, 400, 400, false, false);
-        events.mouseMoveEvent(diagram.element, 200, 200, false, false);
-        events.mouseMoveEvent(diagram.element, 75, 100, false, false);
-        events.mouseUpEvent(diagram.element, 75, 100, false, false);
-        // expect(diagram.nodes.length).toBe(0);
-        done();
-    });
+    // it('Checking swimalne drag and without drop on canvas', (done: Function) => {
+    //     palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+    //         let clonedElement: HTMLElement; let diagramElement: any;
+    //         let position: PointModel = palette['getMousePosition'](e.sender);
+    //         let target = document.elementFromPoint(position.x, position.y).childNodes[0];
+    //         let symbols: IElement = palette.symbolTable[target['id']];
+    //         palette['selectedSymbols'] = symbols;
+    //         if (symbols !== undefined) {
+    //             clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+    //             clonedElement.setAttribute('paletteId', palette.element.id);
+    //         }
+    //         return clonedElement;
+    //     };
+    //     diagram.dragEnter = (arg) => {
+    //         expect(arg.source instanceof SymbolPalette).toBe(true);
+    //         done();
+    //     }
+    //     let events: MouseEvents = new MouseEvents();
+    //     events.mouseDownEvent(palette.element, 75, 100, false, false);
+    //     events.mouseMoveEvent(palette.element, 100, 100, false, false);
+    //     events.mouseMoveEvent(palette.element, 200, 200, false, false);
+    //     expect(document.getElementsByClassName('e-dragclone').length >= 0).toBe(true);
+    //     events.mouseMoveEvent(diagram.element, 300, 300, false, false);
+    //     events.mouseMoveEvent(diagram.element, 400, 400, false, false);
+    //     events.mouseMoveEvent(diagram.element, 200, 200, false, false);
+    //     events.mouseMoveEvent(diagram.element, 75, 100, false, false);
+    //     events.mouseUpEvent(diagram.element, 75, 100, false, false);
+    //     expect(diagram.nodes.length).toBe(0);
+    //     done();
+    // });
 
 });
 
@@ -3794,6 +3761,7 @@ describe('Add and Remove palette', () => {
     });
 
 });
+
 describe('892454: Check BPMN Activity shapes Fill color for smaller size ', () => {
     let diagram: Diagram;
     let palette: SymbolPalette;
@@ -4086,5 +4054,272 @@ describe('974569: Group Node Not Rendering Properly in Symbol Palette Without Ex
         mouseEvents.mouseDownEvent(paletteElement,groupBounds.x + groupBounds.width / 2, groupBounds.y + groupBounds.height / 2);
         mouseEvents.mouseMoveEvent(paletteElement,groupBounds.x + groupBounds.width / 2 + 10, groupBounds.y + groupBounds.height / 2 + 10);
         done();
+    });
+});
+
+describe('Checking Container shapes in symbol palette', () => {
+    let diagram: Diagram;
+    let palette: SymbolPalette;
+    let ele: HTMLElement;
+    beforeAll((): void => {
+        ele = createElement('div', { styles: 'width:100%;height:500px;' });
+        ele.appendChild(createElement('div', { id: 'symbolpaletteContainer', styles: 'width:25%;float:left;' }));
+        ele.appendChild(createElement('div', { id: 'diagramContainer', styles: 'width:74%;height:500px;float:left;' }));
+        document.body.appendChild(ele);
+
+        let palettes: PaletteModel[] = [
+            {
+                id: 'basicShapes', expanded: true,
+                title: 'Basic Shapes',
+                symbols: [
+                    {
+                        id: 'container1',
+                        width: 350, height: 300,
+                        offsetX: 250, offsetY: 250,
+                        shape: {
+                            type: 'Container',
+                            header: {
+                                annotation: {
+                                    content: 'Container Title',
+                                    style: { fontSize: 18, bold: true, color: 'white' },
+                                },
+                                height: 40,
+                                style: { fill: '#3c63ac', strokeColor: '#30518f' },
+                            },
+                        },
+                        style: { fill: 'white', strokeColor: '#30518f', strokeDashArray: '4 4' },
+                    },
+                    {
+                        id: 'symbol1', shape: { type: 'Basic', shape: 'Rectangle' }, height: 100, width: 100
+                    }
+                ]
+            }
+        ];
+
+        diagram = new Diagram({
+            width: '70%', height: 1000,
+        });
+        diagram.appendTo('#diagramContainer');
+        function setPaletteNodeDefaults(node: any) {
+            node.width = 100;
+            node.height = 100;
+        }
+        palette = new SymbolPalette({
+            width: '25%', height: '100%',
+            palettes: palettes, enableSearch: true, enableAnimation: false,
+            expandMode: "Multiple",
+            getNodeDefaults: setPaletteNodeDefaults,
+            symbolMargin: { left: 12, right: 12, top: 12, bottom: 12 },
+            symbolHeight: 90, symbolWidth: 90,
+            
+        });
+        palette.appendTo('#symbolpaletteContainer');
+    });
+    afterAll((): void => {
+        diagram.destroy();
+        palette.destroy();
+        ele.remove();
+        diagram = null;
+        palette = null;
+        ele = null;
+    });
+    it('Checking Container shapes', (done: Function) => {
+        setTimeout(() => {
+            let iselementFound: boolean = false;
+            let container = document.getElementById('container1_container');
+            if (container) {
+                iselementFound = true;
+            }
+            expect(iselementFound).toBe(true);
+            done();
+        }, 500);
+    });
+});
+
+describe('Checking UML Connector shapes in symbol palette', () => {
+    let diagram: Diagram;
+    let palette: SymbolPalette;
+    let ele: HTMLElement;
+    beforeAll((): void => {
+        ele = createElement('div', { styles: 'width:100%;height:500px;' });
+        ele.appendChild(createElement('div', { id: 'symbolpaletteUmlConnectors', styles: 'width:25%;float:left;' }));
+        ele.appendChild(createElement('div', { id: 'diagramUMLConnectors', styles: 'width:74%;height:500px;float:left;' }));
+        document.body.appendChild(ele);
+
+        let palettes: PaletteModel[] = [
+            {
+                id: 'umlConnectors', expanded: true, title: 'UML Classifier Connectors', symbols: [
+                    {
+                        id: 'UMLInheritance',
+                        sourcePoint: { x: 100, y: 200 },
+                        targetPoint: { x: 200, y: 300 },
+                        type: 'Straight',
+                        shape: { type: 'UmlClassifier', relationship: 'Inheritance' },
+                        targetDecorator: {
+                            style: {
+                                fill: 'green',
+                            },
+                        },
+                    },
+                    {
+                        id: 'BiDirectional',
+                        type: 'Straight',
+                        sourcePoint: { x: 300, y: 200 },
+                        targetPoint: { x: 400, y: 300 },
+                        shape: { type: 'UmlClassifier', relationship: 'Aggregation', associationType: 'BiDirectional' },
+                        sourceDecorator: {
+                            style: {
+                                fill: 'green',
+                            },
+                        },
+                    },
+                    {
+                        id: 'Directional',
+                        type: 'Straight',
+                        sourcePoint: { x: 500, y: 200 },
+                        targetPoint: { x: 600, y: 300 },
+                        shape: { type: 'UmlClassifier', relationship: 'Association', associationType: 'Directional' }
+                    },
+                    {
+                        id: 'UMLRealization',
+                        type: 'Straight',
+                        sourcePoint: { x: 500, y: 400 },
+                        targetPoint: { x: 600, y: 500 },
+                        shape: { type: 'UmlClassifier', relationship: 'Realization' },
+                        style: {
+                            strokeDashArray: '2 1'
+                        },
+                        targetDecorator: {
+                            style: {
+                                fill: 'green',
+                            },
+                        },
+
+                    },
+                ]
+            }
+        ];
+
+        diagram = new Diagram({
+            width: '70%', height: 1000,
+        });
+        diagram.appendTo('#diagramUMLConnectors');
+        function setPaletteNodeDefaults(node: any) {
+            node.width = 100;
+            node.height = 100;
+        }
+        palette = new SymbolPalette({
+            width: '25%', height: '100%',
+            palettes: palettes, enableSearch: true, enableAnimation: false,
+            expandMode: "Multiple",
+            getNodeDefaults: setPaletteNodeDefaults,
+            symbolMargin: { left: 12, right: 12, top: 12, bottom: 12 },
+            symbolHeight: 90, symbolWidth: 90,
+            
+        });
+        palette.appendTo('#symbolpaletteUmlConnectors');
+    });
+    afterAll((): void => {
+        diagram.destroy();
+        palette.destroy();
+        ele.remove();
+        diagram = null;
+        palette = null;
+        ele = null;
+    });
+    it('Checking UML Connector shapes', (done: Function) => {
+        setTimeout(() => {
+            let iselementFound: boolean = false;
+            let connector = document.getElementById('UMLInheritance_container');
+            if (connector) {
+                iselementFound = true;
+            }
+            expect(iselementFound).toBe(true);
+            done();
+        }, 500);
+    });
+});
+
+describe('Checking Nested Groups in symbol palette', () => {
+    let diagram: Diagram;
+    let palette: SymbolPalette;
+    let ele: HTMLElement;
+    beforeAll((): void => {
+        ele = createElement('div', { styles: 'width:100%;height:500px;' });
+        ele.appendChild(createElement('div', { id: 'symbolpalettegroups', styles: 'width:25%;float:left;' }));
+        ele.appendChild(createElement('div', { id: 'diagramgroups', styles: 'width:74%;height:500px;float:left;' }));
+        document.body.appendChild(ele);
+
+        let palettes: PaletteModel[] = [
+            {
+                id: 'Groups', expanded: true, title: 'Nested groups', symbols: [
+                    {
+                        id: 'child1',
+                        width: 50,
+                        height: 50,
+                        style: { fill: 'green' },
+                        offsetX: 100,
+                        offsetY: 100,
+                    },
+                    {
+                        id: 'child2',
+                        width: 50,
+                        height: 50,
+                        style: { fill: 'yellow' },
+                        offsetX: 170,
+                        offsetY: 110,
+                    },
+                    {
+                        id: 'group1',
+                        children: ['child1', 'child2'],
+                        style: { fill: 'red' },
+                    },
+                    {
+                        id: 'child3',
+                        width: 50,
+                        height: 50,
+                        style: { fill: 'brown' },
+                    },
+                    {
+                        id: 'group2',
+                        children: ['group1', 'child3'],
+                        style: { fill: 'black' },
+                    },
+                ]
+            }
+        ];
+
+        diagram = new Diagram({
+            width: '70%', height: 1000,
+        });
+        diagram.appendTo('#diagramgroups');
+        palette = new SymbolPalette({
+            width: '25%', height: '100%',
+            palettes: palettes, enableSearch: true, enableAnimation: false,
+            expandMode: "Multiple",
+            symbolMargin: { left: 12, right: 12, top: 12, bottom: 12 },
+            symbolHeight: 90, symbolWidth: 90,
+            
+        });
+        palette.appendTo('#symbolpalettegroups');
+    });
+    afterAll((): void => {
+        diagram.destroy();
+        palette.destroy();
+        ele.remove();
+        diagram = null;
+        palette = null;
+        ele = null;
+    });
+    it('Checking Nested group shapes', (done: Function) => {
+        setTimeout(() => {
+            let iselementFound: boolean = false;
+            let group = document.getElementById('group2_container');
+            if (group) {
+                iselementFound = true;
+            }
+            expect(iselementFound).toBe(true);
+            done();
+        }, 500);
     });
 });

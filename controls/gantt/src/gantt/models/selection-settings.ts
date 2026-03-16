@@ -29,6 +29,8 @@ export class SelectionSettings extends ChildProperty<SelectionSettings> {
      * @default Syncfusion.EJ2.Grids.CellSelectionMode.Flow
      * @isEnumeration true
      * @aspType Syncfusion.EJ2.Grids.CellSelectionMode
+     *
+     * {% codeBlock src='gantt/cellSelectionMode/index.md' %}{% endcodeBlock %}
      */
     @Property('Flow')
     public cellSelectionMode: CellSelectionMode;

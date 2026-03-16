@@ -2,6 +2,7 @@ import { Diagram } from '../../diagram';
 import { PointModel } from '../../primitives/point-model';
 import { UNIT_CONVERSION, DECORATOR_SIZE_MAP } from './visio-constants';
 import { ParsingContext, VisioExportOptions } from './visio-import-export';
+import { VisioMemoryStream } from './visio-memory-stream';
 import { VisioDocumentSettings, VisioLayer, VisioPage, VisioWindow } from './visio-models';
 import { LayerModel } from '../../diagram/layer-model';
 import { DiagramConstraints, SnapConstraints } from '../../enum/enum';
@@ -26,8 +27,9 @@ import { ConnectorFixedUserHandle} from '../../objects/fixed-user-handle';
 import { getPathOffset , getAnnotationPosition} from '../../utility/diagram-util';
 import { TextElement } from '../../core/elements/text-element';
 import { SegmentInfo } from '../../rendering/canvas-interface';
-import { UserHandle } from '../../interaction/selector';
 import { IExportingEventArgs } from '../../objects/interface/IElement';
+import { serializeJsToXmlString } from './zipReader';
+import { ParsedXmlObject, RetirevedData, ShapeAddInfo, ShapeAttributes, VisioCell, VisioShapeNode, XmlRelationship } from './visio-types';
 
 /**
  * Module-level variable to store global image mappings for the export session.
@@ -46,6 +48,13 @@ const globalImageMap: Map<string, number> = new Map<string, number>();
  * @private
  */
 const COORDINATE_PRECISION: number = 15;
+
+/**
+ * Retrieved data from importing which is going to be used in export
+ *
+ * @private
+ */
+let retrievedData: RetirevedData = undefined;
 
 /**
  * @interface Commands
@@ -93,6 +102,9 @@ interface Commands {
     largeArc?: boolean;
     sweep?: boolean;
 }
+
+// Represents all parsed SVG figures as an array of command arrays
+type PathFigures = Commands[][];
 
 /**
  * @interface visioData
@@ -299,12 +311,16 @@ export async function exportToVsdx(diagram: Diagram, pageName: string, context: 
  */
 export async function exportToVsdxFile(diagram: Diagram, options?: VisioExportOptions): Promise<void> {
     // Extract options with defaults
-    const fileName: string = (options && options.fileName) ? options.fileName : 'Sample.vsdx';
+    let fileName: string = (options && options.fileName) ? options.fileName : 'Sample.vsdx';
+    if (VisioMemoryStream.fileName) {
+        fileName = VisioMemoryStream.fileName;
+    }
     const pageName: string = (options && options.pageName) ? options.pageName : 'Page-1';
     // Create a new, clean context for this parsing operation.
     const context: ParsingContext = new ParsingContext(diagram);
 
     try {
+        retrievedData = (await VisioMemoryStream.get(diagram));
         // Generate VSDX file as ArrayBuffer
         const arrayBuffer: ArrayBuffer = await exportToVsdx(diagram, pageName, context);
 
@@ -373,8 +389,10 @@ async function generateVisioXmlContentWithMasters(visioData: visioData, diagram:
     createBasicXmlFiles(xmlFiles, visioData, diagram, pageName);
 
     // Step 2: Extract all unique shape types and assign master IDs
-    // This ensures each shape type gets its own Visio master definition
+    // Prefer stored masters from import if available to preserve original master IDs
     const shapeTypes: Map<string, number> = extractShapeTypes(diagram);
+    // Use VisioMemoryStream for stored masters
+    const storedMasters: ParsedXmlObject[] = retrievedData ? retrievedData.masters : undefined;
 
     // Step 3: Process images from diagram nodes
     const imageSources: NodeModel[] = [];
@@ -414,37 +432,83 @@ async function generateVisioXmlContentWithMasters(visioData: visioData, diagram:
     // Wait for all image conversions to complete
     await Promise.all(imagePromises);
 
+    const imageExtensions: string[] = [];
     // Step 4: Process images for media folder in VSDX
     imageSources.forEach((node: NodeModel, index: number) => {
         try {
             // Convert data URL to binary Uint8Array
             const imageData: Uint8Array = dataURLToUint8Array((node.shape as ImageModel).source);
+            let compressionType: string = 'png';
             context.addWarning('[WARNING] :: Image nodes are exported to Visio, but image modification properties (e.g., brightness, contrast) are not applied because Visio does not support image editing properties.');
 
             // Store binary image data in media folder of VSDX
-            xmlFiles.set(`visio/media/image${index + 1}.png`, imageData);
+            if (node.addInfo && !(node.addInfo as ShapeAddInfo).isModified) {
+                // If the image is unmodified and we have retrieved data, try to reuse original binary data
+                compressionType = ((node.addInfo as ShapeAddInfo).data.ForeignData.$.CompressionType).toLowerCase();
+                if (compressionType === 'jpg') {
+                    compressionType = 'jpeg'; // Normalize to common file extension
+                }
+            }
+            imageExtensions[parseInt(index.toString(), 10)] = compressionType;
+            xmlFiles.set(`visio/media/image${index + 1}.${compressionType}`, imageData);
         } catch (error) {
             console.error('Error processing image:', error);
         }
     });
 
     // Step 5: Generate masters XML and individual master files
-    const masterFiles: Map<string, string> = generateMasterFiles(shapeTypes, diagram, context);
+    let masterFiles: Map<string, string>;
+    if (storedMasters && storedMasters.length > 0) {
+        const keys: string[] = Object.keys(retrievedData.masterWithContent);
+        for (let i: number = 0; i < keys.length; i++) {
+            const writer: XmlWriter = new XmlWriter();
+            writer.writeStartDocument();
+            const master: string = keys[parseInt(i.toString(), 10)];
+            const content: ParsedXmlObject = retrievedData.masterWithContent[`${master}`] as ParsedXmlObject;
+            writer.writeRaw(serializeJsToXmlString(content, 'MasterContents'));
+            xmlFiles.set(master, writer.text);
+        }
+    } else {
+        masterFiles = generateMasterFiles(shapeTypes, diagram, context);
+        // Add all master files to XML files collections
+        masterFiles.forEach((content: string, filename: string) => {
+            xmlFiles.set(filename, content);
+        });
+    }
 
-    // Add all master files to XML files collection
-    masterFiles.forEach((content: string, filename: string) => {
-        xmlFiles.set(filename, content);
-    });
+
+    // If stored masters exist, overwrite masters.xml with the original Masters content
+    if (storedMasters) {
+        const mastersXml: string = buildMastersXmlFromStored(storedMasters);
+        xmlFiles.set('visio/masters/masters.xml', mastersXml);
+    }
 
     // Step 6: Create relationship files (links between document parts)
-    createRelationshipFiles(xmlFiles, shapeTypes, imageSources.length);
+    createRelationshipFiles(xmlFiles, shapeTypes, imageExtensions);
 
     // Step 7: Update content types XML to include all masters
-    updateContentTypesForMasters(xmlFiles, shapeTypes);
+    if (!storedMasters) {
+        updateContentTypesForMasters(xmlFiles, shapeTypes);
+    }
 
     // Step 8: Generate page content with proper master references
     const pageContent: string = generatePageContentWithMasterRefs(visioData, diagram, shapeTypes, context);
-    xmlFiles.set('visio/pages/page1.xml', pageContent);
+    if (retrievedData && retrievedData.pageWithContent) {
+        let keys: string[] = Object.keys(retrievedData.pageWithContent);
+        xmlFiles.set(keys[parseInt(retrievedData.pageIndex.toString(), 10)], pageContent);
+        delete retrievedData.pageWithContent[keys[parseInt(retrievedData.pageIndex.toString(), 10)]];
+        keys = Object.keys(retrievedData.pageWithContent);
+        for (let i: number = 0; i < keys.length; i++) {
+            const page: string = keys[parseInt(i.toString(), 10)];
+            const content: ParsedXmlObject = retrievedData.pageWithContent[`${page}`] as ParsedXmlObject;
+            const writer: XmlWriter = new XmlWriter();
+            writer.writeStartDocument();
+            writer.writeRaw(serializeJsToXmlString(content, 'PageContents'));
+            xmlFiles.set(page, writer.text);
+        }
+    } else {
+        xmlFiles.set('visio/pages/page1.xml', pageContent);
+    }
 
     return xmlFiles;
 }
@@ -575,9 +639,43 @@ function extractShapeTypes(diagram: Diagram): Map<string, number> {
 }
 
 /**
+ * Splits a flat list of SVG path commands into separate figures.
+ *
+ * A new figure is started whenever a 'MoveTo' (M) command is encountered.
+ * Each figure is represented as an array of commands, and the result is
+ * an array of such figures.
+ *
+ * @param {Commands[]} commands - The list of parsed SVG path commands.
+ * @returns {PathFigures} An array of figures, where each figure is a
+ * command sequence beginning with 'M' and ending before the next 'M'.
+ */
+function splitSvgCommandsIntoFigures(commands: Commands[]): PathFigures {
+    const figures: PathFigures = [];      // completed figures
+    let currentFigure: Commands[] = [];   // active figure
+
+    // Walk commands and start a new figure at each 'M'
+    for (let i: number = 0; i < commands.length; i++) {
+        const command: Commands = commands[parseInt(i.toString(), 10)];
+        if (command.type === 'M' && currentFigure.length > 0) {
+            figures.push(currentFigure);      // finalize previous
+            currentFigure = [];               // start a new one
+        }
+        currentFigure.push(command);          // collect command
+    }
+
+    // Push last figure if it exists
+    if (currentFigure.length > 0) {
+        figures.push(currentFigure);
+    }
+
+    return figures;
+}
+
+/**
  * Converts SVG path data from a diagram node to Visio XML geometry format.
  * This function is the reverse of the determineShapeType method in visioProperties.ts
  * and handles various shape types including circles, ellipses, images, and custom paths.
+ * Note: Splits multi-subpath SVG data into multiple Geometry sections to match Visio semantics.
  *
  * Supported shapes:
  * - Circle/Ellipse: Uses EllipticalArcTo commands
@@ -838,277 +936,298 @@ function convertPathDataToVisioGeometry(node: NodeModel, writer: XmlWriter): voi
     // Parse SVG path data into individual commands
     const commands: Commands[] = parseSvgPathData(pathData);
 
-    // Build Visio geometry section
-    writer.writeStartElement(null, 'Section', null);
-    writer.writeAttributeString(null, 'N', null, 'Geometry');
-    writer.writeAttributeString(null, 'IX', null, '0');
-    writer.writeStartElement(null, 'Cell', null);
-    writer.writeAttributeString(null, 'N', null, 'NoFill');
-    writer.writeAttributeString(null, 'V', null, '0');
-    writer.writeEndElement();
-    writer.writeStartElement(null, 'Cell', null);
-    writer.writeAttributeString(null, 'N', null, 'NoLine');
-    writer.writeAttributeString(null, 'V', null, '0');
-    writer.writeEndElement();
-    writer.writeStartElement(null, 'Cell', null);
-    writer.writeAttributeString(null, 'N', null, 'NoShow');
-    writer.writeAttributeString(null, 'V', null, visibility.toString());
-    writer.writeEndElement();
+    // Split into figures so each sub-path gets its own Geometry section
+    const figures: Commands[][] = splitSvgCommandsIntoFigures(commands);
 
-    let rowIndex: number = 1;
-    let lastX: number = 0;
-    let lastY: number = 0;
-    let firstX: number = 0;
-    let firstY: number = 0;
-    let hasMoveTo: boolean = false;
+    for (let geometrySectionIndex: number = 0; geometrySectionIndex < figures.length; geometrySectionIndex++) {
+        // -- Section header for this figure --
+        writer.writeStartElement(null, 'Section', null);
+        writer.writeAttributeString(null, 'N', null, 'Geometry');
+        writer.writeAttributeString(null, 'IX', null, geometrySectionIndex.toString());
 
-    // Process each command and generate Visio rows
-    for (let i: number = 0; i < commands.length; i++) {
-        const cmd: Commands = commands[parseInt(i.toString(), 10)];
+        // -- Section flags: allow fill/line; honor node visibility --
+        writer.writeStartElement(null, 'Cell', null);
+        writer.writeAttributeString(null, 'N', null, 'NoFill');
+        writer.writeAttributeString(null, 'V', null, '0');
+        writer.writeEndElement();
 
-        // Function to flip Y coordinate (Visio uses inverted Y axis)
-        const flipY: (y: number) => number = (y: number) => node.height - y;
+        writer.writeStartElement(null, 'Cell', null);
+        writer.writeAttributeString(null, 'N', null, 'NoLine');
+        writer.writeAttributeString(null, 'V', null, '0');
+        writer.writeEndElement();
 
-        switch (cmd.type) {
-        case 'M': // MoveTo command
-            if (!hasMoveTo) {
-                firstX = cmd.x;
-                firstY = cmd.y;
-                hasMoveTo = true;
-            }
-            writer.writeStartElement(null, 'Row', null);
-            writer.writeAttributeString(null, 'T', null, 'MoveTo');
-            writer.writeAttributeString(null, 'IX', null, (rowIndex++).toString());
-            writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'X');
-            writer.writeAttributeString(null, 'V', null, (cmd.x / UNIT_CONVERSION.SCREEN_DPI).toString());
-            writer.writeAttributeString(null, 'U', null, 'IN');
-            writer.writeAttributeString(null, 'F', null, `Width*${cmd.x / node.width}`);
-            writer.writeEndElement();
-            writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'Y');
-            writer.writeAttributeString(null, 'V', null, (flipY(cmd.y) / UNIT_CONVERSION.SCREEN_DPI).toString());
-            writer.writeAttributeString(null, 'U', null, 'IN');
-            writer.writeAttributeString(null, 'F', null, `Height*${flipY(cmd.y) / node.height}`);
-            writer.writeEndElement();
-            writer.writeEndElement(); // Row
-            lastX = cmd.x;
-            lastY = cmd.y;
-            break;
+        writer.writeStartElement(null, 'Cell', null);
+        writer.writeAttributeString(null, 'N', null, 'NoShow');
+        writer.writeAttributeString(null, 'V', null, Number(!node.visible).toString());
+        writer.writeEndElement();
 
-        case 'L': // LineTo command
-            writer.writeStartElement(null, 'Row', null);
-            writer.writeAttributeString(null, 'T', null, 'LineTo');
-            writer.writeAttributeString(null, 'IX', null, (rowIndex++).toString());
-            writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'X');
-            writer.writeAttributeString(null, 'V', null, (cmd.x / UNIT_CONVERSION.SCREEN_DPI).toString());
-            writer.writeAttributeString(null, 'U', null, 'IN');
-            writer.writeAttributeString(null, 'F', null, `Width*${cmd.x / node.width}`);
-            writer.writeEndElement();
-            writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'Y');
-            writer.writeAttributeString(null, 'V', null, (flipY(cmd.y) / UNIT_CONVERSION.SCREEN_DPI).toString());
-            writer.writeAttributeString(null, 'U', null, 'IN');
-            writer.writeAttributeString(null, 'F', null, `Height*${flipY(cmd.y) / node.height}`);
-            writer.writeEndElement();
-            writer.writeEndElement(); // Row
-            lastX = cmd.x;
-            lastY = cmd.y;
-            break;
+        // -- Per-figure state (row counter and first/last points) --
+        let geometryRowIndex: number = 1;
+        let lastX: number = 0;
+        let lastY: number = 0;
+        let firstXOfFigure: number = 0;
+        let firstYOfFigure: number = 0;
+        let seenMoveToInFigure: boolean = false;
 
-        case 'C': { // Cubic Bezier command
-            // Approximate cubic Bezier curve with line segments
-            // Control points: p0 (lastX,lastY), p1 (x1,y1), p2 (x2,y2), p3 (x,y)
-            const p0: { x: number; y: number } = { x: lastX, y: lastY };
-            const p1: { x: number; y: number } = { x: cmd.x1, y: cmd.y1 };
-            const p2: { x: number; y: number } = { x: cmd.x2, y: cmd.y2 };
-            const p3: { x: number; y: number } = { x: cmd.x, y: cmd.y };
+        // -- Current figure's commands --
+        const figureCommands: Commands[] = figures[parseInt(geometrySectionIndex.toString(), 10)];
 
-            // Estimate number of segments needed for smooth approximation
-            const segmentCount: number = estimateSegments(p0, p1, p2, p3, 8 /* px tolerance */);
+        // -- Flip EJ2 Y to Visio Y --
+        const flipYCoord: (y: number) => number = function (y: number): number { return node.height - y; };
 
-            // Generate line segments to approximate the curve
-            for (let i: number = 1; i <= segmentCount; i++) {
-                const t: number = i / segmentCount;
-                const pt: PointModel = cubicPoint(p0, p1, p2, p3, t);
+        const dpi: number = UNIT_CONVERSION.SCREEN_DPI;
+        // -- Convert X (px) to inches --
+        const toInchesX: (px: number) => number = (px: number): number => { return px / dpi; };
+        // -- Convert Y (px) to inches with Visio's flipped Y --
+        const toInchesY: (px: number) => number = (px: number): number => { return flipYCoord(px) / dpi; };
+
+        // -- Emit rows for this figure --
+        for (let i: number = 0; i < figureCommands.length; i++) {
+            const command: Commands = figureCommands[parseInt(i.toString(), 10)];
+
+            switch (command.type) {
+            case 'M': {
+                // -- MoveTo: start a new contour and remember the first point --
+                if (!seenMoveToInFigure) {
+                    firstXOfFigure = command.x as number;
+                    firstYOfFigure = command.y as number;
+                    seenMoveToInFigure = true;
+                }
+
                 writer.writeStartElement(null, 'Row', null);
-                writer.writeAttributeString(null, 'T', null, 'LineTo');
-                writer.writeAttributeString(null, 'IX', null, (rowIndex++).toString());
+                writer.writeAttributeString(null, 'T', null, 'MoveTo');
+                writer.writeAttributeString(null, 'IX', null, (geometryRowIndex++).toString());
+
                 writer.writeStartElement(null, 'Cell', null);
                 writer.writeAttributeString(null, 'N', null, 'X');
-                writer.writeAttributeString(null, 'V', null, (pt.x / UNIT_CONVERSION.SCREEN_DPI).toString());
+                writer.writeAttributeString(null, 'V', null, toInchesX(command.x as number).toString());
                 writer.writeAttributeString(null, 'U', null, 'IN');
-                writer.writeAttributeString(null, 'F', null, `Width*${pt.x / node.width}`);
+                writer.writeAttributeString(null, 'F', null, 'Width*' + ((command.x as number) / node.width));
                 writer.writeEndElement();
+
                 writer.writeStartElement(null, 'Cell', null);
                 writer.writeAttributeString(null, 'N', null, 'Y');
-                writer.writeAttributeString(null, 'V', null, (flipY(pt.y) / UNIT_CONVERSION.SCREEN_DPI).toString());
+                writer.writeAttributeString(null, 'V', null, toInchesY(command.y as number).toString());
                 writer.writeAttributeString(null, 'U', null, 'IN');
-                writer.writeAttributeString(null, 'F', null, `Height*${flipY(pt.y) / node.height}`);
+                writer.writeAttributeString(null, 'F', null, 'Height*' + (flipYCoord(command.y as number) / node.height));
                 writer.writeEndElement();
+
                 writer.writeEndElement(); // Row
-            }
-            lastX = cmd.x;
-            lastY = cmd.y;
-            break;
-        }
-
-        case 'A': { // Elliptical Arc command
-            // --- Inputs from parsed path command (absolute coordinates expected) ---
-            const svgRadiusX: number = Math.abs(cmd.rx);
-            const svgRadiusY: number = Math.abs(cmd.ry);
-            const svgRotationDeg: number = cmd.angle;            // φ in degrees
-            const isLargeArc: number = cmd.largeArc ? 1 : 0;     // SVG large-arc flag fA
-            const isSweep: number = cmd.sweep ? 1 : 0;           // SVG sweep flag fS
-            const startX: number = lastX;
-            const startY: number = lastY;
-            const endX: number = cmd.x;
-            const endY: number = cmd.y;
-
-            // If radii are zero, degrade to a line (Visio will draw a line).
-            if (svgRadiusX === 0 || svgRadiusY === 0) {
-                // (Optionally skip identical-point lines)
-                if (!(endX === lastX && endY === lastY)) {
-                    writer.writeStartElement(null, 'Row', null);
-                    writer.writeAttributeString(null, 'T', null, 'LineTo');
-                    writer.writeAttributeString(null, 'IX', null, (rowIndex++).toString());
-
-                    // X
-                    writer.writeStartElement(null, 'Cell', null);
-                    writer.writeAttributeString(null, 'N', null, 'X');
-                    writer.writeAttributeString(null, 'V', null, (endX / UNIT_CONVERSION.SCREEN_DPI).toString());
-                    writer.writeAttributeString(null, 'U', null, 'IN');
-                    writer.writeAttributeString(null, 'F', null, 'Width*' + (endX / node.width));
-                    writer.writeEndElement();
-
-                    // Y (flip to Visio coords)
-                    writer.writeStartElement(null, 'Cell', null);
-                    writer.writeAttributeString(null, 'N', null, 'Y');
-                    writer.writeAttributeString(null, 'V', null, (flipY(endY) / UNIT_CONVERSION.SCREEN_DPI).toString());
-                    writer.writeAttributeString(null, 'U', null, 'IN');
-                    writer.writeAttributeString(null, 'F', null, 'Height*' + (flipY(endY) / node.height));
-                    writer.writeEndElement();
-
-                    writer.writeEndElement();
-                }
-                lastX = endX;
-                lastY = endY;
+                lastX = command.x as number;
+                lastY = command.y as number;
                 break;
             }
 
-            // --- Compute ellipse center and angles per SVG spec (endpoint -> center) ---
-            const arcParams: {
-                cx: number; cy: number; theta1: number; deltaTheta: number; rx: number; ry: number; phiRad: number;
-            } = computeSvgArcCenterParams(
-                startX, startY, endX, endY,
-                svgRadiusX, svgRadiusY,
-                svgRotationDeg,
-                isLargeArc, isSweep
-            );
-            // arcParams: { cx, cy, theta1, deltaTheta, rx, ry, phiRad }
+            case 'L': {
+                // -- LineTo: straight segment to (x,y) --
+                writer.writeStartElement(null, 'Row', null);
+                writer.writeAttributeString(null, 'T', null, 'LineTo');
+                writer.writeAttributeString(null, 'IX', null, (geometryRowIndex++).toString());
 
-            // Pick **control point** on the arc at mid-angle (recommended by Visio docs)
-            const thetaMid: number = arcParams.theta1 + arcParams.deltaTheta / 2.0;
-            const controlPoint: { x: number; y: number } = pointOnSvgArc(arcParams, thetaMid);
+                writer.writeStartElement(null, 'Cell', null);
+                writer.writeAttributeString(null, 'N', null, 'X');
+                writer.writeAttributeString(null, 'V', null, toInchesX(command.x as number).toString());
+                writer.writeAttributeString(null, 'U', null, 'IN');
+                writer.writeAttributeString(null, 'F', null, 'Width*' + ((command.x as number) / node.width));
+                writer.writeEndElement();
 
-            // --- Compute Visio C (major axis angle) and D (axis ratio) ---
-            // C = angle of major axis relative to x-axis; D = major/minor axis ratio
-            // SVG rotation is the angle to ellipse x-axis. If rx >= ry, x-axis is major axis.
-            let majorAxisAngleDeg: number;
-            let axisRatio: number;
-            if (arcParams.rx >= arcParams.ry) {
-                majorAxisAngleDeg = svgRotationDeg;
-                axisRatio = arcParams.rx / arcParams.ry;
-            } else {
-                majorAxisAngleDeg = svgRotationDeg + 90; // major axis is along the ellipse y-axis
-                axisRatio = arcParams.ry / arcParams.rx;
+                writer.writeStartElement(null, 'Cell', null);
+                writer.writeAttributeString(null, 'N', null, 'Y');
+                writer.writeAttributeString(null, 'V', null, toInchesY(command.y as number).toString());
+                writer.writeAttributeString(null, 'U', null, 'IN');
+                writer.writeAttributeString(null, 'F', null, 'Height*' + (flipYCoord(command.y as number) / node.height));
+                writer.writeEndElement();
+
+                writer.writeEndElement(); // Row
+                lastX = command.x as number;
+                lastY = command.y as number;
+                break;
             }
-            // Clamp per Visio guidance to avoid unpredictable results
-            if (!(axisRatio > 0)) { axisRatio = 1; }
-            if (axisRatio > 1000) { axisRatio = 1000; }
 
-            // --- Write EllipticalArcTo row (X,Y end; A,B control point; C angle; D ratio) ---
-            writer.writeStartElement(null, 'Row', null);
-            writer.writeAttributeString(null, 'T', null, 'EllipticalArcTo');
-            writer.writeAttributeString(null, 'IX', null, (rowIndex++).toString());
+            case 'C': {
+                // -- Cubic Bezier: approximate with N line segments --
+                const point0: PointModel = { x: lastX, y: lastY };
+                const point1: PointModel = { x: command.x1 as number, y: command.y1 as number };
+                const point2: PointModel = { x: command.x2 as number, y: command.y2 as number };
+                const point3: PointModel = { x: command.x as number,  y: command.y as number  };
+                const segmentCount: number = estimateSegments(point0, point1, point2, point3, 8);
 
-            // X (endX)
-            writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'X');
-            writer.writeAttributeString(null, 'V', null, (endX / UNIT_CONVERSION.SCREEN_DPI).toString());
-            writer.writeAttributeString(null, 'U', null, 'IN');
-            writer.writeAttributeString(null, 'F', null, 'Width*' + (endX / node.width));
-            writer.writeEndElement();
+                for (let k: number = 1; k <= segmentCount; k++) {
+                    const curveProgress: number = k / segmentCount;
+                    const cubicPt: PointModel = cubicPoint(point0, point1, point2, point3, curveProgress);
 
-            // Y (endY) - flipped to Visio
-            writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'Y');
-            writer.writeAttributeString(null, 'V', null, (flipY(endY) / UNIT_CONVERSION.SCREEN_DPI).toString());
-            writer.writeAttributeString(null, 'U', null, 'IN');
-            writer.writeAttributeString(null, 'F', null, 'Height*' + (flipY(endY) / node.height));
-            writer.writeEndElement();
+                    writer.writeStartElement(null, 'Row', null);
+                    writer.writeAttributeString(null, 'T', null, 'LineTo');
+                    writer.writeAttributeString(null, 'IX', null, (geometryRowIndex++).toString());
 
-            // A (control point x) - **point on the arc**, not radius
-            writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'A');
-            writer.writeAttributeString(null, 'V', null, (controlPoint.x / UNIT_CONVERSION.SCREEN_DPI).toString());
-            writer.writeAttributeString(null, 'U', null, 'IN');
-            writer.writeAttributeString(null, 'F', null, 'Width*' + (controlPoint.x / node.width));
-            writer.writeEndElement();
+                    writer.writeStartElement(null, 'Cell', null);
+                    writer.writeAttributeString(null, 'N', null, 'X');
+                    writer.writeAttributeString(null, 'V', null, toInchesX(cubicPt.x).toString());
+                    writer.writeAttributeString(null, 'U', null, 'IN');
+                    writer.writeAttributeString(null, 'F', null, 'Width*' + (cubicPt.x / node.width));
+                    writer.writeEndElement();
 
-            // B (control point y) - flipped
-            writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'B');
-            writer.writeAttributeString(null, 'V', null, (flipY(controlPoint.y) / UNIT_CONVERSION.SCREEN_DPI).toString());
-            writer.writeAttributeString(null, 'U', null, 'IN');
-            writer.writeAttributeString(null, 'F', null, 'Height*' + (flipY(controlPoint.y) / node.height));
-            writer.writeEndElement();
+                    writer.writeStartElement(null, 'Cell', null);
+                    writer.writeAttributeString(null, 'N', null, 'Y');
+                    writer.writeAttributeString(null, 'V', null, toInchesY(cubicPt.y).toString());
+                    writer.writeAttributeString(null, 'U', null, 'IN');
+                    writer.writeAttributeString(null, 'F', null, 'Height*' + (flipYCoord(cubicPt.y) / node.height));
+                    writer.writeEndElement();
 
-            // C (major axis angle, degrees)
-            writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'C');
-            writer.writeAttributeString(null, 'V', null, majorAxisAngleDeg.toString());
-            writer.writeAttributeString(null, 'U', null, 'DEG');
-            writer.writeEndElement();
+                    writer.writeEndElement(); // Row
+                }
+                lastX = command.x as number;
+                lastY = command.y as number;
+                break;
+            }
 
-            // D (axis ratio = major/minor)
-            writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'D');
-            writer.writeAttributeString(null, 'V', null, axisRatio.toString());
-            writer.writeEndElement();
+            case 'A': {
+                // -- Elliptical arc: degrade to line for zero radii else EllipticalArcTo --
+                const radiusX: number = Math.abs(command.rx as number);
+                const radiusY: number = Math.abs(command.ry as number);
+                const rotationDeg: number = command.angle as number;
+                const endX: number = command.x as number;
+                const endY: number = command.y as number;
 
-            writer.writeEndElement(); // Row
-            lastX = endX;
-            lastY = endY;
-            break;
+                if (radiusX === 0 || radiusY === 0) {
+                    // -- Fallback line when arc radii are zero --
+                    if (!(endX === lastX && endY === lastY)) {
+                        writer.writeStartElement(null, 'Row', null);
+                        writer.writeAttributeString(null, 'T', null, 'LineTo');
+                        writer.writeAttributeString(null, 'IX', null, (geometryRowIndex++).toString());
+
+                        writer.writeStartElement(null, 'Cell', null);
+                        writer.writeAttributeString(null, 'N', null, 'X');
+                        writer.writeAttributeString(null, 'V', null, toInchesX(endX).toString());
+                        writer.writeAttributeString(null, 'U', null, 'IN');
+                        writer.writeAttributeString(null, 'F', null, 'Width*' + (endX / node.width));
+                        writer.writeEndElement();
+
+                        writer.writeStartElement(null, 'Cell', null);
+                        writer.writeAttributeString(null, 'N', null, 'Y');
+                        writer.writeAttributeString(null, 'V', null, toInchesY(endY).toString());
+                        writer.writeAttributeString(null, 'U', null, 'IN');
+                        writer.writeAttributeString(null, 'F', null, 'Height*' + (flipYCoord(endY) / node.height));
+                        writer.writeEndElement();
+
+                        writer.writeEndElement(); // Row
+                    }
+                    lastX = endX; lastY = endY;
+                    break;
+                }
+
+                // -- Compute center form and a mid-point on the arc --
+                const arcParams: {
+                    cx: number;
+                    cy: number;
+                    theta1: number;
+                    deltaTheta: number;
+                    rx: number;
+                    ry: number;
+                    phiRad: number;
+                } = computeSvgArcCenterParams(
+                    lastX, lastY, endX, endY,
+                    radiusX, radiusY,
+                    rotationDeg,
+                    command.largeArc ? 1 : 0,
+                    command.sweep ? 1 : 0
+                );
+                const midTheta: number = arcParams.theta1 + arcParams.deltaTheta / 2.0;
+                const midPt: { x: number; y: number } = pointOnSvgArc(arcParams, midTheta);
+
+                // -- Determine C (major axis angle) and D (axis ratio) per Visio spec --
+                let majorAxisAngleDeg: number;
+                let axisRatio: number;
+                if (arcParams.rx >= arcParams.ry) {
+                    majorAxisAngleDeg = rotationDeg;
+                    axisRatio = arcParams.rx / arcParams.ry;
+                } else {
+                    majorAxisAngleDeg = rotationDeg + 90;
+                    axisRatio = arcParams.ry / arcParams.rx;
+                }
+                if (!(axisRatio > 0)) { axisRatio = 1; }
+                if (axisRatio > 1000) { axisRatio = 1000; }
+
+                // -- EllipticalArcTo row: end (X,Y), control (A,B), angle (C), ratio (D) --
+                writer.writeStartElement(null, 'Row', null);
+                writer.writeAttributeString(null, 'T', null, 'EllipticalArcTo');
+                writer.writeAttributeString(null, 'IX', null, (geometryRowIndex++).toString());
+
+                writer.writeStartElement(null, 'Cell', null);
+                writer.writeAttributeString(null, 'N', null, 'X');
+                writer.writeAttributeString(null, 'V', null, toInchesX(endX).toString());
+                writer.writeAttributeString(null, 'U', null, 'IN');
+                writer.writeAttributeString(null, 'F', null, 'Width*' + (endX / node.width));
+                writer.writeEndElement();
+
+                writer.writeStartElement(null, 'Cell', null);
+                writer.writeAttributeString(null, 'N', null, 'Y');
+                writer.writeAttributeString(null, 'V', null, toInchesY(endY).toString());
+                writer.writeAttributeString(null, 'U', null, 'IN');
+                writer.writeAttributeString(null, 'F', null, 'Height*' + (flipYCoord(endY) / node.height));
+                writer.writeEndElement();
+
+                writer.writeStartElement(null, 'Cell', null);
+                writer.writeAttributeString(null, 'N', null, 'A');
+                writer.writeAttributeString(null, 'V', null, toInchesX(midPt.x).toString());
+                writer.writeAttributeString(null, 'U', null, 'IN');
+                writer.writeAttributeString(null, 'F', null, 'Width*' + (midPt.x / node.width));
+                writer.writeEndElement();
+
+                writer.writeStartElement(null, 'Cell', null);
+                writer.writeAttributeString(null, 'N', null, 'B');
+                writer.writeAttributeString(null, 'V', null, toInchesY(midPt.y).toString());
+                writer.writeAttributeString(null, 'U', null, 'IN');
+                writer.writeAttributeString(null, 'F', null, 'Height*' + (flipYCoord(midPt.y) / node.height));
+                writer.writeEndElement();
+
+                writer.writeStartElement(null, 'Cell', null);
+                writer.writeAttributeString(null, 'N', null, 'C');
+                writer.writeAttributeString(null, 'V', null, majorAxisAngleDeg.toString());
+                writer.writeAttributeString(null, 'U', null, 'DEG');
+                writer.writeEndElement();
+
+                writer.writeStartElement(null, 'Cell', null);
+                writer.writeAttributeString(null, 'N', null, 'D');
+                writer.writeAttributeString(null, 'V', null, axisRatio.toString());
+                writer.writeEndElement();
+
+                writer.writeEndElement(); // Row
+                lastX = endX; lastY = endY;
+                break;
+            }
+
+            case 'Z': {
+                // -- Close the contour back to the figure's first point --
+                writer.writeStartElement(null, 'Row', null);
+                writer.writeAttributeString(null, 'T', null, 'LineTo');
+                writer.writeAttributeString(null, 'IX', null, (geometryRowIndex++).toString());
+
+                writer.writeStartElement(null, 'Cell', null);
+                writer.writeAttributeString(null, 'N', null, 'X');
+                writer.writeAttributeString(null, 'V', null, toInchesX(firstXOfFigure).toString());
+                writer.writeAttributeString(null, 'U', null, 'IN');
+                writer.writeAttributeString(null, 'F', null, 'Width*' + (firstXOfFigure / node.width));
+                writer.writeEndElement();
+
+                writer.writeStartElement(null, 'Cell', null);
+                writer.writeAttributeString(null, 'N', null, 'Y');
+                writer.writeAttributeString(null, 'V', null, toInchesY(firstYOfFigure).toString());
+                writer.writeAttributeString(null, 'U', null, 'IN');
+                writer.writeAttributeString(null, 'F', null, 'Height*' + (flipYCoord(firstYOfFigure) / node.height));
+                writer.writeEndElement();
+
+                writer.writeEndElement(); // Row
+                lastX = firstXOfFigure;
+                lastY = firstYOfFigure;
+                break;
+            }
+            }
         }
 
-        case 'Z': // Close path (return to start)
-            writer.writeStartElement(null, 'Row', null);
-            writer.writeAttributeString(null, 'T', null, 'LineTo');
-            writer.writeAttributeString(null, 'IX', null, (rowIndex++).toString());
-            writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'X');
-            writer.writeAttributeString(null, 'V', null, (firstX / UNIT_CONVERSION.SCREEN_DPI).toString());
-            writer.writeAttributeString(null, 'U', null, 'IN');
-            writer.writeAttributeString(null, 'F', null, `Width*${firstX / node.width}`);
-            writer.writeEndElement();
-            writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'Y');
-            writer.writeAttributeString(null, 'V', null, (flipY(firstY) / UNIT_CONVERSION.SCREEN_DPI).toString());
-            writer.writeAttributeString(null, 'U', null, 'IN');
-            writer.writeAttributeString(null, 'F', null, `Height*${flipY(firstY) / node.height}`);
-            writer.writeEndElement();
-            writer.writeEndElement(); // Row
-            lastX = firstX;
-            lastY = firstY;
-            break;
-        }
+        // Close geometry section
+        writer.writeEndElement(); // Section
     }
-
-    // Close geometry section
-    writer.writeEndElement(); // Section
 }
 
 /**
@@ -2450,14 +2569,14 @@ function commonXMLFormat(): string {
  *                                                       and binary data for the VSDX
  * @param {Map<string, number>} shapeTypes - A map containing unique shape type names
  *                                          and their assigned master IDs
- * @param {number} imageCount - The total number of images included in the document,
- *                             used for generating media relationships
+ * @param {string[]} imageExtensions - The list of image extensions for each image included in the document,
+ *                                    used for generating media relationships
  * @returns {void}
  *
  * @example
  * const xmlFiles = new Map();
  * const shapeTypes = new Map([['Rectangle', 1], ['Ellipse', 2]]);
- * createRelationshipFiles(xmlFiles, shapeTypes, 3);
+ * createRelationshipFiles(xmlFiles, shapeTypes, ['png', 'jpeg', 'gif']);
  * // xmlFiles now contains 4 .rels files
  *
  * @private
@@ -2465,7 +2584,7 @@ function commonXMLFormat(): string {
 function createRelationshipFiles(
     xmlFiles: Map<string, string | Uint8Array>,
     shapeTypes: Map<string, number>,
-    imageCount: number
+    imageExtensions: string[]
 ): void {
     // Create masters relationship file
     // This links masters.xml to each individual master*.xml file
@@ -2483,41 +2602,59 @@ function createRelationshipFiles(
     });
 
     mastersRelsWriter.writeEndElement(); // Relationships
-
-    xmlFiles.set('visio/masters/_rels/masters.xml.rels', mastersRelsWriter.text);
+    if (retrievedData && retrievedData.masterRel) {
+        const masterRelsWriter: XmlWriter = new XmlWriter();
+        masterRelsWriter.writeStartDocument();
+        masterRelsWriter.writeRaw(serializeJsToXmlString(retrievedData.masterRel, 'Relationships'));
+        xmlFiles.set('visio/masters/_rels/masters.xml.rels', masterRelsWriter.text);
+    } else {
+        xmlFiles.set('visio/masters/_rels/masters.xml.rels', mastersRelsWriter.text);
+    }
 
     // Create page1 relationship file with references to masters and images
     const page1RelsWriter: XmlWriter = new XmlWriter();
     page1RelsWriter.writeStartDocument();
     page1RelsWriter.writeStartElement(null, 'Relationships', 'http://schemas.openxmlformats.org/package/2006/relationships');
 
-    // Add relationship for each master used in the page
-    let relId: number = 1;
-    shapeTypes.forEach((masterId: number, _shapeType: string) => {
+    // First, collect all master IDs (and track the max for image rIds)
+    const masterIds: number[] = Array.from((shapeTypes as any).values());
+    masterIds.sort((a: number, b: number) => a - b);
+
+    for (const masterId of masterIds) {
         page1RelsWriter.writeStartElement(null, 'Relationship', null);
-        page1RelsWriter.writeAttributeString(null, 'Id', null, `rId${relId}`);
+        page1RelsWriter.writeAttributeString(null, 'Id', null, `rId${masterId}`);
         page1RelsWriter.writeAttributeString(null, 'Type', null, 'http://schemas.microsoft.com/visio/2010/relationships/master');
         page1RelsWriter.writeAttributeString(null, 'Target', null, `../masters/master${masterId}.xml`);
         page1RelsWriter.writeEndElement();
-        relId++;
-    });
+    }
 
-    // Add relationships for each image in the media folder
-    if (imageCount > 0) {
-        for (let i: number = 1; i <= imageCount; i++) {
-            page1RelsWriter.writeStartElement(null, 'Relationship', null);
-            page1RelsWriter.writeAttributeString(null, 'Id', null, `rId${relId}`);
-            page1RelsWriter.writeAttributeString(null, 'Type', null, 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image');
-            page1RelsWriter.writeAttributeString(null, 'Target', null, `../media/image${i}.png`);
-            page1RelsWriter.writeEndElement();
-            relId++;
-        }
+    // Now assign image rel IDs that do not collide with existing rId{masterId}
+    // Start image rIds at (maxMasterId + 1)
+    let nextRelNum: number = masterIds.length ? Math.max(...masterIds) + 1 : 1;
+
+    for (let i: number = 1; i <= imageExtensions.length; i++) {
+        page1RelsWriter.writeStartElement(null, 'Relationship', null);
+        page1RelsWriter.writeAttributeString(null, 'Id', null, `rId${nextRelNum++}`);
+        page1RelsWriter.writeAttributeString(null, 'Type', null, 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image');
+        page1RelsWriter.writeAttributeString(null, 'Target', null,
+                                             `../media/image${i}.${imageExtensions[parseInt(i.toString(), 10) - 1]}`);
+        page1RelsWriter.writeEndElement();
     }
 
     page1RelsWriter.writeEndElement(); // Relationships
 
-    xmlFiles.set('visio/pages/_rels/page1.xml.rels', page1RelsWriter.text);
-
+    if (retrievedData && retrievedData.pageRelWithContent) {
+        for (let i: number = 0; i < Object.keys(retrievedData.pageRelWithContent).length; i++) {
+            const pageRel: string = Object.keys(retrievedData.pageRelWithContent)[parseInt(i.toString(), 10)];
+            const content: ParsedXmlObject = retrievedData.pageRelWithContent[`${pageRel}`] as ParsedXmlObject;
+            const pageRelsWriter: XmlWriter = new XmlWriter();
+            pageRelsWriter.writeStartDocument();
+            pageRelsWriter.writeRaw(serializeJsToXmlString(content, 'Relationships'));
+            xmlFiles.set(pageRel, pageRelsWriter.text);
+        }
+    } else {
+        xmlFiles.set('visio/pages/_rels/page1.xml.rels', page1RelsWriter.text);
+    }
     // Create document relationships
     // Links document.xml to main resources (masters, pages, windows)
     const docRelsWriter: XmlWriter = new XmlWriter();
@@ -2543,18 +2680,28 @@ function createRelationshipFiles(
     xmlFiles.set('visio/_rels/document.xml.rels', docRelsWriter.text);
 
     // Create pages relationships
-    // Links pages.xml to page1.xml
-    const pagesRelsWriter: XmlWriter = new XmlWriter();
-    pagesRelsWriter.writeStartDocument();
-    pagesRelsWriter.writeStartElement(null, 'Relationships', 'http://schemas.openxmlformats.org/package/2006/relationships');
-    pagesRelsWriter.writeStartElement(null, 'Relationship', null);
-    pagesRelsWriter.writeAttributeString(null, 'Id', null, 'rId1');
-    pagesRelsWriter.writeAttributeString(null, 'Type', null, 'http://schemas.microsoft.com/visio/2010/relationships/page');
-    pagesRelsWriter.writeAttributeString(null, 'Target', null, 'page1.xml');
-    pagesRelsWriter.writeEndElement();
-    pagesRelsWriter.writeEndElement(); // Relationships
+    if (retrievedData && retrievedData.pageRelWithContent) {
+        const pageFileIndex: number = Object.keys(retrievedData.pageRelWithContent).length - 1;
+        const pageRelsWriter: XmlWriter = new XmlWriter();
+        const pageRel: string = Object.keys(retrievedData.pageRelWithContent)[parseInt(pageFileIndex.toString(), 10)];
+        const content: ParsedXmlObject = retrievedData.pageRelWithContent[`${pageRel}`] as ParsedXmlObject;
+        pageRelsWriter.writeStartDocument();
+        pageRelsWriter.writeRaw(serializeJsToXmlString(content, 'Relationships'));
+        xmlFiles.set(pageRel, pageRelsWriter.text);
+    } else {
+        // Links pages.xml to page1.xml
+        const pagesRelsWriter: XmlWriter = new XmlWriter();
+        pagesRelsWriter.writeStartDocument();
+        pagesRelsWriter.writeStartElement(null, 'Relationships', 'http://schemas.openxmlformats.org/package/2006/relationships');
+        pagesRelsWriter.writeStartElement(null, 'Relationship', null);
+        pagesRelsWriter.writeAttributeString(null, 'Id', null, 'rId1');
+        pagesRelsWriter.writeAttributeString(null, 'Type', null, 'http://schemas.microsoft.com/visio/2010/relationships/page');
+        pagesRelsWriter.writeAttributeString(null, 'Target', null, 'page1.xml');
+        pagesRelsWriter.writeEndElement();
+        pagesRelsWriter.writeEndElement(); // Relationships
 
-    xmlFiles.set('visio/pages/_rels/pages.xml.rels', pagesRelsWriter.text);
+        xmlFiles.set('visio/pages/_rels/pages.xml.rels', pagesRelsWriter.text);
+    }
 }
 
 /**
@@ -2600,7 +2747,8 @@ function generatePageContentWithMasterRefs(visioData: visioData, diagram: Diagra
     writer.writeAttributeString('xmlns', 'r', null, 'http://schemas.openxmlformats.org/officeDocument/2006/relationships');
     writer.writeAttributeString('xml', 'space', null, 'preserve');
 
-    let shapeId: number = 0;
+    const idAlloc: { value: number } = { value: 0 };
+    const shapeIdMap: Map<string, number> = new Map<string, number>();
 
     // Map to store Visio connection point indices for each Syncfusion port
     // Structure: nodeId -> (portId -> visioConnectionPointIndex)
@@ -2616,10 +2764,10 @@ function generatePageContentWithMasterRefs(visioData: visioData, diagram: Diagra
             const page: VisioPage = visioData.pages[0];
             const pageWidth: number = page.pageWidth;
             const pageHeight: number = page.pageHeight;
-
+            const backgroundId: number = ++idAlloc.value;
             // Add the background shape as the first shape to ensure it's at the back
             writer.writeStartElement(null, 'Shape', null);
-            writer.writeAttributeString(null, 'ID', null, (++shapeId).toString());
+            writer.writeAttributeString(null, 'ID', null, backgroundId.toString());
             writer.writeAttributeString(null, 'NameU', null, 'Solid');
             writer.writeAttributeString(null, 'Name', null, 'Solid');
             writer.writeAttributeString(null, 'Type', null, 'Shape');
@@ -2771,22 +2919,42 @@ function generatePageContentWithMasterRefs(visioData: visioData, diagram: Diagra
             if ((node.shape as FlowShape).type === 'Flow') {
                 context.addWarning('[WARNING] :: Flow shapes are exported but may appear visually different.');
             }
-            // Only process root nodes (those without a parent)
-            if (!(node as Node).parentId) {
-                generateNodeShapeXML(writer, diagram.nameTable[node.id], diagram, shapeTypes, ++shapeId, portConnectionsMap, context);
-                // Handle child nodes in groups
-                if (node.children && node.children.length > 0) {
-                    node.children.forEach((child: string) => {
-                        ++shapeId;
-                    });
+            if (node.addInfo && (node.addInfo as ShapeAddInfo).data && !(node.addInfo as ShapeAddInfo).isModified
+                && !(node as Node).parentId) {
+                const addInfo: ShapeAddInfo = node.addInfo as ShapeAddInfo;
+                (addInfo.data.$ as ShapeAttributes).ID = (++idAlloc.value).toString();
+                shapeIdMap.set(node.id, idAlloc.value);
+                const data: string = serializeJsToXmlString(addInfo.data as ParsedXmlObject, 'Shape');
+                writer.writeRaw(data);
+
+                // Define port connection points for this shape based on its ports for connection use
+                let connectionRowIndex: number = 4; // Start after default connection points (0-3)
+                const nodePortsMap: Map<string, number> = new Map<string, number>();
+
+                node.ports.forEach((port: PointPort) => {
+                    // Store port index for later reference in connector connections
+                    nodePortsMap.set(port.id, connectionRowIndex);
+                    connectionRowIndex++;
+                });
+                // Store the port map for use in generating connector connects
+                portConnectionsMap.set(node.id, nodePortsMap);
+            } else {
+                // Only process root nodes (those without a parent)
+                if (!(node as Node).parentId) {
+                    const nodeObj: NodeModel = diagram.nameTable[node.id];
+                    // No addInfo: generate default XML
+                    generateNodeShapeXML(writer, nodeObj, diagram, shapeTypes,
+                                         idAlloc, portConnectionsMap, context, shapeIdMap, /*groupNode*/ undefined);
                 }
             }
+
         });
     }
 
     // Add connector shapes
     if (diagram.connectors && diagram.connectors.length > 0) {
-        generateConnectorShapesXml(writer, diagram, shapeTypes, ++shapeId, portConnectionsMap, context, undefined);
+        generateConnectorShapesXml(writer, diagram, shapeTypes, idAlloc,
+                                   portConnectionsMap, context, shapeIdMap, /*groupNode*/ undefined);
     }
 
     writer.writeEndElement(); // Shapes
@@ -2794,7 +2962,7 @@ function generatePageContentWithMasterRefs(visioData: visioData, diagram: Diagra
     // Generate the connections section (connector attachment points)
     writer.writeStartElement(null, 'Connects', null);
     if (diagram.connectors && diagram.connectors.length > 0) {
-        generateConnectionsXml(writer, diagram, portConnectionsMap);
+        generateConnectionsXml(writer, diagram, portConnectionsMap, shapeIdMap);
     }
     writer.writeEndElement(); // Connects
 
@@ -2859,6 +3027,43 @@ function dataURLToUint8Array(dataURL: string): Uint8Array {
 }
 
 /**
+ * Compute Visio PinX and PinY coordinates for a node.
+ * Flips the Y-axis relative to the page height, and if a parent
+ * group node is provided, computes pins relative to that group.
+ *
+ * @param {NodeModel} node - The node to compute pins for.
+ * @param {number} pageHeightPx - Page height in pixels for Y-axis flip.
+ * @param {number} dpi - Dots per inch used for unit conversion.
+ * @param {NodeModel} [groupNode] - Optional parent group node.
+ * @returns {{ pinX: number, pinY: number }} The computed PinX and PinY values.
+ */
+function computeVisioPins(
+    node: NodeModel,
+    pageHeightPx: number,
+    dpi: number,
+    groupNode?: NodeModel
+): { pinX: number; pinY: number } {
+    // True center in page coordinates (pixels)
+    const nodeCenterX: number = node.offsetX;
+    const nodeCenterY: number = node.offsetY;
+
+    // Default: page-space -> inches
+    let pinX: number = nodeCenterX / dpi;
+    let pinY: number = (pageHeightPx - nodeCenterY) / dpi;
+
+    // If we're inside a group, convert to parent's local space using wrapper bounds
+    if ((node as Node).parentId && groupNode && groupNode.wrapper && groupNode.wrapper.bounds) {
+        const parentBounds: Rect = groupNode.wrapper.bounds; // parent's local box in pixels
+        const parentHeightPx: number = parentBounds.height;
+
+        // shift into parent's local origin, then flip Y in parent space
+        pinX = (nodeCenterX - parentBounds.x) / dpi;
+        pinY = (parentHeightPx - (nodeCenterY - parentBounds.y)) / dpi;
+    }
+    return { pinX: pinX, pinY: pinY };
+}
+
+/**
  * Generates the XML representation of a single node shape for inclusion in the Visio page content.
  * This comprehensive function handles various node properties including position, size, styling,
  * annotations, ports, and constraints, converting them into Visio-compatible XML elements.
@@ -2886,12 +3091,12 @@ function dataURLToUint8Array(dataURL: string): Uint8Array {
  * @param {Diagram} diagram - The overall diagram object, providing context for calculations
  *                           (e.g., page dimensions, layers)
  * @param {Map<string, number>} shapeTypes - A map of shape type names to their corresponding Visio master IDs
- * @param {number} shapeId - The unique ID to assign to this shape in Visio
- *                          (incremented externally for each shape)
+ * @param {object} idAlloc - Object with a 'value' property that holds the current shape ID counter
  * @param {Map<string, Map<string, number>>} portConnectionsMap - A map to store mapping from
  *                                                                nodeId -> (portId -> visioConnectionPointIndex)
  *                                                                for later use in connector connections
  * @param {ParsingContext} context - Parsing context for logging
+ * @param {Map<string, number>} shapeIdMap - Map to store shape IDs for each node
  * @param {NodeModel} [groupNode] - Optional. If the current node is a child of a group,
  *                                 this is the parent group node (used for coordinate transformation)
  * @returns {void}
@@ -2901,30 +3106,46 @@ function generateNodeShapeXML(
     node: NodeModel,
     diagram: Diagram,
     shapeTypes: Map<string, number>,
-    shapeId: number,
+    idAlloc: { value: number },
     portConnectionsMap: Map<string, Map<string, number>>,
     context: ParsingContext,
+    shapeIdMap: Map<string, number>,
     groupNode?: NodeModel
 ): void {
+    const shapeId: number = ++idAlloc.value;     // allocate once per shape
+    shapeIdMap.set(node.id, shapeId);
+
     // Fix (Task 1004826): Previously defaulted missing shapes to 'Rectangle' and
     // forced masterId to have value; now use master only when explicit shape.shape exists.
     // Get the shape type
     const shapeType: string = (node.shape && (node.shape as shapeModel).shape) ? (node.shape as shapeModel).shape : null;
-    const masterId: number = shapeType ? shapeTypes.get(shapeType) : null;
     const pageDimension: { width: number, height: number } = getPageDimension(diagram);
-    const pageHeight: number = pageDimension.height;
+    const pageHeightPx: number = pageDimension.height;
+    const dpi: number = UNIT_CONVERSION.SCREEN_DPI;
+    // First, try to get masterId from the preserved addInfo from import
+    const masterId: number | string = ((node.addInfo as ShapeAddInfo) && (node.addInfo as ShapeAddInfo).masterId)
+        ? (node.addInfo as ShapeAddInfo).masterId : undefined;
 
     // Calculate positions in inches (Visio uses inches, diagrams use pixels)
-    // pinX and pinY are the center points of the shape
-    let pinX: number = (node.offsetX || 0) / UNIT_CONVERSION.SCREEN_DPI;
-    let pinY: number = (pageHeight - node.offsetY) / UNIT_CONVERSION.SCREEN_DPI;
+    const pins: { pinX: number; pinY: number } = computeVisioPins(node, pageHeightPx, dpi, groupNode);
+    let pinX: number = pins.pinX;
+    let pinY: number = pins.pinY;
 
-    // Width and height converted to inches
-    const width: number = (node.width) / UNIT_CONVERSION.SCREEN_DPI;
-    const height: number = (node.height) / UNIT_CONVERSION.SCREEN_DPI;
+    const widthPx: number = (typeof node.width === 'number' && isFinite(node.width)) ?
+        node.width : (node.wrapper && node.wrapper.bounds ? node.wrapper.bounds.width : 0);
 
-    // Local pin (relative to shape's local origin)
-    // Pivot point determines rotation center
+    const heightPx: number = (typeof node.height === 'number' && isFinite(node.height)) ?
+        node.height : (node.wrapper && node.wrapper.bounds ? node.wrapper.bounds.height : 0);
+
+    // Reassign values to ensure the width and height is available in node for later use
+    node.width = widthPx;
+    node.height = heightPx;
+
+    // Convert to inches
+    const width: number = widthPx / dpi;
+    const height: number = heightPx / dpi;
+
+    // LocPins based on safe inches
     const locPinX: number = width * node.wrapper.pivot.x;
     const locPinY: number = height * node.wrapper.pivot.y;
 
@@ -2935,7 +3156,10 @@ function generateNodeShapeXML(
     const lineWeight: number = (node.style && node.style.strokeWidth) / UNIT_CONVERSION.SCREEN_DPI;
 
     // Corner radius for rounded rectangles
-    const rounding: number = ((node.shape as shapeModel).cornerRadius) / 72;
+    const cornerRadius: number = (node.shape && (node.shape as shapeModel).cornerRadius);
+    const rounding: number = (typeof cornerRadius === 'number' && isFinite(cornerRadius))
+        ? (cornerRadius / 72)
+        : 0;
 
     // Glue type determines how connectors attach to shape
     let glueType: number = 0;
@@ -3136,9 +3360,16 @@ function generateNodeShapeXML(
     else {
         // If this is a child node of a group, adjust coordinates relative to group
         if ((node as Node).parentId && groupNode) {
-            const dpiScale: number = UNIT_CONVERSION.SCREEN_DPI;
-            pinX = ((node.wrapper.bounds.x - groupNode.wrapper.bounds.x) + node.width / 2) / dpiScale;
-            pinY = (Number(groupNode.height) - ((node.wrapper.bounds.y - groupNode.wrapper.bounds.y) + node.height / 2)) / dpiScale;
+            const parentBounds: Rect = groupNode.wrapper.bounds;
+            const parentHeightPx: number = parentBounds.height;
+            const parentX: number = parentBounds.x;
+            const parentY: number = parentBounds.y;
+
+            const childCenterXpx: number = (node.wrapper.bounds.x - parentX) + (widthPx * 0.5);
+            const childCenterYpx: number = (node.wrapper.bounds.y - parentY) + (heightPx * 0.5);
+
+            pinX = childCenterXpx / dpi;
+            pinY = (parentHeightPx - childCenterYpx) / dpi;  // flip within parent
         }
 
         writer.writeStartElement(null, 'Shape', null);
@@ -3566,14 +3797,15 @@ function generateNodeShapeXML(
         writer.writeStartElement(null, 'Shapes', null);
         node.children.forEach((child: string) => {
             // Determine if child is a node or connector
-            if (diagram.nameTable[`${child}`].propName === 'nodes') {
+            if (diagram.nameTable[`${child}`] && diagram.nameTable[`${child}`].propName === 'nodes') {
                 // Child is a node
-                generateNodeShapeXML(writer, (diagram.nameTable[`${child}`]), diagram, shapeTypes,
-                                     ++shapeId, portConnectionsMap, context, node);
+                generateNodeShapeXML(writer, diagram.nameTable[`${child}`], diagram, shapeTypes,
+                                     idAlloc, portConnectionsMap, context, shapeIdMap, node);
             } else {
                 // Child is a connector
-                generateConnectorShapesXml(writer, diagram, shapeTypes, ++shapeId, portConnectionsMap, context,
-                                           [diagram.nameTable[`${child}`]], node);
+                generateConnectorShapesXml(writer, diagram, shapeTypes, idAlloc,
+                                           portConnectionsMap, context, shapeIdMap, node
+                );
             }
         });
         writer.writeEndElement(); // Shapes
@@ -3625,7 +3857,7 @@ function exportNodeAnnotations(node: NodeModel | Text, writer: XmlWriter): void 
 
         // Apply text node styling
         if ((node as NodeModel).style) {
-            const textNodeAdapter: any = { style: (node as NodeModel).style };
+            const textNodeAdapter: ShapeAnnotationModel | PathAnnotationModel = { style: (node as NodeModel).style };
             exportTextStyling(textNodeAdapter, writer, 'node');
         }
     }
@@ -3677,15 +3909,22 @@ function exportNodeAnnotations(node: NodeModel | Text, writer: XmlWriter): void 
  * @param {Diagram} diagram - The diagram object containing connection information
  * @param {Map<string, Map<string, number>>} portConnectionsMap - Mapping from nodeId to
  *                                                                (portId to visioIdx)
+ * @param {Map<string, number>} shapeIdMap - Map containing shape IDs for each node and connector
  * @returns {void}
  */
-function generateConnectionsXml(writer: XmlWriter, diagram: Diagram, portConnectionsMap: Map<string, Map<string, number>>): void {
+function generateConnectionsXml(
+    writer: XmlWriter,
+    diagram: Diagram,
+    portConnectionsMap: Map<string, Map<string, number>>,
+    shapeIdMap: Map<string, number>
+): void {
     // Process each connector to create Connect elements with proper part references
     if (diagram.connectors && diagram.connectors.length > 0) {
         for (let i: number = 0; i < diagram.connectors.length; i++) {
             const connector: ConnectorModel = diagram.connectors[parseInt(i.toString(), 10)];
             // Connector shape ID is calculated based on nodes count + index
-            const connectorId: number = i + diagram.nodes.length + 1;
+            const connectorId: number = shapeIdMap.get(connector.id);
+            if (typeof connectorId !== 'number') { continue; }
 
             // Add source connection with proper part references
             if (connector.sourceID) {
@@ -3697,14 +3936,14 @@ function generateConnectionsXml(writer: XmlWriter, diagram: Diagram, portConnect
                 }
 
                 if (sourceNodeIndex >= 0) {
-                    const sourceShapeId: number = sourceNodeIndex + 1;
+                    const sourceShapeId: number = shapeIdMap.get(connector.sourceID);
                     let toPart: number = 3; // Default to PinX
                     let toCellValue: string = 'PinX';
 
                     // If a specific sourcePortID is provided, find its Visio index
                     if (connector.sourcePortID && portConnectionsMap.has(connector.sourceID)) {
                         const nodePorts: Map<string, number> = portConnectionsMap.get(connector.sourceID);
-                        if (nodePorts.has(connector.sourcePortID)) {
+                        if (nodePorts && nodePorts.has(connector.sourcePortID)) {
                             toPart = nodePorts.get(connector.sourcePortID) + 1;
                             toCellValue = 'Connections.X' + String(toPart);
                         }
@@ -3732,14 +3971,14 @@ function generateConnectionsXml(writer: XmlWriter, diagram: Diagram, portConnect
                 }
 
                 if (targetNodeIndex >= 0) {
-                    const targetShapeId: number = targetNodeIndex + 1;
+                    const targetShapeId: number = shapeIdMap.get(connector.targetID);
                     let toPart: number = 3; // Default to PinX
                     let toCellValue: string = 'PinX';
 
                     // If a specific targetPortID is provided, find its Visio index
                     if (connector.targetPortID && portConnectionsMap.has(connector.targetID)) {
                         const nodePorts: Map<string, number> = portConnectionsMap.get(connector.targetID);
-                        if (nodePorts.has(connector.targetPortID)) {
+                        if (nodePorts && nodePorts.has(connector.targetPortID)) {
                             toPart = nodePorts.get(connector.targetPortID) + 1;
                             toCellValue = 'Connections.X' + String(toPart);
                         }
@@ -3789,113 +4028,124 @@ function createBasicXmlFiles(
 ): void {
     // document.xml with enhanced font support
     // Contains global document settings and configuration
-    const docWriter: XmlWriter = new XmlWriter();
-    docWriter.writeStartDocument();
-    docWriter.writeStartElement(null, 'VisioDocument', 'http://schemas.microsoft.com/office/visio/2012/main');
-    // xmlns declarations (use the special XMLNS namespace URI)
-    docWriter.writeAttributeString('xmlns', '', 'http://www.w3.org/2000/xmlns/', 'http://schemas.microsoft.com/office/visio/2012/main');
-    docWriter.writeAttributeString('xmlns', 'r', 'http://www.w3.org/2000/xmlns/', 'http://schemas.openxmlformats.org/officeDocument/2006/relationships');
-    // xml:space uses the XML namespace
-    docWriter.writeAttributeString('xml', 'space', 'http://www.w3.org/XML/1998/namespace', 'preserve');
+    if (retrievedData && retrievedData.documentSettings) {
+        const xml: string = serializeJsToXmlString(retrievedData.documentSettings, 'VisioDocument');
+        xmlFiles.set('visio/document.xml', xml);
+    } else {
+        const docWriter: XmlWriter = new XmlWriter();
+        docWriter.writeStartDocument();
+        docWriter.writeStartElement(null, 'VisioDocument', 'http://schemas.microsoft.com/office/visio/2012/main');
+        // xmlns declarations (use the special XMLNS namespace URI)
+        docWriter.writeAttributeString('xmlns', '', 'http://www.w3.org/2000/xmlns/', 'http://schemas.microsoft.com/office/visio/2012/main');
+        docWriter.writeAttributeString('xmlns', 'r', 'http://www.w3.org/2000/xmlns/', 'http://schemas.openxmlformats.org/officeDocument/2006/relationships');
+        // xml:space uses the XML namespace
+        docWriter.writeAttributeString('xml', 'space', 'http://www.w3.org/XML/1998/namespace', 'preserve');
 
-    docWriter.writeStartElement(null, 'DocumentSettings', null);
-    docWriter.writeAttributeString(null, 'TopPage', null, '0');
-    docWriter.writeAttributeString(null, 'DefaultTextStyle', null, '3');
-    docWriter.writeAttributeString(null, 'DefaultLineStyle', null, '3');
-    docWriter.writeAttributeString(null, 'DefaultFillStyle', null, '3');
-    docWriter.writeAttributeString(null, 'DefaultGuideStyle', null, '4');
+        docWriter.writeStartElement(null, 'DocumentSettings', null);
+        docWriter.writeAttributeString(null, 'TopPage', null, '0');
+        docWriter.writeAttributeString(null, 'DefaultTextStyle', null, '3');
+        docWriter.writeAttributeString(null, 'DefaultLineStyle', null, '3');
+        docWriter.writeAttributeString(null, 'DefaultFillStyle', null, '3');
+        docWriter.writeAttributeString(null, 'DefaultGuideStyle', null, '4');
 
-    docWriter.writeElementString(null, 'GlueSettings', null, (visioData.documentSettings.glueSettings || 9).toString());
-    docWriter.writeElementString(null, 'SnapSettings', null, (visioData.documentSettings.snapSettings || 65847).toString());
-    docWriter.writeElementString(null, 'SnapExtensions', null, (visioData.documentSettings.snapExtensions || 34).toString());
-    docWriter.writeElementString(null, 'SnapAngles', null, '');
-    docWriter.writeElementString(null, 'DynamicGridEnabled', null, (visioData.documentSettings.dynamicGridEnabled ? 1 : 0).toString());
-    docWriter.writeElementString(null, 'ProtectStyles', null, (visioData.documentSettings.protectStyles ? 1 : 0).toString());
-    docWriter.writeElementString(null, 'ProtectShapes', null, (visioData.documentSettings.protectShapes ? 1 : 0).toString());
-    docWriter.writeElementString(null, 'ProtectMasters', null, (visioData.documentSettings.protectMasters ? 1 : 0).toString());
-    docWriter.writeElementString(null, 'ProtectBkgnds', null, (visioData.documentSettings.protectBkgnds ? 1 : 0).toString());
+        docWriter.writeElementString(null, 'GlueSettings', null, (visioData.documentSettings.glueSettings || 9).toString());
+        docWriter.writeElementString(null, 'SnapSettings', null, (visioData.documentSettings.snapSettings || 65847).toString());
+        docWriter.writeElementString(null, 'SnapExtensions', null, (visioData.documentSettings.snapExtensions || 34).toString());
+        docWriter.writeElementString(null, 'SnapAngles', null, '');
+        docWriter.writeElementString(null, 'DynamicGridEnabled', null, (visioData.documentSettings.dynamicGridEnabled ? 1 : 0).toString());
+        docWriter.writeElementString(null, 'ProtectStyles', null, (visioData.documentSettings.protectStyles ? 1 : 0).toString());
+        docWriter.writeElementString(null, 'ProtectShapes', null, (visioData.documentSettings.protectShapes ? 1 : 0).toString());
+        docWriter.writeElementString(null, 'ProtectMasters', null, (visioData.documentSettings.protectMasters ? 1 : 0).toString());
+        docWriter.writeElementString(null, 'ProtectBkgnds', null, (visioData.documentSettings.protectBkgnds ? 1 : 0).toString());
 
-    docWriter.writeEndElement(); // DocumentSettings
+        docWriter.writeEndElement(); // DocumentSettings
 
-    docWriter.writeStartElement(null, 'Colors', null);
+        docWriter.writeStartElement(null, 'Colors', null);
 
-    docWriter.writeStartElement(null, 'ColorEntry', null);
-    docWriter.writeAttributeString(null, 'IX', null, '24');
-    docWriter.writeAttributeString(null, 'RGB', null, '#7F7F7F');
-    docWriter.writeEndElement();
+        docWriter.writeStartElement(null, 'ColorEntry', null);
+        docWriter.writeAttributeString(null, 'IX', null, '24');
+        docWriter.writeAttributeString(null, 'RGB', null, '#7F7F7F');
+        docWriter.writeEndElement();
 
-    docWriter.writeStartElement(null, 'ColorEntry', null);
-    docWriter.writeAttributeString(null, 'IX', null, '25');
-    docWriter.writeAttributeString(null, 'RGB', null, '#FFFFFF');
-    docWriter.writeEndElement();
+        docWriter.writeStartElement(null, 'ColorEntry', null);
+        docWriter.writeAttributeString(null, 'IX', null, '25');
+        docWriter.writeAttributeString(null, 'RGB', null, '#FFFFFF');
+        docWriter.writeEndElement();
 
-    docWriter.writeStartElement(null, 'ColorEntry', null);
-    docWriter.writeAttributeString(null, 'IX', null, '26');
-    docWriter.writeAttributeString(null, 'RGB', null, '#000000');
-    docWriter.writeEndElement();
+        docWriter.writeStartElement(null, 'ColorEntry', null);
+        docWriter.writeAttributeString(null, 'IX', null, '26');
+        docWriter.writeAttributeString(null, 'RGB', null, '#000000');
+        docWriter.writeEndElement();
 
-    docWriter.writeStartElement(null, 'ColorEntry', null);
-    docWriter.writeAttributeString(null, 'IX', null, '0');
-    docWriter.writeAttributeString(null, 'RGB', null, '#FFFFFF');
-    docWriter.writeEndElement();
+        docWriter.writeStartElement(null, 'ColorEntry', null);
+        docWriter.writeAttributeString(null, 'IX', null, '0');
+        docWriter.writeAttributeString(null, 'RGB', null, '#FFFFFF');
+        docWriter.writeEndElement();
 
-    docWriter.writeStartElement(null, 'ColorEntry', null);
-    docWriter.writeAttributeString(null, 'IX', null, '1');
-    docWriter.writeAttributeString(null, 'RGB', null, '#000000');
-    docWriter.writeEndElement();
+        docWriter.writeStartElement(null, 'ColorEntry', null);
+        docWriter.writeAttributeString(null, 'IX', null, '1');
+        docWriter.writeAttributeString(null, 'RGB', null, '#000000');
+        docWriter.writeEndElement();
 
-    docWriter.writeStartElement(null, 'ColorEntry', null);
-    docWriter.writeAttributeString(null, 'IX', null, '2');
-    docWriter.writeAttributeString(null, 'RGB', null, '#FF0000');
-    docWriter.writeEndElement();
+        docWriter.writeStartElement(null, 'ColorEntry', null);
+        docWriter.writeAttributeString(null, 'IX', null, '2');
+        docWriter.writeAttributeString(null, 'RGB', null, '#FF0000');
+        docWriter.writeEndElement();
 
-    docWriter.writeStartElement(null, 'ColorEntry', null);
-    docWriter.writeAttributeString(null, 'IX', null, '3');
-    docWriter.writeAttributeString(null, 'RGB', null, '#00FF00');
-    docWriter.writeEndElement();
+        docWriter.writeStartElement(null, 'ColorEntry', null);
+        docWriter.writeAttributeString(null, 'IX', null, '3');
+        docWriter.writeAttributeString(null, 'RGB', null, '#00FF00');
+        docWriter.writeEndElement();
 
-    docWriter.writeStartElement(null, 'ColorEntry', null);
-    docWriter.writeAttributeString(null, 'IX', null, '4');
-    docWriter.writeAttributeString(null, 'RGB', null, '#0000FF');
-    docWriter.writeEndElement();
+        docWriter.writeStartElement(null, 'ColorEntry', null);
+        docWriter.writeAttributeString(null, 'IX', null, '4');
+        docWriter.writeAttributeString(null, 'RGB', null, '#0000FF');
+        docWriter.writeEndElement();
 
-    docWriter.writeEndElement(); // Colors
+        docWriter.writeEndElement(); // Colors
 
-    docWriter.writeStartElement(null, 'FaceNames', null);
+        docWriter.writeStartElement(null, 'FaceNames', null);
 
-    docWriter.writeStartElement(null, 'FaceName', null);
-    docWriter.writeAttributeString(null, 'NameU', null, 'Calibri');
-    docWriter.writeAttributeString(null, 'UnicodeRanges', null, '-469750017 -1040178053 9 0');
-    docWriter.writeAttributeString(null, 'CharSets', null, '536871423 0');
-    docWriter.writeAttributeString(null, 'Panose', null, '2 15 5 2 2 2 4 3 2 4');
-    docWriter.writeAttributeString(null, 'Flags', null, '357');
-    docWriter.writeEndElement();
+        docWriter.writeStartElement(null, 'FaceName', null);
+        docWriter.writeAttributeString(null, 'NameU', null, 'Calibri');
+        docWriter.writeAttributeString(null, 'UnicodeRanges', null, '-469750017 -1040178053 9 0');
+        docWriter.writeAttributeString(null, 'CharSets', null, '536871423 0');
+        docWriter.writeAttributeString(null, 'Panose', null, '2 15 5 2 2 2 4 3 2 4');
+        docWriter.writeAttributeString(null, 'Flags', null, '357');
+        docWriter.writeEndElement();
 
-    docWriter.writeStartElement(null, 'FaceName', null);
-    docWriter.writeAttributeString(null, 'NameU', null, 'Arial');
-    docWriter.writeAttributeString(null, 'UnicodeRanges', null, '-1073734909 -1073741809 9 0');
-    docWriter.writeAttributeString(null, 'CharSets', null, '536870911 0');
-    docWriter.writeAttributeString(null, 'Panose', null, '2 11 6 4 2 2 2 2 2 4');
-    docWriter.writeAttributeString(null, 'Flags', null, '32');
-    docWriter.writeEndElement();
+        docWriter.writeStartElement(null, 'FaceName', null);
+        docWriter.writeAttributeString(null, 'NameU', null, 'Arial');
+        docWriter.writeAttributeString(null, 'UnicodeRanges', null, '-1073734909 -1073741809 9 0');
+        docWriter.writeAttributeString(null, 'CharSets', null, '536870911 0');
+        docWriter.writeAttributeString(null, 'Panose', null, '2 11 6 4 2 2 2 2 2 4');
+        docWriter.writeAttributeString(null, 'Flags', null, '32');
+        docWriter.writeEndElement();
 
-    docWriter.writeStartElement(null, 'FaceName', null);
-    docWriter.writeAttributeString(null, 'NameU', null, 'Times New Roman');
-    docWriter.writeAttributeString(null, 'UnicodeRanges', null, '-1073734909 -1073741809 9 0');
-    docWriter.writeAttributeString(null, 'CharSets', null, '536870911 0');
-    docWriter.writeAttributeString(null, 'Panose', null, '2 2 6 3 5 4 5 2 3 4');
-    docWriter.writeAttributeString(null, 'Flags', null, '32');
-    docWriter.writeEndElement();
+        docWriter.writeStartElement(null, 'FaceName', null);
+        docWriter.writeAttributeString(null, 'NameU', null, 'Times New Roman');
+        docWriter.writeAttributeString(null, 'UnicodeRanges', null, '-1073734909 -1073741809 9 0');
+        docWriter.writeAttributeString(null, 'CharSets', null, '536870911 0');
+        docWriter.writeAttributeString(null, 'Panose', null, '2 2 6 3 5 4 5 2 3 4');
+        docWriter.writeAttributeString(null, 'Flags', null, '32');
+        docWriter.writeEndElement();
 
-    docWriter.writeEndElement(); // FaceNames
-    docWriter.writeEndElement(); // VisioDocument
+        docWriter.writeEndElement(); // FaceNames
+        docWriter.writeEndElement(); // VisioDocument
 
-    xmlFiles.set('visio/document.xml', docWriter.text);
+        xmlFiles.set('visio/document.xml', docWriter.text);
+    }
 
     // pages.xml: Page definitions with layer information
     // Build pages.xml with page properties
     const page: VisioPage = visioData.pages[0];
     const pagesWriter: XmlWriter = new XmlWriter();
+    const pageId: string = (retrievedData && retrievedData.currentPage) ? (retrievedData.currentPage.$ as ShapeAttributes).ID : '0';
+    pageName = (retrievedData && retrievedData.currentPage) ? (retrievedData.currentPage.$ as ShapeAttributes).Name : pageName;
+    const backPage: string = (retrievedData && retrievedData.currentPage) ?
+        (retrievedData.currentPage.$ as ShapeAttributes).BackPage : undefined;
+    const pageRel: string = (retrievedData && retrievedData.currentPage) ?
+        (retrievedData.currentPage.Rel as XmlRelationship).$['r:id'] : 'rId1';
     pagesWriter.writeStartDocument();
     pagesWriter.writeStartElement(null, 'Pages', 'http://schemas.microsoft.com/office/visio/2012/main');
     pagesWriter.writeAttributeString('xmlns', '', 'http://www.w3.org/2000/xmlns/', 'http://schemas.microsoft.com/office/visio/2012/main');
@@ -3903,9 +4153,12 @@ function createBasicXmlFiles(
     pagesWriter.writeAttributeString('xml', 'space', 'http://www.w3.org/XML/1998/namespace', 'preserve');
 
     pagesWriter.writeStartElement(null, 'Page', null);
-    pagesWriter.writeAttributeString(null, 'ID', null, '0');
+    pagesWriter.writeAttributeString(null, 'ID', null, pageId);
     pagesWriter.writeAttributeString(null, 'NameU', null, pageName);
     pagesWriter.writeAttributeString(null, 'Name', null, pageName);
+    if (backPage) {
+        pagesWriter.writeAttributeString(null, 'BackPage', null, backPage);
+    }
     pagesWriter.writeAttributeString(null, 'ViewScale', null, (visioData.windows[0].viewScale || -1).toString());
     pagesWriter.writeAttributeString(null, 'ViewCenterX', null, (visioData.windows[0].viewCenterX || 4).toString());
     pagesWriter.writeAttributeString(null, 'ViewCenterY', null, (visioData.windows[0].viewCenterY || 6).toString());
@@ -4029,6 +4282,34 @@ function createBasicXmlFiles(
     pagesWriter.writeAttributeString(null, 'V', null, (detectPaperMultiple(page.pageWidth, page.pageHeight).kind).toString());
     pagesWriter.writeEndElement();
 
+    // Check if theme information exists for the current page before exporting theme cells
+    if (retrievedData && retrievedData.currentPageTheme && retrievedData.currentPageTheme.themeIndex) {
+        pagesWriter.writeStartElement(null, 'Cell', null);
+        pagesWriter.writeAttributeString(null, 'N', null, 'ColorSchemeIndex');
+        pagesWriter.writeAttributeString(null, 'V', null, retrievedData.currentPageTheme.colorSchemeIndex);
+        pagesWriter.writeEndElement();
+
+        pagesWriter.writeStartElement(null, 'Cell', null);
+        pagesWriter.writeAttributeString(null, 'N', null, 'EffectSchemeIndex');
+        pagesWriter.writeAttributeString(null, 'V', null, retrievedData.currentPageTheme.effectSchemeIndex);
+        pagesWriter.writeEndElement();
+
+        pagesWriter.writeStartElement(null, 'Cell', null);
+        pagesWriter.writeAttributeString(null, 'N', null, 'ConnectorSchemeIndex');
+        pagesWriter.writeAttributeString(null, 'V', null, retrievedData.currentPageTheme.connectorSchemeIndex);
+        pagesWriter.writeEndElement();
+
+        pagesWriter.writeStartElement(null, 'Cell', null);
+        pagesWriter.writeAttributeString(null, 'N', null, 'FontSchemeIndex');
+        pagesWriter.writeAttributeString(null, 'V', null, retrievedData.currentPageTheme.fontSchemeIndex);
+        pagesWriter.writeEndElement();
+
+        pagesWriter.writeStartElement(null, 'Cell', null);
+        pagesWriter.writeAttributeString(null, 'N', null, 'ThemeIndex');
+        pagesWriter.writeAttributeString(null, 'V', null, retrievedData.currentPageTheme.themeIndex);
+        pagesWriter.writeEndElement();
+    }
+
     // Contains metadata about each page and its layers
     if (diagram.layers && diagram.layers.length > 0) {
         pagesWriter.writeStartElement(null, 'Section', null);
@@ -4091,56 +4372,79 @@ function createBasicXmlFiles(
 
     // Relationship element with r:id attribute (prefix 'r', localName 'id')
     pagesWriter.writeStartElement(null, 'Rel', null);
-    pagesWriter.writeAttributeString('r', 'id', null, 'rId1');
+    pagesWriter.writeAttributeString('r', 'id', null, pageRel);
     pagesWriter.writeEndElement();
 
     pagesWriter.writeEndElement(); // Page
+    if (retrievedData && retrievedData.pages) {
+        retrievedData.pages.forEach((page: ParsedXmlObject) => {
+            // Serialize the original Master element back to XML
+            const xml: string = serializeJsToXmlString(page, 'Page');
+            pagesWriter.writeRaw(xml);
+        });
+    }
     pagesWriter.writeEndElement(); // Pages
 
     xmlFiles.set('visio/pages/pages.xml', pagesWriter.text);
 
+    // Defines how the page appears with visio themes, including color schemes, font schemes, and effect schemes
+    if (retrievedData && retrievedData.themes) {
+        const keys: string[] = Object.keys(retrievedData.themes);
+        for (let i: number = 0; i < keys.length; i++) {
+            const theme: string = keys[parseInt(i.toString(), 10)];
+            const content: ParsedXmlObject = retrievedData.themes[`${theme}`] as ParsedXmlObject;
+            const xml: string = serializeJsToXmlString(content, 'a:theme');
+            xmlFiles.set(theme, xml);
+        }
+    }
+
     // windows.xml: Viewport and display settings
     // Defines how the document appears when opened in Visio
-    const window: VisioWindow = visioData.windows[0];
-    const windowsWriter: XmlWriter = new XmlWriter();
-    windowsWriter.writeStartDocument();
-    windowsWriter.writeStartElement(null, 'Windows', 'http://schemas.microsoft.com/office/visio/2012/main');
-    windowsWriter.writeAttributeString('xmlns', '', 'http://www.w3.org/2000/xmlns/', 'http://schemas.microsoft.com/office/visio/2012/main');
-    windowsWriter.writeAttributeString('xmlns', 'r', 'http://www.w3.org/2000/xmlns/', 'http://schemas.openxmlformats.org/officeDocument/2006/relationships');
-    windowsWriter.writeAttributeString(null, 'ClientWidth', null, window.clientWidth.toString());
-    windowsWriter.writeAttributeString(null, 'ClientHeight', null, window.clientHeight.toString());
-    windowsWriter.writeAttributeString('xml', 'space', 'http://www.w3.org/XML/1998/namespace', 'preserve');
+    if (retrievedData && retrievedData.window) {
+        const xml: string = serializeJsToXmlString(retrievedData.window, 'Windows');
+        xmlFiles.set('visio/windows.xml', xml);
+    } else {
+        const windowsWriter: XmlWriter = new XmlWriter();
+        const window: VisioWindow = visioData.windows[0];
+        windowsWriter.writeStartDocument();
+        windowsWriter.writeStartElement(null, 'Windows', 'http://schemas.microsoft.com/office/visio/2012/main');
+        windowsWriter.writeAttributeString('xmlns', '', 'http://www.w3.org/2000/xmlns/', 'http://schemas.microsoft.com/office/visio/2012/main');
+        windowsWriter.writeAttributeString('xmlns', 'r', 'http://www.w3.org/2000/xmlns/', 'http://schemas.openxmlformats.org/officeDocument/2006/relationships');
+        windowsWriter.writeAttributeString(null, 'ClientWidth', null, window.clientWidth.toString());
+        windowsWriter.writeAttributeString(null, 'ClientHeight', null, window.clientHeight.toString());
+        windowsWriter.writeAttributeString('xml', 'space', 'http://www.w3.org/XML/1998/namespace', 'preserve');
 
-    windowsWriter.writeStartElement(null, 'Window', null);
-    windowsWriter.writeAttributeString(null, 'ID', null, '0');
-    windowsWriter.writeAttributeString(null, 'WindowType', null, 'Drawing');
-    windowsWriter.writeAttributeString(null, 'WindowState', null, '1073741824');
-    windowsWriter.writeAttributeString(null, 'WindowLeft', null, '-8');
-    windowsWriter.writeAttributeString(null, 'WindowTop', null, '-31');
-    windowsWriter.writeAttributeString(null, 'WindowWidth', null, window.windowWidth.toString());
-    windowsWriter.writeAttributeString(null, 'WindowHeight', null, window.windowHeight.toString());
-    windowsWriter.writeAttributeString(null, 'ContainerType', null, 'Page');
-    windowsWriter.writeAttributeString(null, 'Page', null, '0');
-    windowsWriter.writeAttributeString(null, 'ViewScale', null, window.viewScale.toString());
-    windowsWriter.writeAttributeString(null, 'ViewCenterX', null, window.viewCenterX.toString());
-    windowsWriter.writeAttributeString(null, 'ViewCenterY', null, window.viewCenterY.toString());
+        windowsWriter.writeStartElement(null, 'Window', null);
+        windowsWriter.writeAttributeString(null, 'ID', null, '0');
+        windowsWriter.writeAttributeString(null, 'WindowType', null, 'Drawing');
+        windowsWriter.writeAttributeString(null, 'WindowState', null, '1073741824');
+        windowsWriter.writeAttributeString(null, 'WindowLeft', null, '-8');
+        windowsWriter.writeAttributeString(null, 'WindowTop', null, '-31');
+        windowsWriter.writeAttributeString(null, 'WindowWidth', null, window.windowWidth.toString());
+        windowsWriter.writeAttributeString(null, 'WindowHeight', null, window.windowHeight.toString());
+        windowsWriter.writeAttributeString(null, 'ContainerType', null, 'Page');
+        windowsWriter.writeAttributeString(null, 'Page', null, '0');
+        windowsWriter.writeAttributeString(null, 'ViewScale', null, window.viewScale.toString());
+        windowsWriter.writeAttributeString(null, 'ViewCenterX', null, window.viewCenterX.toString());
+        windowsWriter.writeAttributeString(null, 'ViewCenterY', null, window.viewCenterY.toString());
 
-    windowsWriter.writeElementString(null, 'ShowRulers', null, (window.showRulers ? 1 : 0).toString());
-    windowsWriter.writeElementString(null, 'ShowGrid', null, (window.showGrid ? 1 : 0).toString());
-    windowsWriter.writeElementString(null, 'ShowPageBreaks', null, (window.showPageBreaks ? 1 : 0).toString());
-    windowsWriter.writeElementString(null, 'ShowGuides', null, (window.showGuides ? 1 : 0).toString());
-    windowsWriter.writeElementString(null, 'ShowConnectionPoints', null, '1');
-    windowsWriter.writeElementString(null, 'GlueSettings', null, (visioData.documentSettings.glueSettings || 9).toString());
-    windowsWriter.writeElementString(null, 'SnapSettings', null, (visioData.documentSettings.snapSettings || 65847).toString());
-    windowsWriter.writeElementString(null, 'SnapExtensions', null, window.snapExtensions.toString());
-    windowsWriter.writeElementString(null, 'SnapAngles', null, window.snapAngles.toString());
-    windowsWriter.writeElementString(null, 'DynamicGridEnabled', null, (visioData.documentSettings.dynamicGridEnabled ? 1 : 0).toString());
-    windowsWriter.writeElementString(null, 'TabSplitterPos', null, '0.5');
+        windowsWriter.writeElementString(null, 'ShowRulers', null, (window.showRulers ? 1 : 0).toString());
+        windowsWriter.writeElementString(null, 'ShowGrid', null, (window.showGrid ? 1 : 0).toString());
+        windowsWriter.writeElementString(null, 'ShowPageBreaks', null, (window.showPageBreaks ? 1 : 0).toString());
+        windowsWriter.writeElementString(null, 'ShowGuides', null, (window.showGuides ? 1 : 0).toString());
+        windowsWriter.writeElementString(null, 'ShowConnectionPoints', null, '1');
+        windowsWriter.writeElementString(null, 'GlueSettings', null, (visioData.documentSettings.glueSettings || 9).toString());
+        windowsWriter.writeElementString(null, 'SnapSettings', null, (visioData.documentSettings.snapSettings || 65847).toString());
+        windowsWriter.writeElementString(null, 'SnapExtensions', null, window.snapExtensions.toString());
+        windowsWriter.writeElementString(null, 'SnapAngles', null, window.snapAngles.toString());
+        windowsWriter.writeElementString(null, 'DynamicGridEnabled', null, (visioData.documentSettings.dynamicGridEnabled ? 1 : 0).toString());
+        windowsWriter.writeElementString(null, 'TabSplitterPos', null, '0.5');
 
-    windowsWriter.writeEndElement(); // Window
-    windowsWriter.writeEndElement(); // Windows
+        windowsWriter.writeEndElement(); // Window
+        windowsWriter.writeEndElement(); // Windows
 
-    xmlFiles.set('visio/windows.xml', windowsWriter.text);
+        xmlFiles.set('visio/windows.xml', windowsWriter.text);
+    }
 
     // [Content_Types].xml: MIME type definitions for all file types in the package
     // Required by Open Packaging Conventions format
@@ -4189,25 +4493,61 @@ function createBasicXmlFiles(
     contentTypesWriter.writeAttributeString(null, 'ContentType', null, 'application/vnd.ms-visio.masters+xml');
     contentTypesWriter.writeEndElement();
 
-    contentTypesWriter.writeStartElement(null, 'Override', null);
-    contentTypesWriter.writeAttributeString(null, 'PartName', null, '/visio/masters/master1.xml');
-    contentTypesWriter.writeAttributeString(null, 'ContentType', null, 'application/vnd.ms-visio.master+xml');
-    contentTypesWriter.writeEndElement();
+    let keys: string[] = [];
+    if (retrievedData && retrievedData.masterWithContent) {
+        keys = Object.keys(retrievedData.masterWithContent);
+    }
+    if (keys.length > 0) {
+        for (let i: number = 0; i < keys.length; i++) {
+            const master: string = keys[parseInt(i.toString(), 10)];
+            contentTypesWriter.writeStartElement(null, 'Override', null);
+            contentTypesWriter.writeAttributeString(null, 'PartName', null, `/${master}`);
+            contentTypesWriter.writeAttributeString(null, 'ContentType', null, 'application/vnd.ms-visio.master+xml');
+            contentTypesWriter.writeEndElement();
+        }
+    } else {
+        contentTypesWriter.writeStartElement(null, 'Override', null);
+        contentTypesWriter.writeAttributeString(null, 'PartName', null, '/visio/masters/master1.xml');
+        contentTypesWriter.writeAttributeString(null, 'ContentType', null, 'application/vnd.ms-visio.master+xml');
+        contentTypesWriter.writeEndElement();
+    }
 
     contentTypesWriter.writeStartElement(null, 'Override', null);
     contentTypesWriter.writeAttributeString(null, 'PartName', null, '/visio/pages/pages.xml');
     contentTypesWriter.writeAttributeString(null, 'ContentType', null, 'application/vnd.ms-visio.pages+xml');
     contentTypesWriter.writeEndElement();
 
-    contentTypesWriter.writeStartElement(null, 'Override', null);
-    contentTypesWriter.writeAttributeString(null, 'PartName', null, '/visio/pages/page1.xml');
-    contentTypesWriter.writeAttributeString(null, 'ContentType', null, 'application/vnd.ms-visio.page+xml');
-    contentTypesWriter.writeEndElement();
+    if (retrievedData && retrievedData.pageWithContent) {
+        const keys: string[] = Object.keys(retrievedData.pageWithContent);
+        for (let i: number = 0; i < keys.length; i++) {
+            const page: string = keys[parseInt(i.toString(), 10)];
+            contentTypesWriter.writeStartElement(null, 'Override', null);
+            contentTypesWriter.writeAttributeString(null, 'PartName', null, `/${page}`);
+            contentTypesWriter.writeAttributeString(null, 'ContentType', null, 'application/vnd.ms-visio.page+xml');
+            contentTypesWriter.writeEndElement();
+        }
+    } else {
+        contentTypesWriter.writeStartElement(null, 'Override', null);
+        contentTypesWriter.writeAttributeString(null, 'PartName', null, '/visio/pages/page1.xml');
+        contentTypesWriter.writeAttributeString(null, 'ContentType', null, 'application/vnd.ms-visio.page+xml');
+        contentTypesWriter.writeEndElement();
+    }
 
     contentTypesWriter.writeStartElement(null, 'Override', null);
     contentTypesWriter.writeAttributeString(null, 'PartName', null, '/visio/windows.xml');
     contentTypesWriter.writeAttributeString(null, 'ContentType', null, 'application/vnd.ms-visio.windows+xml');
     contentTypesWriter.writeEndElement();
+
+    if (retrievedData && retrievedData.themes) {
+        const keys: string[] = Object.keys(retrievedData.themes);
+        for (let i: number = 0; i < keys.length; i++) {
+            const theme: string = keys[parseInt(i.toString(), 10)];
+            contentTypesWriter.writeStartElement(null, 'Override', null);
+            contentTypesWriter.writeAttributeString(null, 'PartName', null, `/${theme}`);
+            contentTypesWriter.writeAttributeString(null, 'ContentType', null, 'application/vnd.openxmlformats-officedocument.theme+xml');
+            contentTypesWriter.writeEndElement();
+        }
+    }
 
     contentTypesWriter.writeStartElement(null, 'Override', null);
     contentTypesWriter.writeAttributeString(null, 'PartName', null, '/docProps/core.xml');
@@ -4514,6 +4854,25 @@ function generateDocPropsFiles(): Map<string, string> {
  * ]);
  * const vsdxBuffer = createVsdxArchive(xmlFiles);
  */
+// Build Masters XML from stored Master elements (parsed objects)
+function buildMastersXmlFromStored(storedMasters: ParsedXmlObject[]): string {
+    const writer: XmlWriter = new XmlWriter();
+    writer.writeStartDocument();
+    writer.writeStartElement(null, 'Masters', 'http://schemas.microsoft.com/office/visio/2012/main');
+    writer.writeAttributeString('xmlns', 'r', null, 'http://schemas.openxmlformats.org/officeDocument/2006/relationships');
+    writer.writeAttributeString('xml', 'space', null, 'preserve');
+
+    const mastersArray: ParsedXmlObject[] = Array.isArray(storedMasters) ? storedMasters : [storedMasters];
+    mastersArray.forEach((master: ParsedXmlObject) => {
+        // Serialize the original Master element back to XML
+        const xml: string = serializeJsToXmlString(master, 'Master');
+        writer.writeRaw(xml);
+    });
+
+    writer.writeEndElement(); // Masters
+    return writer.text;
+}
+
 function createVsdxArchive(xmlFiles: Map<string, string | Uint8Array>): ArrayBuffer {
     const zipWriter: MinimalZipWriter = new MinimalZipWriter();
 
@@ -5514,12 +5873,11 @@ function measureTextHeightInches(
  * @param {XmlWriter} writer - The XmlWriter instance used to generate the XML output
  * @param {Diagram} diagram - The diagram object containing connector information
  * @param {Map<string, number>} shapeTypes - A map of shape type names to their corresponding IDs
- * @param {number} startId - The starting ID for generating connector shapes
+ * @param {object} idAlloc - Object with a 'value' property that holds the current shape ID counter
  * @param {Map<string, Map<string, number>>} portConnectionsMap - Mapping from nodeId to
  *                                                                (portId to visioIdx)
  * @param {ParsingContext} context - Parsing context for logging
- * @param {ConnectorModel[]} [childConnector] - Optional array of child connectors
- *                                             (for group connectors)
+ * @param {Map<string, number>} shapeIdMap - Map to store shape IDs for each connector
  * @param {NodeModel} [groupNode] - Optional parent group node (for coordinate transformation)
  * @returns {void}
  */
@@ -5527,648 +5885,664 @@ function generateConnectorShapesXml(
     writer: XmlWriter,
     diagram: Diagram,
     shapeTypes: Map<string, number>,
-    startId: number,
+    idAlloc: { value: number },
     portConnectionsMap: Map<string, Map<string, number>>,
     context: ParsingContext,
-    childConnector?: ConnectorModel[],
+    shapeIdMap: Map<string, number>,
     groupNode?: NodeModel
 ): void {
-    let shapeId: number = startId;
     const connectors: ConnectorModel[] = diagram.connectors;
 
     // Process each connector in the diagram
     for (const connector of connectors) {
-        if (connector.type === 'Bezier') {
-            context.addWarning('[WARNING] :: Bezier connectors are approximated and exported as curve connectors in visio, so the segments may differ after export.');
-        }
-        // Skip child connectors if not processing them specifically
-        if (!childConnector && (connector as Connector).parentId) {
-            continue;
-        }
+        if (connector.addInfo && (connector.addInfo as ShapeAddInfo).data && !(connector.addInfo as ShapeAddInfo).isModified) {
+            const addInfo: ShapeAddInfo = connector.addInfo as ShapeAddInfo;
+            (addInfo.data.$ as ShapeAttributes).ID = (++idAlloc.value).toString();
+            shapeIdMap.set(connector.id, idAlloc.value);
 
-        // Skip invisible connectors
-        if (connector.visible === false) {
-            continue;
-        }
-
-        // Get connector master (currently always 'Dynamic connector')
-        const masterName: string = 'Dynamic connector';
-        const masterId: number = shapeTypes.get(masterName);
-
-        // Calculate connector endpoints in inches
-        const pageDimension: { width: number, height: number } = getPageDimension(diagram);
-        const pageHeight: number = pageDimension.height;
-
-        let beginX: number = connector.sourcePoint.x / UNIT_CONVERSION.SCREEN_DPI;
-        let beginY: number = (pageHeight - connector.sourcePoint.y) / UNIT_CONVERSION.SCREEN_DPI;
-        let endX: number = connector.targetPoint.x / UNIT_CONVERSION.SCREEN_DPI;
-        let endY: number = (pageHeight - connector.targetPoint.y) / UNIT_CONVERSION.SCREEN_DPI;
-
-        // Adjust coordinates if connector is within a group
-        if ((connector as Connector).parentId) {
-            beginX = ((connector.sourcePoint.x - groupNode.wrapper.bounds.x)) / UNIT_CONVERSION.SCREEN_DPI;
-            beginY = (Number(groupNode.height) - (connector.sourcePoint.y - groupNode.wrapper.bounds.y)) / UNIT_CONVERSION.SCREEN_DPI;
-            endX = ((connector.targetPoint.x - groupNode.wrapper.bounds.x)) / UNIT_CONVERSION.SCREEN_DPI;
-            endY = (Number(groupNode.height) - (connector.targetPoint.y - groupNode.wrapper.bounds.y)) / UNIT_CONVERSION.SCREEN_DPI;
-        }
-
-        // Calculate connector bounding box
-        const width: number = endX - beginX;
-        const height: number = endY - beginY;
-
-        // Calculate center point (PinX, PinY)
-        const pinX: number = (beginX + endX) / 2;
-        const pinY: number = (beginY + endY) / 2;
-
-        // Calculate local pin (relative to bounding box)
-        const locPinX: number = width / 2;
-        const locPinY: number = height / 2;
-
-        // Get connector styling properties
-        const rounding: number = (connector.cornerRadius || 0) / 72;
-        // Map connector type to Visio routing properties (ConLineRouteExt and ShapeRouteStyle)
-        const routingProps: { conLineRouteExt: string; shapeRouteStyle: string; } = getVisioConnectorRouting(connector.type);
-
-        // Find which layer this connector belongs to
-        let layerMember: number = 0;
-        for (let i: number = 0; i < diagram.layers.length; i++) {
-            if ((diagram.layers[parseInt(i.toString(), 10)].objects as string[]).indexOf(connector.id) !== -1) {
-                layerMember = i;
-                break;
-            }
-        }
-
-        // Initialize connection formulas (will be updated if ports are used)
-        let sourceConnectionFormula: string = '_WALKGLUE(BegTrigger,EndTrigger,WalkPreference)';
-        let targetConnectionFormula: string = '_WALKGLUE(BegTrigger,EndTrigger,WalkPreference)';
-
-        // Find source and target shape indices
-        let sourceNodeIndex: number = diagram.nodes.findIndex((node: NodeModel) => node.id === connector.sourceID);
-        let targetNodeIndex: number = diagram.nodes.findIndex((node: NodeModel) => node.id === connector.targetID);
-
-        // Check for source port connection
-        if (connector.sourcePortID) {
-            if (sourceNodeIndex === -1) {
-                sourceNodeIndex = diagram.connectors.findIndex((connect: ConnectorModel) => connect.id === connector.sourceID);
-                sourceNodeIndex += diagram.nodes.length;
-            }
-            const nodePorts: Map<string, number> = portConnectionsMap.get(connector.sourceID);
-            const toPart: number = nodePorts && nodePorts.get(connector.sourcePortID) + 1;
-            sourceConnectionFormula = `PAR(PNT(Sheet.${String(sourceNodeIndex + 1)}!Connections.X${String(toPart)},Sheet.${String(sourceNodeIndex + 1)}!Connections.Y${String(toPart)}))`;
-        }
-
-        // Check for target port connection
-        if (connector.targetPortID) {
-            if (targetNodeIndex === -1) {
-                targetNodeIndex = diagram.connectors.findIndex((connect: ConnectorModel) => connect.id === connector.targetID);
-                targetNodeIndex += diagram.nodes.length;
-            }
-            const nodePorts: Map<string, number> = portConnectionsMap.get(connector.targetID);
-            const toPart: number = nodePorts && nodePorts.get(connector.targetPortID) + 1;
-            targetConnectionFormula = `PAR(PNT(Sheet.${String(targetNodeIndex + 1)}!Connections.X${String(toPart)},Sheet.${String(targetNodeIndex + 1)}!Connections.Y${String(toPart)}))`;
-        }
-
-        // Build connector shape XML with all properties
-        writer.writeStartElement(null, 'Shape', null);
-        writer.writeAttributeString(null, 'ID', null, (shapeId++).toString());
-        writer.writeAttributeString(null, 'NameU', null, masterName);
-        writer.writeAttributeString(null, 'Name', null, masterName);
-        writer.writeAttributeString(null, 'Type', null, 'Shape');
-        writer.writeAttributeString(null, 'Master', null, masterId.toString());
-        writer.writeStartElement(null, 'Cell', null);
-        writer.writeAttributeString(null, 'N', null, 'PinX');
-        writer.writeAttributeString(null, 'V', null, pinX.toFixed(COORDINATE_PRECISION));
-        writer.writeAttributeString(null, 'F', null, 'GUARD((BeginX+EndX)/2)');
-        writer.writeEndElement();
-        writer.writeStartElement(null, 'Cell', null);
-        writer.writeAttributeString(null, 'N', null, 'PinY');
-        writer.writeAttributeString(null, 'V', null, pinY.toFixed(COORDINATE_PRECISION));
-        writer.writeAttributeString(null, 'F', null, 'GUARD((BeginY+EndY)/2)');
-        writer.writeEndElement();
-        writer.writeStartElement(null, 'Cell', null);
-        writer.writeAttributeString(null, 'N', null, 'Width');
-        writer.writeAttributeString(null, 'V', null, width.toFixed(COORDINATE_PRECISION));
-        writer.writeAttributeString(null, 'F', null, 'GUARD(EndX-BeginX)');
-        writer.writeEndElement();
-        writer.writeStartElement(null, 'Cell', null);
-        writer.writeAttributeString(null, 'N', null, 'Height');
-        writer.writeAttributeString(null, 'V', null, height.toFixed(COORDINATE_PRECISION));
-        writer.writeAttributeString(null, 'F', null, 'GUARD(EndY-BeginY)');
-        writer.writeEndElement();
-        writer.writeStartElement(null, 'Cell', null);
-        writer.writeAttributeString(null, 'N', null, 'LocPinX');
-        writer.writeAttributeString(null, 'V', null, locPinX.toFixed(COORDINATE_PRECISION));
-        writer.writeAttributeString(null, 'F', null, 'GUARD(Width*0.5)');
-        writer.writeEndElement();
-        writer.writeStartElement(null, 'Cell', null);
-        writer.writeAttributeString(null, 'N', null, 'LocPinY');
-        writer.writeAttributeString(null, 'V', null, locPinY.toFixed(COORDINATE_PRECISION));
-        writer.writeAttributeString(null, 'F', null, 'GUARD(Height*0.5)');
-        writer.writeEndElement();
-        writer.writeStartElement(null, 'Cell', null);
-        writer.writeAttributeString(null, 'N', null, 'BeginX');
-        writer.writeAttributeString(null, 'V', null, beginX.toFixed(COORDINATE_PRECISION));
-        writer.writeAttributeString(null, 'F', null, sourceConnectionFormula);
-        writer.writeEndElement();
-        writer.writeStartElement(null, 'Cell', null);
-        writer.writeAttributeString(null, 'N', null, 'BeginY');
-        writer.writeAttributeString(null, 'V', null, beginY.toFixed(COORDINATE_PRECISION));
-        writer.writeAttributeString(null, 'F', null, sourceConnectionFormula);
-        writer.writeEndElement();
-        writer.writeStartElement(null, 'Cell', null);
-        writer.writeAttributeString(null, 'N', null, 'EndX');
-        writer.writeAttributeString(null, 'V', null, endX.toFixed(COORDINATE_PRECISION));
-        writer.writeAttributeString(null, 'F', null, targetConnectionFormula);
-        writer.writeEndElement();
-        writer.writeStartElement(null, 'Cell', null);
-        writer.writeAttributeString(null, 'N', null, 'EndY');
-        writer.writeAttributeString(null, 'V', null, endY.toFixed(COORDINATE_PRECISION));
-        writer.writeAttributeString(null, 'F', null, targetConnectionFormula);
-        writer.writeEndElement();
-        writer.writeStartElement(null, 'Cell', null);
-        writer.writeAttributeString(null, 'N', null, 'LayerMember');
-        writer.writeAttributeString(null, 'V', null, layerMember.toString());
-        writer.writeEndElement();
-        writer.writeStartElement(null, 'Cell', null);
-        writer.writeAttributeString(null, 'N', null, 'NoAlignBox');
-        writer.writeAttributeString(null, 'V', null, '1');
-        writer.writeEndElement();
-        writer.writeStartElement(null, 'Cell', null);
-        writer.writeAttributeString(null, 'N', null, 'DynFeedback');
-        writer.writeAttributeString(null, 'V', null, '2');
-        writer.writeEndElement();
-        writer.writeStartElement(null, 'Cell', null);
-        writer.writeAttributeString(null, 'N', null, 'GlueType');
-        writer.writeAttributeString(null, 'V', null, '2');
-        writer.writeEndElement();
-        writer.writeStartElement(null, 'Cell', null);
-        writer.writeAttributeString(null, 'N', null, 'ObjType');
-        writer.writeAttributeString(null, 'V', null, '2');
-        writer.writeEndElement();
-        writer.writeStartElement(null, 'Cell', null);
-        writer.writeAttributeString(null, 'N', null, 'NoLiveDynamics');
-        writer.writeAttributeString(null, 'V', null, '1');
-        writer.writeEndElement();
-        writer.writeStartElement(null, 'Cell', null);
-        writer.writeAttributeString(null, 'N', null, 'ConFixedCode');
-        writer.writeAttributeString(null, 'V', null, '3');
-        writer.writeEndElement();
-        writer.writeStartElement(null, 'Cell', null);
-        writer.writeAttributeString(null, 'N', null, 'ConLineRouteExt');
-        writer.writeAttributeString(null, 'V', null, routingProps.conLineRouteExt);
-        writer.writeEndElement();
-        writer.writeStartElement(null, 'Cell', null);
-        writer.writeAttributeString(null, 'N', null, 'ShapeRouteStyle');
-        writer.writeAttributeString(null, 'V', null, routingProps.shapeRouteStyle);
-        writer.writeEndElement();
-        // Add trigger formulas for dynamic updates when source/target shapes change
-        if (sourceNodeIndex >= 0) {
-            const sourceShapeId: number = sourceNodeIndex + 1;
-            writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'BegTrigger');
-            writer.writeAttributeString(null, 'V', null, '2');
-            writer.writeAttributeString(null, 'F', null, `_XFTRIGGER(Sheet.${sourceShapeId}!EventXFMod)`);
-            writer.writeEndElement();
+            const data: string = serializeJsToXmlString(addInfo.data as ParsedXmlObject, 'Shape');
+            writer.writeRaw(data);
         } else {
-            writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'BegTrigger');
-            writer.writeAttributeString(null, 'V', null, '1');
-            writer.writeAttributeString(null, 'F', null, '_XFTRIGGER(EventXFMod)');
-            writer.writeEndElement();
-        }
-        if (targetNodeIndex >= 0) {
-            const targetShapeId: number = targetNodeIndex + 1;
-            writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'EndTrigger');
-            writer.writeAttributeString(null, 'V', null, '2');
-            writer.writeAttributeString(null, 'F', null, `_XFTRIGGER(Sheet.${targetShapeId}!EventXFMod)`);
-            writer.writeEndElement();
-        } else {
-            writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'EndTrigger');
-            writer.writeAttributeString(null, 'V', null, '1');
-            writer.writeAttributeString(null, 'F', null, '_XFTRIGGER(EventXFMod)');
-            writer.writeEndElement();
-        }
-
-        // Handle connector annotations (labels)
-        if (connector.annotations && connector.annotations.length > 0) {
-            const annotation: PathAnnotation = connector.annotations[0] as PathAnnotation;
-
-            // Source point coordinates in pixels
-            const sourcePointX: number = connector.sourcePoint.x;
-            const sourcePointY: number = connector.sourcePoint.y;
-
-            // Annotation text element position in pixels
-            let annotationTextElementX: number;
-            let annotationTextElementY: number;
-
-            // Find the child wrapper that is a TextElement and belongs to this annotation
-            const annotationId: string = annotation.id;
-            for (const child of (connector.wrapper.children || [])) {
-                // Ensure it's a TextElement and id contains the annotation id
-                if (child instanceof TextElement && child.id) {
-                    const text: string[] = child.id.split('_');
-                    const last: string = text[text.length - 1];
-                    if (last === annotationId) {
-                        annotationTextElementX = child.offsetX;
-                        annotationTextElementY = child.offsetY;
-                        break; // Found the annotation element, exit loop
-                    }
-
-                }
+            if (connector.type === 'Bezier') {
+                context.addWarning('[WARNING] :: Bezier connectors are approximated and exported as curve connectors in visio, so the segments may differ after export.');
+            }
+            // Skip child connectors if not processing them specifically
+            // Skip connectors that don't belong to the current group when exporting a group's subtree
+            if (groupNode && (connector as Connector).parentId !== groupNode.id) {
+                continue;
             }
 
-            // Calculate annotation position using connector bounds and path
-            //const bounds: Rect = connector.wrapper.bounds;
-            //const pathOffset: PointModel = getPathOffset((connector as Connector).intermediatePoints, annotation, annotation.offset);
-            // Calculate position relative to source point in inches
-            const annotationRelativePosition: PointModel = {
-                x: (annotationTextElementX - sourcePointX) / UNIT_CONVERSION.SCREEN_DPI,
-                y: -(annotationTextElementY - sourcePointY) / UNIT_CONVERSION.SCREEN_DPI
-            };
+            // Skip invisible connectors
+            if (connector.visible === false) {
+                continue;
+            }
 
-            const fontSizePt: number = annotation.style && annotation.style.fontSize ? annotation.style.fontSize : 12; // fallback
-            const fontFamily: string = annotation.style && annotation.style.fontFamily ? annotation.style.fontFamily : 'Calibri';
-            const fontWeight: 'normal' | 'bold' = annotation.style && annotation.style.bold ? 'bold' : 'normal';
-            const fontStyle: 'normal' | 'italic' = annotation.style && annotation.style.italic ? 'italic' : 'normal';
+            // Get connector master (currently always 'Dynamic connector')
+            const masterName: string = 'Dynamic connector';
+            // First, try to get masterId from the preserved addInfo from import
+            const masterId: number | string = ((connector.addInfo as ShapeAddInfo) && (connector.addInfo as ShapeAddInfo).masterId)
+                ? (connector.addInfo as ShapeAddInfo).masterId : undefined;
 
-            // Compose the text used by Visio: if hyperlink content used, pick that or annotation content
-            const textContent: string = annotation.content || (annotation.hyperlink && annotation.hyperlink.content) || '';
+            // Calculate connector endpoints in inches
+            const pageDimension: { width: number, height: number } = getPageDimension(diagram);
+            const pageHeight: number = pageDimension.height;
 
-            // Compute Visio TxtWidth in inches
-            const txtWidthIn: number = computeVisioTxtWidthInches(textContent, fontSizePt, fontFamily, fontWeight, fontStyle);
-            const txtHeightIn: number = measureTextHeightInches(annotation.content || '', fontSizePt, fontFamily, fontWeight, fontStyle);
+            let beginX: number = connector.sourcePoint.x / UNIT_CONVERSION.SCREEN_DPI;
+            let beginY: number = (pageHeight - connector.sourcePoint.y) / UNIT_CONVERSION.SCREEN_DPI;
+            let endX: number = connector.targetPoint.x / UNIT_CONVERSION.SCREEN_DPI;
+            let endY: number = (pageHeight - connector.targetPoint.y) / UNIT_CONVERSION.SCREEN_DPI;
 
-            // // Convert displacement and margin to inches
-            // const marginLeft: number = annotation.margin.left || 0;
-            // const marginRight: number = annotation.margin.right || 0;
-            // const marginTop: number = annotation.margin.top || 0;
-            // const marginBottom: number = annotation.margin.bottom || 0;
+            // Adjust coordinates if connector is within a group
+            if ((connector as Connector).parentId && groupNode) {
+                const groupNodeBounds: Rect = groupNode.wrapper.bounds;
+                beginX = (connector.sourcePoint.x - groupNodeBounds.x) / UNIT_CONVERSION.SCREEN_DPI;
+                beginY = (groupNodeBounds.height - (connector.sourcePoint.y - groupNodeBounds.y)) / UNIT_CONVERSION.SCREEN_DPI;
+                endX = (connector.targetPoint.x - groupNodeBounds.x) / UNIT_CONVERSION.SCREEN_DPI;
+                endY = (groupNodeBounds.height - (connector.targetPoint.y - groupNodeBounds.y)) / UNIT_CONVERSION.SCREEN_DPI;
+            }
 
-            // // Combine displacement and margin translations
-            // const displacementX: number = (annotation.displacement.x || 0) + marginLeft - marginRight;
-            // const displacementY: number = (annotation.displacement.y || 0) + marginTop - marginBottom;
+            // Calculate connector bounding box
+            const width: number = endX - beginX;
+            const height: number = endY - beginY;
 
-            let transformedX: number = annotationRelativePosition.x;
-            const transformedY: number = annotationRelativePosition.y;
+            // Calculate center point (PinX, PinY)
+            const pinX: number = (beginX + endX) / 2;
+            const pinY: number = (beginY + endY) / 2;
 
-            // Find annotation wrapper for alignment calculations
-            const wrapper: GroupableView = connector.wrapper;
-            let annotationWrapper: DiagramElement;
-            for (let i: number = 0; i < wrapper.children.length; i++) {
-                const id: string = connector.id + '_' + connector.annotations[0].id;
-                if (wrapper.children[parseInt(i.toString(), 10)].id === id) {
-                    annotationWrapper = wrapper.children[parseInt(i.toString(), 10)];
+            // Calculate local pin (relative to bounding box)
+            const locPinX: number = width / 2;
+            const locPinY: number = height / 2;
+
+            // Get connector styling properties
+            const rounding: number = (connector.cornerRadius || 0) / 72;
+            // Map connector type to Visio routing properties (ConLineRouteExt and ShapeRouteStyle)
+            const routingProps: { conLineRouteExt: string; shapeRouteStyle: string; } = getVisioConnectorRouting(connector.type);
+
+            // Find which layer this connector belongs to
+            let layerMember: number = 0;
+            for (let i: number = 0; i < diagram.layers.length; i++) {
+                if ((diagram.layers[parseInt(i.toString(), 10)].objects as string[]).indexOf(connector.id) !== -1) {
+                    layerMember = i;
                     break;
                 }
             }
 
-            // Adjust for text horizontal alignment
-            if (connector.annotations[0].horizontalAlignment === 'Left') {
-                transformedX = transformedX + (annotationWrapper.actualSize.width * 0.5 / connector.wrapper.width);
-            } else if (connector.annotations[0].horizontalAlignment === 'Right') {
-                transformedX = transformedX - (annotationWrapper.actualSize.width * 0.5 / connector.wrapper.width);
-            }
-            context.addWarning('[WARNING] :: For vertical connectors the text will be in vertical direction during export.');
-            // Calculate text dimensions
-            //const dpiScale: number = UNIT_CONVERSION.SCREEN_DPI;
-            // const textWidth: number = annotation.width / dpiScale || bounds.width / dpiScale;
-            // const textHeight: number = annotation.height / dpiScale || Math.max(bounds.height / dpiScale, 0.1);
+            // Initialize connection formulas (will be updated if ports are used)
+            let sourceConnectionFormula: string = '_WALKGLUE(BegTrigger,EndTrigger,WalkPreference)';
+            let targetConnectionFormula: string = '_WALKGLUE(BegTrigger,EndTrigger,WalkPreference)';
 
-            // Add text positioning cells
+            // Find source and target shape indices
+            let sourceNodeIndex: number = diagram.nodes.findIndex((node: NodeModel) => node.id === connector.sourceID);
+            let targetNodeIndex: number = diagram.nodes.findIndex((node: NodeModel) => node.id === connector.targetID);
+
+            // Check for source port connection
+            if (connector.sourcePortID) {
+                if (sourceNodeIndex === -1) {
+                    sourceNodeIndex = diagram.connectors.findIndex((connect: ConnectorModel) => connect.id === connector.sourceID);
+                    sourceNodeIndex += diagram.nodes.length;
+                }
+                const nodePorts: Map<string, number> = portConnectionsMap.get(connector.sourceID);
+                const toPart: number = nodePorts && nodePorts.get(connector.sourcePortID) + 1;
+                sourceConnectionFormula = `PAR(PNT(Sheet.${String(sourceNodeIndex + 1)}!Connections.X${String(toPart)},Sheet.${String(sourceNodeIndex + 1)}!Connections.Y${String(toPart)}))`;
+            }
+
+            // Check for target port connection
+            if (connector.targetPortID) {
+                if (targetNodeIndex === -1) {
+                    targetNodeIndex = diagram.connectors.findIndex((connect: ConnectorModel) => connect.id === connector.targetID);
+                    targetNodeIndex += diagram.nodes.length;
+                }
+                const nodePorts: Map<string, number> = portConnectionsMap.get(connector.targetID);
+                const toPart: number = nodePorts && nodePorts.get(connector.targetPortID) + 1;
+                targetConnectionFormula = `PAR(PNT(Sheet.${String(targetNodeIndex + 1)}!Connections.X${String(toPart)},Sheet.${String(targetNodeIndex + 1)}!Connections.Y${String(toPart)}))`;
+            }
+
+            const shapeId: number = ++idAlloc.value;
+            shapeIdMap.set(connector.id, shapeId);
+            // Build connector shape XML with all properties
+            writer.writeStartElement(null, 'Shape', null);
+            writer.writeAttributeString(null, 'ID', null, shapeId.toString());
+            writer.writeAttributeString(null, 'NameU', null, masterName);
+            writer.writeAttributeString(null, 'Name', null, masterName);
+            writer.writeAttributeString(null, 'Type', null, 'Shape');
+            if (masterId) {
+                writer.writeAttributeString(null, 'Master', null, masterId.toString());
+            }
             writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'TxtPinX');
-            writer.writeAttributeString(null, 'V', null, (transformedX).toString());
+            writer.writeAttributeString(null, 'N', null, 'PinX');
+            writer.writeAttributeString(null, 'V', null, pinX.toFixed(COORDINATE_PRECISION));
+            writer.writeAttributeString(null, 'F', null, 'GUARD((BeginX+EndX)/2)');
             writer.writeEndElement();
             writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'TxtPinY');
-            writer.writeAttributeString(null, 'V', null, (transformedY).toString());
+            writer.writeAttributeString(null, 'N', null, 'PinY');
+            writer.writeAttributeString(null, 'V', null, pinY.toFixed(COORDINATE_PRECISION));
+            writer.writeAttributeString(null, 'F', null, 'GUARD((BeginY+EndY)/2)');
             writer.writeEndElement();
             writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'TxtWidth');
-            writer.writeAttributeString(null, 'V', null, txtWidthIn.toString());
+            writer.writeAttributeString(null, 'N', null, 'Width');
+            writer.writeAttributeString(null, 'V', null, width.toFixed(COORDINATE_PRECISION));
+            writer.writeAttributeString(null, 'F', null, 'GUARD(EndX-BeginX)');
             writer.writeEndElement();
             writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'TxtHeight');
-            writer.writeAttributeString(null, 'V', null, txtHeightIn.toString());
+            writer.writeAttributeString(null, 'N', null, 'Height');
+            writer.writeAttributeString(null, 'V', null, height.toFixed(COORDINATE_PRECISION));
+            writer.writeAttributeString(null, 'F', null, 'GUARD(EndY-BeginY)');
             writer.writeEndElement();
             writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'TxtLocPinX');
-            writer.writeAttributeString(null, 'V', null, (txtWidthIn / 2).toString());
+            writer.writeAttributeString(null, 'N', null, 'LocPinX');
+            writer.writeAttributeString(null, 'V', null, locPinX.toFixed(COORDINATE_PRECISION));
+            writer.writeAttributeString(null, 'F', null, 'GUARD(Width*0.5)');
             writer.writeEndElement();
             writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'TxtLocPinY');
-            writer.writeAttributeString(null, 'V', null, (txtHeightIn / 2).toString());
+            writer.writeAttributeString(null, 'N', null, 'LocPinY');
+            writer.writeAttributeString(null, 'V', null, locPinY.toFixed(COORDINATE_PRECISION));
+            writer.writeAttributeString(null, 'F', null, 'GUARD(Height*0.5)');
             writer.writeEndElement();
-            // Add text rotation if present
-            if (annotationWrapper.rotateAngle) {
-                const angle: number = annotationWrapper.rotateAngle * (Math.PI / 180);
+            writer.writeStartElement(null, 'Cell', null);
+            writer.writeAttributeString(null, 'N', null, 'BeginX');
+            writer.writeAttributeString(null, 'V', null, beginX.toFixed(COORDINATE_PRECISION));
+            writer.writeAttributeString(null, 'F', null, sourceConnectionFormula);
+            writer.writeEndElement();
+            writer.writeStartElement(null, 'Cell', null);
+            writer.writeAttributeString(null, 'N', null, 'BeginY');
+            writer.writeAttributeString(null, 'V', null, beginY.toFixed(COORDINATE_PRECISION));
+            writer.writeAttributeString(null, 'F', null, sourceConnectionFormula);
+            writer.writeEndElement();
+            writer.writeStartElement(null, 'Cell', null);
+            writer.writeAttributeString(null, 'N', null, 'EndX');
+            writer.writeAttributeString(null, 'V', null, endX.toFixed(COORDINATE_PRECISION));
+            writer.writeAttributeString(null, 'F', null, targetConnectionFormula);
+            writer.writeEndElement();
+            writer.writeStartElement(null, 'Cell', null);
+            writer.writeAttributeString(null, 'N', null, 'EndY');
+            writer.writeAttributeString(null, 'V', null, endY.toFixed(COORDINATE_PRECISION));
+            writer.writeAttributeString(null, 'F', null, targetConnectionFormula);
+            writer.writeEndElement();
+            writer.writeStartElement(null, 'Cell', null);
+            writer.writeAttributeString(null, 'N', null, 'LayerMember');
+            writer.writeAttributeString(null, 'V', null, layerMember.toString());
+            writer.writeEndElement();
+            writer.writeStartElement(null, 'Cell', null);
+            writer.writeAttributeString(null, 'N', null, 'NoAlignBox');
+            writer.writeAttributeString(null, 'V', null, '1');
+            writer.writeEndElement();
+            writer.writeStartElement(null, 'Cell', null);
+            writer.writeAttributeString(null, 'N', null, 'DynFeedback');
+            writer.writeAttributeString(null, 'V', null, '2');
+            writer.writeEndElement();
+            writer.writeStartElement(null, 'Cell', null);
+            writer.writeAttributeString(null, 'N', null, 'GlueType');
+            writer.writeAttributeString(null, 'V', null, '2');
+            writer.writeEndElement();
+            writer.writeStartElement(null, 'Cell', null);
+            writer.writeAttributeString(null, 'N', null, 'ObjType');
+            writer.writeAttributeString(null, 'V', null, '2');
+            writer.writeEndElement();
+            writer.writeStartElement(null, 'Cell', null);
+            writer.writeAttributeString(null, 'N', null, 'NoLiveDynamics');
+            writer.writeAttributeString(null, 'V', null, '1');
+            writer.writeEndElement();
+            writer.writeStartElement(null, 'Cell', null);
+            writer.writeAttributeString(null, 'N', null, 'ConFixedCode');
+            writer.writeAttributeString(null, 'V', null, '3');
+            writer.writeEndElement();
+            writer.writeStartElement(null, 'Cell', null);
+            writer.writeAttributeString(null, 'N', null, 'ConLineRouteExt');
+            writer.writeAttributeString(null, 'V', null, routingProps.conLineRouteExt);
+            writer.writeEndElement();
+            writer.writeStartElement(null, 'Cell', null);
+            writer.writeAttributeString(null, 'N', null, 'ShapeRouteStyle');
+            writer.writeAttributeString(null, 'V', null, routingProps.shapeRouteStyle);
+            writer.writeEndElement();
+            // Add trigger formulas for dynamic updates when source/target shapes change
+            if (sourceNodeIndex >= 0) {
+                const sourceShapeId: number = sourceNodeIndex + 1;
                 writer.writeStartElement(null, 'Cell', null);
-                writer.writeAttributeString(null, 'N', null, 'TxtAngle');
-                writer.writeAttributeString(null, 'V', null, (angle * -1).toString());
+                writer.writeAttributeString(null, 'N', null, 'BegTrigger');
+                writer.writeAttributeString(null, 'V', null, '2');
+                writer.writeAttributeString(null, 'F', null, `_XFTRIGGER(Sheet.${sourceShapeId}!EventXFMod)`);
                 writer.writeEndElement();
-            }
-
-            // Hide text if visibility is false
-            if (!annotation.visibility) {
+            } else {
                 writer.writeStartElement(null, 'Cell', null);
-                writer.writeAttributeString(null, 'N', null, 'HideText');
+                writer.writeAttributeString(null, 'N', null, 'BegTrigger');
                 writer.writeAttributeString(null, 'V', null, '1');
+                writer.writeAttributeString(null, 'F', null, '_XFTRIGGER(EventXFMod)');
                 writer.writeEndElement();
             }
-
-            // Set vertical alignment
-            if (annotation.verticalAlignment) {
-                const align: number = getVisioAlign(annotation.verticalAlignment);
+            if (targetNodeIndex >= 0) {
+                const targetShapeId: number = targetNodeIndex + 1;
                 writer.writeStartElement(null, 'Cell', null);
-                writer.writeAttributeString(null, 'N', null, 'VerticalAlign');
-                writer.writeAttributeString(null, 'V', null, align.toString());
+                writer.writeAttributeString(null, 'N', null, 'EndTrigger');
+                writer.writeAttributeString(null, 'V', null, '2');
+                writer.writeAttributeString(null, 'F', null, `_XFTRIGGER(Sheet.${targetShapeId}!EventXFMod)`);
                 writer.writeEndElement();
-            }
-        }
-        else {
-
-            // Provide defaults and write only TxtPinX and TxtPinY (empty text)
-            // Compute source point defaults
-            connector.annotations = [{content: ''}];
-            const sourcePointX: number = connector.sourcePoint.x;
-            const sourcePointY: number = connector.sourcePoint.y;
-
-            // Default pin position at connector's wrapper center (fallback)
-            const point: SegmentInfo = getAnnotationPosition(
-                (connector as Connector).intermediatePoints,
-                connector.annotations[0] as PathAnnotation | ConnectorFixedUserHandle,
-                undefined);
-            const transformedX: number = ((point.point.x - sourcePointX) / UNIT_CONVERSION.SCREEN_DPI) || 0;
-            const transformedY: number = (-(point.point.y - sourcePointY) / UNIT_CONVERSION.SCREEN_DPI) || 0;
-
-            writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'TxtPinX');
-            writer.writeAttributeString(null, 'V', null, (transformedX).toString());
-            writer.writeEndElement();
-
-            writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'TxtPinY');
-            writer.writeAttributeString(null, 'V', null, (transformedY).toString());
-            writer.writeEndElement();
-            connector.annotations = [];
-        }
-        // Export connector annotations
-        exportConnectorAnnotations(connector, writer);
-
-        // Add styling properties (colors, line weight, patterns)
-        if (connector.style) {
-            if (connector.sourceDecorator.style.strokeColor) {
-                const color: string = colorNameToHex(connector.sourceDecorator.style.strokeColor);
+            } else {
                 writer.writeStartElement(null, 'Cell', null);
-                writer.writeAttributeString(null, 'N', null, 'LineColor');
-                writer.writeAttributeString(null, 'V', null, color);
-                writer.writeAttributeString(null, 'F', null, 'THEMEGUARD(MSOTINT(THEMEVAL("AccentColor2"),40))');
-                writer.writeEndElement();
-            }
-            if (connector.sourceDecorator.style && connector.sourceDecorator.style.gradient &&
-                connector.sourceDecorator.style.gradient.type !== 'None') {
-                const gradient: Gradient | LinearGradient |
-                RadialGradient | DiagramGradientModel = connector.sourceDecorator.style.gradient;
-                // Enable gradient fill
-                writer.writeStartElement(null, 'Cell', null);
-                writer.writeAttributeString(null, 'N', null, 'LineGradientEnabled');
+                writer.writeAttributeString(null, 'N', null, 'EndTrigger');
                 writer.writeAttributeString(null, 'V', null, '1');
-                writer.writeEndElement();
-                // Handle linear gradients
-                if (gradient.type === 'Linear') {
-                    writer.writeStartElement(null, 'Cell', null);
-                    writer.writeAttributeString(null, 'N', null, 'LineGradientDir');
-                    writer.writeAttributeString(null, 'V', null, '0');
-                    writer.writeEndElement();
-                    // Calculate gradient angle
-                    const gradientAngle: number = calculateVisioGradientAngle(gradient as LinearGradient);
-                    writer.writeStartElement(null, 'Cell', null);
-                    writer.writeAttributeString(null, 'N', null, 'LineGradientAngle');
-                    writer.writeAttributeString(null, 'V', null, gradientAngle.toString());
-                    writer.writeEndElement();
-                }
-                // Handle radial gradients
-                else if (gradient.type === 'Radial') {
-                    writer.writeStartElement(null, 'Cell', null);
-                    writer.writeAttributeString(null, 'N', null, 'LineGradientDir');
-                    writer.writeAttributeString(null, 'V', null, '5');
-                    writer.writeEndElement();
-                }
-                // Add gradient stop colors if available
-                if (gradient.stops && gradient.stops.length > 0) {
-                    writer.writeStartElement(null, 'Section', null);
-                    writer.writeAttributeString(null, 'N', null, 'LineGradient');
-                    gradient.stops.forEach((stop: Stop, index: number) => {
-                        writer.writeStartElement(null, 'Row', null);
-                        writer.writeAttributeString(null, 'IX', null, index.toString());
-                        writer.writeStartElement(null, 'Cell', null);
-                        writer.writeAttributeString(null, 'N', null, 'GradientStopColor');
-                        writer.writeAttributeString(null, 'V', null, colorNameToHex(stop.color));
-                        writer.writeEndElement();
-                        writer.writeStartElement(null, 'Cell', null);
-                        writer.writeAttributeString(null, 'N', null, 'GradientStopColorTrans');
-                        writer.writeAttributeString(null, 'V', null, '0');
-                        writer.writeEndElement();
-                        writer.writeStartElement(null, 'Cell', null);
-                        writer.writeAttributeString(null, 'N', null, 'GradientStopPosition');
-                        writer.writeAttributeString(null, 'V', null, stop.offset.toString());
-                        writer.writeEndElement();
-                        writer.writeEndElement(); // Row
-                    });
-
-                    // Add deleted rows to match expected format (Visio expects up to 10 stops)
-                    for (let i: number = gradient.stops.length; i < 10; i++) {
-                        writer.writeStartElement(null, 'Row', null);
-                        writer.writeAttributeString(null, 'IX', null, i.toString());
-                        writer.writeAttributeString(null, 'Del', null, '1');
-                        writer.writeEndElement();
-                    }
-                    writer.writeEndElement(); // Section
-                }
-            }
-            if (connector.style.strokeWidth) {
-                const lineWeight: number = connector.style.strokeWidth / UNIT_CONVERSION.SCREEN_DPI;
-                writer.writeStartElement(null, 'Cell', null);
-                writer.writeAttributeString(null, 'N', null, 'LineWeight');
-                writer.writeAttributeString(null, 'V', null, lineWeight.toFixed(COORDINATE_PRECISION));
+                writer.writeAttributeString(null, 'F', null, '_XFTRIGGER(EventXFMod)');
                 writer.writeEndElement();
             }
 
-            if (connector.style.strokeDashArray) {
-                context.addWarning('[WARNING] :: Stroke dash arrays are approximated from Visio, so the appearance of dashed connectors may vary after export.');
-                const linePattern: string = getVisioLinePattern(connector.style.strokeDashArray);
-                writer.writeStartElement(null, 'Cell', null);
-                writer.writeAttributeString(null, 'N', null, 'LinePattern');
-                writer.writeAttributeString(null, 'V', null, linePattern);
-                writer.writeEndElement();
-            }
+            // Handle connector annotations (labels)
+            if (connector.annotations && connector.annotations.length > 0) {
+                const annotation: PathAnnotation = connector.annotations[0] as PathAnnotation;
 
-            if (connector.style.opacity !== undefined) {
-                const transparency: number = 1 - connector.style.opacity;
-                writer.writeStartElement(null, 'Cell', null);
-                writer.writeAttributeString(null, 'N', null, 'LineColorTrans');
-                writer.writeAttributeString(null, 'V', null, transparency.toString());
-                writer.writeEndElement();
-            }
-        }
-
-        // Add corner radius if present
-        if (connector.cornerRadius) {
-            writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'Rounding');
-            writer.writeAttributeString(null, 'V', null, rounding.toString());
-            writer.writeAttributeString(null, 'U', null, 'IN');
-            writer.writeEndElement();
-        }
-
-        // Add tooltip/comment if present
-        if (connector.constraints & ConnectorConstraints.Tooltip) {
-            const tooltip: string = connector.tooltip.content as string;
-            writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'Comment');
-            writer.writeAttributeString(null, 'V', null, tooltip);
-            writer.writeEndElement();
-        }
-
-        // Add source arrow decorator if present
-        if (connector.sourceDecorator && connector.sourceDecorator.shape !== 'None') {
-            const arrowType: number = getVisioArrowType(connector.sourceDecorator.shape);
-            const arrowSize: number = getVisioArrowSize(connector.sourceDecorator.shape, connector.sourceDecorator.width,
-                                                        connector.sourceDecorator.height);
-            writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'BeginArrow');
-            writer.writeAttributeString(null, 'V', null, arrowType.toString());
-            writer.writeEndElement();
-            writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'BeginArrowSize');
-            writer.writeAttributeString(null, 'V', null, arrowSize.toString());
-            writer.writeEndElement();
-            if (connector.sourceDecorator.style && connector.sourceDecorator.style.fill) {
-                writer.writeStartElement(null, 'Cell', null);
-                writer.writeAttributeString(null, 'N', null, 'BeginArrowFill');
-                writer.writeAttributeString(null, 'V', null, (connector.sourceDecorator.style.fill === 'transparent' ? 0 : 1).toString());
-                writer.writeEndElement();
-            }
-        }
-
-        // Add target arrow decorator if present
-        if (connector.targetDecorator && connector.targetDecorator.shape !== 'None') {
-            const arrowType: number = getVisioArrowType(connector.targetDecorator.shape);
-            const arrowSize: number = getVisioArrowSize(connector.targetDecorator.shape, connector.targetDecorator.width,
-                                                        connector.targetDecorator.height);
-            writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'EndArrow');
-            writer.writeAttributeString(null, 'V', null, arrowType.toString());
-            writer.writeEndElement();
-            writer.writeStartElement(null, 'Cell', null);
-            writer.writeAttributeString(null, 'N', null, 'EndArrowSize');
-            writer.writeAttributeString(null, 'V', null, arrowSize.toString());
-            writer.writeEndElement();
-            if (connector.targetDecorator.style && connector.targetDecorator.style.fill) {
-                writer.writeStartElement(null, 'Cell', null);
-                writer.writeAttributeString(null, 'N', null, 'EndArrowFill');
-                writer.writeAttributeString(null, 'V', null, (connector.targetDecorator.style.fill === 'transparent' ? 0 : 1).toString());
-                writer.writeEndElement();
-            }
-        }
-
-        // Export connector constraints (locking/restrictions)
-        if (connector.constraints) {
-            exportConnectorConstraints(connector, writer);
-        }
-
-        // Handle connector ports (attachment points for sub-connectors)
-        if (connector.ports && connector.ports.length > 0) {
-            let connectionRowIndex: number = 0;
-            const connectorPortsMap: Map<string, number> = new Map<string, number>();
-            writer.writeStartElement(null, 'Section', null);
-            writer.writeAttributeString(null, 'N', null, 'Connection');
-            connector.ports.forEach((port: PathPort) => {
-                // Calculate absolute port position using connector bounds
                 // Source point coordinates in pixels
                 const sourcePointX: number = connector.sourcePoint.x;
                 const sourcePointY: number = connector.sourcePoint.y;
 
                 // Annotation text element position in pixels
-                let PortElementX: number;
-                let PortElementY: number;
-                const bounds: Rect = connector.wrapper.bounds;
-                const portId: string = port.id;
+                let annotationTextElementX: number;
+                let annotationTextElementY: number;
+
+                // Find the child wrapper that is a TextElement and belongs to this annotation
+                const annotationId: string = annotation.id;
                 for (const child of (connector.wrapper.children || [])) {
-                    // Make sure it's the path element that represents the port glyph
-                    if (child instanceof PathElement && child.id) {
-                        // Typical child id pattern: "<connectorId>_<portId>" (can have more underscores)
-                        const parts: string[] = child.id.split('_');
-                        const last: string = parts[parts.length - 1];
-                        if (last === portId) {
-                            PortElementX = child.offsetX;
-                            PortElementY = child.offsetY;
-                            break;
+                    // Ensure it's a TextElement and id contains the annotation id
+                    if (child instanceof TextElement && child.id) {
+                        const text: string[] = child.id.split('_');
+                        const last: string = text[text.length - 1];
+                        if (last === annotationId) {
+                            annotationTextElementX = child.offsetX;
+                            annotationTextElementY = child.offsetY;
+                            break; // Found the annotation element, exit loop
                         }
+
                     }
                 }
-                const portRelativePosition: PointModel = {
-                    x: (PortElementX - sourcePointX) / UNIT_CONVERSION.SCREEN_DPI,
-                    y: -((PortElementY - sourcePointY) / UNIT_CONVERSION.SCREEN_DPI)
+
+                // Calculate annotation position using connector bounds and path
+                //const bounds: Rect = connector.wrapper.bounds;
+                //const pathOffset: PointModel = getPathOffset((connector as Connector).intermediatePoints, annotation, annotation.offset);
+                // Calculate position relative to source point in inches
+                const annotationRelativePosition: PointModel = {
+                    x: (annotationTextElementX - sourcePointX) / UNIT_CONVERSION.SCREEN_DPI,
+                    y: -(annotationTextElementY - sourcePointY) / UNIT_CONVERSION.SCREEN_DPI
                 };
 
-                const transformedX: number = portRelativePosition.x;
-                const transformedY: number = portRelativePosition.y;
+                const fontSizePt: number = annotation.style && annotation.style.fontSize ? annotation.style.fontSize : 12; // fallback
+                const fontFamily: string = annotation.style && annotation.style.fontFamily ? annotation.style.fontFamily : 'Calibri';
+                const fontWeight: 'normal' | 'bold' = annotation.style && annotation.style.bold ? 'bold' : 'normal';
+                const fontStyle: 'normal' | 'italic' = annotation.style && annotation.style.italic ? 'italic' : 'normal';
 
-                // Find port wrapper for alignment calculations
+                // Compose the text used by Visio: if hyperlink content used, pick that or annotation content
+                const textContent: string = annotation.content || (annotation.hyperlink && annotation.hyperlink.content) || '';
+
+                // Compute Visio TxtWidth in inches
+                const txtWidthIn: number = computeVisioTxtWidthInches(textContent, fontSizePt, fontFamily, fontWeight, fontStyle);
+                const txtHeightIn: number = measureTextHeightInches(annotation.content || '', fontSizePt, fontFamily, fontWeight, fontStyle);
+
+                // // Convert displacement and margin to inches
+                // const marginLeft: number = annotation.margin.left || 0;
+                // const marginRight: number = annotation.margin.right || 0;
+                // const marginTop: number = annotation.margin.top || 0;
+                // const marginBottom: number = annotation.margin.bottom || 0;
+
+                // // Combine displacement and margin translations
+                // const displacementX: number = (annotation.displacement.x || 0) + marginLeft - marginRight;
+                // const displacementY: number = (annotation.displacement.y || 0) + marginTop - marginBottom;
+
+                let transformedX: number = annotationRelativePosition.x;
+                const transformedY: number = annotationRelativePosition.y;
+
+                // Find annotation wrapper for alignment calculations
                 const wrapper: GroupableView = connector.wrapper;
-                let portWrapper: DiagramElement;
+                let annotationWrapper: DiagramElement;
                 for (let i: number = 0; i < wrapper.children.length; i++) {
-                    const id: string = connector.id + '_' + port.id;
+                    const id: string = connector.id + '_' + connector.annotations[0].id;
                     if (wrapper.children[parseInt(i.toString(), 10)].id === id) {
-                        portWrapper = wrapper.children[parseInt(i.toString(), 10)];
+                        annotationWrapper = wrapper.children[parseInt(i.toString(), 10)];
                         break;
                     }
                 }
 
-                // Generate Visio XML for port
-                writer.writeStartElement(null, 'Row', null);
-                writer.writeAttributeString(null, 'T', null, 'Connection');
-                writer.writeAttributeString(null, 'IX', null, (connectionRowIndex + 1).toString());
-                writer.writeStartElement(null, 'Cell', null);
-                writer.writeAttributeString(null, 'N', null, 'X');
-                writer.writeAttributeString(null, 'V', null, transformedX.toString());
-                writer.writeEndElement();
-                writer.writeStartElement(null, 'Cell', null);
-                writer.writeAttributeString(null, 'N', null, 'Y');
-                writer.writeAttributeString(null, 'V', null, transformedY.toString());
-                writer.writeEndElement();
-                writer.writeStartElement(null, 'Cell', null);
-                writer.writeAttributeString(null, 'N', null, 'DirX');
-                writer.writeAttributeString(null, 'V', null, '0');
-                writer.writeEndElement();
-                writer.writeStartElement(null, 'Cell', null);
-                writer.writeAttributeString(null, 'N', null, 'DirY');
-                writer.writeAttributeString(null, 'V', null, '0');
-                writer.writeEndElement();
-                writer.writeStartElement(null, 'Cell', null);
-                writer.writeAttributeString(null, 'N', null, 'Protection');
-                writer.writeAttributeString(null, 'V', null, '0');
-                writer.writeEndElement();
-                writer.writeStartElement(null, 'Cell', null);
-                writer.writeAttributeString(null, 'N', null, 'ID');
-                writer.writeAttributeString(null, 'V', null, port.id);
-                writer.writeEndElement();
-                writer.writeEndElement(); // Row
-                connectorPortsMap.set(port.id, connectionRowIndex);
-                connectionRowIndex++;
-            });
-            writer.writeEndElement(); // Section
-            // Store the port map for later use
-            portConnectionsMap.set(connector.id, connectorPortsMap);
-        }
-        // Generate connector geometry (path)
-        generateConnectorGeometryXml(connector, beginX, beginY, endX, endY, width, height, Number(pageHeight), writer);
+                // Adjust for text horizontal alignment
+                if (connector.annotations[0].horizontalAlignment === 'Left') {
+                    transformedX = transformedX + (annotationWrapper.actualSize.width * 0.5 / connector.wrapper.width);
+                } else if (connector.annotations[0].horizontalAlignment === 'Right') {
+                    transformedX = transformedX - (annotationWrapper.actualSize.width * 0.5 / connector.wrapper.width);
+                }
+                context.addWarning('[WARNING] :: For vertical connectors the text will be in vertical direction during export.');
+                // Calculate text dimensions
+                //const dpiScale: number = UNIT_CONVERSION.SCREEN_DPI;
+                // const textWidth: number = annotation.width / dpiScale || bounds.width / dpiScale;
+                // const textHeight: number = annotation.height / dpiScale || Math.max(bounds.height / dpiScale, 0.1);
 
-        // Close connector shape
-        writer.writeEndElement(); // Shape
+                // Add text positioning cells
+                writer.writeStartElement(null, 'Cell', null);
+                writer.writeAttributeString(null, 'N', null, 'TxtPinX');
+                writer.writeAttributeString(null, 'V', null, (transformedX).toString());
+                writer.writeEndElement();
+                writer.writeStartElement(null, 'Cell', null);
+                writer.writeAttributeString(null, 'N', null, 'TxtPinY');
+                writer.writeAttributeString(null, 'V', null, (transformedY).toString());
+                writer.writeEndElement();
+                writer.writeStartElement(null, 'Cell', null);
+                writer.writeAttributeString(null, 'N', null, 'TxtWidth');
+                writer.writeAttributeString(null, 'V', null, txtWidthIn.toString());
+                writer.writeEndElement();
+                writer.writeStartElement(null, 'Cell', null);
+                writer.writeAttributeString(null, 'N', null, 'TxtHeight');
+                writer.writeAttributeString(null, 'V', null, txtHeightIn.toString());
+                writer.writeEndElement();
+                writer.writeStartElement(null, 'Cell', null);
+                writer.writeAttributeString(null, 'N', null, 'TxtLocPinX');
+                writer.writeAttributeString(null, 'V', null, (txtWidthIn / 2).toString());
+                writer.writeEndElement();
+                writer.writeStartElement(null, 'Cell', null);
+                writer.writeAttributeString(null, 'N', null, 'TxtLocPinY');
+                writer.writeAttributeString(null, 'V', null, (txtHeightIn / 2).toString());
+                writer.writeEndElement();
+                // Add text rotation if present
+                if (annotationWrapper.rotateAngle) {
+                    const angle: number = annotationWrapper.rotateAngle * (Math.PI / 180);
+                    writer.writeStartElement(null, 'Cell', null);
+                    writer.writeAttributeString(null, 'N', null, 'TxtAngle');
+                    writer.writeAttributeString(null, 'V', null, (angle * -1).toString());
+                    writer.writeEndElement();
+                }
+
+                // Hide text if visibility is false
+                if (!annotation.visibility) {
+                    writer.writeStartElement(null, 'Cell', null);
+                    writer.writeAttributeString(null, 'N', null, 'HideText');
+                    writer.writeAttributeString(null, 'V', null, '1');
+                    writer.writeEndElement();
+                }
+
+                // Set vertical alignment
+                if (annotation.verticalAlignment) {
+                    const align: number = getVisioAlign(annotation.verticalAlignment);
+                    writer.writeStartElement(null, 'Cell', null);
+                    writer.writeAttributeString(null, 'N', null, 'VerticalAlign');
+                    writer.writeAttributeString(null, 'V', null, align.toString());
+                    writer.writeEndElement();
+                }
+            }
+            else {
+
+                // Provide defaults and write only TxtPinX and TxtPinY (empty text)
+                // Compute source point defaults
+                connector.annotations = [{content: ''}];
+                const sourcePointX: number = connector.sourcePoint.x;
+                const sourcePointY: number = connector.sourcePoint.y;
+
+                // Default pin position at connector's wrapper center (fallback)
+                const point: SegmentInfo = getAnnotationPosition(
+                    (connector as Connector).intermediatePoints,
+                    connector.annotations[0] as PathAnnotation | ConnectorFixedUserHandle,
+                    undefined);
+                const transformedX: number = ((point.point.x - sourcePointX) / UNIT_CONVERSION.SCREEN_DPI) || 0;
+                const transformedY: number = (-(point.point.y - sourcePointY) / UNIT_CONVERSION.SCREEN_DPI) || 0;
+
+                writer.writeStartElement(null, 'Cell', null);
+                writer.writeAttributeString(null, 'N', null, 'TxtPinX');
+                writer.writeAttributeString(null, 'V', null, (transformedX).toString());
+                writer.writeEndElement();
+
+                writer.writeStartElement(null, 'Cell', null);
+                writer.writeAttributeString(null, 'N', null, 'TxtPinY');
+                writer.writeAttributeString(null, 'V', null, (transformedY).toString());
+                writer.writeEndElement();
+                connector.annotations = [];
+            }
+            // Export connector annotations
+            exportConnectorAnnotations(connector, writer);
+
+            // Add styling properties (colors, line weight, patterns)
+            if (connector.style) {
+                if (connector.sourceDecorator.style.strokeColor) {
+                    const color: string = colorNameToHex(connector.sourceDecorator.style.strokeColor);
+                    writer.writeStartElement(null, 'Cell', null);
+                    writer.writeAttributeString(null, 'N', null, 'LineColor');
+                    writer.writeAttributeString(null, 'V', null, color);
+                    writer.writeAttributeString(null, 'F', null, 'THEMEGUARD(MSOTINT(THEMEVAL("AccentColor2"),40))');
+                    writer.writeEndElement();
+                }
+                if (connector.sourceDecorator.style && connector.sourceDecorator.style.gradient &&
+                    connector.sourceDecorator.style.gradient.type !== 'None') {
+                    const gradient: Gradient | LinearGradient |
+                    RadialGradient | DiagramGradientModel = connector.sourceDecorator.style.gradient;
+                    // Enable gradient fill
+                    writer.writeStartElement(null, 'Cell', null);
+                    writer.writeAttributeString(null, 'N', null, 'LineGradientEnabled');
+                    writer.writeAttributeString(null, 'V', null, '1');
+                    writer.writeEndElement();
+                    // Handle linear gradients
+                    if (gradient.type === 'Linear') {
+                        writer.writeStartElement(null, 'Cell', null);
+                        writer.writeAttributeString(null, 'N', null, 'LineGradientDir');
+                        writer.writeAttributeString(null, 'V', null, '0');
+                        writer.writeEndElement();
+                        // Calculate gradient angle
+                        const gradientAngle: number = calculateVisioGradientAngle(gradient as LinearGradient);
+                        writer.writeStartElement(null, 'Cell', null);
+                        writer.writeAttributeString(null, 'N', null, 'LineGradientAngle');
+                        writer.writeAttributeString(null, 'V', null, gradientAngle.toString());
+                        writer.writeEndElement();
+                    }
+                    // Handle radial gradients
+                    else if (gradient.type === 'Radial') {
+                        writer.writeStartElement(null, 'Cell', null);
+                        writer.writeAttributeString(null, 'N', null, 'LineGradientDir');
+                        writer.writeAttributeString(null, 'V', null, '5');
+                        writer.writeEndElement();
+                    }
+                    // Add gradient stop colors if available
+                    if (gradient.stops && gradient.stops.length > 0) {
+                        writer.writeStartElement(null, 'Section', null);
+                        writer.writeAttributeString(null, 'N', null, 'LineGradient');
+                        gradient.stops.forEach((stop: Stop, index: number) => {
+                            writer.writeStartElement(null, 'Row', null);
+                            writer.writeAttributeString(null, 'IX', null, index.toString());
+                            writer.writeStartElement(null, 'Cell', null);
+                            writer.writeAttributeString(null, 'N', null, 'GradientStopColor');
+                            writer.writeAttributeString(null, 'V', null, colorNameToHex(stop.color));
+                            writer.writeEndElement();
+                            writer.writeStartElement(null, 'Cell', null);
+                            writer.writeAttributeString(null, 'N', null, 'GradientStopColorTrans');
+                            writer.writeAttributeString(null, 'V', null, '0');
+                            writer.writeEndElement();
+                            writer.writeStartElement(null, 'Cell', null);
+                            writer.writeAttributeString(null, 'N', null, 'GradientStopPosition');
+                            writer.writeAttributeString(null, 'V', null, stop.offset.toString());
+                            writer.writeEndElement();
+                            writer.writeEndElement(); // Row
+                        });
+
+                        // Add deleted rows to match expected format (Visio expects up to 10 stops)
+                        for (let i: number = gradient.stops.length; i < 10; i++) {
+                            writer.writeStartElement(null, 'Row', null);
+                            writer.writeAttributeString(null, 'IX', null, i.toString());
+                            writer.writeAttributeString(null, 'Del', null, '1');
+                            writer.writeEndElement();
+                        }
+                        writer.writeEndElement(); // Section
+                    }
+                }
+                if (connector.style.strokeWidth) {
+                    const lineWeight: number = connector.style.strokeWidth / UNIT_CONVERSION.SCREEN_DPI;
+                    writer.writeStartElement(null, 'Cell', null);
+                    writer.writeAttributeString(null, 'N', null, 'LineWeight');
+                    writer.writeAttributeString(null, 'V', null, lineWeight.toFixed(COORDINATE_PRECISION));
+                    writer.writeEndElement();
+                }
+
+                if (connector.style.strokeDashArray) {
+                    context.addWarning('[WARNING] :: Stroke dash arrays are approximated from Visio, so the appearance of dashed connectors may vary after export.');
+                    const linePattern: string = getVisioLinePattern(connector.style.strokeDashArray);
+                    writer.writeStartElement(null, 'Cell', null);
+                    writer.writeAttributeString(null, 'N', null, 'LinePattern');
+                    writer.writeAttributeString(null, 'V', null, linePattern);
+                    writer.writeEndElement();
+                }
+
+                if (connector.style.opacity !== undefined) {
+                    const transparency: number = 1 - connector.style.opacity;
+                    writer.writeStartElement(null, 'Cell', null);
+                    writer.writeAttributeString(null, 'N', null, 'LineColorTrans');
+                    writer.writeAttributeString(null, 'V', null, transparency.toString());
+                    writer.writeEndElement();
+                }
+            }
+
+            // Add corner radius if present
+            if (connector.cornerRadius) {
+                writer.writeStartElement(null, 'Cell', null);
+                writer.writeAttributeString(null, 'N', null, 'Rounding');
+                writer.writeAttributeString(null, 'V', null, rounding.toString());
+                writer.writeAttributeString(null, 'U', null, 'IN');
+                writer.writeEndElement();
+            }
+
+            // Add tooltip/comment if present
+            if (connector.constraints & ConnectorConstraints.Tooltip) {
+                const tooltip: string = connector.tooltip.content as string;
+                writer.writeStartElement(null, 'Cell', null);
+                writer.writeAttributeString(null, 'N', null, 'Comment');
+                writer.writeAttributeString(null, 'V', null, tooltip);
+                writer.writeEndElement();
+            }
+
+            // Add source arrow decorator if present
+            if (connector.sourceDecorator && connector.sourceDecorator.shape !== 'None') {
+                const arrowType: number = getVisioArrowType(connector.sourceDecorator.shape);
+                const arrowSize: number = getVisioArrowSize(connector.sourceDecorator.shape, connector.sourceDecorator.width,
+                                                            connector.sourceDecorator.height);
+                writer.writeStartElement(null, 'Cell', null);
+                writer.writeAttributeString(null, 'N', null, 'BeginArrow');
+                writer.writeAttributeString(null, 'V', null, arrowType.toString());
+                writer.writeEndElement();
+                writer.writeStartElement(null, 'Cell', null);
+                writer.writeAttributeString(null, 'N', null, 'BeginArrowSize');
+                writer.writeAttributeString(null, 'V', null, arrowSize.toString());
+                writer.writeEndElement();
+                if (connector.sourceDecorator.style && connector.sourceDecorator.style.fill) {
+                    writer.writeStartElement(null, 'Cell', null);
+                    writer.writeAttributeString(null, 'N', null, 'BeginArrowFill');
+                    writer.writeAttributeString(null, 'V', null, (connector.sourceDecorator.style.fill === 'transparent' ? 0 : 1).toString());
+                    writer.writeEndElement();
+                }
+            }
+
+            // Add target arrow decorator if present
+            if (connector.targetDecorator && connector.targetDecorator.shape !== 'None') {
+                const arrowType: number = getVisioArrowType(connector.targetDecorator.shape);
+                const arrowSize: number = getVisioArrowSize(connector.targetDecorator.shape, connector.targetDecorator.width,
+                                                            connector.targetDecorator.height);
+                writer.writeStartElement(null, 'Cell', null);
+                writer.writeAttributeString(null, 'N', null, 'EndArrow');
+                writer.writeAttributeString(null, 'V', null, arrowType.toString());
+                writer.writeEndElement();
+                writer.writeStartElement(null, 'Cell', null);
+                writer.writeAttributeString(null, 'N', null, 'EndArrowSize');
+                writer.writeAttributeString(null, 'V', null, arrowSize.toString());
+                writer.writeEndElement();
+                if (connector.targetDecorator.style && connector.targetDecorator.style.fill) {
+                    writer.writeStartElement(null, 'Cell', null);
+                    writer.writeAttributeString(null, 'N', null, 'EndArrowFill');
+                    writer.writeAttributeString(null, 'V', null, (connector.targetDecorator.style.fill === 'transparent' ? 0 : 1).toString());
+                    writer.writeEndElement();
+                }
+            }
+
+            // Export connector constraints (locking/restrictions)
+            if (connector.constraints) {
+                exportConnectorConstraints(connector, writer);
+            }
+
+            // Handle connector ports (attachment points for sub-connectors)
+            if (connector.ports && connector.ports.length > 0) {
+                let connectionRowIndex: number = 0;
+                const connectorPortsMap: Map<string, number> = new Map<string, number>();
+                writer.writeStartElement(null, 'Section', null);
+                writer.writeAttributeString(null, 'N', null, 'Connection');
+                connector.ports.forEach((port: PathPort) => {
+                    // Calculate absolute port position using connector bounds
+                    // Source point coordinates in pixels
+                    const sourcePointX: number = connector.sourcePoint.x;
+                    const sourcePointY: number = connector.sourcePoint.y;
+
+                    // Annotation text element position in pixels
+                    let PortElementX: number;
+                    let PortElementY: number;
+                    const bounds: Rect = connector.wrapper.bounds;
+                    const portId: string = port.id;
+                    for (const child of (connector.wrapper.children || [])) {
+                        // Make sure it's the path element that represents the port glyph
+                        if (child instanceof PathElement && child.id) {
+                            // Typical child id pattern: "<connectorId>_<portId>" (can have more underscores)
+                            const parts: string[] = child.id.split('_');
+                            const last: string = parts[parts.length - 1];
+                            if (last === portId) {
+                                PortElementX = child.offsetX;
+                                PortElementY = child.offsetY;
+                                break;
+                            }
+                        }
+                    }
+                    const portRelativePosition: PointModel = {
+                        x: (PortElementX - sourcePointX) / UNIT_CONVERSION.SCREEN_DPI,
+                        y: -((PortElementY - sourcePointY) / UNIT_CONVERSION.SCREEN_DPI)
+                    };
+
+                    const transformedX: number = portRelativePosition.x;
+                    const transformedY: number = portRelativePosition.y;
+
+                    // Find port wrapper for alignment calculations
+                    const wrapper: GroupableView = connector.wrapper;
+                    let portWrapper: DiagramElement;
+                    for (let i: number = 0; i < wrapper.children.length; i++) {
+                        const id: string = connector.id + '_' + port.id;
+                        if (wrapper.children[parseInt(i.toString(), 10)].id === id) {
+                            portWrapper = wrapper.children[parseInt(i.toString(), 10)];
+                            break;
+                        }
+                    }
+
+                    // Generate Visio XML for port
+                    writer.writeStartElement(null, 'Row', null);
+                    writer.writeAttributeString(null, 'T', null, 'Connection');
+                    writer.writeAttributeString(null, 'IX', null, (connectionRowIndex + 1).toString());
+                    writer.writeStartElement(null, 'Cell', null);
+                    writer.writeAttributeString(null, 'N', null, 'X');
+                    writer.writeAttributeString(null, 'V', null, transformedX.toString());
+                    writer.writeEndElement();
+                    writer.writeStartElement(null, 'Cell', null);
+                    writer.writeAttributeString(null, 'N', null, 'Y');
+                    writer.writeAttributeString(null, 'V', null, transformedY.toString());
+                    writer.writeEndElement();
+                    writer.writeStartElement(null, 'Cell', null);
+                    writer.writeAttributeString(null, 'N', null, 'DirX');
+                    writer.writeAttributeString(null, 'V', null, '0');
+                    writer.writeEndElement();
+                    writer.writeStartElement(null, 'Cell', null);
+                    writer.writeAttributeString(null, 'N', null, 'DirY');
+                    writer.writeAttributeString(null, 'V', null, '0');
+                    writer.writeEndElement();
+                    writer.writeStartElement(null, 'Cell', null);
+                    writer.writeAttributeString(null, 'N', null, 'Protection');
+                    writer.writeAttributeString(null, 'V', null, '0');
+                    writer.writeEndElement();
+                    writer.writeStartElement(null, 'Cell', null);
+                    writer.writeAttributeString(null, 'N', null, 'ID');
+                    writer.writeAttributeString(null, 'V', null, port.id);
+                    writer.writeEndElement();
+                    writer.writeEndElement(); // Row
+                    connectorPortsMap.set(port.id, connectionRowIndex);
+                    connectionRowIndex++;
+                });
+                writer.writeEndElement(); // Section
+                // Store the port map for later use
+                portConnectionsMap.set(connector.id, connectorPortsMap);
+            }
+            // Generate connector geometry (path)
+            generateConnectorGeometryXml(connector, beginX, beginY, endX, endY, width, height, Number(pageHeight), writer);
+
+            // Close connector shape
+            writer.writeEndElement(); // Shape
+        }
     }
 }
 
@@ -6491,7 +6865,10 @@ function colorNameToHex(color: string): string | null {
         return (
             '#' +
             [r, g, b]
-                .map((x: number) => (x.toString(16) as any).padStart(2, '0'))
+                .map((component: number): string => {
+                    const hex: string = component.toString(16);     // "0".."ff"
+                    return ('00' + hex).slice(-2);                  // force 2 digits without padStart
+                })
                 .join('')
                 .toUpperCase()
         );

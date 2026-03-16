@@ -2125,7 +2125,7 @@ export class ChatUI extends InterActiveChatBase implements INotifyPropertyChange
             wrapper = this.createFileItem(msg.attachedFile, false);
             fileElement.appendChild(wrapper);
         }
-        EventHandler.add(fileElement, 'click', (event: MouseEvent) => this.handleAttachmentPreview(event, file, true));
+        EventHandler.add(fileElement, 'click', () => this.handleAttachmentPreview(file, true));
         return fileElement;
     }
 
@@ -2378,7 +2378,7 @@ export class ChatUI extends InterActiveChatBase implements INotifyPropertyChange
         this.dropArea = this.createElement('div', { attrs: { class: 'e-chat-drop-area' } });
         this.footer.prepend(this.dropArea);
         this.attachmentIcon = this.createElement('span', { attrs: { class: 'e-chat-attachment-icon e-icons', role: 'button', 'aria-label': 'Attach files', tabindex: '0', title: this.l10n.getConstant('attachments') } }) as HTMLElement;
-        const uploaderElement: HTMLElement = this.createElement('input', { attrs: { class: 'e-chat-file-upload', type: 'file', id: 'fileUpload'} });
+        const uploaderElement: HTMLElement = this.createElement('input', { attrs: { class: 'e-chat-file-upload', type: 'file', name: 'UploadFiles', id: 'fileUpload'} });
         let dropAreaTarget: HTMLElement;
         if (this.attachmentSettings.enableDragAndDrop) {
             dropAreaTarget = this.footer;
@@ -2561,7 +2561,7 @@ export class ChatUI extends InterActiveChatBase implements INotifyPropertyChange
                 if (closeButton && (event.target === closeButton || (event.target as HTMLElement).classList.contains('e-chat-close'))) {
                     return;
                 }
-                this.handleAttachmentPreview(event, fileData, false);
+                this.handleAttachmentPreview(fileData, false);
             });
         }
         return fileItem;
@@ -2577,12 +2577,8 @@ export class ChatUI extends InterActiveChatBase implements INotifyPropertyChange
         this.activateSendIcon(totalLength);
     }
 
-    private handleAttachmentPreview(event: MouseEvent, file: FileInfo, isAfterPreview: boolean): void {
-        const eventArgs: ChatAttachmentClickEventArgs = {
-            cancel: false,
-            file: file,
-            event: event
-        };
+    private handleAttachmentPreview(file: FileInfo, isAfterPreview: boolean): void {
+        const eventArgs: ChatAttachmentClickEventArgs = { cancel: false };
         if (this.attachmentSettings.attachmentClick) {
             this.attachmentSettings.attachmentClick.call(this, eventArgs);
         }
@@ -3132,7 +3128,7 @@ export class ChatUI extends InterActiveChatBase implements INotifyPropertyChange
         this.messageWrapper.querySelectorAll('.e-chat-message-toolbar.e-show').forEach((toolbar: Element) => {
             toolbar.classList.remove('e-show');
         });
-        const atBottom: boolean = this.checkScrollAtBottom();
+        const atBottom: boolean = this.checkScrollAtBottom(this.messageWrapper, 0);
         if (atBottom) {
             this.toggleClassName(this.downArrowIcon.element, atBottom, 'downArrow');
             const suggestionEle: HTMLDivElement | null = this.element.querySelector('.e-suggestions');
@@ -3148,13 +3144,6 @@ export class ChatUI extends InterActiveChatBase implements INotifyPropertyChange
             this.loadMoreMessages();
         }
         this.isScrollAtBottom = atBottom;
-    }
-    private checkScrollAtBottom(): boolean {
-        const scrollThreshold: number = 5;
-        const scrollTop: number = Math.floor(this.messageWrapper.scrollTop);
-        const scrollHeight: number = Math.floor(this.messageWrapper.scrollHeight);
-        const clientHeight: number = Math.floor(this.messageWrapper.clientHeight);
-        return scrollHeight - scrollTop <= clientHeight + scrollThreshold;
     }
     private toggleClassName(element: HTMLElement, atBottom: boolean, name: string): void {
         switch (name) {
@@ -3172,7 +3161,7 @@ export class ChatUI extends InterActiveChatBase implements INotifyPropertyChange
         }
     }
     private toggleScrollIcon(): void {
-        const atBottom: boolean = this.checkScrollAtBottom();
+        const atBottom: boolean = this.checkScrollAtBottom(this.messageWrapper, 0);
         this.toggleClassName(this.downArrowIcon.element, atBottom, 'downArrow');
         const suggestionEle: HTMLDivElement | null = this.element.querySelector('.e-suggestions');
         if (suggestionEle) {

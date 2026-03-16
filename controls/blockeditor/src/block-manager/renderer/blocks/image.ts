@@ -1,10 +1,13 @@
-import { createElement, formatUnit, updateCSSText } from '@syncfusion/ej2-base';
-import { BlockModel, IImageBlockSettings, ImageBlockSettingsModel } from '../../../models/index';
+import { createElement, formatUnit, updateCSSText, detach, isNullOrUndefined as isNOU } from '@syncfusion/ej2-base';
+import { Popup } from '@syncfusion/ej2-popups';
+import { BlockModel, FileUploadSuccessEventArgs, IImageBlockSettings, ImageBlockSettingsModel } from '../../../models/index';
 import { BlockType } from '../../../models/enums';
 import { SaveFormat } from '../../../models/types';
-import { getBlockModelById } from '../../../common/utils/index';
+import { getBlockModelById, decoupleReference } from '../../../common/utils/index';
 import { events } from '../../../common/constant';
 import { BlockManager } from '../../base/block-manager';
+import { IPopupRenderOptions } from '../../../common/interface';
+import { IFileUploadSuccessEventArgs } from '../../base/interface';
 
 // Constants
 const MIN_IMAGE_WIDTH: number = 40;
@@ -21,19 +24,30 @@ export class ImageRenderer {
     private currentImage: HTMLImageElement;
     private resizeOverlay: HTMLElement;
     private animationFrameId: number;
+    private uploadPopupObj: Popup | null;
+    private uploadPopupElement: HTMLElement | null;
+    private currentPlaceholder: HTMLElement | null;
+    private isUploadPopupOpen: boolean;
 
     constructor(manager: BlockManager) {
         this.parent = manager;
+        this.uploadPopupObj = null;
+        this.uploadPopupElement = null;
+        this.currentPlaceholder = null;
+        this.isUploadPopupOpen = false;
         this.addEventListeners();
+        // Create upload popup during initialization to ensure uploader is ready
     }
 
     private addEventListeners(): void {
         this.parent.observer.on(events.documentClick, this.handleDocumentClick, this);
+        this.parent.observer.on('modulesInitialized', this.createUploadPopup, this);
         this.parent.observer.on(events.destroy, this.destroy, this);
     }
 
     private removeEventListeners(): void {
         this.parent.observer.off(events.documentClick, this.handleDocumentClick);
+        this.parent.observer.off('modulesInitialized', this.createUploadPopup);
         this.parent.observer.off(events.destroy, this.destroy);
     }
 
@@ -47,11 +61,266 @@ export class ImageRenderer {
     public renderImage(block: BlockModel): HTMLElement {
         const settings: IImageBlockSettings = block.properties as IImageBlockSettings;
 
-        const { container, img }: { container: HTMLElement; img: HTMLImageElement } = this.createImageContainer(block);
-        this.configureImageElement(img, settings);
+        const isCallFromBlazor: boolean = isNOU((this.parent.rootEditorElement as any).ej2_instances);
+        // Check if image has source - if not, render placeholder
+        if (!isCallFromBlazor && (!settings.src || settings.src === '')) {
+            const placeholder: HTMLElement = this.renderPlaceholder(block.id);
 
+            // Only auto-open popup if NOT during undo/redo and NOT during initial rendering
+            const isUndoRedo: boolean = this.parent.undoRedoAction.isUndoing || this.parent.undoRedoAction.isRedoing;
+            if (!isUndoRedo && (this.parent.blockRenderer && !this.parent.blockRenderer.isEntireBlocksRendering)) {
+                // Open upload popup after a short delay to ensure placeholder is appended in dom
+                setTimeout(() => {
+                    this.toggleUploadPopup(isNOU(this.parent.currentFocusedBlock), placeholder);
+                }, 100);
+            }
+            return placeholder;
+        }
+
+        // Render normal image if src exists
+        const { container, img }: { container: HTMLElement; img: HTMLImageElement } = this.createImageContainer(block);
+        this.configureImageElement(img, block);
         container.appendChild(img);
         return container;
+    }
+
+    public renderPlaceholder(blockId: string): HTMLElement {
+        const placeholder: HTMLElement = createElement('div', {
+            id: `${this.parent.rootEditorElement.id}_image-placeholder-${blockId}`,
+            className: 'e-image-placeholder',
+            attrs: {
+                'role': 'button',
+                'aria-label': this.parent.localeJson['imgPlaceholderAriaLabel'],
+                'tabindex': '0',
+                'data-block-id': blockId,
+                contenteditable: 'false'
+            }
+        });
+
+        // Create placeholder icon
+        const iconContainer: HTMLElement = createElement('div', {
+            className: 'e-placeholder-icon-container'
+        });
+        const icon: HTMLElement = createElement('span', {
+            className: 'e-icons e-block-image-icon'
+        });
+        iconContainer.appendChild(icon);
+        // Create placeholder text
+        const textElement: HTMLElement = createElement('div', {
+            className: 'e-placeholder-text',
+            innerHTML: this.parent.localeJson['imagePlaceholder']
+        });
+        placeholder.appendChild(iconContainer);
+        placeholder.appendChild(textElement);
+        // Bind click event
+        placeholder.addEventListener('click', this.handlePlaceholderClick.bind(this));
+        // Bind keyboard events
+        placeholder.addEventListener('keydown', this.handlePlaceholderKeydown.bind(this));
+
+        return placeholder;
+    }
+
+    private handlePlaceholderClick(event: MouseEvent): void {
+        event.preventDefault();
+        const target: HTMLElement = event.currentTarget as HTMLElement;
+        if (this.currentPlaceholder !== target) {
+            this.toggleUploadPopup(false, target);
+        }
+        else {
+            this.toggleUploadPopup(true);
+            this.currentPlaceholder = null;
+        }
+    }
+
+    private handlePlaceholderKeydown(event: KeyboardEvent): void {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            const target: HTMLElement = event.currentTarget as HTMLElement;
+            this.toggleUploadPopup(false, target);
+        }
+    }
+
+    public toggleUploadPopup(shouldHide: boolean, placeholder?: HTMLElement): void {
+        if (shouldHide) {
+            if (this.uploadPopupObj && this.isUploadPopupOpen) {
+                this.uploadPopupObj.hide();
+                this.isUploadPopupOpen = false;
+                this.currentPlaceholder = null;
+            }
+        } else {
+            if (placeholder) {
+                this.currentPlaceholder = placeholder;
+            }
+            // Show popup
+            if (this.uploadPopupObj && this.currentPlaceholder) {
+                this.uploadPopupObj.relateTo = this.currentPlaceholder;
+                this.parent.popupRenderer.adjustPopupPositionRelativeToTarget(
+                    this.currentPlaceholder,
+                    this.uploadPopupObj
+                );
+                this.parent.observer.notify('clearUploaderObj');
+                this.uploadPopupObj.show();
+                this.isUploadPopupOpen = true;
+            }
+        }
+    }
+
+    private createUploadPopup(): void {
+        // Create popup container
+        this.uploadPopupElement = createElement('div', {
+            id: `${this.parent.rootEditorElement.id}_image-upload-popup`,
+            className: 'e-image-upload-popup e-popup-container'
+        });
+        // Create popup content container
+        const contentContainer: HTMLElement = createElement('div', {
+            id: `${this.parent.rootEditorElement.id}_image-tab-container`,
+            className: 'e-popup-content'
+        });
+        this.uploadPopupElement.appendChild(contentContainer);
+        this.parent.rootEditorElement.appendChild(this.uploadPopupElement);
+        // Notify BlockEditor to render the tab component in this container
+        this.parent.observer.notify('renderImageUploader', { container: contentContainer });
+        // Use PopupRenderer to create the popup
+        const args: IPopupRenderOptions = {
+            element: this.uploadPopupElement,
+            content: contentContainer,
+            width: '400px',
+            height: 'auto'
+        };
+        this.uploadPopupObj = this.parent.popupRenderer.renderPopup(args);
+        // Bind popup lifecycle events
+        this.uploadPopupObj.open = this.handlePopupOpen.bind(this);
+        this.uploadPopupObj.close = this.handlePopupClose.bind(this);
+        // Bind escape key to close popup
+        this.uploadPopupElement.addEventListener('keydown', this.handlePopupKeydown.bind(this));
+        // Subscribe to image selection and upload events
+        this.subscribeToImageEvents();
+    }
+
+    private subscribeToImageEvents(): void {
+        // Listen for file selected event to show Base64 preview
+        this.parent.observer.on('fileSelected', this.handleFileSelected, this);
+        // Listen for upload success to replace with server URL
+        this.parent.observer.on('fileUploadSuccess', this.handleUploadSuccess, this);
+        // Listen for embed image event
+        this.parent.observer.on('imageEmbedded', this.handleImageEmbedded, this);
+    }
+
+    private unsubscribeFromImageEvents(): void {
+        this.parent.observer.off('fileSelected', this.handleFileSelected);
+        this.parent.observer.off('fileUploadSuccess', this.handleUploadSuccess);
+        this.parent.observer.off('imageEmbedded', this.handleImageEmbedded);
+    }
+
+    private handleFileSelected(args: any): void {
+        if (!this.currentPlaceholder || !args.previewUrl) {
+            return;
+        }
+        // Get the block ID from placeholder
+        const blockId: string = this.currentPlaceholder.getAttribute('data-block-id') || '';
+        // Replace placeholder with image preview
+        this.replaceWithImage(this.currentPlaceholder, args.previewUrl, args.file.name, blockId);
+        // Close the popup
+        this.toggleUploadPopup(true);
+    }
+
+    private handleUploadSuccess(args: IFileUploadSuccessEventArgs): void {
+        const blockElement: HTMLElement = this.parent.rootEditorElement.querySelector(`[data-block-id="${args.blockId}"]`) as HTMLElement;
+        if (!blockElement) {
+            return;
+        }
+        // Find the image element and update its src
+        const imgElement: HTMLImageElement = blockElement.querySelector('img.e-image-block') as HTMLImageElement;
+        if (imgElement) {
+            imgElement.src = args.fileUrl;
+            // Update the block model
+            const block: BlockModel = getBlockModelById(args.blockId, this.parent.getEditorBlocks());
+            if (block) {
+                (block.properties as IImageBlockSettings).src = args.fileUrl;
+            }
+        }
+    }
+
+    private handleImageEmbedded(args: any): void {
+        if (!this.currentPlaceholder || !args.url) {
+            return;
+        }
+        // Get the block ID from placeholder
+        const blockId: string = this.currentPlaceholder.getAttribute('data-block-id') || '';
+        // Replace placeholder with image
+        this.replaceWithImage(this.currentPlaceholder, args.url, 'Embedded image', blockId);
+        // Close the popup
+        this.toggleUploadPopup(true);
+    }
+
+    // Replaces placeholder element with actual image element using BlockCommand API.
+    private replaceWithImage(placeholder: HTMLElement, imageSrc: string, altText: string, blockId: string): void {
+        const blockElement: HTMLElement = placeholder.parentElement;
+        if (!blockElement) {
+            return;
+        }
+        const oldBlock: BlockModel = getBlockModelById(blockId, this.parent.getEditorBlocks());
+        if (!oldBlock) {
+            return;
+        }
+        // old block model (src empty)
+        const oldBlockClone: BlockModel = decoupleReference(oldBlock);
+        // Update the block with the new src
+        const updatedProps: IImageBlockSettings = {
+            ...oldBlock.properties as IImageBlockSettings,
+            src: imageSrc,
+            altText: altText
+        };
+        // Update the block model
+        oldBlock.properties = updatedProps;
+        const newBlock: BlockModel = this.parent.blockService.updateBlock(blockId, oldBlock);
+        this.parent.stateManager.updateManagerBlocks();
+        const newBlockClone: BlockModel = decoupleReference(newBlock);
+        const newBlockElement: HTMLElement = this.parent.blockRenderer.createBlockElement(newBlock);
+        // Replace the old placeholder block element with the new image block element
+        blockElement.parentElement.insertBefore(newBlockElement, blockElement);
+        detach(blockElement);
+        this.parent.setFocusToBlock(newBlockElement);
+        this.parent.undoRedoAction.trackImageInsertionForUndoRedo(blockId, oldBlockClone, newBlockClone);
+        this.parent.eventService.addChange({
+            action: 'Update',
+            data: {
+                block: newBlockClone,
+                prevBlock: oldBlockClone
+            }
+        });
+        this.parent.observer.notify('triggerBlockChange', this.parent.eventService.getChanges());
+        // Clear current placeholder reference
+        this.currentPlaceholder = null;
+    }
+
+    private handlePopupOpen(): void {
+        this.isUploadPopupOpen = true;
+        // Notify BlockEditor's tab renderer via event
+        this.parent.observer.notify('imagePopupOpen', {});
+    }
+
+    private handlePopupClose(): void {
+        this.isUploadPopupOpen = false;
+        // Notify BlockEditor's tab renderer via event
+        this.parent.observer.notify('imagePopupClose', {});
+    }
+
+    private handlePopupKeydown(event: KeyboardEvent): void {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            this.toggleUploadPopup(true);
+        }
+    }
+
+    /**
+     * Gets the current placeholder element.
+     *
+     * @returns {HTMLElement | null} The current image placeholder element
+     * @hidden
+     */
+    public getCurrentPlaceholder(): HTMLElement | null {
+        return this.currentPlaceholder;
     }
 
     private createImageContainer(block: BlockModel): { container: HTMLElement; img: HTMLImageElement } {
@@ -69,11 +338,13 @@ export class ImageRenderer {
         return { container, img };
     }
 
-    private configureImageElement(img: HTMLImageElement, settings: IImageBlockSettings): void {
+    private configureImageElement(img: HTMLImageElement, block: BlockModel): void {
+        const settings: IImageBlockSettings = block.properties as IImageBlockSettings;
         const globalImgSettings: ImageBlockSettingsModel = this.parent.imageBlockSettings;
         updateCSSText(img, `width: ${formatUnit(settings.width ? settings.width : globalImgSettings.width)};`);
         updateCSSText(img, `height: ${formatUnit(settings.height ? settings.height : globalImgSettings.height)};`);
 
+        const isUndoRedo: boolean = this.parent.undoRedoAction.isUndoing || this.parent.undoRedoAction.isRedoing;
         if (settings.src) {
             img.src = settings.src;
         } else {
@@ -90,6 +361,10 @@ export class ImageRenderer {
             const maxHeight: string = globalImgSettings.maxHeight ? `max-height: ${formatUnit(globalImgSettings.maxHeight)};` : '';
             updateCSSText(img, minWidth + minHeight + maxWidth + maxHeight);
             this.aspectRatio = img.naturalWidth / img.naturalHeight;
+            // Should notify only during image inserted via uploader and paste action.
+            if ((this.parent.blockRenderer && !this.parent.blockRenderer.isEntireBlocksRendering) && !isUndoRedo) {
+                this.parent.observer.notify('imageInserted', { blockId: block.id, imgElement: img });
+            }
             if (this.parent.imageBlockSettings.enableResize) {
                 this.addResizeHandles(img.parentElement, img);
             }
@@ -142,6 +417,19 @@ export class ImageRenderer {
 
     private handleDocumentClick(mouseEvent: MouseEvent): void {
         const target: HTMLElement = mouseEvent.target as HTMLElement;
+
+        // Handle upload popup visibility logic
+        if (this.uploadPopupObj && this.isUploadPopupOpen) {
+            const isInsidePopup: boolean = this.uploadPopupElement && this.uploadPopupElement.contains(target);
+            const isOnPlaceholder: boolean = this.currentPlaceholder && this.currentPlaceholder.contains(target);
+
+            // Close popup if clicking outside both popup and placeholder
+            if (!isInsidePopup && !isOnPlaceholder) {
+                this.toggleUploadPopup(true);
+            }
+        }
+
+        // Handle image resize handles visibility
         const isImageClick: boolean = target.matches('img') || target.getAttribute('data-block-type') === BlockType.Image;
         const images: NodeListOf<HTMLImageElement> = this.parent.rootEditorElement.querySelectorAll<HTMLImageElement>('img');
 
@@ -186,7 +474,7 @@ export class ImageRenderer {
         });
     }
 
-    private async getImageSrcFromFile(file: File | Blob, saveFormat: SaveFormat): Promise<string> {
+    private getImageSrcFromFile(file: File | Blob, saveFormat: SaveFormat): Promise<string> {
         const format: string = saveFormat.toLowerCase();
 
         if (format === 'base64') {
@@ -197,7 +485,7 @@ export class ImageRenderer {
                 reader.readAsDataURL(file);
             });
         } else {
-            return URL.createObjectURL(file);
+            return Promise.resolve(URL.createObjectURL(file));
         }
     }
 
@@ -241,7 +529,7 @@ export class ImageRenderer {
             container.appendChild(handle);
         }
         if (img.clientWidth > 0 || img.clientHeight > 0) {
-            updateCSSText(container, `width: ${formatUnit(img.clientWidth)}; height: ${formatUnit(img.clientHeight)};`);
+            updateCSSText(container, `width: ${formatUnit(img.clientWidth)};`);
         }
     }
 
@@ -327,8 +615,29 @@ export class ImageRenderer {
 
     public destroy(): void {
         this.removeEventListeners();
+
+        // Unsubscribe from image events
+        this.unsubscribeFromImageEvents();
+
+        // Destroy upload popup
+        if (this.uploadPopupObj) {
+            this.uploadPopupObj.destroy();
+            this.uploadPopupObj = null;
+        }
+
+        // Remove upload popup element
+        if (this.uploadPopupElement && this.uploadPopupElement.parentElement) {
+            detach(this.uploadPopupElement);
+            this.uploadPopupElement = null;
+        }
+
+        // Clean up resize overlay
         if (this.resizeOverlay && this.resizeOverlay.parentNode) {
             document.body.removeChild(this.resizeOverlay);
         }
+
+        // Clear references
+        this.currentPlaceholder = null;
+        this.isUploadPopupOpen = false;
     }
 }

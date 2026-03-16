@@ -26,6 +26,10 @@ export const CLASS_VIDEO_BREAK: string = 'e-video-break';
 
 export const CLASS_CAPTION: string = 'e-img-caption';
 
+export const CLASS_IMAGE_LEFT_WRAP: string = 'e-img-left-wrap';
+
+export const CLASS_IMAGE_RIGHT_WRAP: string = 'e-img-right-wrap';
+
 export const CLASS_RTE_CAPTION: string = 'e-rte-img-caption';
 
 export const CLASS_CAPTION_INLINE: string = 'e-caption-inline';

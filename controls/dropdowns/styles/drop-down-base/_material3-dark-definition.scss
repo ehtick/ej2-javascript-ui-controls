@@ -16,7 +16,7 @@ $mention-list-box-shadow-color: rgba(0, 0, 0, .21) !default;
 $mention-chip-bg-color: $grey-300 !default;
 $mention-chip-border-radius: $radius-2 !default;
 $mention-chip-border: none !default;
-$ddl-list-bg-color: $flyout-bg-color !default;
+$ddl-list-bg-color: $flyout-header-bg-color !default;
 $ddl-list-header-bg-color: $transparent !default;
 $ddl-list-tap-color: transparent !default;
 $ddl-list-header-border-color: rgba($primary) !default;
@@ -24,6 +24,8 @@ $ddl-nodata-font-color: rgba($content-text-color-alt1) !default;
 $ddl-list-default-font-color: rgba($flyout-text-color) !default;
 $ddl-list-active-border-color: $grey-300 !default;
 $mention-popup-bg-color: $flyout-bg-color !default;
+$mention-popup-border-radius: $radius-4 !default;
+$mention-popup-padding: 4px 0;
 $ddl-list-active-font-color: rgba($flyout-text-color-selected) !default;
 $mention-active-font-color: rgba($primary) !default;
 $ddl-list-active-bg-color: rgba($content-bg-color-selected) !default;
@@ -32,7 +34,7 @@ $ddl-list-pressed-bg-color: $flyout-bg-color-pressed !default;
 $ddl-list-hover-border-color: $grey-300 !default;
 $ddl-list-hover-bg-color: $flyout-bg-color-hover !default;
 $ddl-list-hover-font-color: rgba($flyout-text-color-hover) !default;
-$ddl-list-header-font-color: rgba($content-text-color) !default;
+$ddl-list-header-font-color: $flyout-header-text-color !default;
 $ddl-list-font-size: 13px !default;
 $ddl-group-list-font-size: 13px !default;
 $ddl-list-font-family: inherit !default;
@@ -89,9 +91,9 @@ $ddl-bgr-dropbase-list-icon-item-padding: 0 12px 0 0 !default;
 
 @include export-module('dropdownbase-Material3') {
   .e-dropdownbase .e-list-item .e-list-icon {
-    padding: 0 16px 0 0;
+    padding-inline-end: 16px;
   }
   .e-small .e-dropdownbase .e-list-item .e-list-icon {
-    padding: 0 12px 0 0;
+    padding-inline-end: 12px;
   }
 }

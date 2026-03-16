@@ -923,7 +923,26 @@ export interface IHistoryChangeArgs {
     cause: string;
     /** returns the event action */
     action?: HistoryChangeAction;
-
+    /**
+     * @private
+     * Sets the changed values to be stored
+     */
+    redoObject?: NodeModel | ConnectorModel | SelectorModel | DiagramModel;
+    /**
+     * @private
+     * Sets the changed values to be stored
+     */
+    undoObject?: NodeModel | ConnectorModel | SelectorModel | DiagramModel | ShapeAnnotation | PathAnnotation | PointPortModel;
+    /**
+     * @private
+     * Sets the changed values to be stored in table
+     */
+    childTable?: {};
+    /**
+     * @private
+     * Sets the changed values to be stored in table
+     */
+    objectId?: string;
 }
 /**
  * IBlazorChangeArgs

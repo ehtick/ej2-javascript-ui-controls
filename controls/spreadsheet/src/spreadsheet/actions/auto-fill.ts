@@ -1,7 +1,7 @@
 import { getColIdxFromClientX, getClientY, getClientX, selectAutoFillRange, setPosition, completeAction, showAggregate, dialog, locale, hideAutoFillOptions, performUndoRedo, hideAutoFillElement, removeAllChildren } from '../../spreadsheet/index';
 import { Spreadsheet, contentLoaded, positionAutoFillElement, getCellPosition, getRowIdxFromClientY } from '../../spreadsheet/index';
 import { performAutoFill, isLockedCells } from '../../spreadsheet/index';
-import { ICellRenderer, editAlert, AutoFillEventArgs, FillRangeInfo, readonlyAlert, getUpdateUsingRaf, editOperation } from '../common/index';
+import { ICellRenderer, editAlert, AutoFillEventArgs, FillRangeInfo, readonlyAlert, getUpdateUsingRaf, editOperation, deInitProperties } from '../common/index';
 import { updateSelectedRange, isHiddenRow, setAutoFill, AutoFillType, AutoFillDirection, refreshCell, getFillInfo, getautofillDDB, isReadOnlyCells, checkIsFormula } from '../../workbook/index';
 import { getRangeIndexes, getSwapRange, Workbook, getRowsHeight, getColumnsWidth, isInRange } from '../../workbook/index';
 import { getCell, CellModel, SheetModel, getRangeAddress, isHiddenCol, beginAction, refreshRibbonIcons } from '../../workbook/index';
@@ -607,8 +607,28 @@ export class AutoFill {
         return false;
     }
 
+    private cleanUpAutoFill(): void {
+        if (this.autoFillDropDown) { this.autoFillDropDown.destroy(); }
+        this.autoFillDropDown = null;
+        if (this.splitBtnElem) { removeAllChildren(this.splitBtnElem); this.splitBtnElem.remove(); }
+        this.splitBtnElem = null;
+        this.autoFillElementPosition = null;
+        this.autoFillCell = null;
+        const host: Element = this.parent && this.parent.element;
+        if (!host) { return; }
+        const handles: Element[] = [].slice.call(host.querySelectorAll('.e-autofill'));
+        const options: Element[] = [].slice.call(host.querySelectorAll('.e-filloption'));
+        handles.forEach((el: Element) => {
+            if (el.parentElement) { el.parentElement.removeChild(el); }
+        });
+        options.forEach((el: Element) => {
+            if (el.parentElement) { el.parentElement.removeChild(el); }
+        });
+    }
+
     private addEventListener(): void {
         this.parent.on(contentLoaded, this.createAutoFillElement, this);
+        this.parent.on(deInitProperties, this.cleanUpAutoFill, this);
         this.parent.on(positionAutoFillElement, this.positionAutoFillElement, this);
         this.parent.on(hideAutoFillOptions, this.hideAutoFillOptions, this);
         this.parent.on(hideAutoFillElement, this.hideAutoFillElement, this);
@@ -621,6 +641,7 @@ export class AutoFill {
     private removeEventListener(): void {
         if (!this.parent.isDestroyed) {
             this.parent.off(contentLoaded, this.createAutoFillElement);
+            this.parent.off(deInitProperties, this.cleanUpAutoFill);
             this.parent.off(positionAutoFillElement, this.positionAutoFillElement);
             this.parent.off(hideAutoFillOptions, this.hideAutoFillOptions);
             this.parent.off(hideAutoFillElement, this.hideAutoFillElement);
@@ -639,16 +660,13 @@ export class AutoFill {
 
     public destroy(): void {
         this.removeEventListener();
-        if (this.autoFillElement) { this.autoFillElement.remove(); }
-        this.autoFillElement = null;
-        this.autoFillElementPosition = null;
-        this.autoFillCell = null;
-        if (this.autoFillDropDown) { this.autoFillDropDown.destroy(); }
-        this.autoFillDropDown = null;
+        this.cleanUpAutoFill();
+        if (this.autoFillElement) {
+            this.autoFillElement.remove();
+            this.autoFillElement = null;
+        }
         this.isVerticalFill = null;
         this.fillOptionIndex = null;
-        if (this.splitBtnElem) { removeAllChildren(this.splitBtnElem); this.splitBtnElem.remove(); }
-        this.splitBtnElem = null;
         this.parent = null;
     }
     /**

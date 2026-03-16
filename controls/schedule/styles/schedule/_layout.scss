@@ -570,6 +570,10 @@
       opacity: 1;
       transition: opacity 100ms linear;
 
+      &.e-hidden-event {
+        display: none;
+      }
+
       .e-subject.e-disable {
         display: none;
       }
@@ -2983,7 +2987,8 @@
     }
 
     .e-repeat-container,
-    .e-input-group .e-input-group-icon.e-icon-disable {
+    .e-input-group .e-input-group-icon.e-icon-disable,
+    .e-b-form-container .e-datetime-wrapper.disable-time .e-input-group-icon.e-time-icon {
       display: none;
     }
 

@@ -28,7 +28,7 @@ import { Matrix, transformPointByMatrix, rotateMatrix, identityMatrix } from '..
 import { Snap } from './../objects/snapping';
 import { NodeConstraints, DiagramEvent, ObjectTypes, PortConstraints, State, DiagramConstraints, DiagramAction, FlipDirection } from './../enum/enum';
 import { PointPortModel, PortModel } from './../objects/port-model';
-import { ITouches } from '../objects/interface/interfaces';
+import { ITouches, NodeDiff } from '../objects/interface/interfaces';
 import { SelectorModel } from '../objects/node-model';
 import { MouseEventArgs } from './event-handlers';
 import { TextElement } from '../core/elements/text-element';
@@ -45,6 +45,7 @@ import { findAngle } from '../utility/connector';
 import { updateLaneBoundsWithSelector } from './container-interaction';
 import { Diagram } from '../diagram';
 import { AnnotationModel } from '../objects/annotation-model';
+import { BpmnTextNode } from '../objects/bpmn';
 
 
 /**
@@ -120,12 +121,11 @@ export class ToolBase {
 
     private checkProperty: boolean = true;
 
-    /**   @private  */
-    public isConnectionChangeStarted : boolean = false;
-
     protected undoParentElement: SelectorModel = { nodes: [], connectors: [] };
 
     protected undoContainerElement: SelectorModel = { nodes: [], connectors: [] };
+
+    protected undoTextAnnotationElement: SelectorModel = { nodes: [] };
 
     protected toolName: string = 'ToolBase';
 
@@ -499,6 +499,9 @@ export class ConnectTool extends ToolBase {
 
     /**   @private  */
     public selectedSegment: BezierSegment;
+    /**   @private  */
+    public isConnectionChangeStarted : boolean = false;
+
     /** @private - tracks whether the connector endpoint actually moved during the change */
     protected connectionChangeMoved: boolean = false;
 
@@ -587,7 +590,7 @@ export class ConnectTool extends ToolBase {
                 ((args.source as SelectorModel).connectors[0].sourceID !== this.undoElement.connectors[0].sourceID)))) ||
             (this.endPoint === 'ConnectorTargetEnd' &&
                 ((!Point.equals((args.source as SelectorModel).connectors[0].targetPoint, this.undoElement.connectors[0].targetPoint))
-                    || ((args.source as SelectorModel).connectors[0].targetID !== this.undoElement.connectors[0].targetID)))) ) ||
+                    || ((args.source as SelectorModel).connectors[0].targetID !== this.undoElement.connectors[0].targetID))))) ||
             (this.isConnectionChangeStarted && this.connectionChangeMoved && args.source && (args.source as SelectorModel).connectors)) {
             let oldValues: PointModel; let newValues: PointModel; let connector: ConnectorModel;
             if (args.source && (args.source as SelectorModel).connectors && this.endPoint === 'ConnectorSourceEnd') {
@@ -664,10 +667,11 @@ export class ConnectTool extends ToolBase {
     public mouseMove(args: MouseEventArgs): boolean {
         super.mouseMove(args);
         let tempArgs: IBlazorConnectionChangeEventArgs;
-        if (!this.isConnectionChangeStarted && !this.connectionChangeMoved && (!(this instanceof ConnectorDrawingTool)) && ((this.endPoint === 'ConnectorSourceEnd' &&
-            Point.equals((args.source as SelectorModel).connectors[0].sourcePoint, this.undoElement.connectors[0].sourcePoint)) ||
-            (this.endPoint === 'ConnectorTargetEnd' &&
-                Point.equals((args.source as SelectorModel).connectors[0].targetPoint, this.undoElement.connectors[0].targetPoint)))) {
+        if (!this.isConnectionChangeStarted && !this.connectionChangeMoved && (!(this instanceof ConnectorDrawingTool)) &&
+            ((this.endPoint === 'ConnectorSourceEnd' &&
+                Point.equals((args.source as SelectorModel).connectors[0].sourcePoint, this.undoElement.connectors[0].sourcePoint)) ||
+                (this.endPoint === 'ConnectorTargetEnd' &&
+                    Point.equals((args.source as SelectorModel).connectors[0].targetPoint, this.undoElement.connectors[0].targetPoint)))) {
             let oldValue: PointModel; let connectors: ConnectorModel;
             if (args.source && (args.source as SelectorModel).connectors) {
                 oldValue = { x: this.prevPosition.x, y: this.prevPosition.y };
@@ -717,7 +721,6 @@ export class ConnectTool extends ToolBase {
                 const trigger: number = this.endPoint === 'ConnectorSourceEnd' ?
                     DiagramEvent.sourcePointChange : DiagramEvent.targetPointChange;
                 this.commandHandler.triggerEvent(trigger, arg);
-                // mark that the connector endpoint has moved at least once during this interaction
                 this.connectionChangeMoved = true;
             }
             if (args.target) {
@@ -755,7 +758,7 @@ export class ConnectTool extends ToolBase {
 
                     // Case 2: Connect to a port
                     else if (targetPortId && connector.sourcePortID !== targetPortId) {
-                        if (this.checkConnect(target as PointPortModel)) {
+                        if (this.checkConnect(target as PointPortModel, args)) {
                             tryDragConnector(targetPortId, (args.target as Node).id);
                             tempArgs = this.commandHandler.connect(this.endPoint, args, this.canCancel) as IBlazorConnectionChangeEventArgs;
                             this.isConnected = true;
@@ -832,7 +835,7 @@ export class ConnectTool extends ToolBase {
                                 this.isConnected = true;
                             }
                         } else {
-                            const isConnect: boolean = this.checkConnect(target as PointPortModel);
+                            const isConnect: boolean = this.checkConnect(target as PointPortModel, args);
                             if (isConnect) {
                                 this.isConnected = true;
                                 tempArgs = this.commandHandler.connect(this.endPoint, args, this.canCancel) as IBlazorConnectionChangeEventArgs;
@@ -876,16 +879,75 @@ export class ConnectTool extends ToolBase {
         return 'X:' + Math.round(position.x) + ' ' + 'Y:' + Math.round(position.y);
     }
 
-    private checkConnect(target: PointPortModel): boolean {
-        if (canPortInConnect(target) && this.endPoint === 'ConnectorTargetEnd') {
+    private checkConnect(target: PointPortModel, args: MouseEventArgs): boolean {
+        if (canPortInConnect(target) && this.endPoint === 'ConnectorTargetEnd' && !this.isConnectionCyclic(args)) {
             return true;
-        } else if (canPortOutConnect(target) && this.endPoint === 'ConnectorSourceEnd') {
+        } else if (canPortOutConnect(target) && this.endPoint === 'ConnectorSourceEnd' && !this.isConnectionCyclic(args)) {
             return true;
         } else if (!(target.constraints & PortConstraints.None) && !canPortInConnect(target) && !canPortOutConnect(target)
         && (target.constraints === undefined || (target.constraints & (PortConstraints.Default & ~(PortConstraints.InConnect | PortConstraints.OutConnect))) > 0)) {
             return true;
         }
         return false;
+    }
+
+    //1005814: Exception occurs when dragging a port-hosted connector endpoint after connecting ports
+    private isConnectionCyclic(args: MouseEventArgs): boolean {
+        const selector: SelectorModel = args.source;
+        const diagram: Diagram = this.commandHandler.diagram;
+        if (!selector.connectors) { return false; }
+
+        const sourceConnector: ConnectorModel & { inEdges?: string[]; outEdges?: string[]; } =
+            selector.connectors[0];
+        const sourceConnectorId: string = sourceConnector.id;
+
+        const targetConnectorId: string = (args.target as { id?: string }).id;
+
+        // Combine source edges into single array
+        const sourceConnectorEdges: string[] = this.getConnectorEdgeIds(sourceConnector);
+        if (!sourceConnectorEdges.length) { return false; }
+        // checks if source connects to any connector that eventually reaches target (complex cycle)
+        if (this.checkDeepCycle(diagram, sourceConnectorEdges, targetConnectorId, sourceConnectorId)) { return true; }
+
+        return false;
+    }
+
+    private checkDeepCycle(diagram: Diagram, edgeIds: string[], targetId: string, sourceId: string): boolean {
+        const visitedConnectorIds = new Set<string>();
+        const connectorQueue: string[] = [];
+
+        // Initialize connectorQueue with direct edges
+        for (const edgeId of edgeIds) {
+            if (edgeId && !visitedConnectorIds.has(edgeId)) {
+                connectorQueue.push(edgeId);
+            }
+        }
+        // BFS-based cycle detection: checks if traveling from `edgeIds` can reach `targetId`.
+        while (connectorQueue.length > 0) {
+            const currentConnectorId: string = connectorQueue.shift();
+            if (!currentConnectorId || visitedConnectorIds.has(currentConnectorId) || currentConnectorId === sourceId) { continue; }
+
+            if (currentConnectorId === targetId) { return true; }
+            visitedConnectorIds.add(currentConnectorId);
+
+            const connector: ConnectorModel & { inEdges?: string[]; outEdges?: string[]; } = diagram.nameTable[`${currentConnectorId}`];
+
+            // Collect next level edges
+            const connectorEdges: string[] = this.getConnectorEdgeIds(connector);
+
+            for (const edgeId of connectorEdges) {
+                if (edgeId && !visitedConnectorIds.has(edgeId)) {
+                    connectorQueue.push(edgeId);
+                }
+            }
+        }
+        return false;
+    }
+
+    private getConnectorEdgeIds(connector?: ConnectorModel & { inEdges?: string[]; outEdges?: string[] }): string[] {
+        const inIds: string[] = Array.isArray(connector.inEdges) ? connector.inEdges : [];
+        const outIds: string[] = Array.isArray(connector.outEdges) ? connector.outEdges : [];
+        return [...inIds, ...outIds];
     }
 
     /**   @private  */
@@ -935,13 +997,7 @@ export class MoveTool extends ToolBase {
      */
     public mouseDown(args: MouseEventArgs): void {
         //1011408: AllowMovingOutsideLane causes node enlargement on Shift+Click multi-select then Shift+Drag in SwimLane - undo/redo
-        let isSwimLaneChildMultiDrag: boolean = false;
-        if (args.source instanceof Node && args.info && args.info.ctrlKey === true && args.source.parentId) {
-            const parentElement: Node = this.commandHandler.diagram.nameTable[`${args.source.parentId}`];
-            if (args.source.parentId && parentElement.isLane && this.commandHandler.diagram.selectedItems.nodes.length > 1) {
-                isSwimLaneChildMultiDrag = true;
-            }
-        }
+        const isSwimLaneChildMultiDrag: boolean = this.checkSwimLaneChildMultiDrag(args);
         if ((args.source instanceof Node || args.source instanceof Connector) && !isSwimLaneChildMultiDrag) {
             const arrayNodes: (NodeModel | ConnectorModel | AnnotationModel)[] = this.commandHandler.getSelectedObject();
             this.commandHandler.selectObjects([args.source], args.info && args.info.ctrlKey, arrayNodes);
@@ -958,8 +1014,7 @@ export class MoveTool extends ToolBase {
             this.undoElement.offsetY = wrapper.offsetY;
         } else if (isSwimLaneChildMultiDrag) {
             this.undoElement = cloneObject(this.commandHandler.diagram.selectedItems);
-        }
-        else {
+        } else {
             this.undoElement = cloneObject(args.source);
         }
         //951087-Undo function doesn't retain connector segments after node move actions.
@@ -972,6 +1027,19 @@ export class MoveTool extends ToolBase {
         this.commandHandler.insertBlazorConnector(args.source as Selector);
         super.mouseDown(args);
         this.initialOffset = { x: 0, y: 0 };
+    }
+    /**
+     * @param args
+     */
+    private checkSwimLaneChildMultiDrag(args: MouseEventArgs): boolean {
+        let isSwimLaneChildMultiDrag: boolean = false;
+        if (args.source instanceof Node && args.info && args.info.ctrlKey === true && args.source.parentId) {
+            const parentElement: Node = this.commandHandler.diagram.nameTable[`${args.source.parentId}`];
+            if (parentElement && parentElement.isLane && this.commandHandler.diagram.selectedItems.nodes.length > 1) {
+                isSwimLaneChildMultiDrag = true;
+            }
+        }
+        return isSwimLaneChildMultiDrag;
     }
     private getPort(args: MouseEventArgs): PointPortModel {
         let port: any;
@@ -994,19 +1062,12 @@ export class MoveTool extends ToolBase {
      * @private
      */
     public async mouseUp(args: MouseEventArgs, isPreventHistory?: boolean): Promise<void> {
-        let oldValues: SelectorModel; let newValues: SelectorModel;
+        let oldValues: SelectorModel; let newValues: SelectorModel; let isEndGroupActionCalled: boolean = false;
         this.checkPropertyValue();
-        let isEndGroupActionCalled: boolean = false;
         let obj: SelectorModel; let historyAdded: boolean = false; let object: NodeModel | ConnectorModel | SelectorModel;
         const redoObject: SelectorModel = { nodes: [], connectors: [] };
         if (this.objectType !== 'Port') {
-            let isSwimLaneChildMultiDrag: boolean = false;
-            if (args.source instanceof Node && args.info && args.info.ctrlKey === true && args.source.parentId) {
-                const parentElement: Node = this.commandHandler.diagram.nameTable[`${args.source.parentId}`];
-                if (args.source.parentId && parentElement.isLane && this.commandHandler.diagram.selectedItems.nodes.length > 1) {
-                    isSwimLaneChildMultiDrag = true;
-                }
-            }
+            const isSwimLaneChildMultiDrag: boolean = this.checkSwimLaneChildMultiDrag(args);
             if ((args.source instanceof Node || args.source instanceof Connector) && !isSwimLaneChildMultiDrag) {
                 if (args.source instanceof Node) {
                     redoObject.nodes.push(cloneObject(args.source) as Node);
@@ -1223,7 +1284,6 @@ export class MoveTool extends ToolBase {
                 this.commandHandler.dropAnnotation(args.source, this.currentTarget);
             }
             this.commandHandler.updateSelector();
-            //1011408: moving single node outside lane undo-redo does not work issue
             if (historyAdded && (!this.commandHandler.isContainer || (isSwimLaneChildMultiDrag && !isEndGroupActionCalled))) {
                 this.commandHandler.endGroupAction();
             }
@@ -1274,8 +1334,8 @@ export class MoveTool extends ToolBase {
     }
     private clearDiff(nodes: NodeModel[]) {
         nodes.forEach(function (node, index) {
-            delete (node as any).diffX;
-            delete (node as any).diffY;
+            delete (node as NodeDiff).diffX;
+            delete (node as NodeDiff).diffY;
         });
     }
     private calculateDiff(selector: SelectorModel, target: NodeModel, diagram: Diagram){
@@ -1307,8 +1367,8 @@ export class MoveTool extends ToolBase {
         }
         let nodes = selector.nodes;
         nodes.forEach(function(node, index) {
-            (node as any).diffX = diffLeft;
-            (node as any).diffY = diffTop;
+            (node as NodeDiff).diffX = diffLeft;
+            (node as NodeDiff).diffY = diffTop;
         });
         return nodes;
     }
@@ -1380,14 +1440,15 @@ export class MoveTool extends ToolBase {
             return false;
         }
         if (object instanceof Node || object instanceof Connector) {
-            if (object instanceof Node && this.undoElement.nodes[0]) {
+            if (object instanceof Node && this.undoElement && this.undoElement.nodes[0]) {
                 if (object.offsetX === this.undoElement.nodes[0].offsetX &&
                     object.offsetY === this.undoElement.nodes[0].offsetY) {
                     isSame = true;
                 }
-            } else {
-                if (this.undoElement.connectors[0] && Point.equals((object as Connector).sourcePoint, this.undoElement.connectors[0].sourcePoint) &&
-                    Point.equals((object as Connector).targetPoint, this.undoElement.connectors[0].targetPoint)) { isSame = true; }
+            } else if (this.undoElement && this.undoElement.connectors[0]
+                && Point.equals((object as Connector).sourcePoint, this.undoElement.connectors[0].sourcePoint)
+                && Point.equals((object as Connector).targetPoint, this.undoElement.connectors[0].targetPoint)) {
+                isSame = true;
             }
         } else {
             if (object && object.wrapper && object.wrapper.offsetX === this.undoElement.wrapper.offsetX &&
@@ -1771,6 +1832,9 @@ export class ResizeTool extends ToolBase {
         this.undoElement = cloneObject(args.source);
         this.undoParentElement = this.commandHandler.getSubProcess(args.source);
         this.undoContainerElement = this.commandHandler.getContainer(args.source);
+        //Bug 1000867: Undo-redo after resizing text-annotation parent is not working properly
+        this.undoTextAnnotationElement = this.commandHandler.getTextAnnotation(args.source);
+
         super.mouseDown(args);
         if (this.undoElement.nodes[0] && this.undoElement.nodes[0].children) {
             const elements: (NodeModel | ConnectorModel)[] = [];
@@ -1827,20 +1891,32 @@ export class ResizeTool extends ToolBase {
             this.resizeStart = false;
             if (!isPreventHistory) {
                 this.commandHandler.startGroupAction();
-                if ((obj.nodes[0] as Node) && (obj.nodes[0] as Node).processId) {
+                if (obj.nodes.length > 0 && (obj.nodes[0] as Node).processId) {
                     const entry: HistoryEntry = {
                         type: 'SizeChanged', redoObject: this.commandHandler.getSubProcess(args.source),
                         undoObject: this.undoParentElement, category: 'Internal'
                     };
                     this.commandHandler.addHistoryEntry(entry);
                 }
-                if ((obj.nodes[0] as Node) && (obj.nodes[0] as Node).parentId
+                if (obj.nodes.length > 0 && (obj.nodes[0] as Node).parentId
                 && this.commandHandler.diagram.nameTable[(obj.nodes[0] as Node).parentId].shape.type === 'Container') {
                     const entry: HistoryEntry = {
                         type: 'SizeChanged', redoObject: this.commandHandler.getContainer(args.source),
                         undoObject: this.undoContainerElement, category: 'Internal'
                     };
                     this.commandHandler.addHistoryEntry(entry);
+                }
+                if (obj.nodes.length > 0) {
+                    let textEntry: HistoryEntry;
+                    const nodeObj = this.commandHandler.diagram.nameTable[obj.nodes[0].id];
+                    const isTextAnnotationParent: boolean = nodeObj && (nodeObj as BpmnTextNode).hasTextAnnotation;
+                    if (isTextAnnotationParent) {
+                        textEntry = {
+                            type: 'SizeChanged', redoObject: this.commandHandler.getTextAnnotation(args.source),
+                            undoObject: this.undoTextAnnotationElement, category: 'Internal'
+                        };
+                        this.commandHandler.addHistoryEntry(textEntry);
+                    }
                 }
                 //EJ2-934129 : Position of the subprocess changed during undo and redo operations
                 this.commandHandler.addHistoryEntry(entry);
@@ -2055,14 +2131,14 @@ export class NodeDrawingTool extends ToolBase {
         if (!this.drawingObject) {
             this.drawingObject = this.commandHandler.drawObject(node as Node);
         }
-        this.triggerElementDrawEvent(this.drawingObject,'Progress','Node',this.getShapeType(),false);
         if (this.inAction && Point.equals(this.currentPosition, this.prevPosition) === false) {
             const rect: Rect = Rect.toBounds([this.prevPosition, this.currentPosition]);
             checkBoundaryConstraints = this.commandHandler.checkBoundaryConstraints(undefined, undefined, rect);
             if (checkBoundaryConstraints) {
                 this.commandHandler.updateNodeDimension(this.drawingObject, rect);
             }
-        }
+        }//1005606-Mismatch in element draw event coordinates between in‑progress and completed states
+        this.triggerElementDrawEvent(this.drawingObject,'Progress','Node',this.getShapeType(),false);
         return checkBoundaryConstraints;
     }
 
@@ -2140,7 +2216,6 @@ export class ConnectorDrawingTool extends ConnectTool {
                 this.drawingObject = this.commandHandler.drawObject(connector as Connector);
             }
             args.source = this.drawingObject;
-            this.triggerElementDrawEvent(args.source,'Progress','Connector',(this.drawingObject as ConnectorModel).type,false);
             //Bug 874781: Port Draw Connection is not proper with group node.
             if(args.actualObject && ((args.actualObject as Node).parentId || (args.actualObject as Node).children) && (this.drawingObject as ConnectorModel).sourceID === ''
                 && (this.drawingObject as ConnectorModel).targetID === '') {
@@ -2184,9 +2259,11 @@ export class ConnectorDrawingTool extends ConnectTool {
             }
         }
         super.mouseMove(args);
+        if (this.inAction) { //1005606-Mismatch in element draw event coordinates between in‑progress and completed states
+            this.triggerElementDrawEvent(args.source, 'Progress', 'Connector', (this.drawingObject as ConnectorModel).type, false);
+        }
         this.commandHandler.enableServerDataBinding(true);
         return !this.blocked;
-
     }
     // Sets the target while drawing connector from the group node port or its children port.
     private setTarget(args: MouseEventArgs){
@@ -2964,8 +3041,6 @@ export class FreeHandTool extends ToolBase {
         if (this.inAction) {
             const obj: PathModel = (this.drawingObject.shape as PathModel);
             let pt: PointModel = this.currentPosition as PointModel;
-            // 988501 : Freehand connector snapping support in Diagram
-            pt = this.commandHandler.snapConnectorEnd(this.currentPosition);
             (obj as BasicShapeModel).points.push(pt);
             (this.drawingObject.wrapper.children[0] as PathElement).data = getFreeHandPath(
                 (this.drawingObject.shape as BasicShapeModel).points);
@@ -3021,6 +3096,9 @@ export class FreeHandTool extends ToolBase {
             let prevObj = this.commandHandler.diagram.nameTable[`${prevId}`];
             this.commandHandler.diagram.remove(prevObj);
             points = this.pointReduction(points, tolerance);
+            // Bug 1009831: Freehand connector end points are snapped to the nearest snap positions.
+            this.commandHandler.snapConnectorEnd(points[0]);
+            this.commandHandler.snapConnectorEnd(points[points.length - 1]);
             // 927557: controlPointsVisibility Property values not considered in Freehand drawing
             let bezierSettings: BezierSettingsModel = {};
             if ((this.commandHandler.diagram.drawingObject as ConnectorModel).bezierSettings) {

@@ -11,6 +11,7 @@ import { Axis } from '../axis/axis';
 import { CrosshairSettingsModel } from '../chart-model';
 import { ChartData } from '../../chart/utils/get-data';
 import { Points, Series } from '../series/chart-series';
+import { ICrosshairLabelRenderEventArgs } from '../../common/model/interface';
 
 
 /**
@@ -220,10 +221,8 @@ export class Crosshair {
             return null;
         }
 
-        this.valueX = chart.crosshair.snapToData || chart.crosshair.highlightCategory ? this.valueX :
-            (chart.tooltip.enable && chart.tooltipModule && chart.tooltipModule.valueX ? chart.tooltipModule.valueX : chart.mouseX);
-        this.valueY = chart.crosshair.snapToData || chart.crosshair.highlightCategory ? this.valueY :
-            (chart.tooltip.enable && chart.tooltipModule && chart.tooltipModule.valueY ? chart.tooltipModule.valueY : chart.mouseY);
+        this.valueX = chart.crosshair.snapToData || chart.crosshair.highlightCategory ? this.valueX : chart.mouseX;
+        this.valueY = chart.crosshair.snapToData || chart.crosshair.highlightCategory ? this.valueY : chart.mouseY;
         if (!chart.enableCanvas && crossGroup) {
             crossGroup.setAttribute('opacity', '1');
         }
@@ -406,9 +405,25 @@ export class Crosshair {
                     (this.valueY <= (axisRect.y + axisRect.height) && axisRect.y <= this.valueY))) {
                     pathElement = document.getElementById(this.elementID + '_axis_tooltip_' + k);
                     textElem = document.getElementById(this.elementID + '_axis_tooltip_text_' + k);
-                    text = this.getAxisText(axis);
+                    const axisLabelData: { axisValue: number | Date, formattedLabel: string } = this.getAxisText(axis);
+                    const argsData: ICrosshairLabelRenderEventArgs = {
+                        text: axisLabelData.formattedLabel,
+                        value: axisLabelData.axisValue,
+                        axisName: axis.name,
+                        axisOrientation: axis.orientation,
+                        fill: axis.crosshairTooltip.fill || chart.themeStyle.crosshairFill,
+                        textStyle: axis.crosshairTooltip.textStyle,
+                        cancel: false
+                    };
+                    this.chart.trigger('crosshairLabelRender', argsData);
+                    if (argsData.cancel) {
+                        removeElement(this.elementID + '_axis_tooltip_' + k);
+                        removeElement(this.elementID + '_axis_tooltip_text_' + k);
+                        continue;
+                    }
+                    text = argsData.text;
                     if (text && text.indexOf('<br') > -1) {
-                        text = this.getAxisText(axis).split(/<br.*?>/g);
+                        text = text.split(/<br.*?>/g);
                     }
                     if (!text) {
                         continue;
@@ -422,21 +437,22 @@ export class Crosshair {
                             pathElement = this.svgRenderer.drawPath(
                                 {
                                     'id': this.elementID + '_axis_tooltip_' + k,
-                                    'fill': axis.crosshairTooltip.fill || chart.themeStyle.crosshairFill
+                                    'fill': argsData.fill
                                 });
                         } else {
                             pathElement = chart.renderer.drawPath(
                                 {
                                     'id': this.elementID + '_axis_tooltip_' + k,
-                                    'fill': axis.crosshairTooltip.fill || chart.themeStyle.crosshairFill},
-                                null);
+                                    'fill': argsData.fill
+                                });
                         }
                         axisGroup.appendChild(pathElement);
                         options = new TextOption(this.elementID + '_axis_tooltip_text_' + k, 0, 0, (chart.stockChart && chart.enableRtl) ? 'end' : 'start', text);
                         const render: SvgRenderer | CanvasRenderer = chart.enableCanvas ? this.svgRenderer : chart.renderer;
                         textElem = textElement(
-                            render, options, axis.crosshairTooltip.textStyle,
-                            axis.crosshairTooltip.textStyle.color || chart.themeStyle.crosshairLabelFont.color, axisGroup, null, null, null,
+                            render, options, (argsData.textStyle),
+                            argsData.textStyle.color || chart.themeStyle.crosshairLabelFont.color,
+                            axisGroup, null, null, null,
                             null, null, null, null, null, chart.enableCanvas, null, this.chart.themeStyle.crosshairLabelFont
                         );
                     }
@@ -445,6 +461,7 @@ export class Crosshair {
                         this.isTop, this.isBottom, this.isLeft, this.valueX, this.valueY
                     );
                     pathElement.setAttribute('d', direction);
+                    pathElement.setAttribute( 'fill', argsData.fill);
                     if (typeof text !== 'string' && text.length > 1) {
                         for (let i: number = 0; i < text.length; i++) {
                             textElem.childNodes[i as number].textContent = text[i as number];
@@ -493,31 +510,37 @@ export class Crosshair {
         }
     }
 
-    private getAxisText(axis: Axis): string {
-        let value: number;
+    private getAxisText(axis: Axis): { axisValue: number | Date, formattedLabel: string } {
+        let positionValue: number;
         this.isBottom = false; this.isTop = false; this.isLeft = false; this.isRight = false;
-        const labelValue: number = (axis.valueType === 'Category' && axis.labelPlacement === 'BetweenTicks')
-            ? 0.5 : 0;
-        const isOpposed: boolean = axis.isAxisOpposedPosition;
+        const tickOffset: number = (axis.valueType === 'Category' && axis.labelPlacement === 'BetweenTicks') ? 0.5 : 0;
+        const isOpposedPosition: boolean = axis.isAxisOpposedPosition;
         if (axis.orientation === 'Horizontal') {
-            value = getValueXByPoint(Math.abs(this.valueX - axis.rect.x), axis.rect.width, axis) + labelValue;
-            this.isBottom = !isOpposed; this.isTop = isOpposed;
+            positionValue = getValueXByPoint(Math.abs(this.valueX - axis.rect.x), axis.rect.width, axis) + tickOffset;
+            this.isBottom = !isOpposedPosition;
+            this.isTop = isOpposedPosition;
         } else {
-            value = getValueYByPoint(Math.abs(this.valueY - axis.rect.y), axis.rect.height, axis) + labelValue;
-            this.isRight = isOpposed; this.isLeft = !isOpposed;
+            positionValue = getValueYByPoint(Math.abs(this.valueY - axis.rect.y), axis.rect.height, axis) + tickOffset;
+            this.isRight = isOpposedPosition;
+            this.isLeft = !isOpposedPosition;
         }
+        let axisValue: number | Date = positionValue;
+        let formattedLabel: string;
         if (axis.valueType === 'DateTime') {
-            return axis.format(new Date(value));
+            axisValue = new Date(positionValue);
+            formattedLabel = axis.format(axisValue);
         } else if (axis.valueType === 'Category') {
-            return axis.labels[Math.floor(<number>value)];
+            formattedLabel = axis.labels[Math.floor(positionValue)];
         } else if (axis.valueType === 'DateTimeCategory') {
-            return this.chart.dateTimeCategoryModule.getIndexedAxisLabel(axis.labels[Math.round(<number>value)], axis.format);
+            formattedLabel = this.chart.dateTimeCategoryModule.getIndexedAxisLabel( axis.labels[Math.round(positionValue)], axis.format);
         } else if (axis.valueType === 'Logarithmic') {
-            return value = axis.format(Math.pow(axis.logBase, value));
+            axisValue = Math.pow(axis.logBase, positionValue);
+            formattedLabel = axis.format(axisValue);
         } else {
-            const customLabelFormat: boolean = axis.labelFormat && axis.labelFormat.match('{value}') !== null;
-            return customLabelFormat ? axis.labelFormat.replace('{value}', axis.format(value)) : axis.format(value);
+            const hasCustomLabelFormat: boolean = axis.labelFormat && axis.labelFormat.match('{value}') !== null;
+            formattedLabel = hasCustomLabelFormat ? axis.labelFormat.replace('{value}', axis.format(positionValue)) : axis.format(positionValue);
         }
+        return { axisValue, formattedLabel };
     }
 
 

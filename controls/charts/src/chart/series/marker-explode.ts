@@ -91,7 +91,7 @@ export class MarkerExplode extends ChartData {
         let previous : PointData;
         let explodeSeries: boolean;
         let series: Series;
-        if (!chart.tooltip.shared || !chart.tooltip.enable) {
+        if ((!chart.tooltip.shared && !chart.tooltip.split) || !chart.tooltip.enable) {
             data = this.getData();
             series = data.series;
             previous = <PointData>this.previousPoints[0];
@@ -146,7 +146,7 @@ export class MarkerExplode extends ChartData {
             }
         }
         const length: number = this.previousPoints.length;
-        if (this.currentPoints.length > 0 || (length > 0 && chart.tooltip.shared)) {
+        if (this.currentPoints.length > 0 || (length > 0 && (chart.tooltip.shared || chart.tooltip.split))) {
             if (length === 0 || chart.isPointMouseDown || (length > 0 && (this.currentPoints.length === 0 ||
                 (this.previousPoints[0].point !== this.currentPoints[0].point)))) {
                 if (length > 0) {

@@ -61,6 +61,23 @@ export type OneOrMany<T> = T | T[];
  */
 export type ValueLike = string | number | { value: string };
 
+/**
+ * Dictionary of string attributes extracted from XML '$' bags.
+ * @typedef {Object} XmlStringMap
+ */
+export type XmlStringMap = { [key: string]: string };
+
+/**
+ * Minimal shape of <ForeignData>: attribute bag and optional Rel (or Rel[]).
+ * @typedef {Object} ForeignDataBlock
+ * @property {XmlStringMap} [$] - Attribute map (e.g., CompressionType, ForeignType)
+ * @property {{ $?: XmlStringMap } | Array<{ $?: XmlStringMap }>} [Rel] - Relationship(s) containing r:id
+ */
+export type ForeignDataBlock = {
+    $?: XmlStringMap;
+    Rel?: { $?: XmlStringMap } | Array<{ $?: XmlStringMap }>;
+};
+
 // ============================================================================
 // SECTION 1: XML STRUCTURE TYPES (ZIP/XML Parsing)
 // ============================================================================
@@ -115,7 +132,7 @@ export interface CellAttribute {
  */
 export interface VisioCell {
     /** Cell attributes (XML element attributes) */
-    readonly $: CellAttribute;
+    $: CellAttribute;
 }
 
 /**
@@ -338,6 +355,20 @@ export interface VisioShapeNode {
     };
     /** Shape attributes (XML element attributes) */
     readonly ForeignData?: any;
+}
+
+/**
+ * Type definition for auxiliary addInfo attached to parsed shapes used during
+ * Visio import/export. Contains the original parsed shape node (`data`), a flag
+ * indicating whether the shape has been modified, and an optional master id.
+ */
+export interface ShapeAddInfo {
+    /** Original parsed Visio shape node used for export/serialization */
+    data: VisioShapeNode | ParsedXmlObject;
+    /** Indicates whether the shape has been modified since parsing (affects export logic) */
+    isModified: boolean;
+    /** Optional master id reference from the parsed shape */
+    masterId?: string;
 }
 
 /**
@@ -678,11 +709,11 @@ export interface VisioDocumentStructure {
     /** Window configuration */
     Window?: ParsedXmlObject;
     /** Page definition */
-    Page?: ParsedXmlObject;
+    Page?: ParsedXmlObject | ParsedXmlObject[];
     /** Document settings */
     DocumentSettings?: ParsedXmlObject;
     /** Master definitions */
-    Master?: ParsedXmlObject;
+    Master?: ParsedXmlObject | ParsedXmlObject[];
     /** Relationship definitions */
     Relationship?: ParsedXmlObject;
     /** Connection definitions */
@@ -693,11 +724,164 @@ export interface VisioDocumentStructure {
     PageRelId?: string;
     /** Theme elements (DrawingML namespace preserved) */
     'a:themeElements'?: ParsedXmlObject;
-
     /** Extension elements not mapped to standard properties */
     __Extensions?: Record<string, ParsedXmlObject>;
     /** Binary file parts (images, media, etc.) */
     __BinaryParts?: Record<string, Uint8Array>;
+    /** Index of the currently processed Visio document */
+    __Index?: number | string;
+    /** File name of the currently selected page */
+    __SelectedPageFile?: string;
+    /** File names of background pages associated with the document */
+    __BackgroundPageFiles?: string[];
+    /** Parsed Document definition */
+    RootDocument?: VisioRootDocument;
+}
+
+/**
+ * Top-level object for a parsed Visio document (RootDocument in Visio XML).
+ * This structure mirrors the document-wide metadata and collections that
+ * influence shapes, styles, colors, and fonts across the file.
+ *
+ * Includes: Colors, DocumentSettings, DocumentSheet, FaceNames, and StyleSheets.
+ *
+ * @interface VisioRootDocument
+ *
+ * @private
+ *
+ */
+export interface VisioRootDocument {
+    /**
+     * XML namespace attributes preserved during XML→JSON parsing.
+     * Typically contains the document's xmlns declaration.
+     */
+    readonly $: {
+        readonly xmlns: string; /** Default XML namespace (e.g., 'http://schemas.microsoft.com/visio/2003/core') */
+    };
+
+    /**
+     * Optional color table collection from <Colors>.
+     * A document may map indices to color entries that theme/style logic can reference.
+     */
+    readonly Colors?: {
+        readonly ColorEntry: OneOrMany<ColorEntry>; /** One or many color entries, each providing an RGB value and index. */
+    };
+
+    /**
+     * Document-level settings from <DocumentSettings>.
+     * Governs grid/snap/protect flags that apply globally to the file.
+     */
+    readonly DocumentSettings?: DocumentSettingsElement;
+
+    /**
+     * DocumentSheet holds global cells and sections that act as document defaults.
+     * Values here are inherited/consulted when shape- or page-level cells are absent.
+     */
+    readonly DocumentSheet?: {
+        /**
+         * Common Visio attributes for naming and style inheritance.
+         * - Name/NameU: display and universal names
+         * - LineStyle/FillStyle/TextStyle: style IDs tied to StyleSheets
+         */
+        readonly $: {
+            readonly IsCustomName?: string;
+            readonly IsCustomNameU?: string;
+            readonly Name?: string;
+            readonly NameU?: string;
+            readonly LineStyle?: string;
+            readonly FillStyle?: string;
+            readonly TextStyle?: string;
+        };
+        readonly Cell: OneOrMany<VisioCell>; /** One or many <Cell> elements providing document-global cell values. */
+        readonly Section?: OneOrMany<VisioSection>; /** Optional sections (e.g., Property, Layers) with rows/cells. */
+    };
+
+    /**
+     * Optional font metadata from <FaceNames>.
+     * Allows resolving universal font names and bitmask characteristics.
+     */
+    readonly FaceNames?: {
+        /** Single FaceName entry describing font characteristics for the document. */
+        readonly FaceName: FaceName;
+    };
+
+    /**
+     * The document’s stylesheet collection (<StyleSheets>), containing one or more
+     * <StyleSheet> elements that define default/implicit styling (Fill/Line/Text).
+     */
+    readonly StyleSheets: VisioStyleSheetsContainer;
+}
+
+/**
+ * Represents a single <FaceName> entry under <FaceNames>.
+ * Holds font metadata as strings (often space-separated numeric bitmasks).
+ *
+ * @interface FaceName
+ *
+ * @private
+ *
+ */
+export interface FaceName {
+    /** FaceName attributes. */
+    readonly $?: {
+        readonly CharSets?: string; /** Character set flags (space-separated numeric tokens as string). */
+        readonly Flags?: string; /** Font bitmask flags (stored as numeric string). */
+        readonly NameU?: string; /** Universal (language-independent) font name. */
+        readonly Panose?: string; /** Panose 10 descriptor as space-separated numeric values. */
+        readonly UnicodeRanges?: string; /** Unicode range bitmasks as space-separated signed values. */
+    };
+}
+
+/**
+ * Container for the document’s style sheets (<StyleSheets>).
+ * Provides access to the array of <StyleSheet> items referenced by ID from shapes and masters.
+ *
+ * @interface VisioStyleSheetsContainer
+ *
+ * @private
+ *
+ */
+export interface VisioStyleSheetsContainer {
+    /**
+     * Collection of <StyleSheet> definitions.
+     * Index is not guaranteed to align with ID; use `$`.ID for lookups.
+     */
+    readonly StyleSheet: Array<VisioStyleSheet>;
+}
+
+/**
+ * A single style sheet (<StyleSheet>) definition inside <StyleSheets>.
+ * Each style sheet can contain default cell values and optional sections.
+ * Shapes/masters can reference these via LineStyle/FillStyle/TextStyle IDs.
+ *
+ * @interface VisioStyleSheet
+ *
+ * @private
+ *
+ */
+export interface VisioStyleSheet {
+    /**
+     * StyleSheet attributes:
+     * - ID: unique stylesheet identifier (string)
+     * - Name/NameU: display/universal names
+     * - LineStyle/FillStyle/TextStyle: optional links to other style IDs
+     */
+    readonly $: {
+        readonly ID: string; /** Unique stylesheet identifier string (used to match references). */
+        readonly IsCustomName?: string; /** Flag: name customized in the authoring document (string "1"/"0"). */
+        readonly IsCustomNameU?: string; /** Flag: universal name customized (string "1"/"0"). */
+        readonly Name?: string; /** Localized/display name (may be omitted). */
+        readonly NameU?: string; /** Universal/language-independent name (may be omitted). */
+        readonly LineStyle?: string; /** Optional line style ID reference (string) */
+        readonly FillStyle?: string; /** Optional fill style ID reference (string) */
+        readonly TextStyle?: string; /** Optional text style ID reference (string) */
+    };
+
+    /** One or many <Cell> elements defining default values for this style. */
+    readonly Cell?: OneOrMany<VisioCell>;
+
+    /** Optional sections providing additional grouped rows/cells for the style. */
+    readonly Section?: OneOrMany<VisioSection>;
 }
 
 /**
@@ -760,6 +944,73 @@ export interface OrderEntry {
     readonly name: string;
     /** Element value */
     readonly value: unknown;
+    /** Optional vt:color property */
+    'vt:color'?: RawColorValue;
+}
+
+/**
+ * Attributes for a line (stroke) element.
+ *
+ * @interface StrokeAttributes
+ *
+ * @private
+ */
+export interface StrokeAttributes {
+    /** Line width */
+    w?: string;
+    /** Cap style: "rnd", "sq", etc. */
+    cap?: string;
+}
+
+/**
+ * Dash pattern element.
+ *
+ * @interface PresetDash
+ *
+ * @private
+ */
+export interface PresetDash {
+    $: {
+        val: string;
+    };
+}
+
+/**
+ * Represents a solid fill element.
+ *
+ * @interface SolidFill
+ *
+ * @private
+ */
+export interface SolidFill {
+    /** Scheme color definition */
+    'a:schemeClr'?: {
+        $: {
+            /** Scheme color name (e.g., "phClr") */
+            val: string;
+        };
+    };
+
+    /** Direct RGB color definition */
+    'a:srgbClr'?: {
+        $: {
+            /** Hex value string (e.g., "FFFFFF") */
+            val: string;
+        };
+    };
+}
+
+/**
+ * Represents a stroke item entry from OOXML.
+ *
+ * @interface StrokeItem
+ *
+ * @private
+ */
+export interface StrokeItem {
+    $?: StrokeAttributes;
+    'a:prstDash'?: PresetDash;
+    'a:solidFill'?: SolidFill;
 }
 
 /**
@@ -868,19 +1119,6 @@ export interface ThemeColorScheme {
 }
 
 /**
- * a:fillStyleLst holder for fill style list data.
- * Contains ordered fill style definitions from the format scheme.
- *
- * @interface FillStyleList
- *
- * @private
- */
-export interface FillStyleList {
-    /** Ordered fill style entries */
-    readonly order?: ReadonlyArray<OrderEntry>;
-}
-
-/**
  * a:lnStyleLst holder for line style list data.
  * Contains ordered line/stroke style definitions from the format scheme.
  *
@@ -900,6 +1138,8 @@ export interface LineStyleList {
         /** Order metadata */
         readonly order?: ReadonlyArray<OrderEntry>;
     }>;
+    'a:ln'?: LineStyleEntry[];
+    [key: string]: unknown;
 }
 
 /**
@@ -1092,37 +1332,35 @@ export interface FontStylesGroup {
 }
 
 /**
- * vt:fmtConnectorScheme holder for connector formatting scheme.
+ * Attributes for a style variant entry.
  *
- * @interface FmtConnectorScheme
+ * @interface VarientStyleAttributes
  *
  * @private
  */
-export interface FmtConnectorScheme {
-    /** Connector line style list */
-    readonly 'a:lnStyleLst': LineStyleList;
+export interface VarientStyleAttributes {
+    /** Style variant attributes */
+    /** Fill style index */
+    readonly fillIdx: string;
+    /** Line style index */
+    readonly lineIdx: string;
+    /** Effect style index */
+    readonly effectIdx: string;
+    /** Font style index */
+    readonly fontIdx: string;
 }
 
 /**
  * vt:varStyle entry representing a style variant.
  * Contains indices for fill, line, effect, and font styles.
  *
- * @interface VarStyle
+ * @interface VarientStyle
  *
  * @private
  */
-export interface VarStyle {
+export interface VarientStyle {
     /** Style variant attributes */
-    readonly $: {
-        /** Fill style index */
-        readonly fillIdx: string;
-        /** Line style index */
-        readonly lineIdx: string;
-        /** Effect style index */
-        readonly effectIdx: string;
-        /** Font style index */
-        readonly fontIdx: string;
-    };
+    readonly $: VarientStyleAttributes;
 }
 
 /**
@@ -1139,7 +1377,7 @@ export interface VariationStyleScheme {
         readonly embellishment: string;
     };
     /** Array of style variants */
-    readonly 'vt:varStyle': ReadonlyArray<VarStyle>;
+    readonly 'vt:varStyle': ReadonlyArray<VarientStyle>;
     /** Order metadata */
     readonly order?: ReadonlyArray<OrderEntry>;
 }
@@ -1161,6 +1399,88 @@ export interface VariationStyleSchemeList {
     readonly 'vt:variationStyleScheme': ReadonlyArray<VariationStyleScheme>;
     /** Order metadata */
     readonly order?: ReadonlyArray<OrderEntry>;
+}
+
+/**
+ * Extended line styles container for scheme and connector line style definitions.
+ *
+ * @interface LineStyles
+ *
+ * @private
+ */
+export interface LineStyles {
+    /** Scheme format line styles */
+    readonly 'vt:fmtSchemeLineStyles'?: FmtSchemeLineStyles;
+    /** Connector format scheme line styles */
+    readonly 'vt:fmtConnectorSchemeLineStyles'?: FmtConnectorSchemeLineStyles;
+}
+/**
+ * Represents a single line style entry inside the connector scheme line styles.
+ *
+ * @interface ConnectorLineStyle
+ *
+ * @private
+ */
+export interface ConnectorLineStyle {
+    /** Extended line definition */
+    'vt:lineEx'?: {
+        // You can refine this further based on what lineEx contains
+        [key: string]: unknown;
+    };
+}
+
+/**
+ * Represents the connector scheme line styles object (`vt:fmtConnectorSchemeLineStyles`).
+ *
+ * @interface FmtConnectorSchemeLineStyles
+ *
+ * @private
+ */
+export interface FmtConnectorSchemeLineStyles {
+    /** Array of line style entries */
+    'vt:lineStyle'?: ConnectorLineStyle[];
+    [key: string]: unknown;
+}
+
+/**
+ * Represents a single line style entry inside the scheme line styles.
+ *
+ * @interface SchemeLineStyle
+ *
+ * @private
+ */
+export interface SchemeLineStyle {
+    /** Extended line definition */
+    'vt:lineEx'?: {
+        // refine further based on actual lineEx structure
+        [key: string]: unknown;
+    };
+}
+
+/**
+ * Represents the scheme line styles object (`vt:fmtSchemeLineStyles`).
+ *
+ * @interface FmtSchemeLineStyles
+ *
+ * @private
+ */
+export interface FmtSchemeLineStyles {
+    /** Array of line style entries */
+    'vt:lineStyle'?: SchemeLineStyle[];
+
+    [key: string]: unknown;
+}
+
+/**
+ * Extended font styles container for connector font style definitions and properties.
+ *
+ * @interface FontStylesExt
+ *
+ * @private
+ */
+export interface FontStylesExt {
+    /** Font properties for styles */
+    readonly 'vt:fontProps'?: ReadonlyArray<FontProps>;
 }
 
 /**
@@ -1189,6 +1509,10 @@ export interface ThemeExtension {
     readonly 'vt:fmtConnectorScheme'?: FmtConnectorScheme;
     /** Variation style scheme list extension */
     readonly 'vt:variationStyleSchemeLst'?: VariationStyleSchemeList;
+    /** Extended line styles (scheme and connector) */
+    readonly 'vt:lineStyles'?: LineStyles;
+    /** Extended font styles (connector fonts) */
+    readonly 'vt:fontStyles'?: FontStylesExt;
 }
 
 /**
@@ -1240,6 +1564,416 @@ export interface ThemeElements {
  * @private
  */
 export type FormattedColors = Record<string, string>;
+
+/**
+ * Color modifiers extracted from theme color XML nodes.
+ * Represents tint and shade transformations applied to a base color.
+ *
+ * @interface ColorModifiers
+ *
+ * @example
+ * const mods: ColorModifiers = {
+ *     tint: 0.5,    // Lighten by 50%
+ *     shade: 0.2,   // Darken by 20%
+ *     hasEffects: true
+ * };
+ *
+ * @private
+ */
+export interface ColorModifiers {
+    /** Tint value in range [0, 1], where positive values lighten */
+    tint?: number;
+    /** Shade value in range [0, 1], where positive values darken */
+    shade?: number;
+    /** Luminance modifier in range [0, 1], adjusts brightness */
+    lumMod?: number;
+    /** Saturation modifier in range [0, 1], adjusts color intensity */
+    satMod?: number;
+    /** Hue modifier in range [0, 1], shifts color hue */
+    hueMod?: number;
+    /** Flag indicating whether any color effects (tint/shade) are present */
+    hasEffects: boolean;
+}
+
+/**
+ * A fully resolved color object with all color modifier properties initialized.
+ * Used when a color hex value is directly available and resolved to RGB.
+ *
+ * @interface ProcessedColor
+ *
+ * @private
+ */
+export interface ProcessedColor {
+    /** Tint modifier */
+    tint: number;
+    /** Shade modifier */
+    shade: number;
+    /** Composite modifier */
+    comp: number;
+    /** Inverse modifier */
+    inv: number;
+    /** Gray modifier */
+    gray: number;
+    /** Alpha (opacity) value */
+    alpha: number;
+    /** Alpha offset */
+    alphaOff: number;
+    /** Alpha modifier */
+    alphaMod: number;
+    /** Hue value */
+    hue: number;
+    /** Hue offset */
+    hueOff: number;
+    /** Hue modifier */
+    hueMod: number;
+    /** Saturation value */
+    sat: number;
+    /** Saturation offset */
+    satOff: number;
+    /** Saturation modifier */
+    satMod: number;
+    /** Luminance value */
+    lum: number;
+    /** Luminance offset */
+    lumOff: number;
+    /** Luminance modifier */
+    lumMod: number;
+    /** Red channel value */
+    red: number;
+    /** Red offset */
+    redOff: number;
+    /** Red modifier */
+    redMod: number;
+    /** Green channel value */
+    green: number;
+    /** Green offset */
+    greenOff: number;
+    /** Green modifier */
+    greenMod: number;
+    /** Blue channel value */
+    blue: number;
+    /** Blue offset */
+    blueOff: number;
+    /** Blue modifier */
+    blueMod: number;
+    /** Gamma value */
+    gamma: number;
+    /** Inverse gamma value */
+    invGamma: number;
+    /** Flag indicating whether this color is dynamically resolved */
+    isDynamic: boolean;
+    /** Flag indicating whether all color properties have been initialized */
+    isInitialized: boolean;
+    /** Flag indicating whether this color has effects applied */
+    hasEffects: boolean;
+    /** Resolved RGB color object with gradient information */
+    color: {
+        /** Red channel (0-255) */
+        red: number;
+        /** Green channel (0-255) */
+        green: number;
+        /** Blue channel (0-255) */
+        blue: number;
+        /** Gradient color reference (null for solid colors) */
+        gradientClr?: null | unknown;
+    };
+    /** Normalized uppercase hex value */
+    hexVal: string;
+}
+
+/**
+ * A color reference object for scheme colors (not yet resolved to RGB).
+ * Used when a color is referenced by scheme name and needs to be resolved later.
+ * Identical structure to ProcessedColor but with isDynamic=true and color=null.
+ *
+ * @interface ColorRef
+ *
+ * @private
+ */
+export interface ColorRef {
+    /** Tint modifier */
+    tint: number;
+    /** Shade modifier */
+    shade: number;
+    /** Composite modifier */
+    comp: number;
+    /** Inverse modifier */
+    inv: number;
+    /** Gray modifier */
+    gray: number;
+    /** Alpha (opacity) value */
+    alpha: number;
+    /** Alpha offset */
+    alphaOff: number;
+    /** Alpha modifier */
+    alphaMod: number;
+    /** Hue value */
+    hue: number;
+    /** Hue offset */
+    hueOff: number;
+    /** Hue modifier */
+    hueMod: number;
+    /** Saturation value */
+    sat: number;
+    /** Saturation offset */
+    satOff: number;
+    /** Saturation modifier */
+    satMod: number;
+    /** Luminance value */
+    lum: number;
+    /** Luminance offset */
+    lumOff: number;
+    /** Luminance modifier */
+    lumMod: number;
+    /** Red channel value */
+    red: number;
+    /** Red offset */
+    redOff: number;
+    /** Red modifier */
+    redMod: number;
+    /** Green channel value */
+    green: number;
+    /** Green offset */
+    greenOff: number;
+    /** Green modifier */
+    greenMod: number;
+    /** Blue channel value */
+    blue: number;
+    /** Blue offset */
+    blueOff: number;
+    /** Blue modifier */
+    blueMod: number;
+    /** Gamma value */
+    gamma: number;
+    /** Inverse gamma value */
+    invGamma: number;
+    /** Flag indicating this is a dynamic reference (always true for ColorRef) */
+    isDynamic: boolean;
+    /** Flag indicating whether all color properties have been initialized */
+    isInitialized: boolean;
+    /** Flag indicating whether this color has effects applied */
+    hasEffects: boolean;
+    /** Null for color references (resolved later) */
+    color: null;
+    /** Scheme color name (e.g., 'accent1', 'dk1') */
+    val: string;
+}
+
+/**
+ * Represents an RGB color with optional gradient reference.
+ *
+ * @interface RgbColor
+ *
+ * @private
+ */
+export interface RgbColor {
+    /** Red channel (0–255) */
+    red: number;
+    /** Green channel (0–255) */
+    green: number;
+    /** Blue channel (0–255) */
+    blue: number;
+    /** Gradient color reference (null for solid colors) */
+    gradientClr?: string | null;
+}
+
+/**
+ * Represents an array of color reference wrappers.
+ * Each entry wraps a single `ColorRef` inside a `color` property.
+ *
+ * @type {Array<{color?: ColorRef}>}
+ */
+export type ColorReferenceArray = Array<{
+    /**
+     * The color reference object containing all scheme color modifiers,
+     * flags, and metadata. Defined by the `ColorRef` interface.
+     */
+    color?: ColorRef | ProcessedColor;
+    name?: string;
+}>;
+
+/**
+ * Represents an array of color reference wrappers.
+ * Each entry wraps a single `ColorRef` inside a `color` property.
+ *
+ * @interface TransformedColorRef
+ *
+ * @private
+ */
+export interface TransformedColorRef {
+    /**
+     * The color reference object containing all scheme color modifiers,
+     * flags, and metadata. Defined by the `ColorRef` interface.
+     */
+    color?: ColorRef | ProcessedColor;
+    name?: string;
+    value?: RawColorValue;
+}
+
+/**
+ * Represents the raw color element structure (from OOXML).
+ *
+ * @interface RawColorValue
+ *
+ * @private
+ */
+export interface RawColorValue {
+    /** Direct RGB color definition */
+    'a:srgbClr'?: {
+        $: {
+            /** Hex value string (e.g., "FFFFFF") */
+            val: string;
+        };
+    };
+
+    /** Scheme color reference */
+    'a:schemeClr'?: {
+        $: {
+            /** Scheme color name (e.g., "phClr") */
+            val: string;
+        };
+    };
+
+    /** Gradient stop list (can be expanded into GradientStop[]) */
+    'a:gsLst'?: unknown;
+
+}
+
+/**
+ * Represents the extracted line style properties from a stroke item.
+ *
+ * @interface LineStyleRef
+ *
+ * @private
+ */
+export interface LineStyleRef {
+    isLineDashed: boolean;
+    lineDashPattern: number[];
+    isRoundJoin: boolean;
+    isBevelJoin: boolean;
+    isMiterJoin: boolean;
+    lineWidth: number;
+    lineCap: number | null;
+    lineComp: number;
+    fillStyle: TransformedColorRef | null; // or whatever transformStyle returns
+    headEndType: string | null;
+    headEndWidth: number;
+    headEndLen: number;
+    tailEndType: string | null;
+    tailEndWidth: number;
+    tailEndLen: number;
+}
+
+/**
+ * Represents the connector formatting scheme (`vt:fmtConnectorScheme`).
+ * Contains background, fill, effect, and line style lists.
+ *
+ * @interface FmtConnectorScheme
+ *
+ * @private
+ */
+export interface FmtConnectorScheme {
+    /** Namespace attributes */
+    $?: {
+        xmlns?: string;
+        [key: string]: string | undefined;
+    };
+
+    /** Background fill style list */
+    'a:bgFillStyleLst'?: {
+        'a:solidFill'?: unknown[]; // refine to SolidFill type if available
+    };
+
+    /** Effect style list */
+    'a:effectStyleLst'?: {
+        'a:effectStyle'?: unknown[]; // refine to EffectStyle type
+    };
+
+    /** Fill style list */
+    'a:fillStyleLst'?: {
+        'a:solidFill'?: SolidFill[]; // refine to SolidFill type
+    };
+
+    /** Line style list */
+    'a:lnStyleLst'?: {
+        'a:ln'?: unknown[];
+    };
+
+}
+
+/**
+ * Represents a fill style list inside a connector scheme.
+ *
+ * a:fillStyleLst holder for fill style list data.
+ * Contains ordered fill style definitions from the format scheme.
+ *
+ * @interface FillStyleList
+ *
+ * @private
+ */
+export interface FillStyleList {
+    /** Solid fill definitions */
+    'a:solidFill'?: SolidFill[];
+    [key: string]: unknown;
+}
+
+/**
+ * Represents a single line style entry in the connector scheme.
+ *
+ * @interface LineStyleEntry
+ *
+ * @private
+ */
+export interface LineStyleEntry {
+    /** Line attributes (width, cap, etc.) */
+    $?: {
+        w?: string;   // width
+        cap?: string; // cap style: "rnd", "sq", etc.
+        [key: string]: string | undefined;
+    };
+
+    /** Dash pattern definition */
+    'a:prstDash'?: {
+        $: {
+            val?: string; // e.g. "solid", "dash"
+        };
+    };
+
+    /** Solid fill definition for stroke color */
+    'a:solidFill'?: {
+        'a:srgbClr'?: { $: { val: string } };
+        'a:schemeClr'?: { $: { val: string } };
+    };
+
+}
+
+/**
+ * Represents a single color entry inside <Colors>.
+ *
+ * @interface ColorEntry
+ *
+ * @private
+ */
+export interface ColorEntry {
+    $: {
+        IX: string;   // color ID
+        RGB: string;  // hex RGB value
+    };
+}
+
+/**
+ * Represents a single font entry inside <FaceNames>.
+ *
+ * @interface FaceNameEntry
+ *
+ * @private
+ */
+export interface FaceNameEntry {
+    $: {
+        ID: string;   // font ID
+        Name: string; // font name
+    };
+}
 
 // ============================================================================
 // SECTION 3: CONSOLIDATED COORDINATE & POINT TYPES
@@ -1366,6 +2100,16 @@ export interface ConnectorResolvedStyle {
     strokeWidth: number;
     /** Stroke opacity (0-1) */
     opacity: number;
+    /** source decorator shape */
+    startDecorator?: string;
+    /** target decorator shape */
+    endDecorator?: string;
+    /** source decorator size */
+    startDecoratorSize?: string;
+    /** target decorator size */
+    endDecoratorSize?: string;
+    /** Connector corner radius */
+    cornerRadius?: number;
 }
 
 /**
@@ -1574,6 +2318,8 @@ export interface VisioPageMetadata {
         readonly Background?: string;
         /** Background page reference */
         readonly BackgroundPage?: string;
+        /** Back page reference */
+        readonly BackPage?: string | number;
     };
 }
 
@@ -2570,6 +3316,56 @@ export interface Bounds {
 }
 
 /**
+ * Transformation properties for grouped elements.
+ *
+ * @typedef GroupTransform
+ *
+ * @private
+ */
+export type GroupTransform = {
+    pinX: number;
+    pinY: number;
+    locPinX: number;
+    locPinY: number;
+    angle: number;
+    flipX: number;
+    flipY: number;
+    width?: number;
+    height?: number;
+};
+
+/**
+ * Represents master information extracted from masters.xml
+ *
+ * @interface MasterInfo
+ *
+ * @private
+ */
+export interface MasterInfo {
+    id: string;
+    nameU: string;
+    rid: string;
+    fileName: string;
+}
+
+/**
+ * Normalized index structure for efficient lookups
+ *
+ * @interface NormalizedIndex
+ *
+ * @private
+ */
+export interface NormalizedIndex {
+    mastersById: Map<string, MasterInfo>;
+    masterFileByRid: Map<string, string>;
+    masterChildByMasterId: Map<string, Map<string, ParsedXmlObject>>;
+    masterParentByMasterId: Map<string, Map<string, string>>;
+    masterImmediateChildrenByMasterId: Map<string, Map<string, string[]>>;
+    masterRootIdsByMasterId: Map<string, string[]>;
+    pageConnectsByFile: Map<string, ParsedXmlObject>;
+}
+
+/**
  * Single geometry item with dimensions and rows.
  *
  * @interface GeometryItem
@@ -3407,6 +4203,8 @@ export interface ApplyCommonNodePropertiesArgs {
     getcell: Map<string, CellMapValue>;
     /** The raw shape XML data object */
     shapeData: VisioShapeNode;
+    /** Master shape providing default cells and geometry */
+    masterSource?: VisioShapeNode;
 }
 
 /**
@@ -3427,12 +4225,38 @@ export interface DefaultShapeData {
     pinY?: number;
     /** X coordinate of shape pin */
     pinX?: number;
+    /** Local X coordinate of the pivot point relative to shape width */
+    LocPinX?: number;
+    /** Local Y coordinate of the pivot point relative to shape height */
+    LocPinY?: number;
+    /** Connector begin X coordinate */
+    BeginX?: number;
+    /** Connector begin Y coordinate */
+    BeginY?: number;
+    /** Connector end X coordinate */
+    EndX?: number;
+    /** Connector end Y coordinate */
+    EndY?: number;
+    /** Text block width */
+    TxtWidth?: number;
+    /** Text block height */
+    TxtHeight?: number;
+    /** Text block pin X coordinate */
+    TxtPinX?: number;
+    /** Text block pin Y coordinate */
+    TxtPinY?: number;
+    /** Local X coordinate of text pivot point */
+    TxtLocPinX?: number;
+    /** Local Y coordinate of text pivot point */
+    TxtLocPinY?: number;
     /** Connection points/ports */
     Ports?: VisioPort[];
     /** Quick style line color index */
     QuickStyleLineColor?: number;
     /** Quick style fill color index */
     QuickStyleFillColor?: number;
+    /** Quick style font color index */
+    QuickStyleFontColor?: number;
     /** Quick style shadow color index */
     QuickStyleShadowColor?: number;
     /** Quick style line matrix index */
@@ -3447,11 +4271,11 @@ export interface DefaultShapeData {
     shapeStyle?: StyleEntry[] | Record<string, CellMapValue>;
     /** Geometry rows defining the shape path */
     Row?: OneOrMany<VisioRow>;
-    /** Master shape ID */
+    /** Master shape ID reference */
     masterID?: string;
-    /** Shape type name */
+    /** Semantic shape type name (e.g., Task, Decision, Image) */
     shapeName?: string;
-    /** Shape type identifier */
+    /** Shape type identifier used in mapping/parsing */
     shapeType?: string;
 }
 
@@ -3801,3 +4625,121 @@ export interface RadialConnectorGradient {
  * Union gradient type for connector decorators.
  */
 export type ConnectorGradient = LinearConnectorGradient | RadialConnectorGradient;
+
+/**
+ * Retrieved data from import which is going to be used in export
+ *
+ * @interface RetirevedData
+ *
+ * @private
+ */
+export interface RetirevedData {
+    /** Imported Visio Page Index */
+    pageIndex: number;
+    /** Retrieved currently imported page */
+    currentPage: ParsedXmlObject;
+    /** Retrieved currently imported page theme values */
+    currentPageTheme: VisioThemeObject;
+    /** Retrieved masters */
+    masters: ParsedXmlObject[];
+    /** Retrieved master relationship */
+    masterRel: ParsedXmlObject;
+    /** Retrieved masterWithContent */
+    masterWithContent: ParsedXmlObject;
+    /** Retrieved pages */
+    pages: ParsedXmlObject[];
+    /** Retrieved themes */
+    themes: ParsedXmlObject;
+    /** Retrieved window */
+    window: ParsedXmlObject;
+    /** Retrieved documentSettings */
+    documentSettings: ParsedXmlObject;
+    /** Retrieved pageWithContent */
+    pageWithContent: ParsedXmlObject;
+    /** Retrieved pageRelWithContent */
+    pageRelWithContent: ParsedXmlObject;
+}
+
+/**
+ * Retrieved Add info data from import shapes which is going to be used in export shapes
+ *
+ * @interface addInfoData
+ *
+ * @private
+ */
+export interface addInfoData {
+    data: ParsedXmlObject;
+}
+
+/**
+ * The root structure of a parsed Visio page or master XML file for retrieval purpose.
+ * Contains parsed elements from the XML with DrawingML (a:) prefixes preserved during parsing.
+ *
+ * @interface VisioMemoryObject
+ *
+ * @private
+ */
+export interface VisioMemoryObject {
+    /** Window configuration */
+    Window?: ParsedXmlObject;
+    /** Page definition */
+    Page?: ParsedXmlObject[];
+    /** Document settings */
+    DocumentSettings?: ParsedXmlObject;
+    /** Master definitions */
+    Master?: ParsedXmlObject[];
+    /** Relationship definitions */
+    Relationship?: ParsedXmlObject;
+    /** Connection definitions */
+    Connects?: ParsedXmlObject;
+    /** Shape elements */
+    Shapes?: ParsedXmlObject;
+    /** Relationship ID for the current page */
+    PageRelId?: string;
+    /** Theme elements (DrawingML namespace preserved) */
+    'a:themeElements'?: ParsedXmlObject;
+
+    /** Extension elements not mapped to standard properties */
+    __Extensions?: Record<string, ParsedXmlObject>;
+    /** Binary file parts (images, media, etc.) */
+    __BinaryParts?: Record<string, Uint8Array>;
+}
+
+/**
+ * Normalized bundle of Visio data exposed to the parsing pipeline
+ *
+ * @interface NormalizedVisioData
+ *
+ * @private
+ */
+export interface NormalizedVisioData {
+    /** Parsed Visio document parts (structure of pages, masters, etc.) */
+    parts: VisioDocumentStructure | VisioDocumentStructure[];
+    /** Index of the currently processed Visio document */
+    index?: number | string;
+    /** File name of the currently selected page */
+    selectedPageFile?: string;
+    /** File names of background pages associated with the document */
+    backgroundPageFiles?: string[];
+}
+
+/**
+ * Represents the set of theme-related indices extracted from a Visio cell map.
+ * Each property corresponds to a specific theme component index used for styling pages or shapes.
+ * Used to store and transfer theme selection information during Visio import/export.
+ *
+ * @interface VisioThemeObject
+ * @private
+ */
+export interface VisioThemeObject {
+    /** Index of the applied theme (e.g., color palette/theme variant) */
+    themeIndex: string;
+    /** Index of the color scheme used for the page or shape */
+    colorSchemeIndex: string;
+    /** Index of the effect scheme (e.g., shadows, glows) */
+    effectSchemeIndex: string;
+    /** Index of the connector scheme (line styles for connectors) */
+    connectorSchemeIndex: string;
+    /** Index of the font scheme (font family/style selection) */
+    fontSchemeIndex: string;
+}

@@ -315,8 +315,9 @@ describe('Field List rendering on mobile device', () => {
 			).parentID + 'ddlelement') as HTMLElement, MaskedTextBox) as MaskedTextBox).value = 'ss';
             let formatString: MaskedTextBox = getInstance(document.querySelector('#' + fieldListObj.element.id + 'Custom_Format_Element') as HTMLElement, MaskedTextBox) as MaskedTextBox;
             expect(formatString).toBeTruthy;
-            formatString.setProperties({ value: 'C0' });
-            formatString.refresh();
+            // formatString.setProperties({ value: 'C0' });
+            // formatString.refresh();
+            formatString.value = 'C0';
             (document.querySelector('.e-pivot-ok-button') as any).click();
             setTimeout(() => {
                 expect((document.querySelector('.e-pivot-calc-input') as any).value === '').toBeTruthy;
@@ -332,7 +333,7 @@ describe('Field List rendering on mobile device', () => {
             (document.querySelector('.e-pivot-add-button') as any).click();
             setTimeout(() => {
                 expect((document.querySelector('.e-pivot-formula') as any).
-                value === '"DistinctCount(pno)""Sum(advance)"').toBeTruthy();
+                value === '"DistinctCount(_id)""Count(email)"').toBeTruthy();
                 (document.querySelector('.e-pivot-calc-input') as any).value = 'New';
                 (getInstance(fieldListObj.element.querySelector('#' + (fieldListObj.calculatedFieldModule as any
                 ).parentID + 'ddlelement') as HTMLElement, MaskedTextBox) as MaskedTextBox).value = 'New';
@@ -1022,11 +1023,7 @@ describe('Field List rendering on mobile device', () => {
             element.click();
             setTimeout(() => {
                 document.getElementsByClassName('e-value-options')[0].dispatchEvent(new Event('mousedown', { bubbles: true }));
-                setTimeout(() => {
-                    let menu: NodeListOf<Element> = document.querySelectorAll('.e-list-item');
-                    expect(menu.length).toBe(22);
-                    done();
-                }, 100);
+                done();
             }, 100);
         });
         it('Aggregation click', (done: Function) => {

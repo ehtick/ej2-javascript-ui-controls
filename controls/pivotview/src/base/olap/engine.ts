@@ -106,6 +106,8 @@ export class OlapEngine {
     /** @hidden */
     public calcChildMembers: IOlapField[];
     /** @hidden */
+    public currentCalcFieldInfo: { fieldType?: string; fieldName?: string; hierarchyUniqueName?: string } = {};
+    /** @hidden */
     public drilledSets: { [key: string]: HTMLElement } = {};
     /** @hidden */
     public olapVirtualization: boolean;
@@ -3981,8 +3983,10 @@ export class OlapEngine {
             for (const field of calcMembers) {
                 if (!this.fieldList[field.name]) {
                     const expression: string = field.formula;
-                    const prefixName: string = (expression.toLowerCase().indexOf('measure') > -1 ? '[Measures].' :
-                        field.hierarchyUniqueName + '.');
+                    const isMeasure: boolean = (this.currentCalcFieldInfo && this.currentCalcFieldInfo.fieldName === field.name &&
+                        this.currentCalcFieldInfo.fieldType) ? (this.currentCalcFieldInfo.fieldType === 'Measure') :
+                        expression.toLowerCase().indexOf('measure') > -1;
+                    const prefixName: string = (isMeasure ? '[Measures].' : field.hierarchyUniqueName + '.');
                     const uniqueName: string = prefixName + '[' + field.name + ']';
                     const caption: string = (this.dataFields[field.name] && this.dataFields[field.name].caption ?
                         this.dataFields[field.name].caption :
@@ -3999,8 +4003,7 @@ export class OlapEngine {
                         pid: '[Calculated Members].[_0]',
                         name: field.name,
                         caption: caption,
-                        spriteCssClass: 'e-calc-member' + ' ' + (expression.toLowerCase().indexOf('measure') > -1 ?
-                            'e-calc-measure-icon' : 'e-calc-dimension-icon') + ' ' + cls.ICON,
+                        spriteCssClass: 'e-calc-member' + ' ' + (isMeasure ? 'e-calc-measure-icon' : 'e-calc-dimension-icon') + ' ' + cls.ICON,
                         tag: uniqueName,
                         formula: expression,
                         formatString: formatString,
@@ -4032,8 +4035,8 @@ export class OlapEngine {
                             this.mappingFields[field.name] ? this.mappingFields[field.name].showValueTypeIcon : true),
                         showSubTotals: (this.dataFields[field.name] ? this.dataFields[field.name].showSubTotals :
                             this.mappingFields[field.name] ? this.mappingFields[field.name].showSubTotals : true),
-                        fieldType: (expression.toLowerCase().indexOf('measure') > -1 ? 'Measure' : 'Dimension'),
-                        parentHierarchy: (expression.toLowerCase().indexOf('measure') > -1 ? undefined : field.hierarchyUniqueName)
+                        fieldType: (isMeasure ? 'Measure' : 'Dimension'),
+                        parentHierarchy: (isMeasure ? undefined : field.hierarchyUniqueName)
                     };
                     fieldListElements.push(calcField);
                     this.fieldList[calcField.id] = calcField;

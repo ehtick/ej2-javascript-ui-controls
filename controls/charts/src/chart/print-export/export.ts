@@ -442,7 +442,6 @@ export class Export {
         }
         this.requiredValuesLength = index - 1;
     }
-
     /**
      * Gets the X values for the Excel sheet.
      *
@@ -616,8 +615,6 @@ export class Export {
             startIndex = index;
         }
     }
-
-
     /**
      * Gets the data URL of the chart or accumulation chart.
      *

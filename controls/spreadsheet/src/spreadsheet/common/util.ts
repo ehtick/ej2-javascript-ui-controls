@@ -2406,12 +2406,15 @@ export function setColMinWidth(spreadsheet: Spreadsheet, minWidth: number): void
 }
 
 /**
+ * This method is used to serialize the spreadsheet sheets properties as JSON.
+ *
  * @param {Spreadsheet} context - Specifies the spreadsheet instance.
- * @param {string[]} keys - Specifies key array.
+ * @param {string[]} keys - Specifies keys to include only the specific properties from the sheet.
+ * @param {number} sheetIdx - Specifies the sheet index number.
  * @returns {string} - It returns sheet property of the given key and context.
  * @hidden
  */
-export function getSheetProperties(context: Spreadsheet, keys?: string[]): string {
+export function getSheetProperties(context: Spreadsheet, keys?: string[], sheetIdx?: number): string {
     const skipProps: string[] = [];
     if (keys) {
         /* eslint-disable */
@@ -2450,7 +2453,7 @@ export function getSheetProperties(context: Spreadsheet, keys?: string[]): strin
     } else {
         skipProps.push('ranges');
     }
-    const eventArgs: { skipProps: string[], model?: string } = { skipProps: skipProps };
+    const eventArgs: { skipProps: string[], model?: string, sheetIdx: number } = { skipProps: skipProps, sheetIdx: sheetIdx };
     context.notify('getStringifyObject', eventArgs);
     return eventArgs.model;
 }

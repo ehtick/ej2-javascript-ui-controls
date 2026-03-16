@@ -1,5 +1,4 @@
 @use 'ej2-base/styles/common/mixin' as *;
-@use './theme-variables' as *;
 @include export-module('e-aiassistview-theme') {
   .e-aiassistview {
     border-color: $assist-view-border-color;
@@ -122,6 +121,13 @@
         }
         pre {
           background: $suggested-content-bg-color;
+          code {
+            color: $response-text-color;
+            background: transparent;
+          }
+          span.e-code-copy {
+            color: $response-text-color;
+          }
         }
         tbody,
         td,
@@ -206,6 +212,8 @@
         .e-toolbar-items,
         .e-tbar-btn {
           background: transparent;
+          border: none;
+          box-shadow: none;
         }
         .e-toolbar .e-toolbar-item {
           .e-tbar-btn {

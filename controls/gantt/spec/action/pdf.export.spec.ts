@@ -211,6 +211,61 @@ describe('Gantt pdfexport support', () => {
                 ganttObj.pdfExport();
             });
         });
+        //view start and end date
+        describe('Gantt PDF Export with viewStart and ViewEndDate', () => {
+            let ganttObj: Gantt;
+            beforeAll((done: Function) => {
+                ganttObj = createGantt(
+                    {
+                        dataSource: exportData,
+                        allowPdfExport: true,
+                        taskFields: {
+                            id: 'TaskID',
+                            name: 'TaskName',
+                            startDate: 'StartDate',
+                            endDate: 'EndDate',
+                            duration: 'Duration',
+                            progress: 'Progress',
+                            child: 'subtasks',
+                            dependency: 'Predecessor'
+                        },
+                        toolbar: ['PdfExport'],
+                        timelineSettings: {
+                            viewStartDate: new Date('03/25/2019'),
+                            viewEndDate: new Date('05/30/2019')
+                        },
+                        rowHeight: 40,
+                        taskbarHeight: 30,
+                        loadingIndicator: { indicatorType: 'Shimmer' },
+                        pdfExportComplete: (args: any) => {
+                            expect(args.name).toBe("pdfExportComplete");
+                        },
+                        columns: [
+                            { field: 'TaskID', visible: false },
+                            {
+                                field: 'TaskName',
+                                headerText: 'Task Name',
+                                width: '250',
+                                clipMode: 'EllipsisWithTooltip',
+                            },
+                            { field: 'StartDate', headerText: 'Start Date', format: 'dd-MMM-yy' },
+                            { field: 'Duration', headerText: 'Duration' },
+                            { field: 'EndDate', headerText: 'End Date' },
+                            { field: 'Predecessor', headerText: 'Predecessor' },
+                        ],
+                        treeColumnIndex: 0,
+                        height: '450px',
+                    }, done);
+            });
+            afterAll(() => {
+                if (ganttObj) {
+                    destroyGantt(ganttObj);
+                }
+            });
+            it('Export with custom date format', () => {
+                ganttObj.pdfExport();
+            });
+        });
     });
 });
 describe('Gantt PDF Export with blobdata', () => {
@@ -16384,15 +16439,75 @@ describe('CR:810428: Misalignment timeline while using project start date with t
         };
         ganttObj.pdfExport(exportProperties);
     });
-    it('coverage', () => {
-        const exportProperties: PdfExportProperties = {
-            fitToWidthSettings: {
-                isFitToWidth: true,
-                chartWidth: '150%',
-                gridWidth:'150%'
-            },
-            
-        };
-        ganttObj.pdfExport(exportProperties);
+});
+describe('Gantt PDF Export without holiday label', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: "Product concept", StartDate: new Date("04/02/2025"), EndDate: new Date("04/08/2025") },
+                    { TaskID: 2, TaskName: "Define the product usage", StartDate: new Date("04/02/2025"), EndDate: new Date("04/08/2025"), Duration: 1, Progress: 30, ParentId: 1, BaselineStartDate: new Date("04/02/2025"), BaselineEndDate: new Date("04/02/2025") },
+                ],
+                height: '650px',
+                rowHeight: 46,
+                taskbarHeight: 25,
+                allowSelection: true,
+                highlightWeekends: true,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    duration: 'Duration',
+                    progress: 'Progress',
+                    dependency: 'Predecessor',
+                    parentID: 'ParentId',
+                },
+                allowPdfExport: true,
+                toolbar: ['PdfExport'],
+                toolbarClick: function (args) {
+                    if (args.item.id === 'ganttContainer_pdfexport') {
+                        ganttObj.pdfExport();
+                    }
+                },
+                pdfExportComplete: (args: any) => {
+                    expect(args.name).toBe("pdfExportComplete");
+                },
+                treeColumnIndex: 1,
+                columns: [
+                    { field: 'TaskID', visible: false, width: 80 },
+                    { field: 'TaskName', headerText: 'Name', width: 250 },
+                    { field: 'StartDate' },
+                    { field: 'EndDate' },
+                    { field: 'Duration' },
+                    { field: 'Predecessor' },
+                    { field: 'Progress' },
+                ],
+                holidays: [
+                    {
+                        from: new Date('03/28/2025'),
+                        to: new Date('03/28/2025'),
+                    },
+                    {
+                        from: new Date('03/30/2025'),
+                        to: new Date('03/30/2025'),
+                        label: 'Easter Sunday',
+                    },
+                ],
+                labelSettings: {
+                    rightLabel: 'TaskName',
+                },
+                projectStartDate: new Date('03/25/2025'),
+                projectEndDate: new Date('07/20/2025'),
+            }, done);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('Export data with long text', function () {
+        ganttObj.pdfExport();
     });
 });

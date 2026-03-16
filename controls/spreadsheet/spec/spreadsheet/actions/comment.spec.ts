@@ -302,6 +302,70 @@ describe('Comments ->', () => {
                 });
             });
         });
+        it('Testing comments rendering in the top right corner', (done: Function) => {
+            helper.invoke('selectRange', ['A2']);
+            openCommentDdbAndClick(1);
+            setTimeout(() => {
+                const container: HTMLElement = getCommentContainer();
+                const textArea: HTMLTextAreaElement = getTextArea(container);
+                textArea.dispatchEvent(new FocusEvent('focus', { bubbles: true }));
+                textArea.value = 'Container inserted in top right';
+                textArea.dispatchEvent(new Event('input', { bubbles: true }));
+                container.querySelector<HTMLButtonElement>('.e-comment-footer .e-comment-post').click();
+                expect(helper.invoke('getCell', [0, 1]).querySelector('.e-comment-indicator')).not.toBeNull();
+                expect(helper.getInstance().sheets[0].rows[1].cells[0].comment.text).toBe('Container inserted in top right');
+                closeContainer();
+                done();
+            });
+        });
+        it('Testing comments rendering in the top left corner', (done: Function) => {
+            helper.invoke('selectRange', ['J2']);
+            openCommentDdbAndClick(1);
+            setTimeout(() => {
+                const container: HTMLElement = getCommentContainer();
+                const textArea: HTMLTextAreaElement = getTextArea(container);
+                textArea.dispatchEvent(new FocusEvent('focus', { bubbles: true }));
+                textArea.value = 'Hello World';
+                textArea.dispatchEvent(new Event('input', { bubbles: true }));
+                container.querySelector<HTMLButtonElement>('.e-comment-footer .e-comment-post').click();
+                expect(helper.invoke('getCell', [0, 1]).querySelector('.e-comment-indicator')).not.toBeNull();
+                expect(helper.getInstance().sheets[0].rows[1].cells[9].comment.text).toBe('Hello World');
+                closeContainer();
+                done();
+            });
+        });
+        it('Testing comments rendering in the bottom left corner', (done: Function) => {
+            helper.invoke('selectRange', ['J15']);
+            openCommentDdbAndClick(1);
+            setTimeout(() => {
+                const container: HTMLElement = getCommentContainer();
+                const textArea: HTMLTextAreaElement = getTextArea(container);
+                textArea.dispatchEvent(new FocusEvent('focus', { bubbles: true }));
+                textArea.value = 'Hello World from Left';
+                textArea.dispatchEvent(new Event('input', { bubbles: true }));
+                container.querySelector<HTMLButtonElement>('.e-comment-footer .e-comment-post').click();
+                expect(helper.invoke('getCell', [0, 1]).querySelector('.e-comment-indicator')).not.toBeNull();
+                expect(helper.getInstance().sheets[0].rows[14].cells[9].comment.text).toBe('Hello World from Left');
+                closeContainer();
+                done();
+            });
+        });
+        it('Testing comments rendering in the bottom right corner', (done: Function) => {
+            helper.invoke('selectRange', ['A15']);
+            openCommentDdbAndClick(1);
+            setTimeout(() => {
+                const container: HTMLElement = getCommentContainer();
+                const textArea: HTMLTextAreaElement = getTextArea(container);
+                textArea.dispatchEvent(new FocusEvent('focus', { bubbles: true }));
+                textArea.value = 'Hello World from right bottom';
+                textArea.dispatchEvent(new Event('input', { bubbles: true }));
+                container.querySelector<HTMLButtonElement>('.e-comment-footer .e-comment-post').click();
+                expect(helper.invoke('getCell', [0, 1]).querySelector('.e-comment-indicator')).not.toBeNull();
+                expect(helper.getInstance().sheets[0].rows[14].cells[0].comment.text).toBe('Hello World from right bottom');
+                closeContainer();
+                done();
+            });
+        });
     });
 
     describe('UI Interaction -II ->', () => {
@@ -1017,9 +1081,9 @@ describe('Comments ->', () => {
                     replies: [{ author: 'JC', text: 'Please verify the Q3 numbers.', createdTime: 'February 16, 2026 11:00 AM' }]
                 }
             }, 'A4');
-            helper.getInstance().updateCell({comment: { author: 'JC', isResolved: true, text: 'hello there', replies: []}}, 'A5');
-            helper.getInstance().updateCell({comment: { author: 'JC', isResolved: true, text: 'hello there 2',createdTime: 'February 16, 2026 at 10:35', replies: []}}, 'A6');
-            helper.getInstance().updateCell({comment: { author: 'JC', isResolved: true, text: 'hello there 2',createdTime: '', replies: []}}, 'A7');
+            helper.getInstance().updateCell({ comment: { author: 'JC', isResolved: true, text: 'hello there', replies: [] } }, 'A5');
+            helper.getInstance().updateCell({ comment: { author: 'JC', isResolved: true, text: 'hello there 2', createdTime: 'February 16, 2026 at 10:35', replies: [] } }, 'A6');
+            helper.getInstance().updateCell({ comment: { author: 'JC', isResolved: true, text: 'hello there 2', createdTime: '', replies: [] } }, 'A7');
             expect(helper.invoke('getCell', [3, 0]).querySelector('.e-comment-indicator')).not.toBeNull();
             const sheet: SheetModel = helper.getInstance().sheets[0];
             expect(sheet.rows[3].cells[0].comment.createdTime).toBe('2026-02-16T10:35:00.000');
@@ -1029,7 +1093,7 @@ describe('Comments ->', () => {
             expect(sheet.rows[6].cells[0].comment.createdTime).toBe('');
             done();
         });
-        it('check with importing JSON data',(done: Function) => {
+        it('check with importing JSON data', (done: Function) => {
             const json: object = {
                 Workbook: {
                     sheets: [{
@@ -1051,6 +1115,46 @@ describe('Comments ->', () => {
                 expect(sheet.rows[0].cells[0].comment.replies[0].createdTime).toBe('2025-01-01T10:30:00.000');
                 done();
             });
+        });
+    });
+
+    describe('EJ2-1002820 - add comment on protected sheet', () => {
+        beforeAll((done: Function) => {
+            helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] }, done);
+            helper.invoke('protectSheet', ['Sheet1', {}]);
+        });
+        afterAll(() => {
+            helper.invoke('destroy');
+        });
+        it('Add and edit comments when protect sheet is enabled', (done: Function) => {
+            expect(getComputedStyle(helper.getElementFromSpreadsheet('.e-active-cell')).display).toBe('none');
+            helper.invoke('selectRange', ['C1']);
+            helper.setAnimationToNone('#spreadsheet_contextmenu');
+            helper.openAndClickCMenuItem(0, 2, [9]);
+            const container: HTMLElement = getCommentContainer();
+            const textArea: HTMLTextAreaElement = getTextArea(container);
+            textArea.dispatchEvent(new FocusEvent('focus', { bubbles: true }));
+            textArea.value = 'Sheet is protected';
+            textArea.dispatchEvent(new Event('input', { bubbles: true }));
+            container.querySelector<HTMLButtonElement>('.e-comment-footer .e-comment-post').click();
+            expect(helper.invoke('getCell', [0, 2]).querySelector('.e-comment-indicator')).not.toBeNull();
+            expect(helper.getInstance().sheets[0].rows[0].cells[2].comment.text).toBe('Sheet is protected');
+            closeContainer();
+            done();
+        });
+        it('Edit comments when protect sheet is enabled', function (done: Function) {
+            helper.invoke('selectRange', ['C1']);
+            helper.setAnimationToNone('#spreadsheet_contextmenu');
+            helper.openAndClickCMenuItem(0, 2, [9, 2]);
+            const container: HTMLElement = getCommentContainer();
+            openThreadMenuAndPick(container, 0);
+            const editArea: HTMLTextAreaElement = container.querySelector('.e-comment-edit-input');
+            editArea.value = 'Modified Comment Text';
+            editArea.dispatchEvent(new Event('input', { bubbles: true }));
+            container.querySelector<HTMLButtonElement>('.e-comment-edit-wrap .e-comment-post').click();
+            expect(helper.getInstance().sheets[0].rows[0].cells[2].comment.text).toBe('Modified Comment Text');
+            closeContainer();
+            done();
         });
     });
 });

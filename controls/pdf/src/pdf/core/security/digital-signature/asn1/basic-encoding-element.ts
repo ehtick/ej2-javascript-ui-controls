@@ -244,7 +244,7 @@ export class _PdfBasicEncodingElement extends _PdfAbstractSyntaxElement {
         this._setValue(buf);
     }
     _construct(els: _PdfAbstractSyntaxElement[]): void {
-        this._currentValueLength = 0;
+        this._currentValueLength = undefined;
         this._value = els;
     }
     _encode(value: any): void { // eslint-disable-line
@@ -373,80 +373,61 @@ export class _PdfBasicEncodingElement extends _PdfAbstractSyntaxElement {
             throw new Error();
         }
         let cursor: number = 0;
-        switch (bytes[<number>cursor] & 0b11000000) {
-        case (0b00000000):
+        const first: number = bytes[<number>cursor];
+        switch (first & 0b11000000) {
+        case 0b00000000:
             this._tagClass = _TagClassType.universal;
             break;
-        case (0b01000000):
+        case 0b01000000:
             this._tagClass = _TagClassType.application;
             break;
-        case (0b10000000):
+        case 0b10000000:
             this._tagClass = _TagClassType.context;
             break;
-        case (0b11000000):
+        case 0b11000000:
             this._tagClass = _TagClassType.abstractSyntaxPrivate;
             break;
         }
-        this._construction = ((bytes[<number>cursor] & 0b00100000)
-            ? _ConstructionType.constructed : _ConstructionType.primitive);
-        this._setTagNumber((bytes[<number>cursor] & 0b00011111));
+        this._construction = ((first & 0b00100000) ? _ConstructionType.constructed : _ConstructionType.primitive);
+        let tagNumber: number = (first & 0b00011111);
         cursor++;
-        if (this._getTagNumber() >= 31) {
-            if (bytes[<number>cursor] === 0b10000000) {
+        if (tagNumber >= 31) {
+            if (cursor >= bytes.length) {
+                throw new Error('ASN1 tag number appears to have been truncated.');
+            }
+            if (bytes[<number>cursor] === 0x80) {
                 throw new Error('Leading padding byte on long tag number encoding.');
             }
-            this._setTagNumber(0);
-            const limit: number = (((bytes.length - 1) >= 4) ? 4 : (bytes.length - 1));
-            while (cursor < limit) {
-                if (!(bytes[cursor++] & 0b10000000)) {
-                    break;
-                }
-            }
-            if (bytes[cursor - 1] & 0b10000000) {
-                if (limit === (bytes.length - 1)) {
+            tagNumber = 0;
+            let running: boolean = true;
+            while (running) {
+                if (cursor >= bytes.length) {
                     throw new Error('ASN1 tag number appears to have been truncated.');
-                } else {
-                    throw new Error('ASN1 tag number too large.');
+                }
+                const b: number = bytes[cursor++];
+                tagNumber = (tagNumber << 7) | (b & 0x7F);
+                if ((b & 0x80) === 0) {
+                    running = false;
                 }
             }
+            if (tagNumber < 31) {
+                throw new Error('ASN1 tag number could have been encoded in short form.');
+            }
+            this._setTagNumber(tagNumber);
+        } else {
+            this._setTagNumber(tagNumber);
         }
-        if ((bytes[<number>cursor] & 0b10000000) === 0b10000000) {
-            const numberOfLengthOctets: number = (bytes[<number>cursor] & 0x7F);
-            if (numberOfLengthOctets) {
-                if (numberOfLengthOctets === 0b01111111) {
-                    throw new Error('Length byte with undefined meaning encountered.');
-                }
-                if (numberOfLengthOctets > 4) {
-                    throw new Error(`Element length too long to decode to an integer. Content octets occupied ${numberOfLengthOctets} bytes.`);
-                }
-                if (cursor + numberOfLengthOctets >= bytes.length) {
-                    throw new Error('Element length bytes appear to have been truncated.');
-                }
-                cursor++;
-                const lengthNumberOctets: Uint8Array = new Uint8Array(4);
-                for (let i: number = numberOfLengthOctets; i > 0; i--) {
-                    lengthNumberOctets[(4 - i)] = bytes[(cursor + numberOfLengthOctets - i)];
-                }
-                let length: number = 0;
-                lengthNumberOctets.forEach((octet: any) => { // eslint-disable-line
-                    length <<= 8;
-                    length += octet;
-                });
-                if ((cursor + length) < cursor) {
-                    throw new Error('ASN1 element too large.');
-                }
-                cursor += (numberOfLengthOctets);
-                if ((cursor + length) > bytes.length) {
-                    throw new Error('ASN1 element truncated.');
-                }
-                this._setValue(bytes.slice(cursor, (cursor + length)));
-                return (cursor + length);
-            } else {
+        if (cursor >= bytes.length) {
+            throw new Error('Element length bytes appear to have been truncated.');
+        }
+        const lenOctet: number = bytes[cursor++];
+        if ((lenOctet & 0x80) === 0x80) {
+            const numberOfLengthOctets: number = (lenOctet & 0x7F);
+            if (numberOfLengthOctets === 0) {
                 if (this._construction !== _ConstructionType.constructed) {
-                    throw new Error(
-                        'Invalid format: indefinite-length elements must be constructed, not primitive.');
+                    throw new Error('Invalid format: indefinite-length elements must be constructed, not primitive.');
                 }
-                const startOfValue: number = ++cursor;
+                const startOfValue: number = cursor;
                 let sentinel: number = cursor;
                 while (sentinel < bytes.length) {
                     const child: _PdfBasicEncodingElement = new _PdfBasicEncodingElement();
@@ -458,20 +439,37 @@ export class _PdfBasicEncodingElement extends _PdfAbstractSyntaxElement {
                         break;
                     }
                 }
-                if (sentinel === bytes.length && (bytes[sentinel - 1] !== 0x00 || bytes[sentinel - 2] !== 0x00)) {
-                    throw new Error(
-                        'Invalid format: indefinite-length ASN1 elements must end with an End-of-Content marker');
+                if (sentinel === bytes.length &&
+                    (bytes[sentinel - 1] !== 0x00 || bytes[sentinel - 2] !== 0x00)) {
+                    throw new Error('Invalid format: indefinite-length ASN1 elements must end with an End-of-Content marker');
                 }
-                this._setValue(bytes.slice(startOfValue, (sentinel - 2)));
+                this._setValue(bytes.slice(startOfValue, sentinel - 2));
                 return sentinel;
             }
+            const n: number = numberOfLengthOctets;
+            if (cursor + n > bytes.length) {
+                throw new Error('Element length bytes appear to have been truncated.');
+            }
+            let length: number = 0;
+            for (let i: number = 0; i < n; i++) {
+                length = (length << 8) | bytes[cursor + i];
+            }
+            cursor += n;
+            if ((cursor + length) < cursor) {
+                throw new Error('ASN1 element too large.');
+            }
+            if ((cursor + length) > bytes.length) {
+                throw new Error('ASN1 element truncated.');
+            }
+            this._setValue(bytes.slice(cursor, cursor + length));
+            return cursor + length;
         } else {
-            const length: number = (bytes[cursor++] & 0x7F);
+            const length: number = (lenOctet & 0x7F);
             if ((cursor + length) > bytes.length) {
                 throw new Error('ASN1 element was truncated.');
             }
-            this._setValue(bytes.slice(cursor, (cursor + length)));
-            return (cursor + length);
+            this._setValue(bytes.slice(cursor, cursor + length));
+            return cursor + length;
         }
     }
     _lengthLength(valueLength?: number): number {
@@ -481,41 +479,38 @@ export class _PdfBasicEncodingElement extends _PdfAbstractSyntaxElement {
         const len: number = (valueLength !== null && typeof valueLength !== 'undefined')
             ? valueLength
             : this._valueLength();
-        if (len < 127) {
+        if (len < 128) {
             return 1;
         }
-        const lengthOctets: number[] = [ 0, 0, 0, 0 ];
-        for (let i: number = 0; i < 4; i++) {
-            lengthOctets[<number>i] = ((len >>> ((3 - i) << 3)) & 0xFF);
+        let n: number = 0;
+        let v: number = len;
+        while (v > 0) {
+            n++; v >>>= 8;
         }
-        let startOfNonPadding: number = 0;
-        for (let i: number = 0; i < (lengthOctets.length - 1); i++) {
-            if (lengthOctets[<number>i] === 0x00) {
-                startOfNonPadding++;
-            }
-        }
-        return 5 - startOfNonPadding;
+        return 1 + n;
     }
     _valueLength(): number {
-        if (typeof this._currentValueLength !== 'undefined' && this._currentValueLength !== null) {
+        if (typeof this._currentValueLength !== 'undefined' && this._currentValueLength !== null && !Array.isArray(this._value)) {
             return this._currentValueLength;
         }
         if (!Array.isArray(this._value)) {
-            return this._value.length;
+            const value: Uint8Array = this._getValue();
+            this._currentValueLength = value.length;
+            return value.length;
         }
         let len: number = 0;
-        for (const el of this._value) {
-            len += el._tagLength();
+        for (const element of this._value as _PdfAbstractSyntaxElement[]) {
+            len += (element as any)._tagValueLength(); // eslint-disable-line
         }
         this._currentValueLength = len;
         return len;
     }
-    _tagAndLengthBytes (): Uint8Array {
-        const tagBytes: number[] = [ 0x00 ];
+    _tagAndLengthBytes(): Uint8Array {
+        const tagBytes: number[] = [0x00];
         tagBytes[0] |= (this._tagClass << 6);
-        tagBytes[0] |= (
-            (this._lengthEncodingPreference === _EncodingLength.indefinite)
-            || this._construction === _ConstructionType.constructed) ? (1 << 5) : 0;
+        tagBytes[0] |= ((this._lengthEncodingPreference === _EncodingLength.indefinite) ||
+            this._construction === _ConstructionType.constructed) ? (1 << 5) : 0;
+
         const tagNumber: number = this._getTagNumber();
         if (tagNumber < 31) {
             tagBytes[0] |= tagNumber;
@@ -523,38 +518,33 @@ export class _PdfBasicEncodingElement extends _PdfAbstractSyntaxElement {
             tagBytes[0] |= 0b00011111;
             let number: number = tagNumber;
             const encodedNumber: number[] = [];
-            while (number !== 0) {
+            do {
                 encodedNumber.unshift(number & 0x7F);
                 number >>>= 7;
-                encodedNumber[0] |= 0b10000000;
+            } while (number > 0);
+            for (let i: number = 0; i < encodedNumber.length - 1; i++) {
+                encodedNumber[<number>i] |= 0x80;
             }
-            encodedNumber[encodedNumber.length - 1] &= 0b01111111;
             tagBytes.push(...encodedNumber);
         }
-        let lengthOctets: number[] = [ 0x00 ];
-        const value: number = this._valueLength();
+        let lengthOctets: number[] = [];
+        const valueLen: number = this._valueLength();
         switch (this._lengthEncodingPreference) {
-        case (_EncodingLength.definite): {
-            if (value < 127) {
-                lengthOctets[0] = value;
+        case _EncodingLength.definite: {
+            if (valueLen < 128) {
+                lengthOctets = [valueLen];
             } else {
-                lengthOctets = [ 0, 0, 0, 0 ];
-                for (let i: number = 0; i < 4; i++) {
-                    lengthOctets[<number>i] = ((value >>> ((3 - i) << 3)) & 0xFF);
+                const octets: number[] = [];
+                let v: number = valueLen;
+                while (v > 0) {
+                    octets.unshift(v & 0xff); v >>>= 8;
                 }
-                let startOfNonPadding: number = 0;
-                for (let i: number = 0; i < (lengthOctets.length - 1); i++) {
-                    if (lengthOctets[<number>i] === 0x00) {
-                        startOfNonPadding++;
-                    }
-                }
-                lengthOctets = lengthOctets.slice(startOfNonPadding);
-                lengthOctets.unshift(0b10000000 | lengthOctets.length);
+                lengthOctets = [0x80 | octets.length, ...octets];
             }
             break;
         }
-        case (_EncodingLength.indefinite): {
-            lengthOctets = [ 0b10000000 ];
+        case _EncodingLength.indefinite: {
+            lengthOctets = [0x80];
             break;
         }
         default:
@@ -592,15 +582,21 @@ export class _PdfBasicEncodingElement extends _PdfAbstractSyntaxElement {
         }
         const parts: Uint8Array[] = [];
         const substrings: _PdfAbstractSyntaxElement[] = this._getSequence();
+        const parentTag: number = this._getTagNumber();
         for (const substring of substrings) {
-            if (substring._tagClass !== _TagClassType.universal) {
-                throw new Error(`Invalid tag class in constructed ${dataType}. Must be universal`);
-            }
-            if (substring._getTagNumber() !== _UniversalType.octetString) {
-                throw new Error(`Invalid tag number in constructed ${dataType}. Must be 4 (Octet string).`);
+            if (parentTag === _UniversalType.octetString) {
+                if (substring._tagClass !== _TagClassType.universal ||
+                    substring._getTagNumber() !== _UniversalType.octetString) {
+                    throw new Error('Invalid constructed OCTET STRING: children must be OCTET STRING (tag 4).');
+                }
+            } else {
+                if (substring._tagClass !== this._tagClass ||
+                    substring._getTagNumber() !== parentTag) {
+                    throw new Error(`Invalid constructed ${dataType}: children must be of the same type as the parent.`);
+                }
             }
             substring._recursionCount = this._recursionCount + 1;
-            parts.push(substring._serialize(dataType));
+            parts.push(substring._getValue());
         }
         const totalLength: number = parts.reduce((sum: number, part: Uint8Array) => sum + part.length, 0);
         const result: Uint8Array = new Uint8Array(totalLength);
@@ -727,6 +723,10 @@ export class _PdfBasicEncodingElement extends _PdfAbstractSyntaxElement {
                 `having tag number ${encodingElement._getTagNumber()}.`
             );
         }
+    }
+    _tagValueLength(): number {
+        const value: number = this._valueLength();
+        return this._tagLength() + this._lengthLength(value) + value;
     }
 }
 export enum _EncodingLength {

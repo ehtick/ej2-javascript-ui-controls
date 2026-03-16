@@ -1,10 +1,10 @@
-import { AfterPasteCleanupEventArgs, BeforePasteCleanupEventArgs, BlockActionMenuClosingEventArgs, BlockActionMenuOpeningEventArgs, BlockChange, BlockChangedEventArgs, BlockData, BlockDragEventArgs, BlockDropEventArgs, SelectionChangedEventArgs } from '../../models/eventargs';
+import { AfterPasteCleanupEventArgs, BeforePasteCleanupEventArgs, BlockActionMenuBeforeCloseEventArgs, BlockActionMenuBeforeOpenEventArgs, BlockChange, BlockChangedEventArgs, BlockData, BlockDragEventArgs, BlockDropEventArgs, SelectionChangedEventArgs } from '../../models/eventargs';
 import { BlockEditor } from '../base/blockeditor';
 import { events } from '../../common/constant';
 import * as constants from '../../common/constant';
 import { isNullOrUndefined } from '@syncfusion/ej2-base';
 import { cloneObject } from '../../common/utils/transform';
-import { BeforePasteEventProps, BlockActionMenuCloseEventProps, BlockActionMenuOpenEventProps, IDropDownListRenderOptions } from '../../common';
+import { BeforePasteEventProps, BlockActionMenuCloseEventProps, BlockActionMenuOpenEventProps, IDropDownListRenderOptions } from '../../common/interface';
 
 export class Intermediate {
 
@@ -112,7 +112,7 @@ export class Intermediate {
         const validChanges: BlockChange[] = changes
             .filter((_: BlockChange, index: number) => Number.isInteger(index) && changes[index as number] !== undefined)
             .map((change: BlockChange) => {
-                const clonedData: BlockData = cloneObject(change.data, ['targetId', 'isMovingUp']) as BlockData;
+                const clonedData: BlockData = cloneObject(change.data, ['targetId', 'isAfter', 'isMovingUp']) as BlockData;
                 if (!isNullOrUndefined(change.data.currentParent)) {
                     clonedData.currentParent = change.data.currentParent;
                 }
@@ -130,25 +130,25 @@ export class Intermediate {
     }
 
     private triggerBlockActionsMenuCloseEvent(args: BlockActionMenuCloseEventProps): void {
-        const eventArgs: BlockActionMenuClosingEventArgs = {
+        const eventArgs: BlockActionMenuBeforeCloseEventArgs = {
             event: args.event,
             items: args.items,
             cancel: args.cancel
         };
-        if (this.editor.blockActionMenuSettings.closing) {
-            this.editor.blockActionMenuSettings.closing.call(this, eventArgs);
+        if (this.editor.blockActionMenuSettings.beforeClose) {
+            this.editor.blockActionMenuSettings.beforeClose.call(this, eventArgs);
         }
         args.callback(eventArgs);
     }
 
     private triggerBlockActionsMenuOpenEvent(args: BlockActionMenuOpenEventProps): void {
-        const eventArgs: BlockActionMenuOpeningEventArgs = {
+        const eventArgs: BlockActionMenuBeforeOpenEventArgs = {
             event: args.event,
             items: args.items,
             cancel: args.cancel
         };
-        if (this.editor.blockActionMenuSettings.opening) {
-            this.editor.blockActionMenuSettings.opening.call(this, eventArgs);
+        if (this.editor.blockActionMenuSettings.beforeOpen) {
+            this.editor.blockActionMenuSettings.beforeOpen.call(this, eventArgs);
         }
         args.callback(eventArgs);
     }

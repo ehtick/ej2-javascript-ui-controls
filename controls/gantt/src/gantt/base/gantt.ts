@@ -28,7 +28,7 @@ import { SearchSettingsModel, SearchSettings, ResourceFields, ResourceFieldsMode
 import { ItemModel, ClickEventArgs } from '@syncfusion/ej2-navigations';
 import { DateProcessor } from './date-processor';
 import { ChartRows } from '../renderer/chart-rows';
-import { Dependency } from '../actions/dependency';
+import { Dependency } from '../task-dependency/dependency';
 import * as cls from './css-constants';
 import { Query, DataManager } from '@syncfusion/ej2-data';
 import { Column, ColumnModel } from '../models/column';
@@ -41,10 +41,10 @@ import { ColumnMenuItemModel, ExcelQueryCellInfoEventArgs } from '@syncfusion/ej
 import { ExcelExportProperties, ExcelExportCompleteArgs, ExcelHeaderQueryCellInfoEventArgs } from '@syncfusion/ej2-grids';
 import { RowDD } from '../actions/rowdragdrop';
 import { Filter } from '../actions/filter';
-import { PageEventArgs, FilterEventArgs, SortEventArgs, ResizeArgs, ColumnDragEventArgs, getActualProperties, BeforeDataBoundArgs } from '@syncfusion/ej2-grids';
+import { FilterEventArgs, SortEventArgs, ResizeArgs, ColumnDragEventArgs, getActualProperties, BeforeDataBoundArgs } from '@syncfusion/ej2-grids';
 import { RenderDayCellEventArgs } from '@syncfusion/ej2-calendars';
-import { ConnectorLine } from '../renderer/connector-line';
-import { ConnectorLineEdit } from '../actions/connector-line-edit';
+import { ConnectorLine } from '../task-dependency/connector-line';
+import { ConnectorLineEdit } from '../task-dependency/connector-line-edit';
 import { Edit } from '../actions/edit';
 import { Splitter } from './splitter';
 import { ResizeEventArgs, ResizingEventArgs } from '@syncfusion/ej2-layouts';
@@ -64,7 +64,7 @@ import { PdfExport } from '../actions/pdf-export';
 import { WorkUnit, TaskType } from './enum';
 import { FocusModule } from '../actions/keyboard';
 import { VirtualScroll } from '../actions/virtual-scroll';
-import { isCountRequired } from './utils';
+import { isCountRequired, parentsUntil } from './utils';
 import { TaskbarEdit } from '../actions/taskbar-edit';
 import { UndoRedo } from '../actions/undo-redo';
 import { WeekWorkingTimeModel } from '../models/week-working-time-model';
@@ -121,10 +121,13 @@ export class Gantt extends Component<HTMLElement>
     private totalUndoAction: number = 0;
     public previousFlatData: IGanttData[] = [];
     private isExpandPerformed: boolean = false;
+    private isCollapsePerformed: boolean = false;
     private oldRecords: IGanttData[] = [];
     private updateDuration: boolean = false;
     private isConvertedMilestone: boolean = false;
     private isDynamicDataUpdate: boolean = false;
+    private splitterUpdateType: string;
+    private skipOffsetUpdate: boolean = false;
     /** @hidden */
     public topBottomHeader: number;
     /** @hidden */
@@ -330,6 +333,10 @@ export class Gantt extends Component<HTMLElement>
     /** @hidden */
     public cloneProjectEndDate?: Date;
     /** @hidden */
+    public cloneTimelineStartDate?: Date;
+    /** @hidden */
+    public cloneTimelineEndDate?: Date;
+    /** @hidden */
     public totalHolidayDates?: number[];
     /** @hidden */
     public columnMapping?: { [key: string]: string; };
@@ -346,6 +353,7 @@ export class Gantt extends Component<HTMLElement>
     /** @hidden */
     // eslint-disable-next-line
     public isAdaptive: Boolean;
+
     /**
      * The `sortModule` is used to manipulate sorting operation in Gantt.
      */
@@ -437,6 +445,15 @@ export class Gantt extends Component<HTMLElement>
     /** @hidden */
     public enableValidation: boolean = true;
     /**
+     * Determines whether to automatically validate and update predecessor offsets in the IPredecessor collection and columns during initial load.
+     * When true, ensures data consistency with rendering validations.
+     *
+     * @default false
+     */
+    @Property(false)
+    public autoUpdatePredecessorOffset: boolean;
+
+    /**
      * Enables or disables keyboard interactions in the Gantt chart.
      *
      * @default true
@@ -453,7 +470,9 @@ export class Gantt extends Component<HTMLElement>
     public enableImmutableMode: boolean;
 
     /**
-     * Specifies whether to allow dependency connection support for parent records.
+     * Specifies whether dependency connections are supported for parent tasks.
+     * Only allows dependencies between tasks belonging to different parents.
+     * Dependencies within the same parent are not supported.
      *
      * @default true
      */
@@ -514,7 +533,7 @@ export class Gantt extends Component<HTMLElement>
     @Property(true)
     public autoCalculateDateScheduling: boolean;
     /**
-     * Enables or disables automatic focusing on the taskbar when a task is clicked.
+     *  Specifies whether to automatically scroll the corresponding taskbar into view when a task is selected.
      *
      * @default true
      */
@@ -522,8 +541,7 @@ export class Gantt extends Component<HTMLElement>
     public autoFocusTasks: boolean;
 
     /**
-     * If `enableAdaptiveUI` is set to true, the pop-up UI becomes adaptive to smaller screens, enabling better usability for filtering and other features.
-     *
+     * Specifies whether to enable an adaptive UI mode, which optimizes the layout of pop-ups for filtering, editing, and other features on smaller screens, such as mobile devices.     *
      * @default false
      */
     @Property(false)
@@ -549,7 +567,7 @@ export class Gantt extends Component<HTMLElement>
     public enableAutoWbsUpdate: boolean;
 
     /**
-     * If `allowSelection` is set to true, it enables row selection in the Gantt chart, and the selected rows are highlighted.
+     * Specifies whether to enable row selection in the Gantt chart. When enabled, selected rows are highlighted.
      *
      * @default true
      */
@@ -613,12 +631,24 @@ export class Gantt extends Component<HTMLElement>
     public undoRedoActions: GanttAction[];
 
     /**
-     * By default, task schedule dates are calculated with system time zone. If the Gantt chart is assigned with a specific time zone, then schedule dates are calculated based on the given time zone date value.
-     * This property function properly when the timeline displays hours. To enable this, set `timelineViewMode` to 'Hour' or configure `topTier.unit` as 'Day' and `bottomTier.unit` as 'Hour'.
+     * Specifies the time zone used for task date and scheduling calculations in the Gantt chart.
+     * By default, the system or browser time zone is applied.
+     *
+     * The time zone always affects internal date calculations (e.g., task start/end times, durations, and dependencies),
+     * even in non-hour views. However, visible changes in timeline and task positions only appear when the timeline
+     * includes an hour-level mode.
+     *
+     * To see the time zone reflected in the UI, configure one of these:
+     *   - `timelineViewMode: 'Hour'`
+     *   - or `topTier.unit: 'Day'` + `bottomTier.unit: 'Hour'`
+     *
+     * Without an hour view (e.g., only Day/Week/Month views), the chart looks unchanged, but Gantt chart uses the new time zone.
+     *
+     * Use standard IANA time zone names (e.g., 'Asia/Kolkata', 'UTC', 'America/New_York').
      *
      * @default null
      */
-    @Property()
+    @Property(null)
     public timezone: string;
     /**
      * Defines whether all root tasks should be rendered in a collapsed state. When `collapseAllParentTasks` set to true, all parent tasks will be collapsed by default.
@@ -666,9 +696,10 @@ export class Gantt extends Component<HTMLElement>
     @Property('day')
     public durationUnit: DurationUnit;
     /**
-     * Defines an external [`Query`](https://ej2.syncfusion.com/documentation/api/data/query)
+     * Defines an external [`Query`](https://ej2.syncfusion.com/documentation/data/api-query.html)
      * that will be executed in conjunction with data processing to filter, sort the data.
      * This allows for advanced data manipulation before binding the data to the Gantt chart.
+     * {% codeBlock src='gantt/query/index.md' %}{% endcodeBlock %}
      *
      * @default null
      */
@@ -712,7 +743,7 @@ export class Gantt extends Component<HTMLElement>
     public calendarSettings: CalendarSettingsModel;
 
     /**
-     * Defines whether to enable or disable the taskbar drag and drop action in the Gantt chart.
+     * Specifies whether taskbar drag and drop is enabled in the Gantt chart.
      *
      * @default false
      */
@@ -730,6 +761,12 @@ export class Gantt extends Component<HTMLElement>
     /**
      * Configures the grid lines displayed in the TreeGrid and Gantt chart.
      * The `gridLines` property allows customization of the type of grid lines to be shown, either horizontal, vertical, both or none.
+     *
+     * * `Both`: Displays both horizontal and vertical grid lines.
+     * * `None`: Hides both horizontal and vertical grid lines.
+     * * `Horizontal`: Displays only horizontal grid lines.
+     * * `Vertical`: Displays only vertical grid lines.
+     * * `Default`: Adjusts line visibility based on the theme.
      *
      *  @default 'Horizontal'
      */
@@ -765,8 +802,8 @@ export class Gantt extends Component<HTMLElement>
     public parentTaskbarTemplate: string | Function;
 
     /**
-     * Renders customized html elements for timeline cell from the given template.
-     *
+     * Specifies the template used to render custom HTML content in timeline cells.
+     * {% codeBlock src='gantt/timelineTemplate/index.md' %}{% endcodeBlock %}
      * @default null
      * @aspType string
      */
@@ -775,6 +812,7 @@ export class Gantt extends Component<HTMLElement>
 
     /**
      * Defines a custom template for rendering milestone tasks in the Gantt chart. This template allows you to customize the appearance of milestone tasks.
+     * {% codeBlock src='gantt/milestoneTemplate/index.md' %}{% endcodeBlock %}
      *
      * @default null
      * @aspType string
@@ -784,6 +822,7 @@ export class Gantt extends Component<HTMLElement>
 
     /**
      * Specifies the color of the baseline bar in the Gantt chart.
+     * {% codeBlock src='gantt/baselineColor/index.md' %}{% endcodeBlock %}
      *
      *  @default null
      */
@@ -846,15 +885,16 @@ export class Gantt extends Component<HTMLElement>
     public toolbar: (ToolbarItem | string | ItemModel)[];
 
     /**
-     * Defines workweek of project.
+     * Specifies the project's workweek (working days).
+     * `workWeek` specifies the days of the week that are considered working days for the project.
      *
      * @default ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
      */
     @Property(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'])
     public workWeek: string[];
     /**
-     * Defines whether weekend days should be considered as working days in the Gantt chart.
-     * When `includeWeekend` set to true, weekends (Saturday and Sunday) are treated as regular working days.
+     * Specifies whether weekend days are considered working days in the Gantt chart.
+     * When `includeWeekend` is set to true, weekends (Saturday and Sunday) are treated as regular working days.
      *
      * @default false
      */
@@ -913,7 +953,7 @@ export class Gantt extends Component<HTMLElement>
     /**
      * Defines the mapping property to retrieve the resource ID value from the resource collection.
      * This is used to map the resource ID from the resource data to the Gantt chart for resource allocation.
-     *
+     * {% codeBlock src='gantt/resources/index.md' %}{% endcodeBlock %}
      * @default null
      */
     @Property(null)
@@ -921,28 +961,29 @@ export class Gantt extends Component<HTMLElement>
     /**
      * Defines the mapping property to retrieve the resource name value from the resource collection.
      * This is used to map the resource name from the resource data to the Gantt chart for task allocation.
-     *
+     * {% codeBlock src='gantt/resources/index.md' %}{% endcodeBlock %}
      * @default null
      */
     @Property(null)
     public resourceNameMapping: string;
     /**
-     * Defines the collection of resources assigned to the project.
+     * Specifies the collection of resources assigned to the project.
      *
      * @default []
      */
     @Property([])
     public resources: object[];
     /**
-     * Defines the collection of segments assigned to tasks in the Gantt chart.
+     * Specifies the array of segment objects assigned to tasks in the Gantt chart.
+     * Each segment represents a portion of the taskbar, allowing for visual representation of different phases or sub-tasks within a single task.
      *
      * @default []
      */
     @Property([])
     public segmentData: object[];
     /**
-     * Defines the background color of the dependency lines (connector lines) in the Gantt chart.
-     * You can set the color as a valid CSS color string (e.g., "red", "#FF5733", "rgb(255,0,0)").
+     * Specifies the background color of dependency (connector) lines in the Gantt chart.
+     * Accepts any valid CSS color value (for example: "red", "#FF5733", "rgb(255, 0, 0)").
      *
      * @default null
      */
@@ -1015,7 +1056,7 @@ export class Gantt extends Component<HTMLElement>
     @Property('FixedUnit')
     public taskType: TaskType;
     /**
-     * Defines the view type of the Gantt.
+     * Specifies the view type of the Gantt chart.
      *
      *  @default 'ProjectView'
      */
@@ -1054,8 +1095,8 @@ export class Gantt extends Component<HTMLElement>
     @Collection<EventMarkerModel>([], EventMarker)
     public eventMarkers: EventMarkerModel[];
     /**
-     * Defines the mapping properties to extract task-related values, such as ID, start date, end date, duration, and progress, from the data source.
-     * This allows the Gantt chart to properly map the provided data to the corresponding task fields and render them accordingly.
+     * Defines the mapping properties used to extract task-related values—such as ID, start date, end date, duration, and progress—from the data source.
+     * This ensures that the Gantt chart correctly maps the provided data to the corresponding task fields and renders them accurately.
      * {% codeBlock src='gantt/taskFields/index.md' %}{% endcodeBlock %}
      */
     @Complex<TaskFieldsModel>({}, TaskFields)
@@ -1075,7 +1116,8 @@ export class Gantt extends Component<HTMLElement>
     @Complex<TimelineSettingsModel>({}, TimelineSettings)
     public timelineSettings: TimelineSettingsModel;
     /**
-     * Configure zooming levels of Gantt Timeline.
+     * Defines the available zoom levels for the Gantt timeline.
+     * Provide an array of ZoomTimelineSettings to control the scale and intervals used when zooming.
      *
      * @default []
      */
@@ -1088,7 +1130,8 @@ export class Gantt extends Component<HTMLElement>
     public currentZoomingLevel: ZoomTimelineSettings;
 
     /**
-     * Configures the sort settings for the Gantt chart.
+     * Configures the sorting options for the Gantt chart.
+     * When set, it defines how tasks are sorted based on the specified columns.
      * {% codeBlock src='gantt/sortSettings/index.md' %}{% endcodeBlock %}
      *
      * @default {columns:[]}
@@ -1130,7 +1173,8 @@ export class Gantt extends Component<HTMLElement>
     public allowFiltering: boolean;
 
     /**
-     * If `allowExcelExport` set to true, then it will allow the user to export Gantt chart to Excel and CSV file.
+     * Enables exporting the Gantt chart to Excel (.xlsx) and CSV formats.
+     * When set to true, users can export the chart data.
      *
      * @default false
      */
@@ -1190,7 +1234,9 @@ export class Gantt extends Component<HTMLElement>
     public enableCriticalPath: boolean;
 
     /**
-     * Enables or disables the undo and redo functionality in the Gantt chart.
+     * `enableUndoRedo` enables or disables the undo/redo functionality in the Gantt chart.
+     * Enables undo and redo in the Gantt chart. When set to true, users can
+     * revert or reapply recent changes.
      *
      * @default false
      */
@@ -1198,7 +1244,7 @@ export class Gantt extends Component<HTMLElement>
     public enableUndoRedo: boolean;
 
     /**
-     * Defines number of undo/redo actions that should be stored.
+     * Specifies the number of undo and redo actions to retain in history.
      *
      * @default 10
      */
@@ -1292,6 +1338,8 @@ export class Gantt extends Component<HTMLElement>
     /**
      * Configures the splitter settings for the Gantt chart.
      * {% codeBlock src='gantt/splitterSettings/index.md' %}{% endcodeBlock %}
+     *
+     * The `position` takes precedence over `columnIndex` when both defined.
      */
     @Complex<SplitterSettingsModel>({}, SplitterSettings)
     public splitterSettings: SplitterSettingsModel;
@@ -1337,7 +1385,8 @@ export class Gantt extends Component<HTMLElement>
     public isEdit: boolean = false;
 
     /**
-     * This will be triggered after the taskbar element is appended to the Gantt element.
+     * Event triggered per taskbar before rendering in the Gantt chart.
+     * Used to customize taskbar styles and properties dynamically.
      *
      * @event queryTaskbarInfo
      */
@@ -1345,415 +1394,399 @@ export class Gantt extends Component<HTMLElement>
     public queryTaskbarInfo: EmitType<IQueryTaskbarInfoEventArgs>;
 
     /**
-     * Triggers before Gantt data is exported to Excel file.
-     *
+     * Event triggered before Gantt data is exported to Excel.
+     * Allows modification or cancellation of the export process.
      * @event beforeExcelExport
      */
     @Event()
     public beforeExcelExport: EmitType<Object>;
+
     /**
-     * Triggers after Gantt data is exported to Excel file.
-     *
+     * Event triggered after Gantt data has been successfully exported to Excel.
+     * Provides access to the generated workbook.
      * @event excelExportComplete
      */
     @Event()
     public excelExportComplete: EmitType<ExcelExportCompleteArgs>;
+
     /**
-     * Triggers before exporting each cell to Excel file.
-     * You can also customize the Excel cells.
-     *
+     * Event triggered before each cell (header or data) is exported to Excel.
+     * Allows customization of cell content, style, or value.
      * @event excelQueryCellInfo
      */
     @Event()
     public excelQueryCellInfo: EmitType<ExcelQueryCellInfoEventArgs>;
 
     /**
-     * Triggers before exporting each header cell to Excel file.
-     * You can also customize the Excel cells.
-     *
+     * Event triggered before each header cell is exported to Excel.
+     * Allows customization of header cell content or styling.
      * @event excelHeaderQueryCellInfo
      */
     @Event()
     public excelHeaderQueryCellInfo: EmitType<ExcelHeaderQueryCellInfoEventArgs>;
+
     /**
-     * Triggers when row elements are dragged (moved) continuously.
-     *
+     * Event triggered continuously while row elements are being dragged.
+     * Provides current drag position and target information.
      * @event rowDrag
      */
     @Event()
     public rowDrag: EmitType<RowDragEventArgs>;
+
     /**
-     * Triggers when row element’s drag(move) starts.
-     *
+     * Event triggered when a row drag operation starts.
+     * Provides initial drag source details.
      * @event rowDragStart
      */
     @Event()
     public rowDragStart: EmitType<RowDragEventArgs>;
 
     /**
-     * Triggers when row element’s before drag(move).
-     *
+     * Event triggered before the row drag operation officially begins.
+     * Allows preparation or cancellation of the drag action.
      * @event rowDragStartHelper
      */
     @Event()
     public rowDragStartHelper: EmitType<RowDragEventArgs>;
+
     /**
-     * Triggers when row elements are dropped on the target row.
-     *
+     * Event triggered when dragged row elements are dropped onto a target row.
+     * Provides source and target row information for reordering/indent/outdent.
      * @event rowDrop
      */
     @Event()
     public rowDrop: EmitType<RowDragEventArgs>;
 
     /**
-     * This will be triggered before the row getting collapsed.
-     *
+     * Event triggered before a row is collapsed.
+     * Allows cancellation of the collapse action.
      * @event collapsing
      */
     @Event()
     public collapsing: EmitType<ICollapsingEventArgs>;
 
     /**
-     * This will be triggered after the row getting collapsed.
-     *
+     * Event triggered after a row has been collapsed.
+     * Indicates the collapse action has completed.
      * @event collapsed
      */
     @Event()
     public collapsed: EmitType<ICollapsingEventArgs>;
 
     /**
-     * This will be triggered before the row getting expanded.
-     *
+     * Event triggered before a row is expanded.
+     * Allows cancellation of the expand action.
      * @event expanding
      */
     @Event()
     public expanding: EmitType<ICollapsingEventArgs>;
 
     /**
-     * This will be triggered after the row getting expanded.
-     *
+     * Event triggered after a row has been expanded.
+     * Indicates the expand action has completed.
      * @event expanded
      */
     @Event()
     public expanded: EmitType<ICollapsingEventArgs>;
 
     /**
-     * Triggers when Gantt actions such as sorting, filtering, searching etc., starts.
-     *
+     * Event triggered when a Gantt action (sorting, filtering, searching, etc.) begins.
+     * Allows cancellation or modification of the action.
      * @event actionBegin
      */
     @Event()
-    public actionBegin: EmitType<Object | PageEventArgs | FilterEventArgs | SortEventArgs | ITimeSpanEventArgs | IDependencyEventArgs | ITaskAddedEventArgs | ZoomEventArgs>;  // eslint-disable-line
+    public actionBegin: EmitType<Object | FilterEventArgs | SortEventArgs | ITimeSpanEventArgs | IDependencyEventArgs | ITaskAddedEventArgs | ZoomEventArgs>; // eslint-disable-line
+
     /**
-     * Triggers before a cell's value is saved in the Gantt chart.
-     *
-     * This event allows cancellation of the save action.
-     *
+     * Event triggered before a cell value is saved during editing.
+     * Allows cancellation or modification of the save operation.
      * @event cellSave
-     * @param args - Arguments related to the cell save event, including data and cancellation options.
      */
     @Event()
     public cellSave: EmitType<CellSaveArgs>;
+
     /**
-     * Triggers when Gantt actions such as sorting, filtering, searching etc. are completed.
-     *
+     * Event triggered after a Gantt action (sorting, filtering, etc.) has completed.
+     * Provides updated state after the action.
      * @event actionComplete
      */
     @Event()
     public actionComplete: EmitType<FilterEventArgs | SortEventArgs | ITaskAddedEventArgs | IKeyPressedEventArgs | ZoomEventArgs>;
 
     /**
-     * Triggers when actions are failed.
-     *
+     * Event triggered when a Gantt action fails during execution.
+     * Provides error details.
      * @event actionFailure
      */
     @Event()
     public actionFailure: EmitType<FailureEventArgs>;
 
     /**
-     * Triggers when the Gantt actions such as Sorting, Editing etc., are done.
-     * In this event,the current view data and total record count should be assigned to the `dataSource` based on the action performed.
-     *
+     * Event triggered after actions like sorting, filtering complete.
+     * Used to update the dataSource with current view data and record count.
      * @event dataStateChange
      */
     @Event()
     public dataStateChange: EmitType<DataStateChangeEventArgs>;
 
     /**
-     * Triggered when a taskbar is dragged and dropped into a new position on the Gantt chart.
-     *
+     * Event triggered after a taskbar has been dragged and dropped to a new position.
+     * Indicates editing via taskbar has completed.
      * @event taskbarEdited
-     */
+     */
     @Event()
     public taskbarEdited: EmitType<ITaskbarEditedEventArgs>;
 
     /**
-     * This will be triggered when a task get saved by cell edit.
-     *
+     * Event triggered when a task is saved through cell editing.
+     * Provides updated task data after save.
      * @event endEdit
-     */
+     */
     @Event()
     public endEdit: EmitType<ITaskbarEditedEventArgs>;
 
     /**
-     * This will be triggered a cell get begins to edit.
-     *
+     * Event triggered when a cell enters edit mode in the Gantt chart.
+     * Allows customization or cancellation of editing.
      * @event cellEdit
      */
     @Event()
     public cellEdit: EmitType<CellEditArgs>;
 
     /**
-     * Triggered before the Gantt control gets rendered.
-     *
-     * @event load
+     * Event triggered when the Gantt component begins loading data.
+     * Occurs before any rendering starts.
+     * @event load
      */
     @Event()
     public load: EmitType<Object>;
 
     /**
-     * Triggers when the component is created.
-     *
-     * @event created
-     */
+     * Event triggered after the Gantt component is fully created and initialized.
+     * @event created
+     */
     @Event()
     public created: EmitType<Object>;
 
     /**
-     * Triggers when the component is destroyed.
-     *
-     * @event destroyed
-     */
+     * Event triggered when the Gantt component is being destroyed.
+     * Allows cleanup operations.
+     * @event destroyed
+     */
     @Event()
     public destroyed: EmitType<Object>;
 
     /**
-     * Triggered when a taskbar is in the dragging state on the Gantt chart.
-     *
+     * Event triggered while a taskbar is being dragged.
+     * Provides current drag progress and position.
      * @event taskbarEditing
-     */
+     */
     @Event()
     public taskbarEditing: EmitType<ITaskbarEditedEventArgs>;
 
     /**
-     * Triggers when data source is populated in the Grid.
-     *
-     * @event dataBound
+     * Event triggered after the data source is bound to the TreeGrid part of Gantt.
+     * Indicates data binding is complete.
+     * @event dataBound
      */
     @Event()
     public dataBound: EmitType<Object>;
 
     /**
-     * Triggers before the data is bound to the TreeGrid in the Gantt component.
-     * This event is triggered before any visual elements (taskbars, rows, timelines) are rendered in the DOM.
-     *
+     * Event triggered before data is bound to the TreeGrid.
+     * Allows modification of data before rendering begins.
      * @event beforeDataBound
      */
     @Event()
     public beforeDataBound: EmitType<BeforeDataBoundArgs>;
 
     /**
-     * Triggers when column resize starts.
-     *
+     * Event triggered when column resizing starts in the Grid.
      * @event resizeStart
      */
     @Event()
     public resizeStart: EmitType<ResizeArgs>;
 
     /**
-     * Triggers on column resizing.
-     *
+     * Event triggered continuously while a column is being resized.
      * @event resizing
      */
     @Event()
     public resizing: EmitType<ResizeArgs>;
 
     /**
-     * Triggers when column resize ends.
-     *
+     * Event triggered when column resizing completes.
      * @event resizeStop
      */
     @Event()
     public resizeStop: EmitType<ResizeArgs>;
 
     /**
-     * Triggers when splitter resizing starts.
-     *
+     * Event triggered when splitter resizing begins in the Gantt component.
      * @event splitterResizeStart
      */
     @Event()
     public splitterResizeStart: EmitType<ResizeEventArgs>;
 
     /**
-     * Triggers when splitter bar was dragging.
-     *
+     * Event triggered continuously while the splitter bar is being dragged.
      * @event splitterResizing
      */
     @Event()
     public splitterResizing: EmitType<ResizingEventArgs>;
 
     /**
-     * Triggers when splitter resizing action completed.
-     *
+     * Event triggered when splitter resizing action completes.
      * @event splitterResized
      */
     @Event()
     public splitterResized: EmitType<ISplitterResizedEventArgs>;
 
     /**
-     * Triggers when column header element drag (move) starts.
-     *
+     * Event triggered when column header drag starts.
      * @event columnDragStart
      */
     @Event()
     public columnDragStart: EmitType<ColumnDragEventArgs>;
 
     /**
-     * Triggers when column header element is dragged (moved) continuously.
-     *
+     * Event triggered continuously while a column header is being dragged.
      * @event columnDrag
      */
     @Event()
     public columnDrag: EmitType<ColumnDragEventArgs>;
 
     /**
-     * Triggers when a column header element is dropped on the target column.
-     *
+     * Event triggered when a dragged column header is dropped.
      * @event columnDrop
      */
     @Event()
     public columnDrop: EmitType<ColumnDragEventArgs>;
 
     /**
-     * Triggers before tooltip get rendered.
-     *
+     * Event triggered before a tooltip is rendered.
+     * Allows customization of tooltip content or cancellation.
      * @event beforeTooltipRender
-     */
+     */
     @Event()
     public beforeTooltipRender: EmitType<BeforeTooltipRenderEventArgs>;
 
     /**
-     * Triggers before row selection occurs.
-     *
+     * Event triggered before a row is selected.
+     * Allows cancellation of selection.
      * @event rowSelecting
      */
     @Event()
     public rowSelecting: EmitType<RowSelectingEventArgs>;
 
     /**
-     * Triggers after row selection occurs.
-     *
+     * Event triggered after a row has been selected.
      * @event rowSelected
      */
     @Event()
     public rowSelected: EmitType<RowSelectEventArgs>;
 
     /**
-     * Triggers before deselecting the selected row.
-     *
+     * Event triggered before a selected row is deselected.
+     * Allows cancellation of deselection.
      * @event rowDeselecting
      */
     @Event()
     public rowDeselecting: EmitType<RowDeselectEventArgs>;
 
     /**
-     * Triggers when a selected row is deselected.
-     *
+     * Event triggered after a row has been deselected.
      * @event rowDeselected
      */
     @Event()
     public rowDeselected: EmitType<RowDeselectEventArgs>;
 
-
     /**
-     * Triggers before any cell selection occurs.
-     *
+     * Event triggered before a cell is selected.
+     * Allows cancellation of cell selection.
      * @event cellSelecting
      */
     @Event()
     public cellSelecting: EmitType<CellSelectingEventArgs>;
 
     /**
-     * Triggers after a cell is selected.
-     *
+     * Event triggered after a cell has been selected.
      * @event cellSelected
      */
     @Event()
     public cellSelected: EmitType<CellSelectEventArgs>;
 
     /**
-     * Triggers before the selected cell is deselecting.
-     *
+     * Event triggered before a selected cell is deselected.
+     * Allows cancellation of cell deselection.
      * @event cellDeselecting
      */
     @Event()
     public cellDeselecting: EmitType<CellDeselectEventArgs>;
 
     /**
-     * Triggers when a particular selected cell is deselected.
-     *
-     * @event cellDeselected
-     */
+     * Event triggered after a cell has been deselected.
+     * @event cellDeselected
+     */
     @Event()
     public cellDeselected: EmitType<CellDeselectEventArgs>;
 
     /**
-     * This will be triggered before the header cell element is appended to the Grid element.
-     *
+     * Event triggered before each cell element is rendered.
+     * Allows customization of cell content or style.
      * @event queryCellInfo
      */
     @Event()
     public queryCellInfo: EmitType<QueryCellInfoEventArgs>;
 
     /**
-     * This will be triggered before the header cell element is appended to the Grid element.
-     *
+     * Event triggered before each header cell element is rendered.
+     * Allows customization of header cell content or style.
      * @event headerCellInfo
      */
     @Event()
     public headerCellInfo: EmitType<HeaderCellInfoEventArgs>;
 
     /**
-     * This will be triggered before the row element is appended to the Grid element.
-     *
+     * Event triggered before each row element is rendered.
+     * Allows customization of row appearance.
      * @event rowDataBound
      */
     @Event()
     public rowDataBound: EmitType<RowDataBoundEventArgs>;
 
     /**
-     * Triggers before column menu opens.
-     *
-     * @event columnMenuOpen
-     */
+     * Event triggered before the column menu is opened.
+     * Allows customization or cancellation of menu display.
+     * @event columnMenuOpen
+     */
     @Event()
     public columnMenuOpen: EmitType<ColumnMenuOpenEventArgs>;
 
     /**
-     * Triggers when toolbar item was clicked.
-     *
+     * Event triggered when a toolbar item is clicked.
      * @event toolbarClick
      */
     @Event()
     public toolbarClick: EmitType<ClickEventArgs>;
+
     /**
-     * Triggers when click on column menu.
-     *
+     * Event triggered when an item in the column menu is clicked.
      * @event columnMenuClick
      */
     @Event()
     public columnMenuClick: EmitType<ColumnMenuClickEventArgs>;
+
     /**
-     * Triggers before context menu opens.
-     *
+     * Event triggered before the context menu is opened.
+     * Allows customization or cancellation.
      * @event contextMenuOpen
      */
     @Event()
     public contextMenuOpen: EmitType<CMenuOpenEventArgs>;
 
     /**
-     * Triggers when click on context menu.
-     *
+     * Event triggered when an item in the context menu is clicked.
      * @event contextMenuClick
      */
     @Event()
@@ -1765,71 +1798,76 @@ export class Gantt extends Component<HTMLElement>
     }
 
     /**
-     * This event will be triggered when click on taskbar element.
-     *
+     * Event triggered when a taskbar element is clicked.
+     * Provides task and click details.
      * @event onTaskbarClick
-     */
+     */
     @Event()
     public onTaskbarClick: EmitType<ITaskbarClickEventArgs>;
 
     /**
-     * This event will be triggered when double click on record.
-     *
+     * Event triggered when a record is double-clicked.
      * @event recordDoubleClick
-     */
+     */
     @Event()
     public recordDoubleClick: EmitType<RecordDoubleClickEventArgs>;
 
     /**
-     * This event will be triggered when mouse move on Gantt.
-     *
+     * Event triggered on mouse move over the Gantt component.
+     * Provides mouse position and target information.
      * @event onMouseMove
-     */
+     */
     @Event()
     public onMouseMove: EmitType<IMouseMoveEventArgs>;
 
     /**
-     * Triggers before Gantt data is exported to PDF document.
-     *
+     * Event triggered before Gantt data is exported to PDF.
+     * Allows modification or cancellation of PDF export.
      * @event beforePdfExport
      */
     @Event()
     public beforePdfExport: EmitType<Object>;
+
     /**
-     * Triggers after TreeGrid data is exported to PDF document.
-     *
+     * Event triggered after Gantt data has been exported to PDF.
+     * Provides access to the generated document.
      * @event pdfExportComplete
      */
     @Event()
     public pdfExportComplete: EmitType<Object>;
+
     /**
-     * Triggers before exporting each cell to PDF document. You can also customize the PDF cells.
-     *
-     * @event pdfQueryCellInfo
-     */
+     * Event triggered before each cell is exported to PDF.
+     * Allows customization of cell content or style.
+     * @event pdfQueryCellInfo
+     */
     @Event()
     public pdfQueryCellInfo: EmitType<PdfQueryCellInfoEventArgs>;
+
     /**
-     * Triggers before exporting each taskbar to PDF document. You can also customize the taskbar.
-     *
+     * Event triggered before each taskbar is exported to PDF.
+     * Allows customization of taskbar appearance in PDF.
      * @event pdfQueryTaskbarInfo
      */
     @Event()
     public pdfQueryTaskbarInfo: EmitType<Object>;
+
     /**
-     * Triggers before exporting each cell to PDF document. You can also customize the PDF cells.
-     *
+     * Event triggered before each timeline cell is exported to PDF.
+     * Allows customization of timeline cell content or style.
      * @event pdfQueryTimelineCellInfo
      */
     @Event()
     public pdfQueryTimelineCellInfo: EmitType<PdfQueryTimelineCellInfoEventArgs>;
+
     /**
-     * Triggers before exporting each header cell to PDF document. You can also customize the PDF cells.
-     *
+     * Event triggered before each column header cell is exported to PDF.
+     * Allows customization of header cell content or style.
      * @event pdfColumnHeaderQueryCellInfo
      */
     @Event()
     public pdfColumnHeaderQueryCellInfo: EmitType<PdfColumnHeaderQueryCellInfoEventArgs>;
+
     /**
      * To get the module name
      *
@@ -2153,6 +2191,10 @@ export class Gantt extends Component<HTMLElement>
             this.cloneProjectStartDate : null;
         this.cloneProjectEndDate = this.enablePersistence && this.cloneProjectEndDate ?
             this.cloneProjectEndDate : null;
+        this.cloneTimelineStartDate = this.enablePersistence && this.cloneTimelineStartDate ?
+            this.cloneTimelineStartDate : null;
+        this.cloneTimelineEndDate = this.enablePersistence && this.cloneTimelineEndDate ?
+            this.cloneTimelineEndDate : null;
         this.totalHolidayDates = this.dataOperation.getHolidayDates();
         this.ganttChartModule = new GanttChart(this);
         this.timelineModule = new Timeline(this);
@@ -2562,7 +2604,7 @@ export class Gantt extends Component<HTMLElement>
         return value.split(',').map((item : string) => {
             const match: string[] = item.trim().match(/^(.*?)(FS|SS|FF|SF|\+|\s|$)(.*)/i);
             if (match) {
-                const newId: string = this.getRecordByID(match[1]).ganttProperties.wbsCode; // New ID to replace
+                const newId: string = this.connectorLineModule.getRecordByID(match[1]).ganttProperties.wbsCode; // New ID to replace
                 const remaining: string = (match[2] + match[3]).trim(); // Keep original remaining part
                 return newId + remaining; // Combine new ID + remaining
             } else {
@@ -2775,6 +2817,7 @@ export class Gantt extends Component<HTMLElement>
             div.appendChild(maskTable);
             parentElement.insertBefore(div, parentElement.firstChild);
         }
+        (element as HTMLElement).style.height = shimmerContainerHeight + 'px';
         return maskTable;
     }
     private createEmptyTimeLineTable(timelineHeight: number): Element {
@@ -3094,6 +3137,9 @@ export class Gantt extends Component<HTMLElement>
                 this.ganttChartModule.manageFocus(this.treeGrid.element.childNodes[1] as HTMLElement, 'remove', false);
                 this.ganttChartModule.manageFocus(this.element, 'add', false);
             }
+        }
+        if (e.key === 'Enter' && !this.allowKeyboard && parentsUntil(e.target as Element, 'e-editedbatchcell')) {
+            e.preventDefault();
         }
     }
     /**
@@ -3851,6 +3897,12 @@ export class Gantt extends Component<HTMLElement>
                 this.treeGrid[prop as string] = this[prop as string];
                 this.treeGrid.dataBind();
                 break;
+            case 'enableVirtualization':
+                if (this.enableVirtualization) {
+                    this.treeGrid.grid.enableSeamlessScrolling = false;
+                }
+                refreshState.isRefresh = true;
+                break;
             case 'workWeek':
                 this.dataOperation.getNonWorkingDayIndex();
                 this.dataOperation.reUpdateGanttData();
@@ -3878,6 +3930,9 @@ export class Gantt extends Component<HTMLElement>
                 this.treeGrid.dataBind();
                 break;
             case 'timelineSettings':
+                this.isTimelineRoundOff = this.timelineModule.isZoomToFit ? false : (this.timelineSettings.viewEndDate !== 'auto' ||
+                    this.timelineSettings.viewStartDate !== 'auto'
+                    || !isNullOrUndefined(this.projectStartDate)) ? false : true;
                 this.timelineModule.refreshTimeline();
                 if (this.enableTimelineVirtualization && (!this.undoRedoModule || (this.undoRedoModule &&
                     !this.undoRedoModule['isZoomingUndoRedoProgress']))) {
@@ -3936,7 +3991,15 @@ export class Gantt extends Component<HTMLElement>
                 this.tooltipModule.createTooltip();
                 break;
             case 'splitterSettings':
+                if (newProp.splitterSettings.position) {
+                    this.splitterUpdateType = 'position';
+                }
+                else if (newProp.splitterSettings.columnIndex)
+                {
+                    this.splitterUpdateType = 'columnIndex';
+                }
                 this.splitterModule.updateSplitterPosition();
+                this.splitterUpdateType = null;
                 break;
             case 'selectionSettings':
                 this.treeGrid.selectionSettings = getActualProperties(this.selectionSettings);
@@ -3977,6 +4040,7 @@ export class Gantt extends Component<HTMLElement>
             case 'dayWorkingTime':
             case 'weekWorkingTime':
             case 'enableHover':
+                this.skipOffsetUpdate = true;
                 this.handleTaskSchedulingChanges(prop, newProp, refreshState);
                 break;
             case 'addDialogFields':
@@ -4038,6 +4102,9 @@ export class Gantt extends Component<HTMLElement>
             case 'projectEndDate':
                 this.timelineModule.isZoomToFit = false;
                 this.dataOperation.calculateProjectDates();
+                this.isTimelineRoundOff = this.timelineModule.isZoomToFit ? false : (this.timelineSettings.viewEndDate !== 'auto' ||
+                    this.timelineSettings.viewStartDate !== 'auto'
+                    || !isNullOrUndefined(this.projectStartDate)) ? false : true;
                 this.updateProjectDates(
                     this.cloneProjectStartDate, this.cloneProjectEndDate, this.isTimelineRoundOff);
                 break;
@@ -4082,6 +4149,7 @@ export class Gantt extends Component<HTMLElement>
             case 'allowTaskbarOverlap':
             case 'allowParentDependency':
             case 'enableMultiTaskbar':
+            case 'autoUpdatePredecessorOffset':
                 if (prop === 'locale') {
                     this.isLocaleChanged = true;
                 }
@@ -4522,7 +4590,6 @@ export class Gantt extends Component<HTMLElement>
         let toolbarHeight: number = 0;
         this.calculateDimensions();
         if (!isNullOrUndefined(this.toolbarModule) && !isNullOrUndefined(this.toolbarModule.element)) {
-            this.toolbarModule.toolbar.refresh();
             this.toolbarModule.refreshToolbarItems();
             toolbarHeight = this.toolbarModule.element.offsetHeight;
         }
@@ -4986,7 +5053,6 @@ export class Gantt extends Component<HTMLElement>
                 calendarContext = editModule.cellEditModule.currentEditedRowData.ganttProperties.calendarContext;
             } else if (
                 editModule.dialogModule &&
-                editModule.dialogModule['isEdit'] &&
                 editModule.dialogModule['editedRecord'] &&
                 editModule.dialogModule['editedRecord'].ganttProperties &&
                 editModule.dialogModule['editedRecord'].ganttProperties.calendarContext
@@ -5096,8 +5162,23 @@ export class Gantt extends Component<HTMLElement>
      */
     public updateProjectDates(startDate: Date, endDate: Date, isTimelineRoundOff: boolean, isFrom?: string): void {
         this.timelineModule.totalTimelineWidth = 0;
-        this.cloneProjectStartDate = startDate;
-        this.cloneProjectEndDate = endDate;
+        const viewStartAuto: boolean = this.timelineSettings.viewStartDate === 'auto';
+        const viewEndAuto: boolean = this.timelineSettings.viewEndDate === 'auto';
+        const projectEndUndefined: boolean = isNullOrUndefined(this.projectEndDate);
+        if (!viewStartAuto && (!viewEndAuto || (viewEndAuto && projectEndUndefined)) && !this.timelineModule.isZoomToFit) {
+            this.cloneTimelineStartDate = startDate;
+            this.cloneTimelineEndDate = endDate;
+        } else if (viewStartAuto && !this.timelineModule.isZoomToFit && projectEndUndefined) {
+            this.cloneProjectStartDate = startDate;
+            this.cloneTimelineEndDate = endDate;
+        } else if (!viewStartAuto && viewEndAuto && !this.timelineModule.isZoomToFit && !projectEndUndefined) {
+            this.cloneTimelineStartDate = startDate;
+            this.cloneProjectEndDate = endDate;
+        }
+        else {
+            this.cloneProjectStartDate = startDate;
+            this.cloneProjectEndDate = endDate;
+        }
         this.isTimelineRoundOff = isTimelineRoundOff;
         this.timelineModule.refreshTimelineByTimeSpan();
         this.dataOperation.reUpdateGanttDataPosition();
@@ -5202,6 +5283,15 @@ export class Gantt extends Component<HTMLElement>
             const id: string  = ganttData.rowUniqueID;
             const task: IGanttData = this.getRecordByID(id);
             let isValid: boolean = false;
+            let removecalender: any = [];
+            if (field === 'childRecords') {
+                for (let i: number = 0; i < (record as IGanttData).childRecords.length; i++) {
+                    removecalender[i as number] =
+                    this.removeCalendarContext((record as IGanttData).childRecords[i as number].ganttProperties);
+                }
+            } else {
+                removecalender = record;
+            }
             isValid = ((isNullOrUndefined(value) || isNullOrUndefined(record[`${fieldName}`])) ||
                 (!isNullOrUndefined(value) && !isNullOrUndefined(record[`${fieldName}`]) &&
                     ((value instanceof Date && (record[`${fieldName}`]) instanceof Date)
@@ -5337,6 +5427,13 @@ export class Gantt extends Component<HTMLElement>
     public setSplitterPosition(value: string | number, type: string): void {
         const tempSplitterSettings: Object = {};
         tempSplitterSettings[type as string] = value;
+        if (type === 'position') {
+            this.splitterUpdateType = 'position';
+        }
+        else if (type === 'columnIndex')
+        {
+            this.splitterUpdateType = 'columnIndex';
+        }
         const splitterPosition: string = this.splitterModule.calculateSplitterPosition(
             tempSplitterSettings);
         switch (type) {
@@ -5493,9 +5590,6 @@ export class Gantt extends Component<HTMLElement>
                 if (rowPosition === 'Bottom') {
                     this.selectedRowIndex = rowIndex;
                 }
-            }
-            if (rowPosition === 'Above' || rowPosition === 'Below' || rowPosition === 'Child') {
-                this.currentSelection = !isNullOrUndefined(data) ? data : this.currentSelection;
             }
         }
     }
@@ -6352,6 +6446,9 @@ export class Gantt extends Component<HTMLElement>
                 data[taskfields.startDate] = new Date(rowData.ganttProperties.startDate);
                 data[taskfields.endDate] = new Date(rowData.ganttProperties.endDate);
             }
+            if (!isNullOrUndefined(taskfields.work)) {
+                data[taskfields.work] = null;
+            }
             if (!isNullOrUndefined(taskfields.milestone)) {
                 if (data[taskfields.milestone] === false) {
                     data[taskfields.milestone] = true;
@@ -6487,5 +6584,9 @@ export class Gantt extends Component<HTMLElement>
             transform = `translate(${xvalue}, 0px)`;
         }
         return transform;
+    }
+    private getTranslateY(parts: string[]): string {
+        const yValue: string = parts.length > 1 ? parts[1].trim() : parts[0].trim();
+        return yValue;
     }
 }

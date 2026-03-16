@@ -2,17 +2,18 @@ import { IImportingEventArgs } from '../..';
 import { ensureArray, isObject, hasKey } from './visio-core';
 import { ParsingContext } from './visio-import-export';
 import {
-    DocumentSettingsElement,
-    MasterElement,
-    VisioPageContent,
     ParsedXmlObject,
     VisioDocumentStructure,
     VisioPageMetadata,
-    WindowRootElement,
     XmlRelationship,
-    VisioConnectElement
+    VisioConnectElement,
+    MasterInfo,
+    NormalizedIndex,
+    VisioMemoryObject
 } from './visio-types';
+import { VisioPropertiesManager } from './visio-theme';
 import { MinimalZipReader, ZipEntry, xmlToJsObject } from './zipReader';
+import { VisioDiagramData } from './visio-models';
 
 /**
  * Resolves a relationship Target into a canonical ZIP path.
@@ -374,6 +375,52 @@ async function collectDependencies(
 }
 
 /**
+ * Safely gets a string attribute from an object.
+ *
+ * @param {ParsedXmlObject | undefined} obj - The object to get attribute from.
+ * @param {string} name - The attribute name.
+ * @returns {string} The attribute value or empty string if not found.
+ * @private
+ */
+function getAttr(obj: ParsedXmlObject | undefined, name: string): string {
+    if (obj && Object.prototype.hasOwnProperty.call(obj, name)) {
+        const v: unknown = obj[`${name}`];
+        if (typeof v === 'string') { return v; }
+    }
+    return '';
+}
+
+/**
+ * Gets a string attribute and converts to lowercase.
+ *
+ * @param {object} obj - The object to get attribute from.
+ * @param {string} name - The attribute name.
+ * @returns {string} The lowercased attribute value or empty string.
+ * @private
+ */
+function getAttrLower(obj: { [k: string]: unknown } | undefined, name: string): string {
+    const val: string = getAttr(obj, name);
+    return val.toLowerCase();
+}
+
+/**
+ * Determines if a page is a background page.
+ *
+ * Background pages are templates shared across multiple pages.
+ * We only want to load non-background pages.
+ *
+ * @param {VisioPageMetadata | ParsedXmlObject} page - The page metadata to check.
+ * @returns {boolean} True if page is a background page, false otherwise.
+ * @private
+ */
+export function isBackground(page: VisioPageMetadata | ParsedXmlObject): boolean {
+    const attrs: ParsedXmlObject = page.$ as ParsedXmlObject;
+    const bgFlag: string = getAttrLower(attrs, 'Background');
+    const bgPageFlag: string = getAttrLower(attrs, 'BackgroundPage');
+    return bgFlag === '1' || bgFlag === 'true' || bgPageFlag === '1' || bgPageFlag === 'true';
+}
+
+/**
  * Reads and aggregates Visio XML parts from a VSDX (ZIP) package.
  *
  * This class is the main entry point for reading VSDX files. It:
@@ -394,6 +441,9 @@ export class VisioPackageReader {
     // Set keeps it deduped and fast to check.
     private extraIncludeParts: Set<string> = new Set<string>();
 
+    // Tracks the immediate background page files for the currently selected page
+    private currentBackgroundFiles: string[] = [];
+
     /**
      * Reads a VSDX ArrayBuffer and returns a consolidated VisioDocumentStructure for the chosen page.
      *
@@ -413,6 +463,8 @@ export class VisioPackageReader {
      *                                     If not provided, warnings will be lost.
      * @param {number} [pageIndex=0] - Zero-based index of the non-background page to extract.
      *                                Defaults to 0; if out of range, selects the last available page.
+     * @param {boolean} [retrieval=false] - The retrieval is used to know this operation runs for import or export
+     *                                Defaults to false;
      * @returns {Promise<VisioDocumentStructure | null>} A Promise resolving to the consolidated document structure
      *                                                    or null if fatal errors occur.
      *
@@ -430,53 +482,13 @@ export class VisioPackageReader {
     public async readPackage(
         arrayBuffer: ArrayBuffer,
         context: ParsingContext,
-        pageIndex: number = 0
-    ): Promise<VisioDocumentStructure | null> {
+        pageIndex: number = 0,
+        retrieval: boolean = false
+    ): Promise<VisioDocumentStructure | VisioMemoryObject | null> {
         this.extraIncludeParts = new Set<string>();
+        this.currentBackgroundFiles = [];
+
         // ==================== Define Helper Functions ====================
-
-        /**
-         * Safely gets a string attribute from an object.
-         *
-         * @param {ParsedXmlObject | undefined} obj - The object to get attribute from.
-         * @param {string} name - The attribute name.
-         * @returns {string} The attribute value or empty string if not found.
-         */
-        function getAttr(obj: ParsedXmlObject | undefined, name: string): string {
-            if (obj && Object.prototype.hasOwnProperty.call(obj, name)) {
-                const v: unknown = obj[`${name}`];
-                if (typeof v === 'string') { return v; }
-            }
-            return '';
-        }
-
-        /**
-         * Gets a string attribute and converts to lowercase.
-         *
-         * @param {object} obj - The object to get attribute from.
-         * @param {string} name - The attribute name.
-         * @returns {string} The lowercased attribute value or empty string.
-         */
-        function getAttrLower(obj: { [k: string]: unknown } | undefined, name: string): string {
-            const val: string = getAttr(obj, name);
-            return val.toLowerCase();
-        }
-
-        /**
-         * Determines if a page is a background page.
-         *
-         * Background pages are templates shared across multiple pages.
-         * We only want to load non-background pages.
-         *
-         * @param {VisioPageMetadata} page - The page metadata to check.
-         * @returns {boolean} True if page is a background page, false otherwise.
-         */
-        function isBackground(page: VisioPageMetadata): boolean {
-            const attrs: ParsedXmlObject = page.$;
-            const bgFlag: string = getAttrLower(attrs, 'Background');
-            const bgPageFlag: string = getAttrLower(attrs, 'BackgroundPage');
-            return bgFlag === '1' || bgFlag === 'true' || bgPageFlag === '1' || bgPageFlag === 'true';
-        }
 
         /**
          * Extracts the relationship ID (r:id or rId) from a page metadata.
@@ -505,7 +517,7 @@ export class VisioPackageReader {
             const allEntries: ZipEntry[] = zip.getEntries();
 
             // ==================== Validate ZIP Structure ====================
-            if (!allEntries || allEntries.length === 0) {
+            if ((!allEntries || allEntries.length === 0) && !retrieval) {
                 context.addWarning('[ERROR] :: VSDX file is empty or corrupted.');
                 context.triggerEvent('Import', { status: 'failed' });
                 return null;
@@ -517,7 +529,7 @@ export class VisioPackageReader {
                 return entry.name.startsWith('visio/') && !entry.name.endsWith('/');
             });
 
-            if (visioEntries.length === 0) {
+            if (visioEntries.length === 0 && !retrieval) {
                 context.addWarning('[ERROR] :: Visio folder not found in VSDX file.');
                 context.triggerEvent('Import', { status: 'failed' });
                 return null;
@@ -528,7 +540,7 @@ export class VisioPackageReader {
             const pagesXmlEntry: ZipEntry = findEntry(visioEntries, 'visio/pages/pages.xml');
             const pagesRelsEntry: ZipEntry = findEntry(visioEntries, 'visio/pages/_rels/pages.xml.rels');
 
-            if (!pagesXmlEntry || !pagesRelsEntry) {
+            if ((!pagesXmlEntry || !pagesRelsEntry) && !retrieval) {
                 context.addWarning('[ERROR] :: Core files pages.xml or pages.xml.rels not found.');
                 context.triggerEvent('Import', { status: 'failed' });
                 return null;
@@ -593,8 +605,10 @@ export class VisioPackageReader {
                     pagesForSelection.push({ name: displayName });
                 } else {
                     // Truly no pages in the file
-                    context.addWarning('[ERROR] :: No valid Visio pages found.');
-                    context.triggerEvent('Import', { status: 'failed' });
+                    if (!retrieval) {
+                        context.addWarning('[ERROR] :: No valid Visio pages found.');
+                        context.triggerEvent('Import', { status: 'failed' });
+                    }
                     return null;
                 }
             }
@@ -613,11 +627,13 @@ export class VisioPackageReader {
                 pages: pagesForSelection,
                 selectedPage: { name: pagesForSelection[parseInt(idx.toString(), 10)].name }
             };
-            context.triggerEvent('Import', args);
+            if (!retrieval) {
+                context.triggerEvent('Import', args);
 
-            // Check for cancellation
-            if (args.cancel) {
-                return null;
+                // Check for cancellation
+                if (args.cancel) {
+                    return null;
+                }
             }
 
             // ==================== Resolve Selected Page Index ====================
@@ -629,7 +645,7 @@ export class VisioPackageReader {
             // Task #1004826-EXT: Prefer UI-selected foreground; otherwise use the background fallback.
             const selectedPage: VisioPageMetadata = selectedByFallbackBg || nonBgPages[parseInt(selectedPageIndex.toString(), 10)];
 
-            if (!selectedPage || !selectedPage.$) {
+            if ((!selectedPage || !selectedPage.$) && !retrieval) {
                 context.addWarning('[ERROR] :: Selected page metadata missing.');
                 context.triggerEvent('Import', { status: 'failed' });
                 return null;
@@ -676,7 +692,7 @@ export class VisioPackageReader {
                 targetPageRel = orderedNonBgRels[parseInt(selectedPageIndex.toString(), 10)];
             }
 
-            if (!targetPageRel) {
+            if (!targetPageRel && !retrieval) {
                 context.addWarning('[ERROR] :: Could not resolve page relationship. No valid page found.');
                 context.triggerEvent('Import', { status: 'failed' });
                 return null;
@@ -684,7 +700,7 @@ export class VisioPackageReader {
 
             // Task #1004826: If the selected page references a background (BackPage),
             // force-include that background PageContents so its "Solid" (background color) is parsed.
-            const backPageId: string | number | undefined = selectedPage.$ && (selectedPage.$ as any).BackPage;
+            const backPageId: string | number | undefined = selectedPage.$ && selectedPage.$.BackPage;
             if (backPageId) {
                 // Find the background page metadata by ID in pages.xml
                 const backgroundPageMeta: VisioPageMetadata | undefined = (pageMetas || []).find(
@@ -699,6 +715,12 @@ export class VisioPackageReader {
                             // Canonical ZIP path for pageN.xml
                             const bgPageFilePath: string = normalizeZipPath('visio/pages', bgRel.$.Target);
                             this.extraIncludeParts.add(bgPageFilePath);
+                            // Track the immediate background page file of the selected page
+                            if (typeof bgPageFilePath === 'string' && bgPageFilePath.length > 0) {
+                                if (this.currentBackgroundFiles.indexOf(bgPageFilePath) === -1) {
+                                    this.currentBackgroundFiles.push(bgPageFilePath);
+                                }
+                            }
 
                             // Also include its .rels if it exists (lets dependency walk pick up media, etc.)
                             const parts: string[] = bgPageFilePath.split('/');
@@ -713,12 +735,14 @@ export class VisioPackageReader {
             }
 
             // ==================== Build Document Structure ====================
-            return this.buildVisioDocumentStructure(zip, visioEntries, targetPageRel, context);
+            return this.buildVisioDocumentStructure(zip, visioEntries, targetPageRel, context, retrieval);
         } catch (error) {
             // ==================== Handle Fatal Errors ====================
             const errorMessage: string = error instanceof Error ? error.message : 'Unknown error';
-            context.addWarning('[ERROR] :: Package reader error: ' + errorMessage);
-            context.triggerEvent('Import', { status: 'failed' });
+            if (!retrieval) {
+                context.addWarning('[ERROR] :: Package reader error: ' + errorMessage);
+                context.triggerEvent('Import', { status: 'failed' });
+            }
             return null;
         }
     }
@@ -741,6 +765,8 @@ export class VisioPackageReader {
      * @param {XmlRelationship} targetPageRel - The resolved relationship entry pointing to the target page.
      *                                          Must have $.Id, $.Type, and $.Target properties.
      * @param {ParsingContext} context - Collector array for non-fatal warnings during processing.
+     * @param {boolean} [retrieval] - The retrieval is used to know this operation runs for import or export
+     *
      * @returns {Promise<VisioDocumentStructure>} A Promise resolving to the complete VisioDocumentStructure.
      *
      * @private
@@ -749,7 +775,8 @@ export class VisioPackageReader {
         zip: MinimalZipReader,
         visioEntries: ZipEntry[],
         targetPageRel: XmlRelationship,
-        context: ParsingContext
+        context: ParsingContext,
+        retrieval: boolean
     ): Promise<VisioDocumentStructure> {
         const visioDoc: VisioDocumentStructure = {};
         visioDoc.PageRelId = targetPageRel.$.Id;
@@ -760,7 +787,10 @@ export class VisioPackageReader {
 
         // ==================== Get Initial Entries ====================
         // Includes: target page, document.xml, settings, windows, masters, themes
-        const initialEntries: ZipEntry[] = this.filterEntriesToExtract(visioEntries, targetPageFileName);
+        let initialEntries: ZipEntry[] = visioEntries;
+        if (!retrieval) {
+            initialEntries = this.filterEntriesToExtract(visioEntries, targetPageFileName);
+        }
 
         // Task #1004826: Merge any forced-included parts (e.g., background page1.xml)
         // into the initial set before dependency traversal, with simple dedupe.
@@ -869,7 +899,11 @@ export class VisioPackageReader {
         for (let i: number = 0; i < xmlEntries.length; i += 1) {
             this.mergeIntoDocument(visioDoc, xmlEntries[parseInt(i.toString(), 10)].name, parsed[parseInt(i.toString(), 10)]);
         }
-
+        // Initialize from Visio document
+        const propertyManager: VisioPropertiesManager = new VisioPropertiesManager();
+        this.validateDocumentStructure(visioDoc);
+        propertyManager.initialize(visioDoc.RootDocument);
+        context.propertyManager = propertyManager;
         // ==================== Extract and Store Binary Parts ====================
         // Store binary parts to avoid data loss
         if (binEntries.length > 0) {
@@ -886,7 +920,46 @@ export class VisioPackageReader {
             );
         }
 
+        // Remember selected page file for downstream importer
+        (visioDoc as VisioDocumentStructure).__SelectedPageFile = targetPageFileName;
+
+        // Remember the immediate background page files for the selected page
+        (visioDoc as VisioDocumentStructure).__BackgroundPageFiles = this.currentBackgroundFiles.slice();
+
+        // Build normalized indexes for masters and per-page connects
+        this.buildNormalizedIndexes(visioDoc, context);
+
+        // Expose normalized bundle to the parsing pipeline via context
+        (context.data as VisioDiagramData).normalized = {
+            parts: this.getOrInitParts(visioDoc),
+            index: (visioDoc as VisioDocumentStructure).__Index,
+            selectedPageFile: (visioDoc as VisioDocumentStructure).__SelectedPageFile,
+            backgroundPageFiles: (visioDoc as VisioDocumentStructure).__BackgroundPageFiles
+        };
+
         return visioDoc;
+    }
+
+    /**
+     * Validates that the document structure is safe to process.
+     * @throws {Error} If document structure is invalid or suspicious
+     *
+     * @param {VisioDocumentStructure} visioDoc - Contains parsed elements from the XML
+     *
+     * @returns {void}
+     *
+     */
+    private validateDocumentStructure(visioDoc: VisioDocumentStructure): void {
+        if (!visioDoc) {
+            throw new Error('Document is null or undefined');
+        }
+        if (typeof visioDoc !== 'object') {
+            throw new Error('Document must be an object');
+        }
+        if (!visioDoc.RootDocument) {
+            throw new Error('Missing RootDocument in document structure');
+        }
+        // Add more validation as needed
     }
 
     /**
@@ -950,7 +1023,8 @@ export class VisioPackageReader {
                 name === 'visio/settings.xml' ||
                 name === 'visio/windows.xml' ||
                 name.startsWith('visio/masters/') ||  // All masters
-                name.startsWith('visio/theme/')       // All themes
+                name.startsWith('visio/theme/') ||    // All themes
+                name === 'visio/masters/_rels/masters.xml.rels'
             ) {
                 entries.push(entry);
             }
@@ -990,6 +1064,10 @@ export class VisioPackageReader {
         fileName: string,
         jsObj: ParsedXmlObject
     ): void {
+        // Always stash full parsed XML by file for normalized access later
+        const partsBag: Record<string, ParsedXmlObject> = this.getOrInitParts(visioDoc);
+        partsBag[fileName as string] = jsObj;
+
         // ==================== Windows ====================
         // Root element contains Window elements
         if (jsObj.Window) {
@@ -1006,6 +1084,7 @@ export class VisioPackageReader {
         // Document-level settings from settings.xml
         if (jsObj.DocumentSettings) {
             this.appendToProperty(visioDoc, 'DocumentSettings', jsObj.DocumentSettings);
+            this.appendToProperty(visioDoc, 'RootDocument', jsObj);
         }
 
         // ==================== Masters ====================
@@ -1196,5 +1275,251 @@ export class VisioPackageReader {
         const bag: Record<string, Uint8Array> = {};
         (doc as ParsedXmlObject)[key as string] = bag;
         return bag;
+    }
+
+    /**
+     * Retrieves or initializes the internal `__Parts` bag on a Visio document structure.
+     * If the `__Parts` property already exists and is an object, it is returned.
+     * Otherwise, a new empty record is created, attached to the document object,
+     * and then returned.
+     *
+     * @param {VisioDocumentStructure} doc - The Visio document structure to inspect or extend
+     * @returns {Record<string, ParsedXmlObject>} A record mapping part names to parsed XML objects
+     */
+    private getOrInitParts(doc: VisioDocumentStructure): Record<string, ParsedXmlObject> {
+        const key: string = '__Parts';
+        const docObj: ParsedXmlObject = doc as ParsedXmlObject;
+        if (Object.prototype.hasOwnProperty.call(docObj, key)) {
+            const descriptor: PropertyDescriptor | undefined = Object.getOwnPropertyDescriptor(docObj, key);
+            const current: unknown = descriptor ? descriptor.value : undefined;
+            if (current && typeof current === 'object') { return current as Record<string, ParsedXmlObject>; }
+        }
+        const bag: Record<string, ParsedXmlObject> = {};
+        Object.defineProperty(docObj, key, { value: bag, writable: true, enumerable: true, configurable: true });
+        return bag;
+    }
+
+    /**
+     * Retrieves or initializes the internal `__Index` structure on a Visio document.
+     * If the `__Index` property already exists and is an object, it is returned.
+     * Otherwise, a new `NormalizedIndex` is created, attached to the document object,
+     * and then returned.
+     *
+     * The `NormalizedIndex` contains:
+     * - `mastersById`: Map of master IDs to master info
+     * - `masterFileByRid`: Map of relationship IDs to master file names
+     * - `masterChildByMasterId`: Map of master IDs to child shape maps
+     * - `masterParentByMasterId`: Map of master IDs to parent-child relationships
+     * - `masterImmediateChildrenByMasterId`: Map of master IDs to immediate child IDs
+     * - `masterRootIdsByMasterId`: Map of master IDs to top-level shape IDs
+     * - `pageConnectsByFile`: Map of page connections by file
+     *
+     * @param {VisioDocumentStructure} doc - The Visio document structure to inspect or extend
+     * @returns {NormalizedIndex} A normalized index object for master and page references
+     */
+    private getOrInitIndex(doc: VisioDocumentStructure): NormalizedIndex {
+        const key: string = '__Index';
+        const docObj: ParsedXmlObject = doc as ParsedXmlObject;
+        if (Object.prototype.hasOwnProperty.call(docObj, key)) {
+            const descriptor: PropertyDescriptor | undefined = Object.getOwnPropertyDescriptor(docObj, key);
+            const current: unknown = descriptor ? descriptor.value : undefined;
+            if (current && typeof current === 'object') { return current as NormalizedIndex; }
+        }
+        const indexObj: NormalizedIndex = {
+            mastersById: new Map<string, MasterInfo>(),
+            masterFileByRid: new Map<string, string>(),
+            masterChildByMasterId: new Map<string, Map<string, ParsedXmlObject>>(),
+            masterParentByMasterId: new Map<string, Map<string, string>>(),      // childId -> parentId
+            masterImmediateChildrenByMasterId: new Map<string, Map<string, string[]>>(), // parentId -> [childId]
+            masterRootIdsByMasterId: new Map<string, string[]>(),                // top-level shape IDs inside this master
+            pageConnectsByFile: new Map<string, ParsedXmlObject>()
+        };
+        Object.defineProperty(docObj, key, { value: indexObj, writable: true, enumerable: true, configurable: true });
+        return indexObj;
+    }
+
+    /**
+     * Builds (or refreshes) the normalized `__Index` caches used by the importer.
+     *
+     * Populates master and page lookup maps:
+     * - `masterFileByRid`: relationship Id -> master file path (from masters.xml.rels)
+     * - `mastersById`: masterId -> { id, nameU, rid, fileName } (from masters.xml)
+     * - `masterChildByMasterId`: masterId -> Map(shapeId -> shape node) for each master file
+     * - `masterParentByMasterId`: masterId -> Map(childId -> parentId)
+     * - `masterImmediateChildrenByMasterId`: masterId -> Map(parentId -> childId[])
+     * - `masterRootIdsByMasterId`: masterId -> root shapeId[]
+     * - `pageConnectsByFile`: page file -> Connects block (selected page only)
+     *
+     * Adds warnings to the parsing context when required master parts are missing.
+     *
+     * @param {VisioDocumentStructure} doc - Parsed document structure containing extracted parts and index storage.
+     * @param {ParsingContext} context - Parsing context used to record warnings and shared state.
+     * @returns {void}
+     */
+    private buildNormalizedIndexes(doc: VisioDocumentStructure, context: ParsingContext): void {
+        const indexObj: NormalizedIndex = this.getOrInitIndex(doc);
+        const parts: Record<string, ParsedXmlObject> = this.getOrInitParts(doc);
+
+        // ---- master rid -> file mapping from masters.xml.rels ----
+        const mastersRelsKey: string = 'visio/masters/_rels/masters.xml.rels';
+        const mastersRelsDescriptor: PropertyDescriptor | undefined = Object.getOwnPropertyDescriptor(parts, mastersRelsKey);
+        const mastersRels: ParsedXmlObject | undefined = Object.prototype.hasOwnProperty.call(parts, mastersRelsKey)
+            ? (mastersRelsDescriptor ? mastersRelsDescriptor.value as ParsedXmlObject : undefined)
+            : undefined;
+        if (mastersRels) {
+            const relsArr: XmlRelationship[] = getRelationshipsArray(mastersRels);
+            for (let i: number = 0; i < relsArr.length; i++) {
+                const rel: XmlRelationship = relsArr[parseInt(i.toString(), 10)];
+                if (rel && rel.$ && typeof rel.$.Id === 'string' && typeof rel.$.Target === 'string') {
+                    const rid: string = rel.$.Id;
+                    const file: string = normalizeZipPath('visio/masters', rel.$.Target);
+                    // Map the relationship id to its master XML file when the file path points to a valid Visio master.
+                    if (file.indexOf('visio/masters/master') === 0 && file.lastIndexOf('.xml') === file.length - 4) {
+                        indexObj.masterFileByRid.set(rid, file);
+                    }
+                }
+            }
+        } else {
+            context.addWarning('[WARNING] :: masters.xml.rels is missing; master mapping may be incomplete.');
+        }
+
+        // ---- masterId -> { id, nameU, rid, fileName } from masters.xml ----
+        const mastersXmlKey: string = 'visio/masters/masters.xml';
+        const mastersXmlDescriptor: PropertyDescriptor | undefined = Object.getOwnPropertyDescriptor(parts, mastersXmlKey);
+        const mastersXml: ParsedXmlObject | undefined = Object.prototype.hasOwnProperty.call(parts, mastersXmlKey)
+            ? (mastersXmlDescriptor ? mastersXmlDescriptor.value as ParsedXmlObject : undefined)
+            : undefined;
+        if (mastersXml) {
+            // mastersXml may be wrapped: { Masters: { Master: [...] } }
+            const mastersNode: ParsedXmlObject = hasKey(mastersXml, 'Masters') ? (mastersXml as Record<string, unknown>)['Masters'] as ParsedXmlObject : mastersXml;
+            const mastersArray: ParsedXmlObject[] = ensureArray((mastersNode as Record<string, unknown>)['Master']) as ParsedXmlObject[];
+
+            for (const masterObj of mastersArray) {
+                if (!masterObj || !masterObj.$) { continue; }
+
+                const attrs: ParsedXmlObject = masterObj.$ as ParsedXmlObject;
+                const attrID: unknown = (attrs as Record<string, unknown>)['ID'];
+                const masterId: string = (attrID != null ? String(attrID) : '');
+                if (!masterId) { continue; }
+
+                let rid: string = '';
+                const masterRel: unknown = (masterObj as Record<string, unknown>)['Rel'];
+                if (masterRel && (masterRel as ParsedXmlObject)['$']) {
+                    const relAttrs: ParsedXmlObject = (masterRel as ParsedXmlObject)['$'] as ParsedXmlObject;
+                    const relAttrsRecord: Record<string, unknown> = relAttrs as Record<string, unknown>;
+                    rid = (typeof relAttrsRecord['r:id'] === 'string') ? relAttrsRecord['r:id'] as string :
+                        (typeof relAttrsRecord['rId'] === 'string') ? relAttrsRecord['rId'] as string : '';
+                }
+
+                const attrNameU: unknown = (attrs as Record<string, unknown>)['NameU'];
+                const attrName: unknown = (attrs as Record<string, unknown>)['Name'];
+                const nameU: string = (attrNameU != null ? String(attrNameU) :
+                    (attrName != null ? String(attrName) : ''));
+
+                const fileName: string = (rid && indexObj.masterFileByRid.has(rid)) ? (indexObj.masterFileByRid.get(rid) || '') : '';
+                indexObj.mastersById.set(masterId, { id: masterId, nameU: nameU, rid: rid, fileName: fileName });
+            }
+        } else {
+            context.addWarning('[WARNING] :: masters.xml is missing; master index may be empty.');
+        }
+
+        // ---- 3) Build masterChildByMasterId: index all descendants by $.ID per master file ----
+        indexObj.mastersById.forEach((masterInfo: MasterInfo): void => {
+            const file: string = masterInfo && masterInfo.fileName ? String(masterInfo.fileName) : '';
+            if (!file) { return; }
+
+            // Safe property access
+            const masterJsDescriptor: PropertyDescriptor | undefined = Object.getOwnPropertyDescriptor(parts, file);
+            if (!masterJsDescriptor || !masterJsDescriptor.value) { return; }
+            const masterJs: ParsedXmlObject = masterJsDescriptor.value as ParsedXmlObject;
+
+            // Some parsers: { Master: {... MasterContents ...} }, others: root is <Master>
+            const rootMaster: ParsedXmlObject = hasKey(masterJs, 'Master') ? (masterJs as Record<string, unknown>)['Master'] as ParsedXmlObject : masterJs;
+            let shapesRoot: ParsedXmlObject | null = null;
+
+            // 1) <Master><MasterContents><Shapes>...</Shapes></MasterContents>
+            if (hasKey(rootMaster, 'MasterContents')) {
+                const masterContent: ParsedXmlObject = (rootMaster as Record<string, unknown>)['MasterContents'] as ParsedXmlObject;
+                if (masterContent && hasKey(masterContent, 'Shapes')) {
+                    shapesRoot = (masterContent as Record<string, unknown>)['Shapes'] as ParsedXmlObject;
+                }
+            }
+
+            // 2) <Master><Shapes>...</Shapes></Master>
+            if (!shapesRoot && hasKey(rootMaster, 'Shapes')) {
+                shapesRoot = (rootMaster as Record<string, unknown>)['Shapes'] as ParsedXmlObject;
+            }
+
+            // 3) Flattened layout at file root: { $, Shapes }  (this matches your screenshot)
+            if (!shapesRoot && hasKey(masterJs, 'Shapes')) {
+                shapesRoot = (masterJs as Record<string, unknown>)['Shapes'] as ParsedXmlObject;
+            }
+
+            const childMap: Map<string, ParsedXmlObject> = new Map<string, ParsedXmlObject>();
+            const parentMap: Map<string, string> = new Map<string, string>();         // childId -> parentId
+            const childrenMap: Map<string, string[]> = new Map<string, string[]>();     // parentId -> [childId]
+            const rootIds: string[] = [];                        // shapes with no parent
+
+            if (shapesRoot && hasKey(shapesRoot, 'Shape')) {
+                const topChildren: ParsedXmlObject[] = ensureArray((shapesRoot as Record<string, unknown>)['Shape']) as ParsedXmlObject[];
+
+                // local helper: add child to parent’s list
+                const addChild: (parentId: string, childId: string) => void = (parentId: string, childId: string): void => {
+                    let arr: string[] | undefined = childrenMap.get(parentId);
+                    if (!arr) { arr = []; childrenMap.set(parentId, arr); }
+                    if (arr.indexOf(childId) === -1) { arr.push(childId); }
+                };
+
+                // NOTE: pass parentId for hierarchy; parentId === '' means "no parent" (root)
+                const collectById: (node: ParsedXmlObject, parentId: string) => void = (node: ParsedXmlObject, parentId: string): void => {
+                    if (!node || !node.$) { return; }
+                    const nodeAttrs: ParsedXmlObject = node.$ as ParsedXmlObject;
+                    const nodeID: unknown = (nodeAttrs as Record<string, unknown>)['ID'];
+                    const idStr: string = (nodeID != null) ? String(nodeID) : '';
+                    if (!idStr) { return; }
+
+                    // 1) Flat lookup
+                    childMap.set(idStr, node);
+
+                    // 2) Hierarchy
+                    if (parentId && parentId.length > 0) {
+                        parentMap.set(idStr, parentId);
+                        addChild(parentId, idStr);
+                    } else {
+                        if (rootIds.indexOf(idStr) === -1) { rootIds.push(idStr); }
+                    }
+
+                    // 3) Recurse into nested Shapes
+                    const nodeShapes: unknown = (node as Record<string, unknown>)['Shapes'];
+                    const nodeShapesShape: unknown = nodeShapes && (nodeShapes as Record<string, unknown>)['Shape'];
+                    const nested: ParsedXmlObject[] = nodeShapesShape ? ensureArray(nodeShapesShape) as ParsedXmlObject[] : [];
+                    for (let i: number = 0; i < nested.length; i++) {
+                        collectById(nested[parseInt(i.toString(), 10)], idStr);
+                    }
+                };
+
+                // kick off: top-level shapes have no parent
+                for (let c: number = 0; c < topChildren.length; c++) {
+                    collectById(topChildren[parseInt(c.toString(), 10)], '');
+                }
+            }
+
+            // Save all maps for this master
+            const masterIdStr: string = String(masterInfo.id);
+            indexObj.masterChildByMasterId.set(masterIdStr, childMap);
+            indexObj.masterParentByMasterId.set(masterIdStr, parentMap);
+            indexObj.masterImmediateChildrenByMasterId.set(masterIdStr, childrenMap);
+            indexObj.masterRootIdsByMasterId.set(masterIdStr, rootIds);
+        });
+
+        // ---- 4) Per-page Connects by file (optional) ----
+        const selectedPageFile: string | undefined = (doc as VisioDocumentStructure).__SelectedPageFile;
+        if (typeof selectedPageFile === 'string' && Object.prototype.hasOwnProperty.call(parts, selectedPageFile)) {
+            const pageJsDescriptor: PropertyDescriptor | undefined = Object.getOwnPropertyDescriptor(parts, selectedPageFile);
+            const pageJs: ParsedXmlObject | undefined = pageJsDescriptor ? pageJsDescriptor.value as ParsedXmlObject : undefined;
+            if (pageJs && pageJs.Connects) {
+                indexObj.pageConnectsByFile.set(selectedPageFile, pageJs.Connects as ParsedXmlObject);
+            }
+        }
     }
 }

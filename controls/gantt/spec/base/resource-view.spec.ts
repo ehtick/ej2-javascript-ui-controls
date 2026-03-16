@@ -2995,3 +2995,87 @@ describe('CR-1000002: Resource mapping wrong in source, it uses resourceName ins
         }
     });
 });
+describe('Focus is not moving the New task that is added in the bottom', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: [
+               {
+                    TaskID: 1,
+                    TaskName: 'Project initiation',
+                    StartDate: new Date('03/29/2019'),
+                    EndDate: new Date('04/21/2019'),
+                    subtasks: [
+                        {
+                            TaskID: 2, TaskName: 'Identify site location', StartDate: new Date('03/29/2019'), Duration: 3,
+                            Progress: 30, work: 10, resources: "1"
+                        },
+                        {
+                            TaskID: 3, TaskName: 'Perform soil test', StartDate: new Date('03/29/2019'), Duration: 4,
+                            resources: "2", Progress: 30, work: 20
+                        },
+                        {
+                            TaskID: 4, TaskName: 'Soil test approval', StartDate: new Date('03/29/2019'), Duration: 4,
+                            resources: "3", Predecessor: 2, Progress: 30, work: 10,
+                        },
+                    ]
+                }
+            ],
+            resources: [
+                { resourceId: 1, resourceName: 'Martin Tamer', resourceGroup: 'Planning Team' },
+                { resourceId: 2, resourceName: 'Rose Fuller', resourceGroup: 'Testing Team' },
+                { resourceId: 3, resourceName: 'Margaret Buchanan', resourceGroup: 'Approval Team' }
+            ],
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                endDate: 'EndDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor',
+                child: 'subtasks',
+                work: 'work',
+                resourceInfo: 'resources'
+            },
+            viewType: 'ResourceView',
+            resourceFields: {
+                id: 'resourceId',
+                name: 'resourceName',
+                unit: 'resourceUnit',
+                group: 'resourceGroup'
+            },
+            editSettings: {
+                allowAdding: true,
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll'],
+            labelSettings: {
+                taskLabel: 'TaskName'
+            },
+            splitterSettings: {
+                columnIndex: 2
+            },
+            allowResizing: true,
+            allowSelection: true,
+            highlightWeekends: true,
+            treeColumnIndex: 1,
+            height: '450px'
+        }, done);
+    });
+    it('Add handler function', () => {
+       let add: HTMLElement = ganttObj.element.querySelector('#' + ganttObj.element.id + '_add') as HTMLElement;
+        triggerMouseEvent(add, 'click');
+        let save: HTMLElement = document.querySelector('#' + ganttObj.element.id + '_dialog').getElementsByClassName('e-primary')[0] as HTMLElement;
+        triggerMouseEvent(save, 'click');
+        expect(ganttObj.currentSelection['TaskID']).toBe(5);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});

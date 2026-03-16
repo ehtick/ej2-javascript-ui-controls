@@ -4,7 +4,7 @@
 import { Property, ChildProperty, Complex, createElement, Browser, animationMode, extend } from '@syncfusion/ej2-base';
 import { isNullOrUndefined, getValue } from '@syncfusion/ej2-base';
 import { DataManager, Query } from '@syncfusion/ej2-data';
-import { Border, Font, Animation, EmptyPointSettings, Connector, Accessibility } from '../../common/model/base';
+import { Border, Font, Animation, EmptyPointSettings, Connector, Accessibility, LinearGradient, RadialGradient } from '../../common/model/base';
 import { Rect, Size, PathOption, measureText } from '@syncfusion/ej2-svg-base';
 import { ChartLocation, stringToNumber, appendChildElement, subtractRect } from '../../common/utils/helper';
 import { AccumulationType, AccumulationLabelPosition, PyramidModes, FunnelModes } from '../model/enum';
@@ -14,7 +14,7 @@ import { AccumulationDataLabelSettingsModel } from '../model/acc-base-model';
 import { Data } from '../../common/model/data';
 import { seriesRender, pointRender } from '../../common/model/constants';
 import { getSeriesColor } from '../../common/model/theme';
-import { FontModel, BorderModel, AnimationModel, ConnectorModel, EmptyPointSettingsModel, AccessibilityModel } from '../../common/model/base-model';
+import { FontModel, BorderModel, AnimationModel, ConnectorModel, EmptyPointSettingsModel, AccessibilityModel, LinearGradientModel, RadialGradientModel } from '../../common/model/base-model';
 import { AccumulationChart } from '../accumulation';
 import { getElement, firstToLowerCase } from '../../common/utils/helper';
 import { Units, Alignment, Regions, Position, SeriesCategories, LabelOverflow, TextWrap } from '../../common/utils/enum';
@@ -332,6 +332,10 @@ export class AccPoints {
     public percentage: number;
     /** Accumulation point symbol location. */
     public symbolLocation: ChartLocation = null;
+    /** Accumulation chart point-level linear gradient */
+    public linearGradient?: LinearGradient;
+    /** Accumulation chart point-level radial gradient */
+    public radialGradient?: RadialGradient;
     /** Accumulation point index. */
     public index: number;
     /** @private */
@@ -389,6 +393,8 @@ export class AccPoints {
     public legendImageUrl: string;
     /** @private */
     public labelCollection: string[];
+    /** @private */
+    public legendTemplate: HTMLElement;
 }
 
 /**
@@ -757,6 +763,24 @@ export class AccumulationSeries extends ChildProperty<AccumulationSeries> {
     @Complex<AccessibilityModel>({}, Accessibility)
     public accessibility: AccessibilityModel;
 
+    /**
+     * Applies a linear gradient fill to the series.
+     * The gradient transitions colors along a straight line.
+     * When both linearGradient and radialGradient are specified, linearGradient takes precedence.
+     *
+     * @default null
+     */
+    @Complex<LinearGradientModel>(null, LinearGradient)
+    public linearGradient: LinearGradientModel;
+    /**
+     * Applies a radial gradient fill to the series.
+     * The gradient transitions colors outward from a central point.
+     *
+     * @default null
+     */
+    @Complex<RadialGradientModel>(null, RadialGradient)
+    public radialGradient: RadialGradientModel;
+
     /** @private */
     public points: AccPoints[] = [];
     /** @private */
@@ -783,6 +807,8 @@ export class AccumulationSeries extends ChildProperty<AccumulationSeries> {
     public rightSidePoints: AccPoints[] = [];
     /** @private */
     public leftSidePoints: AccPoints[] = [];
+    /** @private */
+    public gradientId: string;
     /**
      * To find the max bounds of the data label to place smart legend
      *
@@ -1001,6 +1027,12 @@ export class AccumulationSeries extends ChildProperty<AccumulationSeries> {
         point.sliceRadius = getValue(this.radius, data[i as number]);
         point.sliceRadius = isNullOrUndefined(point.sliceRadius) ? '80%' : point.sliceRadius;
         point.separatorY = accumulation.intl.formatNumber(point.y, { useGrouping: accumulation.useGroupingSeparator });
+        if (!isNullOrUndefined(data[i as number])) {
+            point.linearGradient = data[i as number]['linearGradient'];
+        }
+        if (!isNullOrUndefined(data[i as number])) {
+            point.radialGradient = data[i as number]['radialGradient'];
+        }
         this.setVisibility(point, i);
         this.setAccEmptyPoint(point, i, data);
         return point;
@@ -1068,10 +1100,26 @@ export class AccumulationSeries extends ChildProperty<AccumulationSeries> {
             const argsData: IAccPointRenderEventArgs = {
                 cancel: false, name: pointRender, series: this, point: point, fill: point.color,
                 border: this.isEmpty(point) ? { width: this.emptyPointSettings.border.width, color: this.emptyPointSettings.border.color } :
-                    { width: this.border.width, color: this.border.color }, pattern: this.applyPattern ? patterns[point.index % patterns.length] : 'None'
+                    { width: this.border.width, color: this.border.color }, pattern: this.applyPattern ? patterns[point.index % patterns.length] : 'None',
+                linearGradient: point.linearGradient,
+                radialGradient: point.radialGradient
             };
             accumulation.trigger(pointRender, argsData);
-            point.color = argsData.fill;
+            let pointColor: string;
+            if (argsData.linearGradient && argsData.linearGradient.gradientColorStop &&
+                argsData.linearGradient.gradientColorStop.length > 0) {
+                const pointGradientId: string = accumulation.createPointLinearGradient(this, point, point.index, argsData.linearGradient);
+                pointColor = `url(#${pointGradientId})`;
+            } else if (argsData.radialGradient && argsData.radialGradient.gradientColorStop &&
+                    argsData.radialGradient.gradientColorStop.length > 0) {
+                const pointGradientId: string = accumulation.createPointRadialGradient(this, point, point.index, argsData.radialGradient);
+                pointColor = `url(#${pointGradientId})`;
+            } else if (!isNullOrUndefined(this.gradientId)) {
+                pointColor = `url(#${this.gradientId})`;
+            } else {
+                pointColor = argsData.fill;
+            }
+            point.color = pointColor;
             patternFill = point.color;
             if (this.applyPattern) {
                 const selection: BaseSelection = new BaseSelection(accumulation);

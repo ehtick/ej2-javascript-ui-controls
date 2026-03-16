@@ -20,3 +20,14 @@ export type TableColumnType = 'Text' | 'Date' | 'Mention' | 'Label' | 'Link';
  * Defines actions being performed within the blocks.
  */
 export type BlockAction = 'Insertion' | 'Deletion' | 'Moved' | 'Update';
+
+/**
+ * Specifies the commands available for the transform block items.
+ *
+ */
+export type TransformCommandName = 'Paragraph'| 'Heading1'| 'Heading2'| 'Heading3' | 'Heading4' | 'Checklist' | 'BulletList' | 'NumberedList'| 'Quote';
+
+/**
+ * Defines types to be used as colorMode for color selection in the BlockEditor.
+ */
+export declare type ColorModeType = 'Picker' | 'Palette';

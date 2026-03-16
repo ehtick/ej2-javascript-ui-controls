@@ -51,7 +51,7 @@ export class CellRenderer implements ICellRenderer {
     public renderRowHeader(index: number, row: Element, refChild?: Element): void {
         const headerCell: HTMLElement = this.element.cloneNode() as HTMLElement;
         addClass([headerCell], 'e-header-cell');
-        attributes(headerCell, { 'role': 'rowheader', 'tabindex': '-1' });
+        attributes(headerCell, { 'tabindex': '-1' });
         headerCell.innerText = (index + 1).toString();
         if (refChild) {
             row.insertBefore(headerCell, refChild);

@@ -154,6 +154,9 @@ export class GanttTreeGrid {
         }
         this.parent.treeGrid.height = '100%';
         this.parent.treeGrid.emptyRecordTemplate = this.parent.emptyRecordTemplate;
+        if (this.parent.enableVirtualization) {
+            this.parent.treeGrid.grid.enableSeamlessScrolling = false;
+        }
     }
     private getContentDiv(): HTMLElement {
         return this.treeGridElement.querySelector('.e-content');
@@ -238,8 +241,10 @@ export class GanttTreeGrid {
             getValue('virtualScrollModule.visualData', this.parent.treeGrid) : getValue('result', args);
         const dataArgs: object = args['actionArgs'] || null;
         const isNotSortingWBS: boolean = !dataArgs || dataArgs['requestType'] !== 'sorting' || dataArgs['columnName'] !== 'WBSCode';
-        const isNotFilteringWBS: boolean = !dataArgs || dataArgs['requestType'] !== 'filtering';
-        if (this.parent.enableWBS && !this.parent.isVirtualScroll && isNotSortingWBS && isNotFilteringWBS) {
+        const isNotFilteringWBS: boolean = dataArgs && (dataArgs['requestType'] === 'filtering' || dataArgs['requestType'] === 'searching');
+        const isActiveFilter: boolean = (this.parent.filterSettings.columns && this.parent.filterSettings.columns.length > 0) ||
+            (typeof this.parent.searchSettings.key === 'string' && this.parent.searchSettings.key.length > 0);
+        if (this.parent.enableWBS && !this.parent.isVirtualScroll && isNotSortingWBS && !isNotFilteringWBS && !isActiveFilter) {
             this.parent.generateWBSCodes(this.parent.updatedRecords);
         }
         if (this.parent.virtualScrollModule && this.parent.enableVirtualization) {
@@ -247,6 +252,7 @@ export class GanttTreeGrid {
         }
         setValue('contentModule.objectEqualityChecker', this.objectEqualityChecker, this.parent.treeGrid.grid);
         this.parent['isExpandPerformed'] = false;
+        this.parent['isCollapsePerformed'] = false;
     }
     private dataBound(args: object): void {
         if (this.parent.isReact) {
@@ -334,6 +340,7 @@ export class GanttTreeGrid {
     private collapsed(args: object): void {
         const collapsingNodeData: any = (args as Record<string, any>).data;
         const expanded: boolean = collapsingNodeData && collapsingNodeData.expanded;
+        this.parent['isCollapsePerformed'] = true;
         if (!this.parent.enableVirtualization && this.parent.loadChildOnDemand && this.parent.taskFields.hasChildMapping && !expanded) {
             (args as Record<string, any>)['data'][this.parent.taskFields.expandState] = false;
         }
@@ -369,6 +376,7 @@ export class GanttTreeGrid {
         this.parent.ganttChartModule.reRenderConnectorLines();
         this.parent['hideLoadingIndicator']();
         this.parent.trigger('collapsed', args);
+        this.parent['isCollapsePerformed'] = false;
     }
     private expanded(args: object): void {
         if (!this.parent.ganttChartModule.isExpandCollapseFromChart && !this.parent.isExpandCollapseLevelMethod) {
@@ -481,9 +489,6 @@ export class GanttTreeGrid {
                 // Trigger single failure event
                 this.parent.trigger('actionFailure', { error: errMsg });
             }
-        }
-        if (this.parent.undoRedoModule && (args.requestType === 'filtering' || args.requestType === 'searching' || args.requestType === 'sorting'  || args.requestType === 'filterAfterOpen')) {
-            this.parent.undoRedoModule['canUpdateIndex'] = false;
         }
         if (args.requestType === 'filterchoicerequest') {
             const filterElement: HTMLElement = getValue('filterModel.dlg', args);
@@ -795,17 +800,32 @@ export class GanttTreeGrid {
                 let indexvalue: number = 0;
                 const dataCollection: IGanttData[] = this.parent.enableVirtualization ? this.parent.flatData : this.parent.currentViewData;
                 // To maintain 1st record selection, while deleting the last parent record at Virtual mode
-                dataCollection.map((data: Object, index: number) => {
-                    if (!isNullOrUndefined(this.parent.currentSelection)
-                    && (data['ganttProperties'].taskId === this.parent.currentSelection[this.parent.taskFields.id]) &&
-                    (
-                        (this.parent.viewType === 'ResourceView' &&
-                         data['ganttProperties'].rowUniqueID === this.parent.currentSelection.rowUniqueID) ||
-                        this.parent.viewType !== 'ResourceView'
-                    ))  {
-                        indexvalue = index;
+                const selection: IGanttData = this.parent.currentSelection;
+                const isResourceView: boolean = this.parent.viewType === 'ResourceView';
+                if (!isNullOrUndefined(selection)) {
+                    const selectionProps: ITaskData = selection['ganttProperties'];
+                    if (isNullOrUndefined(selectionProps)) {
+                        return;
                     }
-                });
+                    const currentPrefixedId: string =
+                        (!isNullOrUndefined(selectionProps) && !isNullOrUndefined(selection.hasChildRecords) && selection.hasChildRecords ? 'R' : 'T') + selectionProps.taskId;
+                    const selectionTaskId: string = selection[this.parent.taskFields.id];
+                    dataCollection.map((data: IGanttData, index: number) => {
+                        if (isNullOrUndefined(data)) {
+                            return;
+                        }
+                        const ganttProps: ITaskData = data['ganttProperties'];
+                        if (isNullOrUndefined(ganttProps)) {
+                            return;
+                        }
+                        const matchesView: boolean = isResourceView
+                            ? (!isNullOrUndefined(selectionProps) && !isNullOrUndefined(ganttProps) && (!isNullOrUndefined(data.hasChildRecords) && data.hasChildRecords ? 'R' : 'T') + ganttProps.taskId) === currentPrefixedId
+                            : ganttProps.taskId === selectionTaskId;
+                        if (matchesView) {
+                            indexvalue = index;
+                        }
+                    });
+                }
                 this.addedRecord = true;
                 this.parent.selectRow((isNullOrUndefined(indexvalue) ? 0 : indexvalue));
             }
@@ -813,6 +833,7 @@ export class GanttTreeGrid {
                 this.parent.addDeleteRecord = false;
             }
             this.parent['isExpandPerformed'] = false;
+            this.parent['isCollapsePerformed'] = false;
         }
         if (this.parent.undoRedoModule) {
             this.parent.undoRedoModule['isFromUndoRedo'] = false;

@@ -285,7 +285,7 @@ export function dropContainerChild(target: Node, source: Node, diagram: Diagram)
     container.children.push(source.id);
     ((targetWrapper as Canvas).children[0] as Canvas).children.push(diagram.nameTable[source.id].wrapper);
     const bound: Rect = getChildrenBound(target, source.id, diagram);
-    adjustContainerSize(bound, source, diagram, false);
+    adjustContainerSize(bound, diagram.nameTable[source.id], diagram, false);
     if (sources.margin.left < 0) {
         sources.margin.left = 10;
     }

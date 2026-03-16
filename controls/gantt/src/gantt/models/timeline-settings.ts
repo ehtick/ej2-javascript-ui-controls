@@ -60,17 +60,22 @@ export class TimelineSettings extends ChildProperty<TimelineSettings> {
      * * `Year` - Define the year mode header.
      * * `Minutes` - Define the minutes mode header.
      *
+     * When set to any value other than 'None', this mode suggests a default topTier/bottomTier combination,
+     * but any explicit manual tier settings (e.g., unit) take precedence and override the mode's defaults.
+     *
      * @default 'None'
      */
     @Property('Week')
     public timelineViewMode: TimelineViewMode;
     /**
      * Defines top tier setting in timeline.
+     * When timelineViewMode is set to a specific mode (not 'None'), explicit topTier settings override the mode's default.
      */
     @Complex<TimelineTierSettingsModel>({}, TimelineTierSettings)
     public topTier: TimelineTierSettingsModel;
     /**
      * Defines bottom tier settings in timeline.
+     * When timelineViewMode is set to a specific mode (not 'None'), explicit bottomTier settings override the mode's default.
      */
     @Complex<TimelineTierSettingsModel>({}, TimelineTierSettings)
     public bottomTier: TimelineTierSettingsModel;
@@ -82,9 +87,17 @@ export class TimelineSettings extends ChildProperty<TimelineSettings> {
     @Property(33)
     public timelineUnitSize: number;
     /**
-     * Defines week start day in timeline.
+     * Sets the first day of the week for timeline week calculations and labels.
+     * Accepts values: 0 = Sunday, 1 = Monday, ..., 6 = Saturday.
      *
-     * @default 0
+     * The property only works when the timeline displays weeks.
+     * Make sure to enable week view using one of these:
+     *   - `timelineViewMode: 'Week'`
+     *   - or `topTier.unit: 'Week'` + `bottomTier.unit: 'Day'`
+     *
+     * Without a week-level tier in the timeline, changing this property will not change anything visible.
+     *
+     * @default 0  // Sunday
      */
     @Property(0)
     public weekStartDay: number;
@@ -119,4 +132,23 @@ export class TimelineSettings extends ChildProperty<TimelineSettings> {
      */
     @Property(true)
     public showWeekend: boolean;
+
+    /**
+     * Specifies the start date for the visible timeline rendering in the Gantt chart UI.
+     * If a specific date is provided, the timeline starts at this date and remains fixed.
+     *
+     * @default 'auto'
+     */
+    @Property('auto')
+    public viewStartDate: Date | string | 'auto';
+
+    /**
+     * Specifies the end date for the visible timeline rendering in the Gantt chart UI.
+     * If no value is provided (`auto`), the end date is automatically calculated to fill the chart width based on the visible timeline.
+     * If a specific date is provided, the timeline ends at this date and remains fixed.
+     *
+     * @default 'auto'
+     */
+    @Property('auto')
+    public viewEndDate: Date | string | 'auto';
 }

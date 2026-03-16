@@ -24,6 +24,8 @@ module.exports = function (config) {
             { pattern: "node_modules/@syncfusion/ej2-navigations/**/*.js", included: false },
             { pattern: "node_modules/@syncfusion/ej2-popups/**/*.js", included: false },
             { pattern: "node_modules/@syncfusion/ej2-richtexteditor/**/*.js", included: false },
+            { pattern: "node_modules/@syncfusion/ej2-interactive-chat/**/*.js", included: false },
+            { pattern: "node_modules/@syncfusion/ej2-markdown-converter/**/*.js", included: false },
             { pattern: "node_modules/@syncfusion/ej2-splitbuttons/**/*.js", included: false },
             { pattern: "node_modules/@syncfusion/ej2-layouts/**/*.js", included: false },
             { pattern: "node_modules/@syncfusion/ej2-grids/**/*.js", included: false },

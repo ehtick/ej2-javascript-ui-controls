@@ -414,7 +414,8 @@ describe('Diagram Control', () => {
             diagram.nodes[0].shape = {
                 type: 'Image',
                 source: 'https://www.w3schools.com/images/w3schools_green.jpg',
-                align: 'None'
+                scale: 'Meet',
+                align: 'XMinYMax',
             };
             diagram.dataBind();
 

@@ -31,7 +31,7 @@ export class DragAndDropAction {
         EventHandler.add(this.parent.rootEditorElement, 'dragover', this.updateCurrentDroppingTarget, this);
         EventHandler.add(this.parent.rootEditorElement, 'dragenter', this.preventNoDropIcon, this);
         if (!isNOU(this.parent.floatingIconAction.floatingIconContainer)) {
-            const dragIcon: HTMLElement = this.parent.floatingIconAction.floatingIconContainer.children[1] as HTMLElement;
+            const dragIcon: HTMLElement = this.parent.floatingIconAction.floatingIconContainer.querySelector('.e-block-drag-icon') as HTMLElement;
             if (!isNOU(dragIcon)) {
                 EventHandler.add(dragIcon, 'dragstart', this.handleDragStart, this);
                 EventHandler.add(dragIcon, 'drag', this.handleDragMove, this);
@@ -45,7 +45,7 @@ export class DragAndDropAction {
         EventHandler.remove(this.parent.rootEditorElement, 'dragover', this.updateCurrentDroppingTarget);
         EventHandler.remove(this.parent.rootEditorElement, 'dragenter', this.preventNoDropIcon);
         if (!isNOU(this.parent.floatingIconAction.floatingIconContainer)) {
-            const dragIcon: HTMLElement = this.parent.floatingIconAction.floatingIconContainer.children[1] as HTMLElement;
+            const dragIcon: HTMLElement = this.parent.floatingIconAction.floatingIconContainer.querySelector('.e-block-drag-icon') as HTMLElement;
             if (!isNOU(dragIcon)) {
                 EventHandler.remove(dragIcon, 'dragstart', this.handleDragStart);
                 EventHandler.remove(dragIcon, 'drag', this.handleDragMove);
@@ -128,17 +128,25 @@ export class DragAndDropAction {
             return;
         }
         let selectedBlocks: BlockModel[] = [];
+        const hoveredBlockId: string = this.parent.currentHoveredBlock.id;
+        let isHoveredBlockInSelection: boolean = false;
+        if (this.parent.editorMethods.getSelectedBlocks()) {
+            isHoveredBlockInSelection = this.parent.editorMethods.getSelectedBlocks()
+                .some((block: BlockModel) => block.id === hoveredBlockId);
+        }
         const range: Range = getSelectedRange();
-        if (range && range.toString().trim().length > 0) {
+        if (range && range.toString().trim().length > 0 && isHoveredBlockInSelection) {
             selectedBlocks = this.parent.editorMethods.getSelectedBlocks();
         }
         else {
-            const blockModel: BlockModel = getBlockModelById(this.parent.currentHoveredBlock.id, editorBlocks);
+            this.parent.nodeSelection.clearSelection();
+            const blockModel: BlockModel = getBlockModelById(hoveredBlockId, editorBlocks);
             if (blockModel) {
                 selectedBlocks.push(blockModel);
             }
         }
         this.draggedBlocks = selectedBlocks;
+        this.filterDraggedBlocksToExcludeChildren();
         const eventArgs: BlockDragEventArgs = {
             blocks: this.draggedBlocks,
             fromIndex: this.draggedBlocks.map((block: BlockModel) => getBlockIndexById(block.id, editorBlocks)),
@@ -224,6 +232,45 @@ export class DragAndDropAction {
         }});
     }
 
+    private filterDraggedBlocksToExcludeChildren(): void {
+        const draggedBlockIds: Set<string> = new Set(this.draggedBlocks.map((block: BlockModel) => block.id));
+        this.draggedBlocks = this.draggedBlocks.filter((block: BlockModel) => {
+            // If block has a parentId and that parent is also in draggedBlocks, exclude this block
+            return !block.parentId || !draggedBlockIds.has(block.parentId);
+        });
+    }
+
+    private isNestedBlockType(blockType: string): boolean {
+        const nestedBlockTypes: string[] = [
+            BlockType.Quote,
+            BlockType.Callout,
+            BlockType.CollapsibleParagraph,
+            BlockType.CollapsibleHeading
+        ];
+        return nestedBlockTypes.indexOf(blockType) > -1;
+    }
+
+    private hasNestedBlockInDraggedBlocks(): boolean {
+        return this.draggedBlocks.some((block: BlockModel) =>
+            this.isNestedBlockType(block.blockType)
+        );
+    }
+
+    private isDropTargetInsideNestedBlock(): boolean {
+        let currentElement: HTMLElement | null = this.currentDropTarget;
+        while (currentElement && currentElement !== this.parent.blockContainer) {
+            const blockElement: HTMLElement | null = currentElement.closest('.' + constants.BLOCK_CLS) as HTMLElement;
+            if (blockElement) {
+                const blockModel: BlockModel = getBlockModelById(blockElement.id, this.parent.getEditorBlocks());
+                if (blockModel && this.isNestedBlockType(blockModel.blockType)) {
+                    return true;
+                }
+            }
+            currentElement = blockElement ? blockElement.parentElement : null;
+        }
+        return false;
+    }
+
     private updateDropIndicator(): void {
         if (
             this.isDragCompleted ||
@@ -231,6 +278,12 @@ export class DragAndDropAction {
             this.currentDropTarget === this.parent.currentHoveredBlock ||
             this.draggedBlocks.some((block: BlockModel) => block.id === this.currentDropTarget.id)
         ) {
+            cleanupElement(this.dropIndicator);
+            return;
+        }
+
+        // Restrict drop indicator for nested block scenarios
+        if (this.hasNestedBlockInDraggedBlocks() && this.isDropTargetInsideNestedBlock()) {
             cleanupElement(this.dropIndicator);
             return;
         }
@@ -256,7 +309,7 @@ export class DragAndDropAction {
         if (!currentIndicatorBlock) { return; }
         const indicatorBlockModel: BlockModel = getBlockModelById(currentIndicatorBlock.id, this.parent.getEditorBlocks());
         const specialTypes: string[] = [BlockType.Divider, BlockType.CollapsibleParagraph, BlockType.CollapsibleHeading,
-            BlockType.Callout, BlockType.Table, BlockType.Image, BlockType.Code];
+            BlockType.Callout, BlockType.Quote, BlockType.Table, BlockType.Image, BlockType.Code];
         const isSpecialType: boolean = (specialTypes.indexOf(indicatorBlockModel.blockType) > -1);
 
         if (isSpecialType) {

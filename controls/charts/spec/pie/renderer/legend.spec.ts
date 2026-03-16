@@ -399,6 +399,7 @@ describe('Legend checking for the pie series', () => {
         };
         accumulation.series[0].dataSource = [{ x: 'Single Point', text: 'Single point text', y: 10 }];
         accumulation.series[0].innerRadius = '40%';
+        accumulation.legendSettings.visible = true;
         accumulation.legendSettings.position = 'Right';
         accumulation.refresh();
     });
@@ -445,6 +446,16 @@ describe('Legend checking for the pie series', () => {
         accumulation.series[0].dataSource = [
             { x: 'Single Point legend long text trimming feature checking', text: 'Single point text', y: 10 }];
         accumulation.refresh();
+    });
+    it('Check legend shape when legendShape is provided', (done: Function) => {
+        accumulation.loaded = (args: IAccLoadedEventArgs) => {
+            const legendElement: HTMLElement | null = document.getElementById(legendId + '_translate_g');
+            expect(legendElement).not.toBeNull();
+            expect(accumulation.visibleSeries[0].legendShape).toBe('Circle');
+            done();
+        };
+        accumulation.series[0].legendShape = 'Circle';
+        accumulation.dataBind();
     });
 });
     describe('Legend title checking with pie chart', () => {

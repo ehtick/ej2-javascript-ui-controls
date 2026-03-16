@@ -1,7 +1,7 @@
 import { BasePlaceholderProp, BaseStylesProp, BlockModel, ContentModel, ILabelContentSettings, LabelItemModel, IMentionContentSettings, StyleModel, UserModel } from '../../../models/index';
 import { createFormattingElement } from '../../../common/utils/dom';
 import { getAccessibleTextColor, getAutoAvatarColor, getUserInitials, normalizeUrl } from '../../../common/utils/common';
-import { ContentType } from '../../../models/enums';
+import { BlockType, ContentType } from '../../../models/enums';
 import { BlockManager } from '../../base/block-manager';
 import { ILinkContentSettings } from '../../../models';
 import { LinkData } from '../../../common/interface';
@@ -30,106 +30,119 @@ export class ContentRenderer {
      */
     public renderContent(block: BlockModel, contentElement: HTMLElement): void {
         if (block.content && block.content.length > 0) {
-            if (contentElement) {
-                contentElement.innerHTML = '';
-            }
-            if (block.content.length === 1) {
-                const props: BaseStylesProp = block.content[0].properties as BaseStylesProp;
-                const styles: Partial<Record<keyof StyleModel, string | boolean>> | {} = props ? props.styles : {};
-                const isEmptyStyles: boolean = !styles || Object.keys(styles).length === 0;
-                const isDirectText: boolean = isEmptyStyles && block.content[0].contentType === ContentType.Text;
-                this.invokeContentRenderer(
-                    block,
-                    block.content[0],
-                    contentElement,
-                    isDirectText
-                );
-            }
-            else {
-                block.content.forEach((content: ContentModel) => {
-                    this.invokeContentRenderer(block, content, contentElement);
-                });
-            }
+            // clear html and render again
+            if (contentElement) { contentElement.innerHTML = ''; }
+
+            block.content.forEach((content: ContentModel) => {
+                const node: Node = this.invokeContentRenderer(block, content);
+                if (node && contentElement) {
+                    contentElement.appendChild(node);
+                }
+            });
         }
         else {
-            this.renderText(null, contentElement, true);
-            if (contentElement) {
-                contentElement.innerHTML = (!(block.properties as BasePlaceholderProp).placeholder)
-                    ? '<br>'
-                    : contentElement.innerHTML;
+            const emptyNode: Node = this.renderText(null);
+            if (emptyNode && contentElement) {
+                contentElement.appendChild(emptyNode);
+                if (!(block.properties as BasePlaceholderProp).placeholder) {
+                    const br: HTMLElement = document.createElement('br');
+                    contentElement.appendChild(br);
+                }
             }
         }
         this.parent.stateManager.updateManagerBlocks();
     }
 
-    private invokeContentRenderer(
-        block: BlockModel,
-        contentModel: ContentModel,
-        contentElement: HTMLElement,
-        isDirectText?: boolean): void {
+    /**
+     * Invokes appropriate content renderer based on content type.
+     * Pure function - creates and returns nodes without side effects.
+     *
+     * @param {BlockModel} block - The block model
+     * @param {ContentModel} contentModel - The content model to render
+     * @returns {Node} - The created node
+     * @hidden
+     */
+    public invokeContentRenderer(block: BlockModel, contentModel: ContentModel): Node {
+        let node: Node = null;
+
         switch (contentModel.contentType) {
         case ContentType.Text:
-            this.renderText(contentModel, contentElement, isDirectText);
+            node = this.renderText(contentModel);
             break;
         case ContentType.Link:
-            this.renderAnchor(contentModel, contentElement);
+            node = this.renderAnchor(contentModel);
             break;
         case ContentType.Mention:
-            this.renderMention(contentModel, contentElement);
+            node = this.renderMention(contentModel);
             break;
         case ContentType.Label:
-            this.renderLabel(contentModel, contentElement);
+            node = this.renderLabel(contentModel);
             break;
         }
-        if (contentElement) {
-            contentElement.innerHTML = (!(block.properties as BasePlaceholderProp).placeholder && !contentModel.content)
-                ? '<br>'
-                : contentElement.innerHTML;
+        // Add <br> if placeholder check is needed and content is empty
+        if (node && !contentModel.content && !(block.properties as BasePlaceholderProp).placeholder) {
+            const container: HTMLElement = document.createElement('span');
+            container.appendChild(node);
+            const br: HTMLElement = document.createElement('br');
+            container.appendChild(br);
+            return container;
         }
+        return node;
     }
 
-    private renderText(content: ContentModel, contentElement: HTMLElement, isDirectText?: boolean): void {
+    /**
+     * Renders text content as a pure function.
+     * Creates and returns text node with applied formatting.
+     *
+     * @param {ContentModel} content - The content model to render
+     * @returns {Node} - The created text node
+     * @hidden
+     */
+    public renderText(content: ContentModel): Node {
         if (!content) {
-            contentElement.textContent = '';
-            return;
-        }
-        if (contentElement && contentElement.id) {
-            contentElement.removeAttribute('id');
+            return document.createTextNode('');
         }
 
-        content.content = this.parent.serializeValue(content.content);
-        if (isDirectText) {
-            contentElement.id = content.id;
-            contentElement.textContent = content.content;
-        }
-        else {
-            const node: HTMLElement = createFormattingElement(content);
-            contentElement.appendChild(node);
-        }
+        const formattedNode: Node = createFormattingElement(content);
+        return formattedNode;
     }
 
-    public renderAnchor(content: ContentModel, contentElement: HTMLElement): void {
+    /**
+     * Renders link/anchor content as a pure function.
+     * Creates and returns anchor node with applied formatting.
+     *
+     * @param {ContentModel} content - The content model to render
+     * @returns {Node} - The created anchor node
+     * @hidden
+     */
+    public renderAnchor(content: ContentModel): Node {
         const props: ILinkContentSettings = content.properties as ILinkContentSettings;
         props.url = normalizeUrl(props.url);
-        content.content = this.parent.serializeValue(content.content);
         const linkData: LinkData = {
             url: props.url
         };
-        const formattedElement: HTMLElement = createFormattingElement(content, linkData);
-        contentElement.appendChild(formattedElement);
+        const formattedNode: Node = createFormattingElement(content, linkData);
+        return formattedNode;
     }
 
-    private renderMention(content: ContentModel, contentElement: HTMLElement): void {
+    /**
+     * Renders mention/user chip as a pure function.
+     * Creates and returns mention element without appending.
+     *
+     * @param {ContentModel} content - The content model with mention properties
+     * @returns {Node} - The created mention element
+     * @hidden
+     */
+    public renderMention(content: ContentModel): Node {
         const props: IMentionContentSettings = content.properties as IMentionContentSettings;
         const userModel: UserModel = this.parent.users.find((user: UserModel) => user.id.toLowerCase() === props.userId);
-        if (!userModel) { return; }
+        if (!userModel) { return null; }
 
         const name: string = userModel.user.trim();
         const initials: string = getUserInitials(name);
         const backgroundColor: string = userModel.avatarBgColor || getAutoAvatarColor(userModel.id);
         const avatarUrl: string = userModel.avatarUrl || '';
         const wrapper: HTMLElement = createElement('div', {
-            id: content.id,
             className: 'e-mention-chip e-user-chip',
             attrs: {
                 'data-user-id': userModel.id,
@@ -167,17 +180,24 @@ export class ContentRenderer {
 
         wrapper.appendChild(avatar);
         wrapper.appendChild(userNameContent);
-        contentElement.appendChild(wrapper);
+        return wrapper;
     }
 
-    private renderLabel(content: ContentModel, contentElement: HTMLElement): void {
+    /**
+     * Renders label/tag chip as a pure function.
+     * Creates and returns label element without appending.
+     *
+     * @param {ContentModel} content - The content model with label properties
+     * @returns {Node} - The created label element
+     * @hidden
+     */
+    public renderLabel(content: ContentModel): Node {
         const props: ILabelContentSettings = content.properties as ILabelContentSettings;
         const items: LabelItemModel[] = this.parent.labelSettings.items;
         const labelItem: LabelItemModel = items.find((item: LabelItemModel) => item.id === props.labelId);
-        if (!labelItem) { return; }
+        if (!labelItem) { return null; }
 
         const labelChip: HTMLElement = createElement('span', {
-            id: content.id,
             className: 'e-mention-chip e-label-chip',
             styles: `background: ${labelItem.labelColor};color: ${getAccessibleTextColor(labelItem.labelColor)};`,
             attrs: {
@@ -187,7 +207,7 @@ export class ContentRenderer {
         });
         labelChip.innerText = `${labelItem.groupBy}: ${labelItem.text}`;
         content.content = `${labelItem.groupBy}: ${labelItem.text}`;
-        contentElement.appendChild(labelChip);
+        return labelChip;
     }
 
 }

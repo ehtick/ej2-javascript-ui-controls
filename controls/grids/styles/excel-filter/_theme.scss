@@ -41,4 +41,12 @@
     background-color: $grid-autofill-color;
     border-color: $grid-autofill-color;
   }
+
+  .sf-grid .e-excelfilter {
+    .e-contextmenu-container ul .e-menu-item.e-selected .e-caret {
+      @if $grid-xlfl-skin == 'bootstrap5' {
+        color: $flyout-text-color-pressed;
+      }
+    }
+  }
 }

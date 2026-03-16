@@ -72,7 +72,7 @@ describe('Image Dialog', () => {
         setTimeout(function () {
             let quickPop: any = <HTMLElement>document.querySelectorAll('.e-rte-quick-popup')[0];
             let quickTBItem: any = quickPop.querySelectorAll('.e-toolbar-item');
-            quickTBItem.item(6).click();
+            quickTBItem.item(7).click();
             expect(beforeDialogOpenEvent).toBe(true);
             expect(dialogOpenEvent).toBe(true);
             (<HTMLElement>rteEle.querySelectorAll(".e-dlg-closeicon-btn")[0] as HTMLElement).click();

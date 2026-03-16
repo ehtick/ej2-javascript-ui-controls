@@ -3,8 +3,8 @@ import { PivotEngine, IFieldOptions, IFormatSettings, IMatrix2D } from '../../ba
 import { PivotView } from '../base/pivotview';
 import { Reorder, headerRefreshed, CellSelectEventArgs, RowSelectEventArgs, PdfExportCompleteArgs, getScrollBarWidth, ContextMenuItem, ContextMenuItemModel, SelectionSettingsModel, Cell, IGrid, ActionEventArgs } from '@syncfusion/ej2-grids';
 import { Grid, Resize, ColumnModel, Column, ExcelExport, PdfExport, ContextMenu, ResizeArgs, Freeze } from '@syncfusion/ej2-grids';
-import { PdfHeaderQueryCellInfoEventArgs, ExcelQueryCellInfoEventArgs, PdfQueryCellInfoEventArgs } from '@syncfusion/ej2-grids';
-import { ExcelHeaderQueryCellInfoEventArgs, HeaderCellInfoEventArgs, Selection, RowDeselectEventArgs } from '@syncfusion/ej2-grids';
+import { PdfHeaderQueryCellInfoEventArgs, PdfQueryCellInfoEventArgs } from '@syncfusion/ej2-grids';
+import { HeaderCellInfoEventArgs, Selection, RowDeselectEventArgs } from '@syncfusion/ej2-grids';
 import { CellDeselectEventArgs, CellSelectingEventArgs, ExcelExportCompleteArgs } from '@syncfusion/ej2-grids';
 import { createElement, setStyleAttribute, remove, isNullOrUndefined, EventHandler, getElement, closest, append, formatUnit } from '@syncfusion/ej2-base';
 import { addClass, removeClass, SanitizeHtmlHelper, select, selectAll } from '@syncfusion/ej2-base';
@@ -13,7 +13,7 @@ import * as events from '../../common/base/constant';
 import { BeforeOpenCloseMenuEventArgs, MenuEventArgs, MenuItemModel } from '@syncfusion/ej2-navigations';
 import { GridSettingsModel } from '../model/gridsettings-model';
 import { HyperCellClickEventArgs, PivotCellSelectedEventArgs, QueryCellInfoEventArgs, ExportCompleteEventArgs, ExcelCell } from '../../common/base/interface';
-import { AggregateMenuOpenEventArgs, BeforeExportEventArgs, PivotColumn, ExcelRow } from '../../common/base/interface';
+import { AggregateMenuOpenEventArgs, BeforeExportEventArgs, PivotColumn, ExcelRow, ExcelHeaderQueryCellInfoEventArgs, ExcelQueryCellInfoEventArgs } from '../../common/base/interface';
 import { AggregateMenu } from '../../common/popups/aggregate-menu';
 import { SummaryTypes } from '../../base/types';
 import { OlapEngine, ITupInfo, IOlapFieldListOptions } from '../../base/olap/engine';
@@ -1076,7 +1076,9 @@ export class Render {
                     `${(args.column.customAttributes.cell as IAxisSet).valueSort.levelName}` :
                 args.column.field === '0.formattedText' ? '0.formattedText' :
                     `${(args.column.customAttributes.cell as IAxisSet).valueSort.levelName}`;
-            this.parent.resizeInfo[column as string] = Number(args.column.width.toString().split('px')[0]);
+            if (!this.parent.enableVirtualization) {
+                this.parent.resizeInfo[column as string] = Number(args.column.width.toString().split('px')[0]);
+            }
         }
         if (!this.parent.isTabular && this.parent.enableVirtualization && args.column.field === '0.formattedText') {
             if (this.parent.dataSourceSettings.values.length > 1
@@ -1102,7 +1104,7 @@ export class Render {
         for (const column of parentColumn) {
             if (column.columns && column.columns.length > 0) {
                 this.getChildColumnWidth(column.columns as ColumnModel[]);
-            }  else {
+            } else if (!this.parent.enableVirtualization) {
                 const colName: string = (column.customAttributes.cell as IAxisSet).valueSort.levelName as string;
                 this.parent.resizeInfo[colName as string] = Number(column.width.toString().split('px')[0]);
             }
@@ -1154,9 +1156,8 @@ export class Render {
                     `${(args.column.customAttributes.cell as IAxisSet).valueSort.levelName}` :
                 args.column.field === '0.formattedText' ? '0.formattedText' :
                     `${(args.column.customAttributes.cell as IAxisSet).valueSort.levelName}`;
-            this.parent.resizeInfo[column as string] = Number(args.column.width.toString().split('px')[0]);
-            if (this.parent.enableVirtualization) {
-                // this.parent.layoutRefresh();
+            if (!this.parent.enableVirtualization) {
+                this.parent.resizeInfo[column as string] = Number(args.column.width.toString().split('px')[0]);
             }
         }
         if (this.parent.enableVirtualization) {
@@ -1685,7 +1686,7 @@ export class Render {
                     const engine: PivotEngine | OlapEngine = this.parent.dataType === 'olap' ? this.parent.olapEngineModule : this.parent.engineModule;
                     let localizedText: string = cell.type === 'grand sum' ? (isNullOrUndefined(cell.valueSort.axis) || this.parent.dataType === 'olap' ? this.parent.localeObj.getConstant('grandTotal') :
                         cell.formattedText) : cell.formattedText.split('Total')[0] + this.parent.localeObj.getConstant('total');
-                    localizedText = isColumnFieldsAvail && engine.fieldList ? this.parent.localeObj.getConstant('total') + ' ' + this.parent.localeObj.getConstant(engine.fieldList[cell.actualText].aggregateType)
+                    localizedText = isColumnFieldsAvail && engine.fieldList && engine.fieldList[cell.actualText] ? this.parent.localeObj.getConstant('total') + ' ' + this.parent.localeObj.getConstant(engine.fieldList[cell.actualText].aggregateType)
                         + ' ' + this.parent.localeObj.getConstant('of') + ' ' + cell.formattedText : localizedText;
                     if ((tCell.querySelector('.e-headertext') as HTMLElement) !== null) {
                         (tCell.querySelector('.e-headertext') as HTMLElement).innerText = localizedText;
@@ -2207,7 +2208,7 @@ export class Render {
     /** @hidden */
 
     public setSavedWidth(column: string, width: number): number {
-        if (this.parent.isTabular && this.parent.element.querySelector('.' + cls.ROW_CLASS).querySelector('.' + cls.ROWCELL) &&
+        if (this.parent.isTabular && this.parent.element.querySelector('.' + cls.ROW_CLASS) && this.parent.element.querySelector('.' + cls.ROW_CLASS).querySelector('.' + cls.ROWCELL) &&
             this.parent.showGroupingBar && column === '0.formattedText' && this.parent.dataSourceSettings.values.length === 0) {
             let rowHeaderWidth: number = 0;
             const buttonDivs: NodeListOf<HTMLElement> = this.parent.element.querySelector('.' + cls.GROUP_ROW)

@@ -2,7 +2,7 @@ import { createElement } from '@syncfusion/ej2-base';
 import { BlockModel } from '../../src/models/index';
 import { createEditor } from '../common/util.spec';
 import { NodeSelection } from '../../src/selection/selection';
-import { BlockType, ContentType, CommandName } from '../../src/models/enums';
+import { BlockType, ContentType } from '../../src/models/enums';
 import { BlockEditor } from '../../src/index';
 
 describe('Selection Plugin', () => {
@@ -24,24 +24,20 @@ describe('Selection Plugin', () => {
                     blockType: BlockType.Paragraph,
                     content: [
                         {
-                            id: 'plainText',
                             contentType: ContentType.Text,
                             content: 'Plain text'
                         },
                         {
-                            id: 'boldText',
                             contentType: ContentType.Text,
                             content: 'Bold text',
                             properties: { styles: { bold: true } }
                         },
                         {
-                            id: 'italicText',
                             contentType: ContentType.Text,
                             content: 'Italic text',
                             properties: { styles: { italic: true } }
                         },
                         {
-                            id: 'styledText',
                             contentType: ContentType.Text,
                             content: 'Mixed styles',
                             properties: { styles: { bold: true, underline: true } }
@@ -74,7 +70,7 @@ describe('Selection Plugin', () => {
     describe('Save and Restore Selection', () => {
         it('should save and restore cursor position', () => {
             // Find the plain text node
-            const element = contentElement.firstChild.firstChild;
+            const element = contentElement.firstChild;
 
             // Create a range at position 3 in plain text
             const range = document.createRange();
@@ -141,8 +137,8 @@ describe('Selection Plugin', () => {
         it('should correctly identify if selection is collapsed', () => {
             // Set cursor at start of content
             const range = document.createRange();
-            range.setStart(contentElement.firstChild.firstChild, 0);
-            range.setEnd(contentElement.firstChild.firstChild, 0);
+            range.setStart(contentElement.firstChild, 0);
+            range.setEnd(contentElement.firstChild, 0);
 
             const selection = window.getSelection();
             selection.removeAllRanges();
@@ -151,7 +147,7 @@ describe('Selection Plugin', () => {
             expect(selectionManager.isCollapsed()).toBe(true);
 
             // Create a non-collapsed selection
-            range.setEnd(contentElement.firstChild.firstChild, 5);
+            range.setEnd(contentElement.firstChild, 5);
             selection.removeAllRanges();
             selection.addRange(range);
 
@@ -160,7 +156,7 @@ describe('Selection Plugin', () => {
 
         it('should get selected text correctly', () => {
             // Select "Plain" in the first content block
-            const plainTextNode = contentElement.firstChild.firstChild;
+            const plainTextNode = contentElement.firstChild;
             const range = document.createRange();
             range.setStart(plainTextNode, 0);
             range.setEnd(plainTextNode, 5);
@@ -185,7 +181,7 @@ describe('Selection Plugin', () => {
 
         it('should get selection position', () => {
             // Create a selection
-            const plainTextNode = contentElement.firstChild.firstChild;
+            const plainTextNode = contentElement.firstChild;
             const range = document.createRange();
             range.setStart(plainTextNode, 0);
             range.setEnd(plainTextNode, 5);
@@ -270,7 +266,7 @@ describe('Selection Plugin', () => {
     describe('Range Management', () => {
         it('should store and retrieve current range', () => {
             // Create a selection
-            const plainTextNode = contentElement.firstChild.firstChild;
+            const plainTextNode = contentElement.firstChild;
             const range = document.createRange();
             range.setStart(plainTextNode, 2);
             range.setEnd(plainTextNode, 5);
@@ -294,7 +290,7 @@ describe('Selection Plugin', () => {
 
         it('should store and retrieve backup range', () => {
             // Create a selection
-            const plainTextNode = contentElement.firstChild.firstChild;
+            const plainTextNode = contentElement.firstChild;
             const range = document.createRange();
             range.setStart(plainTextNode, 2);
             range.setEnd(plainTextNode, 5);
@@ -314,7 +310,7 @@ describe('Selection Plugin', () => {
             expect(backupRange.startOffset).toBe(2);
             expect(backupRange.endContainer).toBe(plainTextNode);
             expect(backupRange.endOffset).toBe(5);
-            expect(backupRange.parentElement).toBe(plainTextNode.parentElement);
+            expect(backupRange.contentElement).toBe(plainTextNode.parentElement);
         });
     });
 
@@ -326,7 +322,7 @@ describe('Selection Plugin', () => {
     //         ];
     //         editor.currentUserId = 'user1';
     //         // Create a selection
-    //         const plainTextNode = contentElement.firstChild.firstChild;
+    //         const plainTextNode = contentElement.firstChild;
     //         const range = document.createRange();
     //         range.setStart(plainTextNode, 2);
     //         range.setEnd(plainTextNode, 5);
@@ -348,7 +344,7 @@ describe('Selection Plugin', () => {
     describe('Complex Selections', () => {
         it('should handle selection spanning multiple formatted elements', () => {
             // Select from plain text through bold text to italic text
-            const plainTextNode = contentElement.firstChild.firstChild;
+            const plainTextNode = contentElement.firstChild;
             const italicTextNode = contentElement.querySelector('em').firstChild;
 
             const range = document.createRange();
@@ -377,7 +373,7 @@ describe('Selection Plugin', () => {
 
         it('should handle document changes during selection restoration', () => {
             // Select some text
-            const plainTextNode = contentElement.firstChild.firstChild;
+            const plainTextNode = contentElement.firstChild;
             const range = document.createRange();
             range.setStart(plainTextNode, 2);
             range.setEnd(plainTextNode, 5);

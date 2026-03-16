@@ -159,7 +159,7 @@ describe('- Drill Through', () => {
                 expect(document.querySelectorAll('.e-drillthrough-body-header-value')[1].textContent).toBe('male');
                 expect(document.querySelectorAll('.e-drillthrough-body-header')[2].textContent).toBe('Sum of balance');
                 expect(document.querySelectorAll('.e-drillthrough-body-header-value')[2].textContent).toBe('102234.66000000005');
-                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="2"]')[2].textContent).toBe('Californiya');
+                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="2"]')[2].textContent).toBe('23');
                 (document.querySelectorAll('.e-drillthrough-dialog .e-dlg-closeicon-btn')[0] as HTMLElement).click();
                 done();
             }, 500);
@@ -172,7 +172,7 @@ describe('- Drill Through', () => {
                 expect(document.querySelectorAll('.e-drillthrough-body-header-value')[1].textContent).toBe('female');
                 expect(document.querySelectorAll('.e-drillthrough-body-header')[2].textContent).toBe('Sum of quantity');
                 expect(document.querySelectorAll('.e-drillthrough-body-header-value')[2].textContent).toBe('560');
-                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="2"]')[2].textContent).toBe('Delhi');
+                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="2"]')[2].textContent).toBe('19');
                 (document.querySelectorAll('.e-drillthrough-dialog .e-dlg-closeicon-btn')[0] as HTMLElement).click();
                 done();
             }, 500);
@@ -184,7 +184,7 @@ describe('- Drill Through', () => {
                 expect(document.querySelectorAll('.e-drillthrough-body-header-value')[0].textContent).toBe('Bike');
                 expect(document.querySelectorAll('.e-drillthrough-body-header')[1].textContent).toBe('Sum of balance');
                 expect(document.querySelectorAll('.e-drillthrough-body-header-value')[1].textContent).toBe('170737.21999999997');
-                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="2"]')[2].textContent).toBe('New Jercy');
+                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="2"]')[2].textContent).toBe('37');
                 (document.querySelectorAll('.e-drillthrough-dialog .e-dlg-closeicon-btn')[0] as HTMLElement).click();
                 done();
             }, 500);
@@ -195,7 +195,7 @@ describe('- Drill Through', () => {
                 expect(document.querySelectorAll('.e-drillthrough-dialog').length).toBe(1);
                 expect(document.querySelectorAll('.e-drillthrough-body-header')[0].textContent).toBe('Sum of quantity');
                 expect(document.querySelectorAll('.e-drillthrough-body-header-value')[0].textContent).toBe('6370');
-                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="2"]')[2].textContent).toBe('New Jercy');
+                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="2"]')[2].textContent).toBe('2');
                 (document.querySelectorAll('.e-drillthrough-dialog .e-dlg-closeicon-btn')[0] as HTMLElement).click();
                 done();
             }, 500);
@@ -208,7 +208,7 @@ describe('- Drill Through', () => {
                 expect(document.querySelectorAll('.e-drillthrough-body-header-value')[1].textContent).toBe('female');
                 expect(document.querySelectorAll('.e-drillthrough-body-header')[2].textContent).toBe('Sum of balance');
                 expect(document.querySelectorAll('.e-drillthrough-body-header-value')[2].textContent).toBe('61457.67');
-                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="2"]')[2].textContent).toBe('Rajkot');
+                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="2"]')[2].textContent).toBe('470');
                 (document.querySelectorAll('.e-drillthrough-dialog .e-dlg-closeicon-btn')[0] as HTMLElement).click();
                 done();
             }, 500);
@@ -222,7 +222,7 @@ describe('- Drill Through', () => {
                 expect(document.querySelectorAll('.e-drillthrough-dialog').length).toBe(1);
                 expect(document.querySelectorAll('.e-drillthrough-body-header-value')[1].textContent).toBe('female');
                 jasmine.DEFAULT_TIMEOUT_INTERVAL = 15000;
-                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="2"]')[2].textContent).toBe('Delhi');
+                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="2"]')[2].textContent).toBe('50');
                 (document.querySelectorAll('.e-drillthrough-dialog .e-dlg-closeicon-btn')[0] as HTMLElement).click();
                 done();
             }, 1000);
@@ -319,7 +319,7 @@ describe('- Drill Through', () => {
                 document.querySelectorAll('.e-spin-up')[0].dispatchEvent(new Event('mouseup', { bubbles: true }));
                 document.getElementById('PivotGrid_drillthroughgrid_update').dispatchEvent(new Event('click', { bubbles: true }));
                 document.querySelectorAll('.e-drillthrough-dialog .e-dlg-closeicon-btn')[0].dispatchEvent(new Event('click', { bubbles: true }));
-                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="2"]')[0].textContent).toBe('389040.42');
+                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="2"]')[0].textContent).toBe('Japan');
                 done();
             }, 1000);
         });
@@ -513,7 +513,7 @@ describe('- Drill Through', () => {
                 expect(document.querySelectorAll('.e-drillthrough-body-header-value')[1].textContent).toBe('female');
                 expect(document.querySelectorAll('.e-drillthrough-body-header')[2].textContent).toBe('Sum of quantity');
                 expect(document.querySelectorAll('.e-drillthrough-body-header-value')[2].textContent).toBe('560');
-                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="2"]')[2].textContent).toBe('Delhi');
+                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="2"]')[2].textContent).toBe('19');
                 (document.querySelectorAll('.e-drillthrough-dialog .e-dlg-closeicon-btn')[0] as HTMLElement).click();
                 done();
             }, 100);
@@ -525,7 +525,7 @@ describe('- Drill Through', () => {
                 expect(document.querySelectorAll('.e-drillthrough-body-header-value')[0].textContent).toBe('Bike');
                 expect(document.querySelectorAll('.e-drillthrough-body-header')[1].textContent).toBe('Sum of balance');
                 expect(document.querySelectorAll('.e-drillthrough-body-header-value')[1].textContent).toBe('170737.21999999997');
-                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="2"]')[2].textContent).toBe('New Jercy');
+                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="2"]')[2].textContent).toBe('37');
                 (document.querySelectorAll('.e-drillthrough-dialog .e-dlg-closeicon-btn')[0] as HTMLElement).click();
                 done();
             }, 100);
@@ -535,7 +535,7 @@ describe('- Drill Through', () => {
             setTimeout(() => {
                 expect(document.querySelectorAll('.e-drillthrough-dialog').length).toBe(1);
                 expect(document.querySelectorAll('.e-drillthrough-body-header')[0].textContent).toBe('Sum of quantity');
-                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="2"]')[2].textContent).toBe('New Jercy');
+                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="2"]')[2].textContent).toBe('2');
                 (document.querySelectorAll('.e-drillthrough-dialog .e-dlg-closeicon-btn')[0] as HTMLElement).click();
                 done();
             }, 1000);
@@ -548,7 +548,7 @@ describe('- Drill Through', () => {
                 expect(document.querySelectorAll('.e-drillthrough-body-header-value')[1].textContent).toBe('female');
                 expect(document.querySelectorAll('.e-drillthrough-body-header')[2].textContent).toBe('Sum of balance');
                 expect(document.querySelectorAll('.e-drillthrough-body-header-value')[2].textContent).toBe('61457.67');
-                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="2"]')[2].textContent).toBe('Rajkot');
+                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="2"]')[2].textContent).toBe('470');
                 (document.querySelectorAll('.e-drillthrough-dialog .e-dlg-closeicon-btn')[0] as HTMLElement).click();
                 done();
             }, 500);
@@ -561,7 +561,7 @@ describe('- Drill Through', () => {
             setTimeout(() => {
                 expect(document.querySelectorAll('.e-drillthrough-dialog').length).toBe(1);
                 expect(document.querySelectorAll('.e-drillthrough-body-header-value')[1].textContent).toBe('female');
-                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="2"]')[2].textContent).toBe('Delhi');
+                expect(document.querySelectorAll('.e-drillthrough-grid td[aria-colindex="2"]')[2].textContent).toBe('50');
                 (document.querySelectorAll('.e-drillthrough-dialog .e-dlg-closeicon-btn')[0] as HTMLElement).click();
                 done();
             }, 100);

@@ -242,7 +242,7 @@ function terminateConnection(
             if (!source.direction) {
                 source.direction = (target.direction) ? (
                     (element.targetPortWrapper !== undefined) ? target.direction : getOppositeDirection(target.direction) as Direction) :
-                    Point.direction(source.point, target.point) as Direction;
+                    getSourceDirection(source.point, target.point) as Direction; //Bug - 1012419: Connector Flickers
             } else {
                 extra = adjustSegmentLength(sourceNode.bounds, source, 20);
             }
@@ -251,6 +251,29 @@ function terminateConnection(
         }
     }
     return intermeditatePoints;
+}
+
+/**
+ * getSourceDirection method
+ *
+ * Determine the primary direction from `sourcePoint` toward `targetPoint`.
+ * Returns the corresponding direction string (one of 'Left'|'Right'|'Top'|'Bottom'),
+ *
+ * @returns { string } direction of source point
+ * @param {PointModel} sourcePoint - provide the points value of source.
+ * @param {PointModel} targetPoint - provide the points value of target.
+ *
+ * @private
+ */
+function getSourceDirection(sourcePoint: PointModel, targetPoint: PointModel): string {
+    const xDiff: number = Math.round((targetPoint.x - sourcePoint.x) * 100) / 100;
+    const yDiff: number = Math.round((targetPoint.y - sourcePoint.y) * 100) / 100;
+    if (Math.abs(xDiff) > Math.abs(yDiff)) {
+        return sourcePoint.x < targetPoint.x ? 'Right' : 'Left';
+    }
+    else {
+        return sourcePoint.y < targetPoint.y ? 'Bottom' : 'Top';
+    }
 }
 
 /**

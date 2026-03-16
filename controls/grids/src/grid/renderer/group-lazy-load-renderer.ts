@@ -75,6 +75,7 @@ export class GroupLazyLoadRenderer extends ContentRender implements IRenderer {
     public allowCaseSensitive: boolean = true;
     /** @hidden */
     public lazyLoadQuery: Object[] = [];
+    private startIndex: number = 0;
 
     private eventListener(): void {
         this.parent.addEventListener(events.actionBegin, this.actionBegin.bind(this));
@@ -163,6 +164,17 @@ export class GroupLazyLoadRenderer extends ContentRender implements IRenderer {
                 }
             }
             this.removeRows(captionIndex, rowIdx, uid);
+            if (this.parent.isRemote()) {
+                const checkedAllTarget: HTMLElement = this.parent.getHeaderContent().querySelector('.e-checkselectall');
+                if (checkedAllTarget) {
+                    if (this.getAllPagesData().length === 0 && this.parent.selectionModule &&
+                        !this.parent.selectionModule.selectedRowIndexes.length) {
+                        checkedAllTarget.parentElement.classList.add('e-checkbox-disabled');
+                    } else {
+                        checkedAllTarget.parentElement.classList.remove('e-checkbox-disabled');
+                    }
+                }
+            }
             if (this.parent.enableInfiniteScrolling || this.parent.enableVirtualization) {
                 this.groupCache[this.parent.pageSettings.currentPage] = extend(
                     [], this.refRowsObj[this.parent.pageSettings.currentPage]) as Row<Column>[];
@@ -328,7 +340,7 @@ export class GroupLazyLoadRenderer extends ContentRender implements IRenderer {
 
     private actionComplete(args: NotifyArgs): void {
         const requestTypes: string[] = ['columnstate', 'reorder', 'save', 'beginEdit', 'delete',
-            'infiniteScroll', 'columnVisibilityUpdate', 'columnChooserClose'];
+            'infiniteScroll', 'columnVisibilityUpdate', 'columnChooserClose', 'filterchoicerequest', 'filterAfterOpen'];
         if (!args.cancel && requestTypes.indexOf(args.requestType) === -1 && this.parent.groupSettings.columns.length) {
             this.scrollReset();
         }
@@ -390,9 +402,9 @@ export class GroupLazyLoadRenderer extends ContentRender implements IRenderer {
                 count = count + 1;
             }
         }
+        this.cacheRowsObj[`${uid}`] = this.groupCache[parseInt(page.toString(), 10)].slice(idx + 1, idx + 1 + count);
+        this.groupCache[parseInt(page.toString(), 10)].splice(idx + 1, count);
         if (this.parent.enableVirtualization) {
-            this.cacheRowsObj[`${uid}`] = this.groupCache[parseInt(page.toString(), 10)].slice(idx + 1, idx + 1 + count);
-            this.groupCache[parseInt(page.toString(), 10)].splice(idx + 1, count);
             this.parent.notify(events.refreshVirtualLazyLoadCache, { rows: [], uid: rows[parseInt(idx.toString(), 10)].uid, count: count });
             (this.parent.contentModule as VirtualContentRenderer).setVirtualHeight();
             this.parent.islazyloadRequest = false;
@@ -463,7 +475,8 @@ export class GroupLazyLoadRenderer extends ContentRender implements IRenderer {
                     }
                 }
             } else {
-                this.groupGenerator.index = this.getStartIndex(captionIndex, args.isScroll);
+                this.groupGenerator.index = this.parent.allowPaging ? this.getStartIndex(captionIndex, args.isScroll) : args.isScroll ?
+                    this.startIndex : (captionRow.data as GroupedData).startIndex;
                 rows = this.groupGenerator.generateDataRows(args.data, args.level, captionRow.parentGid, 0, captionRow.uid);
             }
         }
@@ -499,6 +512,13 @@ export class GroupLazyLoadRenderer extends ContentRender implements IRenderer {
         this.childCount = 0;
         for (let i: number = 0; i < rows.length; i++) {
             this.refRowsObj[this.parent.pageSettings.currentPage].splice(captionIndex + i + 1, 0, rows[parseInt(i.toString(), 10)]);
+            const rowObj: Row<Column> = rows[parseInt(i.toString(), 10)];
+            if (rowObj.isSelected) {
+                this.parent.selectionModule.selectedRecords.push(this.getRowByIndex(rowObj.index));
+                if (this.parent.allowPaging) {
+                    this.parent.selectionModule.selectedRowIndexes.push(rowObj.index);
+                }
+            }
         }
         if (lastRow && tr.querySelector('.e-lastrowcell')) {
             (this.parent as Grid).groupModule.lastCaptionRowBorder();
@@ -606,6 +626,7 @@ export class GroupLazyLoadRenderer extends ContentRender implements IRenderer {
             }
         }
         if (tr && rows.length) {
+            const checkSelectAll: HTMLInputElement = this.parent.getHeaderContent().querySelector('.e-checkselectall') as HTMLInputElement;
             for (let i: number = rows.length - 1; i >= 0; i--) {
                 if (this.confirmRowRendering(rows[parseInt(i.toString(), 10)])) {
                     tr.insertAdjacentElement('afterend', this.rowRenderer.render(rows[parseInt(i.toString(), 10)], this.parent.getColumns()));
@@ -616,6 +637,11 @@ export class GroupLazyLoadRenderer extends ContentRender implements IRenderer {
                         scrollEle.scrollTop = scrollEle.scrollTop + rowHeight;
                     }
                 }
+            }
+            if (this.parent.isRemote() && this.parent.isCheckBoxSelection && checkSelectAll && checkSelectAll.nextElementSibling &&
+                (checkSelectAll.nextElementSibling.classList.contains('e-check') ||
+                checkSelectAll.nextElementSibling.classList.contains('e-stop'))) {
+                this.parent.selectionModule['onDataBound']();
             }
         }
         this.isScrollDown = false;
@@ -1195,6 +1221,16 @@ export class GroupLazyLoadRenderer extends ContentRender implements IRenderer {
                 if (e.result.length === 0) {
                     return;
                 }
+                let startIndex: number = args.skip === 0 ? args.groupInfo && args.groupInfo.data &&
+                    (args.groupInfo.data as GroupedData).startIndex : this.parent.groupSettings.columns.length === args.keys.length ?
+                    args.skip + (args.groupInfo.data as GroupedData).startIndex : this.startIndex;
+                if (this.parent.groupSettings && this.parent.groupSettings.columns.length !== args.keys.length) {
+                    for (let i: number = 0; i < e.result.length; i++) {
+                        (e.result[parseInt(i.toString(), 10)] as GroupedData).startIndex = startIndex;
+                        startIndex += (e.result[parseInt(i.toString(), 10)] as GroupedData).count;
+                    }
+                }
+                this.startIndex = startIndex;
                 if (this.cacheMode && this.uid1 && this.uid2) {
                     this.removeTopRows(this.uid3, this.uid1, this.uid2);
                     this.uid1 = this.uid2 = this.uid3 = undefined;
@@ -1226,6 +1262,16 @@ export class GroupLazyLoadRenderer extends ContentRender implements IRenderer {
                 records[row.index] = row.data;
             }
         });
+        if (this.parent.isRemote()) {
+            const checkedAllTarget: HTMLElement = this.parent.getHeaderContent().querySelector('.e-checkselectall');
+            if (checkedAllTarget) {
+                if (records.length || this.getAllPagesData().length) {
+                    checkedAllTarget.parentElement.classList.remove('e-checkbox-disabled');
+                } else if (this.parent.selectionModule && !this.parent.selectionModule.selectedRowIndexes.length) {
+                    checkedAllTarget.parentElement.classList.add('e-checkbox-disabled');
+                }
+            }
+        }
         this.parent.currentViewData = records.length ? records : this.parent.currentViewData;
     }
 
@@ -1407,5 +1453,24 @@ export class GroupLazyLoadRenderer extends ContentRender implements IRenderer {
                 }
             }
         }
+    }
+
+    /**
+     * Gets all data from data rows across all cached pages
+     *
+     * @returns {Object[]} All data from cached pages
+     * @hidden
+     */
+    public getAllPagesData(): Object[] {
+        const dataItems: Object[] = [];
+        const pageKeys: string[] = Object.keys(this.groupCache);
+        for (let i: number = 0; i < pageKeys.length; i++) {
+            const page: number = parseInt(pageKeys[parseInt(i.toString(), 10)], 10);
+            const pageRows: Row<Column>[] = this.groupCache[parseInt(page.toString(), 10)];
+            if (pageRows && pageRows.length) {
+                dataItems.push(...pageRows.filter((row: Row<Column>) => row.isDataRow).map((row: Row<Column>) => row.data));
+            }
+        }
+        return dataItems;
     }
 }

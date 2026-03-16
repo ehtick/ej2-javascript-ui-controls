@@ -1386,6 +1386,224 @@ export class _PdfCrossReference {
         }
         return sortedCollection;
     }
+    async _saveAsync(): Promise<Uint8Array> {
+        this._uint8Chunks = [];
+        this._bufferLength = 0;
+        const buffer: number[] = [37, 80, 68, 70, 45];
+        await this._writeStringAsync(`${this._version}${this._newLine}`, buffer);
+        buffer.push(0x25, 0x83, 0x92, 0xfa, 0xfe);
+        await this._writeStringAsync(this._newLine, buffer);
+        let result: Uint8Array;
+        let offset: number = 0;
+        if (this._signatureCollection && this._signatureCollection.length > 0) {
+            if (this._isCrossReferenceStream) {
+                this._document.fileStructure.crossReferenceType = PdfCrossReferenceType.stream;
+            } else if (this._isCrossReferenceTable) {
+                this._document.fileStructure.crossReferenceType = PdfCrossReferenceType.table;
+            }
+            const totalSignatures: number = this._signatureCollection.length;
+            for (let i: number = 0; i < totalSignatures; i++) {
+                this._signatureCollection[<number>i]._catalogBeginSave();
+                if (i % 50 === 0) {
+                    await new Promise((resolve: any) => setTimeout(resolve, 0)); // eslint-disable-line
+                }
+            }
+        }
+        if (!this._document.fileStructure.isIncrementalUpdate) {
+            this._currentLength = 0;
+            const objectCollection: _PdfMainObjectCollection = new _PdfMainObjectCollection(this);
+            await this._writeObjectCollectionAsync(objectCollection._mainObjectCollection, buffer);
+            if (buffer.length > 0) {
+                await this._flushBufferAsync(buffer);
+            }
+            result = new Uint8Array(this._bufferLength);
+        } else {
+            this._currentLength = this._stream.length;
+            if (this._document._fileStructure._crossReferenceType === PdfCrossReferenceType.stream) {
+                await this._saveAsStreamAsync(this._currentLength, buffer);
+            } else {
+                await this._saveAsTableAsync(this._currentLength, buffer);
+            }
+            if (buffer.length > 0) {
+                await this._flushBufferAsync(buffer);
+            }
+            result = new Uint8Array(this._stream.length + this._bufferLength);
+            result.set(this._stream.bytes);
+            offset = this._stream.length;
+        }
+        for (const chunk of this._uint8Chunks) {
+            result.set(chunk, offset);
+            offset += chunk.length;
+        }
+        if (this._signatureCollection && this._signatureCollection.length > 0) {
+            const totalSignatures: number = this._signatureCollection.length;
+            for (let i: number = 0; i < totalSignatures; i++) {
+                this._signature = this._signatureCollection[<number>i]._signatureDictionary;
+                await this._signature._documentSavedAsync(result);
+            }
+        }
+        if (!this._document.fileStructure.isIncrementalUpdate) {
+            const stream: _PdfStream = new _PdfStream(result);
+            this._stream = stream;
+            this._document._stream = stream;
+        }
+        this._uint8Chunks = [];
+        return result;
+    }
+    async _writeStringAsync(value: string, buffer: Array<number>): Promise<void> {
+        for (let i: number = 0; i < value.length; i++) {
+            buffer.push(value.charCodeAt(i) & 0xff);
+            if (i % 10000 === 0) {
+                await new Promise((resolve: any) => setTimeout(resolve, 0)); // eslint-disable-line
+            }
+        }
+    }
+    async _writeObjectCollectionAsync(objectCollection: Map<_PdfReference, any>, buffer: number[]): Promise<void> { // eslint-disable-line
+        const objectStreamCollection: Map<_PdfReference, _PdfArchievedStream> = new Map<_PdfReference, _PdfArchievedStream>();
+        this._indexes = [];
+        this._indexes.push(0, 1);
+        const flushThreshold: number = 512000;
+        let counter: number = 0;
+        objectCollection.forEach(async (value: any, key: _PdfReference) => { // eslint-disable-line
+            this._writeObjectToBuffer(key, value, buffer, objectStreamCollection);
+            if (buffer.length > flushThreshold) {
+                await this._flushBufferAsync(buffer);
+            }
+            if (++counter % 100 === 0) {
+                await new Promise((resolve: any) => setTimeout(resolve, 0)); // eslint-disable-line
+            }
+        });
+        this._cacheMap.forEach(async (value: any, key: _PdfReference) => { // eslint-disable-line
+            if (!objectCollection.has(key)) {
+                this._writeObjectToBuffer(key, value, buffer, objectStreamCollection);
+                if (buffer.length > flushThreshold) {
+                    await this._flushBufferAsync(buffer);
+                }
+                if (++counter % 100 === 0) {
+                    await new Promise((resolve: any) => setTimeout(resolve, 0)); // eslint-disable-line
+                }
+            }
+        });
+        if (this._document.fileStructure._crossReferenceType === PdfCrossReferenceType.stream) {
+            this._objectStream = undefined;
+            this._objectStreamCollection = objectStreamCollection;
+            await this._writeXrefStreamAsync(buffer);
+        } else {
+            await this._writeXrefTableAsync(buffer);
+        }
+    }
+    async _flushBufferAsync(data: number[]): Promise<void> {
+        if (data.length === 0) {
+            return;
+        }
+        const chunk: Uint8Array = new Uint8Array(data.length);
+        for (let i: number = 0; i < data.length; i++) {
+            chunk[<number>i] = data[<number>i];
+        }
+        this._uint8Chunks.push(chunk);
+        this._bufferLength += chunk.length;
+        data.length = 0;
+    }
+    async _writeXrefStreamAsync(buffer: number[]): Promise<void> {
+        this._writeXrefStream(buffer);
+    }
+    async _writeXrefTableAsync(buffer: number[]): Promise<void> {
+        this._writeXrefTable(buffer);
+    }
+    async _saveAsStreamAsync(currentLength: number, buffer: number[]): Promise<void> {
+        const objectStreamCollection: Map<_PdfReference, _PdfArchievedStream> = new Map<_PdfReference, _PdfArchievedStream>();
+        this._indexes = [];
+        this._indexes.push(0, 1);
+        this._offsets = [];
+        const flushThreshold: number = 512000;
+        let counter: number = 0;
+        this._cacheMap.forEach(async (value: any, key: _PdfReference) => { // eslint-disable-line
+            if (value instanceof _PdfBaseStream) {
+                const dictionary: _PdfDictionary = value.dictionary;
+                if (dictionary && dictionary._updated && (!dictionary.isCatalog || this._allowCatalog) && !dictionary._isProcessed) {
+                    let cipher: _CipherTransform;
+                    if (this._encrypt) {
+                        cipher = this._encrypt._createCipherTransform(key.objectNumber, key.generationNumber);
+                    }
+                    this._updatedDictionary(currentLength, key, buffer, value, cipher);
+                    dictionary._isProcessed = true;
+                    if (buffer.length > flushThreshold) {
+                        await this._flushBufferAsync(buffer);
+                    }
+                    if (++counter % 100 === 0) {
+                        await new Promise((resolve: any) => setTimeout(resolve, 0)); // eslint-disable-line
+                    }
+                }
+            }
+        });
+        this._cacheMap.forEach(async (value: any, key: _PdfReference) => { // eslint-disable-line
+            if (value instanceof _PdfDictionary) {
+                if ((value._updated && !value.isCatalog && !value._isProcessed) || value._isSignature) {
+                    if (value._isSignature) {
+                        this._updatedDictionary(currentLength, key, buffer, value);
+                    } else {
+                        this._writeArchiveStream(objectStreamCollection, key, value);
+                    }
+                } else if (value._updated && (value.isCatalog || this._allowCatalog)) {
+                    this._updatedDictionary(currentLength, key, buffer, value);
+                    if (buffer.length > flushThreshold) {
+                        await this._flushBufferAsync(buffer);
+                    }
+                }
+            } else if (value instanceof _PdfBaseStream) {
+                const dictionary: _PdfDictionary = value.dictionary;
+                if (dictionary && dictionary._updated && (!dictionary.isCatalog || this._allowCatalog) && !dictionary._isProcessed) {
+                    this._updatedDictionary(currentLength, key, buffer, value);
+                    if (buffer.length > flushThreshold) {
+                        await this._flushBufferAsync(buffer);
+                    }
+                }
+            }
+            if (++counter % 100 === 0) {
+                await new Promise((resolve: any) => setTimeout(resolve, 0)); // eslint-disable-line
+            }
+        });
+        this._objectStream = undefined;
+        this._objectStreamCollection = objectStreamCollection;
+        await this._writeXrefStreamAsync(buffer);
+    }
+    async _saveAsTableAsync(currentLength: number, buffer: number[]): Promise<void> {
+        let tempBuffer: string = '';
+        const flushThreshold: number = 512000;
+        let processedCount: number = 0;
+        this._cacheMap.forEach(async (value: any, key: _PdfReference) => { // eslint-disable-line
+            let dictionary: _PdfDictionary;
+            if (value instanceof _PdfDictionary) {
+                dictionary = value;
+            } else if (value instanceof _PdfBaseStream) {
+                dictionary = value.dictionary;
+            }
+            if (dictionary) {
+                if ((dictionary._updated && (!dictionary.isCatalog || this._allowCatalog)) || dictionary._isSignature) {
+                    const offsetString: string = this._processString((currentLength + this._bufferLength + buffer.length).toString(), 10);
+                    const genString: string = this._processString(key.generationNumber.toString(), 5);
+                    tempBuffer += `${key.objectNumber} 1${this._newLine}${offsetString} ${genString} n${this._newLine}`;
+                    this._writeObject(value, buffer, key);
+                    processedCount++;
+                    if (buffer.length > flushThreshold || processedCount % 2 === 0) {
+                        await this._flushBufferAsync(buffer);
+                    }
+                    if (processedCount % 100 === 0) {
+                        await new Promise((resolve: any) => setTimeout(resolve, 0)); // eslint-disable-line
+                    }
+                }
+            }
+        });
+        const newStartXref: number = this._bufferLength + buffer.length + currentLength;
+        await this._writeStringAsync(`xref${this._newLine}0 1${this._newLine}0000000000 65535 f${this._newLine}`, buffer);
+        await this._writeXrefAsync(buffer, tempBuffer, newStartXref);
+        if (buffer.length > 0) {
+            await this._flushBufferAsync(buffer);
+        }
+    }
+    async _writeXrefAsync(buffer: number[], tempBuffer: string, newStartXref: number): Promise<void> {
+        this._writeXref(buffer, tempBuffer, newStartXref);
+    }
 }
 class _PdfObjectInformation {
     offset: number;

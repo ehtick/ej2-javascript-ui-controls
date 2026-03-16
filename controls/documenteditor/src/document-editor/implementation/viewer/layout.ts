@@ -248,7 +248,6 @@ export class Layout {
                     nextOrPrevSibling = this.checkOwnerTablePrevItem(ownerTable, paragraph);
                 }
                 else {
-                    //This needs to be pushed
                     if (isNullOrUndefined(paragraph.nextRenderedWidget) && !isNullOrUndefined(ownerCell.nextRenderedWidget) && ownerCell.nextRenderedWidget.childWidgets.length > 0 && ownerCell.nextRenderedWidget.firstChild instanceof ParagraphWidget) {
                         return ownerCell.nextRenderedWidget.firstChild as ParagraphWidget;
                     }
@@ -3471,7 +3470,7 @@ export class Layout {
                     }
                 }
             }
-            if ( !(bodyWidget instanceof HeaderFooterWidget) && !isNullOrUndefined(bodyWidget.page) && !isNullOrUndefined(bodyWidget.page.headerWidget) && bodyWidget.page.headerWidget.floatingElements.length > 0) {
+            if (!(bodyWidget instanceof HeaderFooterWidget) && !isNullOrUndefined(bodyWidget.page) && !isNullOrUndefined(bodyWidget.page.headerWidget) && bodyWidget.page.headerWidget.floatingElements.length > 0) {
                 //Need to handle sorting floating items.
                 // Sort based on Y position
                 bodyWidget.page.headerWidget.floatingElements.sort(function (a, b) { return a.y - b.y; });
@@ -3836,7 +3835,7 @@ export class Layout {
                                     this.isYPositionUpdated = true;
                                 } else if (Math.round(rect.width) <= Math.round(minwidth) && Math.round(rect.x - leftIndent) !== Math.round(this.viewer.clientArea.x)) {
                                     rect.width = 0;
-                                }
+                                } 
                                 this.viewer.updateClientAreaForTextWrap(rect);//
                             }
                         } else if (textWrappingType === 'Left' && rect.x + borderThickness >= textWrappingBounds.x && rect.x <= textWrappingBounds.right) {
@@ -3916,7 +3915,7 @@ export class Layout {
         if (bodyWidget.floatingElements.length > 0) {
             floatingElements = floatingElements.concat(bodyWidget.floatingElements);
         }
-        if ( !(bodyWidget instanceof HeaderFooterWidget) && !isNullOrUndefined(bodyWidget.page) && !isNullOrUndefined(bodyWidget.page.headerWidget) && bodyWidget.page.headerWidget.floatingElements.length > 0) {
+        if (!(bodyWidget instanceof HeaderFooterWidget) && !isNullOrUndefined(bodyWidget.page) && !isNullOrUndefined(bodyWidget.page.headerWidget) && bodyWidget.page.headerWidget.floatingElements.length > 0) {
             floatingElements = floatingElements.concat(bodyWidget.page.headerWidget.floatingElements);
         }
         if (!isNullOrUndefined(floatingElements) && floatingElements.length > 0) {

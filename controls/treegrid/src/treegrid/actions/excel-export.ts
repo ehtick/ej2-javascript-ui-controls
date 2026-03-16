@@ -5,7 +5,7 @@ import { ExcelStyle, ExcelQueryCellInfoEventArgs, AggregateQueryCellInfoEventArg
 import { ExcelRow, Row, Column, Data } from '@syncfusion/ej2-grids';
 import { isRemoteData, isOffline, getParentData, getExpandStatus } from '../utils';
 import { isNullOrUndefined, setValue, Fetch, extend } from '@syncfusion/ej2-base';
-import { DataManager, Query, ReturnOption, ParamOption, QueryOptions } from '@syncfusion/ej2-data';
+import { DataManager, Query, ReturnOption, QueryOptions, ParamOption } from '@syncfusion/ej2-data';
 import * as event from '../base/constant';
 /**
  * TreeGrid Excel Export module

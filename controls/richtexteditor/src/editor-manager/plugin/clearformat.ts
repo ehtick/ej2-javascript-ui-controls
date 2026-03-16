@@ -47,7 +47,7 @@ export class ClearFormat {
             range = nodeCutter.GetCursorRange(docElement, range, nodes[0]);
         }
         const isCollapsed: boolean = range.collapsed;
-        let selectedCells: Node[] ;
+        let selectedCells: Node[];
         if (isCollapsed && command === 'ClearFormat') {
             const start: HTMLElement = range.startContainer.nodeType === 3 ?
                 range.startContainer.parentNode as HTMLElement : range.startContainer as HTMLElement;
@@ -348,14 +348,15 @@ export class ClearFormat {
             let currentInlineNode: Node = textNodes[index as number];
             let currentNode: Node;
             while (!this.domNode.isBlockNode(currentInlineNode as Element) &&
-            (currentInlineNode.parentElement && !currentInlineNode.parentElement.classList.contains('e-img-inner'))) {
+            (currentInlineNode.parentElement && (!(currentInlineNode.parentElement.classList.contains('e-img-inner') ||
+                currentInlineNode.parentElement.classList.contains('e-img-caption-text'))))) {
                 currentNode = currentInlineNode;
                 currentInlineNode = currentInlineNode.parentElement;
             }
             if (currentNode &&
                 IsFormatted.inlineTags.indexOf(currentNode.nodeName.toLocaleLowerCase()) > -1 ) {
                 if (!isTableSelected) {
-                    nodeCutter.GetSpliceNode(range, currentNode as HTMLElement);
+                    nodeCutter.GetSpliceNode(range, currentNode as HTMLElement );
                 }
                 this.removeInlineParent(currentNode);
             }
@@ -365,7 +366,8 @@ export class ClearFormat {
     private static removeInlineParent(textNodes: Node): void {
         const nodes: Node[] = InsertMethods.unwrap( textNodes );
         for (let index: number = 0; index < nodes.length; index++) {
-            if (nodes[index as number].parentNode.childNodes.length === 1 && !(nodes[index as number].parentNode as HTMLElement).classList.contains('e-img-inner')
+            if (nodes[index as number].parentNode.childNodes.length === 1 && !((nodes[index as number].parentNode as HTMLElement).classList.contains('e-img-inner') ||
+                (nodes[index as number].parentNode as HTMLElement).classList.contains('e-img-caption-text'))
                 && IsFormatted.inlineTags.indexOf(nodes[index as number].parentNode.nodeName.toLocaleLowerCase()) > -1 ) {
                 this.removeInlineParent(nodes[index as number].parentNode);
             } else if (IsFormatted.inlineTags.indexOf(nodes[index as number].nodeName.toLocaleLowerCase()) > -1) {

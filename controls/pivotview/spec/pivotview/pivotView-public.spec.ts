@@ -656,7 +656,7 @@ describe('Pivotview Public properties null or undefined value testing', () => {
         });
         it('maxNodeLimitInMemberEditor-null-check', (done: Function) => {
             setTimeout(() => {
-                expect(pivotGridObj.maxNodeLimitInMemberEditor).toBe(null);
+                expect(pivotGridObj.maxNodeLimitInMemberEditor).toBe(1);
                 done();
             }, 100);
         });

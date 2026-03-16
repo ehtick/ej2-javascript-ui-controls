@@ -1,16 +1,15 @@
 import { isNullOrUndefined as isNOU } from '@syncfusion/ej2-base';
 import { BlockModel } from '../../models/index';
 import { getBlockContentElement, getBlockIndexById, getBlockModelById } from '../../common/utils/block';
-import { setCursorPosition, getNodeFromPath, captureSelectionState } from '../../common/utils/selection';
-import { IUndoRedoState, IBlockData, IMoveBlocksInteraction, IBlockSelectionState, IClipboardPasteOperation, IIndentOperation, IAddBlockInteraction, IAddBulkBlocksInteraction, IDeleteBlockInteraction, IFromBlockData, ITransformOperation, ILineBreakOperation, IFormattingOperation } from '../../common/interface';
+import { setCursorPosition, getNodeFromPath, captureSelectionState, getTextOffset } from '../../common/utils/selection';
+import { IUndoRedoState, IBlockData, IMoveBlocksInteraction, IBlockSelectionState, IClipboardPasteOperation, IIndentOperation, IAddBlockInteraction, IAddBulkBlocksInteraction, IDeleteBlockInteraction, IFromBlockData, ITransformOperation, IMultipleBlocksTransformOperation, ILineBreakOperation, IFormattingOperation } from '../../common/interface';
 import { findClosestParent } from '../../common/utils/dom';
 import { actionType, BLOCK_CLS, events } from '../../common/constant';
 import { decoupleReference } from '../../common/utils/common';
-import { sanitizeBlock } from '../../common/utils/transform';
 import { BlockType } from '../../models/enums';
 import { BlockManager } from '../base/block-manager';
 import { UndoRedoManager } from '../plugins/common/undo-manager';
-import { IBulkColumnsDeleteOperation, IBulkRowsDeleteOperation, ITableCellsClearOperation, ITableCellsPasteOperation, ITableColumnInsertOptions, ITableHeaderInputOperation, ITableRowInsertOptions } from '../base/interface';
+import { IBulkColumnsDeleteOperation, IBulkRowsDeleteOperation, ITableCellsClearOperation, ITableCellsPasteOperation, ITableColumnInsertOptions, ITableColumnResizeOperation, ITableHeaderInputOperation, ITableRowInsertOptions } from '../base/interface';
 
 /**
  * `UndoRedoManager` module is used to handle undo and redo actions.
@@ -31,8 +30,12 @@ export class UndoRedoAction {
         actionType.tableRowInserted, actionType.tableRowDeleted, actionType.tableColumnDeleted, actionType.tableColumnInserted,
         actionType.tableCellsCleared,
         actionType.blockAdded, actionType.blockRemoved, actionType.blockMoved, actionType.formattingAction,
-        actionType.blockTransformed
+        actionType.blockTransformed, actionType.multipleBlocksTransformed
     ]);
+    /** @hidden */
+    private isBatchMode: boolean = false;
+    /** @hidden */
+    private batchedTransforms: Array<{ blockId: string, oldBlockModel: BlockModel, newBlockModel: BlockModel }> = [];
 
     constructor(manager: BlockManager) {
         this.parent = manager;
@@ -46,6 +49,60 @@ export class UndoRedoAction {
 
     private removeEventListener(): void {
         this.parent.observer.off(events.destroy, this.destroy);
+    }
+
+    /**
+     * Begins a batch mode for tracking multiple block transformations as a single undo action
+     *
+     * @returns {void}
+     * @hidden
+     */
+    public beginBatchTransform(): void {
+        this.isBatchMode = true;
+        this.batchedTransforms = [];
+    }
+
+    /**
+     * Resets the batch mode state and clears batched transformations
+     *
+     * @returns {void}
+     * @private
+     */
+    private resetBatchState(): void {
+        this.isBatchMode = false;
+        this.batchedTransforms = [];
+    }
+
+    /**
+     * Ends batch mode and pushes all accumulated block transformations as a single undo entry
+     *
+     * @returns {void}
+     * @hidden
+     */
+    public endBatchTransform(): void {
+        if (!this.isBatchMode || this.batchedTransforms.length === 0) {
+            this.resetBatchState();
+            return;
+        }
+
+        this.pushActionIntoUndoStack({
+            action: actionType.multipleBlocksTransformed,
+            data: {
+                transformedBlocks: decoupleReference(this.batchedTransforms)
+            }
+        });
+
+        this.resetBatchState();
+    }
+
+    /**
+     * Checks if batch mode is currently active
+     *
+     * @returns {boolean} True if in batch mode
+     * @hidden
+     */
+    public getIsBatchMode(): boolean {
+        return this.isBatchMode;
     }
 
     /**
@@ -80,6 +137,7 @@ export class UndoRedoAction {
         isUndo: boolean,
         flagName: 'isUndoing' | 'isRedoing'
     ): void {
+        this.parent.selectionOverlay.clearSelectionOverlay();
         this.parent.inlineToolbarModule.hideInlineToolbar();
 
         const canPerform: boolean = isUndo ? this.canUndo() : this.canRedo();
@@ -224,7 +282,7 @@ export class UndoRedoAction {
         case actionType.lineBreakAdded: {
             const state: IBlockData = currentState.data as IBlockData;
             const blockModel: BlockModel = getBlockModelById(state.blockId, this.parent.getEditorBlocks());
-            const oldBlock: BlockModel = decoupleReference(sanitizeBlock(blockModel));
+            const oldBlock: BlockModel = decoupleReference(blockModel);
             this.parent.blockService.updateContent(blockModel.id, this.isUndoing ? currentState.oldContents : currentState.newContents);
 
             this.parent.observer.notify('modelChanged', { type: 'ReRenderBlockContent', state: {
@@ -245,6 +303,12 @@ export class UndoRedoAction {
             break;
         case actionType.blockTransformed:
             this.undoRedoManager.reTransformBlocks(currentState);
+            break;
+        case actionType.multipleBlocksTransformed:
+            this.undoRedoManager.reTransformMultipleBlocks(currentState);
+            break;
+        case actionType.imageInsertion:
+            this.undoRedoManager.handleImageInsertion(currentState);
             break;
         case actionType.clipboardPaste:
             this.undoRedoManager.handleClipboardActions(currentState);
@@ -275,6 +339,9 @@ export class UndoRedoAction {
             break;
         case actionType.tableHeaderInput:
             this.undoRedoManager.handleTableHeaderUndoRedo(currentState);
+            break;
+        case actionType.tableColumnResized:
+            this.undoRedoManager.handleTableColumnResized(currentState);
             break;
         }
     }
@@ -307,7 +374,10 @@ export class UndoRedoAction {
                 else if (!isSelectivePaste && ((this.isRedoing && startNode) || selection.isCollapsed && startNode)) {
                     const blockElement: HTMLElement = findClosestParent(startNode, '.' + BLOCK_CLS);
                     this.parent.setFocusToBlock(blockElement);
-                    setCursorPosition(startNode.parentElement as HTMLElement, selection.startOffset);
+                    const contentElement: HTMLElement = getBlockContentElement(blockElement);
+                    const nodeBaseOffset: number = getTextOffset(startNode, contentElement);
+                    const absoluteOffset: number = nodeBaseOffset + selection.startOffset;
+                    setCursorPosition(contentElement, absoluteOffset);
                 }
             }
         } else {
@@ -329,7 +399,9 @@ export class UndoRedoAction {
         const validTypes: string[] = [BlockType.Image];
         const blockModel: BlockModel = state.action === actionType.blockAdded ?
             state.oldBlockModel : (state.data as ITransformOperation).newBlockModel;
-        const isValid: boolean = ((state.action === actionType.blockTransformed || state.action === actionType.blockAdded)
+        const isValid: boolean = (
+            (state.action === actionType.blockTransformed
+                || state.action === actionType.blockAdded || state.action === actionType.imageInsertion)
             && validTypes.indexOf(blockModel.blockType) !== -1);
 
         if (isValid) {
@@ -362,7 +434,7 @@ export class UndoRedoAction {
         isTypingWithFormat: boolean,
         selection: IBlockSelectionState
     ): void {
-        this.parent.undoRedoAction.pushActionIntoUndoStack({
+        this.pushActionIntoUndoStack({
             action: actionType.formattingAction,
             data: {
                 blockIDs,
@@ -384,17 +456,17 @@ export class UndoRedoAction {
      */
     public trackBlockAdditionForUndoRedo(args: IAddBlockInteraction, blockModel: BlockModel): void {
         if (args.isUndoRedoAction) { return; }
-        const decoupledBlock: BlockModel = decoupleReference(sanitizeBlock(blockModel));
-        const targetBlockModel: BlockModel = args.targetBlockModel ? decoupleReference(sanitizeBlock(args.targetBlockModel)) : null;
-        const blockBeforeSplit: BlockModel = args.blockBeforeSplit ? decoupleReference(sanitizeBlock(args.blockBeforeSplit)) : null;
+        const decoupledBlock: BlockModel = decoupleReference(blockModel);
+        const targetBlockModel: BlockModel = args.targetBlockModel ? decoupleReference(args.targetBlockModel) : null;
+        const blockBeforeSplit: BlockModel = args.blockBeforeSplit ? decoupleReference(args.blockBeforeSplit) : null;
 
         this.pushActionIntoUndoStack({
             action: actionType.blockAdded,
             data: {
                 blockId: blockModel.id,
                 currentIndex: getBlockIndexById(blockModel.id, this.parent.getEditorBlocks()),
-                splitOffset: args.splitOffset,
                 isSplitting: args.isSplitting,
+                isAfter: args.isAfter,
                 blockBeforeSplit: blockBeforeSplit,
                 blocksAfterSplit: [targetBlockModel, decoupledBlock]
             },
@@ -424,13 +496,12 @@ export class UndoRedoAction {
             data: {
                 blockId: blockId,
                 currentIndex: blockIndex,
-                splitOffset: args.splitOffset,
                 isSplitting: args.isSplitting,
-                contentElement: args.contentElement,
+                isTargetDeletion: args.isTargetDeletion,
                 blocksAfterSplit: args.blocksAfterSplit,
                 blockBeforeSplit: args.blockBeforeSplit
             },
-            oldBlockModel: decoupleReference(sanitizeBlock(blockModel))
+            oldBlockModel: decoupleReference(blockModel)
         });
     }
 
@@ -486,15 +557,49 @@ export class UndoRedoAction {
     ): void {
         if (isUndoRedoAction) { return; }
 
+        // If in batch mode, collect the transformation instead of pushing to stack
+        if (this.isBatchMode) {
+            this.batchedTransforms.push({
+                blockId: blockElement.id,
+                oldBlockModel: oldBlock,
+                newBlockModel: decoupleReference(newBlock)
+            });
+            return;
+        }
+
         this.pushActionIntoUndoStack({
             action: actionType.blockTransformed,
             data: {
                 blockId: blockElement.id,
                 oldBlockModel: oldBlock,
-                newBlockModel: decoupleReference(sanitizeBlock(newBlock))
+                newBlockModel: decoupleReference(newBlock)
             }
         });
 
+    }
+
+    /**
+     * Handles undo/redo recording for image insertion (placeholder → uploaded image)
+     *
+     * @param {string} blockId - The ID of the image block
+     * @param {BlockModel} oldBlockModel - The block model before insertion (src empty)
+     * @param {BlockModel} newBlockModel - The block model after insertion (src filled)
+     * @returns {void}
+     * @hidden
+     */
+    public trackImageInsertionForUndoRedo(
+        blockId: string,
+        oldBlockModel: BlockModel,
+        newBlockModel: BlockModel
+    ): void {
+        this.pushActionIntoUndoStack({
+            action: actionType.imageInsertion,
+            data: {
+                blockId: blockId,
+                oldBlockModel: oldBlockModel,
+                newBlockModel: newBlockModel
+            }
+        });
     }
 
     /**
@@ -506,15 +611,16 @@ export class UndoRedoAction {
      */
     public trackClipboardPasteForUndoRedo(args: IAddBulkBlocksInteraction): void {
         if (args.isUndoRedoAction) { return; }
-        this.parent.undoRedoAction.pushActionIntoUndoStack({
+        this.pushActionIntoUndoStack({
             action: actionType.clipboardPaste,
             oldBlockModel: args.oldBlockModel,
             data: {
                 type: args.insertionType,
-                blocks: decoupleReference(args.blocks.map((block: BlockModel) => sanitizeBlock(block))),
+                blocks: decoupleReference(args.blocks.map((block: BlockModel) => decoupleReference(block))),
                 targetBlockId: args.targetBlockId,
                 isPastedAtStart: args.isPastedAtStart,
                 isSelectivePaste: args.isSelectivePaste,
+                cursorBlockAfterSplit: args.cursorBlockAfterSplit,
                 clipboardData: {
                     blocks: args.clipboardBlocks
                 }
@@ -531,7 +637,7 @@ export class UndoRedoAction {
      */
     public trackIndentActionForUndoRedo(args: IIndentOperation): void {
         if (args.isUndoRedoAction) { return; }
-        this.parent.undoRedoAction.pushActionIntoUndoStack({
+        this.pushActionIntoUndoStack({
             action: actionType.indent,
             data: {
                 blockIDs: args.blockIDs,
@@ -550,7 +656,7 @@ export class UndoRedoAction {
      */
     public trackLineBreakActionForUndoRedo(args: ILineBreakOperation): void {
         if (args.isUndoRedoAction) { return; }
-        this.parent.undoRedoAction.pushActionIntoUndoStack({
+        this.pushActionIntoUndoStack({
             action: actionType.lineBreakAdded,
             oldContents: args.oldContent,
             newContents: args.newContent,
@@ -674,7 +780,7 @@ export class UndoRedoAction {
      * @hidden
      */
     public trackTableCellsPasteForUndoRedo(args: ITableCellsPasteOperation): void {
-        this.parent.undoRedoAction.pushActionIntoUndoStack({
+        this.pushActionIntoUndoStack({
             action: actionType.tableCellsPasted,
             data: {
                 blockId: args.blockId,
@@ -692,7 +798,7 @@ export class UndoRedoAction {
      * @hidden
      */
     public trackTableHeaderInputForUndoRedo(args: ITableHeaderInputOperation): void {
-        this.parent.undoRedoAction.pushActionIntoUndoStack({
+        this.pushActionIntoUndoStack({
             action: actionType.tableHeaderInput,
             data: {
                 blockId: args.blockId,
@@ -710,7 +816,7 @@ export class UndoRedoAction {
      * @hidden
      */
     public trackBulkRowDeletionForUndoRedo(args: IBulkRowsDeleteOperation): void {
-        this.parent.undoRedoAction.pushActionIntoUndoStack({
+        this.pushActionIntoUndoStack({
             action: actionType.tableRowsDeleted,
             data: { blockId: args.blockId, rows: args.rows }
         });
@@ -724,9 +830,23 @@ export class UndoRedoAction {
      * @hidden
      */
     public trackBulkColumnDeletionForUndoRedo(args: IBulkColumnsDeleteOperation): void {
-        this.parent.undoRedoAction.pushActionIntoUndoStack({
+        this.pushActionIntoUndoStack({
             action: actionType.tableColumnsDeleted,
             data: { blockId: args.blockId, cols: args.cols }
+        });
+    }
+
+    /**
+     * Handles undo/redo recording for table column resize operations
+     *
+     * @param {ITableColumnResizeOperation} data - The arguments for column resize
+     * @returns {void}
+     * @hidden
+     */
+    public trackTableColumnResizeForUndoRedo(data: ITableColumnResizeOperation): void {
+        this.pushActionIntoUndoStack({
+            action: actionType.tableColumnResized,
+            data
         });
     }
 

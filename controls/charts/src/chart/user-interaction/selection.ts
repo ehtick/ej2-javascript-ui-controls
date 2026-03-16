@@ -721,6 +721,7 @@ export class Selection extends BaseSelection {
                 children = [element];
             }
             let elementClassName: string; let parentClassName: string; let legendShape: Element; let selectElement: Element = element;
+            const labelSeriesIndex: number = this.rangeColorMappingEnabled() ? 0 : (series as number);
             const isDataLabelTextElement: boolean = (this.chart.visibleSeries[this.rangeColorMappingEnabled() ? 0 : series as number].marker.dataLabel.visible && (element.id.indexOf('Text') > -1 || element.id.indexOf('TextShape') > -1) && element.tagName !== 'g');
             for (let i: number = 0; i < children.length && !isDataLabelTextElement; i++) {
                 elementClassName = children[i as number].getAttribute('class') || '';
@@ -734,10 +735,12 @@ export class Selection extends BaseSelection {
                 if (elementClassName.indexOf(className) === -1 &&
                     parentClassName.indexOf(className) === -1 && visibility) {
                     this.addSvgClass(children[i as number], this.unselected);
+                    this.updateSeriesLabelOpacity(labelSeriesIndex, true);
                 } else {
                     selectElement = children[i as number];
                     this.removeSvgClass(children[i as number], this.unselected);
                     this.removeSvgClass(<Element>children[i as number].parentNode, this.unselected);
+                    this.updateSeriesLabelOpacity(labelSeriesIndex, false);
                     if (children[i as number].id !== '' && elementClassName.indexOf(this.unselected) !== -1 && parentClassName.indexOf(className) === -1) {
                         this.highlightAnimation(children[i as number] as HTMLElement, this.chart.series.length === 1 ? 0 :
                             this.indexFinder(children[i as number].id).series, 700, 0.3);
@@ -746,6 +749,7 @@ export class Selection extends BaseSelection {
                 if (children[i as number].id.indexOf('Trackball') > 0 && selectElement.classList[0] === className) {
                     this.removeSvgClass(children[i as number], this.unselected);
                     this.removeSvgClass(<Element>children[i as number].parentNode, this.unselected);
+                    this.updateSeriesLabelOpacity(labelSeriesIndex, false);
                     this.addSvgClass(children[i as number], className);
                 }
             }
@@ -756,6 +760,7 @@ export class Selection extends BaseSelection {
                     const seriesClassName: string = symbolEle && symbolEle.hasAttribute('class') ? symbolEle.getAttribute('class') : '';
                     if (seriesClassName.indexOf(this.unselected) > -1) {
                         this.removeSvgClass(symbolEle, this.unselected);
+                        this.updateSeriesLabelOpacity(labelSeriesIndex, false);
                     }
                 }
             }
@@ -779,6 +784,7 @@ export class Selection extends BaseSelection {
                     if (elementClassName.indexOf(className) === -1 && parentClassName.indexOf(className) === -1 && visibility) {
                         this.addSvgClass(legendShape, (this.chart.highlightMode === 'None' && this.chart.legendSettings.enableHighlight && (!this.chart.selectionModule || this.chart.selectionModule.selectedDataIndexes.length === 0)) ? className : this.unselected);
                         this.removeSvgClass(legendShape, className);
+                        this.updateSeriesLabelOpacity(labelSeriesIndex, true);
                         if (this.chart.highlightColor !== '' && !isNullOrUndefined(this.chart.highlightColor)) {
                             legendShape.setAttribute('stroke', (this.control as Chart).visibleSeries[series as number].interior);
                             if (this.chart.highlightPattern === 'None') {
@@ -787,6 +793,7 @@ export class Selection extends BaseSelection {
                         }
                     } else {
                         this.removeSvgClass(legendShape, this.unselected);
+                        this.updateSeriesLabelOpacity(labelSeriesIndex, false);
                         if (!isNullOrUndefined(this.chart.highlightColor) && this.chart.highlightColor !== '') {
                             legendShape.setAttribute('stroke', (this.control as Chart).visibleSeries[series as number].interior);
                             if (this.chart.highlightPattern === 'None') {
@@ -812,9 +819,11 @@ export class Selection extends BaseSelection {
                             if (legendShape !== legendItemsId) {
                                 this.addSvgClass(legendItemsId, this.unselected);
                                 this.removeSvgClass(legendItemsId, className);
+                                this.updateSeriesLabelOpacity(labelSeriesIndex, true);
                             }
                             else if (isLegend === true) {
                                 this.addSvgClass(legendItemsId, className);
+                                this.updateSeriesLabelOpacity(labelSeriesIndex, false);
                             }
                             if (elementClassName.indexOf(className) === -1 && isLegend === false) {
                                 this.removeSvgClass(legendItemsId, this.unselected);
@@ -823,11 +832,34 @@ export class Selection extends BaseSelection {
                     }
                     if (isLegend && parentClassName.indexOf(className) > -1) {
                         this.addSvgClass(legendShape, className);
+                        this.updateSeriesLabelOpacity(labelSeriesIndex, false);
                     }
                 }
             }
         }
     }
+    /**
+     * Make the highlight opacity changes to applied for associated series labels.
+     *
+     * @param {nuber} seriesIndex - denotes the index for series, especially if highlight mode is "Series".
+     * @param {boolean} isOpacityChanges - determines whether opacity should be changed.
+     * @returns {void}
+     * @private
+     */
+    public updateSeriesLabelOpacity(seriesIndex: number, isOpacityChanges: boolean): void {
+        try {
+            const textElement: HTMLElement = document.getElementById(`${(this.control as Chart).element.id}_Point_${seriesIndex}_Text_${seriesIndex}`);
+            if (!textElement) { return; }
+            if (isOpacityChanges) {
+                textElement.setAttribute('style', 'opacity: 0.3');
+            } else {
+                textElement.removeAttribute('style');
+            }
+        } catch {
+            // no-op: defensive guard
+        }
+    }
+
     /**
      * Applies styles to the specified elements.
      *
@@ -997,6 +1029,9 @@ export class Selection extends BaseSelection {
                 targetElement.getAttribute('class').indexOf('selection') > -1)) {
                 return;
             }
+            if (this.checkLegendTemplateAncestor(targetElement, true) === true) {
+                return;
+            }
             this.currentMode = this.chart.highlightMode;
         }
         const isPreSelected: boolean = this.isAlreadySelected(targetElement, eventType);
@@ -1061,6 +1096,35 @@ export class Selection extends BaseSelection {
             }
         }
     }
+
+    /**
+     * Traverses ancestor elements to check if the target is inside a legend template,
+     * and whether the corresponding series is already highlighted or selected.
+     *
+     * @param {Element} element - The starting element to traverse upward from.
+     * @param {boolean} [checkHighlightState=false] - When true, also checks if the series style is already applied.
+     *   Returns `true` (highlighted) only if a matching style class is found on the DOM;
+     *   returns `false` (not yet highlighted) if inside a template but no style applied.
+     *   When false, simply returns `true` if any legend template ancestor is found.
+     * @returns {boolean | null} - `true` if should early-return, `false` if inside template but not highlighted, `null` if not inside any legend template.
+     */
+    private checkLegendTemplateAncestor(element: Element, checkHighlightState: boolean = false): boolean | null {
+        let ancestor: Element = element;
+        while (ancestor) {
+            if (ancestor.id &&
+                ancestor.id.indexOf(this.chart.element.id + '_chart_legend_template_') > -1) {
+                if (!checkHighlightState) {
+                    return true;
+                }
+                const seriesIndex: number = parseInt(ancestor.id.split('_chart_legend_template_')[1], 10);
+                const seriesStyle: string = this.generateStyle(this.chart.visibleSeries[seriesIndex as number]);
+                return document.querySelectorAll('.' + seriesStyle).length > 0;
+            }
+            ancestor = ancestor.parentElement;
+        }
+        return null;
+    }
+
     /**
      * Checks if range color mapping is enabled for the chart.
      *
@@ -1498,7 +1562,7 @@ export class Selection extends BaseSelection {
         let rect: Rect;
         if (((chart.allowMultiSelection) && (target.id.indexOf('_ej2_drag_rect') > -1)) ||
             this.dragRectArray[this.targetIndex]) {
-            if (target.id.indexOf('_ej2_drag_rect') > -1) {
+            if (target && target.id.indexOf('_ej2_drag_rect') > -1) {
                 this.targetIndex = this.getIndex(target.id);
             }
             const r: Rect = this.dragRectArray[this.targetIndex];
@@ -1781,6 +1845,9 @@ export class Selection extends BaseSelection {
                     target.getAttribute('class').indexOf('selection') > -1)) {
                     return;
                 }
+                if (this.checkLegendTemplateAncestor(target) === true) {
+                    return;
+                }
                 this.calculateSelectedElements(target as HTMLElement, eventType);
                 if (this.chart.highlightModule.highlightDataIndexes && this.chart.highlightModule.highlightDataIndexes.length > 0 &&
                     target.id.indexOf('_chart_legend_g_') === -1 && target.id.indexOf('chart_legend_shape') === -1 && target.id.indexOf('_Series_') === -1) {
@@ -1865,6 +1932,7 @@ export class Selection extends BaseSelection {
                         }
                     }
                 }
+                this.updateSeriesLabelOpacity(this.rangeColorMappingEnabled() ? 0 : i, false);
             } else {
                 elementCollection = document.getElementsByClassName(this.generateStyle(this.chart.visibleSeries[i as number]));
                 while (elementCollection.length > 0) {

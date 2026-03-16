@@ -29,6 +29,7 @@ export class VirtualScroll {
     private options: any;
     private touchModule: Touch;
     private component: string;
+    private scrollHandler: Function;
 
     constructor(parent: IDropdownlist) {
         this.parent = parent;
@@ -70,7 +71,8 @@ export class VirtualScroll {
         this.touchModule = new Touch(this.parent.popupContentElement, {
             scroll: this.popupScrollHandler.bind(this)
         });
-        EventHandler.add(this.parent.popupContentElement, 'scroll', this.virtualScrollHandler(callback), this);
+        this.scrollHandler = this.virtualScrollHandler(callback);
+        EventHandler.add(this.parent.popupContentElement, 'scroll', this.scrollHandler, this);
     }
 
     public getModuleName(): string {
@@ -214,17 +216,18 @@ export class VirtualScroll {
                     query = query.skip(0).take(this.parent.itemCount - (this.parent.value.length - this.parent.viewPortInfo.startIndex));
                     this.parent.appendUncheckList = true;
                     this.parent.setCurrentView = false;
-                    const oldUlElement: HTMLElement = this.parent.list.querySelector('.e-list-parent' + ':not(.e-reorder)');
+                    let oldUlElement: HTMLElement = this.parent.list.querySelector('.e-list-parent' + ':not(.e-reorder)');
                     if (oldUlElement) {
                         this.parent.list.querySelector('.e-virtual-ddl-content').removeChild(oldUlElement);
                     }
                     this.parent.resetList(this.parent.dataSource, this.parent.fields, query);
                     isListUpdated = false;
                     this.parent.appendUncheckList = this.parent.dataSource instanceof DataManager ? this.parent.appendUncheckList : false;
+                    oldUlElement = null;
                 }
             }
             else {
-                const reOrderList: Element = this.parent.list.querySelectorAll('.e-reorder')[0];
+                let reOrderList: Element = this.parent.list.querySelectorAll('.e-reorder')[0];
                 if (this.parent.list.querySelector('.e-virtual-ddl-content') && reOrderList) {
                     this.parent.list.querySelector('.e-virtual-ddl-content').removeChild(reOrderList);
                 }
@@ -236,6 +239,7 @@ export class VirtualScroll {
                 this.parent.setCurrentView = false;
                 this.parent.resetList(this.parent.dataSource, this.parent.fields, query);
                 isListUpdated = false;
+                reOrderList = null;
             }
             this.parent.totalItemsCount();
         }
@@ -247,10 +251,11 @@ export class VirtualScroll {
             for (let i: number = this.parent.viewPortInfo.startIndex; i < endIndex; i++) {
                 const index: number = i;
                 if (this.component === 'multiselect' && this.parent.mode === 'CheckBox') {
-                    const oldUlElement: HTMLElement = this.parent.list.querySelector('.e-list-parent' + '.e-reorder');
+                    let oldUlElement: HTMLElement = this.parent.list.querySelector('.e-list-parent' + '.e-reorder');
                     if (oldUlElement) {
                         this.parent.list.querySelector('.e-virtual-ddl-content').removeChild(oldUlElement);
                     }
+                    oldUlElement = null;
                 }
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const alreadyAddedData: any = this.parent.generatedDataObject[index as number];
@@ -613,6 +618,20 @@ export class VirtualScroll {
     }
 
     public destroy(): void {
+        if (this.parent.popupContentElement) {
+            EventHandler.remove(this.parent.popupContentElement, 'wheel mousedown', this.popupScrollHandler);
+            EventHandler.remove(this.parent.popupContentElement, 'scroll', this.scrollHandler);
+        }
+
+        // Destroy touch module
+        if (this.touchModule) {
+            this.touchModule.destroy();
+            this.touchModule = null;
+        }
+
+        // Clear references
+        this.containerElementRect = null;
+        this.scrollHandler = null;
         this.removeEventListener();
     }
 }

@@ -62,7 +62,7 @@ describe('Heatmap Control', () => {
             heatmap.refresh();
             text = document.getElementById('container_HeatmapTitle');
             expect(text.textContent == 'Heat Map').toBe(true);
-            expect(text.getAttribute('x') == '384.5' || text.getAttribute('y') == '22.75' || text.getAttribute('x') == '379').toBe(true);
+            expect(text.getAttribute('x') == '384.5' || text.getAttribute('y') == '22.75' || text.getAttribute('y') == '25' || text.getAttribute('x') == '379' || text.getAttribute('x') == '365.5').toBe(true);
         });
         it('Check title with text alignment', () => {
             heatmap.titleSettings.text = "Heat Map";

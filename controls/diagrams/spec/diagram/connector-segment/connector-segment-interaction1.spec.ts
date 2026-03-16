@@ -2175,4 +2175,708 @@ describe('Diagram Control', () => {
             done();
         });
     });
+     describe('Connector segment interaction', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+        let mouseEvents: MouseEvents = new MouseEvents();
+        let diagramCanvas: HTMLElement;
+        beforeAll((): void => {
+            ele = createElement('div', { id: 'connectorPrev' });
+            document.body.appendChild(ele);
+            let nodes: NodeModel[] = [
+                {
+                    id: 'node',
+                    width: 200,
+                    height: 100,
+                    offsetX: 600,
+                    offsetY: 500,
+                    ports: [{
+                        // Define a port with an ID to connect a connector to it
+                        id: 'port1',
+                        // Sets the position for the port
+                        offset: {
+                            x: 0.5,
+                            y: 0
+                        },
+                        visibility: PortVisibility.Visible
+                    }]
+                },
+                {
+                    id: 'node1',
+                    width: 100,
+                    height: 200,
+                    offsetX: 1000,
+                    offsetY: 400,
+
+                }, {
+                    id: 'node2',
+                    width: 100,
+                    height: 100,
+                    offsetX: 1150,
+                    offsetY: 550,
+                    ports: [{
+                        id: 'port1',
+                        offset: {
+                            x: 1,
+                            y: 0.5
+                        },
+                        visibility: PortVisibility.Visible
+                    }]
+
+                }
+            ]
+            let connectors: ConnectorModel[] = [
+                {
+                    id: 'connector1', type: 'Orthogonal',
+                    sourcePoint: { x: 200, y: 200 }, targetPoint: { x: 450, y: 150 },
+
+                    segments: [
+                        {
+                            type: 'Orthogonal',
+                            direction: 'Right',
+                            length: 100,
+                        }, {
+                            type: 'Orthogonal',
+                            direction: 'Bottom',
+                            length: 60,
+                        },
+
+                    ],
+                    style: { strokeColor: 'green', fill: 'yellowgreen', strokeWidth: 2 },
+
+                }, {
+                    id: 'connector2', type: 'Orthogonal',
+                    //sourcePoint: { x: 500, y: 200 }, 
+                    sourceID: 'node',
+                    //sourcePortID: 'port1', 
+                    targetPoint: { x: 800, y: 200 },
+                    segments: [
+                        {
+                            type: 'Orthogonal',
+                            direction: 'Bottom',
+                            length: 40,
+                        },
+                        {
+                            type: 'Orthogonal',
+                            direction: 'Right',
+                            length: 80,
+                        },
+                        {
+                            type: 'Orthogonal',
+                            direction: 'Top',
+                            length: 200,
+                        },
+                        {
+                            type: 'Orthogonal',
+                            direction: 'Right',
+                            length: 100,
+                        },
+                        {
+                            type: 'Orthogonal',
+                            direction: 'Top',
+                            length: 80,
+                        },
+
+                    ],
+
+                    style: { strokeColor: 'green', fill: 'yellowgreen', strokeWidth: 2 },
+
+                }, {
+                    id: 'connector3', type: 'Orthogonal',
+                    //sourcePoint: { x: 500, y: 200 }, 
+                    sourceID: 'node1',
+                    //sourcePortID: 'port1', 
+                    targetPoint: { x: 1000, y: 200 },
+                    segments: [
+
+                        {
+                            type: 'Orthogonal',
+                            direction: 'Right',
+                            length: 50,
+                        },
+                        {
+                            type: 'Orthogonal',
+                            direction: 'Top',
+                            length: 100,
+                        },
+                        {
+                            type: 'Orthogonal',
+                            direction: 'Right',
+                            length: 100,
+                        },
+                        {
+                            type: 'Orthogonal',
+                            direction: 'Top',
+                            length: 80,
+                        },
+
+                    ],
+
+                    style: { strokeColor: 'green', fill: 'yellowgreen', strokeWidth: 2 },
+
+                }
+                , {
+                    id: 'connector4', type: 'Orthogonal',
+                    sourcePoint: { x: 100, y: 400 },
+                    targetPoint: { x: 200, y: 300 },
+                    segments: [
+
+                        {
+                            type: 'Orthogonal',
+                            direction: 'Right',
+                            length: 50,
+                        },
+                        {
+                            type: 'Orthogonal',
+                            direction: 'Top',
+                            length: 40,
+                        },
+                        {
+                            type: 'Orthogonal',
+                            direction: 'Right',
+                            length: 20,
+                        }
+
+
+                    ],
+
+                    style: { strokeColor: 'green', fill: 'yellowgreen', strokeWidth: 2 },
+
+                }, {
+                    id: 'connector5', type: 'Orthogonal',
+                    sourceID: 'node2',
+                    sourcePortID: 'port1',
+                    targetPoint: { x: 1340, y: 500 },
+                    segments: [
+                        {
+                            type: 'Orthogonal',
+                            direction: 'Right',
+                            length: 80,
+                        },
+                        {
+                            type: 'Orthogonal',
+                            direction: 'Bottom',
+                            length: 20,
+                        }
+                    ],
+
+                    style: { strokeColor: 'green', fill: 'yellowgreen', strokeWidth: 2 },
+
+                }
+            ];
+            diagram = new Diagram({
+                width: 1500, height: 700, connectors: connectors, nodes: nodes,
+                segmentThumbSize: 20,
+                snapSettings: { constraints: 0 },
+                getConnectorDefaults: function (connector: ConnectorModel) {
+                    connector.constraints = ConnectorConstraints.Default | ConnectorConstraints.DragSegmentThumb;
+                    return connector;
+                },
+            });
+            diagram.appendTo('#connectorPrev');
+            diagramCanvas = document.getElementById(diagram.element.id + 'content');
+        });
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+            diagram = null;
+            ele = null;
+        });
+        it('Checking control dragging segment - remove previous segment', function (done) {
+            
+            diagram.select([diagram.connectors[0]]);
+            let diagramCanvas = document.getElementById(diagram.element.id + 'content');
+
+            let thumb: any = document.getElementById('orthoThumb_3_1').getBoundingClientRect();
+            let bounds: any = { x: thumb.x + (thumb.width / 2), y: thumb.y + (thumb.height / 2) }
+
+            // Drag this thumb upward enough to remove the next segment
+            mouseEvents.mouseMoveEvent(diagramCanvas, bounds.x, bounds.y);
+            mouseEvents.mouseDownEvent(diagramCanvas, bounds.x, bounds.y);
+            mouseEvents.mouseMoveEvent(diagramCanvas, bounds.x, bounds.y - 35);
+            mouseEvents.mouseMoveEvent(diagramCanvas, bounds.x, bounds.y - 45);
+            mouseEvents.mouseMoveEvent(diagramCanvas, bounds.x, bounds.y - 57);
+            mouseEvents.mouseUpEvent(diagramCanvas, bounds.x, bounds.y - 57);
+
+            console.log("diagram.connectors[0].segments.length ", diagram.connectors[0].segments.length);
+            expect(diagram.connectors[0].segments.length === 2).toBe(true);
+            done();
+        });
+        it('Checking control dragging segment - update first', function (done) {
+            diagram.select([diagram.connectors[1]]);
+            const rect: any = diagram.element.getBoundingClientRect();
+
+            mouseEvents.mouseMoveEvent(diagramCanvas, rect.left + 645, rect.top + 580);
+            mouseEvents.mouseMoveEvent(diagramCanvas, rect.left + 645, rect.top + 589);
+            mouseEvents.mouseDownEvent(diagramCanvas, rect.left + 647, rect.top + 589);
+
+            mouseEvents.mouseMoveEvent(diagramCanvas, rect.left + 650, rect.top + 567);
+            mouseEvents.mouseMoveEvent(diagramCanvas, rect.left + 650, rect.top + 545);
+            mouseEvents.mouseUpEvent(diagramCanvas, rect.left + 651, rect.top + 545);
+
+            console.log("(diagram.connectors[1].segments[0]).direction :", (diagram.connectors[1].segments[0] as any).direction)
+            expect((diagram.connectors[1].segments[0] as any).direction === 'Right').toBe(true);
+            done();
+        });
+        it('Checking control dragging segment - update first 2', function (done) {
+            diagram.select([diagram.connectors[2]]);
+            const rect: any = diagram.element.getBoundingClientRect();
+
+            mouseEvents.mouseMoveEvent(diagramCanvas, rect.left + 1108, rect.top + 345);
+            mouseEvents.mouseMoveEvent(diagramCanvas, rect.left + 1108, rect.top + 350);
+            mouseEvents.mouseDownEvent(diagramCanvas, rect.left + 1108, rect.top + 350);
+
+            mouseEvents.mouseMoveEvent(diagramCanvas, rect.left + 1054, rect.top + 340);
+            mouseEvents.mouseMoveEvent(diagramCanvas, rect.left + 1048, rect.top + 346);
+            mouseEvents.mouseUpEvent(diagramCanvas, rect.left + 1048, rect.top + 346);
+
+            console.log("(diagram.connectors[2].segments[0]).direction :", (diagram.connectors[2].segments[0] as any).direction)
+            expect((diagram.connectors[2].segments[0] as any).direction === 'Top').toBe(true);
+            done();
+        });
+        it('Checking control dragging segment -  remove next segment', function (done) {
+            
+            const rect: any = diagram.element.getBoundingClientRect();
+            diagram.select([diagram.connectors[3]]);
+
+            mouseEvents.mouseMoveEvent(diagramCanvas, rect.left + 178, rect.top + 325);
+            mouseEvents.mouseMoveEvent(diagramCanvas, rect.left + 178, rect.top + 331);
+            mouseEvents.mouseDownEvent(diagramCanvas, rect.left + 178, rect.top + 331);
+
+            mouseEvents.mouseMoveEvent(diagramCanvas, rect.left + 204, rect.top + 328);
+            mouseEvents.mouseMoveEvent(diagramCanvas, rect.left + 204, rect.top + 325);
+            mouseEvents.mouseUpEvent(diagramCanvas, rect.left + 204, rect.top + 325);
+
+            console.log("diagram.connectors[3].segments[0].length :", (diagram.connectors[3].segments[2] as any).length)
+            expect((diagram.connectors[3].segments[2] as any).length === 50).toBe(true);
+            done();
+        });
+    });
+     describe('change Segment Length of connector', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+        let mouseEvents: MouseEvents = new MouseEvents();
+        let diagramCanvas: HTMLElement;
+        beforeAll((): void => {
+            ele = createElement('div', { id: 'connectorPrev' });
+            document.body.appendChild(ele);
+            var nodes: NodeModel[] = [
+                {
+                    id: 'node1', width: 100, height: 100, offsetX: 300, offsetY: 100,
+                    ports: [{ id: 'port1', visibility: PortVisibility.Visible, shape: 'Square', offset: { x: 0, y: 0.5 } },
+                    { id: 'port2', visibility: PortVisibility.Visible, shape: 'Square', offset: { x: 0.5, y: 0 } },
+                    { id: 'port3', visibility: PortVisibility.Visible, shape: 'Square', offset: { x: 1, y: 0.5 } },
+                    { id: 'port4', visibility: PortVisibility.Visible, shape: 'Square', offset: { x: 0.5, y: 1 } }
+                    ]
+                },
+                {
+                    id: 'node2', width: 100, height: 100, offsetX: 500, offsetY: 500,
+                    annotations: [{ content: 'Path Element' }],
+                    ports: [{ id: 'port1', visibility: PortVisibility.Visible, shape: 'Square', offset: { x: 0, y: 0.5 } },
+                    { id: 'port2', visibility: PortVisibility.Visible, shape: 'Square', offset: { x: 0.5, y: 0 } },
+                    { id: 'port3', visibility: PortVisibility.Visible, shape: 'Square', offset: { x: 1, y: 0.5 } },
+                    { id: 'port4', visibility: PortVisibility.Visible, shape: 'Square', offset: { x: 0.5, y: 1 } }
+                    ]
+                },
+            ];
+            var connectors: ConnectorModel[] = [{
+                id: 'connector1', sourceID: 'node1', targetID: 'node2', sourcePortID: 'port1', targetPortID: 'port3', type: 'Orthogonal', constraints: ConnectorConstraints.Default | ConnectorConstraints.DragSegmentThumb,
+            }];
+            diagram = new Diagram({
+                width: '900px', height: '900px', nodes: nodes, connectors: connectors,
+            });
+            diagram.appendTo('#connectorPrev');
+            diagramCanvas = document.getElementById(diagram.element.id + 'content');
+        });
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+            diagram = null;
+            ele = null;
+        });
+        it('Forth segment direction - Left', function (done) {
+            let data1 = '{"width":"900px","height":"900px","nodes":[{"shape":{"type":"Basic","shape":"Rectangle","cornerRadius":0},"ports":[{"inEdges":[],"outEdges":["connector1"],"id":"port1","visibility":1,"shape":"Square","offset":{"x":0,"y":0.5},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24},{"inEdges":[],"outEdges":[],"id":"port2","visibility":1,"shape":"Square","offset":{"x":0.5,"y":0},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24},{"inEdges":[],"outEdges":[],"id":"port3","visibility":1,"shape":"Square","offset":{"x":1,"y":0.5},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24},{"inEdges":[],"outEdges":[],"id":"port4","visibility":1,"shape":"Square","offset":{"x":0.5,"y":1},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24}],"id":"node1","width":100,"height":100,"offsetX":300,"offsetY":100,"annotations":[],"zIndex":0,"container":null,"visible":true,"horizontalAlignment":"Left","verticalAlignment":"Top","backgroundColor":"transparent","borderColor":"none","borderWidth":0,"rotateAngle":0,"pivot":{"x":0.5,"y":0.5},"margin":{},"flip":0,"flipMode":"All","wrapper":{"actualSize":{"width":100,"height":100},"offsetX":300,"offsetY":100},"constraints":5240814,"style":{"fill":"white","gradient":{"type":"None"},"strokeColor":"black","strokeWidth":1,"strokeDashArray":"","opacity":1},"isExpanded":true,"expandIcon":{"shape":"None"},"fixedUserHandles":[],"inEdges":[],"outEdges":["connector1"],"parentId":"","processId":"","umlIndex":-1,"isPhase":false,"isLane":false},{"shape":{"type":"Basic","shape":"Rectangle","cornerRadius":0},"ports":[{"inEdges":[],"outEdges":[],"id":"port1","visibility":1,"shape":"Square","offset":{"x":0,"y":0.5},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24},{"inEdges":[],"outEdges":[],"id":"port2","visibility":1,"shape":"Square","offset":{"x":0.5,"y":0},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24},{"inEdges":["connector1"],"outEdges":[],"id":"port3","visibility":1,"shape":"Square","offset":{"x":1,"y":0.5},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24},{"inEdges":[],"outEdges":[],"id":"port4","visibility":1,"shape":"Square","offset":{"x":0.5,"y":1},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24}],"id":"node2","width":100,"height":100,"offsetX":500,"offsetY":500,"annotations":[{"id":"qphoT","content":"Path Element","annotationType":"String","style":{"strokeWidth":0,"strokeColor":"transparent","fill":"transparent","bold":false,"textWrapping":"WrapWithOverflow","color":"black","whiteSpace":"CollapseSpace","fontFamily":"Arial","fontSize":12,"italic":false,"opacity":1,"strokeDashArray":"","textAlign":"Center","textOverflow":"Wrap","textDecoration":"None"},"hyperlink":{"link":"","hyperlinkOpenState":"NewTab","content":"","textDecoration":"None"},"constraints":4,"visibility":true,"rotateAngle":0,"rotationReference":"Parent","margin":{"right":0,"bottom":0,"left":0,"top":0},"horizontalAlignment":"Center","verticalAlignment":"Center","offset":{"x":0.5,"y":0.5}}],"zIndex":1,"container":null,"visible":true,"horizontalAlignment":"Left","verticalAlignment":"Top","backgroundColor":"transparent","borderColor":"none","borderWidth":0,"rotateAngle":0,"pivot":{"x":0.5,"y":0.5},"margin":{},"flip":0,"flipMode":"All","wrapper":{"actualSize":{"width":100,"height":100},"offsetX":500,"offsetY":500},"constraints":5240814,"style":{"fill":"white","gradient":{"type":"None"},"strokeWidth":1,"strokeColor":"black","strokeDashArray":"","opacity":1},"isExpanded":true,"expandIcon":{"shape":"None"},"fixedUserHandles":[],"inEdges":["connector1"],"outEdges":[],"parentId":"","processId":"","umlIndex":-1,"isPhase":false,"isLane":false}],"connectors":[{"shape":{"type":"None"},"id":"connector1","sourceID":"node1","targetID":"node2","sourcePortID":"port1","targetPortID":"port3","type":"Orthogonal","constraints":2043518,"annotations":[],"zIndex":2,"targetPoint":{"x":550,"y":500},"connectorSpacing":13,"sourcePadding":0,"targetPadding":0,"segments":[{"type":"Orthogonal","direction":"Left","length":50,"allowDrag":true},{"type":"Orthogonal","direction":"Bottom","length":199,"allowDrag":true},{"type":"Orthogonal","length":100,"direction":"Left","allowDrag":true},{"type":"Orthogonal","length":399,"direction":"Bottom","allowDrag":true},{"type":"Orthogonal","length":470,"direction":"Right","allowDrag":true},{"type":"Orthogonal","length":198,"direction":"Top","allowDrag":true},{"type":"Orthogonal","direction":null,"allowDrag":true}],"sourcePoint":{"x":250,"y":100},"sourceDecorator":{"shape":"None","width":10,"height":10,"pivot":{"x":0,"y":0.5},"style":{"fill":"black","strokeColor":"black","strokeWidth":1,"strokeDashArray":"","opacity":1,"gradient":{"type":"None"}}},"targetDecorator":{"shape":"Arrow","width":10,"height":10,"pivot":{"x":0,"y":0.5},"style":{"fill":"black","strokeColor":"black","strokeWidth":1,"strokeDashArray":"","opacity":1,"gradient":{"type":"None"}}},"cornerRadius":0,"wrapper":{"actualSize":{"width":470,"height":598},"offsetX":335,"offsetY":399},"style":{"strokeWidth":1,"strokeColor":"black","fill":"transparent","strokeDashArray":"","opacity":1,"gradient":{"type":"None"}},"fixedUserHandles":[],"ports":[],"visible":true,"flipMode":"All","hitPadding":10,"tooltip":{"openOn":"Auto","content":"","isSticky":false},"connectionPadding":0,"maxSegmentThumb":null,"allowNodeOverlap":false,"parentId":""}],"enableRtl":false,"locale":"en-US","enablePersistence":false,"scrollSettings":{"viewPortWidth":900,"viewPortHeight":900,"currentZoom":1,"horizontalOffset":0,"verticalOffset":0,"padding":{"left":0,"right":0,"top":0,"bottom":0},"scrollLimit":"Diagram","canAutoScroll":false},"rulerSettings":{"showRulers":false},"backgroundColor":"transparent","constraints":500,"layout":{"type":"None","enableAnimation":true,"arrangement":"Nonlinear","enableRouting":false},"snapSettings":{"constraints":31,"gridType":"Lines","verticalGridlines":{"lineIntervals":[1.25,18.75,0.25,19.75,0.25,19.75,0.25,19.75,0.25,19.75],"snapIntervals":[20],"lineDashArray":"","lineColor":"lightgray"},"horizontalGridlines":{"lineIntervals":[1.25,18.75,0.25,19.75,0.25,19.75,0.25,19.75,0.25,19.75],"snapIntervals":[20],"lineDashArray":"","lineColor":"lightgray"}},"contextMenuSettings":{},"dataSourceSettings":{"dataManager":null,"dataSource":null,"crudAction":{"read":""},"connectionDataSource":{"crudAction":{"read":""}}},"mode":"SVG","layers":[{"id":"default_layer","visible":true,"lock":false,"objects":["node1","node2","connector1"],"zIndex":0,"objectZIndex":2}],"diagramSettings":{"inversedAlignment":true},"pageSettings":{"boundaryConstraints":"Infinity","orientation":"Landscape","height":null,"width":null,"background":{"source":"","color":"transparent"},"showPageBreaks":false,"fitOptions":{"canFit":false}},"model":{"participants":[]},"selectedItems":{"nodes":[],"connectors":[],"wrapper":null,"constraints":16382,"selectedObjects":[{"shape":{"type":"None"},"id":"connector1","sourceID":"node1","targetID":"node2","sourcePortID":"port1","targetPortID":"port3","type":"Orthogonal","constraints":2043518,"annotations":[],"zIndex":2,"targetPoint":{"x":550,"y":500},"connectorSpacing":13,"sourcePadding":0,"targetPadding":0,"segments":[{"type":"Orthogonal","direction":"Left","length":50,"allowDrag":true},{"type":"Orthogonal","direction":"Bottom","length":199,"allowDrag":true},{"type":"Orthogonal","length":100,"direction":"Left","allowDrag":true},{"type":"Orthogonal","length":399,"direction":"Bottom","allowDrag":true},{"type":"Orthogonal","length":470,"direction":"Right","allowDrag":true},{"type":"Orthogonal","length":198,"direction":"Top","allowDrag":true},{"type":"Orthogonal","direction":null,"allowDrag":true}],"sourcePoint":{"x":250,"y":100},"sourceDecorator":{"shape":"None","width":10,"height":10,"pivot":{"x":0,"y":0.5},"style":{"fill":"black","strokeColor":"black","strokeWidth":1,"strokeDashArray":"","opacity":1,"gradient":{"type":"None"}}},"targetDecorator":{"shape":"Arrow","width":10,"height":10,"pivot":{"x":0,"y":0.5},"style":{"fill":"black","strokeColor":"black","strokeWidth":1,"strokeDashArray":"","opacity":1,"gradient":{"type":"None"}}},"cornerRadius":0,"wrapper":{"actualSize":{"width":470,"height":598},"offsetX":335,"offsetY":399},"style":{"strokeWidth":1,"strokeColor":"black","fill":"transparent","strokeDashArray":"","opacity":1,"gradient":{"type":"None"}},"fixedUserHandles":[],"ports":[],"visible":true,"flipMode":"All","hitPadding":10,"tooltip":{"openOn":"Auto","content":"","isSticky":false},"connectionPadding":0,"maxSegmentThumb":null,"allowNodeOverlap":false,"parentId":""}],"rotateAngle":0,"userHandles":[],"canToggleSelection":false,"width":470,"height":598,"offsetX":335,"offsetY":399,"handleSize":14},"basicElements":[],"tooltip":{"content":""},"commandManager":{"commands":[]},"tool":3,"customCursor":[],"segmentThumbShape":"Circle","segmentThumbSize":10,"version":17.1,"isScrollOffsetInverted":true}';
+            diagram.loadDiagram(data1);
+            let node1 = diagram.nodes[0];
+            diagram.drag(node1, -150, 0);
+
+            diagram.clear();
+            diagram.loadDiagram(data1);
+            let node2 = diagram.nodes[0];
+            diagram.drag(node2, -200, 0);
+            console.log("diagram.connectors[0].segments.length ", (diagram.connectors[0].segments.length));
+            expect(diagram.connectors[0].segments.length === 5).toBe(true);
+            done();
+        });
+        it('Forth segment direction - Right', function (done) {
+            let data2 = '{"width":"900px","height":"900px","nodes":[{"shape":{"type":"Basic","shape":"Rectangle","cornerRadius":0},"ports":[{"inEdges":[],"outEdges":[],"id":"port1","visibility":1,"shape":"Square","offset":{"x":0,"y":0.5},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24},{"inEdges":[],"outEdges":[],"id":"port2","visibility":1,"shape":"Square","offset":{"x":0.5,"y":0},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24},{"inEdges":[],"outEdges":["connector1"],"id":"port3","visibility":1,"shape":"Square","offset":{"x":1,"y":0.5},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24},{"inEdges":[],"outEdges":[],"id":"port4","visibility":1,"shape":"Square","offset":{"x":0.5,"y":1},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24,"tooltip":{"openOn":"Auto","content":"","isSticky":false}}],"id":"node1","width":100,"height":100,"offsetX":529,"offsetY":102,"annotations":[],"zIndex":0,"container":null,"visible":true,"horizontalAlignment":"Left","verticalAlignment":"Top","backgroundColor":"transparent","borderColor":"none","borderWidth":0,"rotateAngle":0,"pivot":{"x":0.5,"y":0.5},"margin":{},"flip":0,"flipMode":"All","wrapper":{"actualSize":{"width":100,"height":100},"offsetX":529,"offsetY":102},"constraints":5240814,"style":{"fill":"white","gradient":{"type":"None"},"strokeColor":"black","strokeWidth":1,"strokeDashArray":"","opacity":1,"textOverflow":"Wrap"},"isExpanded":true,"expandIcon":{"shape":"None"},"fixedUserHandles":[],"tooltip":{"openOn":"Auto","content":"","isSticky":false},"inEdges":[],"outEdges":["connector1"],"parentId":"","processId":"","umlIndex":-1,"isPhase":false,"isLane":false},{"shape":{"type":"Basic","shape":"Rectangle","cornerRadius":0},"ports":[{"inEdges":["connector1"],"outEdges":[],"id":"port1","visibility":1,"shape":"Square","offset":{"x":0,"y":0.5},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24,"tooltip":{"openOn":"Auto","content":"","isSticky":false}},{"inEdges":[],"outEdges":[],"id":"port2","visibility":1,"shape":"Square","offset":{"x":0.5,"y":0},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24},{"inEdges":[],"outEdges":[],"id":"port3","visibility":1,"shape":"Square","offset":{"x":1,"y":0.5},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24,"tooltip":{"openOn":"Auto","content":"","isSticky":false}},{"inEdges":[],"outEdges":[],"id":"port4","visibility":1,"shape":"Square","offset":{"x":0.5,"y":1},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24}],"id":"node2","width":100,"height":100,"offsetX":500,"offsetY":500,"annotations":[{"id":"eui8W","content":"Path Element","annotationType":"String","style":{"strokeWidth":0,"strokeColor":"transparent","fill":"transparent","bold":false,"textWrapping":"WrapWithOverflow","color":"black","whiteSpace":"CollapseSpace","fontFamily":"Arial","fontSize":12,"italic":false,"opacity":1,"strokeDashArray":"","textAlign":"Center","textOverflow":"Wrap","textDecoration":"None"},"hyperlink":{"link":"","hyperlinkOpenState":"NewTab","content":"","textDecoration":"None"},"constraints":4,"visibility":true,"rotateAngle":0,"rotationReference":"Parent","margin":{"right":0,"bottom":0,"left":0,"top":0},"horizontalAlignment":"Center","verticalAlignment":"Center","offset":{"x":0.5,"y":0.5},"tooltip":{"content":""}}],"zIndex":1,"container":null,"visible":true,"horizontalAlignment":"Left","verticalAlignment":"Top","backgroundColor":"transparent","borderColor":"none","borderWidth":0,"rotateAngle":0,"pivot":{"x":0.5,"y":0.5},"margin":{},"flip":0,"flipMode":"All","wrapper":{"actualSize":{"width":100,"height":100},"offsetX":500,"offsetY":500},"constraints":5240814,"style":{"fill":"white","gradient":{"type":"None"},"strokeWidth":1,"strokeColor":"black","strokeDashArray":"","opacity":1,"textOverflow":"Wrap"},"isExpanded":true,"expandIcon":{"shape":"None"},"fixedUserHandles":[],"tooltip":{"openOn":"Auto","content":"","isSticky":false},"inEdges":["connector1"],"outEdges":[],"parentId":"","processId":"","umlIndex":-1,"isPhase":false,"isLane":false}],"connectors":[{"shape":{"type":"None"},"id":"connector1","sourceID":"node1","targetID":"node2","sourcePortID":"port3","targetPortID":"port1","type":"Orthogonal","constraints":2043518,"annotations":[],"zIndex":2,"targetPoint":{"x":450,"y":500},"connectorSpacing":13,"sourcePadding":0,"targetPadding":0,"segments":[{"type":"Orthogonal","direction":"Right","length":52,"allowDrag":true},{"type":"Orthogonal","direction":"Bottom","length":199,"allowDrag":true},{"type":"Orthogonal","length":68,"direction":"Right","allowDrag":true},{"type":"Orthogonal","length":400,"direction":"Bottom","allowDrag":true},{"type":"Orthogonal","length":269,"direction":"Left","allowDrag":true},{"type":"Orthogonal","length":201,"direction":"Top","allowDrag":true},{"type":"Orthogonal","direction":null,"allowDrag":true}],"sourcePoint":{"x":579,"y":102},"sourceDecorator":{"shape":"None","width":10,"height":10,"pivot":{"x":0,"y":0.5},"style":{"fill":"black","strokeColor":"black","strokeWidth":1,"strokeDashArray":"","opacity":1,"gradient":{"type":"None"}}},"targetDecorator":{"shape":"Arrow","width":10,"height":10,"pivot":{"x":0,"y":0.5},"style":{"fill":"black","strokeColor":"black","strokeWidth":1,"strokeDashArray":"","opacity":1,"gradient":{"type":"None"}}},"cornerRadius":0,"wrapper":{"actualSize":{"width":269,"height":599},"offsetX":564.5,"offsetY":401.5},"style":{"strokeWidth":1,"strokeColor":"black","fill":"transparent","strokeDashArray":"","opacity":1,"gradient":{"type":"None"}},"fixedUserHandles":[],"ports":[],"visible":true,"flipMode":"All","hitPadding":10,"tooltip":{"openOn":"Auto","content":"","isSticky":false},"connectionPadding":0,"maxSegmentThumb":null,"allowNodeOverlap":false,"parentId":""}],"enableRtl":false,"locale":"en-US","enablePersistence":false,"scrollSettings":{"viewPortWidth":900,"viewPortHeight":900,"currentZoom":1,"horizontalOffset":0,"verticalOffset":0,"padding":{"left":0,"right":0,"top":0,"bottom":0},"scrollLimit":"Diagram","canAutoScroll":false},"rulerSettings":{"showRulers":false},"backgroundColor":"transparent","constraints":500,"layout":{"type":"None","enableAnimation":true,"arrangement":"Nonlinear","enableRouting":false},"snapSettings":{"constraints":31,"gridType":"Lines","verticalGridlines":{"lineIntervals":[1.25,18.75,0.25,19.75,0.25,19.75,0.25,19.75,0.25,19.75],"snapIntervals":[20],"lineDashArray":"","lineColor":"lightgray"},"horizontalGridlines":{"lineIntervals":[1.25,18.75,0.25,19.75,0.25,19.75,0.25,19.75,0.25,19.75],"snapIntervals":[20],"lineDashArray":"","lineColor":"lightgray"}},"contextMenuSettings":{},"dataSourceSettings":{"dataManager":null,"dataSource":null,"crudAction":{"read":""},"connectionDataSource":{"crudAction":{"read":""}}},"mode":"SVG","layers":[{"id":"default_layer","visible":true,"lock":false,"objects":["node1","node2","connector1"],"zIndex":0,"objectZIndex":2}],"diagramSettings":{"inversedAlignment":true},"pageSettings":{"boundaryConstraints":"Infinity","orientation":"Landscape","height":null,"width":null,"background":{"source":"","color":"transparent"},"showPageBreaks":false,"fitOptions":{"canFit":false}},"model":{"participants":[]},"selectedItems":{"nodes":[],"connectors":[],"wrapper":null,"constraints":16382,"selectedObjects":[{"shape":{"type":"Basic","shape":"Rectangle","cornerRadius":0},"ports":[{"inEdges":[],"outEdges":[],"id":"port1","visibility":1,"shape":"Square","offset":{"x":0,"y":0.5},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24},{"inEdges":[],"outEdges":[],"id":"port2","visibility":1,"shape":"Square","offset":{"x":0.5,"y":0},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24},{"inEdges":[],"outEdges":["connector1"],"id":"port3","visibility":1,"shape":"Square","offset":{"x":1,"y":0.5},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24},{"inEdges":[],"outEdges":[],"id":"port4","visibility":1,"shape":"Square","offset":{"x":0.5,"y":1},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24,"tooltip":{"openOn":"Auto","content":"","isSticky":false}}],"id":"node1","width":100,"height":100,"offsetX":529,"offsetY":102,"annotations":[],"zIndex":0,"container":null,"visible":true,"horizontalAlignment":"Left","verticalAlignment":"Top","backgroundColor":"transparent","borderColor":"none","borderWidth":0,"rotateAngle":0,"pivot":{"x":0.5,"y":0.5},"margin":{},"flip":0,"flipMode":"All","wrapper":{"actualSize":{"width":100,"height":100},"offsetX":529,"offsetY":102},"constraints":5240814,"style":{"fill":"white","gradient":{"type":"None"},"strokeColor":"black","strokeWidth":1,"strokeDashArray":"","opacity":1,"textOverflow":"Wrap"},"isExpanded":true,"expandIcon":{"shape":"None"},"fixedUserHandles":[],"tooltip":{"openOn":"Auto","content":"","isSticky":false},"inEdges":[],"outEdges":["connector1"],"parentId":"","processId":"","umlIndex":-1,"isPhase":false,"isLane":false}],"rotateAngle":0,"userHandles":[],"canToggleSelection":false,"width":100,"height":100,"offsetX":529,"offsetY":102,"handleSize":14,"pivot":{"x":0.5,"y":0.5}},"basicElements":[],"tooltip":{"content":""},"commandManager":{"commands":[]},"tool":3,"customCursor":[],"segmentThumbShape":"Circle","segmentThumbSize":10,"version":17.1,"isScrollOffsetInverted":true}';
+            diagram.loadDiagram(data2);
+            let node1 = diagram.nodes[0];
+            diagram.drag(node1, 100, 0);
+
+            diagram.clear();
+            diagram.loadDiagram(data2);
+            let node2 = diagram.nodes[0];
+            diagram.drag(node2, 200, 0);
+            console.log("diagram.connectors[0].segments.length ", (diagram.connectors[0].segments.length));
+            expect(diagram.connectors[0].segments.length === 5).toBe(true);
+            done();
+        });
+        it('Forth segment direction - Top', function (done) {
+            let data3 = '{"width":"900px","height":"900px","nodes":[{"shape":{"type":"Basic","shape":"Rectangle","cornerRadius":0},"ports":[{"inEdges":[],"outEdges":[],"id":"port1","visibility":1,"shape":"Square","offset":{"x":0,"y":0.5},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24},{"inEdges":[],"outEdges":["connector1"],"id":"port2","visibility":1,"shape":"Square","offset":{"x":0.5,"y":0},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24,"tooltip":{"openOn":"Auto","content":"","isSticky":false}},{"inEdges":[],"outEdges":[],"id":"port3","visibility":1,"shape":"Square","offset":{"x":1,"y":0.5},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24,"tooltip":{"openOn":"Auto","content":"","isSticky":false}},{"inEdges":[],"outEdges":[],"id":"port4","visibility":1,"shape":"Square","offset":{"x":0.5,"y":1},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24}],"id":"node1","width":100,"height":100,"offsetX":291,"offsetY":250,"annotations":[],"zIndex":0,"container":null,"visible":true,"horizontalAlignment":"Left","verticalAlignment":"Top","backgroundColor":"transparent","borderColor":"none","borderWidth":0,"rotateAngle":0,"pivot":{"x":0.5,"y":0.5},"margin":{},"flip":0,"flipMode":"All","wrapper":{"actualSize":{"width":100,"height":100},"offsetX":291,"offsetY":250},"constraints":5240814,"style":{"fill":"white","gradient":{"type":"None"},"strokeColor":"black","strokeWidth":1,"strokeDashArray":"","opacity":1,"textOverflow":"Wrap"},"isExpanded":true,"expandIcon":{"shape":"None"},"fixedUserHandles":[],"tooltip":{"openOn":"Auto","content":"","isSticky":false},"inEdges":[],"outEdges":["connector1"],"parentId":"","processId":"","umlIndex":-1,"isPhase":false,"isLane":false},{"shape":{"type":"Basic","shape":"Rectangle","cornerRadius":0},"ports":[{"inEdges":[],"outEdges":[],"id":"port1","visibility":1,"shape":"Square","offset":{"x":0,"y":0.5},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24},{"inEdges":[],"outEdges":[],"id":"port2","visibility":1,"shape":"Square","offset":{"x":0.5,"y":0},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24},{"inEdges":[],"outEdges":[],"id":"port3","visibility":1,"shape":"Square","offset":{"x":1,"y":0.5},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24,"tooltip":{"openOn":"Auto","content":"","isSticky":false}},{"inEdges":["connector1"],"outEdges":[],"id":"port4","visibility":1,"shape":"Square","offset":{"x":0.5,"y":1},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24}],"id":"node2","width":100,"height":100,"offsetX":500,"offsetY":500,"annotations":[{"id":"dNqTh","content":"Path Element","annotationType":"String","style":{"strokeWidth":0,"strokeColor":"transparent","fill":"transparent","bold":false,"textWrapping":"WrapWithOverflow","color":"black","whiteSpace":"CollapseSpace","fontFamily":"Arial","fontSize":12,"italic":false,"opacity":1,"strokeDashArray":"","textAlign":"Center","textOverflow":"Wrap","textDecoration":"None"},"hyperlink":{"link":"","hyperlinkOpenState":"NewTab","content":"","textDecoration":"None"},"constraints":4,"visibility":true,"rotateAngle":0,"rotationReference":"Parent","margin":{"right":0,"bottom":0,"left":0,"top":0},"horizontalAlignment":"Center","verticalAlignment":"Center","offset":{"x":0.5,"y":0.5},"tooltip":{"content":""}}],"zIndex":1,"container":null,"visible":true,"horizontalAlignment":"Left","verticalAlignment":"Top","backgroundColor":"transparent","borderColor":"none","borderWidth":0,"rotateAngle":0,"pivot":{"x":0.5,"y":0.5},"margin":{},"flip":0,"flipMode":"All","wrapper":{"actualSize":{"width":100,"height":100},"offsetX":500,"offsetY":500},"constraints":5240814,"style":{"fill":"white","gradient":{"type":"None"},"strokeWidth":1,"strokeColor":"black","strokeDashArray":"","opacity":1,"textOverflow":"Wrap"},"isExpanded":true,"expandIcon":{"shape":"None"},"fixedUserHandles":[],"tooltip":{"openOn":"Auto","content":"","isSticky":false},"inEdges":["connector1"],"outEdges":[],"parentId":"","processId":"","umlIndex":-1,"isPhase":false,"isLane":false}],"connectors":[{"shape":{"type":"None"},"id":"connector1","sourceID":"node1","targetID":"node2","sourcePortID":"port2","targetPortID":"port4","type":"Orthogonal","constraints":2043518,"annotations":[],"zIndex":2,"targetPoint":{"x":500,"y":550},"connectorSpacing":13,"sourcePadding":0,"targetPadding":0,"segments":[{"type":"Orthogonal","direction":"Top","length":46,"allowDrag":true},{"type":"Orthogonal","direction":"Right","length":209,"allowDrag":true},{"type":"Orthogonal","length":56,"direction":"Top","allowDrag":true},{"type":"Orthogonal","length":202,"direction":"Right","allowDrag":true},{"type":"Orthogonal","length":472,"direction":"Bottom","allowDrag":true},{"type":"Orthogonal","length":202,"direction":"Left","allowDrag":true},{"type":"Orthogonal","direction":null,"allowDrag":true}],"sourcePoint":{"x":291,"y":200},"sourceDecorator":{"shape":"None","width":10,"height":10,"pivot":{"x":0,"y":0.5},"style":{"fill":"black","strokeColor":"black","strokeWidth":1,"strokeDashArray":"","opacity":1,"gradient":{"type":"None"}}},"targetDecorator":{"shape":"Arrow","width":10,"height":10,"pivot":{"x":0,"y":0.5},"style":{"fill":"black","strokeColor":"black","strokeWidth":1,"strokeDashArray":"","opacity":1,"gradient":{"type":"None"}}},"cornerRadius":0,"wrapper":{"actualSize":{"width":411,"height":472},"offsetX":496.5,"offsetY":334},"style":{"strokeWidth":1,"strokeColor":"black","fill":"transparent","strokeDashArray":"","opacity":1,"gradient":{"type":"None"}},"fixedUserHandles":[],"ports":[],"visible":true,"flipMode":"All","hitPadding":10,"tooltip":{"openOn":"Auto","content":"","isSticky":false},"connectionPadding":0,"maxSegmentThumb":null,"allowNodeOverlap":false,"parentId":""}],"enableRtl":false,"locale":"en-US","enablePersistence":false,"scrollSettings":{"viewPortWidth":900,"viewPortHeight":900,"currentZoom":1,"horizontalOffset":0,"verticalOffset":0,"padding":{"left":0,"right":0,"top":0,"bottom":0},"scrollLimit":"Diagram","canAutoScroll":false,"maxZoom":30,"minZoom":0.2},"rulerSettings":{"showRulers":false},"backgroundColor":"transparent","constraints":500,"layout":{"type":"None","enableAnimation":true,"arrangement":"Nonlinear","enableRouting":false},"snapSettings":{"constraints":31,"gridType":"Lines","verticalGridlines":{"lineIntervals":[1.25,18.75,0.25,19.75,0.25,19.75,0.25,19.75,0.25,19.75],"snapIntervals":[20],"lineDashArray":"","lineColor":"lightgray"},"horizontalGridlines":{"lineIntervals":[1.25,18.75,0.25,19.75,0.25,19.75,0.25,19.75,0.25,19.75],"snapIntervals":[20],"lineDashArray":"","lineColor":"lightgray"}},"contextMenuSettings":{},"dataSourceSettings":{"dataManager":null,"dataSource":null,"crudAction":{"read":""},"connectionDataSource":{"crudAction":{"read":""}}},"mode":"SVG","layers":[{"id":"default_layer","visible":true,"lock":false,"objects":["node1","node2","connector1"],"zIndex":0,"objectZIndex":2}],"diagramSettings":{"inversedAlignment":true},"pageSettings":{"boundaryConstraints":"Infinity","orientation":"Landscape","height":null,"width":null,"background":{"source":"","color":"transparent"},"showPageBreaks":false,"fitOptions":{"canFit":false}},"model":{"participants":[]},"selectedItems":{"nodes":[],"connectors":[],"constraints":16382,"selectedObjects":[],"rotateAngle":0,"userHandles":[],"canToggleSelection":false,"width":0,"height":0,"offsetX":0,"offsetY":0,"handleSize":14,"pivot":{"x":0.5,"y":0.5},"wrapper":null},"basicElements":[],"tooltip":{"content":""},"commandManager":{"commands":[]},"tool":3,"customCursor":[],"segmentThumbShape":"Circle","segmentThumbSize":10,"version":17.1,"isScrollOffsetInverted":true}';
+            diagram.loadDiagram(data3);
+            let node1 = diagram.nodes[0];
+            diagram.drag(node1, 0, -100);
+
+            diagram.clear();
+            diagram.loadDiagram(data3);
+            let node2 = diagram.nodes[0];
+            diagram.drag(node2, 0, -200);
+            console.log("diagram.connectors[0].segments.length ", (diagram.connectors[0].segments.length));
+            expect(diagram.connectors[0].segments.length === 5).toBe(true);
+            done();
+        });
+        it('Forth segment direction - Bottom', function (done) {
+            let data4 = '{"width":"900px","height":"900px","nodes":[{"shape":{"type":"Basic","shape":"Rectangle","cornerRadius":0},"ports":[{"inEdges":[],"outEdges":[],"id":"port1","visibility":1,"shape":"Square","offset":{"x":0,"y":0.5},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24,"tooltip":{"openOn":"Auto","content":"","isSticky":false}},{"inEdges":[],"outEdges":[],"id":"port2","visibility":1,"shape":"Square","offset":{"x":0.5,"y":0},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24},{"inEdges":[],"outEdges":[],"id":"port3","visibility":1,"shape":"Square","offset":{"x":1,"y":0.5},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24},{"inEdges":[],"outEdges":["connector1"],"id":"port4","visibility":1,"shape":"Square","offset":{"x":0.5,"y":1},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24,"tooltip":{"openOn":"Auto","content":"","isSticky":false}}],"id":"node1","width":100,"height":100,"offsetX":301,"offsetY":148,"annotations":[],"zIndex":0,"container":null,"visible":true,"horizontalAlignment":"Left","verticalAlignment":"Top","backgroundColor":"transparent","borderColor":"none","borderWidth":0,"rotateAngle":0,"pivot":{"x":0.5,"y":0.5},"margin":{},"flip":0,"flipMode":"All","wrapper":{"actualSize":{"width":100,"height":100},"offsetX":301,"offsetY":148},"constraints":5240814,"style":{"fill":"white","gradient":{"type":"None"},"strokeColor":"black","strokeWidth":1,"strokeDashArray":"","opacity":1,"textOverflow":"Wrap"},"isExpanded":true,"expandIcon":{"shape":"None"},"fixedUserHandles":[],"tooltip":{"openOn":"Auto","content":"","isSticky":false},"inEdges":[],"outEdges":["connector1"],"parentId":"","processId":"","umlIndex":-1,"isPhase":false,"isLane":false},{"shape":{"type":"Basic","shape":"Rectangle","cornerRadius":0},"ports":[{"inEdges":[],"outEdges":[],"id":"port1","visibility":1,"shape":"Square","offset":{"x":0,"y":0.5},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24},{"inEdges":[],"outEdges":[],"id":"port2","visibility":1,"shape":"Square","offset":{"x":0.5,"y":0},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24},{"inEdges":[],"outEdges":[],"id":"port3","visibility":1,"shape":"Square","offset":{"x":1,"y":0.5},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24},{"inEdges":[],"outEdges":[],"id":"port4","visibility":1,"shape":"Square","offset":{"x":0.5,"y":1},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24}],"id":"node2","width":100,"height":100,"offsetX":500,"offsetY":500,"annotations":[{"id":"b6GZH","content":"Path Element","annotationType":"String","style":{"strokeWidth":0,"strokeColor":"transparent","fill":"transparent","bold":false,"textWrapping":"WrapWithOverflow","color":"black","whiteSpace":"CollapseSpace","fontFamily":"Arial","fontSize":12,"italic":false,"opacity":1,"strokeDashArray":"","textAlign":"Center","textOverflow":"Wrap","textDecoration":"None"},"hyperlink":{"link":"","hyperlinkOpenState":"NewTab","content":"","textDecoration":"None"},"constraints":4,"visibility":true,"rotateAngle":0,"rotationReference":"Parent","margin":{"right":0,"bottom":0,"left":0,"top":0},"horizontalAlignment":"Center","verticalAlignment":"Center","offset":{"x":0.5,"y":0.5},"tooltip":{"content":""}}],"zIndex":1,"container":null,"visible":true,"horizontalAlignment":"Left","verticalAlignment":"Top","backgroundColor":"transparent","borderColor":"none","borderWidth":0,"rotateAngle":0,"pivot":{"x":0.5,"y":0.5},"margin":{},"flip":0,"flipMode":"All","wrapper":{"actualSize":{"width":100,"height":100},"offsetX":500,"offsetY":500},"constraints":5240814,"style":{"fill":"white","gradient":{"type":"None"},"strokeWidth":1,"strokeColor":"black","strokeDashArray":"","opacity":1,"textOverflow":"Wrap"},"isExpanded":true,"expandIcon":{"shape":"None"},"fixedUserHandles":[],"tooltip":{"openOn":"Auto","content":"","isSticky":false},"inEdges":["connector1"],"outEdges":[],"parentId":"","processId":"","umlIndex":-1,"isPhase":false,"isLane":false}],"connectors":[{"shape":{"type":"None"},"id":"connector1","sourceID":"node1","targetID":"node2","sourcePortID":"port4","targetPortID":"","type":"Orthogonal","constraints":2043518,"annotations":[],"zIndex":2,"targetPoint":{"x":500,"y":550},"connectorSpacing":13,"sourcePadding":0,"targetPadding":0,"segments":[{"type":"Orthogonal","direction":"Bottom","length":27,"allowDrag":true},{"type":"Orthogonal","direction":"Right","length":131,"allowDrag":true},{"type":"Orthogonal","length":72,"direction":"Bottom","allowDrag":true},{"type":"Orthogonal","length":312,"direction":"Right","allowDrag":true},{"type":"Orthogonal","length":320,"direction":"Bottom","allowDrag":true},{"type":"Orthogonal","length":244,"direction":"Left","allowDrag":true},{"type":"Orthogonal","direction":null,"allowDrag":true,"length":null}],"sourcePoint":{"x":301,"y":198},"sourceDecorator":{"shape":"None","width":10,"height":10,"pivot":{"x":0,"y":0.5},"style":{"fill":"black","strokeColor":"black","strokeWidth":1,"strokeDashArray":"","opacity":1,"gradient":{"type":"None"}}},"targetDecorator":{"shape":"Arrow","width":10,"height":10,"pivot":{"x":0,"y":0.5},"style":{"fill":"black","strokeColor":"black","strokeWidth":1,"strokeDashArray":"","opacity":1,"gradient":{"type":"None"}}},"cornerRadius":0,"wrapper":{"actualSize":{"width":443,"height":419},"offsetX":522.5,"offsetY":407.5},"style":{"strokeWidth":1,"strokeColor":"black","fill":"transparent","strokeDashArray":"","opacity":1,"gradient":{"type":"None"}},"fixedUserHandles":[],"ports":[],"visible":true,"flipMode":"All","hitPadding":10,"tooltip":{"openOn":"Auto","content":"","isSticky":false},"connectionPadding":0,"maxSegmentThumb":null,"allowNodeOverlap":false,"parentId":""}],"enableRtl":false,"locale":"en-US","enablePersistence":false,"scrollSettings":{"viewPortWidth":900,"viewPortHeight":900,"currentZoom":1,"horizontalOffset":0,"verticalOffset":0,"padding":{"left":0,"right":0,"top":0,"bottom":0},"scrollLimit":"Diagram","canAutoScroll":false},"rulerSettings":{"showRulers":false},"backgroundColor":"transparent","constraints":500,"layout":{"type":"None","enableAnimation":true,"arrangement":"Nonlinear","enableRouting":false},"snapSettings":{"constraints":31,"gridType":"Lines","verticalGridlines":{"lineIntervals":[1.25,18.75,0.25,19.75,0.25,19.75,0.25,19.75,0.25,19.75],"snapIntervals":[20],"lineDashArray":"","lineColor":"lightgray"},"horizontalGridlines":{"lineIntervals":[1.25,18.75,0.25,19.75,0.25,19.75,0.25,19.75,0.25,19.75],"snapIntervals":[20],"lineDashArray":"","lineColor":"lightgray"}},"contextMenuSettings":{},"dataSourceSettings":{"dataManager":null,"dataSource":null,"crudAction":{"read":""},"connectionDataSource":{"crudAction":{"read":""}}},"mode":"SVG","layers":[{"id":"default_layer","visible":true,"lock":false,"objects":["node1","node2","connector1"],"zIndex":0,"objectZIndex":2}],"diagramSettings":{"inversedAlignment":true},"pageSettings":{"boundaryConstraints":"Infinity","orientation":"Landscape","height":null,"width":null,"background":{"source":"","color":"transparent"},"showPageBreaks":false,"fitOptions":{"canFit":false}},"model":{"participants":[]},"selectedItems":{"nodes":[],"connectors":[],"wrapper":null,"constraints":16382,"selectedObjects":[{"shape":{"type":"Basic","shape":"Rectangle","cornerRadius":0},"ports":[{"inEdges":[],"outEdges":[],"id":"port1","visibility":1,"shape":"Square","offset":{"x":0,"y":0.5},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24,"tooltip":{"openOn":"Auto","content":"","isSticky":false}},{"inEdges":[],"outEdges":[],"id":"port2","visibility":1,"shape":"Square","offset":{"x":0.5,"y":0},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24},{"inEdges":[],"outEdges":[],"id":"port3","visibility":1,"shape":"Square","offset":{"x":1,"y":0.5},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24},{"inEdges":[],"outEdges":["connector1"],"id":"port4","visibility":1,"shape":"Square","offset":{"x":0.5,"y":1},"height":12,"width":12,"connectionDirection":"Auto","margin":{"right":0,"bottom":0,"left":0,"top":0},"style":{"fill":"white","strokeColor":"black","opacity":1,"strokeDashArray":"","strokeWidth":1},"horizontalAlignment":"Center","verticalAlignment":"Center","constraints":24,"tooltip":{"openOn":"Auto","content":"","isSticky":false}}],"id":"node1","width":100,"height":100,"offsetX":301,"offsetY":148,"annotations":[],"zIndex":0,"container":null,"visible":true,"horizontalAlignment":"Left","verticalAlignment":"Top","backgroundColor":"transparent","borderColor":"none","borderWidth":0,"rotateAngle":0,"pivot":{"x":0.5,"y":0.5},"margin":{},"flip":0,"flipMode":"All","wrapper":{"actualSize":{"width":100,"height":100},"offsetX":301,"offsetY":148},"constraints":5240814,"style":{"fill":"white","gradient":{"type":"None"},"strokeColor":"black","strokeWidth":1,"strokeDashArray":"","opacity":1,"textOverflow":"Wrap"},"isExpanded":true,"expandIcon":{"shape":"None"},"fixedUserHandles":[],"tooltip":{"openOn":"Auto","content":"","isSticky":false},"inEdges":[],"outEdges":["connector1"],"parentId":"","processId":"","umlIndex":-1,"isPhase":false,"isLane":false}],"rotateAngle":0,"userHandles":[],"canToggleSelection":false,"width":100,"height":100,"offsetX":301,"offsetY":148,"handleSize":14,"pivot":{"x":0.5,"y":0.5}},"basicElements":[],"tooltip":{"content":""},"commandManager":{"commands":[]},"tool":3,"customCursor":[],"segmentThumbShape":"Circle","segmentThumbSize":10,"version":17.1,"isScrollOffsetInverted":true}';
+            diagram.loadDiagram(data4);
+            let node1 = diagram.nodes[0];
+            diagram.drag(node1, 50, 80);
+
+            diagram.clear();
+            diagram.loadDiagram(data4);
+            let node2 = diagram.nodes[0];
+            diagram.drag(node2, 0, 200);
+            console.log("diagram.connectors[0].segments.length ", (diagram.connectors[0].segments.length));
+            expect(diagram.connectors[0].segments.length === 5).toBe(true);
+            done();
+        });
+    });
+
+    describe('1005814-Exception occurs when dragging a port-hosted connector endpoint after connecting ports', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+        let mouseEvents: MouseEvents = new MouseEvents();
+        beforeAll((): void => {
+            ele = createElement('div', { id: '1005814Exception' });
+            document.body.appendChild(ele);
+            let connectors: ConnectorModel[] = [
+                {
+                    id: 'red',
+                    type: 'Straight',
+                    style: {
+                        strokeWidth: 5,
+                        strokeColor: 'red'
+                    },
+                    ports: [
+                        {
+                            id: 'Port1', offset: 0.3, visibility: PortVisibility.Visible,
+                        },
+                        { id: 'Port2', offset: 0.7, visibility: PortVisibility.Visible }
+                    ],
+                    sourcePoint: { x: 250, y: 100 },
+                    targetPoint: { x: 400, y: 200 }
+                },
+                {
+                    id: 'yellow',
+                    type: 'Bezier',
+                    style: {
+                        strokeWidth: 5,
+                        strokeColor: 'yellow'
+                    },
+                    ports: [
+                        { id: 'Port3', offset: 0.3, visibility: PortVisibility.Visible },
+                        { id: 'Port4', offset: 0.7, visibility: PortVisibility.Visible }
+                    ],
+                    sourceID: 'red',
+                    sourcePortID: 'Port1',
+                    targetID: 'green',
+                    targetPortID: 'Port1'
+
+                },
+                {
+                    id: 'green',
+                    type: 'Orthogonal',
+                    style: {
+                        strokeWidth: 5,
+                        strokeColor: 'green'
+                    },
+                    ports: [
+                        { id: 'Port1', offset: 0.3, visibility: PortVisibility.Visible, },
+                        { id: 'Port2', offset: 0.7, visibility: PortVisibility.Visible },
+                        { id: 'Port3', offset: 0, visibility: PortVisibility.Visible, width: 30, height: 30 },
+                        { id: 'Port4', offset: 0.5, visibility: PortVisibility.Visible, width: 30, height: 30 }
+                    ],
+                    sourcePoint: { x: 100, y: 300 },
+                    targetPoint: { x: 600, y: 300 },
+                },
+                {
+                    id: 'blue',
+                    type: 'Straight',
+                    style: {
+                        strokeWidth: 5,
+                        strokeColor: 'blue'
+                    },
+                    ports: [
+                        {
+                            id: 'Port3',
+                            offset: 0.3,
+                            visibility: PortVisibility.Visible,
+                        },
+                        { id: 'Port4', offset: 0.7, visibility: PortVisibility.Visible }
+                    ],
+                    sourceID: 'yellow',
+                    sourcePortID: 'Port4',
+                    targetID: 'green',
+                    targetPortID: 'Port4',
+                },
+                {
+                    id: 'lightGreen',
+                    type: 'Orthogonal',
+                    style: {
+                        strokeWidth: 5,
+                        strokeColor: 'lightGreen'
+                    },
+                    ports: [
+                        {
+                            id: 'Port3',
+                            offset: 0.3,
+                            visibility: PortVisibility.Visible,
+                        },
+                        { id: 'Port4', offset: 0.8, visibility: PortVisibility.Visible }
+                    ],
+                    sourcePoint: { x: 100, y: 600 },
+                    targetPoint: { x: 600, y: 600 },
+                },
+                {
+                    id: 'brown',
+                    type: 'Straight',
+                    style: {
+                        strokeWidth: 5,
+                        strokeColor: 'brown'
+                    },
+                    ports: [
+                        { id: 'Port1', offset: 0.3, visibility: PortVisibility.Visible, },
+                        { id: 'Port2', offset: 0.7, visibility: PortVisibility.Visible }
+                    ],
+                    sourcePoint: { x: 250, y: 400 },
+                    targetPoint: { x: 400, y: 500 }
+                },
+                {
+                    id: 'Orange',
+                    type: 'Straight',
+                    style: {
+                        strokeWidth: 5,
+                        strokeColor: 'orange'
+                    },
+                    ports: [
+                        { id: 'Port3', offset: 0.3, visibility: PortVisibility.Visible },
+                        { id: 'Port4', offset: 0.7, visibility: PortVisibility.Visible }
+                    ],
+                    sourceID: 'brown',
+                    sourcePortID: 'Port1',
+                    targetID: 'lightGreen',
+                    targetPortID: 'Port3'
+
+                }, {
+                    id: 'pink',
+                    type: 'Straight',
+                    style: {
+                        strokeWidth: 5,
+                        strokeColor: 'pink'
+                    },
+                    ports: [
+                        {
+                            id: 'Port3',
+                            offset: 0.3,
+                            visibility: PortVisibility.Visible,
+                        },
+                        { id: 'Port4', offset: 0.7, visibility: PortVisibility.Visible, width: 40, height: 40 }
+                    ],
+                    sourceID: 'Orange',
+                    sourcePortID: 'Port4',
+                    targetID: 'lightGreen',
+                    targetPortID: 'Port4',
+                },
+                {
+                    id: 'violet',
+                    type: 'Orthogonal',
+                    style: {
+                        strokeWidth: 5,
+                        strokeColor: 'violet'
+                    },
+                    ports: [
+                        {
+                            id: 'Port1',
+                            offset: 0.3,
+                            visibility: PortVisibility.Visible,
+                        },
+                        { id: 'Port2', offset: 0.8, visibility: PortVisibility.Visible }
+                    ],
+                    sourcePoint: { x: 600, y: 200 },
+                    targetPoint: { x: 800, y: 400 },
+                }, {
+                    id: 'peach',
+                    type: 'Straight',
+                    style: {
+                        strokeWidth: 5,
+                        strokeColor: '#e47490ff'
+                    },
+                    ports: [
+                        { id: 'Port1', offset: 0.2, visibility: PortVisibility.Visible, },
+                        { id: 'Port2', offset: 0.8, visibility: PortVisibility.Visible }
+                    ],
+                    sourcePoint: { x: 650, y: 400 },
+                    targetID: 'violet',
+                    targetPortID: 'Port1'
+                },
+                {
+                    id: 'rose',
+                    type: 'Straight',
+                    style: {
+                        strokeWidth: 5,
+                        strokeColor: '#d429afff'
+                    },
+                    ports: [
+                        { id: 'Port1', offset: 0.2, visibility: PortVisibility.Visible, },
+                        { id: 'Port2', offset: 0.8, visibility: PortVisibility.Visible }
+                    ],
+                    sourcePoint: { x: 800, y: 300 },
+                    targetID: 'violet',
+                    targetPortID: 'Port1'
+                },
+                {
+                    id: 'musturd',
+                    type: 'Straight',
+                    style: {
+                        strokeWidth: 5,
+                        strokeColor: '#78970aff'
+                    },
+                    ports: [
+                        { id: 'Port1', offset: 0.2, visibility: PortVisibility.Visible, },
+                        { id: 'Port2', offset: 0.8, visibility: PortVisibility.Visible }
+                    ],
+                    sourcePoint: { x: 750, y: 100 },
+                    targetID: 'rose',
+                    targetPortID: 'Port1'
+                },
+
+            ];
+            diagram = new Diagram({
+                width: '100%',
+                height: '800px', connectors: connectors
+            });
+            diagram.appendTo('#1005814Exception');
+
+        });
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+            diagram = null;
+            ele = null;
+        });
+        it('check - target already connects back to source', function (done) {
+
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            let connector1 = diagram.nameTable['red'];
+            diagram.select([connector1]);
+
+            let sourceThumb = document.getElementById('connectorTargetThumb');
+            let sourceThumbBounds: any = sourceThumb.getBoundingClientRect();
+            let sourceCx = sourceThumbBounds.left + sourceThumbBounds.width / 2;
+            let sourceCy = sourceThumbBounds.top + sourceThumbBounds.height / 2;
+
+            let Port2 = document.getElementById('green_Port2');
+            let portBounds: any = Port2.getBoundingClientRect();
+            let Port2Cx = portBounds.left + portBounds.width / 2;
+            let Portt2Cy = portBounds.top + portBounds.height / 2;
+
+            mouseEvents.mouseMoveEvent(diagramCanvas, sourceCx, sourceCy);
+            mouseEvents.mouseDownEvent(diagramCanvas, sourceCx, sourceCy);
+            mouseEvents.mouseMoveEvent(diagramCanvas, sourceCx + 10, sourceCy + 40);
+            mouseEvents.mouseMoveEvent(diagramCanvas, Port2Cx, Portt2Cy);
+            mouseEvents.mouseMoveEvent(diagramCanvas, Port2Cx, Portt2Cy);
+            mouseEvents.mouseUpEvent(diagramCanvas, Port2Cx, Portt2Cy);
+            console.log(diagram.connectors[0].targetPortID);
+            expect(diagram.connectors[0].targetPortID === 'Port2').toBe(true);
+            done();
+        });
+        it('checks if source connects to any connector that eventually reaches target (complex cycle)', function (done) {
+
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            let connector1 = diagram.nameTable['brown'];
+            diagram.select([connector1]);
+
+            let sourceThumb = document.getElementById('connectorTargetThumb');
+            let sourceThumbBounds: any = sourceThumb.getBoundingClientRect();
+            let sourceCx = sourceThumbBounds.left + sourceThumbBounds.width / 2;
+            let sourceCy = sourceThumbBounds.top + sourceThumbBounds.height / 2;
+
+            let Port2 = document.getElementById('pink_Port4');
+            let portBounds: any = Port2.getBoundingClientRect();
+            let Port2Cx = portBounds.left + portBounds.width / 2;
+            let Portt2Cy = portBounds.top + portBounds.height / 2;
+
+            mouseEvents.mouseMoveEvent(diagramCanvas, sourceCx, sourceCy);
+            mouseEvents.mouseDownEvent(diagramCanvas, sourceCx, sourceCy);
+            mouseEvents.mouseMoveEvent(diagramCanvas, sourceCx + 10, sourceCy + 40);
+            mouseEvents.mouseMoveEvent(diagramCanvas, Port2Cx, Portt2Cy);
+            mouseEvents.mouseMoveEvent(diagramCanvas, Port2Cx + 2, Portt2Cy + 2);
+            mouseEvents.mouseUpEvent(diagramCanvas, Port2Cx, Portt2Cy);
+            console.log(diagram.connectors[5].targetPoint.x, diagram.connectors[5].targetPoint.y);
+            expect(diagram.connectors[5].targetPoint.x === 440 && diagram.connectors[5].targetPoint.y === 580).toBe(true);
+            done();
+        });
+        it('checks if source connects to any connector that eventually reaches target', function (done) {
+
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            let connector1 = diagram.nameTable['lightGreen'];
+            diagram.select([connector1]);
+
+            let sourceThumb = document.getElementById('connectorSourceThumb');
+            let sourceThumbBounds: any = sourceThumb.getBoundingClientRect();
+            let sourceCx = sourceThumbBounds.left + sourceThumbBounds.width / 2;
+            let sourceCy = sourceThumbBounds.top + sourceThumbBounds.height / 2;
+
+            let Port2 = document.getElementById('green_Port3');
+            let portBounds: any = Port2.getBoundingClientRect();
+            let Port2Cx = portBounds.left + portBounds.width / 2;
+            let Portt2Cy = portBounds.top + portBounds.height / 2;
+
+            mouseEvents.mouseMoveEvent(diagramCanvas, sourceCx, sourceCy);
+            mouseEvents.mouseDownEvent(diagramCanvas, sourceCx, sourceCy);
+            mouseEvents.mouseMoveEvent(diagramCanvas, sourceCx + 10, sourceCy + 40);
+            mouseEvents.mouseMoveEvent(diagramCanvas, Port2Cx, Portt2Cy);
+            mouseEvents.mouseMoveEvent(diagramCanvas, Port2Cx + 2, Portt2Cy + 2);
+            mouseEvents.mouseUpEvent(diagramCanvas, Port2Cx, Portt2Cy);
+            console.log(diagram.connectors[4].sourcePortID);
+            expect(diagram.connectors[4].sourcePortID === 'Port3').toBe(true);
+            done();
+        });
+        it('check - Two-way cycle check - target already connects back to source', function (done) {
+
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            let connector1 = diagram.nameTable['rose'];
+            diagram.select([connector1]);
+
+            let sourceThumb = document.getElementById('connectorSourceThumb');
+            let sourceThumbBounds: any = sourceThumb.getBoundingClientRect();
+            let sourceCx = sourceThumbBounds.left + sourceThumbBounds.width / 2;
+            let sourceCy = sourceThumbBounds.top + sourceThumbBounds.height / 2;
+
+            let Port2 = document.getElementById('violet_Port2');
+            let portBounds: any = Port2.getBoundingClientRect();
+            let Port2Cx = portBounds.left + portBounds.width / 2;
+            let Portt2Cy = portBounds.top + portBounds.height / 2;
+
+            mouseEvents.mouseMoveEvent(diagramCanvas, sourceCx, sourceCy);
+            mouseEvents.mouseDownEvent(diagramCanvas, sourceCx, sourceCy);
+            mouseEvents.mouseMoveEvent(diagramCanvas, sourceCx + 10, sourceCy + 40);
+            mouseEvents.mouseMoveEvent(diagramCanvas, Port2Cx, Portt2Cy);
+            mouseEvents.mouseMoveEvent(diagramCanvas, Port2Cx, Portt2Cy);
+            mouseEvents.mouseUpEvent(diagramCanvas, Port2Cx, Portt2Cy);
+            console.log(diagram.connectors[10].sourcePortID);
+            expect(diagram.connectors[10].sourcePortID === 'Port2').toBe(true);
+            done();
+        });
+    });
 });

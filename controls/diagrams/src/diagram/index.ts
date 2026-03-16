@@ -61,6 +61,7 @@ export * from './objects/annotation-model';
 export * from './objects/node-model';
 export * from './objects/connector-model';
 export * from './objects/undo-redo';
+export * from './objects/collaboration';
 export * from './objects/tooltip';
 export * from './objects/tooltip-model';
 export * from './objects/layout-animation';

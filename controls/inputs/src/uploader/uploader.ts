@@ -1215,6 +1215,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
                 }
             }
         }
+        element = null;
     }
 
     private reRenderFileList(): void {
@@ -1541,6 +1542,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
             if (!enableDropText && dropTextArea) {
                 remove(dropTextArea);
             }
+            element = null;
         } else if (!isNullOrUndefined(this.uploaderOptions) && this.uploaderOptions.dropArea === undefined) {
             this.createDropTextHint();
             this.dropZoneElement = this.uploadWrapper;
@@ -1852,7 +1854,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
 
     private getSelectedFiles(index: number): FileInfo[] {
         const data: FileInfo[] = [];
-        const liElement: HTMLElement = this.fileList[index as number];
+        let liElement: HTMLElement = this.fileList[index as number];
         const allFiles: FileInfo[] = this.getFilesData();
         const nameElements: number = +liElement.getAttribute('data-files-count');
         let startIndex: number = 0 ;
@@ -1862,6 +1864,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
         for (let j: number = startIndex; j < (startIndex + nameElements); j++) {
             data.push(allFiles[j as number]);
         }
+        liElement = null;
         return data;
     }
 
@@ -1869,9 +1872,9 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
         if (!this.enabled) {
             return;
         }
-        const selectedElement: HTMLElement = (<HTMLInputElement>args.target).parentElement;
+        let selectedElement: HTMLElement = (<HTMLInputElement>args.target).parentElement;
         const index: number = this.fileList.indexOf(selectedElement);
-        const liElement: HTMLElement = this.fileList[index as number];
+        let liElement: HTMLElement = this.fileList[index as number];
         const formUpload: boolean = this.isFormUpload();
         const fileData: FileInfo[] = formUpload ? this.getSelectedFiles(index) : this.getFilesInArray(this.filesData[index as number]);
         if (isNullOrUndefined(fileData)) {
@@ -1906,6 +1909,8 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
                 this.clearButton.removeAttribute('disabled');
             }
         }
+        liElement = null;
+        selectedElement = null;
     }
 
     private removeFilesData(file: FileInfo, customTemplate: boolean): void {
@@ -1922,6 +1927,10 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
             return;
         }
         this.element.value = '';
+        const iconElement: HTMLElement = selectedElement.querySelector('.e-icons');
+        if (iconElement) {
+            EventHandler.remove(iconElement, 'click', this.removeFiles);
+        }
         detach(selectedElement);
         index = this.fileList.indexOf(selectedElement);
         this.fileList.splice(index, 1);
@@ -1973,7 +1982,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
     private removingEventCallback(eventArgs: RemovingEventArgs, formData: FormData, selectedFiles: FileInfo, file: FileInfo): void {
         /* istanbul ignore next */
         const name: string = this.element.getAttribute('name');
-        const liElement: HTMLElement = this.getLiElement(file);
+        let liElement: HTMLElement = this.getLiElement(file);
         if (!isNullOrUndefined(liElement) && (!isNullOrUndefined(liElement.querySelector('.' + DELETE_ICON)) ||
             !isNullOrUndefined(liElement.querySelector('.' + REMOVE_ICON)))) {
             const spinnerTarget: HTMLElement = liElement.querySelector('.' + DELETE_ICON) ?
@@ -1988,6 +1997,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
             formData.append(name, selectedFiles.name);
         }
         this.updateFormData(formData, eventArgs.customFormData);
+        liElement = null;
     }
 
     /* istanbul ignore next */
@@ -2043,7 +2053,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
         };
         if (!customTemplate) {
             const index: number = this.filesData.indexOf(files);
-            const rootElement: HTMLElement = this.fileList[index as number];
+            let rootElement: HTMLElement = this.fileList[index as number];
             if (rootElement) {
                 rootElement.classList.remove(UPLOAD_SUCCESS);
                 rootElement.classList.add(UPLOAD_FAILED);
@@ -2053,16 +2063,18 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
                     statusElement.classList.add(UPLOAD_FAILED);
                 }
             }
+            rootElement = null;
             this.checkActionButtonStatus();
         }
         this.trigger('failure', args);
-        const liElement: HTMLElement = this.getLiElement(files);
+        let liElement: HTMLElement = this.getLiElement(files);
         /* istanbul ignore next */
         if (!isNullOrUndefined(liElement) && !isNullOrUndefined(liElement.querySelector('.' + DELETE_ICON))) {
             const spinnerTarget: HTMLElement = liElement.querySelector('.' + DELETE_ICON) as HTMLElement;
             hideSpinner(spinnerTarget);
             detach(liElement.querySelector('.e-spinner-pane'));
         }
+        liElement = null;
     }
 
     /* istanbul ignore next */
@@ -2340,6 +2352,10 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
 
     private clearData(singleUpload?: boolean) : void {
         if (!isNullOrUndefined(this.listParent)) {
+            const fileItems: NodeListOf<Element> = this.listParent.querySelectorAll('.e-icons');
+            for (let i: number = 0; i < fileItems.length; i++) {
+                EventHandler.remove(fileItems[i as number] as HTMLElement, 'click', this.removeFiles);
+            }
             detach(this.listParent);
             this.listParent = null;
         }
@@ -2347,13 +2363,14 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
             this.element.value = '';
         }
         if (this.isFormUpload() && this.uploadWrapper.querySelector('.' + INPUT_WRAPPER)) {
-            const hiddenElement: HTMLElement = this.uploadWrapper.querySelector('.' + INPUT_WRAPPER).querySelector('.' + HIDDEN_INPUT);
+            let hiddenElement: HTMLElement = this.uploadWrapper.querySelector('.' + INPUT_WRAPPER).querySelector('.' + HIDDEN_INPUT);
             if (hiddenElement) {
                 this.uploadWrapper.querySelector('.' + INPUT_WRAPPER).removeChild(hiddenElement);
             }
+            hiddenElement = null;
         }
-        this.fileList = [];
-        this.filesData = [];
+        this.fileList.length = 0;
+        this.filesData.length = 0;
         this.removeActionButtons();
     }
 
@@ -2362,8 +2379,9 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
         let added: number = -1;
         if (this.listParent) {
             for (let i: number = 0; i < this.listParent.querySelectorAll('li').length; i++) {
-                const liElement: HTMLElement = this.listParent.querySelectorAll('li')[i as number];
+                let liElement: HTMLElement = this.listParent.querySelectorAll('li')[i as number];
                 previousListClone.appendChild(liElement.cloneNode(true));
+                liElement = null;
             }
             this.removeActionButtons();
             const oldList: HTMLElement[] = [].slice.call(previousListClone.childNodes);
@@ -2381,6 +2399,8 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
                     this.internalCreateFileList([filesData[index as number]]);
                 }
             }
+            previousListClone.innerHTML = '';
+            oldList.length = 0;
         } else {
             this.internalCreateFileList(filesData);
         }
@@ -2473,7 +2493,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
     private createCustomfileList(fileData: FileInfo[]): void {
         this.createParentUL();
         for (const listItem of fileData) {
-            const listElement: HTMLElement = this.createElement('li', { className: FILE, attrs: { 'data-file-name': listItem.name } });
+            let listElement: HTMLElement = this.createElement('li', { className: FILE, attrs: { 'data-file-name': listItem.name } });
             this.uploadTemplateFn = this.templateComplier(this.template);
             const liTempCompiler: any = this.uploadTemplateFn(
                 listItem, this, 'template', this.element.id + 'Template', this.isStringTemplate, null, listElement);
@@ -2498,6 +2518,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
             this.trigger('fileListRendering', eventsArgs);
             this.listParent.appendChild(listElement);
             this.fileList.push(listElement);
+            listElement = null;
         }
         this.renderReactTemplates();
     }
@@ -2741,7 +2762,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
             this.formFileList(fileData, this.element.files);
         } else {
             for (const listItem of fileData) {
-                const liElement: HTMLElement = this.createElement('li', {
+                let liElement: HTMLElement = this.createElement('li', {
                     className: FILE,
                     attrs: { 'data-file-name': listItem.name, 'data-files-count': '1' }
                 });
@@ -2820,6 +2841,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
                     this.checkActionComplete(true);
                     this.flag = preventActionComplete;
                 }
+                liElement = null;
             }
         }
     }
@@ -2885,6 +2907,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
                 filterFiles.push(files[i as number]);
             }
         }
+        li = null;
         return filterFiles;
     }
 
@@ -2894,12 +2917,13 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
             files.statusCode = statusCode;
         }
         if (updateLiStatus) {
-            const li : HTMLElement = this.getLiElement(files);
+            let li : HTMLElement = this.getLiElement(files);
             if (!isNullOrUndefined(li)) {
                 if (!isNullOrUndefined(li.querySelector('.' + STATUS)) && !((status === '' || isNullOrUndefined(status)))) {
                     li.querySelector('.' + STATUS).textContent = status;
                 }
             }
+            li = null;
         }
         return files;
     }
@@ -2949,7 +2973,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
     }
 
     private uploadInProgress (e: ProgressEventInit , files : FileInfo, customUI?: boolean, request?: Ajax) : void {
-        const li : HTMLElement = this.getLiElement(files);
+        let li : HTMLElement = this.getLiElement(files);
         if (isNullOrUndefined(li)  &&  (!customUI)) {
             return;
         }
@@ -2976,6 +3000,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
         }
         const args : object = {e, operation: 'upload', file: this.updateStatus(files, this.localizedTexts('inProgress'), '3')};
         this.trigger('progress', args);
+        li = null;
     }
 
     /* istanbul ignore next */
@@ -3025,7 +3050,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
     }
 
     private removecanceledFile(e: Event, file: FileInfo): void {
-        const liElement: HTMLElement = this.getLiElement(file);
+        let liElement: HTMLElement = this.getLiElement(file);
         if (isNullOrUndefined(liElement) || liElement.querySelector('.' + RETRY_ICON) || isNullOrUndefined(liElement.querySelector('.' + ABORT_ICON))) {
             return;
         }
@@ -3041,6 +3066,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
         const requestResponse: Object = e && e.currentTarget ? this.getResponse(e) : null;
         const args: Object = { event: e, response: requestResponse, operation: 'cancel', file: file };
         this.trigger('success', args);
+        liElement = null;
     }
 
     private renderFailureState(e: Event, file: FileInfo, liElement: HTMLElement): void {
@@ -3130,7 +3156,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
         const args: Object = {
             e, response: response, operation: 'upload', file: this.updateStatus(file, statusMessage, '2', false), statusText: statusMessage
         };
-        const liElement: HTMLElement = this.getLiElement(file);
+        let liElement: HTMLElement = this.getLiElement(file);
         if (!isNullOrUndefined(liElement)) {
             const spinnerEle: HTMLElement = liElement.querySelector('.' + SPINNER_PANE) as HTMLElement;
             if (!isNullOrUndefined(spinnerEle)) {
@@ -3161,10 +3187,11 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
                 this.checkActionComplete(true);
             }
         });
+        liElement = null;
     }
 
     private uploadFailed(e: Event, file: FileInfo): void {
-        const li: HTMLElement = this.getLiElement(file);
+        let li: HTMLElement = this.getLiElement(file);
         const response: Object = e && e.currentTarget ? this.getResponse(e) : null;
         const statusMessage: string = this.localizedTexts('uploadFailedMessage');
         const args: Object = {
@@ -3179,6 +3206,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
             this.uploadSequential();
             this.checkActionComplete(true);
         });
+        li = null;
     }
 
     private uploadSequential() : void {
@@ -3445,7 +3473,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
         }
         eventArgs.fileData.statusCode = '5';
         eventArgs.fileData.status = this.localizedTexts('fileUploadCancel');
-        const liElement: HTMLElement = this.getLiElement(eventArgs.fileData);
+        let liElement: HTMLElement = this.getLiElement(eventArgs.fileData);
         if (liElement) {
             if (!isNullOrUndefined(liElement.querySelector('.' + STATUS))) {
                 liElement.querySelector('.' + STATUS).innerHTML = this.localizedTexts('fileUploadCancel');
@@ -3464,6 +3492,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
             }, false);
             this.checkActionButtonStatus();
         }
+        liElement = null;
     }
 
     private checkChunkUpload(): boolean {
@@ -3554,6 +3583,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
         } else {
             this.chunkUploadFailed(e, metaData);
         }
+        liElement = null;
     }
 
     private sendNextRequest(metaData: MetaData): void {
@@ -3566,7 +3596,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
 
     private removeChunkFile(e: Event, metaData: MetaData, custom: boolean): void {
         if (isNullOrUndefined(this.template) && (isNullOrUndefined(custom) && !custom)) {
-            const liElement: HTMLElement = this.getLiElement(metaData.file);
+            let liElement: HTMLElement = this.getLiElement(metaData.file);
             const deleteIcon: Element = liElement.querySelector('.' + ABORT_ICON);
             const spinnerTarget: HTMLElement = deleteIcon as HTMLElement;
             this.updateStatus(metaData.file, this.localizedTexts('fileUploadCancel'), '5');
@@ -3588,6 +3618,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
                 hideSpinner(spinnerTarget);
                 detach(liElement.querySelector('.e-spinner-pane'));
             }
+            liElement = null;
         }
     }
 
@@ -3613,7 +3644,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
             metaData.request.emitError = false;
             metaData.request.httpRequest.abort();
         }
-        const liElement: HTMLElement = this.getLiElement(metaData.file);
+        let liElement: HTMLElement = this.getLiElement(metaData.file);
         if (isNullOrUndefined(this.template) && (isNullOrUndefined(custom) || !custom) && liElement) {
             const targetElement: HTMLElement = liElement.querySelector('.' + PAUSE_UPLOAD) as HTMLElement;
             targetElement.classList.remove(PAUSE_UPLOAD);
@@ -3630,9 +3661,10 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
         }
         this.pausedData.push(metaData);
         this.trigger('pausing', eventArgs);
+        liElement = null;
     }
     private resumeUpload(metaData: MetaData, e?: Event, custom?: boolean): void {
-        const liElement: HTMLElement = this.getLiElement(metaData.file);
+        let liElement: HTMLElement = this.getLiElement(metaData.file);
         let targetElement: Element;
         if (!isNullOrUndefined(liElement)) {
             targetElement = liElement.querySelector('.' + RESUME_UPLOAD);
@@ -3669,6 +3701,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
                 }
             }
         }
+        liElement = null;
     }
 
     private updateMetaData(metaData : MetaData): void {
@@ -3681,7 +3714,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
     }
 
     private removeChunkProgressBar(metaData: MetaData): void {
-        const liElement: HTMLElement = this.getLiElement(metaData.file);
+        let liElement: HTMLElement = this.getLiElement(metaData.file);
         if (!isNullOrUndefined(liElement)) {
             this.updateProgressBarClasses(liElement, UPLOAD_SUCCESS);
             this.removeProgressbar(liElement, 'success');
@@ -3692,6 +3725,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
                 cancelButton.classList.remove(ABORT_ICON, UPLOAD_INPROGRESS);
             }
         }
+        liElement = null;
     }
 
     private chunkUploadFailed(e: Event, metaData: MetaData, custom?: boolean): void {
@@ -3759,6 +3793,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
                 }
             }
         });
+        liElement = null;
     }
 
     private retryRequest(liElement: HTMLElement, metaData: MetaData, custom?: boolean): void {
@@ -3816,7 +3851,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
             metaData.file.status = this.localizedTexts('inProgress');
         }
         this.updateMetaData(metaData);
-        const liElement: HTMLElement = this.getLiElement(metaData.file);
+        let liElement: HTMLElement = this.getLiElement(metaData.file);
         if (isNullOrUndefined(liElement)) {
             return;
         }
@@ -3868,6 +3903,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
                 this.checkPausePlayAction(e);
             }, false);
         }
+        liElement = null;
     }
 
     /**
@@ -3946,11 +3982,18 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
             this.uploadWrapper.parentElement.appendChild(this.element);
             detach(this.uploadWrapper);
         }
-        this.uploadWrapper = null;
+        this.fileList = [];
+        this.filesData = [];
+        this.fileList.length = 0;
+        this.filesData.length = 0;
         this.uploadWrapper = null;
         this.browseButton = null;
+        this.listParent = null;
         this.dropAreaWrapper = null;
         this.dropZoneElement = null;
+        this.actionButtons = null;
+        this.pauseButton = null;
+        this.formElement = null;
         this.dropArea = null;
         this.keyboardModule = null;
         this.clearButton = null;
@@ -4126,7 +4169,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
     }
 
     private spliceFiles(liIndex: number): void {
-        const liElement: HTMLElement = this.fileList[liIndex as number];
+        let liElement: HTMLElement = this.fileList[liIndex as number];
         const allFiles: FileInfo[] = this.getFilesData();
         const nameElements: number = +liElement.getAttribute('data-files-count');
         let startIndex: number = 0 ;
@@ -4137,6 +4180,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
         for (let j: number = endIndex; j >= startIndex; j--) {
             allFiles.splice(j, 1);
         }
+        liElement = null;
     }
     /* eslint-disable valid-jsdoc, jsdoc/require-param */
     /**

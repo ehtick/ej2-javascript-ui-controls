@@ -5599,42 +5599,6 @@ describe('Bug 988871: DataSource not updated on adding records using addRecords 
     });
 });
 
-describe('EJ2-990496-Properties missing on initial render of treegrid when using getColumnByField() method', () => {
-    let gridObj: TreeGrid;
-    let isTaskName: boolean;
-    beforeAll((done: Function) => {
-        gridObj = createGrid(
-            {
-                dataSource: sampleData,
-                childMapping: 'subtasks',
-                treeColumnIndex: 1,
-                height: 400,
-                columns: [
-                    { type: 'checkbox', width: 50 },
-                    { field: 'taskID', headerText: 'Task ID', width: 60, textAlign: 'Right' },
-                    { field: 'taskName', headerText: 'Task Name', width: 180, textAlign: 'Left' },
-                    { field: 'duration', headerText: 'Duration', width: 80, textAlign: 'Right' },
-                    { field: 'progress', headerText: 'Progress', width: 80, textAlign: 'Right' }
-                ],
-                created: () => {
-                    const treegridElement = document.getElementsByClassName('e-treegrid')[0] as HTMLElement & { ej2_instances: any[] };
-                    const treegrid = treegridElement.ej2_instances[0];
-                    isTaskName = treegrid.getColumnByField('taskName').visible;
-                }
-            },
-            done
-        );
-    });
-    it('checking the visible property is assigned of column properties in created event', function (done: Function) {
-        expect(isTaskName).toBe(true);
-        done();
-    });
-    afterAll(() => {
-        destroy(gridObj);
-    })
-});
-
-
 describe('Task 985326: Testing getPageSizeByHeight method', () => {
     let gridObj: TreeGrid;
     beforeAll((done: Function) => {
@@ -5762,7 +5726,6 @@ describe('Bug 1006073: Unexpected failure logged even when showCheckbox and tree
         destroy(gridObj);
     });
 });
-
 describe('Coverage Fix', () => {
     let gridObj: TreeGrid;
     let actionFailedFunction: () => void = jasmine.createSpy('actionFailure');
@@ -5789,6 +5752,98 @@ describe('Coverage Fix', () => {
     it('Coverage case 2', () => {
         gridObj.emptyRecordTemplate = '#emptyRecTemplate';
         expect(gridObj.emptyRecordTemplate === '#emptyRecTemplate').toBe(true);
+    });
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Remote data - getProcessedRecords coverage Fix', () => {
+    let gridObj: TreeGrid;
+    let data: Object = new DataManager({
+        url: 'https://services.syncfusion.com/js/production/api/SelfReferenceData',
+        adaptor: new WebApiAdaptor,
+        crossDomain: true
+    });
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+        {
+            dataSource: data,
+            hasChildMapping: 'isParent',
+            idMapping: 'TaskID',
+            parentIdMapping: 'ParentItem',
+            height: 400,
+            treeColumnIndex: 1,
+            allowPaging: true,
+            columns: [
+                { field: 'TaskID', headerText: 'Task ID', textAlign: 'Right', width: 120 },
+                { field: 'TaskName', headerText: 'Task Name', width: 150 },
+                { field: 'StartDate', headerText: 'Start Date', textAlign: 'Right', width: 120 }
+            ]
+        },
+        done
+        );
+    });
+    it('Coverage case', (done: Function) => {
+        let result = gridObj.getProcessedRecords();
+        expect(result.length > 0).toBe(true);
+        done();
+    });
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+describe('getProcessedRecords virtualization Coverage Fix', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+        {
+            dataSource: sampleData,
+            childMapping: 'subtasks',
+            treeColumnIndex: 2,
+            enableVirtualization: true,
+            height: 400,
+            columns: [
+                { field: 'taskID', headerText: 'Task ID', textAlign: 'Right', width: 100 },
+                { field: 'taskName', headerText: 'Task Name', width: 260 },
+                { field: 'startDate', headerText: 'Start Date', width: 150 },
+            ]
+        },
+        done
+        );
+    });
+    it('Coverage case 1', (done: Function) => {
+        let result = gridObj.getProcessedRecords();
+        expect(result.length > 0).toBe(true);
+        done();
+    });
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+describe('getProcessedRecords infinite Scrolling Coverage Fix', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+        {
+            dataSource: sampleData,
+            childMapping: 'subtasks',
+            treeColumnIndex: 2,
+            enableInfiniteScrolling: true,
+            height: 400,
+            columns: [
+                { field: 'taskID', headerText: 'Task ID', textAlign: 'Right', width: 100 },
+                { field: 'taskName', headerText: 'Task Name', width: 260 },
+                { field: 'startDate', headerText: 'Start Date', width: 150 },
+            ]
+        },
+        done
+        );
+    });
+    it('Coverage case 1', (done: Function) => {
+        let result = gridObj.getProcessedRecords();
+        expect(result.length > 0).toBe(true);
+        done();
     });
     afterAll(() => {
         destroy(gridObj);

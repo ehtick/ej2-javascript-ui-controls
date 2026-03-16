@@ -1,19 +1,14 @@
-// visio-core.ts - Corrected version
-
 import { DECORATOR_SHAPE_MAP, DECORATOR_SIZE_MAP, LAYOUT_METRICS, UNIT_CONVERSION } from './visio-constants';
-import { VisioShape } from './visio-models';
+import { isGeometryRowHidden, isGeometrySectionHidden } from './visio-nodes';
 import {
     Attributes,
-    AugmentedGeometry,
-    Bounds,
     CellMapValue,
-    GeometryItem,
     GeometryRowCoordinates,
     GeometryWithRows,
     GlobalOrigin,
     GradientStop,
     GradientVector,
-    OneOrMany,
+    GroupTransform,
     ParsedXmlObject,
     PathConfig,
     PathCoordinates,
@@ -21,8 +16,6 @@ import {
     RadialGradientConfig,
     ScalingFunctions,
     ShapeAttributes,
-    ShapeData,
-    ShapeLikeStructure,
     VisioCell,
     VisioRow,
     VisioSection,
@@ -101,13 +94,7 @@ export function createCellMap(cells: VisioCell[]): Map<string, CellMapValue> {
 
     for (const cell of cells) {
         if (cell && cell.$ && cell.$.N) {
-            // Prefer formula over value for position-related cells
-            if ((cell.$.N === 'LocPinX' || cell.$.N === 'LocPinY') && cell.$.F) {
-                map.set(cell.$.N, cell.$.F);
-            }
-            else {
-                map.set(cell.$.N, cell.$.V);
-            }
+            map.set(cell.$.N, cell.$.V);
         }
     }
 
@@ -131,6 +118,82 @@ export function createCellMap(cells: VisioCell[]): Map<string, CellMapValue> {
 export function mapCellValues(cells: VisioCell | VisioCell[]): Map<string, CellMapValue> {
     const cellArray: VisioCell[] = ensureArray(cells);
     return createCellMap(cellArray);
+}
+
+/**
+ * Builds a cell map from a Visio shape node.
+ * Converts the shape's Cell elements into a key-value map for easier lookup.
+ *
+ * @param {VisioShapeNode} node - Shape node containing Cell elements
+ * @returns {Map<string, CellMapValue>} Map of cell names to values
+ */
+export function getCellMap(node: VisioShapeNode): Map<string, CellMapValue> {
+    const cells: VisioCell[] = node && (node as any).Cell ? ensureArray((node as any).Cell) : [];
+    return mapCellValues(cells);
+}
+
+/**
+ * Merges two cell maps, overlaying instance values on top of master defaults.
+ * Ensures that page-level overrides take precedence over master definitions.
+ *
+ * @param {Map<string, CellMapValue>} masterMap - Cell map from master shape
+ * @param {Map<string, CellMapValue>} instMap - Cell map from instance shape
+ * @returns {Map<string, CellMapValue>} Combined cell map with overrides applied
+ */
+export function mergeCellMaps(
+    masterMap: Map<string, CellMapValue>,
+    instMap: Map<string, CellMapValue>
+): Map<string, CellMapValue> {
+    const out: Map<string, CellMapValue> = new Map<string, CellMapValue>();
+    // start from master defaults
+    if (masterMap) {
+        masterMap.forEach(function (v: any, k: string): void {
+            out.set(k, v);
+        });
+    }
+    // overlay with page overrides
+    if (instMap) {
+        instMap.forEach(function (v: any, k: string): void {
+            out.set(k, v);
+        });
+    }
+    return out;
+}
+
+/**
+ * Safely retrieves a string attribute from an attributes object.
+ * Returns an empty string if the key is missing or value is null/undefined.
+ *
+ * @param {object} attrs - Attributes object
+ * @param {string} key - Attribute key to retrieve
+ * @returns {string} Attribute value as string, or empty string
+ */
+export function getAttrString(
+    attrs: Record<string, unknown>,
+    key: string
+): string {
+    if (!attrs || typeof attrs !== 'object') {
+        return '';
+    }
+
+    const desc: PropertyDescriptor | undefined =
+        Object.getOwnPropertyDescriptor(attrs, key);
+
+    const value: unknown = desc ? desc.value : undefined;
+    return value == null ? '' : String(value);
+}
+
+/**
+ * Trims a string value and returns it, or empty string if falsy.
+ * Ensures no null/undefined values propagate.
+ *
+ * @param {string} value - Input string to trim
+ * @returns {string} Trimmed string or empty string
+ */
+export function getTrimmedOrEmpty(value: string): string {
+    if (!value) { return ''; }
+    const t: string = String(value).trim();
+    return t.length > 0 ? t : '';
 }
 
 // ============================================================================
@@ -164,6 +227,23 @@ export function parseNumberCell(value: string | undefined, defaultValue: number 
 
     const num: number = parseFloat(String(value));
     return Number.isFinite(num) ? num : defaultValue;
+}
+
+/**
+ * Retrieves a numeric value from a map with a fallback.
+ * Safely converts the stored value to a number or returns the fallback.
+ *
+ * @param {Map<string, any>} map - Map containing key-value pairs
+ * @param {string} key - Key to look up in the map
+ * @param {number} fallback - Value to return if lookup fails or is not numeric
+ * @returns {number} Parsed number or fallback
+ */
+export function getNumberFromCellMap(map: Map<string, any>, key: string, fallback: number): number {
+    if (!map) { return fallback; }
+    const value: any = map.get(key);
+    if (value === undefined || value === null || value === '') { return fallback; }
+    const n: number = Number(value);
+    return isNaN(n) ? fallback : n;
 }
 
 /**
@@ -225,7 +305,7 @@ export function getCellMapStringValue(
     key: string,
     defaultValue: string = ''
 ): string {
-    const value: CellMapValue = cellMap.get(key);
+    const value: CellMapValue | undefined = cellMap.get(key);
     return value !== undefined && value !== null ? String(value) : defaultValue;
 }
 
@@ -274,7 +354,7 @@ export function getCellMapBooleanValue(
     key: string,
     defaultValue: boolean = false
 ): boolean {
-    const value: CellMapValue = cellMap.get(key);
+    const value: CellMapValue | undefined = cellMap.get(key);
     if (value === undefined || value === null) { return defaultValue; }
     // Visio standard for boolean cells is typically '1' for true and '0' for false.
     return String(value) === '1' || String(value).toLowerCase() === 'true';
@@ -300,7 +380,7 @@ export function getCellMapBooleanValue(
  * // Result: '100' or undefined
  */
 export function findCellValue(cells: VisioCell[], name: string): string | undefined {
-    const cell: VisioCell = cells.find((c: VisioCell) => c && c.$ && c.$.N === name);
+    const cell: VisioCell | undefined = cells.find((c: VisioCell) => c && c.$ && c.$.N === name);
     return (cell && cell.$ && cell.$.V !== undefined && cell.$.V !== null) ? String(cell.$.V) : undefined;
 }
 
@@ -376,52 +456,6 @@ export function formatCoordinate(
 // ============================================================================
 
 /**
- * Gets master ID from shape attributes.
- * Handles multiple possible attribute names (Master, MasterID, MasterId) for
- * compatibility with different Visio versions and XML representations.
- *
- * The master ID is critical for looking up shape styling and properties from
- * the master shapes collection.
- *
- * @param {unknown} shape - Shape node or its attributes object
- * @returns {string | null} Master ID as a string, or null if not found
- * @remarks
- * Checks multiple attribute names in order:
- * 1. Master (most common)
- * 2. MasterID (alternate naming)
- * 3. MasterId (camelCase variant)
- *
- * Returns null if shape is invalid, not an object, or has no master ID.
- *
- * @example
- * // Get master ID from shape
- * const masterId = getMasterId(shape);
- * // Result: 'M1' or null
- */
-export function getMasterId(shape: unknown): string | null {
-    if (!shape || typeof shape !== 'object') { return null; }
-
-    // The attributes can be directly on the object or nested under '$'
-    const attrs: ShapeAttributes | ParsedXmlObject =
-        '$' in shape && typeof (shape as ParsedXmlObject).$ === 'object'
-            ? (shape as ParsedXmlObject).$ as ShapeAttributes
-            : shape as ParsedXmlObject;
-
-    if (!attrs) { return null; }
-
-    // Try multiple attribute name variants
-    const rawId: unknown = 'Master' in attrs ? attrs.Master :
-        'MasterID' in attrs ? (attrs as ParsedXmlObject).MasterID :
-            'MasterId' in attrs ? (attrs as ParsedXmlObject).MasterId :
-                null;
-
-    if (rawId === null || rawId === undefined) { return null; }
-
-    const id: string = String(rawId).trim();
-    return id.length > 0 ? id : null;
-}
-
-/**
  * Checks if a shape is a group shape based on its `Type` attribute.
  * Group shapes contain other shapes and have special handling for positioning
  * and sizing calculations.
@@ -436,8 +470,61 @@ export function getMasterId(shape: unknown): string | null {
  */
 export function isGroupShape(shape: unknown): boolean {
     if (!shape || typeof shape !== 'object' || !('$' in shape)) { return false; }
-    const attrs: any = (shape as ParsedXmlObject).$;
-    return attrs && typeof attrs === 'object' && 'Type' in attrs && String(attrs.Type).toLowerCase() === 'group';
+    const attrs: ShapeAttributes | undefined = ((shape as ParsedXmlObject).$ as ShapeAttributes) || undefined;
+    return attrs && typeof attrs === 'object' && 'Type' in attrs && String((attrs as any).Type).toLowerCase() === 'group';
+}
+
+/**
+ * Applies a parent group's transform to a child cell map.
+ * Handles flips, rotation, and pivot translation to convert
+ * child pin coordinates into page coordinates.
+ *
+ * @param {Map<string, any>} mergedMap - Original cell map of the child shape
+ * @param {GroupTransform} parentTx - Parent group transform details
+ * @returns {Map<string, any>} New cell map with transformed PinX/PinY
+ */
+export function applyParentTransformToCellMap(
+    mergedMap: Map<string, any>,
+    parentTx: GroupTransform
+): Map<string, any> {
+    // If no parent transform, return original map
+    if (!parentTx) { return mergedMap; }
+
+    const out: Map<string, any> = new Map<string, any>();
+    mergedMap.forEach(function (v: any, k: string): void {
+        out.set(k, v);
+    });
+
+    const childPinX: number = getNumberFromCellMap(mergedMap, 'PinX', 0);
+    const childPinY: number = getNumberFromCellMap(mergedMap, 'PinY', 0);
+
+    // Convert child pin to be relative to parent's LocPin (pivot)
+    let relX: number = childPinX - parentTx.locPinX;
+    let relY: number = childPinY - parentTx.locPinY;
+
+    // Apply flips (Visio group flips mirror children around group pivot)
+    if (parentTx.flipX && parentTx.flipX !== 0) { relX = -relX; }
+    if (parentTx.flipY && parentTx.flipY !== 0) { relY = -relY; }
+
+    // Apply rotation around parent pivot
+    const angle: number = parentTx.angle;
+    if (angle && angle !== 0) {
+        const cosA: number = Math.cos(angle);
+        const sinA: number = Math.sin(angle);
+        const rx: number = (relX * cosA) - (relY * sinA);
+        const ry: number = (relX * sinA) + (relY * cosA);
+        relX = rx;
+        relY = ry;
+    }
+
+    // Convert back to absolute pin in page coordinates (inches)
+    const absPinX: number = parentTx.pinX + relX;
+    const absPinY: number = parentTx.pinY + relY;
+
+    out.set('PinX', String(absPinX));
+    out.set('PinY', String(absPinY));
+
+    return out;
 }
 
 /**
@@ -927,21 +1014,7 @@ export function safeNumber(value: unknown, defaultValue: number = 0): number {
     const num: number = Number(value);
     return isNaN(num) || !isFinite(num) ? defaultValue : num;
 }
-/**
- * Checks if a master ID is valid and non-empty.
- * Validates that the master ID is a non-empty string before use.
- *
- * @param {string} masterId - Master ID to validate
- * @returns {boolean} True if it is a non-empty string, false otherwise
- * @example
- * // Validate master ID
- * isValidMasterId('M1'); // Result: true
- * isValidMasterId(''); // Result: false
- * isValidMasterId(null); // Result: false
- */
-export function isValidMasterId(masterId: string): boolean {
-    return typeof masterId === 'string' && masterId.trim().length > 0;
-}
+
 /**
  * Rounds a value to a specified decimal precision.
  * Uses the LAYOUT_METRICS precision as default for path data consistency.
@@ -990,188 +1063,6 @@ export function roundTo2Decimals(value: number): number {
 // ============================================================================
 // SECTION 11: GEOMETRY & PATH PROCESSING
 // ============================================================================
-
-/**
- * Finds all geometries (local and child) in a shape recursively.
- * Extracts geometry sections from a shape and its child shapes.
- *
- * Creates augmented geometry objects that include spatial information
- * (width, height, pin position, local pin position) needed for path generation.
- *
- * @param {ShapeData} shapeData - The shape data object containing geometry information
- * @returns {AugmentedGeometry[]} An array of all geometries found in the shape and its children
- * @remarks
- * Algorithm:
- * 1. Extract dimension and position properties from shape cells
- * 2. Find all Geometry sections in shape
- * 3. Augment each geometry with spatial properties
- * 4. Recursively process child shapes
- * 5. Combine all geometries in order
- *
- * @example
- * // Find all geometries in a shape
- * const geometries = findAllGeometries(shapeData);
- * // Result: Array of augmented geometry objects
- */
-export function findAllGeometries(shapeData: ShapeData): AugmentedGeometry[] {
-    if (shapeData === undefined || shapeData === null) {
-        return [];
-    }
-
-    // Extract cell data and create property map
-    const cells: OneOrMany<VisioCell> = shapeData.Cell;
-    const cellArray: VisioCell[] = ensureArray(cells);
-    const properties: Map<string, CellMapValue> = createCellMap(cellArray);
-
-    // Extract shape dimensions and position
-    const width: number = safeNumber(properties.get('Width'));
-    const height: number = safeNumber(properties.get('Height'));
-    const pinX: number = safeNumber(properties.get('PinX'));
-    const pinY: number = safeNumber(properties.get('PinY'));
-    const locPinX: number = safeNumber(properties.get('LocPinX'));
-    const locPinY: number = safeNumber(properties.get('LocPinY'));
-
-    // Find local geometry sections
-    const sections: VisioSection[] = ensureArray((shapeData as ShapeLikeStructure).Section);
-    const localGeometries: AugmentedGeometry[] = sections
-        .filter((sec: VisioSection) => isVisioSection(sec) && sec.$ && sec.$.N === 'Geometry')
-        .map((geometrySection: VisioSection) => ({
-            Row: geometrySection.Row,
-            width,
-            height,
-            pinX,
-            pinY,
-            LocPinX: locPinX,
-            LocPinY: locPinY
-        }));
-
-    // Recursively find child geometries
-    const childGeometries: AugmentedGeometry[] = [];
-    const shapeLike: ShapeLikeStructure = shapeData as ShapeLikeStructure;
-    if (shapeLike.Shapes && shapeLike.Shapes.Shape) {
-        const childShapes: VisioShapeNode[] = ensureArray(shapeLike.Shapes.Shape);
-        for (const childShape of childShapes) {
-            childGeometries.push(...findAllGeometries(childShape as ShapeData));
-        }
-    }
-
-    return [...localGeometries, ...childGeometries];
-}
-
-/**
- * Normalizes group shapes and computes global bounding box.
- * Calculates the overall bounds encompassing all geometries in a group.
- *
- * This is used for group shapes to establish a coordinate system for all
- * contained geometries.
- *
- * @param {GeometryItem[]} geometries - Array of geometry items to normalize
- * @returns {{globalOrigin: GlobalOrigin, normalizedGeometries: GeometryItem[]}} An object containing the global origin and normalized geometries
- * @remarks
- * Algorithm:
- * 1. Calculate bounds for each geometry based on position and dimensions
- * 2. Find global minimum and maximum X/Y coordinates
- * 3. Calculate global width and height
- * 4. Return normalized geometries with global origin
- * 5. Use 1x1 default if no bounds available
- *
- * @example
- * // Normalize group geometries
- * const result = normalizeGroupShapes(geometries);
- * // Result: { globalOrigin: {...}, normalizedGeometries: [...] }
- */
-export function normalizeGroupShapes(geometries: GeometryItem[]): {
-    globalOrigin: GlobalOrigin; normalizedGeometries: GeometryItem[];
-} {
-    // Calculate bounds for each geometry
-    const bounds: Bounds[] = geometries.map((geom: GeometryItem) => ({
-        minX: safeNumber(geom.pinX) - safeNumber(geom.width) / 2,
-        minY: safeNumber(geom.pinY) - safeNumber(geom.height) / 2,
-        maxX: safeNumber(geom.pinX) + safeNumber(geom.width) / 2,
-        maxY: safeNumber(geom.pinY) + safeNumber(geom.height) / 2
-    }));
-
-    // Handle empty geometry case
-    if (bounds.length === 0) {
-        return {
-            globalOrigin: { minX: 0, minY: 0, width: 1, height: 1 },
-            normalizedGeometries: geometries
-        };
-    }
-
-    // Find global bounding box
-    const globalMinX: number = Math.min(...bounds.map((b: Bounds) => b.minX));
-    const globalMinY: number = Math.min(...bounds.map((b: Bounds) => b.minY));
-    const globalMaxX: number = Math.max(...bounds.map((b: Bounds) => b.maxX));
-    const globalMaxY: number = Math.max(...bounds.map((b: Bounds) => b.maxY));
-
-    // Calculate global dimensions
-    const globalWidth: number = globalMaxX - globalMinX;
-    const globalHeight: number = globalMaxY - globalMinY;
-
-    return {
-        globalOrigin: {
-            minX: globalMinX,
-            minY: globalMinY,
-            width: globalWidth > 0 ? globalWidth : 1,
-            height: globalHeight > 0 ? globalHeight : 1
-        },
-        normalizedGeometries: geometries
-    };
-}
-
-/**
- * Creates a combined SVG path from multiple geometries in a group.
- * Merges individual geometry paths into a single path string.
- *
- * @param {VisioSection} geometries - The geometries section containing the shape data to combine
- * @param {string} name - The name for the combined path (used for special processing rules)
- * @returns {string} The combined path string created from all geometries
- * @remarks
- * Special handling for certain shape names (e.g., 'cube') may use local scaling
- * instead of global scaling for path generation.
- *
- * @example
- * // Create combined path from geometries
- * const pathData = createCombinedPathFromGeometries(geometriesSection, 'MyShape');
- * // Result: 'M ... L ... A ...' (SVG path string)
- */
-export function createCombinedPathFromGeometries(geometries: VisioSection, name: string): string {
-    // Get rows from geometries (each row is a geometry item)
-    const multipleGeometries: VisioRow[] = ensureArray(geometries.Row);
-
-    if (multipleGeometries.length === 0) {
-        return '';
-    }
-
-    // Normalize geometries and get global origin
-    const { globalOrigin, normalizedGeometries } = normalizeGroupShapes(multipleGeometries as any);
-
-    let combinedPathData: string = '';
-
-    // Process each geometry individually
-    for (const geom of normalizedGeometries) {
-        // Create node options for geometry
-        const node: PathOptions = {
-            pinX: safeNumber(geom.pinX),
-            pinY: safeNumber(geom.pinY),
-            Width: safeNumber(geom.width),
-            Height: safeNumber(geom.height)
-        };
-
-        // Some shapes (like cube) use local scaling
-        const useLocalScaling: boolean = String(name).toLowerCase() === 'cube';
-
-        // Generate path data for this geometry
-        const singlePathData: string = createPathFromGeometry(geom as GeometryWithRows, node, globalOrigin, { useLocalScaling });
-
-        if (singlePathData) {
-            combinedPathData += singlePathData + ' ';
-        }
-    }
-
-    return combinedPathData.trim();
-}
 
 /**
  * Creates an SVG path string from Visio geometry data.
@@ -1237,52 +1128,64 @@ export function createPathFromGeometry(
     // Create scaling functions based on mode
     const roundToPrecisionLocal: (n: number) => number = (n: number): number => roundToPrecision(n, precision);
 
-    // Local scaling functions: scale to geometry dimensions
-    const scaleXLocal: (v: number | string | undefined) => number = (v: number | string | undefined): number =>
-        roundToPrecisionLocal(safeNumber(v) * width);
+    // scale to geometry dimensions
+    const scaleXLocal: (v: number | string | undefined) => number =
+        (v: number | string | undefined): number => roundToPrecisionLocal(safeNumber(v));
 
-    const scaleYLocal: (v: number | string | undefined) => number = (v: number | string | undefined): number => {
-        const num: number = safeNumber(v);
-        return roundToPrecisionLocal((flipY ? 1 - num : num) * height);
-    };
+    const scaleYLocal: (v: number | string | undefined) => number =
+        (v: number | string | undefined): number => {
+            const num: number = safeNumber(v);
+            return roundToPrecisionLocal((flipY ? (height - num) : num));
+        };
 
-    // Global scaling functions: normalize to global bounds
-    const scaleXGlobal: (v: number | string | undefined) => number = (v: number | string | undefined): number => {
-        if (!globalOrigin) { return 0; }
-        return roundToPrecisionLocal(
-            (shapeOriginX + safeNumber(v) - globalOrigin.minX) / globalOrigin.width
-        );
-    };
+    // Global scaling functions (DISABLED): normalize to global bounds
+    // NOTE: Global scaling is currently not used in our rendering pipeline.
+    // These functions are kept here for reference but are commented out to
+    // avoid accidental usage and to simplify path generation exclusively with
+    // local scaling. If global normalization is needed in the future, restore
+    // these implementations and update the selection below accordingly.
+    //
+    // const scaleXGlobal: (v: number | string | undefined) => number = (v: number | string | undefined): number => {
+    //     if (!globalOrigin) { return 0; }
+    //     return roundToPrecisionLocal(
+    //         (shapeOriginX + safeNumber(v) - globalOrigin.minX) / globalOrigin.width
+    //     );
+    // };
+    //
+    // const scaleYGlobal: (v: number | string | undefined) => number = (v: number | string | undefined): number => {
+    //     if (!globalOrigin) { return 0; }
+    //     const absY: number = shapeOriginY + safeNumber(v) - globalOrigin.minY;
+    //     return roundToPrecisionLocal(
+    //         flipY ? (1 - absY / globalOrigin.height) : (absY / globalOrigin.height)
+    //     );
+    // };
 
-    const scaleYGlobal: (v: number | string | undefined) => number = (v: number | string | undefined): number => {
-        if (!globalOrigin) { return 0; }
-        const absY: number = shapeOriginY + safeNumber(v) - globalOrigin.minY;
-        return roundToPrecisionLocal(
-            flipY ? (1 - absY / globalOrigin.height) : (absY / globalOrigin.height)
-        );
-    };
+    // Radius scaling functions (for arc operations) - GLOBAL (DISABLED)
+    // NOTE: Global radius normalization is not used currently. Keeping the
+    // implementations commented for future reference.
+    // const radiusXGlobal: (v: number | string | undefined) => number = (v: number | string | undefined): number => {
+    //     if (!globalOrigin) { return 0; }
+    //     return roundToPrecisionLocal(safeNumber(v) / globalOrigin.width);
+    // };
+    //
+    // const radiusYGlobal: (v: number | string | undefined) => number = (v: number | string | undefined): number => {
+    //     if (!globalOrigin) { return 0; }
+    //     return roundToPrecisionLocal(safeNumber(v) / globalOrigin.height);
+    // };
 
-    // Radius scaling functions (for arc operations)
-    const radiusXGlobal: (v: number | string | undefined) => number = (v: number | string | undefined): number => {
-        if (!globalOrigin) { return 0; }
-        return roundToPrecisionLocal(safeNumber(v) / globalOrigin.width);
-    };
-
-    const radiusYGlobal: (v: number | string | undefined) => number = (v: number | string | undefined): number => {
-        if (!globalOrigin) { return 0; }
-        return roundToPrecisionLocal(safeNumber(v) / globalOrigin.height);
-    };
-
+    // Local radii must scale in the same coordinate space as X/Y (which is width/height scaled)
     const radiusXLocal: (v: number | string | undefined) => number =
         (v: number | string | undefined): number => roundToPrecisionLocal(safeNumber(v));
+
     const radiusYLocal: (v: number | string | undefined) => number =
         (v: number | string | undefined): number => roundToPrecisionLocal(safeNumber(v));
 
     // Select appropriate scaling functions
-    const scaleX: (v: number | string | undefined) => number = useLocal ? scaleXLocal : scaleXGlobal;
-    const scaleY: (v: number | string | undefined) => number = useLocal ? scaleYLocal : scaleYGlobal;
-    const radiusX: (v: number | string | undefined) => number = useLocal ? radiusXLocal : radiusXGlobal;
-    const radiusY: (v: number | string | undefined) => number = useLocal ? radiusYLocal : radiusYGlobal;
+    // Global scaling disabled: always use local scaling for coordinates and radii.
+    const scaleX: (v: number | string | undefined) => number = scaleXLocal;
+    const scaleY: (v: number | string | undefined) => number = scaleYLocal;
+    const radiusX: (v: number | string | undefined) => number = radiusXLocal;
+    const radiusY: (v: number | string | undefined) => number = radiusYLocal;
 
     // Process geometry rows to build path
     let pathData: string = '';
@@ -1310,12 +1213,32 @@ export function createPathFromGeometry(
         }
 
         // Extract coordinate values
-        const X: number | undefined = cellMap.get('X');
-        const Y: number | undefined = cellMap.get('Y');
-        const A: number | undefined = cellMap.get('A');
-        const B: number | undefined = cellMap.get('B');
-        const C: number | undefined = cellMap.get('C');
-        const D: number | undefined = cellMap.get('D');
+        let X: number = safeNumber(cellMap.get('X'));
+        let Y: number = safeNumber(cellMap.get('Y'));
+        let A: number = safeNumber(cellMap.get('A'));
+        let B: number = safeNumber(cellMap.get('B'));
+        let C: number = safeNumber(cellMap.get('C'));
+        let D: number = safeNumber(cellMap.get('D'));
+
+        const rt: string = rowType ? String(rowType) : '';
+        const isRel: boolean = rt.indexOf('Rel') === 0;
+
+        // Convert relative rows to absolute inches before path generation
+        if (isRel) {
+            // X-like values scale by width
+            X = X * width;
+            A = A * width;
+
+            // Y-like values scale by height
+            Y = Y * height;
+            B = B * height;
+
+            // RelCubBezTo uses C/D as 2nd control point
+            if (rt === 'RelCubBezTo') {
+                C = C * width;
+                D = D * height;
+            }
+        }
 
         // Generate path command for this row
         pathData += generatePathCommand(
@@ -1328,6 +1251,114 @@ export function createPathFromGeometry(
     }
 
     return pathData.trim();
+}
+
+/**
+ * Creates a combined SVG path from one or more Visio Geometry sections.
+ *
+ * Each Visio <Section N='Geometry'> block is converted to an SVG subpath
+ * (via `createPathFromGeometry`) and appended to form a single path string.
+ * Subpaths that begin with a relative 'm' are converted to absolute 'M'
+ * to prevent path drift between sections. If a Geometry section is filled
+ * (NoFill cell is 0 or absent) the resulting subpath is closed with a
+ * trailing 'Z' to ensure correct fill rendering; sections explicitly
+ * marked NoFill will remain open.
+ *
+ * @param {VisioSection[] | VisioSection} geometrySections - One or more Visio Geometry sections to convert
+ * @param {PathOptions} nodeOptions - Node sizing options used to provide width/height when building temporary geometry objects
+ * @param {PathConfig | undefined} cfg - Optional configuration forwarded to `createPathFromGeometry`
+ * @returns {string} Trimmed SVG path string combining all geometry subpaths
+ */
+export function createPathFromGeometrySections(
+    geometrySections: VisioSection[],
+    nodeOptions: PathOptions,
+    cfg?: PathConfig
+): string {
+    const sections: VisioSection[] = ensureArray(geometrySections);
+    if (!sections || sections.length === 0) { return ''; }
+
+    // Build combined path while skipping hidden geometry
+    let combinedPath: string = '';
+    for (let i: number = 0; i < sections.length; i++) {
+        const section: VisioSection = sections[parseInt(i.toString(), 10)];
+        if (!section) { continue; }
+
+        // Skip section if section-level NoShow=1
+        const sectionHidden: boolean = isGeometrySectionHidden(section);
+        if (sectionHidden) { continue; }
+
+        // Filter out rows with row-level NoShow=1
+        const allRows: VisioRow[] = ensureArray(section.Row);
+        const visibleRows: VisioRow[] = [];
+        for (let row: number = 0; row < allRows.length; row++) {
+            const visioRow: VisioRow = allRows[parseInt(row.toString(), 10)];
+            if (!visioRow) { continue; }
+            const rowHidden: boolean = isGeometryRowHidden(visioRow);
+            if (!rowHidden) {
+                visibleRows.push(visioRow);
+            }
+        }
+        if (visibleRows.length === 0) { continue; }
+
+        // Build a geometry object using only visible rows
+        const geom: GeometryWithRows = {
+            Row: visibleRows,
+            width: nodeOptions ? nodeOptions.Width : 0,
+            height: nodeOptions ? nodeOptions.Height : 0
+        } as GeometryWithRows;
+
+        // Create subpath using local scaling
+        const rawPart: string = createPathFromGeometry(
+            geom,
+            { pinX: 0, pinY: 0, Width: nodeOptions.Width, Height: nodeOptions.Height },
+            undefined,
+            cfg
+        );
+        if (!rawPart || rawPart.length === 0) { continue; }
+
+        // Normalize subpath head to absolute 'M'
+        let normalizedPart: string = rawPart.trim();
+        if (normalizedPart.length > 0) {
+            const firstChar: string = normalizedPart.charAt(0);
+            if (firstChar === 'm') {
+                normalizedPart = 'M' + normalizedPart.substring(1);
+            }
+        }
+
+        // Close filled sections for reliable fill rendering
+        let sectionNoFill: number = 0;
+        if (section.Cell) {
+            const cellMap: Map<string, CellMapValue> = createCellMap(ensureArray(section.Cell));
+            sectionNoFill = safeNumber(cellMap.get('NoFill'));
+        }
+        if (sectionNoFill === 0) {
+            const lastChar: string = normalizedPart.charAt(normalizedPart.length - 1);
+            if (lastChar !== 'Z' && lastChar !== 'z') {
+                normalizedPart = normalizedPart + ' Z';
+            }
+        }
+
+        // Append subpath to combined path
+        combinedPath = combinedPath + normalizedPart + ' ';
+    }
+
+    // Return trimmed combined path
+    const finalPath: string = combinedPath.trim();
+    return finalPath;
+}
+
+/**
+ * Normalizes an angle value to radians.
+ * If the input value appears to be in degrees (absolute value > 2π),
+ * it is converted to radians. Otherwise, the value is returned unchanged.
+ *
+ * @param {number} val - The angle value to normalize.
+ * @returns {number} The angle in radians.
+ */
+function normalizeAngleRadians(val: number): number {
+    // If value looks like degrees, convert to radians
+    if (Math.abs(val) > 6.283185307) { return val * Math.PI / 180; }
+    return val;
 }
 
 /**
@@ -1373,7 +1404,7 @@ export function generatePathCommand(
     switch (rowType) {
     case 'MoveTo':
     case 'RelMoveTo': {
-        // Move to position (no line drawn)
+        // Move to position
         lastCoords.lastX = X;
         lastCoords.lastY = Y;
         return `M ${scaleX(X)} ${scaleY(Y)}`;
@@ -1381,73 +1412,211 @@ export function generatePathCommand(
 
     case 'RelLineTo':
     case 'LineTo': {
-        // Draw line to position
+        // Draw line
         lastCoords.lastX = X;
         lastCoords.lastY = Y;
         return `L ${scaleX(X)} ${scaleY(Y)}`;
     }
 
     case 'ArcTo': {
-        // Draw circular arc from last point to (X, Y)
-        const rX: number = Math.abs(X - lastCoords.lastX);
-        const rY: number = Math.abs(Y - lastCoords.lastY);
-        const r: number = Math.max(rX, rY);
-        const aValue: number = A;
-        const sweepFlag: number = aValue < 0 ? 1 : 0;
+        // Draw circular arc
+        const deltaX: number = Math.abs(X - lastCoords.lastX);
+        const deltaY: number = Math.abs(Y - lastCoords.lastY);
+        const radius: number = Math.max(deltaX, deltaY);
+        const sweepFlag: number = A < 0 ? 1 : 0;
         const largeArcFlag: number = 0;
 
         lastCoords.lastX = X;
         lastCoords.lastY = Y;
 
-        return `A ${radiusX(r)} ${radiusY(r)} 0 ${largeArcFlag} ${sweepFlag} ${scaleX(X)} ${scaleY(Y)}`;
+        return `A ${radiusX(radius)} ${radiusY(radius)} 0 ${largeArcFlag} ${sweepFlag} ${scaleX(X)} ${scaleY(Y)}`;
     }
 
-    case 'EllipticalArcTo': {
-        // Draw elliptical arc with rotation and specific parameters
-        const rX: number = Math.abs(X - lastCoords.lastX);
-        const rY: number = Math.abs(Y - lastCoords.lastY);
-        const r: number = Math.max(rX, rY);
-        const xAxisRot: number = C;
-        const largeArcFlag: number = 0;
-        const sweepFlag: number = flipY ? 0 : 1;
+    case 'EllipticalArcTo':
+    case 'RelEllipticalArcTo': {
+        // Elliptical arc from last point to (X,Y) via (A,B)
 
-        lastCoords.lastX = X;
-        lastCoords.lastY = Y;
+        // Start, end, and mid points
+        const startX: number = safeNumber(lastCoords.lastX);
+        const startY: number = safeNumber(lastCoords.lastY);
+        const endX: number = safeNumber(X);
+        const endY: number = safeNumber(Y);
+        let midX: number = safeNumber(A);
+        let midY: number = safeNumber(B);
 
-        return `A ${radiusX(r)} ${radiusY(r)} ${roundToPrecision(xAxisRot)} ${largeArcFlag} ${sweepFlag} ${scaleX(X)} ${scaleY(Y)}`;
+        // Fallback midpoint if missing
+        if (
+            (A === undefined || A === null) &&
+            (B === undefined || B === null)
+        ) {
+            midX = (startX + endX) / 2;
+            midY = (startY + endY) / 2;
+        }
+
+        // Scaled coordinates
+        const scaledStartX: number = scaleX(startX);
+        const scaledStartY: number = scaleY(startY);
+        const scaledMidX: number = scaleX(midX);
+        const scaledMidY: number = scaleY(midY);
+        const scaledEndX: number = scaleX(endX);
+        const scaledEndY: number = scaleY(endY);
+
+        // Degenerate case → line
+        const EPSILON: number = 1e-6;
+        if (
+            Math.abs(scaledStartX - scaledEndX) < EPSILON &&
+            Math.abs(scaledStartY - scaledEndY) < EPSILON
+        ) {
+            lastCoords.lastX = endX;
+            lastCoords.lastY = endY;
+            return `L ${scaledEndX} ${scaledEndY}`;
+        }
+
+        // Rotation and axis ratio
+        const rotationRad: number = normalizeAngleRadians(safeNumber(C));
+        let axisRatio: number = Math.abs(safeNumber(D, 1));
+        if (!isFinite(axisRatio) || axisRatio === 0) {
+            axisRatio = 1;
+        }
+
+        // Transform to circle space
+        const rotatePoint: (x: number, y: number, angle: number) => { x: number; y: number } = (x: number, y: number, angle: number) => {
+            const cosA: number = Math.cos(angle);
+            const sinA: number = Math.sin(angle);
+            return { x: x * cosA + y * sinA, y: -x * sinA + y * cosA };
+        };
+        const toCircleSpace: (x: number, y: number) => { x: number; y: number } = (x: number, y: number) => {
+            const rotated: { x: number; y: number } = rotatePoint(x, y, -rotationRad);
+            return { x: rotated.x, y: rotated.y / axisRatio };
+        };
+
+        const circleStart: { x: number; y: number } = toCircleSpace(scaledStartX, scaledStartY);
+        const circleMid: { x: number; y: number } = toCircleSpace(scaledMidX, scaledMidY);
+        const circleEnd: { x: number; y: number } = toCircleSpace(scaledEndX, scaledEndY);
+
+        // Solve circle through three points
+        const deltaXStartMid: number = circleStart.x - circleMid.x;
+        const deltaYStartMid: number = circleStart.y - circleMid.y;
+        const deltaXStartEnd: number = circleStart.x - circleEnd.x;
+        const deltaYStartEnd: number = circleStart.y - circleEnd.y;
+        const halfDiff1: number =
+            (circleStart.x ** 2 -
+                circleMid.x ** 2 +
+                (circleStart.y ** 2 - circleMid.y ** 2)) /
+            2;
+        const halfDiff2: number =
+            (circleStart.x ** 2 -
+                circleEnd.x ** 2 +
+                (circleStart.y ** 2 - circleEnd.y ** 2)) /
+            2;
+        const determinant: number =
+            deltaXStartMid * deltaYStartEnd - deltaYStartMid * deltaXStartEnd;
+
+        if (Math.abs(determinant) < EPSILON) {
+            // Collinear → quadratic Bezier
+            lastCoords.lastX = endX;
+            lastCoords.lastY = endY;
+            return `Q ${scaleX(midX)} ${scaleY(midY)} ${scaledEndX} ${scaledEndY}`;
+        }
+
+        const centerX: number =
+            (halfDiff1 * deltaYStartEnd - deltaYStartMid * halfDiff2) /
+            determinant;
+        const centerY: number =
+            (deltaXStartMid * halfDiff2 - halfDiff1 * deltaXStartEnd) /
+            determinant;
+        const circleRadius: number = Math.sqrt(
+            (circleStart.x - centerX) ** 2 + (circleStart.y - centerY) ** 2
+        );
+
+        // Angles
+        const angleAt: (x: number, y: number) => number = (x: number, y: number) =>
+            Math.atan2(y - centerY, x - centerX);
+        const angleStart: number = angleAt(circleStart.x, circleStart.y);
+        const angleMid: number = angleAt(circleMid.x, circleMid.y);
+        const angleEnd: number = angleAt(circleEnd.x, circleEnd.y);
+
+        const normalizeAngle: (angle: number) => number = (angle: number) => {
+            let normalizedAngle: number = angle;
+            while (normalizedAngle < 0) { normalizedAngle += Math.PI * 2; }
+            while (normalizedAngle >= Math.PI * 2) { normalizedAngle -= Math.PI * 2; }
+            return normalizedAngle;
+        };
+        const normStart: number = normalizeAngle(angleStart);
+        const normMid: number = normalizeAngle(angleMid);
+        const normEnd: number = normalizeAngle(angleEnd);
+
+        const deltaPositive: number = normalizeAngle(normEnd - normStart);
+        const isMidBetween: boolean =
+            normalizeAngle(normMid - normStart) < deltaPositive;
+
+        let sweepFlag: number;
+        let arcAngle: number;
+        if (isMidBetween) {
+            sweepFlag = 1;
+            arcAngle = deltaPositive;
+        } else {
+            sweepFlag = 0;
+            arcAngle = normalizeAngle(normStart - normEnd);
+        }
+        const largeArcFlag: number = arcAngle > Math.PI ? 1 : 0;
+
+        // Convert back to ellipse
+        const ellipseRadiusX: number = roundToPrecision(circleRadius);
+        const ellipseRadiusY: number = roundToPrecision(
+            circleRadius * axisRatio
+        );
+        const rotationDeg: number = roundToPrecision(
+            (rotationRad * 180) / Math.PI
+        );
+
+        // Update last coords
+        lastCoords.lastX = endX;
+        lastCoords.lastY = endY;
+
+        return `A ${ellipseRadiusX} ${ellipseRadiusY} ${rotationDeg} ${largeArcFlag} ${sweepFlag} ${scaledEndX} ${scaledEndY}`;
     }
 
     case 'RelCubBezTo':
     case 'CubicBezierTo': {
-        // Draw cubic Bezier curve with control points (A, B) and (C, D) and end point (X, Y)
+        // Cubic Bezier curve
         lastCoords.lastX = X;
         lastCoords.lastY = Y;
         return `C ${scaleX(A)} ${scaleY(B)} ${scaleX(C)} ${scaleY(D)} ${scaleX(X)} ${scaleY(Y)}`;
     }
 
     case 'QuadBezierTo': {
-        // Draw quadratic Bezier curve with control point (A, B) and end point (X, Y)
+        // Quadratic Bezier curve
         return `Q ${scaleX(A)} ${scaleY(B)} ${scaleX(X)} ${scaleY(Y)}`;
     }
 
     case 'Ellipse': {
-        // Draw complete ellipse with radii A and B
-        const rx: number = radiusX(A);
-        const ry: number = radiusY(B);
+        // Draw full ellipse using two arcs
+        const centerX: number = scaleX(X);
+        const centerY: number = scaleY(Y);
 
-        if (rx <= 0 || ry <= 0) { return ''; }
+        const axisPointX: number = scaleX(A);
+        const axisPointY: number = scaleY(B);
 
-        // Create ellipse using two arc commands
-        const cx: number = scaleX(A);
-        const cy: number = scaleY(B);
-        const startX: number = cx - rx;
-        const startY: number = cy;
-        const endX: number = cx + rx;
-        const endY: number = cy;
-        const largeArcFlag: number = 0;
-        const sweepFlag: number = 1;
+        const oppositeAxisPointX: number = scaleX(C);
+        const oppositeAxisPointY: number = scaleY(D);
 
-        return `M ${startX} ${startY} A ${rx} ${ry} 0 ${largeArcFlag} ${sweepFlag} ${endX} ${endY} A ${rx} ${ry} 0 ${largeArcFlag} ${sweepFlag} ${startX} ${startY}`;
+        // Radii are distances from center to axis points
+        const radiusX: number = Math.abs(axisPointX - centerX);
+        const radiusY: number = Math.abs(oppositeAxisPointY - centerY);
+
+        if (radiusX <= 0 || radiusY <= 0) {
+            return '';
+        }
+
+        // Start and end points for arcs
+        const startX: number = centerX - radiusX;
+        const startY: number = centerY;
+        const endX: number = centerX + radiusX;
+        const endY: number = centerY;
+
+        // Use two half-arcs to complete the ellipse
+        return `M ${startX} ${startY} A ${radiusX} ${radiusY} 0 0 1 ${endX} ${endY} A ${radiusX} ${radiusY} 0 0 1 ${startX} ${startY} Z`;
     }
 
     default:
@@ -1537,18 +1706,4 @@ export function calculateShadowProperties(
         distance: roundToPrecision(distanceInPixels, 2),
         angle: Math.round(angleInDegrees)
     };
-}
-
-/**
- * Runtime type guard: checks if a value is a valid VisioSection.
- * Used to identify Visio section objects with required structure.
- *
- * @private
- * @param {unknown} value - The value to check
- * @returns {boolean} True if value is a VisioSection, false otherwise
- */
-function isVisioSection(value: unknown): value is VisioSection {
-    if (!value || typeof value !== 'object') { return false; }
-    const section: ParsedXmlObject = value as ParsedXmlObject;
-    return '$' in section && 'N' in (section.$ as ParsedXmlObject);
 }

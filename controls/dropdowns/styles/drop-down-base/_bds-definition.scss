@@ -123,11 +123,11 @@ $ddl-group-list-item-text-intent: 0 !default;
   }
 
   .e-dropdownbase .e-list-item .e-list-icon {
-    padding: 0 8px 0 0;
+    padding-inline-end: 8px;
   }
 
   .e-small .e-dropdownbase .e-list-item .e-list-icon {
-    padding: 0 4px 0 0;
+    padding-inline-end: 4px;
   }
 
   /* stylelint-disable */

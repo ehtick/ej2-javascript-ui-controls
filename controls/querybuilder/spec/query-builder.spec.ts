@@ -6890,7 +6890,7 @@ describe('QueryBuilder', () => {
             }, 50);
         });
     });
-    describe('EJ2:1004550', () => {
+     describe('EJ2:1004550', () => {
         beforeEach((): void => {
             document.body.appendChild(createElement('div', { id: 'querybuilder' }));
         });

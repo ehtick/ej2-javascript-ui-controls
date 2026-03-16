@@ -12,7 +12,8 @@ import { SnapConstraints, PointPort, Annotation, IconShapes, Decorator, TextElem
 import { getDiagramLayerSvg } from '../../../src/diagram/utility/dom-util';
 import { PortModel } from '../../../src/index';
 import { profile, inMB, getMemoryProfile } from '../../../spec/common.spec';
-Diagram.Inject(Ej1Serialization);
+import { ConnectorEditing } from '../../../src/diagram/interaction/connector-editing';
+Diagram.Inject(Ej1Serialization, ConnectorEditing);
 /**
  * Connector spec
  */
@@ -208,309 +209,76 @@ describe('Diagram Control', () => {
             done();
         });
     });
-    // describe('Conectors with hitpadding', () => {
-    //     let diagram: Diagram;
-    //     let ele: HTMLElement;
-    //     let mouseEvents: MouseEvents = new MouseEvents();
+    describe('Connectors with hitpadding', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+        let mouseEvents: MouseEvents = new MouseEvents();
 
-    //     beforeAll((): void => {
-    //         const isDef = (o: any) => o !== undefined && o !== null;
-    //         if (!isDef(window.performance)) {
-    //             console.log("Unsupported environment, window.performance.memory is unavailable");
-    //             this.skip(); //Skips test (in Chai)
-    //             return;
-    //         }
+        beforeAll((): void => {
+            const isDef = (o: any) => o !== undefined && o !== null;
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                this.skip(); //Skips test (in Chai)
+                return;
+            }
 
-    //         ele = createElement('div', { id: 'diagramhittesting' });
-    //         document.body.appendChild(ele);
-    //         let connector2: ConnectorModel = {
-    //             id: 'connector2',
-    //             type: 'Straight',
-    //             hitPadding: 40,
-    //             sourcePoint: { x: 300, y: 100 },
-    //             targetPoint: { x: 300, y: 200 },
-    //             sourceDecorator: {
-    //                 style: { fill: 'black' },
-    //                 shape: 'Arrow',
-    //                 pivot: { x: 0, y: 0.5 }
-    //             },
-    //             targetDecorator: {
-    //                 shape: 'Diamond',
-    //                 style: { fill: 'blue' },
-    //                 pivot: { x: 0, y: 0.5 }
-    //             }
-    //         };
-    //         diagram = new Diagram({
-    //             width: '1000px', height: '500px',
-    //             connectors: [connector2], snapSettings: { constraints: SnapConstraints.ShowLines }
-    //         });
-    //         diagram.appendTo('#diagramhittesting');
-    //     });
-    //     afterAll((): void => {
-    //         diagram.destroy();
-    //         ele.remove();
-    //         diagram = null;
-    //         ele = null;
-    //     });
-    //     it('Checking connector hit padding ', (done: Function) => {
-    
-    //         var diagramCanvas = document.getElementById(diagram.element.id + 'content');
-    //         mouseEvents.dragAndDropEvent(diagramCanvas, 270, 150, 320, 160);
-    //         expect(diagram.connectors[0].sourcePoint.x == 350 &&
-    //             diagram.connectors[0].targetPoint.y == 210).toBe(true);
-    //         done();
-    //     });
+            ele = createElement('div', { id: 'diagramhittesting' });
+            document.body.appendChild(ele);
+            let connector2: ConnectorModel = {
+                id: 'connector2',
+                type: 'Straight',
+                hitPadding: 40,
+                sourcePoint: { x: 300, y: 100 },
+                targetPoint: { x: 300, y: 200 },
+                sourceDecorator: {
+                    style: { fill: 'black' },
+                    shape: 'Arrow',
+                    pivot: { x: 0, y: 0.5 }
+                },
+                targetDecorator: {
+                    shape: 'Diamond',
+                    style: { fill: 'blue' },
+                    pivot: { x: 0, y: 0.5 }
+                }
+            };
+            diagram = new Diagram({
+                width: '1000px', height: '500px',
+                connectors: [connector2], snapSettings: { constraints: SnapConstraints.ShowLines }
+            });
+            diagram.appendTo('#diagramhittesting');
+        });
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+            diagram = null;
+            ele = null;
+        });
+        it('Checking connector hit padding ', (done: Function) => {
+            const diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content') as HTMLElement;
+            const rect: any = diagram.element.getBoundingClientRect();
+            diagram.select([diagram.connectors[0]])
+            mouseEvents.dragAndDropEvent(diagramCanvas,
+                rect.left + 270, rect.top + 150,  // start
+                rect.left + 320, rect.top + 160   // end
+            );
+            expect(diagram.connectors[0].sourcePoint.x == 350 &&
+                diagram.connectors[0].targetPoint.y == 210).toBe(true);
+            done();
+        });
 
-    //     it('Checking connector constraint lock ', (done: Function) => {
-    //         diagram.connectors[0].constraints = ConnectorConstraints.Select | ConnectorConstraints.PointerEvents;
-    //         diagram.dataBind();
-    //         let value: HTMLElement = document.getElementById('diagramhittesting_SelectorElement')
-    //         expect((value.childNodes[0] as HTMLElement).getAttribute('class') === 'e-diagram-endpoint-handle e-sourceend e-disabled')
-    //         done();
-    //     });
-    // });
-
-    // describe('Simple Diagram based on Connector segments', () => {
-    //     let diagram: Diagram;
-    //     let ele: HTMLElement;
-    //     let mouseEvents: MouseEvents = new MouseEvents();
-    //     beforeAll((): void => {
-    //         const isDef = (o: any) => o !== undefined && o !== null;
-    //         if (!isDef(window.performance)) {
-    //             console.log("Unsupported environment, window.performance.memory is unavailable");
-    //             this.skip(); //Skips test (in Chai)
-    //             return;
-    //         }
-    //         ele = createElement('div', { id: 'diagram577' });
-    //         document.body.appendChild(ele);
-    //         let connector1: ConnectorModel = {
-    //             id: 'connector1',
-    //             type: 'Bezier',
-    //             cornerRadius: 10,
-    //             segments: [{
-    //                 type: 'Bezier',
-    //             }],
-    //             sourcePoint: { x: 100, y: 400 },
-    //             targetPoint: { x: 200, y: 500 },
-    //         };
-    //         let connector2: ConnectorModel = {
-    //             id: 'connector2',
-    //             type: 'Bezier',
-    //             sourcePoint: { x: 100, y: 200 },
-    //             targetPoint: { x: 250, y: 200 },
-    //             segments: [{
-    //                 type: 'Bezier',
-    //                 point1: { x: 125, y: 75 },
-    //                 point2: { x: 225, y: 75 },
-    //             }]
-    //         };
-    //         let connector3: ConnectorModel = {
-    //             id: 'connector3',
-    //             type: 'Bezier',
-    //             sourcePoint: { x: 700, y: 100 },
-    //             targetPoint: { x: 800, y: 200 },
-    //             segments: [{
-    //                 type: 'Bezier',
-    //                 vector1: { angle: 90, distance: 75 },
-    //                 vector2: { angle: 90, distance: 75 }
-    //             }]
-    //         };
-    //         let connector4: ConnectorModel = {
-    //             id: 'connector4',
-    //             type: 'Bezier',
-    //             segments: [{
-    //                 type: 'Bezier',
-    //             }],
-    //             sourcePoint: { x: 400, y: 100 },
-    //             targetPoint: { x: 501, y: 200 },
-    //         };
-
-    //         diagram = new Diagram({
-    //             width: 1000, height: 1000,
-    //             connectors: [connector1, connector2, connector3, connector4],
-    //             snapSettings: { constraints: SnapConstraints.ShowLines }
-    //         });
-    //         diagram.appendTo('#diagram577');
-    //     });
-    //     afterAll((): void => {
-    //         diagram.destroy();
-    //         ele.remove();
-    //         diagram = null;
-    //         ele = null;
-    //     });
-    //     it('Checking bezier curve ', (done: Function) => {
-    //         expect(((diagram.connectors[0]).wrapper.children[0] as PathElement).data == 'M100 400C144.8425 400 154.8075 499.65 199.5 500'
-    //             && ((diagram.connectors[1]).wrapper.children[0] as PathElement).data == 'M100 200C125 75 225 75 249.9 199.51'
-    //             && ((diagram.connectors[2]).wrapper.children[0] as PathElement).data == 'M700 100C700 175 799.65 274.65 800 200.5').toBe(true);
-    //         done();
-    //     });
-
-    //     it('Checking bezier curve highlighter ', (done: Function) => {
-    //         let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-    //         mouseEvents.clickEvent(diagramCanvas, 100 + diagram.element.offsetLeft, 200 - diagram.element.offsetTop);
-    //         let element2 = document.getElementById('bezierLine_1_1');
-    //         expect(element2.attributes['x1'].nodeValue == '100' && element2.attributes['x2'].nodeValue == '125').toBe(true)
-    //         done();
-    //     });
-
-    //     it(' dragging source  point for bezier curve without points  ', (done: Function) => {
-            
-    //         let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-    //         mouseEvents.clickEvent(diagramCanvas, 101, 402);
-    //         mouseEvents.dragAndDropEvent(diagramCanvas, 100, 400, 130, 430);
-    //         expect(diagram.connectors[0].sourcePoint.x == 100 || diagram.connectors[0].sourcePoint.x == 130).toBe(true);
-    //         done();
-    //     });
-
-
-    //     it(' dragging target  point for bezier curve without points  ', (done: Function) => {
-   
-    //         let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-    //         mouseEvents.dragAndDropEvent(diagramCanvas, 200, 500, 220, 520);
-    //         expect(diagram.connectors[0].targetPoint.x == 220).toBe(true);
-    //         done();
-    //     });
-    //     it(' dragging sourcecontrol  point for bezier curve without points  ', (done: Function) => {
-           
-    //         let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-    //         mouseEvents.dragAndDropEvent(diagramCanvas, 120, 470, 130, 480);
-    //         expect(diagram.connectors[0].sourcePoint.x == 120 || diagram.connectors[0].sourcePoint.x == 130).toBe(true);
-    //         done();
-    //     });
-    //     it(' dragging target control point  point for bezier curve without points  ', (done: Function) => {
-            
-    //         let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-    //         mouseEvents.dragAndDropEvent(diagramCanvas, 215, 480, 240, 480);
-    //         expect(diagram.connectors[0].targetPoint.x == 220).toBe(true);
-    //         done();
-    //     });
-    //     it(' Dragging source point for bezier curve without points  ', (done: Function) => {
-           
-    //         let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-    //         mouseEvents.dragAndDropEvent(diagramCanvas, 122, 423, 130, 400);
-    //         expect(diagram.connectors[0].sourcePoint.x == 120 || diagram.connectors[0].sourcePoint.x == 130).toBe(true);
-    //         done();
-    //     });
-
-
-    //     it(' Dragging target  point for bezier curve without points  ', (done: Function) => {
-            
-    //         let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-    //         mouseEvents.dragAndDropEvent(diagramCanvas, 215, 520, 220, 540);
-    //         expect(diagram.connectors[0].targetPoint.x == 225).toBe(true);
-    //         done();
-    //     });
-
-    //     it(' Dragging bezier curve without points  ', (done: Function) => {
-       
-    //         let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-    //         mouseEvents.clickEvent(diagramCanvas, 450, 150);
-    //         mouseEvents.dragAndDropEvent(diagramCanvas, 450, 150, 470, 170);
-    //         expect(diagram.connectors[3].sourcePoint.x == 420 && diagram.connectors[3].sourcePoint.y == 120).toBe(true);
-    //         done();
-    //     });
-
-
-    //     it(' dragging source  point for bezier curve with points ', (done: Function) => {//'M 0 77.77 C 31.9 -2.22 124.61 -47.22 149.53 77.77'
-           
-    //         let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-    //         mouseEvents.clickEvent(diagramCanvas, 101, 200);
-    //         mouseEvents.dragAndDropEvent(diagramCanvas, 125, 75, 135, 85);
-    //         expect(diagram.connectors[1].sourcePoint.x == 100 && diagram.connectors[1].sourcePoint.y == 200).toBe(true);
-    //         done();
-    //     });
-    //     it(' dragging target  point for bezier curve with points ', (done: Function) => {//'M 0 46.18 C 31.96 -33.81 131.85 6.19 149.83 46.18'
-           
-    //         let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-    //         mouseEvents.dragAndDropEvent(diagramCanvas, 225, 75, 240, 80);
-    //         expect(diagram.connectors[1].targetPoint.x == 250 && diagram.connectors[1].targetPoint.y == 200).toBe(true);
-    //         done();
-    //     });
-    //     it(' dragging target  point for bezier curve with points coverage ', (done: Function) => {//'M 0 46.18 C 31.96 -33.81 131.85 6.19 149.83 46.18'
-            
-    //         let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-    //         mouseEvents.dragAndDropEvent(diagramCanvas, 200, 118, 240, 80);
-    //         expect(diagram.connectors[1].targetPoint.x == 290 && diagram.connectors[1].targetPoint.y == 162).toBe(true);
-    //         done();
-    //     });
-
-    //     it('dragging source bezier  point for bezier curve for vector points ', (done: Function) => {
-          
-    //         let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-    //         mouseEvents.clickEvent(diagramCanvas, 702, 104);
-    //         mouseEvents.dragAndDropEvent(diagramCanvas, 701, 175, 720, 160);
-    //         expect(diagram.connectors[2].sourcePoint.x == 700).toBe(true)
-    //         done();
-    //     });
-    //     it('dragging target bezier point for bezier curve for vector points ', (done: Function) => {
-           
-    //         let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-    //         mouseEvents.dragAndDropEvent(diagramCanvas, 800, 275, 850, 250);
-    //         expect(diagram.connectors[2].targetPoint.x == 800).toBe(true)
-    //         done();
-    //     });
-    //     it('bezeir curve  data binding  ', (done: Function) => {
-    //         diagram.connectors[0].sourcePoint = { x: 500, y: 500 };
-    //         diagram.connectors[0].targetPoint = { x: 700, y: 700 };
-    //         diagram.dataBind();
-    //         expect(diagram.connectors[0].sourcePoint.x == 500
-    //             && diagram.connectors[0].sourcePoint.y == 500
-    //             && diagram.connectors[0].targetPoint.x == 700
-    //             && diagram.connectors[0].targetPoint.y == 700).toBe(true);
-    //         done();
-    //     });
-    //     it('bezeir curve  data binding  ', (done: Function) => {
-    //         diagram.connectors[0].sourcePoint = { x: 500, y: 500 };
-    //         diagram.connectors[0].targetPoint = { x: 700, y: 700 };
-    //         diagram.dataBind();
-    //         expect(diagram.connectors[0].sourcePoint.x == 500
-    //             && diagram.connectors[0].sourcePoint.y == 500
-    //             && diagram.connectors[0].targetPoint.x == 700
-    //             && diagram.connectors[0].targetPoint.y == 700).toBe(true);
-    //         done();
-    //     });
-
-    //     it('Testing connected bezier curve', (done: Function) => {
-    //         diagram.add({ id: 'node1', width: 50, height: 50, offsetX: 500, offsetY: 100 });
-    //         diagram.add({ id: 'node2', width: 50, height: 50, offsetX: 500, offsetY: 300 });
-    //         expect(diagram.nodes.length).toBe(2);
-    //         diagram.connectors[0].sourceID = 'node1';
-    //         diagram.connectors[0].targetID = 'node2';
-    //         diagram.dataBind();
-    //         let connector: Connector = diagram.connectors[0] as Connector;
-    //         let segment: BezierSegment = connector.segments[0] as BezierSegment;
-    //         expect(connector.sourceWrapper != undefined && connector.targetWrapper != undefined).toBe(true);
-    //         let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-    //         mouseEvents.dragAndDropEvent(
-    //             diagramCanvas, segment.bezierPoint1.x + 8, segment.bezierPoint1.y + 8,
-    //             segment.bezierPoint1.x + 8 + 20, segment.bezierPoint1.y + 8 + 20);
-    //         mouseEvents.dragAndDropEvent(
-    //             diagramCanvas, segment.bezierPoint2.x + 8, segment.bezierPoint2.y + 8,
-    //             segment.bezierPoint2.x + 8 + 20, segment.bezierPoint2.y + 8 + 20);
-    //         console.log("wrapper");
-    //         console.log(connector.sourceWrapper, connector.targetWrapper);
-    //         expect(connector.sourceWrapper == undefined && connector.targetWrapper == undefined).toBe(true);
-    //         done();
-    //     });
-    //     it('Connector copy and paste ctrl point issue fix ', (done: Function) => {
-    //         let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-    //         mouseEvents.clickEvent(diagramCanvas, 170, 100);
-    //         mouseEvents.keyDownEvent(diagramCanvas, 'C', true);
-    //         mouseEvents.keyDownEvent(diagramCanvas, 'V', true);
-    //         expect(((diagram.connectors[4].segments[0] as BezierSegment).point1.x === 175 || (diagram.connectors[4].segments[0] as BezierSegment).point1.x === 185) &&
-    //             ((diagram.connectors[4].segments[0] as BezierSegment).point1.y === 47 || (diagram.connectors[4].segments[0] as BezierSegment).point1.y === 57) &&
-    //             ((diagram.connectors[4].segments[0] as BezierSegment).point2.x === 275 || (diagram.connectors[4].segments[0] as BezierSegment).point2.x === 290) &&
-    //             ((diagram.connectors[4].segments[0] as BezierSegment).point2.y === 47 || (diagram.connectors[4].segments[0] as BezierSegment).point2.y === 52)).toBe(true);
-    //         done();
-    //     });
-    // });
-
-
-
+        it('Checking connector constraint lock', (done: Function) => {
+            diagram.select([diagram.connectors[0]])
+            diagram.connectors[0].constraints = ConnectorConstraints.Select | ConnectorConstraints.PointerEvents;
+            diagram.dataBind();
+            let value: HTMLElement = document.getElementById('diagramhittesting_SelectorElement')
+            expect((value.childNodes[0] as HTMLElement).getAttribute('class') === 'e-diagram-endpoint-handle e-sourceend e-disabled')
+            done();
+        });
+    });
     describe('Simple Diagram based on Connector segments', () => {
         let diagram: Diagram;
         let ele: HTMLElement;
-       
+        let mouseEvents: MouseEvents = new MouseEvents();
         beforeAll((): void => {
             const isDef = (o: any) => o !== undefined && o !== null;
             if (!isDef(window.performance)) {
@@ -519,6 +287,429 @@ describe('Diagram Control', () => {
                 return;
             }
             ele = createElement('div', { id: 'diagram578' });
+            document.body.appendChild(ele);
+            let connector1: ConnectorModel = {
+                id: 'connector1',
+                type: 'Bezier',
+                cornerRadius: 10,
+                segments: [{
+                    type: 'Bezier',
+                }],
+                sourcePoint: { x: 100, y: 400 },
+                targetPoint: { x: 200, y: 500 },
+            };
+            let connector2: ConnectorModel = {
+                id: 'connector2',
+                type: 'Bezier',
+                sourcePoint: { x: 100, y: 200 },
+                targetPoint: { x: 250, y: 200 },
+                segments: [{
+                    type: 'Bezier',
+                    point1: { x: 125, y: 75 },
+                    point2: { x: 225, y: 75 },
+                }]
+            };
+            let connector3: ConnectorModel = {
+                id: 'connector3',
+                type: 'Bezier',
+                sourcePoint: { x: 700, y: 100 },
+                targetPoint: { x: 800, y: 200 },
+                segments: [{
+                    type: 'Bezier',
+                    vector1: { angle: 90, distance: 75 },
+                    vector2: { angle: 90, distance: 75 }
+                }]
+            };
+            let connector4: ConnectorModel = {
+                id: 'connector4',
+                type: 'Bezier',
+                segments: [{
+                    type: 'Bezier',
+                }],
+                sourcePoint: { x: 400, y: 100 },
+                targetPoint: { x: 501, y: 200 },
+            };
+
+            diagram = new Diagram({
+                width: 1000, height: 1000,
+                connectors: [connector1, connector2, connector3, connector4],
+                snapSettings: { constraints: SnapConstraints.ShowLines }
+            });
+            diagram.appendTo('#diagram578');
+        });
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+            diagram = null;
+            ele = null;
+        });
+        it('Checking bezier curve ', (done: Function) => {
+            expect(((diagram.connectors[0]).wrapper.children[0] as PathElement).data == 'M100 400C144.8425 400 154.8075 499.65 199.5 500'
+                && ((diagram.connectors[1]).wrapper.children[0] as PathElement).data == 'M100 200C125 75 225 75 249.9 199.51'
+                && ((diagram.connectors[2]).wrapper.children[0] as PathElement).data == 'M700 100C700 175 799.65 274.65 800 200.5').toBe(true);
+            done();
+        });
+
+        it('Checking bezier curve highlighter', (done: Function) => {
+
+            const diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content') as HTMLElement;
+            const rect: any = diagram.element.getBoundingClientRect();
+            mouseEvents.clickEvent(diagramCanvas, rect.left + 100, rect.top + 200);
+            // 3) Validate endpoints
+            const el: HTMLElement = document.getElementById('bezierLine_1_1') as HTMLElement;
+            const x1: string = el ? (el.getAttribute('x1') as string) : '';
+            const x2: string = el ? (el.getAttribute('x2') as string) : '';
+            expect(x1 === '100' && x2 === '125').toBe(true);
+            done();
+        });
+
+        it('Dragging source point for bezier curve without points', (done: Function) => {
+
+            const diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content') as HTMLElement;
+            const rect: any = diagram.element.getBoundingClientRect();
+
+            // 1) Click to select the connector endpoint
+            mouseEvents.clickEvent(diagramCanvas, rect.left + 101, rect.top + 402);
+
+            // 2) Drag the source point (using rect offset)
+            mouseEvents.dragAndDropEvent(
+                diagramCanvas,
+                rect.left + 100, rect.top + 400, // start
+                rect.left + 130, rect.top + 430  // end
+            );
+
+            // 3) Assert the source point has been updated as expected
+            const sx = diagram.connectors[0].sourcePoint.x;
+            expect(sx === 100 || sx === 130).toBe(true);
+
+            done();
+        });
+
+        it('Dragging target point for bezier curve without points', (done: Function) => {
+            const diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content') as HTMLElement;
+            const rect: any = diagram.element.getBoundingClientRect();
+            diagram.select([diagram.connectors[0]])
+            // 1) Drag target point (map to client coordinates)
+            mouseEvents.dragAndDropEvent(
+                diagramCanvas,
+                rect.left + 200, rect.top + 500, // start
+                rect.left + 220, rect.top + 520  // end
+            );
+            console.log("diagram.connectors[0].targetPoint.x ", diagram.connectors[0].targetPoint.x)
+            // 2) Assert that target point has been moved as expected
+            expect(diagram.connectors[0].targetPoint.x === 220).toBe(true);
+
+            done();
+        });
+        it('Dragging sourcecontrol point for bezier curve without points', (done: Function) => {
+
+            const diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content') as HTMLElement;
+            const rect: any = diagram.element.getBoundingClientRect();
+
+            // Drag from (120, 470) to (130, 480) relative to the diagram
+            mouseEvents.dragAndDropEvent(
+                diagramCanvas,
+                rect.left + 170, rect.top + 430,
+                rect.left + 130, rect.top + 480
+            );
+
+            const sx = diagram.connectors[0].sourcePoint.x;
+            expect(sx === 120 || sx === 130).toBe(true);
+            done();
+        });
+        it('Dragging target control point for bezier curve without points', (done: Function) => {
+
+            const diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content') as HTMLElement;
+            const rect: any = diagram.element.getBoundingClientRect();
+
+            // Drag from (215, 480) to (240, 480) relative to the diagram
+            mouseEvents.dragAndDropEvent(
+                diagramCanvas,
+                rect.left + 180, rect.top + 520,
+                rect.left + 240, rect.top + 480
+            );
+
+            expect(diagram.connectors[0].targetPoint.x === 220).toBe(true);
+            done();
+        });
+
+        it('Dragging source point for bezier curve without points', (done: Function) => {
+
+            const diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content') as HTMLElement;
+            const rect: any = diagram.element.getBoundingClientRect();
+
+            // Drag source from (122, 423) -> (130, 400)
+            mouseEvents.dragAndDropEvent(
+                diagramCanvas,
+                rect.left + 122, rect.top + 423,
+                rect.left + 130, rect.top + 400
+            );
+
+            const sx: number = diagram.connectors[0].sourcePoint.x;
+            expect(sx === 120 || sx === 130).toBe(true);
+            done();
+        });
+
+        it('Dragging target point for bezier curve without points', (done: Function) => {
+
+            const diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content') as HTMLElement;
+            const rect: any = diagram.element.getBoundingClientRect();
+
+            // Drag target from (215, 520) -> (220, 540)
+            mouseEvents.dragAndDropEvent(
+                diagramCanvas,
+                rect.left + 220, rect.top + 538,
+                rect.left + 230, rect.top + 550
+            );
+
+            expect(diagram.connectors[0].targetPoint.x === 220).toBe(true);
+            done();
+        });
+        // above cases are done in same connector
+        it('Dragging bezier curve without points', (done: Function) => {
+
+            const diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content') as HTMLElement;
+            const rect: any = diagram.element.getBoundingClientRect();
+
+            // Select then drag the Bezier curve body
+            mouseEvents.clickEvent(diagramCanvas, rect.left + 450, rect.top + 150);
+            mouseEvents.dragAndDropEvent(
+                diagramCanvas,
+                rect.left + 450, rect.top + 150,
+                rect.left + 470, rect.top + 170
+            );
+
+            expect(
+                diagram.connectors[3].sourcePoint.x === 420 &&
+                diagram.connectors[3].sourcePoint.y === 120
+            ).toBe(true);
+            done();
+        });
+    })
+
+    describe('Simple Diagram based on Connector segments', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+        let mouseEvents: MouseEvents = new MouseEvents();
+        beforeAll((): void => {
+            const isDef = (o: any) => o !== undefined && o !== null;
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                this.skip(); //Skips test (in Chai)
+                return;
+            }
+            ele = createElement('div', { id: 'diagram577' });
+            document.body.appendChild(ele);
+            let connector1: ConnectorModel = {
+                id: 'connector1',
+                type: 'Bezier',
+                cornerRadius: 10,
+                segments: [{
+                    type: 'Bezier',
+                }],
+                sourcePoint: { x: 100, y: 400 },
+                targetPoint: { x: 200, y: 500 },
+            };
+            let connector2: ConnectorModel = {
+                id: 'connector2',
+                type: 'Bezier',
+                sourcePoint: { x: 100, y: 200 },
+                targetPoint: { x: 250, y: 200 },
+                segments: [{
+                    type: 'Bezier',
+                    point1: { x: 125, y: 75 },
+                    point2: { x: 225, y: 75 },
+                }]
+            };
+            let connector3: ConnectorModel = {
+                id: 'connector3',
+                type: 'Bezier',
+                sourcePoint: { x: 700, y: 100 },
+                targetPoint: { x: 800, y: 200 },
+                segments: [{
+                    type: 'Bezier',
+                    vector1: { angle: 90, distance: 75 },
+                    vector2: { angle: 90, distance: 75 }
+                }]
+            };
+            let connector4: ConnectorModel = {
+                id: 'connector4',
+                type: 'Bezier',
+                segments: [{
+                    type: 'Bezier',
+                }],
+                sourcePoint: { x: 400, y: 100 },
+                targetPoint: { x: 501, y: 200 },
+            };
+
+            diagram = new Diagram({
+                width: 1000, height: 1000,
+                connectors: [connector1, connector2, connector3, connector4],
+                snapSettings: { constraints: SnapConstraints.ShowLines }
+            });
+            diagram.appendTo('#diagram577');
+        });
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+            diagram = null;
+            ele = null;
+        });
+
+        it('dragging source point for bezier curve with points', (done: Function) => {//'M 0 77.77 C 31.9 -2.22 124.61 -47.22 149.53 77.77'
+
+            const diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content') as HTMLElement;
+            const rect: any = diagram.element.getBoundingClientRect();
+
+            mouseEvents.clickEvent(diagramCanvas, rect.left + 101, rect.top + 200);
+            mouseEvents.dragAndDropEvent(
+                diagramCanvas,
+                rect.left + 128, rect.top + 75,
+                rect.left + 135, rect.top + 85
+            );
+            expect(diagram.connectors[1].sourcePoint.x == 100 && diagram.connectors[1].sourcePoint.y == 200).toBe(true);
+            done();
+        });
+        it('dragging target point for bezier curve with points ', (done: Function) => {//'M 0 46.18 C 31.96 -33.81 131.85 6.19 149.83 46.18'
+
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            const rect: any = diagram.element.getBoundingClientRect();
+
+            mouseEvents.dragAndDropEvent(
+                diagramCanvas,
+                rect.left + 229, rect.top + 75,
+                rect.left + 240, rect.top + 80
+            );
+            expect(diagram.connectors[1].targetPoint.x == 250 && diagram.connectors[1].targetPoint.y == 200).toBe(true);
+            done();
+        });
+        it('dragging target point for bezier curve with points coverage ', (done: Function) => {//'M 0 46.18 C 31.96 -33.81 131.85 6.19 149.83 46.18'
+
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            const rect: any = diagram.element.getBoundingClientRect();
+
+            mouseEvents.dragAndDropEvent(
+                diagramCanvas,
+                rect.left + 240, rect.top + 80,
+                rect.left + 280, rect.top + 48
+            );
+            console.log("diagram.connectors[0].targetPoint.x :", diagram.connectors[1].targetPoint.x, "diagram.connectors[0].targetPoint.y :", diagram.connectors[1].targetPoint.y)
+            expect(diagram.connectors[1].targetPoint.x == 250 && diagram.connectors[1].targetPoint.y == 200).toBe(true);
+            done();
+        });
+        //above 3 cases are in same connector
+        it('dragging source bezier point for bezier curve for vector points ', (done: Function) => {
+
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            const rect: any = diagram.element.getBoundingClientRect();
+
+            mouseEvents.clickEvent(diagramCanvas, rect.left + 702, rect.top + 104);
+            mouseEvents.dragAndDropEvent(
+                diagramCanvas,
+                rect.left + 701, rect.top + 175,
+                rect.left + 720, rect.top + 160
+            );
+            expect(diagram.connectors[2].sourcePoint.x == 700).toBe(true)
+            done();
+        });
+        it('dragging target bezier point for bezier curve for vector points ', (done: Function) => {
+
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            const rect: any = diagram.element.getBoundingClientRect();
+
+            mouseEvents.dragAndDropEvent(
+                diagramCanvas,
+                rect.left + 800, rect.top + 275,
+                rect.left + 850, rect.top + 250
+            );
+            expect(diagram.connectors[2].targetPoint.x == 800).toBe(true)
+            done();
+        });
+        it('bezeir curve  data binding  ', (done: Function) => {
+            diagram.connectors[0].sourcePoint = { x: 500, y: 500 };
+            diagram.connectors[0].targetPoint = { x: 700, y: 700 };
+            diagram.dataBind();
+            expect(diagram.connectors[0].sourcePoint.x == 500
+                && diagram.connectors[0].sourcePoint.y == 500
+                && diagram.connectors[0].targetPoint.x == 700
+                && diagram.connectors[0].targetPoint.y == 700).toBe(true);
+            done();
+        });
+        it('bezeir curve  data binding  ', (done: Function) => {
+            diagram.connectors[0].sourcePoint = { x: 500, y: 500 };
+            diagram.connectors[0].targetPoint = { x: 700, y: 700 };
+            diagram.dataBind();
+            expect(diagram.connectors[0].sourcePoint.x == 500
+                && diagram.connectors[0].sourcePoint.y == 500
+                && diagram.connectors[0].targetPoint.x == 700
+                && diagram.connectors[0].targetPoint.y == 700).toBe(true);
+            done();
+        });
+
+        it('Testing connected bezier curve', (done: Function) => {
+
+            diagram.add({ id: 'node1', width: 50, height: 50, offsetX: 500, offsetY: 100 });
+            diagram.add({ id: 'node2', width: 50, height: 50, offsetX: 500, offsetY: 300 });
+            expect(diagram.nodes.length).toBe(2);
+            diagram.connectors[0].sourceID = 'node1';
+            diagram.connectors[0].targetID = 'node2';
+            diagram.dataBind();
+            let connector: Connector = diagram.connectors[0] as Connector;
+
+            expect(connector.sourceWrapper != undefined && connector.targetWrapper != undefined).toBe(true);
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            const rect: any = diagram.element.getBoundingClientRect();
+
+            diagram.select([diagram.connectors[0]])
+            mouseEvents.dragAndDropEvent(diagramCanvas, rect.left + 499, rect.top + 158, rect.left + 562, rect.top + 165)
+
+            console.log("wrapper: ", connector.sourceWrapper, connector.targetWrapper);
+            expect(connector.sourceWrapper === undefined && connector.targetWrapper === undefined).toBe(true);
+            done();
+        });
+        it('Connector copy and paste ctrl point issue fix ', (done: Function) => {
+
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+
+            // Click using rect-based coordinates, then send copy/paste key events
+            diagram.select([diagram.connectors[1]]);
+            mouseEvents.keyDownEvent(diagramCanvas, 'C', true);
+            mouseEvents.keyDownEvent(diagramCanvas, 'V', true);
+
+            expect(
+                (
+                    (diagram.connectors[4].segments[0] as BezierSegment).point1.x === 135 ||
+                    (diagram.connectors[4].segments[0] as BezierSegment).point1.x === 145
+                ) &&
+                (
+                    (diagram.connectors[4].segments[0] as BezierSegment).point1.y === 85 ||
+                    (diagram.connectors[4].segments[0] as BezierSegment).point1.y === 95
+                ) &&
+                (
+                    (diagram.connectors[4].segments[0] as BezierSegment).point2.x === 235 ||
+                    (diagram.connectors[4].segments[0] as BezierSegment).point2.x === 290
+                ) &&
+                (
+                    (diagram.connectors[4].segments[0] as BezierSegment).point2.y === 58 ||
+                    (diagram.connectors[4].segments[0] as BezierSegment).point2.y === 85
+                )
+            ).toBe(true);
+            done();
+        });
+    });
+
+    describe('Simple Diagram based on Connector segments', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+
+        beforeAll((): void => {
+            const isDef = (o: any) => o !== undefined && o !== null;
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                this.skip(); //Skips test (in Chai)
+                return;
+            }
+            ele = createElement('div', { id: 'diagramConnector' });
             document.body.appendChild(ele);
 
             var node2: NodeModel = { shape: { shape: 'Ellipse' } as BasicShapeModel, style: {} };
@@ -609,7 +800,7 @@ describe('Diagram Control', () => {
                 width: 1000, height: 1000, nodes: [node2, node3, node6, node7], connectors: connectors,
                 snapSettings: { constraints: SnapConstraints.ShowLines }
             });
-            diagram.appendTo('#diagram578');
+            diagram.appendTo('#diagramConnector');
         });
         afterAll((): void => {
             diagram.destroy();
@@ -825,7 +1016,7 @@ describe('Diagram Control', () => {
                 this.skip(); //Skips test (in Chai)
                 return;
             }
-            ele = createElement('div', { id: 'diagram57ab' });
+            ele = createElement('div', { id: 'connectorAccessibility' });
             document.body.appendChild(ele);
             let connector1: ConnectorModel = {
                 id: 'connector1',
@@ -848,7 +1039,7 @@ describe('Diagram Control', () => {
                 getDescription: getundefAccessibility
 
             });
-            diagram.appendTo('#diagram57ab');
+            diagram.appendTo('#connectorAccessibility');
         });
 
         afterAll((): void => {
@@ -866,7 +1057,7 @@ describe('Diagram Control', () => {
         });
 
         it('Checking Fill On Runtime', (done: Function) => {
-        
+
             diagram.connectors[1].style.fill = 'red';
             let diagramLayer: SVGSVGElement = getDiagramLayerSvg(diagram.element.id);
             let connectorPath: HTMLElement = diagramLayer.getElementById(diagram.connectors[1].id + '_path') as HTMLElement
@@ -1059,7 +1250,7 @@ describe('Diagram Control', () => {
                 this.skip(); //Skips test (in Chai)
                 return;
             }
-            ele = createElement('div', { id: 'diagramOrthoChangeSourcePoint' });
+            ele = createElement('div', { id: 'diagramOrthoChange' });
             document.body.appendChild(ele);
             diagram = new Diagram({
                 width: 1000, height: 1000,
@@ -1135,7 +1326,7 @@ describe('Diagram Control', () => {
                 },
                 snapSettings: { constraints: SnapConstraints.ShowLines }
             });
-            diagram.appendTo('#diagramOrthoChangeSourcePoint');
+            diagram.appendTo('#diagramOrthoChange');
             diagramCanvas = document.getElementById(diagram.element.id + 'content');
         });
         afterAll((): void => {
@@ -1655,7 +1846,7 @@ describe('Diagram Control', () => {
         it('Checking connector docking - rotated target node', function (done) {
             diagram.connectors[0].sourceDecorator.shape = 'Circle';
             diagram.dataBind();
-      
+
             expect(diagram.connectors[0].sourceDecorator.shape == 'Circle').toBe(true);
             done();
         });
@@ -1806,7 +1997,7 @@ describe('Diagram Control', () => {
             diagram.connectors[0].sourceDecorator.width += 10;
             diagram.connectors[0].sourceDecorator.height += 10;
             diagram.dataBind()
-            
+
             console.log('checking connector path data on decorator change' + (diagram.connectors[0].wrapper.children[0] as any).pathData)
             expect((diagram.connectors[0].wrapper.children[0] as any).pathData === 'M300 350 L300 349.5');
             done();
@@ -1975,7 +2166,7 @@ describe('Diagram Control', () => {
             ele = null;
         });
         it('Connector segments not updating at the connection', function (done) {
-            
+
             console.log("Connector segments not updating at the connection")
             diagram.selectAll();
             diagram.nudge("Right", 100, 100)
@@ -2608,7 +2799,7 @@ describe('Diagram Control', () => {
                 done();
 
             } catch (error) {
-               fail(`Test failed: ${(error as Error).message}`);
+                fail(`Test failed: ${(error as Error).message}`);
             }
         });
         it('Changing node offset using mouse events and checking connector annotation size', async () => {
@@ -2792,17 +2983,22 @@ describe('Diagram Control', () => {
             ele = null;
         });
         // it('Check UML classifier connector on double click', function (done) {
-        //     let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+        //     const diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content') as HTMLElement;
+        //     const rect: any = diagram.element.getBoundingClientRect();
+
         //     expect(document.getElementById('diagram_editBox') === null).toBe(true);
-        //     mouseEvents.clickEvent(diagramCanvas, 409, 159);
-        //     mouseEvents.dblclickEvent(diagramCanvas, 409, 159);
+        //     // Click and double-click using rect-based coordinates
+        //     mouseEvents.clickEvent(diagramCanvas, rect.left + 409, rect.top + 159);
+        //     mouseEvents.dblclickEvent(diagramCanvas, rect.left + 409, rect.top + 159);
         //     expect(document.getElementById('diagram_editBox') !== null).toBe(true);
+
         //     done();
         // });
         it('code coverage Check UML classifier node on double click', function (done) {
-            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-            mouseEvents.clickEvent(diagramCanvas, 93, 45);
-            mouseEvents.dblclickEvent(diagramCanvas, 93, 45);
+            const diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content') as HTMLElement;
+            const rect: any = diagram.element.getBoundingClientRect();
+            mouseEvents.clickEvent(diagramCanvas, rect.left + 93, rect.top + 45);
+            mouseEvents.dblclickEvent(diagramCanvas, rect.left + 93, rect.top + 45);
             expect(diagram.selectedItems.nodes.length === 1).toBe(true);
             done();
         });
@@ -2987,11 +3183,130 @@ describe('Diagram Control', () => {
             diagram = null;
             ele = null;
         });
-        // it('Checking the segment direction as Left', function (done) {
-        //     let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-        //     mouseEvents.clickEvent(diagramCanvas, 228, 158);
-        //     expect((diagram.selectedItems.connectors[0].segments[0] as any).direction === 'Left');
-        //     done();
-        // });
+        it('Checking the segment direction as Left', function (done) {
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            mouseEvents.clickEvent(diagramCanvas, 228, 158);
+            console.log("Direction ",(diagram.selectedItems.connectors[0].segments[0] as any).direction)
+            expect((diagram.selectedItems.connectors[0].segments[0] as any).direction === 'Left');
+            done();
+        });
+    });
+    describe('Drag Bezier Control points', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+        let mouseEvents: MouseEvents = new MouseEvents();
+        beforeAll((): void => {
+            ele = createElement('div', { id: 'diagramBezierConnectors' });
+            document.body.appendChild(ele);
+            let ports: PointPortModel[] = [
+                {
+                    id: 'port1',
+                    offset: {
+                        x: 0,
+                        y: 0.5,
+                    },
+                    shape: 'Circle',
+                    visibility: PortVisibility.Visible,
+                },
+                {
+                    id: 'port2',
+                    offset: {
+                        x: 1,
+                        y: 0.5,
+                    },
+                    shape: 'Circle',
+                    visibility: PortVisibility.Visible,
+                },
+                {
+                    id: 'port3',
+                    offset: {
+                        x: 0.5,
+                        y: 0,
+                    },
+                    shape: 'Circle',
+                    visibility: PortVisibility.Visible,
+                },
+                {
+                    id: 'port4',
+                    offset: {
+                        x: 0.5,
+                        y: 1,
+                    },
+                    shape: 'Circle',
+                    visibility: PortVisibility.Visible,
+                },
+            ];
+            let nodes: NodeModel[] = [
+                {
+                    id: 'node1', width: 100, height: 100, offsetX: 300, offsetY: 200,
+                    ports: ports
+                },
+                {
+                    id: 'node2', width: 100, height: 100, offsetX: 500, offsetY: 200,
+                    ports: ports
+                }
+            ]
+            let connectors: ConnectorModel[] = [
+                {
+                    id: 'connector1', type: 'Bezier',
+                    sourceID: 'node1',
+                    sourcePortID: 'port4',
+                    targetID: 'node2',
+                    targetPortID: 'port4',
+                    constraints:
+                        ConnectorConstraints.Default |
+                        ConnectorConstraints.DragSegmentThumb,
+                },
+                {
+                    id: 'connector2',
+                    sourcePoint: { x: 500, y: 100 },
+                    targetPoint: { x: 600, y: 100 },
+                    annotations: [{ offset: 2, content: 'connector' }],
+                    ports: [{ offset: 2, width: 10, height: 10, visibility: PortVisibility.Visible }]
+                },
+            ];
+            diagram = new Diagram({
+                width: '1000px', height: '900px', nodes: nodes, connectors: connectors,
+            });
+            diagram.appendTo('#diagramBezierConnectors');
+        });
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+            diagram = null;
+            ele = null;
+        });
+        it('Dragging the  sourcethumb control point', function (done) {
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            diagram.select([diagram.connectors[0]]);
+            let thumb = document.getElementById('bezierPoint_2_1');
+            let bound = thumb.getBoundingClientRect();
+            let cx: number = bound.left + bound.width / 2;
+            let cy: number = bound.top + bound.height / 2;
+            mouseEvents.mouseDownEvent(diagramCanvas, cx, cy);
+            mouseEvents.mouseMoveEvent(diagramCanvas, cx + 2, cy + 2);
+            mouseEvents.mouseUpEvent(diagramCanvas, cx + 8, cy + 8);
+            expect((diagram.selectedItems.connectors[0].segments as any).length > 1).toBe(true);
+            done();
+        });
+        it('Dragging the  targetthumb control point', function (done) {
+            diagram.clearSelection();
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            diagram.select([diagram.connectors[0]]);
+            let thumb = document.getElementById('bezierPoint_1_2');
+            let bound = thumb.getBoundingClientRect();
+            let cx: number = bound.left + bound.width / 2;
+            let cy: number = bound.top + bound.height / 2;
+            mouseEvents.mouseDownEvent(diagramCanvas, cx, cy);
+            mouseEvents.mouseMoveEvent(diagramCanvas, cx - 2, cy + 2);
+            mouseEvents.mouseUpEvent(diagramCanvas, cx - 8, cy + 8);
+            expect((diagram.selectedItems.connectors[0].segments as any).length > 1).toBe(true);
+            done();
+        });
+         it('Connector port and annotation Offset value should not exceed 1', function (done) {
+            diagram.clearSelection();
+            expect(diagram.connectors[1].annotations[0].offset == 1 && diagram.connectors[1].ports[0].offset == 1)
+            done();
+        });
     });
 });

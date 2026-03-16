@@ -726,61 +726,148 @@ describe('Diagram Control', () => {
             done();
         });
     });
-    // describe('Flip Operation for node', () => {
-    //     let diagram: Diagram;
-    //     let ele: HTMLElement;
+    describe('Flip Operation for nodes', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
 
-    //     let mouseEvents: MouseEvents = new MouseEvents();
+        let mouseEvents: MouseEvents = new MouseEvents();
 
-    //     beforeAll((): void => {
-    //         ele = createElement('div', { id: 'flipDiagram' });
-    //         document.body.appendChild(ele);
-    //         let selArray: (NodeModel | ConnectorModel)[] = [];
-    //         let node: NodeModel = {
-    //             id: 'node1', width: 100, height: 100, offsetX: 100, offsetY: 100, shape: { type: 'Basic', shape: 'RightTriangle' },
+        beforeAll((): void => {
+            ele = createElement('div', { id: 'flipDiagram' });
+            document.body.appendChild(ele);
+            let node: NodeModel = {
+                id: 'node1', width: 100, height: 100, offsetX: 100, offsetY: 100, shape: { type: 'Basic', shape: 'RightTriangle' },
 
-    //         };
-    //         diagram = new Diagram({
-    //             width: '600', height: '530px', nodes: [node],
-    //             snapSettings: { constraints: SnapConstraints.ShowLines },
-    //             constraints: DiagramConstraints.Default | DiagramConstraints.LineRouting
-    //         });
+            };
+            diagram = new Diagram({
+                width: '600', height: '530px', nodes: [node],
+                snapSettings: { constraints: SnapConstraints.ShowLines },
+                constraints: DiagramConstraints.Default | DiagramConstraints.LineRouting
+            });
 
-    //         diagram.appendTo('#flipDiagram');
+            diagram.appendTo('#flipDiagram');
 
-    //     });
-    //     afterAll((): void => {
-    //         diagram.destroy();
-    //         diagram = null;
-    //         ele.remove();
-    //         ele = null;
-    //     });
-    //     it('895070-Checking horizontally flipped node is able to move or not', (done: Function) => {
-    //         let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-    //         diagram.nodes[0].flip= FlipDirection.Horizontal;
-    //         diagram.dataBind();
-    //         mouseEvents.dragAndDropEvent(diagramCanvas, 110, 110, 200, 100);
-    //         expect(diagram.selectedItems.nodes[0].id === 'node1').toBe(true);
-    //         done();
-    //     });
-    //     it('895070-Checking vertically flipped node is able to move or not', (done: Function) => {
-    //         let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-    //         diagram.nodes[0].flip= FlipDirection.Vertical;
-    //         diagram.dataBind();
-    //         mouseEvents.dragAndDropEvent(diagramCanvas, 210, 110, 300, 100);
-    //         expect(diagram.selectedItems.nodes[0].id === 'node1').toBe(true);
-    //         done();
-    //     });
-    //     it('895070-Checking Both horizontally and vertically flipped node is able to move or not', (done: Function) => {
-    //         let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-    //         diagram.nodes[0].flip= FlipDirection.Both;
-    //         diagram.dataBind();
-    //         mouseEvents.dragAndDropEvent(diagramCanvas, 310, 110, 100, 100);
-    //         expect(diagram.selectedItems.nodes[0].id === 'node1').toBe(true);
-    //         done();
-    //     });
-    // });
+        });
+        afterAll((): void => {
+            diagram.destroy();
+            diagram = null;
+            ele.remove();
+            ele = null;
+        });
+        it('895070-Checking horizontally flipped node is able to move or not', (done: Function) => {
 
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            diagram.nodes[0].flip= FlipDirection.Horizontal;
+            diagram.dataBind();
+            mouseEvents.dragAndDropEvent(diagramCanvas, 110, 110, 200, 100);
+            expect(diagram.nodes[0].id === 'node1').toBe(true);
+            done();
+        });
+        it('895070-Checking vertically flipped node is able to move or not', (done: Function) => {
+
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            diagram.nodes[0].flip= FlipDirection.Vertical;
+            diagram.dataBind();
+            mouseEvents.dragAndDropEvent(diagramCanvas, 210, 110, 300, 100);
+            expect(diagram.nodes[0].id === 'node1').toBe(true);
+            done();
+        });
+        it('895070-Checking Both horizontally and vertically flipped node is able to move or not', (done: Function) => {
+ 
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            diagram.nodes[0].flip= FlipDirection.Both;
+            diagram.dataBind();
+            mouseEvents.dragAndDropEvent(diagramCanvas, 310, 110, 100, 100);
+            expect(diagram.nodes[0].id === 'node1').toBe(true);
+            done();
+        });
+    });
+    describe('Flip Operation for shape annotation', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+
+        let mouseEvents: MouseEvents = new MouseEvents();
+
+        beforeAll((): void => {
+            ele = createElement('div', { id: 'flipAnnotationDiagram' });
+            document.body.appendChild(ele);
+            let nodes: NodeModel[] = [
+                {
+                    id: 'node1', width: 200, height: 200, offsetX: 200, offsetY: 200,
+                    flip: FlipDirection.Horizontal, flipMode: 'Label',
+                    annotations: [{
+                        content: 'node Annotation', width: 200, height: 200,
+                        constraints: AnnotationConstraints.Interaction
+                    }], style: { fill: 'red' }, shape: { type: 'Basic', shape: 'Rectangle' }
+                }, {
+                    id: 'node2', width: 200, height: 200, offsetX: 600, offsetY: 400,
+                    flip: FlipDirection.Vertical, flipMode: 'Label',
+                    annotations: [{
+                        content: 'node Annotation', width: 200, height: 200,
+                        constraints: AnnotationConstraints.Interaction
+                    }], style: { fill: 'yellow' }, shape: { type: 'Basic', shape: 'Rectangle' }
+                }, {
+                    id: 'node3', width: 200, height: 200, offsetX: 200, offsetY: 600,
+                    flip: FlipDirection.Both, flipMode: 'Label',
+                    annotations: [{
+                        content: 'node Annotation', width: 200, height: 200,
+                        constraints: AnnotationConstraints.Interaction
+                    }], style: { fill: 'green' }, shape: { type: 'Basic', shape: 'Rectangle' }
+                }
+            ]
+            diagram = new Diagram({
+                width: '900px', height: '900px', nodes: nodes,
+                snapSettings: { constraints: SnapConstraints.ShowLines },
+            });
+
+            diagram.appendTo('#flipAnnotationDiagram');
+
+        });
+        afterAll((): void => {
+            diagram.destroy();
+            diagram = null;
+            ele.remove();
+            ele = null;
+        });
+        it('Flip the node horizontal and drag the annotation', (done: Function) => {
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            diagram.select([diagram.nodes[0]]);
+
+            mouseEvents.mouseMoveEvent(diagramCanvas, 230, 200);
+            mouseEvents.mouseDownEvent(diagramCanvas, 230, 200);
+            mouseEvents.mouseUpEvent(diagramCanvas, 230, 200);
+            // drag
+            mouseEvents.dragAndDropEvent(diagramCanvas, 230, 200, 300, 260);
+            expect(diagram.nodes.length === 3).toBe(true);
+            done();
+        });
+        it('Flip the node vertical and drag the annotation', (done: Function) => {
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            diagram.select([diagram.nodes[1]]);
+
+            mouseEvents.mouseMoveEvent(diagramCanvas, 600, 400);
+            mouseEvents.mouseDownEvent(diagramCanvas, 600, 400);
+            mouseEvents.mouseUpEvent(diagramCanvas, 600, 400);
+
+            // drag
+            mouseEvents.dragAndDropEvent(diagramCanvas, 600, 400, 670, 460);
+            expect(diagram.nodes.length === 3).toBe(true);
+            done();
+        });
+        it('Flip the node both and drag the annotation', (done: Function) => {
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            diagram.select([diagram.nodes[2]]);
+
+            mouseEvents.mouseMoveEvent(diagramCanvas, 200, 600);
+            mouseEvents.mouseDownEvent(diagramCanvas, 200, 600);
+            mouseEvents.mouseUpEvent(diagramCanvas, 200, 600);
+
+            // drag
+            mouseEvents.dragAndDropEvent(diagramCanvas, 200, 600, 270, 660);
+            expect(diagram.nodes.length === 3).toBe(true);
+            done();
+        });
+    })
     describe('927858 - Flip revamp for nodes ', () => {
         let diagram: Diagram;
         let ele: HTMLElement;

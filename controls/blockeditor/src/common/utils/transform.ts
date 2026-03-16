@@ -87,21 +87,8 @@ export function sanitizeContextMenuItems(items: ContextMenuItemModel[]): Context
         iconCss: item.iconCss,
         separator: item.separator,
         shortcut: item.shortcut,
-        items: item.items ? sanitizeContextMenuItems(item.items) : []
+        items: sanitizeContextMenuItems(item.items)
     }));
-}
-
-export function sanitizeContents(content: ContentModel[]): ContentModel[] {
-    return content.map(sanitizeContent);
-}
-
-export function sanitizeContent(content: ContentModel): ContentModel {
-    return {
-        id: content.id,
-        ...( !isEmptyString(content.contentType) ? { contentType: content.contentType } : {} ),
-        ...( !isNullOrUndefined(content.content) ? { content: content.content } : {} ),
-        properties: content.properties
-    };
 }
 
 export function sanitizeHeadingProps(props: Partial<ICollapsibleHeadingBlockSettings> | Partial<IHeadingBlockSettings>): any {
@@ -111,17 +98,4 @@ export function sanitizeHeadingProps(props: Partial<ICollapsibleHeadingBlockSett
         sanitizedInnerProps.level = 1;
     }
     return sanitizedInnerProps;
-}
-
-export function sanitizeBlock(block: BlockModel): BlockModel {
-    return {
-        id: block.id,
-        ...( !isEmptyString(block.blockType) ? { blockType: block.blockType } : {} ),
-        content: (block.content && block.content.length > 0) ? sanitizeContents(block.content) : [],
-        properties: block.properties,
-        ...( (isNullOrUndefined(block.indent)) ? {} : { indent: block.indent }),
-        ...( !isEmptyString(block.parentId) ? { parentId: block.parentId } : {} ),
-        ...( !isEmptyString(block.cssClass) ? { cssClass: block.cssClass } : {} ),
-        ...( !block.template ? {} : { template: block.template })
-    };
 }

@@ -6,7 +6,7 @@ import { Popup, Tooltip } from '@syncfusion/ej2-popups';
 import { AIAssistView, PromptModel, PromptRequestEventArgs, ToolbarItemClickedEventArgs } from '@syncfusion/ej2-interactive-chat';
 import { ActionBeginEventArgs, IToolbarItemModel, NotifyArgs } from '../../common';
 import { MenuEventArgs as MenuBarItemSelectedArgs } from '@syncfusion/ej2-navigations';
-import { detach, extend, Draggable, formatUnit, getComponent, isNullOrUndefined as isNOU, KeyboardEventArgs, L10n, select} from '@syncfusion/ej2-base';
+import { detach, Draggable, extend, formatUnit, getComponent, isNullOrUndefined as isNOU, KeyboardEventArgs, L10n, select} from '@syncfusion/ej2-base';
 import { NodeSelection } from '../../selection/selection';
 import { AssistantPromptToolbarItems, AssistantResponseToolbarItems, AssistantToolbarType, AssitantHeaderToolbarItems } from '../base/types';
 import { BeforePopupOpenCloseEventArgs, IMenuRenderArgs, RenderType, RichTextEditorModel } from '../base';
@@ -520,6 +520,7 @@ export class AIAssistant {
             document.body.appendChild(element);
         }
     }
+
     public showQueryPopup(event?: Event): void {
         if (!this.isRendered) {
             this.render();
@@ -715,10 +716,16 @@ export class AIAssistant {
         }
         if (this.parent.toolbarSettings.enableFloating && this.parent.toolbarSettings.position === 'Top' && !this.parent.inlineMode.enable) {
             const toolbarElemRect: ClientRect = this.parent.getToolbarElement().getBoundingClientRect();
-            if (toolbarElemRect.top === 0) {
+            const scrollTopParentElement: HTMLElement = this.parent.scrollParentElements && this.parent.scrollParentElements.length > 0 &&
+                this.parent.scrollParentElements[0].nodeName !== '#document' ? this.parent.scrollParentElements[0] : null;
+            if (isNOU(scrollTopParentElement) && toolbarElemRect.top === 0) {
                 offsetY = window.pageYOffset - this.parent.element.offsetTop + toolbarElemRect.height + 11;
             } else {
-                offsetY = toolbarElemRect.height + 11; // WHen toolbar visible additional 1 px from border is added to offsetY.
+                if (!isNOU(scrollTopParentElement) && this.parent.scrollParentElements[0].scrollTop > 0) { // When toolbar is in floating mode and scrolled.
+                    offsetY = toolbarElemRect.bottom - this.parent.element.getBoundingClientRect().top + 11;
+                } else {
+                    offsetY = toolbarElemRect.height + 11; // When toolbar visible additional 1 px from border is added to offsetY.
+                }
             }
         } else {
             const inputElementRect: ClientRect = this.parent.iframeSettings.enable ?

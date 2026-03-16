@@ -2,7 +2,15 @@
 
 ## [Unreleased]
 
-## 32.2.9 (2026-03-10)
+## 33.1.44 (2026-03-16)
+
+### Drawings
+
+#### Bug Fixes
+
+- Resolved an issue where free text border is not proper when resize.
+
+## 32.2.5 (2026-02-17)
 
 ### Drawings
 

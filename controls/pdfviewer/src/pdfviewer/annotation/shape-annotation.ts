@@ -8,7 +8,8 @@ import { PointModel } from '@syncfusion/ej2-drawings';
 import { PdfAnnotationBase } from '../drawing/pdf-annotation';
 import { PdfAnnotationBaseModel } from '../drawing/pdf-annotation-model';
 import { PdfAnnotationType } from '../drawing/enum';
-import {AnnotationSelectorSettingsModel } from '../pdfviewer-model';
+import {AnnotationSelectorSettingsModel, CircleSettingsModel, RectangleSettingsModel } from '../pdfviewer-model';
+import { cloneObject } from '../drawing/drawing-util';
 
 /**
  * @hidden
@@ -173,6 +174,36 @@ export class ShapeAnnotation {
     }
 
     /**
+     * Validates and normalizes min/max width and height constraints for Rectangle settings.
+     * @private
+     * @param {RectangleSettingsModel} settings - represents the rectangleSettings
+     * @returns {void}
+     */
+    public validateRectangleSettings(settings?: RectangleSettingsModel): void {
+        const rect: RectangleSettingsModel = !isNullOrUndefined(settings) ?
+            settings : this.pdfViewer.rectangleSettings;
+        if (rect && (rect.minHeight || rect.minWidth || rect.maxHeight || rect.maxWidth)) {
+            this.pdfViewerBase.normalizeMinMaxPair(rect, 'minWidth', 'maxWidth');
+            this.pdfViewerBase.normalizeMinMaxPair(rect, 'minHeight', 'maxHeight');
+        }
+    }
+
+    /**
+     * Validates and normalizes min/max width and height constraints for Circle settings.
+     * @private
+     * @param {CircleSettingsModel} settings - represents the circleSettings
+     * @returns {void}
+     */
+    public validateCircleSettings(settings?: CircleSettingsModel): void {
+        const circle: CircleSettingsModel = !isNullOrUndefined(settings) ?
+            settings : this.pdfViewer.circleSettings;
+        if (circle && (circle.minHeight || circle.minWidth || circle.maxHeight || circle.maxWidth)) {
+            this.pdfViewerBase.normalizeMinMaxPair(circle, 'minWidth', 'maxWidth');
+            this.pdfViewerBase.normalizeMinMaxPair(circle, 'minHeight', 'maxHeight');
+        }
+    }
+
+    /**
      * @param {any} shapeAnnotations - It describes about the shape annotations
      * @param {number} pageNumber - It describes about the page number
      * @param {boolean} isImportAcion - It describes about the whether the import action is true or not
@@ -232,6 +263,15 @@ export class ShapeAnnotation {
                             }
                             annotation.AnnotationSettings = annotation.AnnotationSettings ?
                                 annotation.AnnotationSettings : this.pdfViewer.annotationModule.updateAnnotationSettings(annotation);
+                            if (isImportAcion) {
+                                annotation.AnnotationSettings = { minHeight: 0, minWidth: 0,
+                                    // eslint-disable-next-line security/detect-object-injection
+                                    maxHeight: this.pdfViewerBase.pageSize[pageNumber].height,
+                                    // eslint-disable-next-line security/detect-object-injection
+                                    maxWidth: this.pdfViewerBase.pageSize[pageNumber].width,
+                                    isPrint: true, isLock: false
+                                };
+                            }
                             if (annotation.IsLocked) {
                                 annotation.AnnotationSettings.isLock = annotation.IsLocked;
                             }
@@ -243,7 +283,8 @@ export class ShapeAnnotation {
                             const height: number = annotation.Bounds.Height ? annotation.Bounds.Height : annotation.Bounds.height;
                             annotationObject = {
                                 id: 'shape' + this.shapeCount, shapeAnnotationType: annotation.ShapeAnnotationType, author: annotation.Author, allowedInteractions: annotation.allowedInteractions, modifiedDate: annotation.ModifiedDate, subject: annotation.Subject, pageNumber: pageNumber,
-                                note: annotation.Note, strokeColor: annotation.StrokeColor, fillColor: annotation.FillColor,
+                                note: annotation.Note, strokeColor: this.pdfViewer.annotation.rgbaToHex(annotation.StrokeColor),
+                                fillColor: this.pdfViewer.annotation.rgbaToHex(annotation.FillColor),
                                 opacity: annotation.Opacity, thickness: annotation.Thickness, rectangleDifference:
                                   annotation.RectangleDifference, borderStyle: annotation.BorderStyle, borderDashArray:
                                    annotation.BorderDashArray, rotateAngle: annotation.RotateAngle, isCloudShape: annotation.IsCloudShape,
@@ -442,29 +483,29 @@ export class ShapeAnnotation {
         this.lineFillColor = this.pdfViewer.lineSettings.fillColor ? this.pdfViewer.lineSettings.fillColor : '#ffffff00';
         this.lineStrokeColor = this.pdfViewer.lineSettings.strokeColor ? this.pdfViewer.lineSettings.strokeColor : '#ff0000';
         this.lineThickness = this.pdfViewer.lineSettings.thickness ? this.pdfViewer.lineSettings.thickness : 1;
-        this.lineOpacity = this.pdfViewer.lineSettings.opacity ? this.pdfViewer.lineSettings.opacity : 1;
+        this.lineOpacity = !isNullOrUndefined(this.pdfViewer.lineSettings.opacity) ? this.pdfViewer.lineSettings.opacity : 1;
         this.lineDashArray = this.pdfViewer.lineSettings.borderDashArray ? this.pdfViewer.lineSettings.borderDashArray : 0;
         this.lineStartHead = this.pdfViewer.lineSettings.lineHeadStartStyle ? this.pdfViewer.lineSettings.lineHeadStartStyle : 'None';
         this.lineEndHead = this.pdfViewer.lineSettings.lineHeadEndStyle ? this.pdfViewer.lineSettings.lineHeadEndStyle : 'None';
         this.arrowFillColor = this.pdfViewer.arrowSettings.fillColor ? this.pdfViewer.arrowSettings.fillColor : '#ffffff00';
         this.arrowStrokeColor = this.pdfViewer.arrowSettings.strokeColor ? this.pdfViewer.arrowSettings.strokeColor : '#ff0000';
         this.arrowThickness = this.pdfViewer.arrowSettings.thickness ? this.pdfViewer.arrowSettings.thickness : 1;
-        this.arrowOpacity = this.pdfViewer.arrowSettings.opacity ? this.pdfViewer.arrowSettings.opacity : 1;
+        this.arrowOpacity = !isNullOrUndefined(this.pdfViewer.arrowSettings.opacity) ? this.pdfViewer.arrowSettings.opacity : 1;
         this.arrowDashArray = this.pdfViewer.arrowSettings.borderDashArray ? this.pdfViewer.arrowSettings.borderDashArray : 0;
         this.arrowStartHead = this.pdfViewer.arrowSettings.lineHeadStartStyle ? this.pdfViewer.arrowSettings.lineHeadStartStyle : 'Closed';
         this.arrowEndHead = this.pdfViewer.arrowSettings.lineHeadEndStyle ? this.pdfViewer.arrowSettings.lineHeadEndStyle : 'Closed';
         this.rectangleFillColor = this.pdfViewer.rectangleSettings.fillColor ? this.pdfViewer.rectangleSettings.fillColor : '#ffffff00';
         this.rectangleStrokeColor = this.pdfViewer.rectangleSettings.strokeColor ? this.pdfViewer.rectangleSettings.strokeColor : '#ff0000';
         this.rectangleThickness = this.pdfViewer.rectangleSettings.thickness ? this.pdfViewer.rectangleSettings.thickness : 1;
-        this.rectangleOpacity = this.pdfViewer.rectangleSettings.opacity ? this.pdfViewer.rectangleSettings.opacity : 1;
+        this.rectangleOpacity = !isNullOrUndefined(this.pdfViewer.rectangleSettings.opacity) ? this.pdfViewer.rectangleSettings.opacity : 1;
         this.circleFillColor = this.pdfViewer.circleSettings.fillColor ? this.pdfViewer.circleSettings.fillColor : '#ffffff00';
         this.circleStrokeColor = this.pdfViewer.circleSettings.strokeColor ? this.pdfViewer.circleSettings.strokeColor : '#ff0000';
         this.circleThickness = this.pdfViewer.circleSettings.thickness ? this.pdfViewer.circleSettings.thickness : 1;
-        this.circleOpacity = this.pdfViewer.circleSettings.opacity ? this.pdfViewer.circleSettings.opacity : 1;
+        this.circleOpacity = !isNullOrUndefined(this.pdfViewer.circleSettings.opacity) ? this.pdfViewer.circleSettings.opacity : 1;
         this.polygonFillColor = this.pdfViewer.polygonSettings.fillColor ? this.pdfViewer.polygonSettings.fillColor : '#ffffff00';
         this.polygonStrokeColor = this.pdfViewer.polygonSettings.strokeColor ? this.pdfViewer.polygonSettings.strokeColor : '#ff0000';
         this.polygonThickness = this.pdfViewer.polygonSettings.thickness ? this.pdfViewer.polygonSettings.thickness : 1;
-        this.polygonOpacity = this.pdfViewer.polygonSettings.opacity ? this.pdfViewer.polygonSettings.opacity : 1;
+        this.polygonOpacity = !isNullOrUndefined(this.pdfViewer.polygonSettings.opacity) ? this.pdfViewer.polygonSettings.opacity : 1;
     }
 
     private setShapeType(shape: string): PdfAnnotationType {
@@ -686,6 +727,12 @@ export class ShapeAnnotation {
                 if (pageAnnotationObject) {
                     for (let z: number = 0; pageAnnotationObject.annotations.length > z; z++) {
                         if (!this.pdfViewerBase.checkFormFieldCollection(pageAnnotationObject.annotations[parseInt(z.toString(), 10)].id)) {
+                            if (this.pdfViewer.printModule && this.pdfViewer.printModule.canPrint &&
+                                pageAnnotationObject.annotations[parseInt(z.toString(), 10)].isPrint === false) {
+                                pageAnnotationObject.annotations.splice(parseInt(z.toString(), 10), 1);
+                                z--;
+                                continue;
+                            }
                             this.pdfViewer.annotationModule.updateModifiedDate(pageAnnotationObject.annotations[parseInt(z.toString(),
                                                                                                                          10)]);
                             if (this.pdfViewerBase.isJsonExported) {
@@ -836,18 +883,8 @@ export class ShapeAnnotation {
     }
 
     private getSelector(type: string, subject: string): AnnotationSelectorSettingsModel {
-        let selector: AnnotationSelectorSettingsModel = this.pdfViewer.annotationSelectorSettings;
-        if (type === 'Line' && subject !== 'Arrow' && this.pdfViewer.lineSettings.annotationSelectorSettings) {
-            selector = this.pdfViewer.lineSettings.annotationSelectorSettings;
-        } else if ((type === 'LineWidthArrowHead' || subject === 'Arrow') && this.pdfViewer.lineSettings.annotationSelectorSettings) {
-            selector = this.pdfViewer.arrowSettings.annotationSelectorSettings;
-        } else if ((type === 'Rectangle' || type === 'Square') && this.pdfViewer.rectangleSettings.annotationSelectorSettings) {
-            selector = this.pdfViewer.rectangleSettings.annotationSelectorSettings;
-        } else if ((type === 'Ellipse' || type === 'Circle') && this.pdfViewer.circleSettings.annotationSelectorSettings) {
-            selector = this.pdfViewer.circleSettings.annotationSelectorSettings;
-        } else if (type === 'Polygon' && this.pdfViewer.polygonSettings.annotationSelectorSettings) {
-            selector = this.pdfViewer.polygonSettings.annotationSelectorSettings;
-        }
+        const selector: AnnotationSelectorSettingsModel = cloneObject(this.pdfViewer.annotationSelectorSettings);
+        this.pdfViewerBase.updateSelector(selector, type);
         return selector;
     }
 
@@ -1007,7 +1044,10 @@ export class ShapeAnnotation {
             annotation.LabelSettings = annotation.LabelSettings ? annotation.LabelSettings : labelSettings;
         }
         annotation.AnnotationSettings = annotation.AnnotationSettings ? annotation.AnnotationSettings :
-            this.pdfViewer.annotationModule.updateAnnotationSettings(annotation);
+        // eslint-disable-next-line security/detect-object-injection
+            { minWidth: 0, minHeight: 0, maxHeight: this.pdfViewerBase.pageSize[pageNumber].height,
+                // eslint-disable-next-line security/detect-object-injection
+                maxWidth: this.pdfViewerBase.pageSize[pageNumber].width, isPrint: true, isLock: false };
         if (annotation.IsLocked) {
             annotation.AnnotationSettings.isLock = annotation.IsLocked;
         }
@@ -1259,7 +1299,7 @@ export class ShapeAnnotation {
             LineHeadEnd: annotationObject.lineHeadEndStyle ? annotationObject.lineHeadEndStyle : isArrow ? 'ClosedArrow' : 'None',
             ModifiedDate: '',
             Note: (this.pdfViewer.enableShapeLabel && labelSettings.labelContent) ? labelSettings.labelContent : '',
-            Opacity: annotationObject.opacity ? annotationObject.opacity : 1,
+            Opacity: !isNullOrUndefined(annotationObject.opacity) ? annotationObject.opacity : 1,
             RectangleDifference: null,
             RotateAngle: 'RotateAngle0',
             ShapeAnnotationType: shapeAnnotationType,

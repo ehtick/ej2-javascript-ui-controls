@@ -69,20 +69,20 @@ describe('Diagram Control', () => {
             diagram = null;
             ele = null;
         });
-        // it('Checking drag commands', (done: Function) => {
+        it('Checking drag commands', (done: DoneFn) => {
 
-        //     //drag the node by 100pixels
-        //     diagram.drag((diagram.nodes[0] as NodeModel), 100, 140);
-        //     //drag the node by 100pixels
-        //     diagram.drag((diagram.connectors[0] as ConnectorModel), 300, 440);
-        //     expect(((diagram.nodes[0] as NodeModel).wrapper.children[0].offsetX === 200)
-        //         && ((diagram.nodes[0] as NodeModel).wrapper.children[0].offsetY === 240)
-        //     ).toBe(true);
-        //     done();
-        // });
+            //drag the node by 100pixels
+            diagram.drag((diagram.nodes[0] as NodeModel), 100, 140);
+            //drag the node by 100pixels
+            diagram.drag((diagram.connectors[0] as ConnectorModel), 300, 440);
+            expect(((diagram.nodes[0] as NodeModel).wrapper.children[0].offsetX === 200)
+                && ((diagram.nodes[0] as NodeModel).wrapper.children[0].offsetY === 240)
+            ).toBe(true);
+            done();
+        });
     });
 
-    describe('Checking Bezire', () => {
+    describe('Checking Bezier', () => {
         let diagram: Diagram;
         let ele: HTMLElement;
         beforeAll((): void => {
@@ -109,63 +109,67 @@ describe('Diagram Control', () => {
             diagram.appendTo('#diagram_cmd_bezier');
         });
         afterAll((): void => {
-            if (diagram) diagram.destroy();
-            if (ele && ele.parentElement) ele.remove();
-            diagram = null;
-            ele = null;
+            if (diagram) {
+                diagram.destroy();
+            }
+            if (ele && ele.parentElement) {
+                ele.parentElement.removeChild(ele);
+            }
         });
-        // it('Label after applying margin', (done: Function) => {
-        //     let position = document.getElementById(diagram.connectors[0].wrapper.children[3].id + '_groupElement');
-        //     let labelPosition: any = position.getBoundingClientRect();
-        //     console.log(Math.round(labelPosition.x) + ' ' + Math.round(labelPosition.y));
-        //     expect(labelPosition.x === 477 && labelPosition.y === 214).toBe(false);
-        //     done();
-        // });
+        it('Label after applying margin', (done: DoneFn) => {
+            let position = document.getElementById(diagram.connectors[0].wrapper.children[3].id + '_groupElement');
+            let labelPosition: any = position.getBoundingClientRect();
+            console.log("label X ",Math.round(labelPosition.x) + ' ' + "label Y ",Math.round(labelPosition.y));
+            expect(labelPosition.x === 477 && labelPosition.y === 214).toBe(false);
+            done();
+        });
     });
 
-    // describe('Interactive Commands - source end dragging', () => {
-    //     let diagram: Diagram;
-    //     let ele: HTMLElement;
-    //     beforeAll((): void => {
-    //         const isDef = (o: any) => o !== undefined && o !== null;
-    //         if (!isDef(window.performance)) {
-    //             console.log("Unsupported environment, window.performance.memory is unavailable");
-    //             this.skip(); //Skips test (in Chai)
-    //             return;
-    //         }
-    //         ele = createElement('div', { id: 'diagram_cmd_source' });
-    //         document.body.appendChild(ele);
+    describe('Interactive Commands - source end dragging', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+        beforeAll((): void => {
+            const isDef = (o: any) => o !== undefined && o !== null;
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                this.skip(); //Skips test (in Chai)
+                return;
+            }
+            ele = createElement('div', { id: 'diagram_cmd_source' });
+            document.body.appendChild(ele);
 
-    //         let connector1: ConnectorModel = {
-    //             id: 'connector1',
-    //             type: 'Orthogonal',
-    //             sourcePoint: { x: 100, y: 100 },
-    //             targetPoint: { x: 200, y: 200 },
-    //             sourceDecorator: { style: { fill: 'black' }, shape: 'Circle', pivot: { x: 0, y: 0.5 } },
-    //             targetDecorator: { shape: 'Arrow', style: { fill: 'blue' }, pivot: { x: 0, y: 0.5 } },
-    //             cornerRadius: 10,
-    //             style: { strokeColor: 'red', strokeWidth: 3, opacity: 3 }
-    //         };
+            let connector1: ConnectorModel = {
+                id: 'connector1',
+                type: 'Orthogonal',
+                sourcePoint: { x: 100, y: 100 },
+                targetPoint: { x: 200, y: 200 },
+                sourceDecorator: { style: { fill: 'black' }, shape: 'Circle', pivot: { x: 0, y: 0.5 } },
+                targetDecorator: { shape: 'Arrow', style: { fill: 'blue' }, pivot: { x: 0, y: 0.5 } },
+                cornerRadius: 10,
+                style: { strokeColor: 'red', strokeWidth: 3, opacity: 3 }
+            };
 
-    //         diagram = new Diagram({ width: '500px', height: '500px', connectors: [connector1] });
-    //         diagram.appendTo('#diagram_cmd_source');
-    //     });
-    //     afterAll((): void => {
-    //         if (diagram) diagram.destroy();
-    //         if (ele && ele.parentElement) ele.remove();
-    //         diagram = null;
-    //         ele = null;
-    //     });
-    //     it('Checking source end dragging', (done: Function) => {
-
-    //         //drag the srcend by 100pixels
-    //         diagram.dragSourceEnd((diagram.connectors[0] as ConnectorModel), 130, 190);
-    //         expect((diagram.connectors[0].sourcePoint.x === 230)
-    //             && (diagram.connectors[0].sourcePoint.y === 290)
-    //         ).toBe(true);
-    //         done();
-    //     });
-    // });
+            diagram = new Diagram({ width: '500px', height: '500px', connectors: [connector1] });
+            diagram.appendTo('#diagram_cmd_source');
+        });
+        afterAll((): void => {
+            if (diagram) {
+                diagram.destroy();
+            }
+            if (ele && ele.parentElement) {
+                ele.parentElement.removeChild(ele);
+            }
+        });
+        it('Checking source end dragging', (done: DoneFn) => {
+            //drag the srcend by 100pixels
+            diagram.dragSourceEnd((diagram.connectors[0] as ConnectorModel), 130, 190);
+            console.log("Connector x ",diagram.connectors[0].sourcePoint.x,"Y ",diagram.connectors[0].sourcePoint.y)
+            expect((diagram.connectors[0].sourcePoint.x === 230)
+                && (diagram.connectors[0].sourcePoint.y === 290)
+            ).toBe(true);
+            done();
+        });
+    });
     describe('Interactive Commands - target end dragging', () => {
         let diagram: Diagram;
         let ele: HTMLElement;
@@ -193,10 +197,14 @@ describe('Diagram Control', () => {
             diagram.appendTo('#diagram_cmd_target');
         });
         afterAll((): void => {
-            diagram.destroy();
-            ele.remove();
+            if (diagram) {
+                diagram.destroy();
+            }
+            if (ele && ele.parentElement) {
+                ele.parentElement.removeChild(ele);
+            }
         });
-        it('Checking target end dragging', (done: Function) => {
+        it('Checking target end dragging', (done: DoneFn) => {
             //drag the targetend by 100pixels
             diagram.dragTargetEnd((diagram.connectors[0] as ConnectorModel), 100, 140);
             expect((diagram.connectors[0].targetPoint.x === 400)
@@ -256,14 +264,13 @@ describe('Diagram Control', () => {
         });
         afterAll((): void => {
             if (diagram) {
-                diagram.clearSelection();
                 diagram.destroy();
             }
-            if (ele && ele.parentElement) ele.remove();
-            diagram = null;
-            ele = null;
+            if (ele && ele.parentElement) {
+                ele.parentElement.removeChild(ele);
+            }
         });
-        it('Checking rotate command', (done: Function) => {
+        it('Checking rotate command', (done: DoneFn) => {
 
             //rotate the node by 105deg
             diagram.rotate(diagram.nodes[0], 65);
@@ -330,14 +337,13 @@ describe('Diagram Control', () => {
         });
         afterAll((): void => {
             if (diagram) {
-                diagram.clearSelection();
                 diagram.destroy();
             }
             if (ele && ele.parentElement) ele.remove();
             diagram = null;
             ele = null;
         });
-        it('Checking resize commands - nodes', (done: Function) => {
+        it('Checking resize commands - nodes', (done: DoneFn) => {
             diagram.scale(diagram.nodes[0], 210 / 100, 210 / 100, { x: 0, y: 0 });
             diagram.scale(diagram.nodes[1], 210 / 100, 210 / 100, { x: 0.5, y: 0.5 });
             diagram.scale(diagram.nodes[2], 210 / 100, 210 / 100, { x: 1, y: 1 });
@@ -356,7 +362,7 @@ describe('Diagram Control', () => {
             done();
         });
 
-        it('Checking resize commands - connectors', (done: Function) => {
+        it('Checking resize commands - connectors', (done: DoneFn) => {
             diagram.scale(diagram.connectors[0], 1.5, 1.5, { x: 0, y: 0 });
             expect(diagram.connectors[0].wrapper.actualSize.width == 150 && diagram.connectors[0].wrapper.actualSize.height == 150 &&
                 diagram.connectors[0].wrapper.offsetX == 275 && diagram.connectors[0].wrapper.offsetY == 375).toBe(true);
@@ -414,13 +420,13 @@ describe('Diagram Control', () => {
             diagram = new Diagram({ width: '1500px', height: '1500px', nodes: [node, node3, node6] });
             diagram.appendTo('#diagram_cmd_resize_rotate');
         });
-         afterAll((): void => {
-            if (diagram) diagram.destroy();
-            if (ele && ele.parentElement) ele.remove();
+        afterAll((): void => {
+            if (diagram) { diagram.destroy(); }
+            if (ele && ele.parentElement) { ele.remove(); }
             diagram = null;
             ele = null;
         });
-        it('Checking resize commands - after rotation', (done: Function) => {
+        it('Checking resize commands - after rotation', (done: DoneFn) => {
             //rotate the node by 45deg
             diagram.rotate(diagram.nodes[0], 45);
             //resize the node by 210 with pivot 0.5
@@ -496,24 +502,24 @@ describe('Diagram Control', () => {
             diagram.appendTo('#diagram_cmd_add_remove');
         });
         afterAll((): void => {
-            if (diagram) diagram.destroy();
-            if (ele && ele.parentElement) ele.remove();
+            if (diagram) { diagram.destroy(); }
+            if (ele && ele.parentElement) { ele.remove(); }
             diagram = null;
             ele = null;
         });
-        it('Adding a node', (done: Function) => {
+        it('Adding a node', (done: DoneFn) => {
             diagram.add({ id: 'node4', width: 50, height: 50, offsetX: 100, offsetY: 100 });
             expect(diagram.nodes.length).toBe(4);
             done();
         });
 
-        it('Adding a disconnected connector', (done: Function) => {
+        it('Adding a disconnected connector', (done: DoneFn) => {
             diagram.add({ id: 'connector1', sourcePoint: { x: 100, y: 100 }, targetPoint: { x: 300, y: 300 } });
             expect(diagram.connectors.length).toBe(1);
             done();
         });
 
-        it('Adding a connected connector', (done: Function) => {
+        it('Adding a connected connector', (done: DoneFn) => {
             diagram.add({ id: 'connector2', sourceID: 'node', targetID: 'node4' });
             expect(diagram.connectors.length).toBe(2);
             expect(diagram.nameTable['connector2'].sourceWrapper != undefined && diagram.nameTable['connector2'].targetWrapper != undefined).toBe(true);
@@ -582,7 +588,7 @@ describe('BringToFront exception', () => {
         diagram = null;
         ele = null;
     });
-    it('BringToFront is not working for groupnode', (done: Function) => {
+    it('BringToFront is not working for groupnode', (done: DoneFn) => {
         diagram.select([diagram.nodes[2]]);
         diagram.bringToFront();
         done();
@@ -627,7 +633,7 @@ describe('Drag HTML shape', () => {
         ele = null;
         mouseEvents = null;
     });
-    it('Checking HTML shapes dragging', (done: Function) => {
+    it('Checking HTML shapes dragging', (done: DoneFn) => {
         let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
         mouseEvents.mouseDownEvent(diagramCanvas, 250,250,false,false)
         mouseEvents.mouseMoveEvent(diagramCanvas, 250,250,false,false)
@@ -673,7 +679,7 @@ describe('Command in Canvas Mode', () => {
         ele = null;
     });
 
-    it('Checking sendbackward commands', (done: Function) => {
+    it('Checking sendbackward commands', (done: DoneFn) => {
         diagram.select([diagram.nodes[0]]);
         diagram.copy();
         diagram.paste();

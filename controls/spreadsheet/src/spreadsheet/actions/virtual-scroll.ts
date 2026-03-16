@@ -751,9 +751,18 @@ export class VirtualScroll {
                 element.remove();
             });
         }
-        if (this.rowHeader) { removeAllChildren(this.rowHeader); this.rowHeader.remove(); }
-        if (this.colHeader) { removeAllChildren(this.colHeader); this.colHeader.remove(); }
-        if (this.content) { removeAllChildren(this.content); this.content.remove(); }
+        if (this.rowHeader && this.rowHeader.parentElement) {
+            removeAllChildren(this.rowHeader);
+            this.rowHeader.remove();
+        }
+        if (this.colHeader && this.colHeader.parentElement) {
+            removeAllChildren(this.colHeader);
+            this.colHeader.remove();
+        }
+        if (this.content && this.content.parentElement) {
+            removeAllChildren(this.content);
+            this.content.remove();
+        }
         this.rowHeader = null; this.colHeader = null; this.content = null; this.parent = null;
         this.scroll.length = 0; this.translateX = null; this.translateY = null;
     }
@@ -768,6 +777,7 @@ export class VirtualScroll {
         this.parent.off(updateRowColCount, this.updateRowColCount);
         this.parent.off(rowHeightChanged, this.updateVTrackHeight);
         this.parent.off(colWidthChanged, this.updateVTrackWidth);
+        this.parent.off(deInitProperties, this.deInitProps);
         this.parent.off(sheetsDestroyed, this.sliceScrollProps);
         this.parent.off(sheetCreated, this.updateScrollProps);
         this.parent.off(updateTranslate, this.updateTranslate);

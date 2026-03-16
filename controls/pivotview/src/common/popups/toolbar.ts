@@ -106,7 +106,10 @@ export class Toolbar {
             this.toolbar.appendTo(element);
         }
         this.toolbar.width = this.parent.grid ? this.parent.getGridWidthAsNumber() : this.parent.getWidthAsNumber();
-        this.toolbar.element.style.minWidth = this.parent.minWidth ? this.parent.minWidth + 'px' : '400px';
+        const gridPanelWidth: string | number = this.parent.grid ? (this.parent.getGridWidthAsNumber() - 2) :
+            (this.parent.getWidthAsNumber() - 2);
+        this.toolbar.element.style.minWidth = (this.parent.isAdaptive ? gridPanelWidth + 'px' : gridPanelWidth < 400 ?
+            (this.parent.minWidth || '398px') : gridPanelWidth + 'px') as string;
         if (this.parent.chart) {
             this.parent.chart.setProperties(
                 { width: this.parent.grid ? this.parent.getGridWidthAsNumber().toString() : this.parent.getWidthAsNumber().toString() },
@@ -1396,6 +1399,9 @@ export class Toolbar {
                 break;
             }
             case (this.parent.element.id + 'pdf'):
+                if (isNullOrUndefined(this.parent.pdfExportModule) && this.parent.dataSourceSettings.mode !== 'Server') {
+                    return;
+                }
                 if (this.parent.currentView === 'Table') {
                     this.parent.pdfExport({ fileName: 'Export.pdf' }, false, undefined, false);
                 } else {
@@ -1403,6 +1409,9 @@ export class Toolbar {
                 }
                 break;
             case (this.parent.element.id + 'excel'):
+                if (isNullOrUndefined(this.parent.excelExportModule) && this.parent.dataSourceSettings.mode !== 'Server') {
+                    return;
+                }
                 exportArgs = {
                     excelExportProperties: { fileName: 'Export.xlsx' },
                     isBlob: undefined,
@@ -1416,6 +1425,9 @@ export class Toolbar {
                 });
                 break;
             case (this.parent.element.id + 'csv'):
+                if (isNullOrUndefined(this.parent.excelExportModule) && this.parent.dataSourceSettings.mode !== 'Server') {
+                    return;
+                }
                 exportArgs = {
                     excelExportProperties: { fileName: 'Export.csv' },
                     isBlob: false,

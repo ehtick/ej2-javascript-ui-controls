@@ -996,7 +996,7 @@ export function parseLocaleNumber(valArr: string[], context: Workbook, numObj?: 
                 }
             }
         } else {
-            formatArgs = { formattedText: valArr[idx as number], value: valArr[idx as number], format: 'General',
+            formatArgs = { formattedText: valArr[idx as number], value: valArr[idx as number], format: 'General', dataUpdate: true,
                 cell: { value: valArr[idx as number], format: 'General' }, isEdit: true };
             context.notify(getFormattedCellObject, formatArgs);
             if (isNumber(formatArgs.value)) {

@@ -4739,11 +4739,11 @@ describe('Chart ->', () => {
         });
         it('Duplicated sheets chart still reference original sheet data ', (done: Function) => {
             const spreadsheet: Spreadsheet = helper.getInstance();
-            spreadsheet.insertChart([{ type: "Column", range: '\'Sheet1\'!D1:H11' }]);
+            spreadsheet.insertChart([{ type: "Column", range: 'Sheet1!D1:H11' }]);
             spreadsheet.insertChart([{ type: "Pie", range: 'Sheet1!D2:H11' }]);
             expect(spreadsheet.sheets[0].rows[0].cells[3].chart[0].type).toBe('Column');
             expect(spreadsheet.sheets[0].rows[0].cells[3].chart.length).toBe(1);
-            expect(spreadsheet.sheets[0].rows[0].cells[3].chart[0].range).toBe('\'Sheet1\'!D1:H11');
+            expect(spreadsheet.sheets[0].rows[0].cells[3].chart[0].range).toBe('Sheet1!D1:H11');
             expect(spreadsheet.sheets[0].rows[1].cells[3].chart[0].type).toBe('Pie');
             expect(spreadsheet.sheets[0].rows[1].cells[3].chart.length).toBe(1);
             expect(spreadsheet.sheets[0].rows[1].cells[3].chart[0].range).toBe('Sheet1!D2:H11');
@@ -4755,7 +4755,7 @@ describe('Chart ->', () => {
                 expect(spreadsheet.activeSheetIndex).toBe(1);
                 expect(spreadsheet.sheets[1].rows[0].cells[3].chart[0].type).toBe('Column');
                 expect(spreadsheet.sheets[1].rows[0].cells[3].chart.length).toBe(1);
-                expect(spreadsheet.sheets[1].rows[0].cells[3].chart[0].range).toBe('\'Sheet1 (2)\'!D1:H11');
+                expect(spreadsheet.sheets[1].rows[0].cells[3].chart[0].range).toBe('Sheet1 (2)!D1:H11');
                 expect(spreadsheet.sheets[1].rows[1].cells[3].chart.length).toBe(1);
                 expect(spreadsheet.sheets[1].rows[1].cells[3].chart[0].type).toBe('Pie');
                 expect(spreadsheet.sheets[1].rows[1].cells[3].chart[0].range).toBe('Sheet1 (2)!D2:H11');
@@ -4765,13 +4765,13 @@ describe('Chart ->', () => {
                     expect(spreadsheet.activeSheetIndex).toBe(1);
                     expect(spreadsheet.sheets[1].rows[0].cells[3].chart[0].type).toBe('Column');
                     expect(spreadsheet.sheets[1].rows[0].cells[3].chart.length).toBe(1);
-                    expect(spreadsheet.sheets[1].rows[0].cells[3].chart[0].range).toBe('\'Sheet1 (3)\'!D1:H11');
+                    expect(spreadsheet.sheets[1].rows[0].cells[3].chart[0].range).toBe('Sheet1 (3)!D1:H11');
                     expect(spreadsheet.sheets[1].rows[1].cells[3].chart.length).toBe(1);
                     expect(spreadsheet.sheets[1].rows[1].cells[3].chart[0].type).toBe('Pie');
                     expect(spreadsheet.sheets[1].rows[1].cells[3].chart[0].range).toBe('Sheet1 (3)!D2:H11');
                     expect(spreadsheet.sheets[2].rows[0].cells[3].chart[0].type).toBe('Column');
                     expect(spreadsheet.sheets[2].rows[0].cells[3].chart.length).toBe(1);
-                    expect(spreadsheet.sheets[2].rows[0].cells[3].chart[0].range).toBe('\'Sheet1 (2)\'!D1:H11');
+                    expect(spreadsheet.sheets[2].rows[0].cells[3].chart[0].range).toBe('Sheet1 (2)!D1:H11');
                     expect(spreadsheet.sheets[2].rows[1].cells[3].chart.length).toBe(1);
                     expect(spreadsheet.sheets[2].rows[1].cells[3].chart[0].type).toBe('Pie');
                     expect(spreadsheet.sheets[2].rows[1].cells[3].chart[0].range).toBe('Sheet1 (2)!D2:H11');
@@ -4824,6 +4824,713 @@ describe('Chart ->', () => {
             const chartBtn = helper.getElement('#spreadsheet_chart');
             expect(chartBtn).toBeNull();
             done();
+        });
+    });
+
+    describe('950277: Discontinuous Chart Range Support ->', () => {
+        describe('Basic Discontinuous Range Tests ->', () => {
+            beforeAll((done: Function) => {
+                helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] }, done);
+            });
+            afterAll(() => {
+                helper.invoke('destroy');
+            });
+            it('Insert Column chart with discontinuous range using insertChart method->', (done: Function) => {
+                const spreadsheet: Spreadsheet = helper.getInstance();
+                helper.invoke('insertChart', [[{ type: 'Column', range: 'A1:A5 D1:D5' }]]);
+                setTimeout(() => {
+                    const chartId: string = helper.getInstance().chartColl[0].id;
+                    expect(chartId).not.toBeNull();
+                    const chartObj: any = getComponent(chartId, 'chart');
+                    expect(chartObj.primaryXAxis.valueType).toBe('Category');
+                    expect(chartObj.primaryXAxis.labels[0]).toBe('Casual Shoes');
+                    expect(chartObj.primaryXAxis.labels[1]).toBe('Sports Shoes');
+                    expect(chartObj.primaryXAxis.labels[2]).toBe('Formal Shoes');
+                    expect(chartObj.primaryXAxis.labels[3]).toBe('Sandals & Floaters');
+                    expect(chartObj.primaryXAxis.series[0].name).toBe('Quantity');
+                    expect(chartObj.primaryYAxis.startLabel).toBe('0');
+                    expect(chartObj.primaryYAxis.endLabel).toBe('25');
+                    helper.invoke('updateCell', [{ value: '50' }, 'D5']);
+                    expect(chartObj.primaryYAxis.endLabel).toBe('60');
+                    helper.invoke('updateCell', [{ value: '15' }, 'D5']);
+                    expect(chartObj.primaryYAxis.endLabel).toBe('25');
+                    const cell: CellModel = spreadsheet.sheets[0].rows[0].cells[0];
+                    expect(cell.chart[0].range).toBe('Sheet1!A1:A5 D1:D5');
+                    helper.invoke('deleteChart');
+                    done();
+                });
+            });
+
+            it('Insert Line chart with discontinuous range using insertChart method->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Line', range: 'A1:A10 D1:D10' }]]);
+                setTimeout(() => {
+                    const chartId: string = helper.getInstance().chartColl[0].id;
+                    expect(chartId).not.toBeNull();
+                    const chartObj: any = getComponent(chartId, 'chart');
+                    expect(chartObj.primaryXAxis.valueType).toBe('Category');
+                    expect(chartObj.primaryXAxis.labels[0]).toBe('Casual Shoes');
+                    expect(chartObj.primaryXAxis.labels[1]).toBe('Sports Shoes');
+                    expect(chartObj.primaryXAxis.labels[2]).toBe('Formal Shoes');
+                    expect(chartObj.primaryXAxis.labels[3]).toBe('Sandals & Floaters');
+                    expect(chartObj.primaryXAxis.labels[4]).toBe('Flip- Flops & Slippers');
+                    expect(chartObj.primaryXAxis.labels[5]).toBe('Sneakers');
+                    expect(chartObj.primaryXAxis.labels[6]).toBe('Running Shoes');
+                    expect(chartObj.primaryXAxis.labels[7]).toBe('Loafers');
+                    expect(chartObj.primaryXAxis.labels[8]).toBe('Cricket Shoes');
+                    expect(chartObj.primaryXAxis.series[0].name).toBe('Quantity');
+                    expect(chartObj.primaryYAxis.startLabel).toBe('0');
+                    expect(chartObj.primaryYAxis.endLabel).toBe('50');
+                    helper.invoke('deleteChart');
+                    done();
+                });
+            });
+
+            it('Insert Area chart with discontinuous range using insertChart method->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Area', range: 'B1:B10 E1:E10' }]]);
+                setTimeout(() => {
+                    const chartId: string = helper.getInstance().chartColl[0].id;
+                    expect(chartId).not.toBeNull();
+                    const chartObj: any = getComponent(chartId, 'chart');
+                    expect(chartObj.primaryXAxis.series[0].name).toBe('Price');
+                    expect(chartObj.primaryYAxis.startLabel).toBe('0');
+                    expect(chartObj.primaryYAxis.endLabel).toBe('35');
+                    helper.invoke('deleteChart');
+                    done();
+                });
+            });
+
+            it('Insert Scatter chart with discontinuous range using insertChart method->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Scatter', range: 'D1:D5 F1:F5' }]]);
+                setTimeout(() => {
+                    const chartId: string = helper.getInstance().chartColl[0].id;
+                    expect(chartId).not.toBeNull();
+                    const chartObj: any = getComponent(chartId, 'chart');
+                    expect(chartObj.primaryXAxis.series[0].name).toBe('Quantity');
+                    expect(chartObj.primaryXAxis.series[1].name).toBe('Amount');
+                    expect(chartObj.primaryYAxis.startLabel).toBe('0');
+                    expect(chartObj.primaryYAxis.endLabel).toBe('700');
+                    helper.invoke('deleteChart');
+                    done();
+                });
+            });
+
+            it('Insert Pie chart with discontinuous range using insertChart method->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Pie', range: 'A1:A5 D1:D5' }]]);
+                setTimeout(() => {
+                    const chartId: string = helper.getInstance().chartColl[0].id;
+                    expect(chartId).not.toBeNull();
+                    expect(helper.getInstance().chartColl[0].range).toBe('Sheet1!A1:A5 D1:D5');
+                    helper.invoke('deleteChart');
+                    done();
+                });
+            });
+
+            it('Insert Doughnut chart with discontinuous range using insertChart method->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Doughnut', range: 'A1:B5 E1:E5 D1:D5' }]]);
+                setTimeout(() => {
+                    const chartId: string = helper.getInstance().chartColl[0].id;
+                    expect(chartId).not.toBeNull();
+                    expect(helper.getInstance().chartColl[0].range).toBe('Sheet1!A1:B5 D1:D5 E1:E5');
+                    helper.invoke('deleteChart');
+                    done();
+                });
+            });
+        });
+
+        describe('Copy/Paste Discontinuous chart, Row Count and Column Count chart->', () => {
+            beforeAll((done: Function) => {
+                helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] }, done);
+            });
+            afterAll(() => {
+                helper.invoke('destroy');
+            });
+            it('Insert Column chart with Single Full Column Count via UI->', (done: Function) => {
+                helper.invoke('selectRange', ['A1:A100']);
+                helper.switchRibbonTab(2);
+                helper.getElement('#' + helper.id + '_chart-btn').click();
+                const target: HTMLElement = helper.getElement('#' + helper.id + '_chart-btn-popup .e-menu-item[aria-label="Column"]');
+                helper.triggerMouseAction('mouseover', { x: target.getBoundingClientRect().left + 5, y: target.getBoundingClientRect().top + 5 }, document, target);
+                helper.getElement('#clusteredColumn').click();
+                setTimeout(() => {
+                    const spreadsheet: Spreadsheet = helper.getInstance();
+                    expect(spreadsheet.sheets[0].rows[0].cells[0].chart[0]).toBeDefined();
+                    expect(spreadsheet.sheets[0].rows[0].cells[0].chart[0].range).toContain('Sheet1!A1:A11');
+                    helper.triggerKeyNativeEvent(46);
+                    done();
+                });
+            });
+
+            it('Insert Bar chart with Discontinuous Column via UI->', (done: Function) => {
+                helper.invoke('selectRange', ['A1:A100 C1:C100']);
+                helper.switchRibbonTab(2);
+                helper.getElement('#' + helper.id + '_chart-btn').click();
+                const target: HTMLElement = helper.getElement('#' + helper.id + '_chart-btn-popup .e-menu-item[aria-label="Bar"]');
+                helper.triggerMouseAction('mouseover', { x: target.getBoundingClientRect().left + 5, y: target.getBoundingClientRect().top + 5 }, document, target);
+                helper.getElement('#clusteredBar').click();
+                setTimeout(() => {
+                    const spreadsheet: Spreadsheet = helper.getInstance();
+                    expect(spreadsheet.sheets[0].rows[0].cells[0].chart[0]).toBeDefined();
+                    expect(spreadsheet.sheets[0].rows[0].cells[0].chart[0].range).toContain('Sheet1!A1:A11');
+                    helper.triggerKeyNativeEvent(46);
+                    done();
+                });
+            });
+
+            it('Insert Column chart with Full Row Selection via UI->', (done: Function) => {
+                helper.invoke('selectRange', ['A1:CW1']);
+                helper.switchRibbonTab(2);
+                helper.getElement('#' + helper.id + '_chart-btn').click();
+                const target: HTMLElement = helper.getElement('#' + helper.id + '_chart-btn-popup .e-menu-item[aria-label="Column"]');
+                helper.triggerMouseAction('mouseover', { x: target.getBoundingClientRect().left + 5, y: target.getBoundingClientRect().top + 5 }, document, target);
+                helper.getElement('#clusteredColumn').click();
+                setTimeout(() => {
+                    const spreadsheet: Spreadsheet = helper.getInstance();
+                    expect(spreadsheet.sheets[0].rows[0].cells[0].chart[0]).toBeDefined();
+                    expect(spreadsheet.sheets[0].rows[0].cells[0].chart[0].range).toContain('Sheet1!A1:CW1');
+                    helper.triggerKeyNativeEvent(46);
+                    done();
+                });
+            });
+
+            it('Insert Bar chart with discontinuous row ranges via UI->', (done: Function) => {
+                helper.invoke('selectRange', ['A1:CV1 A3:CV3']);
+                helper.switchRibbonTab(2);
+                helper.getElement('#' + helper.id + '_chart-btn').click();
+                const target: HTMLElement = helper.getElement('#' + helper.id + '_chart-btn-popup .e-menu-item[aria-label="Bar"]');
+                helper.triggerMouseAction('mouseover', { x: target.getBoundingClientRect().left + 5, y: target.getBoundingClientRect().top + 5 }, document, target);
+                helper.getElement('#clusteredBar').click();
+                setTimeout(() => {
+                    const spreadsheet: Spreadsheet = helper.getInstance();
+                    expect(spreadsheet.sheets[0].rows[0].cells[0].chart[0]).toBeDefined();
+                    expect(spreadsheet.sheets[0].rows[0].cells[0].chart[0].range).toContain('Sheet1!A1:H1 A3:H3');
+                    helper.triggerKeyNativeEvent(46);
+                    done();
+                });
+            });
+
+            it('Copy and paste discontinuous range chart for Full Column ->', (done: Function) => {
+                const spreadsheet: Spreadsheet = helper.getInstance();
+                helper.invoke('insertChart', [[{ type: 'Column', range: 'A1:A100 D1:D100' }]]);
+                setTimeout(() => {
+                    helper.switchRibbonTab(1);
+                    helper.getElement('#' + helper.id + '_copy').click();
+                    setTimeout(() => {
+                        helper.invoke('paste');
+                        expect(spreadsheet.chartColl.length).toBe(2);
+                        expect(spreadsheet.sheets[0].rows[0].cells[0].chart[1].range).toBe('Sheet1!A1:A11 D1:D11');
+                        helper.triggerKeyNativeEvent(46);
+                        done();
+                    });
+                });
+            });
+
+            it('Copy and paste discontinuous range chart for Full Row->', (done: Function) => {
+                const spreadsheet: Spreadsheet = helper.getInstance();
+                helper.invoke('insertChart', [[{ type: 'Column', range: 'A1:CV1 E3:CV3' }]]);
+                setTimeout(() => {
+                    helper.switchRibbonTab(1);
+                    helper.getElement('#' + helper.id + '_copy').click();
+                    setTimeout(() => {
+                        helper.invoke('paste');
+                        expect(spreadsheet.chartColl.length).toBe(3);
+                        expect(spreadsheet.sheets[0].rows[0].cells[0].chart[1].range).toBe('Sheet1!A1:H1 E3:CV3');
+                        helper.triggerKeyNativeEvent(46);
+                        done();
+                    });
+                });
+            });
+        });
+
+        describe('Switch Row/Column with Discontinuous Range ->', () => {
+            beforeAll((done: Function) => {
+                helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] }, done);
+            });
+            afterAll(() => {
+                helper.invoke('destroy');
+            });
+
+            it('Switch row/column for Column chart with discontinuous range->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Column', range: 'A1:A11 D1:D11' }]]);
+                setTimeout(() => {
+                    const spreadsheet: Spreadsheet = helper.getInstance();
+                    const cell: CellModel = spreadsheet.sheets[0].rows[0].cells[0];
+                    expect(cell.chart[0].isSeriesInRows).toBeFalsy();
+                    helper.getElement('#' + helper.id + 'switch_row_column_chart').click();
+                    expect(cell.chart[0].isSeriesInRows).toBeTruthy();
+                    helper.invoke('deleteChart');
+                    done();
+                });
+            });
+
+            it('Switch row/column for Bar chart with discontinuous range->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Bar', range: 'A1:A6 A8:A11 D1:D6 D8:D11' }]]);
+                setTimeout(() => {
+                    const spreadsheet: Spreadsheet = helper.getInstance();
+                    const chartCell = spreadsheet.sheets[0].rows[0].cells[0].chart[0];
+                    helper.invoke('selectChart', [chartCell.id]);
+                    helper.getElement('#' + helper.id + 'switch_row_column_chart').click();
+                    expect(chartCell.isSeriesInRows).toBeTruthy();
+                    helper.getElement('#' + helper.id + 'switch_row_column_chart').click();
+                    expect(chartCell.isSeriesInRows).toBeFalsy();
+                    helper.invoke('deleteChart');
+                    done();
+                });
+            });
+
+            it('Switch row/column for Area chart with discontinuous range->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Area', range: 'D1:D8 D10:D11 E1:E8 E10:E11' }]]);
+                setTimeout(() => {
+                    const spreadsheet: Spreadsheet = helper.getInstance();
+                    const chartCell = spreadsheet.sheets[0].rows[0].cells[3].chart[0];
+                    expect(chartCell.isSeriesInRows).toBeFalsy();
+                    helper.invoke('selectChart', [chartCell.id]);
+                    helper.getElement('#' + helper.id + 'switch_row_column_chart').click();
+                    expect(chartCell.isSeriesInRows).toBeTruthy();
+                    helper.invoke('deleteChart');
+                    done();
+                });
+            });
+
+            it('Switch row/column for Line chart with discontinuous range->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Line', range: 'A1:A6 E1:E6' }]]);
+                setTimeout(() => {
+                    const spreadsheet: Spreadsheet = helper.getInstance();
+                    const chartCell = spreadsheet.sheets[0].rows[0].cells[0].chart[0];
+                    expect(chartCell.isSeriesInRows).toBeFalsy();
+                    helper.invoke('selectChart', [chartCell.id]);
+                    helper.getElement('#' + helper.id + 'switch_row_column_chart').click();
+                    expect(chartCell.isSeriesInRows).toBeTruthy();
+                    helper.invoke('deleteChart');
+                    done();
+                });
+            });
+
+            it('Switch row/column for Scatter chart with discontinuous range->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Scatter', range: 'D1:D5 G1:G5' }]]);
+                setTimeout(() => {
+                    const spreadsheet: Spreadsheet = helper.getInstance();
+                    const chartCell = spreadsheet.sheets[0].rows[0].cells[3].chart[0];
+                    expect(chartCell.isSeriesInRows).toBeFalsy();
+                    helper.invoke('selectChart', [chartCell.id]);
+                    helper.getElement('#' + helper.id + 'switch_row_column_chart').click();
+                    expect(chartCell.isSeriesInRows).toBeTruthy();
+                    helper.invoke('deleteChart');
+                    done();
+                });
+            });
+        });
+
+        describe('Undo/Redo with Discontinuous Range Charts ->', () => {
+            beforeAll((done: Function) => {
+                helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] }, done);
+            });
+            afterAll(() => {
+                helper.invoke('destroy');
+            });
+
+            it('Insert and delete discontinuous range chart with undo/redo->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Column', range: 'A1:A5 D1:D5' }]]);
+                setTimeout(() => {
+                    helper.invoke('deleteChart');
+                    setTimeout(() => {
+                        helper.switchRibbonTab(1);
+                        helper.click('#spreadsheet_undo');
+                        setTimeout(() => {
+                            const chart: HTMLElement = helper.getElement().querySelector('.e-datavisualization-chart');
+                            expect(chart).not.toBeNull();
+                            helper.switchRibbonTab(1);
+                            helper.click('#spreadsheet_redo');
+                            setTimeout(() => {
+                                const deletedChart: HTMLElement = helper.getElement().querySelector('.e-datavisualization-chart');
+                                expect(deletedChart).toBeNull();
+                                done();
+                            });
+                        });
+                    });
+                });
+            });
+
+            it('Change chart type with undo/redo for discontinuous range->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Column', range: 'A1:A5 C1:C5 E1:E5' }]]);
+                setTimeout(() => {
+                    helper.switchRibbonTab(7);
+                    helper.getElement('#' + helper.id + '_chart-type-btn').click();
+                    const target: HTMLElement = helper.getElement('#' + helper.id + '_chart-type-btn-popup .e-menu-item[aria-label="Bar"]');
+                    helper.triggerMouseAction('mouseover', { x: target.getBoundingClientRect().left + 5, y: target.getBoundingClientRect().top + 5 }, document, target);
+                    helper.getElement('#clusteredBar').click();
+                    setTimeout(() => {
+                        helper.switchRibbonTab(1);
+                        helper.click('#spreadsheet_undo');
+                        setTimeout(() => {
+                            const chart: HTMLElement = helper.getElement().querySelector('.e-datavisualization-chart');
+                            expect(chart).not.toBeNull();
+                            done();
+                        });
+                    });
+                });
+            });
+        });
+
+        describe('UI Interaction - Discontinuous Range Selection ->', () => {
+            beforeAll((done: Function) => {
+                helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] }, done);
+            });
+            afterAll(() => {
+                helper.invoke('destroy');
+            });
+
+            it('Insert Column chart with discontinuous range via UI->', (done: Function) => {
+                helper.invoke('selectRange', ['A1:A5 D1:D5']);
+                helper.switchRibbonTab(2);
+                helper.getElement('#' + helper.id + '_chart-btn').click();
+                const target: HTMLElement = helper.getElement('#' + helper.id + '_chart-btn-popup .e-menu-item[aria-label="Column"]');
+                helper.triggerMouseAction('mouseover', { x: target.getBoundingClientRect().left + 5, y: target.getBoundingClientRect().top + 5 }, document, target);
+                helper.getElement('#clusteredColumn').click();
+                setTimeout(() => {
+                    const chart: HTMLElement = helper.getElement().querySelector('.e-datavisualization-chart');
+                    expect(chart).not.toBeNull();
+                    const spreadsheet: Spreadsheet = helper.getInstance();
+                    expect(spreadsheet.sheets[0].rows[0].cells[0].chart[0].range).toContain('Sheet1!A1:A5 D1:D5');
+                    done();
+                });
+            });
+
+            it('Insert Bar chart with multiple discontinuous ranges via UI->', (done: Function) => {
+                helper.invoke('selectRange', ['A1:A3 D1:D3 G1:G3']);
+                helper.switchRibbonTab(2);
+                helper.getElement('#' + helper.id + '_chart-btn').click();
+                const target: HTMLElement = helper.getElement('#' + helper.id + '_chart-btn-popup .e-menu-item[aria-label="Bar"]');
+                helper.triggerMouseAction('mouseover', { x: target.getBoundingClientRect().left + 5, y: target.getBoundingClientRect().top + 5 }, document, target);
+                helper.getElement('#clusteredBar').click();
+                setTimeout(() => {
+                    const chart: HTMLElement = helper.getElement().querySelector('.e-datavisualization-chart');
+                    expect(chart).not.toBeNull();
+                    done();
+                });
+            });
+
+            it('Insert Line chart with markers and discontinuous range via UI->', (done: Function) => {
+                helper.invoke('selectRange', ['A1:A6 D1:D6']);
+                helper.switchRibbonTab(2);
+                helper.getElement('#' + helper.id + '_chart-btn').click();
+                const target: HTMLElement = helper.getElement('#' + helper.id + '_chart-btn-popup .e-menu-item[aria-label="Line"]');
+                helper.triggerMouseAction('mouseover', { x: target.getBoundingClientRect().left + 5, y: target.getBoundingClientRect().top + 5 }, document, target);
+                helper.getElement('#lineMarker').click();
+                setTimeout(() => {
+                    const chart: HTMLElement = helper.getElement().querySelector('.e-datavisualization-chart');
+                    expect(chart).not.toBeNull();
+                    done();
+                });
+            });
+
+            it('Insert Area chart with discontinuous range via UI->', (done: Function) => {
+                helper.invoke('selectRange', ['B1:B8 E1:E8']);
+                helper.switchRibbonTab(2);
+                helper.getElement('#' + helper.id + '_chart-btn').click();
+                const target: HTMLElement = helper.getElement('#' + helper.id + '_chart-btn-popup .e-menu-item[aria-label="Area"]');
+                helper.triggerMouseAction('mouseover', { x: target.getBoundingClientRect().left + 5, y: target.getBoundingClientRect().top + 5 }, document, target);
+                helper.getElement('#area').click();
+                setTimeout(() => {
+                    const chart: HTMLElement = helper.getElement().querySelector('.e-datavisualization-chart');
+                    expect(chart).not.toBeNull();
+                    done();
+                });
+            });
+
+            it('Insert Scatter chart with discontinuous range via UI->', (done: Function) => {
+                helper.invoke('selectRange', ['D1:D7 F1:F7']);
+                helper.switchRibbonTab(2);
+                helper.getElement('#' + helper.id + '_chart-btn').click();
+                const target: HTMLElement = helper.getElement('#' + helper.id + '_chart-btn-popup .e-menu-item[aria-label="Scatter"]');
+                helper.triggerMouseAction('mouseover', { x: target.getBoundingClientRect().left + 5, y: target.getBoundingClientRect().top + 5 }, document, target);
+                helper.getElement('#scatter').click();
+                setTimeout(() => {
+                    const chart: HTMLElement = helper.getElement().querySelector('.e-datavisualization-chart');
+                    expect(chart).not.toBeNull();
+                    done();
+                });
+            });
+
+            it('Insert Pie chart with discontinuous range via UI->', (done: Function) => {
+                helper.invoke('selectRange', ['A1:A5 D1:D5']);
+                helper.switchRibbonTab(2);
+                helper.getElement('#' + helper.id + '_chart-btn').click();
+                const target: HTMLElement = helper.getElement('#' + helper.id + '_chart-btn-popup .e-menu-item[aria-label="Pie/Doughnut"]');
+                helper.triggerMouseAction('mouseover', { x: target.getBoundingClientRect().left + 5, y: target.getBoundingClientRect().top + 5 }, document, target);
+                helper.getElement('#pie').click();
+                setTimeout(() => {
+                    const chart: HTMLElement = helper.getElement().querySelector('.e-accumulationchart');
+                    expect(chart).not.toBeNull();
+                    done();
+                });
+            });
+        });
+        
+        describe('Chart Element Modifications with Discontinuous Range ->', () => {
+            beforeAll((done: Function) => {
+                helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] }, done);
+            });
+            afterAll(() => {
+                helper.invoke('destroy');
+            });
+
+            it('Add chart title to discontinuous range chart->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Column', range: 'A1:A5 D1:D5' }]]);
+                setTimeout(() => {
+                    helper.switchRibbonTab(7);
+                    helper.getElement('#' + helper.id + '_addchart').click();
+                    const target: HTMLElement = helper.getElement('#' + helper.id + '_addchart-popup .e-menu-item[aria-label="Chart Title"]');
+                    helper.triggerMouseAction('mouseover', { x: target.getBoundingClientRect().left + 5, y: target.getBoundingClientRect().top + 5 }, document, target);
+                    helper.getElement('#ChartTitleAbove').click();
+                    setTimeout(() => {
+                        helper.setAnimationToNone('.e-title-dlg.e-dialog');
+                        const input: HTMLInputElement = helper.getElement('#' + helper.id + ' .e-title-dlg .e-dlg-content .e-input') as HTMLInputElement;
+                        input.value = 'Discontinuous Range Chart';
+                        helper.click('.e-title-dlg .e-primary');
+                        setTimeout(() => {
+                            const chart = helper.getInstance().sheets[0].rows[0].cells[0].chart[0];
+                            expect(chart.title).toBe('Discontinuous Range Chart');
+                            helper.invoke('deleteChart');
+                            done();
+                        });
+                    });
+                });
+            });
+
+            it('Add data labels to discontinuous range chart->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Bar', range: 'A1:A6 D1:D6' }]]);
+                setTimeout(() => {
+                    helper.switchRibbonTab(7);
+                    helper.getElement('#' + helper.id + '_addchart').click();
+                    const target: HTMLElement = helper.getElement('#' + helper.id + '_addchart-popup .e-menu-item[aria-label="Data Labels"]');
+                    helper.triggerMouseAction('mouseover', { x: target.getBoundingClientRect().left + 5, y: target.getBoundingClientRect().top + 5 }, document, target);
+                    helper.getElement('#DLOutsideend').click();
+                    setTimeout(() => {
+                        const chart = helper.getInstance().sheets[0].rows[0].cells[0].chart[0];
+                        expect(chart.dataLabelSettings.visible).toBeTruthy();
+                        helper.invoke('deleteChart');
+                        done();
+                    });
+                });
+            });
+
+            it('Add gridlines to discontinuous range chart->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Line', range: 'A1:A8 E1:E8' }]]);
+                setTimeout(() => {
+                    helper.switchRibbonTab(7);
+                    helper.getElement('#' + helper.id + '_addchart').click();
+                    const target: HTMLElement = helper.getElement('#' + helper.id + '_addchart-popup .e-menu-item[aria-label="Gridlines"]');
+                    helper.triggerMouseAction('mouseover', { x: target.getBoundingClientRect().left + 5, y: target.getBoundingClientRect().top + 5 }, document, target);
+                    helper.getElement('#GLMinorHorizontal').click();
+                    setTimeout(() => {
+                        const chartId: string = helper.getInstance().chartColl[0].id;
+                        const chartObj: any = getComponent(chartId, 'chart');
+                        expect(chartObj.primaryYAxis.minorGridLines.width).toBe(1);
+                        helper.invoke('deleteChart');
+                        done();
+                    });
+                });
+            });
+
+            it('Change legend position for discontinuous range chart->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Area', range: 'A1:B5 D1:E5' }]]);
+                setTimeout(() => {
+                    helper.switchRibbonTab(7);
+                    helper.getElement('#' + helper.id + '_addchart').click();
+                    const target: HTMLElement = helper.getElement('#' + helper.id + '_addchart-popup .e-menu-item[aria-label="Legends"]');
+                    helper.triggerMouseAction('mouseover', { x: target.getBoundingClientRect().left + 5, y: target.getBoundingClientRect().top + 5 }, document, target);
+                    helper.getElement('#LegendsTop').click();
+                    setTimeout(() => {
+                        const chart = helper.getInstance().sheets[0].rows[0].cells[0].chart[0];
+                        expect(chart.legendSettings.position).toBe('Top');
+                        helper.invoke('deleteChart');
+                        done();
+                    });
+                });
+            });
+
+            it('Change chart theme for discontinuous range chart->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Column', range: 'A1:A5 D1:D5 G1:G5' }]]);
+                setTimeout(() => {
+                    helper.switchRibbonTab(7);
+                    helper.getElement('#' + helper.id + '_chart_theme').click();
+                    helper.getElement('.e-item[aria-label="Fabric Dark"]').click();
+                    setTimeout(() => {
+                        const chart = helper.getInstance().sheets[0].rows[0].cells[0].chart[0];
+                        expect(chart.theme).toBe('FabricDark');
+                        helper.invoke('deleteChart');
+                        done();
+                    });
+                });
+            });
+        });
+
+        describe('Chart Type Changes with Discontinuous Range ->', () => {
+            beforeAll((done: Function) => {
+                helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] }, done);
+            });
+            afterAll(() => {
+                helper.invoke('destroy');
+            });
+
+            it('Change from Column to Bar chart with discontinuous range->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Column', range: 'A1:A5 D1:D5' }]]);
+                setTimeout(() => {
+                    helper.switchRibbonTab(7);
+                    helper.getElement('#' + helper.id + '_chart-type-btn').click();
+                    const target: HTMLElement = helper.getElement('#' + helper.id + '_chart-type-btn-popup .e-menu-item[aria-label="Bar"]');
+                    helper.triggerMouseAction('mouseover', { x: target.getBoundingClientRect().left + 5, y: target.getBoundingClientRect().top + 5 }, document, target);
+                    helper.getElement('#clusteredBar').click();
+                    setTimeout(() => {
+                        const chart = helper.getInstance().sheets[0].rows[0].cells[0].chart[0];
+                        expect(chart.type).toBe('Bar');
+                        expect(chart.range).toBe('Sheet1!A1:A5 D1:D5');
+                        helper.invoke('deleteChart');
+                        done();
+                    });
+                });
+            });
+
+            it('Change from Line to Area chart with discontinuous range->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Line', range: 'A1:A6 D1:D6 G1:G6' }]]);
+                setTimeout(() => {
+                    helper.switchRibbonTab(7);
+                    helper.getElement('#' + helper.id + '_chart-type-btn').click();
+                    const target: HTMLElement = helper.getElement('#' + helper.id + '_chart-type-btn-popup .e-menu-item[aria-label="Area"]');
+                    helper.triggerMouseAction('mouseover', { x: target.getBoundingClientRect().left + 5, y: target.getBoundingClientRect().top + 5 }, document, target);
+                    helper.getElement('#stackedArea').click();
+                    setTimeout(() => {
+                        const chart = helper.getInstance().sheets[0].rows[0].cells[0].chart[0];
+                        expect(chart.type).toBe('StackingArea');
+                        helper.invoke('deleteChart');
+                        done();
+                    });
+                });
+            });
+
+            it('Change from Scatter to Column chart with discontinuous range->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Scatter', range: 'D1:D8 F1:F8' }]]);
+                setTimeout(() => {
+                    helper.switchRibbonTab(7);
+                    helper.getElement('#' + helper.id + '_chart-type-btn').click();
+                    const target: HTMLElement = helper.getElement('#' + helper.id + '_chart-type-btn-popup .e-menu-item[aria-label="Column"]');
+                    helper.triggerMouseAction('mouseover', { x: target.getBoundingClientRect().left + 5, y: target.getBoundingClientRect().top + 5 }, document, target);
+                    helper.getElement('#clusteredColumn').click();
+                    setTimeout(() => {
+                        const chart = helper.getInstance().sheets[0].rows[0].cells[3].chart[0];
+                        expect(chart.type).toBe('Column');
+                        helper.invoke('deleteChart');
+                        done();
+                    });
+                });
+            });
+
+            it('Change from Pie to Doughnut chart with discontinuous range->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Pie', range: 'A1:A5 D1:D5' }]]);
+                setTimeout(() => {
+                    helper.switchRibbonTab(7);
+                    helper.getElement('#' + helper.id + '_chart-type-btn').click();
+                    const target: HTMLElement = helper.getElement('#' + helper.id + '_chart-type-btn-popup .e-menu-item[aria-label="Pie/Doughnut"]');
+                    helper.triggerMouseAction('mouseover', { x: target.getBoundingClientRect().left + 5, y: target.getBoundingClientRect().top + 5 }, document, target);
+                    helper.getElement('#doughnut').click();
+                    setTimeout(() => {
+                        const chart = helper.getInstance().sheets[0].rows[0].cells[0].chart[0];
+                        expect(chart.type).toBe('Doughnut');
+                        helper.invoke('deleteChart');
+                        done();
+                    });
+                });
+            });
+
+            it('Change to stacked variant with discontinuous range->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Column', range: 'A1:B5 D1:E5' }]]);
+                setTimeout(() => {
+                    helper.switchRibbonTab(7);
+                    helper.getElement('#' + helper.id + '_chart-type-btn').click();
+                    const target: HTMLElement = helper.getElement('#' + helper.id + '_chart-type-btn-popup .e-menu-item[aria-label="Column"]');
+                    helper.triggerMouseAction('mouseover', { x: target.getBoundingClientRect().left + 5, y: target.getBoundingClientRect().top + 5 }, document, target);
+                    helper.getElement('#stackedColumn').click();
+                    setTimeout(() => {
+                        const chart = helper.getInstance().sheets[0].rows[0].cells[0].chart[0];
+                        expect(chart.type).toBe('StackingColumn');
+                        helper.invoke('deleteChart');
+                        done();
+                    });
+                });
+            });
+        });
+
+        describe('Merge and Split Operations with Discontinuous Charts ->', () => {
+            beforeAll((done: Function) => {
+                helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] }, done);
+            });
+            afterAll(() => {
+                helper.invoke('destroy');
+            });
+
+            it('Merge cells in first discontinuous range->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Column', range: 'A1:A5 D1:D5' }]]);
+                setTimeout(() => {
+                    helper.invoke('merge', ['A2:A3']);
+                    setTimeout(() => {
+                        const chartId: string = helper.getInstance().chartColl[0].id;
+                        const chartObj: any = getComponent(chartId, 'chart');
+                        expect(chartObj.primaryXAxis.labels.length).toBeLessThan(5);
+                        helper.invoke('deleteChart');
+                        done();
+                    });
+                });
+            });
+
+            it('Merge cells in second discontinuous range->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Bar', range: 'A1:A6 D1:D6' }]]);
+                setTimeout(() => {
+                    helper.invoke('merge', ['D3:D4']);
+                    setTimeout(() => {
+                        const chartId: string = helper.getInstance().chartColl[0].id;
+                        const chartObj: any = getComponent(chartId, 'chart');
+                        expect(chartObj.series[0].points.length).toBeLessThan(6);
+                        helper.invoke('deleteChart');
+                        done();
+                    });
+                });
+            });
+        });
+        describe('Freeze Panes with Discontinuous Charts ->', () => {
+            beforeAll((done: Function) => {
+                helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] }, done);
+            });
+            afterAll(() => {
+                helper.invoke('destroy');
+            });
+
+            it('Apply freeze panes after creating discontinuous chart->', (done: Function) => {
+                helper.invoke('insertChart', [[{ type: 'Column', range: 'A1:A8 E1:E8' }]]);
+                setTimeout(() => {
+                    helper.invoke('freezePanes', [3, 2]);
+                    setTimeout(() => {
+                        const chart: HTMLElement = helper.getElement().querySelector('.e-datavisualization-chart');
+                        expect(chart).not.toBeNull();
+                        helper.invoke('deleteChart');
+                        done();
+                    });
+                });
+            });
+
+            it('Create discontinuous chart with existing freeze panes->', (done: Function) => {
+                helper.invoke('freezePanes', [4, 3]);
+                setTimeout(() => {
+                    helper.invoke('insertChart', [[{ type: 'Bar', range: 'A1:A6 D1:D6 G1:G6' }]]);
+                    setTimeout(() => {
+                        const chart: HTMLElement = helper.getElement().querySelector('.e-datavisualization-chart');
+                        expect(chart).not.toBeNull();
+                        const chartCell = helper.getInstance().sheets[0].rows[0].cells[0].chart[1];
+                        expect(chartCell.range).toBe('Sheet1!A1:A6 D1:D6 G1:G6');
+                        helper.invoke('deleteChart');
+                        done();
+                    });
+                });
+            });
         });
     });
 });

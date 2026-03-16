@@ -8,7 +8,7 @@ import { TableStyleItems } from '../../models/items';
 import { IToolsItems, IDropDownItemModel } from '../../common/interface';
 import { ItemModel } from '@syncfusion/ej2-navigations';
 
-export let templateItems: string[] = ['lineheight', 'alignments', 'formats', 'fontname', 'fontsize', 'fontcolor', 'backgroundcolor', 'align', 'display', 'audiolayoutoption', 'videolayoutoption', 'videoalign', 'tablerows', 'tablecolumns', 'tablecell', 'tablecellhorizontalalign', 'tablecellverticalalign', 'styles', 'numberformatlist', 'bulletformatlist', 'codeblock', 'borderstyle', 'tablebackgroundcolor', 'bordercolor', 'aicommands'];
+export let templateItems: string[] = ['lineheight', 'alignments', 'formats', 'fontname', 'fontsize', 'fontcolor', 'backgroundcolor', 'align', 'display', 'audiolayoutoption', 'videolayoutoption', 'videoalign', 'tablerows', 'tablecolumns', 'tablecell', 'tablecellhorizontalalign', 'tablecellverticalalign', 'styles', 'numberformatlist', 'bulletformatlist', 'codeblock', 'borderstyle', 'tablebackgroundcolor', 'bordercolor', 'aicommands', 'wraptext'];
 
 export let tools: { [key: string]: IToolsItems } = {
     'alignments': {
@@ -52,6 +52,27 @@ export let tools: { [key: string]: IToolsItems } = {
         'tooltip': 'Line Height',
         'command': 'LineHeight',
         'subCommand': 'LineHeight'
+    },
+    'wraptext': {
+        'id': 'WrapText',
+        'icon': 'e-left-wrap',
+        'tooltip': 'WrapText',
+        'command': 'WrapText',
+        'subCommand': 'WrapText'
+    },
+    'leftwrap': {
+        'id': 'WrapText',
+        'icon': 'e-left-wrap',
+        'tooltip': 'ImageLeftWrap',
+        'command': 'WrapText',
+        'subCommand': 'ImageLeftWrap'
+    },
+    'rightwrap': {
+        'id': 'WrapText',
+        'icon': 'e-right-wrap',
+        'tooltip': 'ImageRightWrap',
+        'command': 'WrapText',
+        'subCommand': 'ImageRightWrap'
     },
     'fontname': {
         'id': 'FontName',
@@ -587,6 +608,13 @@ export let tools: { [key: string]: IToolsItems } = {
         'command': 'Table',
         'subCommand': 'TableEditProperties'
     },
+    'tablecellproperties': {
+        'id': 'TableCellProperties',
+        'icon': 'e-table-editCell-properties',
+        'tooltip': 'Table Cell Properties',
+        'command': 'Table',
+        'subCommand': 'TableCellProperties'
+    },
     'styles': {
         'id': 'Styles',
         'icon': 'e-table-styles',
@@ -720,15 +748,20 @@ export let alignmentItems: IDropDownItemModel[] = [
 ];
 
 export let imageAlignItems: IDropDownItemModel[] = [
-    { iconCss: 'e-icons e-justify-left', command: 'Images', subCommand: 'JustifyLeft' },
-    { iconCss: 'e-icons e-justify-center', command: 'Images', subCommand: 'JustifyCenter' },
-    { iconCss: 'e-icons e-justify-right', command: 'Images', subCommand: 'JustifyRight' },
+    { iconCss: 'e-icons e-justify-left', text: 'Align Left', command: 'Images', subCommand: 'JustifyLeft' },
+    { iconCss: 'e-icons e-justify-center', text: 'Align Center', command: 'Images', subCommand: 'JustifyCenter' },
+    { iconCss: 'e-icons e-justify-right', text: 'Align Right', command: 'Images', subCommand: 'JustifyRight' },
+];
+
+export let wrapTextItems: IDropDownItemModel[] = [
+    { iconCss: 'e-icons e-left-wrap', text: 'Wrap Left', command: 'Images', subCommand: 'LeftWrap' },
+    { iconCss: 'e-icons e-right-wrap', text: 'Wrap Right', command: 'Images', subCommand: 'RightWrap' },
 ];
 
 export let videoAlignItems: IDropDownItemModel[] = [
-    { iconCss: 'e-icons e-justify-left', command: 'Videos', subCommand: 'JustifyLeft' },
-    { iconCss: 'e-icons e-justify-center', command: 'Videos', subCommand: 'JustifyCenter' },
-    { iconCss: 'e-icons e-justify-right', command: 'Videos', subCommand: 'JustifyRight' },
+    { iconCss: 'e-icons e-justify-left', text: 'Align Left', command: 'Videos', subCommand: 'JustifyLeft' },
+    { iconCss: 'e-icons e-justify-center', text: 'Align Center', command: 'Videos', subCommand: 'JustifyCenter' },
+    { iconCss: 'e-icons e-justify-right', text: 'Align Right', command: 'Videos', subCommand: 'JustifyRight' },
 ];
 
 let displayLocale: { [ket: string]: string }[] = [

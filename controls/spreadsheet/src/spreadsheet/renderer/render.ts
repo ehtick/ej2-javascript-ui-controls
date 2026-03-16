@@ -364,8 +364,10 @@ export class Render {
     }
 
     private removeSheet(): void {
-        if (document.getElementById(this.parent.element.id + '_sheet')) {
-            remove(document.getElementById(this.parent.element.id + '_sheet'));
+        const sheetContent: HTMLElement = document.getElementById(this.parent.element.id + '_sheet');
+        if (sheetContent) {
+            sheetContent.innerHTML = '';
+            remove(sheetContent);
         }
     }
 

@@ -1550,6 +1550,8 @@ export class DataValidation {
         }
         this.formObj = new FormValidator('#formId', options);
         const isValid: boolean = this.formObj.validate();
+        this.formObj.destroy();
+        this.formObj = null;
         sheetPanel.removeChild(sheetPanel.getElementsByClassName('form-horizontal')[0]);
         return { isValid: isValid, errorMsg: errorMsg };
     }

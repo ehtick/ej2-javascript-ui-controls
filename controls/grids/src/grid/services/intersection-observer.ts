@@ -1,4 +1,4 @@
-import { EventHandler, Browser } from '@syncfusion/ej2-base';
+import { EventHandler, Browser, isNullOrUndefined } from '@syncfusion/ej2-base';
 import { debounce } from '@syncfusion/ej2-base';
 import { SentinelInfo, SentinelType } from '../base/type';
 import { InterSection } from '../base/interface';
@@ -56,12 +56,31 @@ export class InterSectionObserver {
     public observe(callback: Function, onEnterCallback: Function): void {
         this.containerRect = this.options.container.getBoundingClientRect();
         EventHandler.add(this.options.container, 'wheel', () => this.fromWheel = true, this);
+        if (!isNullOrUndefined(this.options.horizontalScrollbar)) {
+            EventHandler.add(this.options.horizontalScrollbar, 'wheel', () => this.fromWheel = true, this);
+            EventHandler.add(this.options.horizontalScrollbar, 'scroll', this.onVirtualContentScroll(), this);
+        }
+        if (!isNullOrUndefined(this.options.verticalScrollbar)) {
+            EventHandler.add(this.options.verticalScrollbar, 'wheel', () => this.fromWheel = true, this);
+            EventHandler.add(this.options.verticalScrollbar, 'scroll', this.onVirtualContentScroll(), this);
+        }
         EventHandler.add(this.options.container, 'scroll', this.virtualScrollHandler(callback, onEnterCallback), this);
     }
 
     public check(direction: ScrollDirection): boolean {
         const info: SentinelType = this.sentinelInfo[`${direction}`];
         return info.check(this.element.getBoundingClientRect(), info);
+    }
+
+    private onVirtualContentScroll(): Function {
+        return (e: Event) => {
+            if ((<HTMLElement>e.target).classList.contains('e-virtual-vertical-scrollbar')) {
+                this.options.container.scrollTop = (<HTMLElement>e.target).scrollTop;
+            }
+            if ((<HTMLElement>e.target).classList.contains('e-virtual-horizontal-scrollbar')) {
+                this.options.container.scrollLeft = (<HTMLElement>e.target).scrollLeft;
+            }
+        };
     }
 
     private virtualScrollHandler(callback: Function, onEnterCallback: Function): Function {
@@ -75,7 +94,12 @@ export class InterSectionObserver {
             let direction: ScrollDirection = this.options.prevTop < top ? 'down' : 'up';
             direction = this.options.prevLeft === left ? direction : this.options.prevLeft < left ? 'right' : 'left';
             this.options.prevTop = top; this.options.prevLeft = left;
-
+            if (!isNullOrUndefined(this.options.verticalScrollbar)) {
+                this.options.verticalScrollbar.scrollTop = this.options.container.scrollTop;
+            }
+            if (!isNullOrUndefined(this.options.horizontalScrollbar)) {
+                this.options.horizontalScrollbar.scrollLeft = this.options.container.scrollLeft;
+            }
             const current: SentinelType = this.sentinelInfo[`${direction}`];
 
             if (this.options.axes.indexOf(current.axis) === -1) {
@@ -90,7 +114,6 @@ export class InterSectionObserver {
 
             if (check) {
                 let fn: Function = debounced100;
-                //this.fromWheel ? this.options.debounceEvent ? debounced100 : callback : debounced100;
                 if (current.axis === 'X') { fn = debounced50; }
                 fn({ direction: direction, sentinel: current, offset: { top: top, left: left },
                     focusElement: document.activeElement});

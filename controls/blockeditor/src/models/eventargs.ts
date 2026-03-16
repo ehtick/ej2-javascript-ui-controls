@@ -1,5 +1,6 @@
+import { SuccessEventArgs } from '@syncfusion/ej2-inputs';
 import { CommandItemModel, BlockModel, BlockActionItemModel, ContextMenuItemModel } from './index';
-import { IToolbarItemModel } from './interface';
+import { IToolbarItemModel, TransformItemModel } from './interface';
 import { BlockAction } from './types';
 
 
@@ -156,7 +157,7 @@ export interface ToolbarItemClickEventArgs {
  * Represents the event arguments for opening the block action menu.
  *
  */
-export interface BlockActionMenuOpeningEventArgs {
+export interface BlockActionMenuBeforeOpenEventArgs {
     /**
      * Specifies the list of block action items in the menu.
      *
@@ -184,7 +185,7 @@ export interface BlockActionMenuOpeningEventArgs {
  * Represents the event arguments for closing the block action menu.
  *
  */
-export interface BlockActionMenuClosingEventArgs {
+export interface BlockActionMenuBeforeCloseEventArgs {
     /**
      * Specifies the list of block action items in the menu.
      *
@@ -245,7 +246,7 @@ export interface BlockActionItemSelectEventArgs {
 /**
  * Provides information about the event before the context menu opens.
  */
-export interface ContextMenuOpeningEventArgs {
+export interface ContextMenuBeforeOpenEventArgs {
     /**
      * Specifies the list of context menu items available in the menu.
      *
@@ -279,7 +280,7 @@ export interface ContextMenuOpeningEventArgs {
 /**
  * Provides information about the event before the context menu closes.
  */
-export type ContextMenuClosingEventArgs = ContextMenuOpeningEventArgs;
+export type ContextMenuBeforeCloseEventArgs = ContextMenuBeforeOpenEventArgs;
 
 /**
  * Provides information about the event when a context menu item is being clicked.
@@ -501,4 +502,49 @@ export interface AfterPasteCleanupEventArgs {
      * @default ''
      */
     content: string;
+}
+
+/**
+ * Represents the event arguments for transform block event.
+ *
+ */
+export interface TransformItemSelectEventArgs {
+    /**
+     * Specifies the command item that was clicked.
+     *
+     * @default null
+     */
+    command: TransformItemModel;
+
+    /**
+     * Specifies the HTML element associated with the clicked command item.
+     *
+     * @default null
+     */
+    element: HTMLElement;
+
+    /**
+     * Specifies the native browser event associated with the command item click.
+     *
+     * @default null
+     */
+    event: Event;
+
+    /**
+     * Specifies whether the event should be canceled. `true` to prevent the default click action.
+     *
+     * @default false
+     */
+    cancel: boolean;
+}
+
+/**
+ * Represents the event arguments for file upload success event.
+ *
+ */
+export interface FileUploadSuccessEventArgs extends SuccessEventArgs {
+    /**
+     * Specifies the file url.
+     */
+    fileUrl?: string
 }

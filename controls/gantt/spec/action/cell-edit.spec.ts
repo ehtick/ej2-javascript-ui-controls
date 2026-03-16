@@ -7517,6 +7517,7 @@ describe('The behavior for editing parent tasks differs between cell edit and di
         }
     });
 });
+
 describe('CR: 805439 Gantt editing action', () => {
     let ganttObj: Gantt;
     let WBSData: object[]= [
@@ -7610,6 +7611,57 @@ describe('CR: 805439 Gantt editing action', () => {
         triggerMouseEvent(element, 'click');
         expect(ganttObj.getFormatedDate(ganttObj.currentViewData[4].ganttProperties.startDate, 'M/d/yyyy')).toBe('4/8/2025');
     });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('Selecting the first row using tab action', () => {
+    let ganttObj: Gantt;
+    let preventDefault: Function = new Function();
+    let data = [
+        {
+            TaskID: 1,
+            TaskName: 'Planning and Permits',
+            StartDate: new Date('04/02/2025'),
+            EndDate: new Date('04/10/2025'),
+            Duration: 7,
+            Progress: 100,
+            resources: [1, 2, 3],
+        }
+    ];
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: data,
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                endDate: 'EndDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor',
+                parentID:'ParentId',
+                notes: 'info',
+                resourceInfo: 'resources'
+            },
+            editSettings: {
+                allowAdding: true,
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            projectStartDate: new Date('03/26/2025'),
+            projectEndDate: new Date('09/10/2025')
+            }, done);
+    });
+      it('Selection with on tab action', function () {
+            let args: any = { action: 'tab', preventDefault: preventDefault, target: ganttObj.treeGrid.grid.element.querySelector('#treeGrid' + ganttObj.element.id + '_gridcontrol_content_table > tbody > tr:nth-child(1) > td:nth-child(1)') } as any;
+            ganttObj.keyboardModule.keyAction(args);
+            expect(ganttObj.selectedRowIndex).toBe(-1);
+        });
     afterAll(() => {
         if (ganttObj) {
             destroyGantt(ganttObj);

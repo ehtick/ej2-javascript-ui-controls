@@ -75,7 +75,7 @@ export class SpellChecker {
      * @private
      */
     public isChange: boolean = false;
-     /**
+    /**
      * @private
      */
     public skipChangeDetection: boolean = false;

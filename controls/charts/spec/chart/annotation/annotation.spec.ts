@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * Specifies the chart annotation spec.
  */
@@ -400,7 +401,7 @@ describe('Chart Control', () => {
                                 { x: 'May', y: 80 }, { x: 'Jun', y: 70 }, { x: 'Jul', y: 65 }, { x: 'Aug', y: 55 },
                                 { x: 'Sep', y: 50 }, { x: 'Oct', y: 30 }, { x: 'Nov', y: 35 }, { x: 'Dec', y: 35 }
                             ], animation: { enable: false },
-                            xName: 'x', yName: 'y'
+                            xName: 'x', yName: 'y', name: 'Japan'
                         },
                         {
                             type: 'Line',
@@ -707,7 +708,6 @@ describe('Chart Control', () => {
                 element = getElement('container_Annotation_0');
                 expect((element as HTMLElement).style.left == '400.75px' || (element as HTMLElement).style.left == '403.25px'
                 || (element as HTMLElement).style.left == '393.25px' || (element as HTMLElement).style.left == '384.25px').toBe(true);
-
                 expect((element as HTMLElement).style.top == '214.24px' || (element as HTMLElement).style.top == '216.437px').toBe(true);
                 done();
             };
@@ -721,7 +721,6 @@ describe('Chart Control', () => {
                 expect((element as HTMLElement).style.left == '400.75px' || (element as HTMLElement).style.left == '403.25px'
                 || (element as HTMLElement).style.left == '545.125px' || (element as HTMLElement).style.left == '384.25px'
                 || (element as HTMLElement).style.left == '393.25px').toBe(true);
-
                 expect((element as HTMLElement).style.top == '105.813px' || (element as HTMLElement).style.top == '105.562px').toBe(true);
                 done();
             };

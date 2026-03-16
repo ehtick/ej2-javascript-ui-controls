@@ -27,25 +27,19 @@ let keyboardEventArgs: any = {
 describe('Emoji picker module', () => {
     describe('When we click on the emoji toolbar icon render the emoji picker ', () => {
         let rteObj: RichTextEditor;
-        let rteEle: HTMLElement;
         let controlId: string;
-        let defaultRTE: HTMLElement = createElement('div', { id: 'defaultRTE' });
         let innerHTML: string = `<p id="rte-p"> </p>`;
         beforeAll(() => {
-            document.body.appendChild(defaultRTE);
-            rteObj = new RichTextEditor({
+            rteObj = renderRTE({
                 value: innerHTML,
                 toolbarSettings: {
                     items: ['EmojiPicker']
                 },
             });
-            rteObj.appendTo('#defaultRTE');
-            rteEle = rteObj.element;
-            controlId = rteEle.id;
+            controlId = rteObj.element.id;
         });
         afterAll(() => {
             destroy(rteObj);
-            detach(defaultRTE);
         });
         it('Render emoji picker module', () => {
             const element: HTMLElement = rteObj.element.querySelector('#' + controlId + '_toolbar_EmojiPicker');
@@ -1856,7 +1850,7 @@ describe('Emoji picker module', () => {
             destroy(rteObj);
             detach(defaultRTE);
         });
-        it('The emoji is inserted in the toolbar of the Rich Text Editor.', () => {
+        it('The emoji is inserted in the toolbar of the Rich Text Editor.', (done: DoneFn) => {
             (<any>rteObj).toolbarModule.getToolbarElement().querySelector('.e-toolbar-items button').click();
             setTimeout(() => {
                 (<any>rteObj).toolbarModule.getToolbarElement().querySelector('.e-toolbar-items button').click();
@@ -1869,7 +1863,8 @@ describe('Emoji picker module', () => {
                 }
                 hasEmojiUTF16(rteObj.getText());
                 expect(hasEmojiUTF16(rteObj.getText())).toBe(true);
-            }, 0)
+                done();
+            }, 100)
         });
     });
 
@@ -1924,15 +1919,18 @@ describe('Emoji picker module', () => {
         afterAll(() => {
             destroy(rteObj);
         });
-        it('Check nested list element removed when apply the emoji', () => {
+        it('Check nested list element removed when apply the emoji', (done: DoneFn) => {
             const startContainer: HTMLElement = document.querySelector('.startContainer');
             const endContainer: HTMLElement = document.querySelector('.endContainer');
             rteObj.formatter.editorManager.nodeSelection.setSelectionText(document, startContainer.firstChild, endContainer.firstChild, 4, 4);
             const emojiEle: HTMLElement = document.querySelectorAll('.e-toolbar-item')[0] as HTMLElement;
             emojiEle.click();
             (document.querySelector('.e-rte-emojipickerbtn-group [title="Grinning face"]') as HTMLElement).click();
-            let innerHtml = '<ol><li>fristli<ol><li class="startContainer">seco😀<ol><li style="list-style-type: none;"><ol><li style="list-style-type: none;"><ol><li class="endContainer">nth</li><li>eidth<ol><li>ninth</li></ol></li></ol></li></ol></li></ol></li></ol></li><li>secondli</li><li>third</li><li>fourth<ol><li>first</li><li>second</li><li>third<ol><li>fourth</li></ol></li></ol></li></ol>';
-            expect(rteObj.inputElement.innerHTML == innerHtml).toBe(true);
+            setTimeout(() => {
+                let innerHtml = '<ol><li>fristli<ol><li class="startContainer">seco😀<ol><li style="list-style-type: none;"><ol><li style="list-style-type: none;"><ol><li class="endContainer">nth</li><li>eidth<ol><li>ninth</li></ol></li></ol></li></ol></li></ol></li></ol></li><li>secondli</li><li>third</li><li>fourth<ol><li>first</li><li>second</li><li>third<ol><li>fourth</li></ol></li></ol></li></ol>';
+                expect(rteObj.inputElement.innerHTML == innerHtml).toBe(true);
+                done();
+            }, 100);
         });
     });
 
@@ -1952,9 +1950,8 @@ describe('Emoji picker module', () => {
             rteEle = rteObj.element;
             controlId = rteEle.id;
         });
-        afterAll((done) => {
+        afterAll(() => {
             destroy(rteObj);
-            done();
         });
         it('- To open emoji picker popup at correct position', (done) => {
             const rteEle: HTMLElement = rteObj.element;
@@ -2002,9 +1999,8 @@ describe('Emoji picker module', () => {
             controlId = rteEle.id;
         });
 
-        afterEach((done) => {
+        afterEach(() => {
             destroy(rteObj);
-            done();
         });
 
         it('should trigger EmojiPicker and check isEmojiPickerTriggered', (done: Function) => {
@@ -2053,7 +2049,6 @@ describe('Emoji Picker in IFrame - Close on outside click', () => {
     it('Should close emoji popup when clicking outside in iframe', (done) => {
         const emojiButton: HTMLElement = rteObj.element.querySelector('#' + controlId + '_toolbar_EmojiPicker');
         emojiButton.click();
-
         setTimeout(() => {
             expect(rteObj.element.querySelector('.e-rte-emojipicker-popup')).not.toBe(null);
             // Simulate click inside iframe content

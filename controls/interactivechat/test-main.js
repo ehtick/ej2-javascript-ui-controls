@@ -66,6 +66,11 @@ require.config({
         name: '@syncfusion/ej2-navigations',
         location: 'node_modules/@syncfusion/ej2-navigations/dist',
         main: 'ej2-navigations.umd.min.js'
+    },
+    {
+        name: '@syncfusion/ej2-markdown-converter',
+        location: 'node_modules/@syncfusion/ej2-markdown-converter/dist',
+        main: 'ej2-markdown-converter.umd.min.js'
     }    
     // Include dependent packages
 ],

@@ -1,3 +1,4 @@
+@use 'ej2-base/styles/common/mixin' as *;
 @include export-module('inplace-editor-bigger') {
   .e-bigger .e-inplaceeditor,
   .e-inplaceeditor.e-bigger {
@@ -50,14 +51,14 @@
       .e-btn-save {
         margin: $editor-big-btn-save-margin;
         @if $skin-name == 'tailwind3' {
-          padding: 7px 11px;
+          padding: $editor-btn-save-tailwind3-padding;
         }
       }
 
       .e-btn-cancel {
         margin: $editor-big-btn-cancel-margin;
         @if $skin-name == 'tailwind3' {
-          padding: 7px 11px;
+          padding: $editor-btn-cancel-tailwind3-padding;
         }
       }
     }
@@ -110,7 +111,7 @@
   .e-inplaceeditor.e-bigger,
   .e-bigger .e-inplaceeditor-tip,
   .e-inplaceeditor-tip.e-bigger {
-    width: auto;
+    width: $editable-bgr-tip-width;
 
     .e-input-group + .e-editable-loading {
       @if $skin-name == 'material' {
@@ -174,13 +175,13 @@
   .e-bigger .e-content-placeholder.e-inplaceeditor.e-placeholder-inplaceeditor,
   .e-bigger.e-content-placeholder.e-inplaceeditor.e-placeholder-inplaceeditor {
     background-size: 150px 70px;
-    min-height: 70px;
+    min-height: $editor-bgr-content-min-height;
   }
   @if $skin-name == 'tailwind' or $skin-name == 'bootstrap5' or $skin-name == 'bootstrap5.3' or $skin-name == 'tailwind3' {
 
     .e-bigger .e-inplaceeditor .e-editable-value-wrapper,
     .e-inplaceeditor.e-bigger .e-editable-value-wrapper {
-      min-height: 38px;
+      min-height: $editor-value-min-height;
     }
 
     .e-bigger .e-inplaceeditor-tip.e-tooltip-wrap.e-popup .e-editable-title,
@@ -189,7 +190,7 @@
     }
 
     .e-bigger .e-inplaceeditor .e-editable-action-buttons .e-btn-icon.e-icons .e-bigger.e-inplaceeditor .e-editable-action-buttons .e-btn-icon.e-icons {
-      font-size: 22px;
+      font-size: $font-icon-22;
     }
   }
 }

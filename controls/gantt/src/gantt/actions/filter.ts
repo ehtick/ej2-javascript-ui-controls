@@ -276,11 +276,24 @@ export class Filter {
         const liPos: any = li.getBoundingClientRect();
         const ulPos: any = ul.getBoundingClientRect();
         const diffOfMargin: number = gridPos.left - liPos.left;
-        const marginLeft: number = (!this.parent.enableRtl ? liPos.width - diffOfMargin : (Math.abs(diffOfMargin) - ulPos.width));
+        let marginLeft: number = (!this.parent.enableRtl ? liPos.width - diffOfMargin : (Math.abs(diffOfMargin) - ulPos.width));
         let reduceTop: number = offsetParentGridPos.top;
         if (ul.offsetParent.tagName === 'BODY') {
             reduceTop = 0;
         }
+        // Dynamically adjusts submenu horizontal position to prevent overflow, flipping direction if needed
+        if (gridPos.width <= marginLeft + ulPos.width) {
+            marginLeft -= liPos.width + ulPos.width;
+            if (liPos.left < ulPos.width) {
+                marginLeft = liPos.left + ulPos.width / 2;
+            }
+        } else if (marginLeft < 0) {
+            marginLeft += ulPos.width + liPos.width;
+        }
+        const gridElement: HTMLElement = this.parent.element as HTMLElement;
+        const gridStyles: CSSStyleDeclaration = window.getComputedStyle(gridElement);
+        const gridPaddingLeft: number = parseFloat(gridStyles.paddingLeft);
+        marginLeft -= gridPaddingLeft;
         const topValue: number = liPos.top - reduceTop + window.scrollY;
         ul.style.left = '';
         ul.style.top = topValue + 'px';

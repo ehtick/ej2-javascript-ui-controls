@@ -1,9 +1,10 @@
 import { createElement, remove } from "@syncfusion/ej2-base";
 import { createEditor } from "../common/util.spec";
 import { BaseStylesProp, BlockModel } from "../../src/models/index";
+import * as constants from '../../src/common/constant';
 import { BlockType, CommandName, ContentType } from '../../src/models/enums';
 import { BlockEditor } from '../../src/index';
-import { IHeadingBlockSettings, TableCellModel, ITableBlockSettings } from '../../src/models/block/block-props';
+import { IHeadingBlockSettings, TableCellModel, ITableBlockSettings, IChecklistBlockSettings, IBulletListBlockSettings, ICollapsibleBlockSettings, ICollapsibleHeadingBlockSettings, BaseChildrenProp } from '../../src/models/block/block-props';
 import { getBlockContentElement, setCursorPosition } from "../../src/common/utils/index";
 
 const domHelpers = {
@@ -60,14 +61,14 @@ describe('Table Block', () => {
                 rows: [
                     {
                         height: 50, cells: [
-                            { columnId: 'col1', blocks: [{ id: 'b1', blockType: BlockType.Paragraph, content: [{ id: 't1', contentType: ContentType.Text, content: 'Cell 1' }] }] },
-                            { columnId: 'col2', blocks: [{ id: 'b2', blockType: BlockType.Paragraph, content: [{ id: 't2', contentType: ContentType.Text, content: 'Cell 2' }] }] }
+                            { columnId: 'col1', blocks: [{ id: 'b1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Cell 1' }] }] },
+                            { columnId: 'col2', blocks: [{ id: 'b2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Cell 2' }] }] }
                         ]
                     },
                     {
                         height: 60, cells: [
-                            { columnId: 'col1', blocks: [{ id: 'b3', blockType: BlockType.Paragraph, content: [{ id: 't3', contentType: ContentType.Text, content: 'Cell 3' }] }] },
-                            { columnId: 'col2', blocks: [{ id: 'b4', blockType: BlockType.Paragraph, content: [{ id: 't4', contentType: ContentType.Text, content: 'Cell 4' }] }] }
+                            { columnId: 'col1', blocks: [{ id: 'b3', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Cell 3' }] }] },
+                            { columnId: 'col2', blocks: [{ id: 'b4', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Cell 4' }] }] }
                         ]
                     }
                 ]
@@ -88,8 +89,8 @@ describe('Table Block', () => {
                     columns: [{ id: 'col1', width: 100 }, { id: 'col2', width: 150 }],
                     rows: [{
                         height: 40, cells: [
-                            { columnId: 'col1', blocks: [{ id: 'b1', blockType: BlockType.Paragraph, content: [{ id: 't1', contentType: ContentType.Text, content: 'A' }] }] },
-                            { columnId: 'col2', blocks: [{ id: 'b2', blockType: BlockType.Paragraph, content: [{ id: 't2', contentType: ContentType.Text, content: 'B' }] }] }
+                            { columnId: 'col1', blocks: [{ id: 'b1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'A' }] }] },
+                            { columnId: 'col2', blocks: [{ id: 'b2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'B' }] }] }
                         ]
                     }]
                 } as ITableBlockSettings
@@ -110,8 +111,8 @@ describe('Table Block', () => {
                 columns: [{ id: 'col1', width: 100 }, { id: 'col2', width: 150 }],
                 rows: [{
                     height: 40, cells: [
-                        { columnId: 'col1', blocks: [{ id: 'b1', blockType: BlockType.Paragraph, content: [{ id: 't1', contentType: ContentType.Text, content: 'X' }] }] },
-                        { columnId: 'col2', blocks: [{ id: 'b2', blockType: BlockType.Paragraph, content: [{ id: 't2', contentType: ContentType.Text, content: 'Y' }] }] }
+                        { columnId: 'col1', blocks: [{ id: 'b1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'X' }] }] },
+                        { columnId: 'col2', blocks: [{ id: 'b2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Y' }] }] }
                     ]
                 }]
             };
@@ -132,8 +133,8 @@ describe('Table Block', () => {
                 columns: [{ id: 'col1' }, { id: 'col2' }],
                 rows: [{
                     cells: [
-                        { columnId: 'col1', blocks: [{ id: 'b1', blockType: BlockType.Paragraph, content: [{ id: 't1', contentType: ContentType.Text, content: 'X' }] }] },
-                        { columnId: 'col2', blocks: [{ id: 'b2', blockType: BlockType.Paragraph, content: [{ id: 't2', contentType: ContentType.Text, content: 'Y' }] }] }
+                        { columnId: 'col1', blocks: [{ id: 'b1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'X' }] }] },
+                        { columnId: 'col2', blocks: [{ id: 'b2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Y' }] }] }
                     ]
                 }]
             };
@@ -155,8 +156,8 @@ describe('Table Block', () => {
                 columns: [{ id: 'col1' }, { id: 'col2' }],
                 rows: [{
                     cells: [
-                        { columnId: 'col1', blocks: [{ id: 'b1', blockType: BlockType.Paragraph, content: [{ id: 't1', contentType: ContentType.Text, content: 'X' }] }] },
-                        { columnId: 'col2', blocks: [{ id: 'b2', blockType: BlockType.Paragraph, content: [{ id: 't2', contentType: ContentType.Text, content: 'Y' }] }] }
+                        { columnId: 'col1', blocks: [{ id: 'b1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'X' }] }] },
+                        { columnId: 'col2', blocks: [{ id: 'b2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Y' }] }] }
                     ]
                 }]
             };
@@ -174,8 +175,8 @@ describe('Table Block', () => {
                 columns: [{ id: 'col1' }, { id: 'col2' }],
                 rows: [{
                     cells: [
-                        { columnId: 'col1', blocks: [{ id: 'b1', blockType: BlockType.Paragraph, content: [{ id: 't1', contentType: ContentType.Text, content: 'X' }] }] },
-                        { columnId: 'col2', blocks: [{ id: 'b2', blockType: BlockType.Paragraph, content: [{ id: 't2', contentType: ContentType.Text, content: 'Y' }] }] }
+                        { columnId: 'col1', blocks: [{ id: 'b1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'X' }] }] },
+                        { columnId: 'col2', blocks: [{ id: 'b2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Y' }] }] }
                     ]
                 }]
             };
@@ -196,14 +197,14 @@ describe('Table Block', () => {
                 rows: [
                     {
                         height: 40, cells: [
-                            { columnId: 'col1', blocks: [{ id: 'b1', blockType: BlockType.Paragraph, content: [{ id: 't1', contentType: ContentType.Text, content: 'R1C1' }] }] },
-                            { columnId: 'col2', blocks: [{ id: 'b2', blockType: BlockType.Paragraph, content: [{ id: 't2', contentType: ContentType.Text, content: 'R1C2' }] }] }
+                            { columnId: 'col1', blocks: [{ id: 'b1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'R1C1' }] }] },
+                            { columnId: 'col2', blocks: [{ id: 'b2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'R1C2' }] }] }
                         ]
                     },
                     {
                         height: 50, cells: [
-                            { columnId: 'col1', blocks: [{ id: 'b3', blockType: BlockType.Paragraph, content: [{ id: 't3', contentType: ContentType.Text, content: 'R2C1' }] }] },
-                            { columnId: 'col2', blocks: [{ id: 'b4', blockType: BlockType.Paragraph, content: [{ id: 't4', contentType: ContentType.Text, content: 'R2C2' }] }] }
+                            { columnId: 'col1', blocks: [{ id: 'b3', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'R2C1' }] }] },
+                            { columnId: 'col2', blocks: [{ id: 'b4', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'R2C2' }] }] }
                         ]
                     }
                 ]
@@ -229,8 +230,8 @@ describe('Table Block', () => {
                 columns: [{ id: 'col1', width: 100 }, { id: 'col2', width: 150 }],
                 rows: [{
                     height: 40, cells: [
-                        { columnId: 'col1', blocks: [{ id: 'b1', blockType: BlockType.Paragraph, content: [{ id: 't1', contentType: ContentType.Text, content: 'A' }] }] },
-                        { columnId: 'col2', blocks: [{ id: 'b2', blockType: BlockType.Paragraph, content: [{ id: 't2', contentType: ContentType.Text, content: 'B' }] }] }
+                        { columnId: 'col1', blocks: [{ id: 'b1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'A' }] }] },
+                        { columnId: 'col2', blocks: [{ id: 'b2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'B' }] }] }
                     ]
                 }]
             };
@@ -248,7 +249,7 @@ describe('Table Block', () => {
                 columns: [{ id: 'col1', width: 100 }],
                 rows: [{
                     height: 40, cells: [
-                        { columnId: 'col1', blocks: [{ id: 'b1', blockType: BlockType.Paragraph, content: [{ id: 't1', contentType: ContentType.Text, content: 'A' }] }] }
+                        { columnId: 'col1', blocks: [{ id: 'b1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'A' }] }] }
                     ]
                 }]
             };
@@ -269,8 +270,8 @@ describe('Table Block', () => {
             const properties: ITableBlockSettings = {
                 columns: [{ id: 'col1', width: 80 }],
                 rows: [
-                    { height: 55, cells: [{ columnId: 'col1', blocks: [{ id: 'b1', blockType: BlockType.Paragraph, content: [{ id: 't1', contentType: ContentType.Text, content: 'H55' }] }] }] },
-                    { height: 75, cells: [{ columnId: 'col1', blocks: [{ id: 'b2', blockType: BlockType.Paragraph, content: [{ id: 't2', contentType: ContentType.Text, content: 'H75' }] }] }] }
+                    { height: 55, cells: [{ columnId: 'col1', blocks: [{ id: 'b1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'H55' }] }] }] },
+                    { height: 75, cells: [{ columnId: 'col1', blocks: [{ id: 'b2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'H75' }] }] }] }
                 ]
             };
             editor = createEditor({ blocks: [{ id: 'rh', blockType: BlockType.Table, properties }] });
@@ -289,8 +290,8 @@ describe('Table Block', () => {
                 columns: [{ id: 'col1', width: 100 }, { id: 'col2', width: 100 }],
                 rows: [{
                     height: 40, cells: [
-                        { columnId: 'col1', blocks: [{ id: 'p1', blockType: BlockType.Paragraph, content: [{ id: 'c1', contentType: ContentType.Text, content: 'X' }] }] },
-                        { columnId: 'col2', blocks: [{ id: 'p2', blockType: BlockType.Paragraph, content: [{ id: 'c2', contentType: ContentType.Text, content: 'Y' }] }] }
+                        { columnId: 'col1', blocks: [{ id: 'p1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'X' }] }] },
+                        { columnId: 'col2', blocks: [{ id: 'p2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Y' }] }] }
                     ]
                 }]
             };
@@ -319,7 +320,7 @@ describe('Table Block', () => {
         it('row-number data cells are aria-hidden and not contenteditable', () => {
             const properties: ITableBlockSettings = {
                 columns: [{ id: 'col1', width: 120 }],
-                rows: [{ height: 44, cells: [{ columnId: 'col1', blocks: [{ id: 'p', blockType: BlockType.Paragraph, content: [{ id: 'c', contentType: ContentType.Text, content: 'R1C1' }] }] }] }]
+                rows: [{ height: 44, cells: [{ columnId: 'col1', blocks: [{ id: 'p', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'R1C1' }] }] }] }]
             };
             editor = createEditor({ blocks: [{ id: 'rn', blockType: BlockType.Table, properties }] });
             editor.appendTo('#editor');
@@ -334,8 +335,8 @@ describe('Table Block', () => {
                 columns: [{ id: 'col1', width: 100 }, { id: 'col2', width: 100 }],
                 rows: [{
                     height: 40, cells: [
-                        { columnId: 'col1', blocks: [{ id: 'p1', blockType: BlockType.Paragraph, content: [{ id: 'c1', contentType: ContentType.Text, content: 'A' }] }] },
-                        { columnId: 'col2', blocks: [{ id: 'p2', blockType: BlockType.Paragraph, content: [{ id: 'c2', contentType: ContentType.Text, content: 'B' }] }] }
+                        { columnId: 'col1', blocks: [{ id: 'p1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'A' }] }] },
+                        { columnId: 'col2', blocks: [{ id: 'p2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'B' }] }] }
                     ]
                 }]
             };
@@ -352,8 +353,8 @@ describe('Table Block', () => {
                 columns: [{ id: 'col1', width: 100 }, { id: 'col2', width: 150 }],
                 rows: [{
                     height: 40, cells: [
-                        { columnId: 'col1', blocks: [{ id: 'a', blockType: BlockType.Paragraph, content: [{ id: 'x', contentType: ContentType.Text, content: 'X' }] }] },
-                        { columnId: 'col2', blocks: [{ id: 'b', blockType: BlockType.Paragraph, content: [{ id: 'y', contentType: ContentType.Text, content: 'Y' }] }] }
+                        { columnId: 'col1', blocks: [{ id: 'a', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'X' }] }] },
+                        { columnId: 'col2', blocks: [{ id: 'b', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Y' }] }] }
                     ]
                 }]
             };
@@ -515,14 +516,14 @@ describe('Table Block', () => {
                 rows: [
                     {
                         cells: [
-                            { columnId: 'col1', blocks: [{ id: 'c1_p', blockType: BlockType.Paragraph, content: [{ id: 'c1_t', contentType: ContentType.Text, content: 'Cell 1' }] }] },
-                            { columnId: 'col2', blocks: [{ id: 'c2_p', blockType: BlockType.Paragraph, content: [{ id: 'c2_t', contentType: ContentType.Text, content: 'Cell 2' }] }] }
+                            { columnId: 'col1', blocks: [{ id: 'c1_p', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Cell 1' }] }] },
+                            { columnId: 'col2', blocks: [{ id: 'c2_p', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Cell 2' }] }] }
                         ]
                     },
                     {
                         cells: [
-                            { columnId: 'col1', blocks: [{ id: 'c3_p', blockType: BlockType.Paragraph, content: [{ id: 'c3_t', contentType: ContentType.Text, content: 'Cell 3' }] }] },
-                            { columnId: 'col2', blocks: [{ id: 'c4_p', blockType: BlockType.Paragraph, content: [{ id: 'c4_t', contentType: ContentType.Text, content: 'Cell 4' }] }] }
+                            { columnId: 'col1', blocks: [{ id: 'c3_p', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Cell 3' }] }] },
+                            { columnId: 'col2', blocks: [{ id: 'c4_p', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Cell 4' }] }] }
                         ]
                     }
                 ]
@@ -554,6 +555,47 @@ describe('Table Block', () => {
             const updated = editor.blocks[0] as BlockModel;
             const tProps = (updated.properties as ITableBlockSettings);
             expect((tProps.rows[0].cells[0].blocks[0] as any).content[0].content).toBe('Hello');
+        });
+
+        it('typing in cell maintains cell focus at same cell', () => {
+            setupTwoByTwo();
+            const cellBlock = domHelpers.query(editorElement, 'tbody tr:first-child td[role="gridcell"] .e-block');
+            const content = getBlockContentElement(cellBlock);
+            cellBlock.dispatchEvent(new Event('mousedown', { bubbles: true }));
+            domHelpers.input(content, 'Hello');
+
+            editor.blockManager.setFocusToBlock(cellBlock);
+            editor.blockManager.stateManager.updateContentOnUserTyping(cellBlock);
+
+            const updated = editor.blocks[0] as BlockModel;
+            const tProps = (updated.properties as ITableBlockSettings);
+            expect((tProps.rows[0].cells[0].blocks[0] as any).content[0].content).toBe('Hello');
+            expect(cellBlock.closest('td').classList.contains('e-cell-focus')).toBe(true);
+        });
+
+        it('after enabling gripper, typing in cell should remove the grippers', (done) => {
+            setupTwoByTwo();
+            const tableBlock = domHelpers.query(editorElement, '.e-table-block');
+            const cellBlock = domHelpers.query(editorElement, 'tbody tr:first-child td[role="gridcell"] .e-block');
+            const content = getBlockContentElement(cellBlock);
+            const rowHandle = domHelpers.query(tableBlock, '.e-row-action-handle');
+            cellBlock.dispatchEvent(new Event('mousemove', { bubbles: true }));
+            rowHandle.dispatchEvent(new Event('click', { bubbles: true }));
+            setTimeout(() => {
+                domHelpers.input(content, 'Hello');
+
+                editor.blockManager.setFocusToBlock(cellBlock);
+                editor.blockManager.stateManager.updateContentOnUserTyping(cellBlock);
+                editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+
+                const updated = editor.blocks[0] as BlockModel;
+                const tProps = (updated.properties as ITableBlockSettings);
+                expect((tProps.rows[0].cells[0].blocks[0] as any).content[0].content).toBe('Hello');
+                expect(cellBlock.closest('td').classList.contains('e-cell-focus')).toBe(true);
+
+                expect(domHelpers.query(tableBlock, '.e-row-action-handle.e-pinned')).toBeNull();
+                done();
+            }, 100);
         });
 
         it('enter creates a new paragraph block inside the same cell (split)', (done) => {
@@ -718,7 +760,7 @@ describe('Table Block', () => {
             setupTwoByTwo();
             const content = domHelpers.query(editorElement, 'tbody tr:first-child td[role="gridcell"] .e-block-content');
 
-            editor.setSelection('c1_t', 0, 2);
+            editor.setSelection(content.firstChild, 0, 2);
             editor.executeToolbarAction(CommandName.Bold);
 
             setTimeout(() => {
@@ -858,6 +900,366 @@ describe('Table Block', () => {
         });
     });
 
+    describe('Slash menu actions inside cell when block content is empty', () => {
+        let editor: BlockEditor;
+        let editorElement: HTMLElement;
+
+        function setupTwoByTwo(): void {
+            const tableProps: ITableBlockSettings = {
+                columns: [{ id: 'col1' }, { id: 'col2' }],
+                rows: [
+                    {
+                        cells: [
+                            { columnId: 'col1', blocks: [{ id: 'c1_p', blockType: BlockType.Paragraph }] },
+                            { columnId: 'col2', blocks: [{ id: 'c2_p', blockType: BlockType.Paragraph }] }
+                        ]
+                    },
+                    {
+                        cells: [
+                            { columnId: 'col1', blocks: [{ id: 'c3_p', blockType: BlockType.Paragraph }] },
+                            { columnId: 'col2', blocks: [{ id: 'c4_p', blockType: BlockType.Paragraph }] }
+                        ]
+                    }
+                ]
+            };
+            const blocks: BlockModel[] = [{ id: 'table_edit', blockType: BlockType.Table, properties: tableProps }];
+            editor = createEditor({ blocks });
+            editor.appendTo('#editor');
+        }
+
+        function openSlashMenuOn(blockElement: HTMLElement) {
+            expect(blockElement).not.toBeNull();
+            editor.blockManager.setFocusToBlock(blockElement);
+            const contentElement = getBlockContentElement(blockElement);
+            contentElement.textContent = '/' + contentElement.textContent;
+            setCursorPosition(contentElement, 1);
+            editor.blockManager.stateManager.updateContentOnUserTyping(blockElement);
+            editorElement.querySelector('.e-mention.e-editable-element').dispatchEvent(new KeyboardEvent('keyup', { key: '/', code: 'Slash', bubbles: true }));
+        }
+
+        function clickSlashMenuItem(item: string) {
+            const slashCommandElement = document.querySelector('.e-popup.e-blockeditor-command-menu') as HTMLElement;
+            expect(slashCommandElement).not.toBeNull();
+            const listItem = slashCommandElement.querySelector(`li[data-value="${item}"]`) as HTMLElement;
+            expect(listItem).not.toBeNull();
+            listItem.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        }
+
+        beforeEach(() => {
+            editorElement = createElement('div', { id: 'editor' });
+            document.body.appendChild(editorElement);
+        });
+
+        afterEach(() => {
+            if (editor) { editor.destroy(); editor = undefined; }
+            remove(editorElement);
+        });
+
+        it('transforming to checklist', (done) => {
+            setupTwoByTwo();
+            const firstCell = domHelpers.query(editorElement, 'tbody tr:first-child td[role="gridcell"]');
+            const tableProps = editor.blocks[0].properties as ITableBlockSettings;
+            let domBlocks = firstCell.querySelectorAll<HTMLElement>('.e-block');
+            let modelBlocks = tableProps.rows[0].cells[0].blocks;
+            const blockElement = firstCell.querySelector('.e-block') as HTMLElement;
+            openSlashMenuOn(blockElement);
+            clickSlashMenuItem('Checklist');
+
+            domBlocks = firstCell.querySelectorAll<HTMLElement>('.e-block');
+            modelBlocks = tableProps.rows[0].cells[0].blocks;
+            expect(modelBlocks.length).toBe(1);
+            expect(modelBlocks[0].blockType).toBe(BlockType.Checklist);
+            expect((modelBlocks[0].properties as IChecklistBlockSettings).isChecked).toBe(false);
+            expect(domBlocks.length).toBe(1);
+            const checkMarkContainer = firstCell.querySelector('.e-block').querySelector('.e-checkmark-container') as HTMLElement;
+            expect(checkMarkContainer).not.toBeNull();
+            const checkListEle = firstCell.querySelector('.e-block').querySelector('ul li') as HTMLElement;
+            expect(checkListEle).not.toBeNull();
+            expect(checkListEle.textContent).toBe('');
+            expect(modelBlocks[0].content[0].content).toBe('');
+            done();
+        });
+
+        it('transforming to bullet list', (done) => {
+            setupTwoByTwo();
+            const firstCell = domHelpers.query(editorElement, 'tbody tr:first-child td[role="gridcell"]');
+            const tableProps = editor.blocks[0].properties as ITableBlockSettings;
+            let domBlocks = firstCell.querySelectorAll<HTMLElement>('.e-block');
+            let modelBlocks = tableProps.rows[0].cells[0].blocks;
+            const blockElement = firstCell.querySelector('.e-block') as HTMLElement;
+            openSlashMenuOn(blockElement);
+            clickSlashMenuItem('Bullet List');
+
+            domBlocks = firstCell.querySelectorAll<HTMLElement>('.e-block');
+            modelBlocks = tableProps.rows[0].cells[0].blocks;
+            expect(modelBlocks.length).toBe(1);
+            expect(modelBlocks[0].blockType).toBe(BlockType.BulletList);
+            expect(domBlocks.length).toBe(1);
+            const bulletListBlock = firstCell.querySelector('.e-block.e-list-block') as HTMLElement;
+            expect(bulletListBlock).not.toBeNull();
+            const bulletListEle = firstCell.querySelector('.e-block').querySelector('ul li') as HTMLElement;
+            expect(bulletListEle).not.toBeNull();
+            expect(bulletListEle.textContent).toBe('');
+            expect(modelBlocks[0].content[0].content).toBe('');
+            done();
+        });
+
+        it('transforming to numbered list', (done) => {
+            setupTwoByTwo();
+            const firstCell = domHelpers.query(editorElement, 'tbody tr:first-child td[role="gridcell"]');
+            const tableProps = editor.blocks[0].properties as ITableBlockSettings;
+            let domBlocks = firstCell.querySelectorAll<HTMLElement>('.e-block');
+            let modelBlocks = tableProps.rows[0].cells[0].blocks;
+            const blockElement = firstCell.querySelector('.e-block') as HTMLElement;
+            openSlashMenuOn(blockElement);
+            clickSlashMenuItem('Numbered List');
+
+            domBlocks = firstCell.querySelectorAll<HTMLElement>('.e-block');
+            modelBlocks = tableProps.rows[0].cells[0].blocks;
+            expect(modelBlocks.length).toBe(1);
+            expect(modelBlocks[0].blockType).toBe(BlockType.NumberedList);
+            expect(domBlocks.length).toBe(1);
+            const blockEle = firstCell.querySelector('.e-block.e-list-block') as HTMLElement;
+            expect(blockEle).not.toBeNull();
+            expect(blockEle.style.getPropertyValue('--block-indent')).toBe('0');
+            const contentEle = firstCell.querySelector('.e-block').querySelector('ol li') as HTMLElement;
+            expect(contentEle.style.getPropertyValue('list-style-type')).toContain('1. ');
+            expect(contentEle).not.toBeNull();
+            expect(contentEle.textContent).toBe('');
+            expect(modelBlocks[0].content[0].content).toBe('');
+            done();
+        });
+
+        it('transforming to divider', (done) => {
+            setupTwoByTwo();
+            const firstCell = domHelpers.query(editorElement, 'tbody tr:first-child td[role="gridcell"]');
+            const tableProps = editor.blocks[0].properties as ITableBlockSettings;
+            let domBlocks = firstCell.querySelectorAll<HTMLElement>('.e-block');
+            let modelBlocks = tableProps.rows[0].cells[0].blocks;
+            const blockElement = firstCell.querySelector('.e-block') as HTMLElement;
+            getBlockContentElement(blockElement).textContent = '';
+            openSlashMenuOn(blockElement);
+            clickSlashMenuItem('Divider');
+
+            domBlocks = firstCell.querySelectorAll<HTMLElement>('.e-block');
+            modelBlocks = tableProps.rows[0].cells[0].blocks;
+            // Current bullet list block should be replaced with divider block since content is empty
+            expect(modelBlocks[0].blockType).toBe(BlockType.Divider);
+            expect(modelBlocks[1].blockType).toBe(BlockType.Paragraph);
+            expect(modelBlocks.length).toBe(2);
+            expect(domBlocks.length).toBe(2);
+            expect(firstCell.querySelector('.e-block').querySelector('p')).toBeNull();
+            expect(domBlocks[0].querySelector('hr')).not.toBeNull();
+            expect(domBlocks[1].querySelector('p')).not.toBeNull();
+            expect(modelBlocks[0].content.length).toBe(0);
+            //Ensure focus is in next sibling of divider
+            expect(editor.blockManager.currentFocusedBlock.id).toBe(modelBlocks[1].id);
+            done();
+        });
+
+        it('transforming to callout', (done) => {
+            setupTwoByTwo();
+            const firstCell = domHelpers.query(editorElement, 'tbody tr:first-child td[role="gridcell"]');
+            const tableProps = editor.blocks[0].properties as ITableBlockSettings;
+            let domBlocks = firstCell.querySelectorAll<HTMLElement>('.e-block');
+            let modelBlocks = tableProps.rows[0].cells[0].blocks;
+            const blockElement = firstCell.querySelector('.e-block') as HTMLElement;
+            openSlashMenuOn(blockElement);
+            clickSlashMenuItem('Callout');
+
+            domBlocks = firstCell.querySelectorAll<HTMLElement>('.e-block');
+            modelBlocks = tableProps.rows[0].cells[0].blocks;
+            expect(modelBlocks.length).toBe(2);
+            expect(modelBlocks[0].blockType).toBe(BlockType.Callout);
+            expect((modelBlocks[0].properties as BaseChildrenProp).children.length).toBe(1);
+            expect(modelBlocks[1].blockType).toBe(BlockType.Paragraph);
+            expect(domBlocks.length).toBe(3);
+            const calloutBlock = firstCell.querySelector('.e-block.e-callout-block') as HTMLElement;
+            expect(calloutBlock).not.toBeNull();
+            const blockEle = calloutBlock.querySelector('.e-block') as HTMLElement;
+            expect(blockEle).not.toBeNull();
+            const contentEle = blockEle.querySelector('p') as HTMLElement;
+            expect(contentEle.textContent).toBe('');
+            expect((modelBlocks[0].properties as BaseChildrenProp).children[0].content[0].content).toBe('');
+            //Ensure focus is callout block
+            expect(editor.blockManager.currentFocusedBlock.id).toBe((modelBlocks[0].properties as BaseChildrenProp).children[0].id);
+            done();
+        });
+
+        it('transforming to code', (done) => {
+            setupTwoByTwo();
+            const firstCell = domHelpers.query(editorElement, 'tbody tr:first-child td[role="gridcell"]');
+            const tableProps = editor.blocks[0].properties as ITableBlockSettings;
+            let domBlocks = firstCell.querySelectorAll<HTMLElement>('.e-block');
+            let modelBlocks = tableProps.rows[0].cells[0].blocks;
+            const blockElement = firstCell.querySelector('.e-block') as HTMLElement;
+            openSlashMenuOn(blockElement);
+            clickSlashMenuItem('Code');
+
+            domBlocks = firstCell.querySelectorAll<HTMLElement>('.e-block');
+            modelBlocks = tableProps.rows[0].cells[0].blocks;
+            expect(modelBlocks.length).toBe(2);
+            expect(modelBlocks[0].blockType).toBe(BlockType.Code);
+            expect(modelBlocks[1].blockType).toBe(BlockType.Paragraph);
+            expect(domBlocks.length).toBe(2);
+            const codeBlockElement: HTMLElement | null = firstCell.querySelector('.e-block');
+            expect(codeBlockElement).not.toBeNull();
+
+            // Check main container
+            const codeContainer: HTMLElement | null = codeBlockElement!.querySelector('.e-code-block-container');
+            expect(codeContainer).not.toBeNull();
+
+            // Check toolbar
+            const toolbar: HTMLElement | null = codeContainer!.querySelector('.e-code-block-toolbar');
+            expect(toolbar).not.toBeNull();
+
+            // Check language selector
+            const languageSelector: HTMLElement | null = toolbar!.querySelector('.e-code-block-languages');
+            expect(languageSelector).not.toBeNull();
+
+            // Check copy button
+            const copyButton: HTMLElement | null = toolbar!.querySelector('.e-code-block-copy-button');
+            expect(copyButton).not.toBeNull();
+            expect(copyButton!.querySelector('.e-icons.e-copy')).not.toBeNull();
+
+            // Check pre and code elements
+            const preElement: HTMLElement | null = codeContainer!.querySelector('pre.e-code-block');
+            expect(preElement).not.toBeNull();
+            expect(preElement.getAttribute('data-language')).toBe('plaintext');
+
+            const codeElement: HTMLElement | null = preElement!.querySelector('code.e-code-content');
+            expect(codeElement).not.toBeNull();
+            expect(codeElement!.getAttribute('contenteditable')).toBe('true');
+            expect(codeElement.classList).toContain('language-plaintext');
+            expect(codeElement.textContent).toBe('\n');
+
+            // Assert Model
+            expect(modelBlocks.length).toBe(2);
+            expect(modelBlocks[0].blockType).toBe(BlockType.Code);
+            expect(modelBlocks[0].content[0].content).toBe('');
+            done();
+        });
+
+        it('transforming to heading', (done) => {
+            setupTwoByTwo();
+            const firstCell = domHelpers.query(editorElement, 'tbody tr:first-child td[role="gridcell"]');
+            const tableProps = editor.blocks[0].properties as ITableBlockSettings;
+            let domBlocks = firstCell.querySelectorAll<HTMLElement>('.e-block');
+            let modelBlocks = tableProps.rows[0].cells[0].blocks;
+            const blockElement = firstCell.querySelector('.e-block') as HTMLElement;
+            openSlashMenuOn(blockElement);
+            clickSlashMenuItem('Heading 1');
+
+            domBlocks = firstCell.querySelectorAll<HTMLElement>('.e-block');
+            modelBlocks = tableProps.rows[0].cells[0].blocks;
+            expect(modelBlocks.length).toBe(1);
+            expect(modelBlocks[0].blockType).toBe(BlockType.Heading);
+            expect((modelBlocks[0].properties as IHeadingBlockSettings).level).toBe(1);
+            expect(domBlocks.length).toBe(1);
+            const headingEle = firstCell.querySelector('.e-block').querySelector('h1') as HTMLElement;
+            expect(headingEle).not.toBeNull(); // h1 should exist
+            expect(headingEle.textContent).toBe(''); // h1 should contain correct text
+            expect(headingEle.tagName).toBe('H1');
+            expect(headingEle.textContent).toBe('');
+            expect(modelBlocks[0].content[0].content).toBe('');
+            done();
+        });
+
+        it('transforming to collapsible paragraph', (done) => {
+            setupTwoByTwo();
+            const firstCell = domHelpers.query(editorElement, 'tbody tr:first-child td[role="gridcell"]');
+            const tableProps = editor.blocks[0].properties as ITableBlockSettings;
+            let domBlocks = firstCell.querySelectorAll<HTMLElement>('.e-block');
+            let modelBlocks = tableProps.rows[0].cells[0].blocks;
+            const blockElement = firstCell.querySelector('.e-block') as HTMLElement;
+            openSlashMenuOn(blockElement);
+            clickSlashMenuItem('Collapsible Paragraph');
+
+            domBlocks = firstCell.querySelectorAll<HTMLElement>('.e-block');
+            modelBlocks = tableProps.rows[0].cells[0].blocks;
+            expect(modelBlocks.length).toBe(2);
+            expect(modelBlocks[0].blockType).toBe(BlockType.CollapsibleParagraph);
+            expect((modelBlocks[0].properties as ICollapsibleBlockSettings).isExpanded).toBe(false);
+            expect((modelBlocks[0].properties as ICollapsibleBlockSettings).children.length).toBe(1);
+            expect(modelBlocks[1].blockType).toBe(BlockType.Paragraph);
+            expect(domBlocks.length).toBe(3);
+            const collapsibleparagraph = firstCell.querySelector('.e-block.e-toggle-block') as HTMLElement;
+            expect(collapsibleparagraph).not.toBeNull();
+            const toggleHeader = collapsibleparagraph.querySelector('.e-toggle-header') as HTMLElement;
+            expect(toggleHeader).not.toBeNull();
+            expect(toggleHeader.querySelector('p').textContent).toBe('');
+            const toggleContent = collapsibleparagraph.querySelector('.e-toggle-content') as HTMLElement;
+            expect(toggleContent).not.toBeNull();
+            const contentEle = toggleContent.querySelector('.e-block p') as HTMLElement;
+            expect(contentEle.textContent).toBe('');
+            expect((modelBlocks[0].properties as ICollapsibleBlockSettings).children[0].content[0].content).toBe('');
+
+            // Should not show floating icons inside table for collapsible block
+            editor.blockManager.floatingIconAction.showFloatingIcons(collapsibleparagraph);
+            const floatingLeftOffset = editor.floatingIconRenderer.floatingIconContainer.getBoundingClientRect().left;
+            const tableBlockLeftOffset = domHelpers.query(editorElement, '.e-table-block').getBoundingClientRect().left;
+            const diff = floatingLeftOffset - tableBlockLeftOffset;
+            expect(diff).not.toBeGreaterThan(10);
+            done();
+        });
+
+        it('transforming to collapsible heading', (done) => {
+            setupTwoByTwo();
+            const firstCell = domHelpers.query(editorElement, 'tbody tr:first-child td[role="gridcell"]');
+            const tableProps = editor.blocks[0].properties as ITableBlockSettings;
+            let domBlocks = firstCell.querySelectorAll<HTMLElement>('.e-block');
+            let modelBlocks = tableProps.rows[0].cells[0].blocks;
+            const blockElement = firstCell.querySelector('.e-block') as HTMLElement;
+            openSlashMenuOn(blockElement);
+            clickSlashMenuItem('Collapsible Heading 1');
+
+            domBlocks = firstCell.querySelectorAll<HTMLElement>('.e-block');
+            modelBlocks = tableProps.rows[0].cells[0].blocks;
+            expect(modelBlocks.length).toBe(2);
+            expect(modelBlocks[0].blockType).toBe(BlockType.CollapsibleHeading);
+            expect((modelBlocks[0].properties as ICollapsibleHeadingBlockSettings).isExpanded).toBe(false);
+            expect((modelBlocks[0].properties as ICollapsibleHeadingBlockSettings).children.length).toBe(1);
+            expect((modelBlocks[0].properties as ICollapsibleHeadingBlockSettings).level).toBe(1);
+            expect(modelBlocks[1].blockType).toBe(BlockType.Paragraph);
+            expect(domBlocks.length).toBe(3);
+            const CollapsibleHeading = firstCell.querySelector('.e-block.e-toggle-block') as HTMLElement;
+            expect(CollapsibleHeading).not.toBeNull();
+            const toggleHeader = CollapsibleHeading.querySelector('.e-toggle-header') as HTMLElement;
+            expect(toggleHeader).not.toBeNull();
+            expect(toggleHeader.querySelector('h1').textContent).toBe('');
+            const toggleContent = CollapsibleHeading.querySelector('.e-toggle-content') as HTMLElement;
+            expect(toggleContent).not.toBeNull();
+            const contentEle = toggleContent.querySelector('.e-block p') as HTMLElement;
+            expect(contentEle.textContent).toBe('');
+            expect((modelBlocks[0].properties as ICollapsibleHeadingBlockSettings).children[0].content[0].content).toBe('');
+            done();
+        });
+
+        // Feature
+        // it('transforming to quote', (done) => {
+        //     setupTwoByTwo();
+        //     const firstCell = domHelpers.query(editorElement, 'tbody tr:first-child td[role="gridcell"]');
+        //     const tableProps = editor.blocks[0].properties as ITableBlockSettings;
+        //     let domBlocks = firstCell.querySelectorAll<HTMLElement>('.e-block');
+        //     let modelBlocks = tableProps.rows[0].cells[0].blocks;
+        //     const blockElement = firstCell.querySelector('.e-block') as HTMLElement;
+        //     openSlashMenuOn(blockElement);
+        //     clickSlashMenuItem('Quote');
+
+        //     domBlocks = firstCell.querySelectorAll<HTMLElement>('.e-block');
+        //     modelBlocks = tableProps.rows[0].cells[0].blocks;
+        //     expect(modelBlocks.length).toBe(2);
+        //     expect(domBlocks.length).toBe(3);
+        //     expect(modelBlocks[0].blockType).toBe(BlockType.Quote);
+        //     const blockquoteElement = firstCell.querySelector('.e-block').querySelector('blockquote') as HTMLElement;
+        //     expect(blockquoteElement.textContent).toBe('');
+        //     expect(blockquoteElement).not.toBeNull();
+        //     expect(blockquoteElement.tagName).toBe('BLOCKQUOTE');
+        //     expect(modelBlocks[1].content[0].content).toBe('');
+        //     done();
+        // });
+    });
+
     describe('Slash menu actions inside cell', () => {
         let editor: BlockEditor;
         let editorElement: HTMLElement;
@@ -868,14 +1270,14 @@ describe('Table Block', () => {
                 rows: [
                     {
                         cells: [
-                            { columnId: 'col1', blocks: [{ id: 'c1_p', blockType: BlockType.Paragraph, content: [{ id: 'c1_t', contentType: ContentType.Text, content: 'Cell 1' }] }] },
-                            { columnId: 'col2', blocks: [{ id: 'c2_p', blockType: BlockType.Paragraph, content: [{ id: 'c2_t', contentType: ContentType.Text, content: 'Cell 2' }] }] }
+                            { columnId: 'col1', blocks: [{ id: 'c1_p', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Cell 1' }] }] },
+                            { columnId: 'col2', blocks: [{ id: 'c2_p', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Cell 2' }] }] }
                         ]
                     },
                     {
                         cells: [
-                            { columnId: 'col1', blocks: [{ id: 'c3_p', blockType: BlockType.Paragraph, content: [{ id: 'c3_t', contentType: ContentType.Text, content: 'Cell 3' }] }] },
-                            { columnId: 'col2', blocks: [{ id: 'c4_p', blockType: BlockType.Paragraph, content: [{ id: 'c4_t', contentType: ContentType.Text, content: 'Cell 4' }] }] }
+                            { columnId: 'col1', blocks: [{ id: 'c3_p', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Cell 3' }] }] },
+                            { columnId: 'col2', blocks: [{ id: 'c4_p', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Cell 4' }] }] }
                         ]
                     }
                 ]
@@ -950,28 +1352,29 @@ describe('Table Block', () => {
             done();
         });
 
-        it('transforming to quote', (done) => {
-            setupTwoByTwo();
-            const firstCell = domHelpers.query(editorElement, 'tbody tr:first-child td[role="gridcell"]');
-            const tableProps = editor.blocks[0].properties as ITableBlockSettings;
-            let domBlocks = firstCell.querySelectorAll<HTMLElement>('.e-block');
-            let modelBlocks = tableProps.rows[0].cells[0].blocks;
-            const blockElement = firstCell.querySelector('.e-block') as HTMLElement;
-            openSlashMenuOn(blockElement);
-            clickSlashMenuItem('Quote');
+        // Feature
+        // it('transforming to quote', (done) => {
+        //     setupTwoByTwo();
+        //     const firstCell = domHelpers.query(editorElement, 'tbody tr:first-child td[role="gridcell"]');
+        //     const tableProps = editor.blocks[0].properties as ITableBlockSettings;
+        //     let domBlocks = firstCell.querySelectorAll<HTMLElement>('.e-block');
+        //     let modelBlocks = tableProps.rows[0].cells[0].blocks;
+        //     const blockElement = firstCell.querySelector('.e-block') as HTMLElement;
+        //     openSlashMenuOn(blockElement);
+        //     clickSlashMenuItem('Quote');
 
-            domBlocks = firstCell.querySelectorAll<HTMLElement>('.e-block');
-            modelBlocks = tableProps.rows[0].cells[0].blocks;
-            expect(modelBlocks.length).toBe(1);
-            expect(domBlocks.length).toBe(1);
-            expect(modelBlocks[0].blockType).toBe(BlockType.Quote);
-            const blockquoteElement = firstCell.querySelector('.e-block').querySelector('blockquote') as HTMLElement;
-            expect(blockquoteElement.textContent).toBe('Cell 1');
-            expect(blockquoteElement).not.toBeNull();
-            expect(blockquoteElement.tagName).toBe('BLOCKQUOTE');
-            expect(modelBlocks[0].content[0].content).toBe('Cell 1');
-            done();
-        });
+        //     domBlocks = firstCell.querySelectorAll<HTMLElement>('.e-block');
+        //     modelBlocks = tableProps.rows[0].cells[0].blocks;
+        //     expect(modelBlocks.length).toBe(3);
+        //     expect(domBlocks.length).toBe(4);
+        //     expect(modelBlocks[1].blockType).toBe(BlockType.Quote);
+        //     const blockquoteElement = firstCell.querySelector('blockquote') as HTMLElement;
+        //     expect(blockquoteElement.textContent).toBe('');
+        //     expect(blockquoteElement).not.toBeNull();
+        //     expect(blockquoteElement.tagName).toBe('BLOCKQUOTE');
+        //     expect(modelBlocks[0].content[0].content).toBe('Cell 1');
+        //     done();
+        // });
 
         it('transforming to bullet list', (done) => {
             setupTwoByTwo();
@@ -1083,7 +1486,7 @@ describe('Table Block', () => {
                     expect(listItem.textContent).toBe('Cell 1');
                     expect(modelBlocks[0].content[0].content).toBe('Cell 1');
                     done();
-                }, 50);
+                }, 100);
             }, 100);
         });
 
@@ -1135,14 +1538,14 @@ describe('Table Block', () => {
                 rows: [
                     {
                         cells: [
-                            { columnId: 'c1', blocks: [{ id: 'p1', blockType: BlockType.Paragraph, content: [{ id: 't1', contentType: ContentType.Text, content: 'R1C1' }] }] },
-                            { columnId: 'c2', blocks: [{ id: 'p2', blockType: BlockType.Paragraph, content: [{ id: 't2', contentType: ContentType.Text, content: 'R1C2' }] }] }
+                            { columnId: 'c1', blocks: [{ id: 'p1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'R1C1' }] }] },
+                            { columnId: 'c2', blocks: [{ id: 'p2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'R1C2' }] }] }
                         ]
                     },
                     {
                         cells: [
-                            { columnId: 'c1', blocks: [{ id: 'p3', blockType: BlockType.Paragraph, content: [{ id: 't3', contentType: ContentType.Text, content: 'R2C1' }] }] },
-                            { columnId: 'c2', blocks: [{ id: 'p4', blockType: BlockType.Paragraph, content: [{ id: 't4', contentType: ContentType.Text, content: 'R2C2' }] }] }
+                            { columnId: 'c1', blocks: [{ id: 'p3', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'R2C1' }] }] },
+                            { columnId: 'c2', blocks: [{ id: 'p4', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'R2C2' }] }] }
                         ]
                     }
                 ]
@@ -1160,6 +1563,77 @@ describe('Table Block', () => {
         afterEach(() => {
             if (editor) { editor.destroy(); editor = undefined; }
             remove(editorElement);
+        });
+
+        it('pressing Escape key when a column is selected hides gripper action popup, clears selection and focus column header', (done) => {
+            setupTable();
+            const table = domHelpers.query(editorElement, '.e-table-element') as HTMLTableElement;
+            const blockElement = table.closest('.e-block') as HTMLElement;
+            const firstCell = domHelpers.query(blockElement, 'tbody tr td[role="gridcell"]') as HTMLTableCellElement;
+            firstCell.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+            const colActionHandle = domHelpers.query(blockElement, '.e-col-action-handle') as HTMLElement;
+            expect(colActionHandle).not.toBeNull();
+            colActionHandle.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            setTimeout((): void => {
+                const r1 = domHelpers.queryAll(blockElement, 'tbody tr')[0] as HTMLTableRowElement;
+                expect((r1.cells[1] as HTMLElement).classList.contains('e-col-selected')).toBe(true);
+                (editor as any).blockManager.observer.notify('handleEscapeKey');
+                setTimeout((): void => {
+                    const anyColSelected = blockElement.querySelector('td.e-col-selected, th.e-col-selected');
+                    expect(anyColSelected).toBeNull();
+                    const popupAfter = domHelpers.query(document as unknown as HTMLElement, '.e-table-gripper-action-popup') as HTMLElement | null;
+                    expect(popupAfter === null || popupAfter.style.display === 'none').toBe(true);
+                    const focusedHeader = blockElement.querySelector('thead th[role="columnheader"].e-cell-focus') as HTMLTableCellElement | null;
+                    expect(focusedHeader).not.toBeNull();
+                    done();
+                }, 50);
+            }, 0);
+        });
+
+        it('pressing Escape key hides gripper action popup, clears selection and focus to first td', (done) => {
+            setupTable();
+            const table = domHelpers.query(editorElement, '.e-table-element') as HTMLTableElement;
+            const blockElement = table.closest('.e-block') as HTMLElement;
+            const firstCell = domHelpers.query(blockElement, 'tbody tr td[role="gridcell"]') as HTMLTableCellElement;
+            firstCell.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+            const rowActionHandle = domHelpers.query(blockElement, '.e-row-action-handle') as HTMLElement;
+            expect(rowActionHandle).not.toBeNull();
+            rowActionHandle.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            setTimeout((): void => {
+                const firstRow = domHelpers.query(blockElement, 'tbody tr') as HTMLTableRowElement;
+                expect(firstRow.classList.contains('e-row-selected')).toBe(true);
+                (editor as any).blockManager.observer.notify('handleEscapeKey');
+                setTimeout((): void => {
+                    expect(firstRow.classList.contains('e-row-selected')).toBe(false);
+                    const popupAfter = domHelpers.query(document as unknown as HTMLElement, '.e-table-gripper-action-popup') as HTMLElement | null;
+                    expect(popupAfter === null || popupAfter.style.display === 'none').toBe(true);
+                    const focusedCell = blockElement.querySelector('tbody td[role="gridcell"].e-cell-focus') as HTMLTableCellElement | null;
+                    expect(focusedCell).not.toBeNull();
+                    done();
+                }, 50);
+            }, 0);
+        });
+
+        it('pressing Escape key hides gripper action popup and clears selection', (done) => {
+            setupTable();
+            const table = domHelpers.query(editorElement, '.e-table-element');
+            const blockElement = table.closest('.e-block');
+            const firstCell = domHelpers.query(blockElement, 'tbody tr td[role="gridcell"]');
+            firstCell.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+            const rowActionHandle = domHelpers.query(blockElement, '.e-row-action-handle');
+            expect(rowActionHandle).not.toBeNull();
+            rowActionHandle.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            setTimeout(() => {
+                const popup = domHelpers.query(document, '.e-table-gripper-action-popup');
+                expect(popup).not.toBeNull();
+                const firstRow = domHelpers.query(blockElement, 'tbody tr');
+                expect(firstRow.classList.contains('e-row-selected')).toBe(true);
+                domHelpers.key(editorElement, 'Escape');
+                setTimeout(() => {
+                    expect(popup.classList.contains('e-popup-open')).toBe(false);
+                    done();
+                }, 50);
+            }, 0);
         });
 
         it('shows hover UI (row dots, col dots, action bars) on cell hover; ignores row-number/header', () => {
@@ -1239,7 +1713,7 @@ describe('Table Block', () => {
             const firstRow = domHelpers.query(blockElement, 'tbody tr');
             expect(firstRow.classList.contains('e-row-selected')).toBe(true);
             // pinned bar visible
-            const pinned = domHelpers.query(blockElement, '.e-row-action-handle.e-pinned') as HTMLElement;
+            const pinned = domHelpers.query(blockElement, '.e-row-action-handle.e-pinned.e-action-bar-active') as HTMLElement;
             expect(pinned && pinned.style.display !== 'none').toBe(true);
             // popup visible
             setTimeout(() => {
@@ -1258,13 +1732,17 @@ describe('Table Block', () => {
             const colAction = domHelpers.query(editorElement, '.e-col-action-handle');
             colAction.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
+            // Header row drag icon must not be visible when a column is selected
+            const rowActionAfterColClick = domHelpers.query(blockElement, '.e-row-action-handle') as HTMLElement;
+            expect(rowActionAfterColClick.style.display === 'none').toBe(true);
+
             // column selection class on first column cells (skip row-number)
             const r1 = domHelpers.queryAll(blockElement, 'tbody tr')[0] as HTMLTableRowElement;
             const r2 = domHelpers.queryAll(blockElement, 'tbody tr')[1] as HTMLTableRowElement;
             expect((r1.cells[1] as HTMLElement).classList.contains('e-col-selected')).toBe(true);
             expect((r2.cells[1] as HTMLElement).classList.contains('e-col-selected')).toBe(true);
             // pinned bar visible
-            const pinned = domHelpers.query(blockElement, '.e-col-action-handle.e-pinned') as HTMLElement;
+            const pinned = domHelpers.query(blockElement, '.e-col-action-handle.e-pinned.e-action-bar-active') as HTMLElement;
             expect(pinned && pinned.style.display !== 'none').toBe(true);
             // popup visible
             setTimeout(() => {
@@ -1351,6 +1829,256 @@ describe('Table Block', () => {
             insert.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
             expect(insert.style.display).toBe('none');
             expect(line.style.display).toBe('none');
+        });
+
+        it('hover on col dot hit shows insert handle and mouseleave on dot hit hides it', () => {
+            setupTable();
+            const table = domHelpers.query(editorElement, '.e-table-element');
+            const blockElement = table.closest('.e-block');
+            const firstCell = domHelpers.query(blockElement, 'tbody tr td[role="gridcell"]');
+            firstCell.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+            const colDotHit = domHelpers.query(blockElement, '.e-col-dot-hit');
+            colDotHit.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+            const insertHandle = domHelpers.query(blockElement, '.e-col-insert-handle') as HTMLElement;
+            expect(insertHandle.style.display).not.toBe('none');
+            colDotHit.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
+            expect(insertHandle.style.display === 'none' || insertHandle.style.display === '').toBe(true);
+        });
+
+        it('hover e-col-dot-hit, mouseleave from insert handle then re-enter dot hit keeps insert handle visible', () => {
+            setupTable();
+            const table = domHelpers.query(editorElement, '.e-table-element');
+            const blockElement = table.closest('.e-block');
+            const firstCell = domHelpers.query(blockElement, 'tbody tr td[role="gridcell"]');
+            firstCell.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+            const colDotHit = domHelpers.queryAll(blockElement, '.e-col-dot-hit')[1] as HTMLElement;
+            colDotHit.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+            const insertHandle = domHelpers.query(blockElement, '.e-col-insert-handle') as HTMLElement;
+            expect(insertHandle.style.display).not.toBe('none');
+            insertHandle.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
+            colDotHit.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+            expect(insertHandle.style.display).not.toBe('none');
+        });
+
+        it('hover on row dot hit shows insert handle and mouseleave on dot hit hides it', () => {
+            setupTable();
+            const table = domHelpers.query(editorElement, '.e-table-element');
+            const blockElement = table.closest('.e-block');
+            const firstCell = domHelpers.query(blockElement, 'tbody tr td[role="gridcell"]');
+            firstCell.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+            const rowDotHit = domHelpers.query(blockElement, '.e-row-dot-hit');
+            rowDotHit.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+            const insertHandle = domHelpers.query(blockElement, '.e-row-insert-handle') as HTMLElement;
+            expect(insertHandle.style.display).not.toBe('none');
+            rowDotHit.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
+            expect(insertHandle.style.display === 'none' || insertHandle.style.display === '').toBe(true);
+        });
+
+        it('hover row-dot-hit, mouseleave from insert handle then re-enter dot hit keeps insert handle visible', () => {
+            setupTable();
+            const table = domHelpers.query(editorElement, '.e-table-element');
+            const blockElement = table.closest('.e-block');
+            const firstCell = domHelpers.query(blockElement, 'tbody tr td[role="gridcell"]');
+            firstCell.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+            const rowDotHit = domHelpers.queryAll(blockElement, '.e-row-dot-hit')[1] as HTMLElement;
+            rowDotHit.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+            const insertHandle = domHelpers.query(blockElement, '.e-row-insert-handle') as HTMLElement;
+            expect(insertHandle.style.display).not.toBe('none');
+            insertHandle.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
+            rowDotHit.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+            expect(insertHandle.style.display).not.toBe('none');
+        });
+
+        it('colLeftHit mouseenter with relatedTarget=insert handle does not show UI (early return)', () => {
+            setupTable();
+            const table = domHelpers.query(editorElement, '.e-table-element');
+            const blockElement = table.closest('.e-block') as HTMLElement;
+            const firstCell = domHelpers.query(blockElement, 'tbody tr td[role="gridcell"]');
+            firstCell.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+            const colLeftHit = domHelpers.queryAll(blockElement, '.e-col-dot-hit')[0] as HTMLElement;
+            const insertHandle = domHelpers.query(blockElement, '.e-col-insert-handle') as HTMLElement;
+            const hoverLine = domHelpers.query(blockElement, '.e-col-hover-line') as HTMLElement;
+            expect(insertHandle.style.display === '' || insertHandle.style.display === 'none').toBe(true);
+            expect(hoverLine.style.display === '' || hoverLine.style.display === 'none').toBe(true);
+            colLeftHit.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true, relatedTarget: insertHandle } as any));
+            expect(insertHandle.style.display === '' || insertHandle.style.display === 'none').toBe(true);
+            expect(hoverLine.style.display === '' || hoverLine.style.display === 'none').toBe(true);
+        });
+
+        it('colRightHit mouseenter with relatedTarget=insert handle does not show UI (early return)', () => {
+            setupTable();
+            const table = domHelpers.query(editorElement, '.e-table-element');
+            const blockElement = table.closest('.e-block') as HTMLElement;
+            const firstCell = domHelpers.query(blockElement, 'tbody tr td[role="gridcell"]');
+            firstCell.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+            const colRightHit = domHelpers.queryAll(blockElement, '.e-col-dot-hit')[1] as HTMLElement;
+            const insertHandle = domHelpers.query(blockElement, '.e-col-insert-handle') as HTMLElement;
+            const hoverLine = domHelpers.query(blockElement, '.e-col-hover-line') as HTMLElement;
+            expect(insertHandle.style.display === '' || insertHandle.style.display === 'none').toBe(true);
+            expect(hoverLine.style.display === '' || hoverLine.style.display === 'none').toBe(true);
+            colRightHit.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true, relatedTarget: insertHandle } as any));
+            expect(insertHandle.style.display === '' || insertHandle.style.display === 'none').toBe(true);
+            expect(hoverLine.style.display === '' || hoverLine.style.display === 'none').toBe(true);
+        });
+
+        it('colInsertHandle mouseleave with relatedTarget=colLeftHit keeps UI visible (early return)', () => {
+            setupTable();
+            const table = domHelpers.query(editorElement, '.e-table-element');
+            const blockElement = table.closest('.e-block') as HTMLElement;
+            const firstCell = domHelpers.query(blockElement, 'tbody tr td[role="gridcell"]');
+            firstCell.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+            const colLeftHit = domHelpers.queryAll(blockElement, '.e-col-dot-hit')[0] as HTMLElement;
+            colLeftHit.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+            const insertHandle = domHelpers.query(blockElement, '.e-col-insert-handle') as HTMLElement;
+            const hoverLine = domHelpers.query(blockElement, '.e-col-hover-line') as HTMLElement;
+            expect(insertHandle.style.display).not.toBe('none');
+            expect(hoverLine.style.display).not.toBe('none');
+            insertHandle.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true, relatedTarget: colLeftHit } as any));
+        });
+
+        it('colInsertHandle mouseleave with relatedTarget=colRightHit keeps UI visible (early return)', () => {
+            setupTable();
+            const table = domHelpers.query(editorElement, '.e-table-element');
+            const blockElement = table.closest('.e-block') as HTMLElement;
+            const firstCell = domHelpers.query(blockElement, 'tbody tr td[role="gridcell"]');
+            firstCell.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+            const colRightHit = domHelpers.queryAll(blockElement, '.e-col-dot-hit')[1] as HTMLElement;
+            colRightHit.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+            const insertHandle = domHelpers.query(blockElement, '.e-col-insert-handle') as HTMLElement;
+            const hoverLine = domHelpers.query(blockElement, '.e-col-hover-line') as HTMLElement;
+            expect(insertHandle.style.display).not.toBe('none');
+            expect(hoverLine.style.display).not.toBe('none');
+            insertHandle.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true, relatedTarget: colRightHit } as any));
+        });
+
+        it('colLeftHit mouseleave with relatedTarget=insert handle keeps UI visible (early return)', () => {
+            setupTable();
+            const table = domHelpers.query(editorElement, '.e-table-element');
+            const blockElement = table.closest('.e-block') as HTMLElement;
+            const firstCell = domHelpers.query(blockElement, 'tbody tr td[role="gridcell"]');
+            firstCell.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+            const colLeftHit = domHelpers.queryAll(blockElement, '.e-col-dot-hit')[0] as HTMLElement;
+            colLeftHit.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+            const insertHandle = domHelpers.query(blockElement, '.e-col-insert-handle') as HTMLElement;
+            const hoverLine = domHelpers.query(blockElement, '.e-col-hover-line') as HTMLElement;
+            expect(insertHandle.style.display).not.toBe('none');
+            expect(hoverLine.style.display).not.toBe('none');
+            colLeftHit.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true, relatedTarget: insertHandle } as any));
+            expect(insertHandle.style.display).not.toBe('none');
+            expect(hoverLine.style.display).not.toBe('none');
+        });
+
+        it('colRightHit mouseleave with relatedTarget=insert handle keeps UI visible (early return)', () => {
+            setupTable();
+            const table = domHelpers.query(editorElement, '.e-table-element');
+            const blockElement = table.closest('.e-block') as HTMLElement;
+            const firstCell = domHelpers.query(blockElement, 'tbody tr td[role="gridcell"]');
+            firstCell.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+            const colRightHit = domHelpers.queryAll(blockElement, '.e-col-dot-hit')[1] as HTMLElement;
+            colRightHit.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+            const insertHandle = domHelpers.query(blockElement, '.e-col-insert-handle') as HTMLElement;
+            const hoverLine = domHelpers.query(blockElement, '.e-col-hover-line') as HTMLElement;
+            expect(insertHandle.style.display).not.toBe('none');
+            expect(hoverLine.style.display).not.toBe('none');
+            colRightHit.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true, relatedTarget: insertHandle } as any));
+            expect(insertHandle.style.display).not.toBe('none');
+            expect(hoverLine.style.display).not.toBe('none');
+        });
+
+        it('rowTopHit mouseenter with relatedTarget=insert handle does not show UI (early return)', () => {
+            setupTable();
+            const table = domHelpers.query(editorElement, '.e-table-element');
+            const blockElement = table.closest('.e-block') as HTMLElement;
+            const firstCell = domHelpers.query(blockElement, 'tbody tr td[role="gridcell"]');
+            firstCell.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+            const rowTopHit = domHelpers.queryAll(blockElement, '.e-row-dot-hit')[0] as HTMLElement;
+            const insertHandle = domHelpers.query(blockElement, '.e-row-insert-handle') as HTMLElement;
+            const hoverLine = domHelpers.query(blockElement, '.e-row-hover-line') as HTMLElement;
+            expect(insertHandle.style.display === '' || insertHandle.style.display === 'none').toBe(true);
+            expect(hoverLine.style.display === '' || hoverLine.style.display === 'none').toBe(true);
+            rowTopHit.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true, relatedTarget: insertHandle } as any));
+            expect(insertHandle.style.display === '' || insertHandle.style.display === 'none').toBe(true);
+            expect(hoverLine.style.display === '' || hoverLine.style.display === 'none').toBe(true);
+        });
+
+        it('rowBottomHit mouseenter with relatedTarget=insert handle does not show UI (early return)', () => {
+            setupTable();
+            const table = domHelpers.query(editorElement, '.e-table-element');
+            const blockElement = table.closest('.e-block') as HTMLElement;
+            const firstCell = domHelpers.query(blockElement, 'tbody tr td[role="gridcell"]');
+            firstCell.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+            const rowBottomHit = domHelpers.queryAll(blockElement, '.e-row-dot-hit')[1] as HTMLElement;
+            const insertHandle = domHelpers.query(blockElement, '.e-row-insert-handle') as HTMLElement;
+            const hoverLine = domHelpers.query(blockElement, '.e-row-hover-line') as HTMLElement;
+            expect(insertHandle.style.display === '' || insertHandle.style.display === 'none').toBe(true);
+            expect(hoverLine.style.display === '' || hoverLine.style.display === 'none').toBe(true);
+            rowBottomHit.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true, relatedTarget: insertHandle } as any));
+            expect(insertHandle.style.display === '' || insertHandle.style.display === 'none').toBe(true);
+            expect(hoverLine.style.display === '' || hoverLine.style.display === 'none').toBe(true);
+        });
+
+        it('rowInsertHandle mouseleave with relatedTarget=rowTopHit keeps UI visible (early return)', () => {
+            setupTable();
+            const table = domHelpers.query(editorElement, '.e-table-element');
+            const blockElement = table.closest('.e-block') as HTMLElement;
+            const firstCell = domHelpers.query(blockElement, 'tbody tr td[role="gridcell"]');
+            firstCell.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+            const rowTopHit = domHelpers.queryAll(blockElement, '.e-row-dot-hit')[0] as HTMLElement;
+            rowTopHit.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+            const insertHandle = domHelpers.query(blockElement, '.e-row-insert-handle') as HTMLElement;
+            const hoverLine = domHelpers.query(blockElement, '.e-row-hover-line') as HTMLElement;
+            expect(insertHandle.style.display).not.toBe('none');
+            expect(hoverLine.style.display).not.toBe('none');
+            insertHandle.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true, relatedTarget: rowTopHit } as any));
+        });
+
+        it('rowInsertHandle mouseleave with relatedTarget=rowBottomHit keeps UI visible (early return)', () => {
+            setupTable();
+            const table = domHelpers.query(editorElement, '.e-table-element');
+            const blockElement = table.closest('.e-block') as HTMLElement;
+            const firstCell = domHelpers.query(blockElement, 'tbody tr td[role="gridcell"]');
+            firstCell.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+            const rowBottomHit = domHelpers.queryAll(blockElement, '.e-row-dot-hit')[1] as HTMLElement;
+            rowBottomHit.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+            const insertHandle = domHelpers.query(blockElement, '.e-row-insert-handle') as HTMLElement;
+            const hoverLine = domHelpers.query(blockElement, '.e-row-hover-line') as HTMLElement;
+            expect(insertHandle.style.display).not.toBe('none');
+            expect(hoverLine.style.display).not.toBe('none');
+            insertHandle.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true, relatedTarget: rowBottomHit } as any));
+        });
+
+        it('rowTopHit mouseleave with relatedTarget=insert handle keeps UI visible (early return)', () => {
+            setupTable();
+            const table = domHelpers.query(editorElement, '.e-table-element');
+            const blockElement = table.closest('.e-block') as HTMLElement;
+            const firstCell = domHelpers.query(blockElement, 'tbody tr td[role="gridcell"]');
+            firstCell.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+            const rowTopHit = domHelpers.queryAll(blockElement, '.e-row-dot-hit')[0] as HTMLElement;
+            rowTopHit.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+            const insertHandle = domHelpers.query(blockElement, '.e-row-insert-handle') as HTMLElement;
+            const hoverLine = domHelpers.query(blockElement, '.e-row-hover-line') as HTMLElement;
+            expect(insertHandle.style.display).not.toBe('none');
+            expect(hoverLine.style.display).not.toBe('none');
+            rowTopHit.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true, relatedTarget: insertHandle } as any));
+            expect(insertHandle.style.display).not.toBe('none');
+            expect(hoverLine.style.display).not.toBe('none');
+        });
+
+        it('rowBottomHit mouseleave with relatedTarget=insert handle keeps UI visible (early return)', () => {
+            setupTable();
+            const table = domHelpers.query(editorElement, '.e-table-element');
+            const blockElement = table.closest('.e-block') as HTMLElement;
+            const firstCell = domHelpers.query(blockElement, 'tbody tr td[role="gridcell"]');
+            firstCell.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+            const rowBottomHit = domHelpers.queryAll(blockElement, '.e-row-dot-hit')[1] as HTMLElement;
+            rowBottomHit.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+            const insertHandle = domHelpers.query(blockElement, '.e-row-insert-handle') as HTMLElement;
+            const hoverLine = domHelpers.query(blockElement, '.e-row-hover-line') as HTMLElement;
+            expect(insertHandle.style.display).not.toBe('none');
+            expect(hoverLine.style.display).not.toBe('none');
+            rowBottomHit.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true, relatedTarget: insertHandle } as any));
+            expect(insertHandle.style.display).not.toBe('none');
+            expect(hoverLine.style.display).not.toBe('none');
         });
 
         it('insert handle shows on top row-dot hover and inserts row on click (DOM + model + focus)', (done) => {
@@ -1589,10 +2317,8 @@ describe('Table Block', () => {
             // click outside
             document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }));
             setTimeout(() => {
-                const pinnedRow = domHelpers.query(blockElement, '.e-row-action-handle.e-pinned') as HTMLElement;
-                const pinnedCol = domHelpers.query(blockElement, '.e-col-action-handle.e-pinned') as HTMLElement;
+                const pinnedRow = domHelpers.query(blockElement, '.e-row-action-handle.e-pinned.e-action-bar-active') as HTMLElement;
                 expect(pinnedRow.style.display === 'none' || pinnedRow.style.display === '').toBe(true);
-                expect(pinnedCol.style.display === 'none' || pinnedCol.style.display === '').toBe(true);
                 done();
             }, 0);
         });
@@ -1668,14 +2394,14 @@ describe('Table Block', () => {
                 rows: [
                     {
                         cells: [
-                            { columnId: 'c1', blocks: [{ id: 'p1', blockType: BlockType.Paragraph, content: [{ id: 't1', contentType: ContentType.Text, content: 'R1C1' }] }] },
-                            { columnId: 'c2', blocks: [{ id: 'p2', blockType: BlockType.Paragraph, content: [{ id: 't2', contentType: ContentType.Text, content: 'R1C2' }] }] }
+                            { columnId: 'c1', blocks: [{ id: 'p1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'R1C1' }] }] },
+                            { columnId: 'c2', blocks: [{ id: 'p2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'R1C2' }] }] }
                         ]
                     },
                     {
                         cells: [
-                            { columnId: 'c1', blocks: [{ id: 'p3', blockType: BlockType.Paragraph, content: [{ id: 't3', contentType: ContentType.Text, content: 'R2C1' }] }] },
-                            { columnId: 'c2', blocks: [{ id: 'p4', blockType: BlockType.Paragraph, content: [{ id: 't4', contentType: ContentType.Text, content: 'R2C2' }] }] }
+                            { columnId: 'c1', blocks: [{ id: 'p3', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'R2C1' }] }] },
+                            { columnId: 'c2', blocks: [{ id: 'p4', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'R2C2' }] }] }
                         ]
                     }
                 ]
@@ -1784,9 +2510,9 @@ describe('Table Block', () => {
         it('Delete middle body row; rows-1; indices renumbered; aria updated', (done) => {
             setupTable({
                 rows: [
-                    { cells: [{ columnId: 'c1', blocks: [{ id: 'p1', blockType: BlockType.Paragraph, content: [{ id: 't1', contentType: ContentType.Text, content: '1' }] }] }, { columnId: 'c2', blocks: [{ id: 'p2', blockType: BlockType.Paragraph, content: [{ id: 't2', contentType: ContentType.Text, content: '2' }] }] }] },
-                    { cells: [{ columnId: 'c1', blocks: [{ id: 'p3', blockType: BlockType.Paragraph, content: [{ id: 't3', contentType: ContentType.Text, content: '3' }] }] }, { columnId: 'c2', blocks: [{ id: 'p4', blockType: BlockType.Paragraph, content: [{ id: 't4', contentType: ContentType.Text, content: '4' }] }] }] },
-                    { cells: [{ columnId: 'c1', blocks: [{ id: 'p5', blockType: BlockType.Paragraph, content: [{ id: 't5', contentType: ContentType.Text, content: '5' }] }] }, { columnId: 'c2', blocks: [{ id: 'p6', blockType: BlockType.Paragraph, content: [{ id: 't6', contentType: ContentType.Text, content: '6' }] }] }] }
+                    { cells: [{ columnId: 'c1', blocks: [{ id: 'p1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '1' }] }] }, { columnId: 'c2', blocks: [{ id: 'p2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '2' }] }] }] },
+                    { cells: [{ columnId: 'c1', blocks: [{ id: 'p3', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '3' }] }] }, { columnId: 'c2', blocks: [{ id: 'p4', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '4' }] }] }] },
+                    { cells: [{ columnId: 'c1', blocks: [{ id: 'p5', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '5' }] }] }, { columnId: 'c2', blocks: [{ id: 'p6', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '6' }] }] }] }
                 ]
             });
             const midCell = domHelpers.queryAll(editorElement, 'tbody tr')[1].querySelector('td[role="gridcell"]');
@@ -1830,7 +2556,7 @@ describe('Table Block', () => {
                 const cell2 = domHelpers.query(editorElement, 'tbody tr td[role="gridcell"]');
                 cell2.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
                 domHelpers.query(editorElement, '.e-block .e-row-action-handle').dispatchEvent(new MouseEvent('click', { bubbles: true }));
-                expect(domHelpers.query(editorElement, '.e-table-gripper-action-popup')).toBeNull();
+                expect(domHelpers.query(editorElement, '.e-table-gripper-action-popup')).not.toBeNull();
                 done();
             }, 100);
         });
@@ -1848,6 +2574,10 @@ describe('Table Block', () => {
                 expect(colEls.length).toBe(4);
                 const firstRow = domHelpers.query(editorElement, 'tbody tr') as HTMLTableRowElement;
                 expect((firstRow.cells[1] as HTMLElement).classList.contains('e-cell-focus')).toBe(true);
+                // After adding a column, header row drag icon should not appear
+                const blockEl = domHelpers.query(editorElement, '.e-block') as HTMLElement;
+                const rowAction = domHelpers.query(blockEl, '.e-row-action-handle') as HTMLElement;
+                expect(rowAction.style.display === 'none').toBe(true);
                 done();
             }, 0);
         });
@@ -1862,6 +2592,10 @@ describe('Table Block', () => {
                 const rows = domHelpers.queryAll(editorElement, 'tbody tr');
                 const targetCell = rows[0].querySelectorAll('td')[2] as HTMLElement;
                 expect(targetCell.getAttribute('data-col')).toBe('1');
+                // Header drag icon should not be visible after middle-column insertion
+                const blockElMid = domHelpers.query(editorElement, '.e-block') as HTMLElement;
+                const rowActionMid = domHelpers.query(blockElMid, '.e-row-action-handle') as HTMLElement;
+                expect(rowActionMid.style.display === 'none').toBe(true);
                 done();
             }, 0);
         });
@@ -1876,6 +2610,10 @@ describe('Table Block', () => {
                 const bodyRows = domHelpers.queryAll(editorElement, 'tbody tr') as HTMLTableRowElement[];
                 const cellsLen = bodyRows.map(r => r.cells.length);
                 expect(cellsLen.every(n => n === 4)).toBe(true);
+                // Header drag icon should not be visible after appending a column
+                const blockElEnd = domHelpers.query(editorElement, '.e-block') as HTMLElement;
+                const rowActionEnd = domHelpers.query(blockElEnd, '.e-row-action-handle') as HTMLElement;
+                expect(rowActionEnd.style.display === 'none').toBe(true);
                 done();
             }, 0);
         });
@@ -1901,23 +2639,23 @@ describe('Table Block', () => {
                 rows: [
                     {
                         cells: [
-                            { columnId: 'c1', blocks: [{ id: 'p1', blockType: BlockType.Paragraph, content: [{ id: 't1', contentType: ContentType.Text, content: '1' }] }] },
-                            { columnId: 'c2', blocks: [{ id: 'p2', blockType: BlockType.Paragraph, content: [{ id: 't2', contentType: ContentType.Text, content: '2' }] }] },
-                            { columnId: 'c3', blocks: [{ id: 'p7', blockType: BlockType.Paragraph, content: [{ id: 't7', contentType: ContentType.Text, content: '7' }] }] }
+                            { columnId: 'c1', blocks: [{ id: 'p1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '1' }] }] },
+                            { columnId: 'c2', blocks: [{ id: 'p2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '2' }] }] },
+                            { columnId: 'c3', blocks: [{ id: 'p7', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '7' }] }] }
                         ]
                     },
                     {
                         cells: [
-                            { columnId: 'c1', blocks: [{ id: 'p3', blockType: BlockType.Paragraph, content: [{ id: 't3', contentType: ContentType.Text, content: '3' }] }] },
-                            { columnId: 'c2', blocks: [{ id: 'p4', blockType: BlockType.Paragraph, content: [{ id: 't4', contentType: ContentType.Text, content: '4' }] }] },
-                            { columnId: 'c3', blocks: [{ id: 'p8', blockType: BlockType.Paragraph, content: [{ id: 't8', contentType: ContentType.Text, content: '8' }] }] }
+                            { columnId: 'c1', blocks: [{ id: 'p3', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '3' }] }] },
+                            { columnId: 'c2', blocks: [{ id: 'p4', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '4' }] }] },
+                            { columnId: 'c3', blocks: [{ id: 'p8', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '8' }] }] }
                         ]
                     },
                     {
                         cells: [
-                            { columnId: 'c1', blocks: [{ id: 'p5', blockType: BlockType.Paragraph, content: [{ id: 't5', contentType: ContentType.Text, content: '5' }] }] },
-                            { columnId: 'c2', blocks: [{ id: 'p6', blockType: BlockType.Paragraph, content: [{ id: 't6', contentType: ContentType.Text, content: '6' }] }] },
-                            { columnId: 'c3', blocks: [{ id: 'p9', blockType: BlockType.Paragraph, content: [{ id: 't9', contentType: ContentType.Text, content: '9' }] }] }
+                            { columnId: 'c1', blocks: [{ id: 'p5', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '5' }] }] },
+                            { columnId: 'c2', blocks: [{ id: 'p6', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '6' }] }] },
+                            { columnId: 'c3', blocks: [{ id: 'p9', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '9' }] }] }
                         ]
                     }
                 ]
@@ -1958,7 +2696,7 @@ describe('Table Block', () => {
             const cell2 = domHelpers.query(editorElement, 'tbody tr td[role="gridcell"]');
             cell2.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
             domHelpers.query(editorElement, '.e-block .e-col-action-handle').dispatchEvent(new MouseEvent('click', { bubbles: true }));
-            expect(domHelpers.query(editorElement, '.e-table-gripper-action-popup')).toBeNull();
+            expect(domHelpers.query(editorElement, '.e-table-gripper-action-popup')).not.toBeNull();
             done();
         });
 
@@ -2022,7 +2760,7 @@ describe('Table Block', () => {
             }, 0);
         });
 
-        it('Column width recalculated equally after addColumnAt', (done) => {
+        it('addColumnAt adds a column with default column width', (done) => {
             setupTable();
             const td = domHelpers.query(editorElement, 'tbody tr td[role="gridcell"]');
             td.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
@@ -2030,8 +2768,7 @@ describe('Table Block', () => {
             domHelpers.query(editorElement, '.e-block .e-col-insert-handle').dispatchEvent(new MouseEvent('click', { bubbles: true }));
             setTimeout(() => {
                 const colEls = domHelpers.queryAll(editorElement, 'colgroup > col');
-                const widths = colEls.slice(1).map(c => (c as HTMLTableColElement).style.width);
-                expect(widths.every(w => w === widths[0])).toBe(true);
+                expect(colEls[1].style.width).toContain(constants.TABLE_NEW_COL_WIDTH.toString());
                 done();
             }, 0);
         });
@@ -2042,23 +2779,23 @@ describe('Table Block', () => {
                 rows: [
                     {
                         cells: [
-                            { columnId: 'c1', blocks: [{ id: 'p1', blockType: BlockType.Paragraph, content: [{ id: 't1', contentType: ContentType.Text, content: '1' }] }] },
-                            { columnId: 'c2', blocks: [{ id: 'p2', blockType: BlockType.Paragraph, content: [{ id: 't2', contentType: ContentType.Text, content: '2' }] }] },
-                            { columnId: 'c3', blocks: [{ id: 'p7', blockType: BlockType.Paragraph, content: [{ id: 't7', contentType: ContentType.Text, content: '7' }] }] }
+                            { columnId: 'c1', blocks: [{ id: 'p1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '1' }] }] },
+                            { columnId: 'c2', blocks: [{ id: 'p2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '2' }] }] },
+                            { columnId: 'c3', blocks: [{ id: 'p7', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '7' }] }] }
                         ]
                     },
                     {
                         cells: [
-                            { columnId: 'c1', blocks: [{ id: 'p3', blockType: BlockType.Paragraph, content: [{ id: 't3', contentType: ContentType.Text, content: '3' }] }] },
-                            { columnId: 'c2', blocks: [{ id: 'p4', blockType: BlockType.Paragraph, content: [{ id: 't4', contentType: ContentType.Text, content: '4' }] }] },
-                            { columnId: 'c3', blocks: [{ id: 'p8', blockType: BlockType.Paragraph, content: [{ id: 't8', contentType: ContentType.Text, content: '8' }] }] }
+                            { columnId: 'c1', blocks: [{ id: 'p3', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '3' }] }] },
+                            { columnId: 'c2', blocks: [{ id: 'p4', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '4' }] }] },
+                            { columnId: 'c3', blocks: [{ id: 'p8', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '8' }] }] }
                         ]
                     },
                     {
                         cells: [
-                            { columnId: 'c1', blocks: [{ id: 'p5', blockType: BlockType.Paragraph, content: [{ id: 't5', contentType: ContentType.Text, content: '5' }] }] },
-                            { columnId: 'c2', blocks: [{ id: 'p6', blockType: BlockType.Paragraph, content: [{ id: 't6', contentType: ContentType.Text, content: '6' }] }] },
-                            { columnId: 'c3', blocks: [{ id: 'p9', blockType: BlockType.Paragraph, content: [{ id: 't9', contentType: ContentType.Text, content: '9' }] }] }
+                            { columnId: 'c1', blocks: [{ id: 'p5', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '5' }] }] },
+                            { columnId: 'c2', blocks: [{ id: 'p6', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '6' }] }] },
+                            { columnId: 'c3', blocks: [{ id: 'p9', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '9' }] }] }
                         ]
                     }
                 ]
@@ -2214,7 +2951,7 @@ describe('Table Block', () => {
             rowActionHandle.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
             // Sanity: pinned row gripper is visible
-            const pinnedRowBefore = domHelpers.query(blockElement, '.e-row-action-handle.e-pinned') as HTMLElement;
+            const pinnedRowBefore = domHelpers.query(blockElement, '.e-row-action-handle.e-pinned.e-action-bar-active') as HTMLElement;
             expect(pinnedRowBefore && pinnedRowBefore.style.display !== 'none').toBe(true);
 
             // 2) Add a column (any gripper should be removed)
@@ -2282,8 +3019,8 @@ describe('Table Block', () => {
                 rows: [
                     {
                         cells: [
-                            { columnId: 'c1', blocks: [{ id: 'p1', blockType: BlockType.Paragraph, content: [{ id: 't1', contentType: ContentType.Text, content: 'R1C1' }] }] },
-                            { columnId: 'c2', blocks: [{ id: 'p2', blockType: BlockType.Paragraph, content: [{ id: 't2', contentType: ContentType.Text, content: 'R1C2' }] }] }
+                            { columnId: 'c1', blocks: [{ id: 'p1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'R1C1' }] }] },
+                            { columnId: 'c2', blocks: [{ id: 'p2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'R1C2' }] }] }
                         ]
                     }
                 ]
@@ -2381,6 +3118,20 @@ describe('Table Block', () => {
             editorElement.dispatchEvent(new Event('input', { bubbles: true }));
             setTimeout(() => {
                 expect((editor.blocks[0].properties as ITableBlockSettings).columns[0].headerText).toBe('Updated header');
+                done();
+            }, 0);
+        });
+
+        it('Typing on header should maintain cell focus at same cell', (done) => {
+            setup();
+            editor.blockManager.setFocusToBlock(editorElement.querySelector('.e-block'));
+            const th = domHelpers.query(editorElement, 'thead th[role="columnheader"]');
+            th.dispatchEvent(new Event('mousedown', { bubbles: true }));
+            th.textContent = 'Updated header';
+            editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+            setTimeout(() => {
+                expect((editor.blocks[0].properties as ITableBlockSettings).columns[0].headerText).toBe('Updated header');
+                expect(th.classList.contains('e-cell-focus')).toBe(true);
                 done();
             }, 0);
         });

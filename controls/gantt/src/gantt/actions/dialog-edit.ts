@@ -377,6 +377,7 @@ export class DialogEdit {
         tempData.ganttProperties.isAutoSchedule = (this.parent.taskMode === 'Auto') ? true :
             (this.parent.taskMode === 'Manual') ? false :
                 tempData[taskSettings.manual] === true ? false : true;
+        tempData.ganttProperties.calendarContext = this.parent.defaultCalendarContext ? this.parent.defaultCalendarContext : null;
         return tempData;
     }
     /**
@@ -716,6 +717,7 @@ export class DialogEdit {
         tabModel.items = tabItems;
         tabModel.locale = this.parent.locale;
         tabModel.enableRtl = this.parent.enableRtl;
+        tabModel.swipeMode = 'Touch';
         this.beforeOpenArgs.tabModel = tabModel;
         let count: number = 0; let index: number = 0;
         if (length > 0) {
@@ -2116,10 +2118,12 @@ export class DialogEdit {
         const calendarContext: CalendarContext = this.parent.defaultCalendarContext;
         if (!isNullOrUndefined(taskSettings.duration) && taskSettings.duration.toLowerCase() === columnName.toLowerCase()) {
             if (!isNullOrUndefined(cellValue) && cellValue !== '') {
-                this.selectedSegment[taskSettings.duration] = Number(cellValue);
+                // To update the positive value if negative value is updated in segement tab duration fields
+                const tempDuration: Object = this.parent.dateValidationModule.getDurationValue(cellValue);
+                this.selectedSegment[taskSettings.duration] = Math.abs(Number(getValue('duration', tempDuration)));
                 let endDate: Date = ganttObj.dataOperation.getEndDate(
-                    this.selectedSegment[taskSettings.startDate], Number(cellValue), this.editedRecord.ganttProperties.durationUnit,
-                    this.editedRecord.ganttProperties, false
+                    this.selectedSegment[taskSettings.startDate], Math.abs(Number(getValue('duration', tempDuration))),
+                    this.editedRecord.ganttProperties.durationUnit, this.editedRecord.ganttProperties, false
                 );
                 endDate = ganttObj.dataOperation.checkEndDate(endDate, this.editedRecord.ganttProperties, false);
                 this.selectedSegment[taskSettings.endDate] = endDate;
@@ -2427,7 +2431,13 @@ export class DialogEdit {
                     args.rowData[taskIdField as string] = newId;
                 }
             }
+            if (!isNullOrUndefined(args.data) && !isNullOrUndefined(args.data[taskFields.duration])) {
+                this.validateSegmentFields(this.parent, 'Duration', args.data[taskFields.duration], args.data as CObject);
+            }
             this.selectedSegment = args.rowData;
+            // Update args.data with the validated & adjusted dates from segment tab edit → ensures correct values are used when grid calls refreshDataManager()
+            // after pressing Enter key action for segment tab's duration cell save action (T1010644).
+            args.data = this.selectedSegment;
             // if (args.requestType === 'save') {
             //     // let duration: string = 'duration';
             //     // let tempDuration: Object = this.parent.dataOperation.getDurationValue(args.data[duration]);
@@ -3730,10 +3740,19 @@ export class DialogEdit {
             this.addedRecord[taskSettings.segments] = dataSource;
         } else {
             const prevSegments: ITaskSegment[] = this.rowData.ganttProperties.segments;
-            this.parent.setRecordValue(
-                'taskData.' + this.parent.taskFields.segments,
-                dataSource,
-                this.rowData);
+            // Edit segment with length 1, remove the segment collection
+            if (dataSource.length === 1) {
+                this.parent.setRecordValue(
+                    'taskData.' + this.parent.taskFields.segments,
+                    [],
+                    this.rowData);
+            }
+            else {
+                this.parent.setRecordValue(
+                    'taskData.' + this.parent.taskFields.segments,
+                    dataSource,
+                    this.rowData);
+            }
             const currentSegments: ITaskSegment[] = this.parent.dataOperation.setSegmentsInfo(this.rowData, true);
             if (this.parent.enableUndoRedo && (prevSegments && currentSegments && (prevSegments.length !== currentSegments.length)) ||
                 (!prevSegments && currentSegments) || ((prevSegments && !currentSegments)) ||
@@ -3957,7 +3976,6 @@ export class DialogEdit {
         }
         this.parent['cyclicValidator'].resolve();
         const cycleSet: Set<string> = new Set();
-
         for (const item of gridObj.dataSource as IPreData[]) {
             const predObj: {
                 from: string;
@@ -3970,19 +3988,16 @@ export class DialogEdit {
                 offset: item.offset,
                 type: item.type
             };
-
             const cycles: {
                 wouldCreate: boolean;
                 cycles: string[][];
             } = this.parent['cyclicValidator'].wouldCreateCycleWhenAdding((predObj as IPredecessor));
-
             for (const innerArr of cycles.cycles) {
                 for (const id of innerArr) {
                     cycleSet.add(id);
                 }
             }
         }
-
         // Filter out items whose id is in cycleSet
         const dataSource: IPreData[] = (gridObj.dataSource as IPreData[]).filter(
             (item: IPreData) => !cycleSet.has(item.id)

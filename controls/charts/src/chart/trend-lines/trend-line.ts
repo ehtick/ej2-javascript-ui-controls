@@ -56,7 +56,7 @@ export class Trendlines {
         series.sourceIndex = trendline.sourceIndex;
         series.interior = series.fill;
         series.animation = trendline.animation;
-        series.legendShape = 'HorizontalLine';
+        series.legendShape = trendline.legendShape;
         series.marker = trendline.marker;
         series.category = 'TrendLine';
         series.chart = chart;
@@ -65,6 +65,8 @@ export class Trendlines {
         series.xData = [];
         series.yData = [];
         trendline.targetSeries = series;
+        (series as any).linearGradient = (trendline as any).linearGradient;
+        (series as any).radialGradient = (trendline as any).radialGradient;
     }
 
     /**
@@ -356,7 +358,8 @@ export class Trendlines {
                                  series: Series, slopeInterceptLog: SlopeIntercept): Points[] {
         const midPoint: number = Math.round((points.length / 2));
         const pts: Points[] = [];
-        const x1Log: number = xValues[0] - trendline.backwardForecast;
+        const backwardX: number = xValues[0] - trendline.backwardForecast;
+        const x1Log: number = backwardX > 0 ? backwardX : xValues[0];
         const x1: number = x1Log ? Math.log(x1Log) : 0;
         const y1Log: number = slopeInterceptLog.intercept + (slopeInterceptLog.slope * x1);
         const x2Log: number = xValues[midPoint - 1];
@@ -418,7 +421,8 @@ export class Trendlines {
     private getPolynomialPoints(
         trendline: Trendline, points: Points[], xValues: number[], yValues: number[], series: Series): Points[] {
         let pts: Points[] = [];
-        let polynomialOrder: number = points.length <= trendline.polynomialOrder ? points.length : trendline.polynomialOrder;
+        let polynomialOrder: number =  (!isNaN(trendline.polynomialOrder) && typeof trendline.polynomialOrder === 'number') ?
+            ((points.length <= trendline.polynomialOrder) ? points.length : trendline.polynomialOrder) : 2;
         polynomialOrder = Math.max(2, polynomialOrder);
         polynomialOrder = Math.min(6, polynomialOrder);
         trendline.polynomialOrder = polynomialOrder;

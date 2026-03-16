@@ -1,5 +1,5 @@
 import { getRangeIndexes, ChartModel, getSwapRange, getRangeAddress, addDPRValue, ExtendedChartModel, ExtendedSheet } from '../common/index';
-import { SheetModel, setCell, getSheetIndex, Workbook, CellModel, getCell, getSheetIndexFromId } from '../base/index';
+import { SheetModel, setCell, getSheetIndex, Workbook, CellModel, getCell, getSheetIndexFromId, getSheet } from '../base/index';
 import { setChart, initiateChart, deleteChartColl, refreshChartSize, focusChartBorder, getChartRowIdxFromClientY, getChartColIdxFromClientX, refreshChartCellOnInit, importModelUpdate } from '../common/event';
 import { closest, isNullOrUndefined, getComponent, isUndefined, getUniqueID } from '@syncfusion/ej2-base';
 
@@ -41,127 +41,130 @@ export class WorkbookChart {
         chart: ChartModel[], isInitCell?: boolean, isUndoRedo?: boolean, isCut?: boolean, isPaste?: boolean,
         dataSheetIdx?: number, range?: string, sheetId?: number, isUndo?: boolean, isRedo?: boolean
     }): void {
-        let i: number = 0;
-        let rangeIdx: number[] = [];
         args.isInitCell = isNullOrUndefined(args.isInitCell) ? false : args.isInitCell;
         args.isUndoRedo = isNullOrUndefined(args.isUndoRedo) ? true : args.isUndoRedo;
         args.isPaste = isNullOrUndefined(args.isPaste) ? false : args.isPaste;
-        const chart: ChartModel[] = args.chart; let chartModel: ExtendedChartModel; let chartLength: number;
-        if (chart.length > 0) {
-            while (i < chart.length) {
-                if (args.isCut === false) {
-                    chart[i as number] = {
-                        range: chart[i as number].range, id: getUniqueID('e_spreadsheet_chart'), theme: chart[i as number].theme,
-                        isSeriesInRows: chart[i as number].isSeriesInRows, type: chart[i as number].type,
-                        markerSettings: chart[i as number].markerSettings,
-                        title: chart[i as number].title, legendSettings: chart[i as number].legendSettings,
-                        primaryXAxis: chart[i as number].primaryXAxis, primaryYAxis: chart[i as number].primaryYAxis,
-                        dataLabelSettings: chart[i as number].dataLabelSettings,
-                        height: chart[i as number].height, width: chart[i as number].width
-                    };
-                }
-                if (document.getElementById(args.chart[i as number].id)) {
-                    return;
-                }
-                chartModel = chart[i as number];
-                chartModel.theme = chartModel.theme || 'Material';
-                chartModel.type = chartModel.type || 'Line';
-                chartModel.isSeriesInRows = chartModel.isSeriesInRows || false;
-                if (isNullOrUndefined(chartModel.range)) {
-                    const sheet: SheetModel = this.parent.getActiveSheet();
-                    chartModel.range = sheet.selectedRange;
-                    rangeIdx = getSwapRange(getRangeIndexes(chartModel.range));
-                    if (rangeIdx[0] === 0 && rangeIdx[2] === sheet.rowCount - 1 && rangeIdx[2] > sheet.usedRange.rowIndex) {
-                        rangeIdx[2] = sheet.usedRange.rowIndex;
-                    }
-                    if (rangeIdx[1] === 0 && rangeIdx[3] === sheet.colCount - 1 && rangeIdx[3] > sheet.usedRange.colIndex) {
-                        rangeIdx[3] = sheet.usedRange.colIndex;
-                    }
-                } else {
-                    rangeIdx = getSwapRange(getRangeIndexes(chartModel.range));
-                }
-                const rangeAddress: string = getRangeAddress(rangeIdx);
-                if (chartModel.range.indexOf('!') > 0) {
-                    chartModel.range = chartModel.range.substring(0, chartModel.range.lastIndexOf('!')) + '!' + rangeAddress;
-                } else if (chartModel.range !== '') {
-                    chartModel.range = this.parent.getActiveSheet().name + '!' + rangeAddress;
-                }
-                if (isNullOrUndefined(chartModel.id)) {
-                    chartModel.id = getUniqueID('e_spreadsheet_chart');
-                }
-                if (chartModel.markerSettings && chartModel.markerSettings.visible) {
-                    if (chartModel.markerSettings.isFilled === undefined) {
-                        chartModel.markerSettings.isFilled = true;
-                    }
-                    if (chartModel.markerSettings.shape === undefined) {
-                        chartModel.markerSettings.shape = 'Circle';
-                    }
-                }
-                chartModel.height = chartModel.height || 290;
-                chartModel.width = chartModel.width || 480;
-                this.parent.notify(initiateChart, {
-                    option: chartModel, isInitCell: args.isInitCell, triggerEvent: args.isUndoRedo,
-                    dataSheetIdx: args.dataSheetIdx, range: args.range, isPaste: args.isPaste
-                });
-                if (this.parent.chartColl.every((chartobj: ChartModel) => chartobj.id !== chartModel.id)) {
-                    this.parent.chartColl.push(chartModel);
-                }
-                if (!args.isInitCell || args.isPaste || args.isUndo || args.isRedo) {
-                    let sheetIdx: number; let rowIdx: number; let colIdx: number;
-                    if (args.range && (args.isUndo || args.isRedo)) {
-                        sheetIdx = getSheetIndex(this.parent, args.range.substring(0, args.range.lastIndexOf('!')));
-                        const range: number[] = getSwapRange(getRangeIndexes(args.range));
-                        rowIdx = range[0]; colIdx = range[1];
-                    } else {
-                        sheetIdx = args.sheetId === undefined ? ((chartModel.range && chartModel.range.lastIndexOf('!') > 0) ?
-                            getSheetIndex(this.parent, chartModel.range.substring(0, chartModel.range.lastIndexOf('!'))) :
-                            this.parent.activeSheetIndex) : getSheetIndexFromId(this.parent, args.sheetId);
-                        const chartRowIdx: { clientY: number, isImage?: boolean } = {
-                            clientY: Number(addDPRValue(chartModel.top).toFixed(2)), isImage: true
-                        };
-                        const chartColIdx: { clientX: number, isImage?: boolean } = {
-                            clientX: Number(addDPRValue(chartModel.left).toFixed(2)), isImage: true
-                        };
-                        this.parent.notify(getChartRowIdxFromClientY, chartRowIdx);
-                        this.parent.notify(getChartColIdxFromClientX, chartColIdx);
-                        rowIdx = chartRowIdx.clientY; colIdx = chartColIdx.clientX;
-                    }
-                    const sheet: SheetModel = isUndefined(sheetIdx) ? this.parent.getActiveSheet()
-                        : this.parent.sheets[sheetIdx as number];
-                    const cell: CellModel = getCell(rowIdx, colIdx, sheet);
-                    if (!this.parent.isPrintingProcessing) {
-                        chartModel.address = [rowIdx, colIdx];
-                        if (cell && cell.chart) {
-                            cell.chart.push(chartModel);
-                        } else {
-                            setCell(rowIdx, colIdx, sheet, { chart: [chartModel] }, true);
-                        }
-                    }
-                }
-                else {
-                    const indexes: number[] = getRangeIndexes(args.range);
-                    const chartRowIdx: { clientY: number, isImage?: boolean } = {
-                        clientY: Number(addDPRValue(chartModel.top).toFixed(2)), isImage: true
-                    };
-                    const chartColIdx: { clientX: number, isImage?: boolean } = {
-                        clientX: Number(addDPRValue(chartModel.left).toFixed(2)), isImage: true
-                    };
-                    this.parent.notify(getChartRowIdxFromClientY, chartRowIdx); this.parent.notify(getChartColIdxFromClientX, chartColIdx);
-                    const eventArgs: Object = {
-                        prevTop: chartModel.top, prevLeft: chartModel.left, prevRowIdx: indexes[0], prevColIdx: indexes[1],
-                        prevHeight: chartModel.height, prevWidth: chartModel.width, currentTop: chartModel.top,
-                        currentLeft: chartModel.left, currentRowIdx: chartRowIdx.clientY, currentColIdx: chartColIdx.clientX,
-                        currentHeight: chartModel.height, currentWidth: chartModel.width, id: chartModel.id, requestType: 'chartRefreshOnInit'
-                    };
-                    if (indexes[0] !== chartRowIdx.clientY || indexes[1] !== chartColIdx.clientX) {
-                        chartLength = chart.length;
-                        this.parent.notify(refreshChartCellOnInit, eventArgs);
-                        i -= chartLength - chart.length;
-                    }
-                }
-                i++;
+        let sheet: SheetModel; let chartModel: ExtendedChartModel; let chartLength: number;
+        const chart: ChartModel[] = args.chart; let i: number = 0;
+        while (i < chart.length) {
+            if (args.isCut === false) {
+                chart[i as number] = {
+                    range: chart[i as number].range, id: getUniqueID('e_spreadsheet_chart'), theme: chart[i as number].theme,
+                    isSeriesInRows: chart[i as number].isSeriesInRows, type: chart[i as number].type,
+                    markerSettings: chart[i as number].markerSettings,
+                    title: chart[i as number].title, legendSettings: chart[i as number].legendSettings,
+                    primaryXAxis: chart[i as number].primaryXAxis, primaryYAxis: chart[i as number].primaryYAxis,
+                    dataLabelSettings: chart[i as number].dataLabelSettings,
+                    height: chart[i as number].height, width: chart[i as number].width
+                };
             }
+            if (document.getElementById(args.chart[i as number].id)) {
+                i++;
+                continue;
+            }
+            chartModel = chart[i as number];
+            chartModel.theme = chartModel.theme || 'Material';
+            chartModel.type = chartModel.type || 'Line';
+            chartModel.isSeriesInRows = chartModel.isSeriesInRows || false;
+            let range: string; let rangeSheetIdx: number = this.parent.activeSheetIndex;
+            if (isNullOrUndefined(chartModel.range)) {
+                sheet = this.parent.getActiveSheet();
+                range = sheet.selectedRange;
+            } else {
+                const tokenIdx: number = chartModel.range.lastIndexOf('!');
+                if (tokenIdx > 0) {
+                    rangeSheetIdx = getSheetIndex(this.parent, chartModel.range.substring(0, tokenIdx));
+                    sheet = getSheet(this.parent, rangeSheetIdx);
+                    range = chartModel.range.substring(tokenIdx + 1);
+                } else {
+                    range = chartModel.range;
+                    sheet = this.parent.getActiveSheet();
+                }
+            }
+            const rangeData: number[][] = [];
+            range.split(' ').forEach((individualRange: string) => {
+                const rangeArray: number[] = getSwapRange(getRangeIndexes(individualRange));
+                if (rangeArray[0] === 0 && rangeArray[2] === sheet.rowCount - 1 && rangeArray[2] > sheet.usedRange.rowIndex) {
+                    rangeArray[2] = sheet.usedRange.rowIndex;
+                }
+                if (rangeArray[1] === 0 && rangeArray[3] === sheet.colCount - 1 && rangeArray[3] > sheet.usedRange.colIndex) {
+                    rangeArray[3] = sheet.usedRange.colIndex;
+                }
+                rangeData.push(rangeArray);
+            });
+            rangeData.sort((a: number[], b: number[]) => a[0] === b[0] ? a[1] - b[1] : a[0] - b[0]);
+            // Convert sorted range arrays back to strings
+            const sortedRanges: string[] = rangeData.map((rangeArray: number[]) => rangeArray.length && getRangeAddress(rangeArray));
+            if (chartModel.range !== '') {
+                chartModel.range = `${sheet.name}!${sortedRanges.join(' ')}`;
+            }
+            if (isNullOrUndefined(chartModel.id)) {
+                chartModel.id = getUniqueID('e_spreadsheet_chart');
+            }
+            if (chartModel.markerSettings && chartModel.markerSettings.visible) {
+                if (chartModel.markerSettings.isFilled === undefined) {
+                    chartModel.markerSettings.isFilled = true;
+                }
+                if (chartModel.markerSettings.shape === undefined) {
+                    chartModel.markerSettings.shape = 'Circle';
+                }
+            }
+            chartModel.height = chartModel.height || 290;
+            chartModel.width = chartModel.width || 480;
+            this.parent.notify(
+                initiateChart, { option: chartModel, isInitCell: args.isInitCell, triggerEvent: args.isUndoRedo, range: args.range,
+                    dataSheetIdx: args.dataSheetIdx, isPaste: args.isPaste });
+            if (this.parent.chartColl.every((chartobj: ChartModel) => chartobj.id !== chartModel.id)) {
+                this.parent.chartColl.push(chartModel);
+            }
+            if (!args.isInitCell || args.isPaste || args.isUndo || args.isRedo) {
+                let sheetIdx: number; let rowIdx: number; let colIdx: number;
+                if (args.range && (args.isUndo || args.isRedo)) {
+                    sheetIdx = getSheetIndex(this.parent, args.range.substring(0, args.range.lastIndexOf('!')));
+                    const range: number[] = getSwapRange(getRangeIndexes(args.range));
+                    rowIdx = range[0]; colIdx = range[1];
+                } else {
+                    sheetIdx = args.sheetId === undefined ? rangeSheetIdx : getSheetIndexFromId(this.parent, args.sheetId);
+                    const indexes: number[] = this.getIndexesFromChart(chartModel);
+                    rowIdx = indexes[0]; colIdx = indexes[1];
+                }
+                const sheet: SheetModel = isUndefined(sheetIdx) ? this.parent.getActiveSheet() : this.parent.sheets[sheetIdx as number];
+                const cell: CellModel = getCell(rowIdx, colIdx, sheet);
+                if (!this.parent.isPrintingProcessing) {
+                    chartModel.address = [rowIdx, colIdx];
+                    if (cell && cell.chart) {
+                        cell.chart.push(chartModel);
+                    } else {
+                        setCell(rowIdx, colIdx, sheet, { chart: [chartModel] }, true);
+                    }
+                }
+            } else {
+                const indexes: number[] = getRangeIndexes(args.range);
+                const chartIdxes: number[] = this.getIndexesFromChart(chartModel);
+                if (indexes[0] !== chartIdxes[0] || indexes[1] !== chartIdxes[1]) {
+                    chartLength = chart.length;
+                    const eventArgs: Object = { prevTop: chartModel.top, prevLeft: chartModel.left, prevRowIdx: indexes[0],
+                        prevColIdx: indexes[1], prevHeight: chartModel.height, prevWidth: chartModel.width, currentTop: chartModel.top,
+                        currentLeft: chartModel.left, currentRowIdx: chartIdxes[0], currentColIdx: chartIdxes[1], id: chartModel.id,
+                        currentHeight: chartModel.height, currentWidth: chartModel.width, requestType: 'chartRefreshOnInit' };
+                    this.parent.notify(refreshChartCellOnInit, eventArgs);
+                    i -= chartLength - chart.length;
+                }
+            }
+            i++;
         }
+    }
+
+    private getIndexesFromChart(chart: ChartModel): number[] {
+        const chartRowIdx: { clientY: number, isImage?: boolean } = {
+            clientY: Number(addDPRValue(chart.top).toFixed(2)), isImage: true
+        };
+        const chartColIdx: { clientX: number, isImage?: boolean } = {
+            clientX: Number(addDPRValue(chart.left).toFixed(2)), isImage: true
+        };
+        this.parent.notify(getChartRowIdxFromClientY, chartRowIdx);
+        this.parent.notify(getChartColIdxFromClientX, chartColIdx);
+        return [chartRowIdx.clientY, chartColIdx.clientX];
     }
 
     private refreshChartSize(args: { height: string, width: string, overlayEle: HTMLElement }): void {

@@ -636,7 +636,7 @@ describe('Pdf Exporting Remote data with isCollapsedStatePersist false', () => {
         gridObj.pdfExport(pdfExportProperties);
         done();
     });
-    
+
     it('Checking the excel export', (done: Function) => {
         let prop: any = {
             isCollapsedStatePersist: false,

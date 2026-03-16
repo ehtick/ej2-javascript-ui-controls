@@ -191,6 +191,8 @@ export interface ILegendRenderEventArgs extends IChartEventArgs {
     shape: LegendShape;
     /** Defines the legend marker shape. */
     markerShape?: ChartShape;
+    /** Defined the legend template */
+    template?: string;
 }
 export interface ILegendClickEventArgs extends IChartEventArgs {
     /** Defines the chart instance when the legend is clicked. */
@@ -380,6 +382,7 @@ export interface IThemeStyle {
     chartSubTitleFont: FontModel;
     stripLineLabelFont: FontModel;
     datalabelFont: FontModel;
+    seriesLabelFont: FontModel;
 }
 /** @private */
 export interface ITouches {

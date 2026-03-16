@@ -775,7 +775,6 @@ export class CriticalPath {
             currentData,
             false
         );
-
         // This condition was missing - thanks for catching it!
         if (validatedDate.getTime() > maxEndDate.getTime()) {
             // Ensure proper order for getDuration

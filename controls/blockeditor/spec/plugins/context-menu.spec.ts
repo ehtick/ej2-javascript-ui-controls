@@ -1,8 +1,8 @@
 import { createElement } from '@syncfusion/ej2-base';
 import { ContextMenuItemModel} from '../../src/models/index';
 import { createEditor } from '../common/util.spec';
-import { setCursorPosition, getBlockContentElement } from '../../src/common/utils/index';
-import { BlockType, ContentType, CommandName } from '../../src/models/enums';
+import { setCursorPosition, getBlockContentElement, setSelectionRange } from '../../src/common/utils/index';
+import { BlockType, ContentType } from '../../src/models/enums';
 import { BlockEditor } from '../../src/index';
 
 describe('Context Menu', () => {
@@ -43,7 +43,7 @@ describe('Context Menu', () => {
                         id: 'paragraph1',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'content1', contentType: ContentType.Text, content: 'Test content 1' }
+                            { contentType: ContentType.Text, content: 'Test content 1' }
                         ]
                     }
                 ]
@@ -69,7 +69,7 @@ describe('Context Menu', () => {
                         id: 'paragraph1',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'content1', contentType: ContentType.Text, content: 'Test content 1' }
+                            { contentType: ContentType.Text, content: 'Test content 1' }
                         ]
                     }
                 ]
@@ -104,7 +104,7 @@ describe('Context Menu', () => {
                         id: 'paragraph1',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'content1', contentType: ContentType.Text, content: 'Test content 1' }
+                            { contentType: ContentType.Text, content: 'Test content 1' }
                         ]
                     }
                 ]
@@ -148,7 +148,7 @@ describe('Context Menu', () => {
                         id: 'paragraph1',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'content1', contentType: ContentType.Text, content: 'Test content 1' }
+                            { contentType: ContentType.Text, content: 'Test content 1' }
                         ]
                     }
                 ],
@@ -174,7 +174,7 @@ describe('Context Menu', () => {
                         id: 'paragraph1',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'content1', contentType: ContentType.Text, content: 'Test content 1' }
+                            { contentType: ContentType.Text, content: 'Test content 1' }
                         ]
                     }
                 ]
@@ -221,7 +221,7 @@ describe('Context Menu', () => {
                 configurable: true
             });
 
-            editor = createEditor({ blocks: [{ id: 'p1', blockType: BlockType.Paragraph, content: [{ id: 'c1', contentType: ContentType.Text, content: 'Test' }] }] });
+            editor = createEditor({ blocks: [{ id: 'p1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Test' }] }] });
             editor.appendTo('#editor');
             
             editor.blockManager.setFocusToBlock(editor.element.querySelector('#p1') as HTMLElement);
@@ -242,7 +242,7 @@ describe('Context Menu', () => {
                 value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 configurable: true
             });
-            editor = createEditor({ blocks: [{ id: 'p1', blockType: BlockType.Paragraph, content: [{ id: 'c1', contentType: ContentType.Text, content: 'Test' }] }] });
+            editor = createEditor({ blocks: [{ id: 'p1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Test' }] }] });
             editor.appendTo('#editor');
 
             editor.blockManager.setFocusToBlock(editor.element.querySelector('#p1') as HTMLElement);
@@ -272,14 +272,14 @@ describe('Context Menu', () => {
                         id: 'paragraph1',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'content1', contentType: ContentType.Text, content: 'Test content 1' }
+                            { contentType: ContentType.Text, content: 'Test content 1' }
                         ]
                     },
                     {
                         id: 'paragraph2',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'content2', contentType: ContentType.Text, content: 'Test content 2' }
+                            { contentType: ContentType.Text, content: 'Test content 2' }
                         ]
                     }
                 ]
@@ -319,6 +319,7 @@ describe('Context Menu', () => {
         it('should enable disable clipboard options properly', (done) => {
             spyOn(editor.blockManager.clipboardAction, 'isClipboardEmpty').and.returnValue(Promise.resolve(true));
             const blockElement = editor.element.querySelector('#paragraph1') as HTMLElement;
+            const contentElement = getBlockContentElement(blockElement);
             editor.blockManager.setFocusToBlock(blockElement);
             const menuWrapperElement = document.querySelector('.e-blockeditor-contextmenu') as HTMLElement;
             const menuElement = menuWrapperElement.querySelector('ul') as HTMLElement;
@@ -332,7 +333,7 @@ describe('Context Menu', () => {
 
                 expect(menuElement.querySelector('#paste').classList.contains('e-disabled')).toBe(false);
                 //Select any range of text
-                editor.setSelection('content1', 2, 4);
+                setSelectionRange((contentElement.lastChild as HTMLElement), 2, 4);
                 editorElement.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
                 setTimeout(() => {
                     expect(menuElement.style.display).toBe('block');
@@ -340,7 +341,7 @@ describe('Context Menu', () => {
                     expect(menuElement.querySelector('#copy').classList.contains('e-disabled')).toBe(false);
                     done();
                 }, 200);
-            });
+            }, 500);
         });
 
         it('should enable disable undo redo properly', (done) => {
@@ -363,12 +364,13 @@ describe('Context Menu', () => {
 
         it('should enable disable link item properly', (done) => {
             const blockElement = editor.element.querySelector('#paragraph1') as HTMLElement;
+            const contentElement = getBlockContentElement(blockElement);
             editor.blockManager.setFocusToBlock(blockElement);
             const menuWrapperElement = document.querySelector('.e-blockeditor-contextmenu') as HTMLElement;
             const menuElement = menuWrapperElement.querySelector('ul') as HTMLElement;
             expect(menuElement).not.toBeNull();
 
-            editor.setSelection('content1', 2, 4);
+            setSelectionRange((contentElement.lastChild as HTMLElement), 2, 4);
 
             editorElement.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
             setTimeout(() => {
@@ -418,12 +420,13 @@ describe('Context Menu', () => {
         it('should enable paste options properly for copy action', (done) => {
             spyOn(editor.blockManager.clipboardAction, 'handleContextCopy').and.stub();
             const blockElement = editor.element.querySelector('#paragraph2') as HTMLElement;
+            const contentElement = getBlockContentElement(blockElement);
             editor.blockManager.setFocusToBlock(blockElement);
             const menuWrapperElement = document.querySelector('.e-blockeditor-contextmenu') as HTMLElement;
             const menuElement = menuWrapperElement.querySelector('ul') as HTMLElement;
             expect(menuElement).not.toBeNull();
 
-            editor.setSelection('content2', 0, 4);
+            setSelectionRange((contentElement.lastChild as HTMLElement), 0, 4);
 
             (editor.blockManager.contextMenuModule as any).handleContextMenuActions({ id: 'copy' });
             expect(editor.blockManager.clipboardAction.handleContextCopy).toHaveBeenCalled();
@@ -483,14 +486,14 @@ describe('Context Menu', () => {
                         id: 'paragraph1',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'content1', contentType: ContentType.Text, content: 'Test content 1' }
+                            { contentType: ContentType.Text, content: 'Test content 1' }
                         ]
                     },
                     {
                         id: 'paragraph2',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'content2', contentType: ContentType.Text, content: 'Test content 2' }
+                            { contentType: ContentType.Text, content: 'Test content 2' }
                         ]
                     },
                 ]
@@ -509,10 +512,10 @@ describe('Context Menu', () => {
         });
 
         it('should trigger open and close related events', (done) => {
-            editor.contextMenuSettings.opening = (args) => {
+            editor.contextMenuSettings.beforeOpen = (args) => {
                 isBeforeOpenFired = true;
             };
-            editor.contextMenuSettings.closing = (args) => {
+            editor.contextMenuSettings.beforeClose = (args) => {
                 isBeforeCloseFired = true;
             };
             const blockElement = editor.element.querySelector('#paragraph1') as HTMLElement;
@@ -576,7 +579,7 @@ describe('Context Menu', () => {
                         id: 'paragraph1',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'content1', contentType: ContentType.Text, content: 'Test content 1' }
+                            { contentType: ContentType.Text, content: 'Test content 1' }
                         ]
                     }
                 ]

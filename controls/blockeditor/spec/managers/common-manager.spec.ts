@@ -1,5 +1,5 @@
 import { createElement, remove } from '@syncfusion/ej2-base';
-import { BaseChildrenProp, BlockModel, ICollapsibleBlockSettings, ICollapsibleHeadingBlockSettings } from '../../src/models/index';
+import { BaseChildrenProp, BlockModel, ICollapsibleHeadingBlockSettings } from '../../src/models/index';
 import { createEditor, triggerMouseMove } from '../common/util.spec';
 import { setCursorPosition, getBlockContentElement } from '../../src/common/utils/index';
 import { BlockType, ContentType, CommandName } from '../../src/models/enums';
@@ -23,7 +23,7 @@ describe('Manager Actions - Floating Icon, State, and Renderer Managers', () => 
             editorElement = createElement('div', { id: 'editor' });
             document.body.appendChild(editorElement);
             const blocks: BlockModel[] = [
-                { id: 'paragraph1', blockType: BlockType.Paragraph, content: [{ id: 'paragraph1-content', contentType: ContentType.Text, content: 'Hello world' }] },
+                { id: 'paragraph1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Hello world' }] },
                 { id: 'divider', blockType: BlockType.Divider }
             ];
             editor = createEditor({ blocks: blocks });
@@ -46,7 +46,7 @@ describe('Manager Actions - Floating Icon, State, and Renderer Managers', () => 
 
             // expect blockActionpopup is in closed state
             expect((editor.blockManager.floatingIconAction as any).handleDragIconClick()).toBeUndefined();
-            const blockActionPopup: HTMLElement = editorElement.querySelector(`#${editorElement.id}_blockaction-popup`);
+            const blockActionPopup: HTMLElement = document.querySelector(`#${editorElement.id}_blockaction-popup`);
             expect(blockActionPopup.classList.contains('e-popup-open')).toBe(false);
 
             // Model unchanged
@@ -135,7 +135,7 @@ describe('Manager Actions - Floating Icon, State, and Renderer Managers', () => 
                 dragIcon.click();
 
                 setTimeout(() => {
-                    const popup = editorElement.querySelector(`#${editorElement.id}_blockaction-popup`) as HTMLElement;
+                    const popup = document.querySelector(`#${editorElement.id}_blockaction-popup`) as HTMLElement;
                     expect(popup.querySelector('#duplicate').classList.contains('e-disabled')).toBe(false);
                     expect(popup.querySelector('#delete').classList.contains('e-disabled')).toBe(false);
                     expect(popup.querySelector('#moveup').classList.contains('e-disabled')).toBe(false);
@@ -151,7 +151,7 @@ describe('Manager Actions - Floating Icon, State, and Renderer Managers', () => 
                     blockType: BlockType.Heading, // adjust if needed
                     properties: { level: 2 },
                     content: [
-                    { id: 'h_t', contentType: ContentType.Text, content: 'My Heading' }
+                    { contentType: ContentType.Text, content: 'My Heading' }
                     ]
                 });
 
@@ -174,108 +174,6 @@ describe('Manager Actions - Floating Icon, State, and Renderer Managers', () => 
         });
     });
 
-    describe('State Manager updates from DOM edits', () => {
-        let editor: BlockEditor;
-        let editorElement: HTMLElement;
-
-        beforeAll(() => {
-            editorElement = createElement('div', { id: 'editor' });
-            document.body.appendChild(editorElement);
-            const blocks: BlockModel[] = [
-                { id: 'paragraph1', blockType: BlockType.Paragraph, content: [{ id: 'paragraph1-content', contentType: ContentType.Text, content: 'Hello world' }] },
-                { id: 'paragraph2', blockType: BlockType.Paragraph, content: [
-                    { id: 'bold-content', contentType: ContentType.Text, content: 'Bold text', properties: { styles: { bold: true } } },
-                ]},
-                { id: 'divider', blockType: BlockType.Divider }
-            ];
-            editor = createEditor({ blocks: blocks });
-            editor.appendTo('#editor');
-        });
-
-        afterAll(() => {
-            if (editor) {
-                editor.destroy();
-                editor = undefined;
-            }
-            remove(editorElement);
-        });
-
-        it('updateContentModelBasedOnDOM should update text nodes', () => {
-            const blockElement = editorElement.querySelector('#paragraph1') as HTMLElement;
-            editor.blockManager.setFocusToBlock(blockElement);
-            const contentElement = getBlockContentElement(blockElement);
-            setCursorPosition(contentElement, 0);
-            const updated = 'Hello world newtext';
-            contentElement.textContent = updated;
-
-            editor.blockManager.stateManager.updateContentModelBasedOnDOM(contentElement, editor.blocks[0]);
-
-            // Assert Model
-            expect(editor.blocks[0].content[0].content).toBe(updated);
-            expect(editor.blocks[0].content.length).toBe(1);
-            expect(editor.blocks.length).toBe(3);
-            expect(editor.blocks[1].id).toBe('paragraph2');
-            expect(editor.blocks[2].id).toBe('divider');
-            // Assert Dom
-            expect((editorElement.querySelector('#paragraph1') as HTMLElement).textContent).toBe(updated);
-            const next = (editorElement.querySelector('#paragraph1') as HTMLElement).nextElementSibling as HTMLElement;
-            expect(next && next.id).toBe('paragraph2');
-        });
-
-        it('updateContentModelBasedOnDOM should update formatted nodes', () => {
-            const blockElement = editorElement.querySelector('#paragraph2') as HTMLElement;
-            editor.blockManager.setFocusToBlock(blockElement);
-            const contentElement = getBlockContentElement(blockElement);
-            const boldElement = contentElement.querySelector('strong') as HTMLElement;
-            const updated = 'Updated bold text';
-            boldElement.textContent = updated;
-
-            editor.blockManager.stateManager.updateContentModelBasedOnDOM(contentElement, editor.blocks[1]);
-
-            // Assert Model Updates
-            expect(editor.blocks[1].content.length).toBe(1);
-            expect(editor.blocks[1].content[0].content).toBe(updated);
-            expect(editor.blocks[0].id).toBe('paragraph1');
-            expect(editor.blocks[2].id).toBe('divider');
-            // Assert DOM Updates
-            const strongEl = (editorElement.querySelector('#paragraph2') as HTMLElement).querySelector('strong') as HTMLElement;
-            expect(strongEl.textContent).toBe(updated);
-            const prev = (editorElement.querySelector('#paragraph2') as HTMLElement).previousElementSibling as HTMLElement;
-            const next = (editorElement.querySelector('#paragraph2') as HTMLElement).nextElementSibling as HTMLElement;
-            expect(prev && prev.id).toBe('paragraph1');
-            expect(prev && prev.textContent).toBe('Hello world newtext');
-            expect(next && next.id).toBe('divider');
-        });
-
-        it('updateContentModelBasedOnDOM should create content for new element', () => {
-            const blockElement = editorElement.querySelector('#paragraph2') as HTMLElement;
-            editor.blockManager.setFocusToBlock(blockElement);
-            const contentElement = getBlockContentElement(blockElement);
-            const italicElement = document.createElement('em');
-            italicElement.textContent = 'italic text';
-            contentElement.appendChild(italicElement);
-
-            const beforeLen = editor.blocks[1].content.length;
-            editor.blockManager.stateManager.updateContentModelBasedOnDOM(contentElement, editor.blocks[1]);
-
-            // Assert Updated Model
-            // expect(editor.blocks[1].content.length).toBe(beforeLen + 1);
-            expect(editor.blocks[1].content[0].content).toBe('Updated bold text');
-            // expect(editor.blocks[1].content[1].content).toBe('italic text');
-            // DOM contains both strong and em
-            const strongEl = contentElement.querySelector('strong') as HTMLElement;
-            const emEl = contentElement.querySelector('em') as HTMLElement;
-            expect(strongEl).not.toBeNull();
-            expect(emEl.textContent).toBe('italic text');
-
-            // Neighbors intact
-            const prev = blockElement.previousElementSibling as HTMLElement;
-            const next = blockElement.nextElementSibling as HTMLElement;
-            expect(prev && prev.id).toBe('paragraph1');
-            expect(next && next.id).toBe('divider');
-        });
-    });
-
     describe('Block Renderer operations and slash-command transforms', () => {
         let editor: BlockEditor;
         let editorElement: HTMLElement;
@@ -284,7 +182,7 @@ describe('Manager Actions - Floating Icon, State, and Renderer Managers', () => 
             editorElement = createElement('div', { id: 'editor' });
             document.body.appendChild(editorElement);
             const blocks: BlockModel[] = [
-                { id: 'paragraph1', blockType: BlockType.Paragraph, content: [{ id: 'paragraph1-content', contentType: ContentType.Text, content: 'Hello world' }] },
+                { id: 'paragraph1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Hello world' }] },
                 {
                     id: 'calloutblock',
                     blockType: BlockType.Callout,
@@ -293,12 +191,12 @@ describe('Manager Actions - Floating Icon, State, and Renderer Managers', () => 
                         {
                             id: 'calloutchild1',
                             blockType: BlockType.Paragraph,
-                            content: [{ id: 'callout-child1-content', contentType: ContentType.Text, content: 'Callout child 1' }]
+                            content: [{ contentType: ContentType.Text, content: 'Callout child 1' }]
                         },
                         {
                             id: 'calloutchild2',
                             blockType: BlockType.Paragraph,
-                            content: [{ id: 'callout-child2-content', contentType: ContentType.Text, content: 'Callout child 2' }]
+                            content: [{ contentType: ContentType.Text, content: 'Callout child 2' }]
                         }
                     ]
                     }
@@ -306,7 +204,7 @@ describe('Manager Actions - Floating Icon, State, and Renderer Managers', () => 
                 {
                     id: 'toggleblock',
                     blockType: BlockType.CollapsibleParagraph,
-                    content: [{ id: 'toggle-content-1', contentType: ContentType.Text, content: 'Click here to expand' }],
+                    content: [{ contentType: ContentType.Text, content: 'Click here to expand' }],
                     properties: {
                         isExpanded: true,
                         children: [
@@ -323,7 +221,7 @@ describe('Manager Actions - Floating Icon, State, and Renderer Managers', () => 
                         ]
                     }
                 },
-                { id: 'paragraph2', blockType: BlockType.Paragraph, content: [{ id: 'paragraph2-content', contentType: ContentType.Text, content: '' }] },
+                { id: 'paragraph2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '' }] },
             ];
             editor = createEditor({ blocks: blocks });
             editor.appendTo('#editor');

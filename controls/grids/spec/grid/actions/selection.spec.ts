@@ -7723,6 +7723,11 @@ describe('EJ2-985690: Partial Selection module', () => {
             expect((<any>gridObj.element.querySelector('.e-checkselectall').nextSibling).classList.contains('e-check')).toBeTruthy();
             done();
         });
+
+        it('Coverage actionComplete', function (done) {
+            (<any>gridObj.selectionModule).actionComplete({ requestType : 'save'});
+            done();
+        });
         
         afterAll(() => {
             destroy(gridObj);

@@ -21,7 +21,7 @@ describe('Clipboard Cleanup Module', () => {
                     id: 'paragraph1',
                     blockType: BlockType.Paragraph,
                     content: [
-                        { id: 'content1', contentType: ContentType.Text, content: 'Test content' }
+                        { contentType: ContentType.Text, content: 'Test content' }
                     ]
                 }
             ]
@@ -233,38 +233,38 @@ describe('Clipboard Cleanup Module', () => {
         
         it('should properly identify list style types', () => {
             // Test decimal list style type
-            expect((cleanupModule as any).getlistStyleType('1.', 'ol')).toBe('decimal');
-            expect((cleanupModule as any).getlistStyleType('10.', 'ol')).toBe('decimal');
+            expect((cleanupModule.listConverter as any).getlistStyleType('1.', 'ol')).toBe('decimal');
+            expect((cleanupModule.listConverter as any).getlistStyleType('10.', 'ol')).toBe('decimal');
             
             // Test decimal-leading-zero list style type
-            expect((cleanupModule as any).getlistStyleType('01.', 'ol')).toBe('decimal-leading-zero');
+            expect((cleanupModule.listConverter as any).getlistStyleType('01.', 'ol')).toBe('decimal-leading-zero');
             
             // Test upper-alpha list style type
-            expect((cleanupModule as any).getlistStyleType('A.', 'ol')).toBe('upper-alpha');
-            expect((cleanupModule as any).getlistStyleType('Z.', 'ol')).toBe('upper-alpha');
+            expect((cleanupModule.listConverter as any).getlistStyleType('A.', 'ol')).toBe('upper-alpha');
+            expect((cleanupModule.listConverter as any).getlistStyleType('Z.', 'ol')).toBe('upper-alpha');
             
             // Test lower-alpha list style type
-            expect((cleanupModule as any).getlistStyleType('a.', 'ol')).toBe('lower-alpha');
-            expect((cleanupModule as any).getlistStyleType('z.', 'ol')).toBe('lower-alpha');
+            expect((cleanupModule.listConverter as any).getlistStyleType('a.', 'ol')).toBe('lower-alpha');
+            expect((cleanupModule.listConverter as any).getlistStyleType('z.', 'ol')).toBe('lower-alpha');
             
             // Test upper-roman list style type
-            expect((cleanupModule as any).getlistStyleType('I.', 'ol')).toBe('upper-roman');
-            expect((cleanupModule as any).getlistStyleType('V.', 'ol')).toBe('upper-roman');
-            expect((cleanupModule as any).getlistStyleType('X.', 'ol')).toBe('upper-roman');
+            expect((cleanupModule.listConverter as any).getlistStyleType('I.', 'ol')).toBe('upper-roman');
+            expect((cleanupModule.listConverter as any).getlistStyleType('V.', 'ol')).toBe('upper-roman');
+            expect((cleanupModule.listConverter as any).getlistStyleType('X.', 'ol')).toBe('upper-roman');
             
             // Test lower-roman list style type
-            expect((cleanupModule as any).getlistStyleType('i.', 'ol')).toBe('lower-roman');
-            expect((cleanupModule as any).getlistStyleType('v.', 'ol')).toBe('lower-roman');
-            expect((cleanupModule as any).getlistStyleType('x.', 'ol')).toBe('lower-roman');
+            expect((cleanupModule.listConverter as any).getlistStyleType('i.', 'ol')).toBe('lower-roman');
+            expect((cleanupModule.listConverter as any).getlistStyleType('v.', 'ol')).toBe('lower-roman');
+            expect((cleanupModule.listConverter as any).getlistStyleType('x.', 'ol')).toBe('lower-roman');
             
             // Test lower-greek list style type
-            expect((cleanupModule as any).getlistStyleType('α.', 'ol')).toBe('lower-greek');
-            expect((cleanupModule as any).getlistStyleType('β.', 'ol')).toBe('lower-greek');
+            expect((cleanupModule.listConverter as any).getlistStyleType('α.', 'ol')).toBe('lower-greek');
+            expect((cleanupModule.listConverter as any).getlistStyleType('β.', 'ol')).toBe('lower-greek');
             
             // Test unordered list style types
-            expect((cleanupModule as any).getlistStyleType('•', 'ul')).toBe('disc');
-            expect((cleanupModule as any).getlistStyleType('o', 'ul')).toBe('circle');
-            expect((cleanupModule as any).getlistStyleType('§', 'ul')).toBe('square');
+            expect((cleanupModule.listConverter as any).getlistStyleType('•', 'ul')).toBe('disc');
+            expect((cleanupModule.listConverter as any).getlistStyleType('o', 'ul')).toBe('circle');
+            expect((cleanupModule.listConverter as any).getlistStyleType('§', 'ul')).toBe('square');
         });
 
         it('should extract list content from complex list elements', () => {
@@ -274,15 +274,15 @@ describe('Clipboard Cleanup Module', () => {
             listElem.innerHTML = '<span style="mso-list:Ignore">1.<span style="font:7.0pt Times New Roman">&nbsp;&nbsp;</span></span>List item text';
             
             // Reset listContents array
-            (cleanupModule as any).listContents = [];
+            (cleanupModule.listConverter as any).listContents = [];
             
             // Call getListContent method
-            (cleanupModule as any).getListContent(listElem);
+            (cleanupModule.listConverter as any).getListContent(listElem);
             
             // Check the extracted content
-            expect((cleanupModule as any).listContents.length).toBe(2);
-            expect((cleanupModule as any).listContents[0]).toBe('1.');
-            expect((cleanupModule as any).listContents[1]).toContain('List item text');
+            expect((cleanupModule.listConverter as any).listContents.length).toBe(2);
+            expect((cleanupModule.listConverter as any).listContents[0]).toBe('1.');
+            expect((cleanupModule.listConverter as any).listContents[1]).toContain('List item text');
         });
         
         it('should handle list items without explicit mso-list marker', () => {
@@ -292,14 +292,14 @@ describe('Clipboard Cleanup Module', () => {
             listElem.innerHTML = '<span> 1. List item without explicit marker span </span>';
             
             // Reset listContents array
-            (cleanupModule as any).listContents = [];
+            (cleanupModule.listConverter as any).listContents = [];
             
             // Call getListContent method
-            (cleanupModule as any).getListContent(listElem);
+            (cleanupModule.listConverter as any).getListContent(listElem);
             
             // Check that the pattern still matched and extracted
-            expect((cleanupModule as any).listContents.length).toBe(2);
-            expect((cleanupModule as any).listContents[0]).toBe('1.');
+            expect((cleanupModule.listConverter as any).listContents.length).toBe(2);
+            expect((cleanupModule.listConverter as any).listContents[0]).toBe('1.');
         });
 
         it('should convert Word list paragraphs to HTML lists', () => {
@@ -608,7 +608,7 @@ describe('Clipboard Cleanup Module', () => {
                 styleMarginLeft: '20px'
             }];
             
-            const result = (cleanupModule as any).makeConversion(collection);
+            const result = (cleanupModule.listConverter as any).makeConversion(collection);
             
             expect(result.tagName).toBe('DIV');
             const list = result.querySelector('ol');
@@ -638,7 +638,7 @@ describe('Clipboard Cleanup Module', () => {
                 styleMarginLeft: '20px'
             }];
             
-            const result = (cleanupModule as any).makeConversion(collection);
+            const result = (cleanupModule.listConverter as any).makeConversion(collection);
             const list = result.querySelector('ol');
             
             expect(list.classList.contains('marginLeftIgnore')).toBe(true);
@@ -670,7 +670,7 @@ describe('Clipboard Cleanup Module', () => {
                 }
             ];
             
-            const result = (cleanupModule as any).makeConversion(collection);
+            const result = (cleanupModule.listConverter as any).makeConversion(collection);
             const list = result.querySelector('ol');
             const items = list.querySelectorAll('li');
             
@@ -705,7 +705,7 @@ describe('Clipboard Cleanup Module', () => {
                 }
             ];
             
-            const result = (cleanupModule as any).makeConversion(collection);
+            const result = (cleanupModule.listConverter as any).makeConversion(collection);
             
             // Check overall structure
             const topLevelList = result.querySelector('ol');
@@ -750,7 +750,7 @@ describe('Clipboard Cleanup Module', () => {
                 }
             ];
             
-            const result = (cleanupModule as any).makeConversion(collection);
+            const result = (cleanupModule.listConverter as any).makeConversion(collection);
             
             // Should create intermediate levels
             const topLevelItem = result.querySelector('ol > li');
@@ -793,7 +793,7 @@ describe('Clipboard Cleanup Module', () => {
                 }
             ];
             
-            const result = (cleanupModule as any).makeConversion(collection);
+            const result = (cleanupModule.listConverter as any).makeConversion(collection);
             
             // Should create separate lists
             const lists = result.querySelectorAll('ol, ul');
@@ -828,7 +828,7 @@ describe('Clipboard Cleanup Module', () => {
                 }
             ];
             
-            const result = (cleanupModule as any).makeConversion(collection);
+            const result = (cleanupModule.listConverter as any).makeConversion(collection);
             
             // Should create separate lists
             const lists = result.querySelectorAll('ol');
@@ -850,7 +850,7 @@ describe('Clipboard Cleanup Module', () => {
                 styleMarginLeft: ''
             }];
             
-            const result = (cleanupModule as any).makeConversion(collection);
+            const result = (cleanupModule.listConverter as any).makeConversion(collection);
             const list = result.querySelector('ol');
             
             expect(list.getAttribute('start')).toBe('5');
@@ -878,10 +878,10 @@ describe('Clipboard Cleanup Module', () => {
             container.appendChild(node2);
             
             // Reset list contents
-            (cleanupModule as any).listContents = [];
+            (cleanupModule.listConverter as any).listContents = [];
             
             // Call listConverter
-            (cleanupModule as any).listConverter(listNodes);
+            (cleanupModule.listConverter as any).convertListNodes(listNodes);
             
             // Check results - nodes should be replaced with a list
             expect(container.querySelector('ol')).not.toBeNull();
@@ -1558,7 +1558,7 @@ describe('Clipboard Cleanup Module', () => {
             const result = cleanupModule.cleanupPaste({
                 html: localElem
             });
-            let expectedElem = `<ul level="1"><li style=""><p>One Node-10</p></li><li style=""><p>Two Node-10</p></li><li style=""><p>Three Node-10</p></li></ul>`;
+            let expectedElem = '<ul level="1"><li style=""><p>One Node-10</p></li></ul>\n        \n        \n        <ul level="1"><li style=""><p>Two Node-10</p></li><li style=""><p>Three Node-10</p></li></ul>'
             expect(result.trim()).toContain(expectedElem);
             done();
         });
@@ -2687,6 +2687,375 @@ describe('Clipboard Cleanup Module', () => {
             pastedElem.innerHTML = result;
             expect(pastedElem.innerHTML.trim()).toContain(expectedElem.trim());
             done();
+        });
+    });
+
+
+    describe('handleOtherNestingScenarios method - uncovered condition', () => {
+        it('should handle same level with different format override - nested context', () => {
+            // This specifically tests: elementLevel === item.nestedLevel && currentFormatOverride !== item.listFormatOverride
+            // To reach handleOtherNestingScenarios, we need:
+            // 1. Level 1 item with format 1 (creates root list)
+            // 2. Level 2 item with format 1 (deeper nested)
+            // 3. Level 2 item with format 2 (same level but different format - triggers handleOtherNestingScenarios)
+            const collection: any = [
+                {
+                    listType: 'ol',
+                    content: ['Level 1 Item'],
+                    nestedLevel: 1,
+                    listFormatOverride: 1,
+                    class: 'MsoListParagraphCxSpFirst',
+                    listStyle: '',
+                    listStyleTypeName: 'decimal',
+                    start: null,
+                    styleMarginLeft: ''
+                },
+                {
+                    listType: 'ul',
+                    content: ['Level 2 Item - Format 1'],
+                    nestedLevel: 2,
+                    listFormatOverride: 1,
+                    class: 'MsoListParagraphCxSpFirst',
+                    listStyle: '',
+                    listStyleTypeName: 'disc',
+                    start: null,
+                    styleMarginLeft: ''
+                },
+                {
+                    listType: 'ul',
+                    content: ['Level 2 Item - Format 2'],
+                    nestedLevel: 2,
+                    listFormatOverride: 2,
+                    class: 'MsoListParagraphCxSpLast',
+                    listStyle: '',
+                    listStyleTypeName: 'circle',
+                    start: null,
+                    styleMarginLeft: ''
+                }
+            ];
+            
+            const result = (cleanupModule.listConverter as any).makeConversion(collection);
+            
+            // Verify structure: root ol with nested ul items
+            const rootOl = result.querySelector('ol');
+            expect(rootOl).not.toBeNull();
+            expect(rootOl.getAttribute('level')).toBe('1');
+            
+            // Check for nested lists
+            const nestedLists = rootOl.querySelectorAll('li ul');
+            expect(nestedLists.length).toBeGreaterThanOrEqual(1);
+            
+            // Verify both level 2 items are present
+            expect(result.textContent).toContain('Level 1 Item');
+            expect(result.textContent).toContain('Level 2 Item - Format 1');
+            expect(result.textContent).toContain('Level 2 Item - Format 2');
+        });
+
+        it('should create different format list at same level inside nested context', () => {
+            // This directly tests the uncovered condition where:
+            // elementLevel === item.nestedLevel && currentFormatOverride !== item.listFormatOverride
+            // Setup: Create level 2 items with different format overrides
+            const collection: any = [
+                {
+                    listType: 'ol',
+                    content: ['Level 1'],
+                    nestedLevel: 1,
+                    listFormatOverride: 1,
+                    class: 'MsoListParagraphCxSpFirst',
+                    listStyle: '',
+                    listStyleTypeName: 'decimal',
+                    start: null,
+                    styleMarginLeft: ''
+                },
+                {
+                    listType: 'ul',
+                    content: ['Level 2 - Format 1 - Item 1'],
+                    nestedLevel: 2,
+                    listFormatOverride: 1,
+                    class: 'MsoListParagraphCxSpFirst',
+                    listStyle: '',
+                    listStyleTypeName: 'disc',
+                    start: null,
+                    styleMarginLeft: ''
+                },
+                {
+                    listType: 'ul',
+                    content: ['Level 2 - Format 1 - Item 2'],
+                    nestedLevel: 2,
+                    listFormatOverride: 1,
+                    class: 'MsoListParagraphCxSpMiddle',
+                    listStyle: '',
+                    listStyleTypeName: 'disc',
+                    start: null,
+                    styleMarginLeft: ''
+                },
+                {
+                    listType: 'ul',
+                    content: ['Level 2 - Format 2 - Item 1'],
+                    nestedLevel: 2,
+                    listFormatOverride: 2,
+                    class: 'MsoListParagraphCxSpFirst',
+                    listStyle: '',
+                    listStyleTypeName: 'circle',
+                    start: null,
+                    styleMarginLeft: ''
+                },
+                {
+                    listType: 'ul',
+                    content: ['Level 2 - Format 2 - Item 2'],
+                    nestedLevel: 2,
+                    listFormatOverride: 2,
+                    class: 'MsoListParagraphCxSpLast',
+                    listStyle: '',
+                    listStyleTypeName: 'circle',
+                    start: null,
+                    styleMarginLeft: ''
+                }
+            ];
+            
+            const result = (cleanupModule.listConverter as any).makeConversion(collection);
+            
+            // Should have root ol
+            const rootOl = result.querySelector('ol');
+            expect(rootOl).not.toBeNull();
+            
+            // Should have nested ul lists with different formats
+            const nestedUls = rootOl.querySelectorAll('li ul');
+            expect(nestedUls.length).toBeGreaterThanOrEqual(2);
+            
+            // First nested ul should have disc style
+            expect(nestedUls[0].style.listStyleType).toBe('disc');
+            
+            // Second nested ul should have circle style (different format)
+            expect(nestedUls[1].style.listStyleType).toBe('circle');
+            
+            // Verify all items are present
+            expect(result.textContent).toContain('Level 2 - Format 1 - Item 1');
+            expect(result.textContent).toContain('Level 2 - Format 1 - Item 2');
+            expect(result.textContent).toContain('Level 2 - Format 2 - Item 1');
+            expect(result.textContent).toContain('Level 2 - Format 2 - Item 2');
+        });
+
+        it('should handle go-back scenario: deeper level then same level with different format', () => {
+            // Tests scenario where we go deeper in nesting then back to same level with different format
+            // This triggers handleOtherNestingScenarios with the uncovered condition
+            const collection: any = [
+                {
+                    listType: 'ol',
+                    content: ['L1-F1-Item1'],
+                    nestedLevel: 1,
+                    listFormatOverride: 1,
+                    class: 'MsoListParagraphCxSpFirst',
+                    listStyle: '',
+                    listStyleTypeName: 'decimal',
+                    start: null,
+                    styleMarginLeft: ''
+                },
+                {
+                    listType: 'ul',
+                    content: ['L2-F1-Item1'],
+                    nestedLevel: 2,
+                    listFormatOverride: 1,
+                    class: 'MsoListParagraphCxSpFirst',
+                    listStyle: '',
+                    listStyleTypeName: 'disc',
+                    start: null,
+                    styleMarginLeft: ''
+                },
+                {
+                    listType: 'ul',
+                    content: ['L3-F1-Item1'],
+                    nestedLevel: 3,
+                    listFormatOverride: 1,
+                    class: 'MsoListParagraphCxSpFirst',
+                    listStyle: '',
+                    listStyleTypeName: 'square',
+                    start: null,
+                    styleMarginLeft: ''
+                },
+                {
+                    listType: 'ul',
+                    content: ['L2-F2-Item1'],
+                    nestedLevel: 2,
+                    listFormatOverride: 2,
+                    class: 'MsoListParagraphCxSpFirst',
+                    listStyle: '',
+                    listStyleTypeName: 'circle',
+                    start: null,
+                    styleMarginLeft: ''
+                }
+            ];
+            
+            const result = (cleanupModule.listConverter as any).makeConversion(collection);
+            
+            // Should have nested structure
+            const rootOl = result.querySelector('ol');
+            expect(rootOl).not.toBeNull();
+            
+            // Check for multiple nested levels
+            const level2Lists = rootOl.querySelectorAll('li > ul');
+            expect(level2Lists.length).toBeGreaterThanOrEqual(1);
+            
+            // Verify content at different levels
+            expect(result.textContent).toContain('L1-F1-Item1');
+            expect(result.textContent).toContain('L2-F1-Item1');
+            expect(result.textContent).toContain('L3-F1-Item1');
+            expect(result.textContent).toContain('L2-F2-Item1');
+        });
+
+        it('should handle multiple different formats at same nested level', () => {
+            // Tests scenario with 3+ different format overrides at the same nesting level
+            // This ensures createDifferentFormatList is called multiple times
+            const collection: any = [
+                {
+                    listType: 'ol',
+                    content: ['Level 1 - Format Override 1'],
+                    nestedLevel: 1,
+                    listFormatOverride: 1,
+                    class: 'MsoListParagraphCxSpFirst',
+                    listStyle: '',
+                    listStyleTypeName: 'decimal',
+                    start: null,
+                    styleMarginLeft: ''
+                },
+                {
+                    listType: 'ol',
+                    content: ['Level 2 - Format Override 1'],
+                    nestedLevel: 2,
+                    listFormatOverride: 1,
+                    class: 'MsoListParagraphCxSpFirst',
+                    listStyle: '',
+                    listStyleTypeName: 'lower-alpha',
+                    start: null,
+                    styleMarginLeft: ''
+                },
+                {
+                    listType: 'ol',
+                    content: ['Level 2 - Format Override 2'],
+                    nestedLevel: 2,
+                    listFormatOverride: 2,
+                    class: 'MsoListParagraphCxSpFirst',
+                    listStyle: '',
+                    listStyleTypeName: 'lower-roman',
+                    start: null,
+                    styleMarginLeft: ''
+                },
+                {
+                    listType: 'ol',
+                    content: ['Level 2 - Format Override 3'],
+                    nestedLevel: 2,
+                    listFormatOverride: 3,
+                    class: 'MsoListParagraphCxSpFirst',
+                    listStyle: '',
+                    listStyleTypeName: 'upper-alpha',
+                    start: null,
+                    styleMarginLeft: ''
+                },
+                {
+                    listType: 'ol',
+                    content: ['Level 2 - Format Override 1 Again'],
+                    nestedLevel: 2,
+                    listFormatOverride: 1,
+                    class: 'MsoListParagraphCxSpLast',
+                    listStyle: '',
+                    listStyleTypeName: 'lower-alpha',
+                    start: null,
+                    styleMarginLeft: ''
+                }
+            ];
+            
+            const result = (cleanupModule.listConverter as any).makeConversion(collection);
+            
+            // Should have root ol
+            const rootOl = result.querySelector('ol');
+            expect(rootOl).not.toBeNull();
+            expect(rootOl.getAttribute('level')).toBe('1');
+            
+            // Should have multiple nested ol lists
+            const nestedOls = rootOl.querySelectorAll('li ol');
+            expect(nestedOls.length).toBeGreaterThanOrEqual(3);
+            
+            // Verify different list styles are applied
+            const styles = Array.from(nestedOls).map((list: HTMLElement) => list.style.listStyleType);
+            expect(styles).toContain('lower-alpha');
+            expect(styles).toContain('lower-roman');
+            expect(styles).toContain('upper-alpha');
+            
+            // Verify all items are present
+            expect(result.textContent).toContain('Level 1 - Format Override 1');
+            expect(result.textContent).toContain('Level 2 - Format Override 1');
+            expect(result.textContent).toContain('Level 2 - Format Override 2');
+            expect(result.textContent).toContain('Level 2 - Format Override 3');
+            expect(result.textContent).toContain('Level 2 - Format Override 1 Again');
+        });
+
+        it('should handle complex nesting: same level different format with mixed list types', () => {
+            // Tests switching between ol and ul at same level with different format overrides
+            const collection: any = [
+                {
+                    listType: 'ol',
+                    content: ['Level 1 - OL'],
+                    nestedLevel: 1,
+                    listFormatOverride: 1,
+                    class: 'MsoListParagraphCxSpFirst',
+                    listStyle: '',
+                    listStyleTypeName: 'decimal',
+                    start: null,
+                    styleMarginLeft: ''
+                },
+                {
+                    listType: 'ol',
+                    content: ['Level 2 - OL - Format 1'],
+                    nestedLevel: 2,
+                    listFormatOverride: 1,
+                    class: 'MsoListParagraphCxSpFirst',
+                    listStyle: '',
+                    listStyleTypeName: 'decimal',
+                    start: null,
+                    styleMarginLeft: ''
+                },
+                {
+                    listType: 'ul',
+                    content: ['Level 2 - UL - Format 2'],
+                    nestedLevel: 2,
+                    listFormatOverride: 2,
+                    class: 'MsoListParagraphCxSpFirst',
+                    listStyle: '',
+                    listStyleTypeName: 'disc',
+                    start: null,
+                    styleMarginLeft: ''
+                },
+                {
+                    listType: 'ol',
+                    content: ['Level 2 - OL - Format 3'],
+                    nestedLevel: 2,
+                    listFormatOverride: 3,
+                    class: 'MsoListParagraphCxSpLast',
+                    listStyle: '',
+                    listStyleTypeName: 'upper-roman',
+                    start: null,
+                    styleMarginLeft: ''
+                }
+            ];
+            
+            const result = (cleanupModule.listConverter as any).makeConversion(collection);
+            
+            // Should have root ol
+            const rootOl = result.querySelector('ol');
+            expect(rootOl).not.toBeNull();
+            
+            // Should have nested lists with different types and formats
+            const nestedOls = rootOl.querySelectorAll('li ol');
+            const nestedUls = rootOl.querySelectorAll('li ul');
+            
+            expect(nestedOls.length).toBeGreaterThanOrEqual(1);
+            expect(nestedUls.length).toBeGreaterThanOrEqual(1);
+            
+            // Verify content distribution
+            expect(result.textContent).toContain('Level 1 - OL');
+            expect(result.textContent).toContain('Level 2 - OL - Format 1');
+            expect(result.textContent).toContain('Level 2 - UL - Format 2');
+            expect(result.textContent).toContain('Level 2 - OL - Format 3');
         });
     });
 

@@ -1750,6 +1750,7 @@ xdescribe('Timeline view events resizing', () => {
         afterAll(() => {
             util.destroy(schObj);
         });
+
         it('should resize appointment forward by expanding from right handler', (done: DoneFn) => {
             schObj.dataBound = () => {
                 const resizeElement: HTMLElement = schObj.element.querySelector('[data-id="Appointment_1"]') as HTMLElement;

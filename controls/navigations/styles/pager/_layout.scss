@@ -130,7 +130,7 @@
           padding: 3.5px 11px 6.2px 10px;
         }
         @else if $pager-skin == 'bootstrap5' {
-          padding: 7.4px 10.5px 8.4px 9.5px;
+          padding: 7.4px 10.5px 9.2px 9.5px;
         }
       }
     }
@@ -483,7 +483,7 @@
             padding: 3.5px 11px 4px 10px;
           }
           @else if $pager-skin == 'bootstrap5' {
-            padding: 7px 10.5px 8px 9.5px;
+            padding: 8px 10.5px 8.5px 9.5px;
           }
         }
         &.e-currentitem {

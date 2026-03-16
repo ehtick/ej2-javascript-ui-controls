@@ -1461,7 +1461,7 @@ export class Workbook extends Component<HTMLElement> implements INotifyPropertyC
                 rules.value1 = (rules.value1 as string).substring(0, 255);
             }
         } else {
-            rules.value1 =  parseLocaleNumber([rules.value1], this)[0];
+            rules.value1 = parseLocaleNumber([rules.value1], this)[0];
             if (rules.value2) {
                 rules.value2 = parseLocaleNumber([rules.value2], this)[0];
             }

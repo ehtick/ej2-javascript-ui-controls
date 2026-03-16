@@ -1,3 +1,6 @@
+@use 'ej2-base/styles/definition/fabric-dark' as *;
+@forward 'ej2-base/styles/definition/fabric-dark';
+
 /*! Fabric dark theme definitions and variables */
 /*! Value element styles */
 $editor-big-overlay-icon-size: 16px !default;
@@ -72,3 +75,10 @@ $editor-rtl-nrml-btn-save-margin: 0 0 0 4px !default;
 $editor-rtl-big-btn-cancel-margin: 0 4px 0 0 !default;
 $editor-rtl-nrml-btn-cancel-margin: 0 4px 0 0 !default;
 $editor-btn-icon-color: $neutral-light-fontalt !default;
+
+$padding-zero: 0;
+$editor-bgr-content-min-height: 70px !default;
+$editor-value-min-height: 38px !default;
+$editor-content-min-height: 60px !default;
+$editable-bgr-tip-width: auto !default;
+$editor-rtl-spinner-right: 5px !default;

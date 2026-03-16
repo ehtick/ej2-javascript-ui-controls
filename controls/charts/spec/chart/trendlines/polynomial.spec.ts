@@ -331,8 +331,21 @@ describe('Chart', () => {
             chartObj.series[0].trendlines[0].polynomialOrder = -4;
             chartObj.refresh();
         });
-
-          it('Polynomial Trendlines with Polynomial Order values higher than series points', (done: Function) => {
+        it('Polynomial Trendlines with Polynomial Order NaN values', (done: Function) => {
+            loaded = (args: Object): void => {
+                const path = document
+                    .getElementById('container_Series_0_TrendLine_0')!
+                    .getAttribute('d');
+                expect(path !== null).toBe(true);
+                expect(chartObj.visibleSeries[1].points[0].x).toBe(1977);
+                expect(Math.round(<number>chartObj.visibleSeries[1].points[0].y)).toBe(7);
+                done();
+            };
+            chartObj.loaded = loaded;
+            chartObj.series[0].trendlines[0].polynomialOrder = NaN;
+            chartObj.refresh();
+        });
+        it('Polynomial Trendlines with Polynomial Order values higher than series points', (done: Function) => {
             loaded = (args: Object): void => {
                 let path: string = document.getElementById('container_Series_0_TrendLine_0').getAttribute('d');
                 expect(path !== null).toBe(true);

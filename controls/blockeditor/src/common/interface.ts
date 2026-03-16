@@ -1,10 +1,12 @@
 import { EmitType, Observer } from '@syncfusion/ej2-base';
 import { FieldSettingsModel as MentionFieldSettingsModel, FilteringEventArgs, MentionChangeEventArgs, PopupEventArgs, SelectEventArgs, FieldSettingsModel, ChangeEventArgs } from '@syncfusion/ej2-dropdowns';
-import { ClickEventArgs, ItemModel, MenuItemModel, OverflowMode, MenuEventArgs, Orientation, BeforeOpenCloseMenuEventArgs, OpenCloseMenuEventArgs } from '@syncfusion/ej2-navigations';
+import { ClickEventArgs, ItemModel, MenuItemModel, OverflowMode, MenuEventArgs, Orientation, BeforeOpenCloseMenuEventArgs, OpenCloseMenuEventArgs, TabItemModel, SelectEventArgs as TabSelectEventArgs } from '@syncfusion/ej2-navigations';
 import { FieldSettingsModel as MenuFieldSettingsModel } from '@syncfusion/ej2-navigations/common';
 import { DropDownButtonModel } from '@syncfusion/ej2-splitbuttons';
 import { Position, TooltipEventArgs, PositionDataModel } from '@syncfusion/ej2-popups';
-import { BlockModel, LabelItemModel, StyleModel, UserModel, ContentModel, BlockProperties, PasteCleanupSettingsModel, BlockActionMenuOpeningEventArgs, BlockActionMenuClosingEventArgs, BeforePasteCleanupEventArgs, AfterPasteCleanupEventArgs, BlockData, CommandItemModel } from '../models/index';
+import { SelectedEventArgs, UploadingEventArgs, SuccessEventArgs, FailureEventArgs, BeforeUploadEventArgs, RemovingEventArgs, AsyncSettingsModel } from '@syncfusion/ej2-inputs';
+import { AnimationModel, MarginModel } from '@syncfusion/ej2-progressbar';
+import { BlockModel, LabelItemModel, StyleModel, UserModel, ContentModel, BlockProperties, PasteCleanupSettingsModel, BlockActionMenuBeforeOpenEventArgs, BlockActionMenuBeforeCloseEventArgs, BeforePasteCleanupEventArgs, AfterPasteCleanupEventArgs, BlockData, CommandItemModel } from '../models/index';
 import { ContentType, BlockType } from '../models/enums';
 import { DeletionType } from '../common/enums';
 import { BlockService } from '../block-manager/services/block-service';
@@ -72,7 +74,7 @@ export interface IAddBlockInteraction {
     targetBlockModel?: BlockModel
     isAfter?: boolean
     blockType?: string | BlockType
-    contentElement?: Node,
+    contentElement?: HTMLElement | Node,
     contentModel?: ContentModel[]
     blockID?: string
     isUndoRedoAction?: boolean
@@ -89,17 +91,16 @@ export interface IDeleteBlockInteraction {
     blockElement: HTMLElement
     isUndoRedoAction?: boolean
     mergeDirection?: 'previous' | 'next'
-    splitOffset?: number
     isSplitting?: boolean
-    contentElement?: Node
+    isTargetDeletion?: boolean
     isMethod?: boolean
     blockBeforeSplit?: BlockModel;
     blocksAfterSplit?: BlockModel[];
     targetBlockModel?: BlockModel;
     sourceBlockModel?: BlockModel;
-    newCursorPos?: number;
     preventEventTrigger?: boolean
     preventChangesTracking?: boolean
+    preventMinimumOne?: boolean
 }
 
 export interface IAddBulkBlocksInteraction {
@@ -108,6 +109,7 @@ export interface IAddBulkBlocksInteraction {
     isUndoRedoAction?: boolean
     insertionType?: 'blocks' | 'block'
     oldBlockModel?: BlockModel
+    cursorBlockAfterSplit?: BlockModel
     clipboardBlocks?: BlockModel[]
     pastedBlocks?: BlockModel[]
     isPastedAtStart?: boolean
@@ -132,8 +134,9 @@ export interface ITransformBlockInteraction {
     newBlockType?: string;
     isUndoRedoAction?: boolean;
     props?: BlockProperties;
-    shouldPreventUpdates?: boolean
-    preventEventTrigger?: boolean
+    shouldPreventUpdates?: boolean;
+    preventEventTrigger?: boolean;
+    oldBlockModel?: BlockModel;
 }
 
 /* Renderer Interfaces */
@@ -209,6 +212,46 @@ export interface IToolbarRenderOptions {
     created?: EmitType<Event>
 }
 
+export interface IProgressBarRendererOptions {
+    element?: string | HTMLElement;
+    type?: string;
+    height?: string;
+    width?: string;
+    value?: number;
+    minimum?: number;
+    maximum?: number;
+    trackThickness?: number;
+    progressThickness?: number;
+    showProgressValue?: boolean;
+    animation?: AnimationModel;
+    margin?: MarginModel;
+}
+
+export interface ITabRendererOptions {
+    element?: string | HTMLElement;
+    items?: TabItemModel[];
+    selectedItem?: number;
+    cssClass?: string;
+    selected?: EmitType<TabSelectEventArgs>;
+}
+
+export interface IUploaderRendererOptions {
+    element?: string | HTMLInputElement;
+    asyncSettings?: AsyncSettingsModel;
+    multiple?: boolean;
+    allowedExtensions?: string;
+    maxFileSize?: number;
+    dropArea?: HTMLElement | string;
+    cssClass?: string;
+    selected?: EmitType<SelectedEventArgs>;
+    uploading?: EmitType<UploadingEventArgs>;
+    progress?: EmitType<any>;
+    success?: EmitType<SuccessEventArgs>;
+    failure?: EmitType<FailureEventArgs>;
+    beforeUpload?: EmitType<BeforeUploadEventArgs>;
+    removing?: EmitType<RemovingEventArgs>;
+}
+
 export interface IMentionRenderOptions {
     element?: string | HTMLElement,
     mentionChar?: string,
@@ -254,11 +297,15 @@ export interface ITransformOperation extends IBlockData {
     newBlockModel?: BlockModel;
 }
 
+export interface IMultipleBlocksTransformOperation extends IBlockData {
+    transformedBlocks?: Array<{ blockId: string, oldBlockModel?: BlockModel, newBlockModel?: BlockModel }>;
+}
 
 export interface IAddOperation extends IBlockData {
     currentIndex?: number;
     isSplitting?: boolean;
-    splitOffset?: number;
+    isTargetDeletion?: boolean,
+    isAfter?: boolean;
     contentElement?: Node;
     blockBeforeSplit?: BlockModel;
     blocksAfterSplit?: BlockModel[];
@@ -299,6 +346,8 @@ export interface IClipboardPasteOperation {
     targetBlockId?: string
     isPastedAtStart?: boolean
     isSelectivePaste?: boolean
+    cursorBlockAfterSplit?: BlockModel,
+    pasteEndOffset?: number
 }
 
 export interface IFormattingOperation {
@@ -336,7 +385,7 @@ export interface IUndoRedoState {
     newContents?: ContentModel[]
     action?: actionType;
     data?: IBlockData | IMoveOperation | IIndentOperation | IDeleteOperation | IAddOperation |
-    ITransformOperation | IMultiDeleteOperation | IClipboardPasteOperation | IFormattingOperation |
+    ITransformOperation | IMultipleBlocksTransformOperation | IMultiDeleteOperation | IClipboardPasteOperation | IFormattingOperation |
     ITableRowInsertOptions | ITableColumnInsertOptions | ITableCellsClearOperation | ITableCellsPasteOperation |
     IBulkRowsDeleteOperation | IBulkColumnsDeleteOperation | ITableHeaderInputOperation,
     undoSelection?: IBlockSelectionState;
@@ -345,12 +394,14 @@ export interface IUndoRedoState {
 
 /* Other Interfaces */
 
-export type SubCommand = 'Link';
+export type SubCommand = 'link';
 export interface ExecCommandOptions {
     command?: keyof StyleModel,
     subCommand?: SubCommand,
     value?: string | LinkData,
-    isTypingWithFormat?: boolean
+    isTypingWithFormat?: boolean,
+    isRemoteChanges?: boolean
+    shouldRemoveGlobally?: boolean
 }
 
 export interface IInlineContentInsertionOptions {
@@ -360,6 +411,7 @@ export interface IInlineContentInsertionOptions {
     block?: BlockModel
     blockElement?: HTMLElement,
     itemData?: UserModel | LabelItemModel
+    mentionChar?: string
 }
 
 export interface RangePath {
@@ -367,7 +419,7 @@ export interface RangePath {
     startOffset?: number;
     endContainer?: Node;
     endOffset?: number;
-    parentElement?: HTMLElement
+    contentElement?: HTMLElement
 }
 
 export interface CommentRange {
@@ -500,9 +552,9 @@ export interface ICallbackData {
     callback: Function
 }
 
-export interface BlockActionMenuCloseEventProps extends BlockActionMenuClosingEventArgs, ICallbackData {}
+export interface BlockActionMenuCloseEventProps extends BlockActionMenuBeforeCloseEventArgs, ICallbackData {}
 
-export interface BlockActionMenuOpenEventProps extends BlockActionMenuOpeningEventArgs, ICallbackData {}
+export interface BlockActionMenuOpenEventProps extends BlockActionMenuBeforeOpenEventArgs, ICallbackData {}
 
 export interface BeforePasteEventProps extends BeforePasteCleanupEventArgs, ICallbackData {}
 
@@ -510,5 +562,14 @@ export interface AfterPasteEventProps extends AfterPasteCleanupEventArgs, ICallb
 
 export interface BlockDatas extends BlockData {
     targetId?: string
+    isAfter?: boolean
     isMovingUp?: boolean
+}
+
+export interface IColorPickerRenderOptions {
+    element: HTMLElement;
+    type: 'color' | 'bgColor';
+    cssClass?: string;
+    onChange?: (value: string) => void;
+    iconCss?: string;
 }

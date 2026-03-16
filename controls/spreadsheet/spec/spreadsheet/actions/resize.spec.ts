@@ -580,7 +580,7 @@ describe('Resize ->', () => {
                 }, 50);
             });
         });
-        describe('EJ2-876040, EJ2-911629, EJ2-924641,EJ2-1009306 ->', () => {
+        describe('EJ2-876040, EJ2-911629, EJ2-924641, EJ2- 1009306 ->', () => {
             beforeAll((done: Function) => {
                 helper.initializeSpreadsheet({
                     sheets: [

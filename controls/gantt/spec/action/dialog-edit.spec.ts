@@ -3,7 +3,7 @@
  */
 import { getValue, isNullOrUndefined, L10n } from '@syncfusion/ej2-base';
 import {  Gantt, Selection, Toolbar, DayMarkers, Edit, Filter, Reorder, Resize, ColumnMenu, Sort, RowDD, ContextMenu, ExcelExport, PdfExport, ContextMenuClickEventArgs, UndoRedo, IGanttData  } from '../../src/index';
-import { dialogEditData, resourcesData, resources, scheduleModeData, projectData1, indentOutdentData, splitTasksData, projectData, crData, scheduleModeData1, splitTasksData2, dialogData1, splitTasksData3, CR886052, MT887459, resourcesDatas1, resourceCollections1, editingResources, workMT887459,resourceData, dialogEditDataLocale,showcaseDatasource,breakIssue, resourceResources, data931222, resource931222, baselinedurationdata, t974566, data987636, cr786381 } from '../base/data-source.spec';
+import { dialogEditData, resourcesData, resources, scheduleModeData, projectData1, indentOutdentData, splitTasksData, projectData, crData, scheduleModeData1, splitTasksData2, dialogData1, splitTasksData3, CR886052, MT887459, resourcesDatas1, resourceCollections1, editingResources, workMT887459,resourceData, dialogEditDataLocale,showcaseDatasource,breakIssue, resourceResources, data931222, resource931222, baselinedurationdata, t974566, data987636, cr786381, selfDataSource, resourceCollection } from '../base/data-source.spec';
 import { createGantt, destroyGantt, triggerMouseEvent, triggerKeyboardEvent } from '../base/gantt-util.spec';
 import { DropDownList } from '@syncfusion/ej2-dropdowns';
 import { DataManager } from '@syncfusion/ej2-data';
@@ -9981,10 +9981,11 @@ describe('Resource tab property change', function () {
                 { field: 'Duration', headerText: 'Duration', allowEditing: false },
                 { field: 'Progress', headerText: 'Progress', allowFiltering: false },
             ],
+            showColumnMenu: true,
             addDialogFields: [
                 {
                     type: 'Resources', additionalParams: {
-                        allowFiltering: false, allowSorting: true, allowPaging: true, allowResizing: false,
+                        allowFiltering: false, allowSorting: true, allowPaging: true, allowResizing: false, showColumnMenu: true,
                         allowRowDragAndDrop: true, enableVirtualization: false, editSettings: { allowEditing: true, showDeleteConfirmDialog: true },
                         selectionSettings: { enableToggle: true }, allowReordering: true, toolbar: ['PdfExport', 'ExcelExport', 'Search', 'Print']
                     }
@@ -15488,7 +15489,6 @@ describe('Coverage for circular dependency', () => {
         }
     });
     it('Trigerring save action', () => {
-        debugger
         ganttObj.actionComplete = (args: any): void => {
             if (args.requestType === 'save') {
                 expect(ganttObj.currentViewData[0].ganttProperties.predecessorsName).toBe('5FS+3 days');

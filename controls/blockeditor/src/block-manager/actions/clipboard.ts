@@ -2,10 +2,9 @@ import { isNullOrUndefined } from '@syncfusion/ej2-base';
 import { BeforePasteCleanupEventArgs, BlockModel, ContentModel, ITableBlockSettings, TableCellModel, TableRowModel } from '../../models/index';
 import { BlockType } from '../../models/enums';
 import { generateUniqueId, decoupleReference, getAbsoluteOffset, isNodeAroundSpecialElements } from '../../common/utils/common';
-import { findCellById, getBlockContentElement, getBlockModelById, getClosestContentElementInDocument, getContentElementBasedOnId, getContentModelById, isAtStartOfBlock } from '../../common/utils/block';
+import { findCellById, getBlockContentElement, getBlockModelById, isAtStartOfBlock } from '../../common/utils/block';
 import { findClosestParent, isElementEmpty } from '../../common/utils/dom';
-import { convertHtmlElementToBlocks, getBlockDataAsHTML, convertInlineElementsToContentModels } from '../../common/utils/html-parser';
-import { sanitizeBlock, sanitizeContent, sanitizeContents } from '../../common/utils/transform';
+import { convertHtmlElementToBlocks, getBlockDataAsHTML, convertInlineElementsToContentModels, renderElementWithWrapper, renderContentAsHTML } from '../../common/utils/html-parser';
 import { getSelectedRange, setCursorPosition } from '../../common/utils/selection';
 import { BeforePasteEventProps, IClipboardPayloadOptions, ISplitContentData } from '../../common/interface';
 import { ClipboardCleanupModule } from '../plugins/common/clipboard-cleanup';
@@ -15,11 +14,10 @@ import { createBlocksFromPlainText, createCellsPayloadFromExternal, extractPlain
     generatePlainTextForExternalClipboard, htmlTableFromMatrix, isBlockLevelContent, tsvFromMatrix,
     unWrapContainer, writeTableClipboardPayload, buildTableClipboardPayload
 } from '../../common/utils/clipboard-utils';
-import { BlockFactory } from '../../block-manager/services/index';
+import { BlockFactory } from '../../block-manager/services/block-factory';
 import { BlockManager } from '../base/block-manager';
-import { NodeCutter } from '../plugins/common/node';
 import { ColMeta, TableClipboardPayload, TableContext } from '../base/interface';
-import { doesHtmlHasTable, getDataCell, toDomRow, toModelRow } from '../../common/utils/table-utils';
+import { doesHtmlHasTable, getDataCell, getSelectedCells, hasActiveTableSelection, toDomRow, toModelRow } from '../../common/utils/table-utils';
 
 /* eslint-disable @typescript-eslint/no-misused-new, no-redeclare */
 interface ClipboardItem {
@@ -95,7 +93,7 @@ export class ClipboardAction {
         const focusedEl: HTMLElement = this.parent.currentFocusedBlock;
         const tableBlockEl: HTMLElement = focusedEl && focusedEl.closest('.' + constants.TABLE_BLOCK_CLS) as HTMLElement;
         const range: Range = getSelectedRange();
-        const hasActiveSel: boolean = this.parent.tableSelectionManager.hasActiveTableSelection(tableBlockEl);
+        const hasActiveSel: boolean = hasActiveTableSelection(tableBlockEl);
         if (tableBlockEl && (hasActiveSel || findClosestParent(range.startContainer, '.e-action-handle'))) {
             const { payload, html, plainText } = this.getTablePayload(tableBlockEl);
 
@@ -155,17 +153,18 @@ export class ClipboardAction {
             const blocks: BlockModel[] = this.createPartialBlockModels(tempDiv, selectedBlocks);
 
             return {
-                blockeditorData: selectedBlocks && (selectedBlocks.length > 1
+                blockeditorData: selectedBlocks && (selectedBlocks.length > 1)
                     ? JSON.stringify({ blocks })
-                    : JSON.stringify({ contents: this.createPartialContentModels(tempDiv, selectedBlocks[0]) })),
-                html: getBlockDataAsHTML(blocks, this.parent.rootEditorElement.id),
+                    : JSON.stringify({ contents: this.createPartialContentModels(tempDiv) }),
+                html: selectedBlocks && (selectedBlocks.length > 1)
+                    ? getBlockDataAsHTML(blocks, this.parent.rootEditorElement.id)
+                    : renderElementWithWrapper('span', renderContentAsHTML(this.createPartialContentModels(tempDiv))),
                 text: generatePlainTextForExternalClipboard(blocks)
             };
         }
 
         const blockModel: BlockModel = getBlockModelById(this.parent.currentFocusedBlock.id, this.parent.getEditorBlocks());
-        const sanitizedBlock: BlockModel = sanitizeBlock(blockModel);
-        sanitizedBlock.id = generateUniqueId(constants.BLOCK_ID_PREFIX);
+        const sanitizedBlock: BlockModel = decoupleReference(blockModel);
 
         return {
             blockeditorData: JSON.stringify({ block: sanitizedBlock }),
@@ -191,31 +190,14 @@ export class ClipboardAction {
             const blockElement: HTMLElement = selectionContainer.querySelector('.e-block#' + block.id) as HTMLElement;
             const contentElement: HTMLElement = getBlockContentElement(blockElement) || selectionContainer;
             return BlockFactory.createBlockFromPartial({
-                ...decoupleReference(sanitizeBlock(block)),
-                content: this.createPartialContentModels(contentElement, block)
+                ...decoupleReference(block),
+                content: this.createPartialContentModels(contentElement)
             });
         });
     }
 
-    private createPartialContentModels(selectionContainer: HTMLElement, originalBlock: BlockModel): ContentModel[] {
-        return Array.from(selectionContainer.childNodes)
-            .filter((node: Node) => node.textContent !== '')
-            .map((node: Node) => {
-                if (node.nodeType === Node.ELEMENT_NODE) {
-                    const contentElement: HTMLElement = getClosestContentElementInDocument(node);
-                    const originalContentModel: ContentModel = getContentModelById(contentElement.id, originalBlock.content);
-                    if (!originalContentModel) { return null; }
-
-                    const clonedContent: ContentModel = sanitizeContent(originalContentModel);
-                    clonedContent.id = generateUniqueId(constants.CONTENT_ID_PREFIX);
-                    clonedContent.content = node.textContent;
-                    return clonedContent;
-                }
-                return node.nodeType === Node.TEXT_NODE
-                    ? BlockFactory.createTextContent({ content: node.textContent })
-                    : null;
-            })
-            .filter(Boolean);
+    private createPartialContentModels(selectionContainer: HTMLElement): ContentModel[] {
+        return convertInlineElementsToContentModels(selectionContainer, true);
     }
 
     public performCutOperation(): void {
@@ -283,7 +265,7 @@ export class ClipboardAction {
 
                 const cleanedData: string = this.clipboardCleanupModule.cleanupPaste({ html: html, plainText: text });
                 if (html && !this.parent.pasteCleanupSettings.plainText) {
-                    this.handleHtmlPaste(this.parent.serializeValue(cleanedData));
+                    this.handleHtmlPaste(cleanedData);
                 } else if (text) {
                     this.handlePlainTextPaste(text);
                 }
@@ -299,8 +281,10 @@ export class ClipboardAction {
         const selectedBlocks: BlockModel[] = this.parent.editorMethods.getSelectedBlocks();
         if (selectedBlocks && selectedBlocks.length === 1) {
             const blockElement: HTMLElement = this.parent.getBlockElementById(selectedBlocks[0].id);
-            range.deleteContents();
             const contentElement: HTMLElement = getBlockContentElement(blockElement);
+            const newCursorPos: number = getAbsoluteOffset(contentElement, range.startContainer, range.startOffset);
+
+            range.deleteContents();
             Array.from(contentElement.childNodes).forEach((node: Node) => {
                 const isNodeAroundMention: boolean = isNodeAroundSpecialElements(node);
                 if (node.textContent.trim() === '' && !isNodeAroundMention) {
@@ -310,14 +294,17 @@ export class ClipboardAction {
 
             this.parent.stateManager.updateContentOnUserTyping(blockElement);
             this.parent.setFocusAndUIForNewBlock(blockElement);
-            setCursorPosition(contentElement, getAbsoluteOffset(contentElement, range.startContainer, range.startOffset));
+            setCursorPosition(contentElement, newCursorPos);
 
             const isCodeBlk: boolean = selectedBlocks[0].blockType === BlockType.Code;
             const isTableChild: HTMLElement = this.parent.currentFocusedBlock.closest(`.${constants.TABLE_BLOCK_CLS}`) as HTMLElement;
             const isEmptyAfterDeletion: boolean = contentElement && contentElement.textContent.trim() === '';
-            const shouldRenderBr: boolean = isEmptyAfterDeletion && (isCodeBlk || !isNullOrUndefined(isTableChild));
-            if (shouldRenderBr) {
-                contentElement.innerHTML = '<br>';
+            if (isEmptyAfterDeletion) {
+                if (isCodeBlk) {
+                    contentElement.textContent = '\n';
+                } else if (!isNullOrUndefined(isTableChild)) {
+                    contentElement.innerHTML = '<br>';
+                }
             }
             return;
         }
@@ -333,7 +320,7 @@ export class ClipboardAction {
                 this.handleMultiBlocksPaste(parsedData.blocks);
                 break;
             case 'block': {
-                const blocksToPaste: BlockModel[] = [decoupleReference(sanitizeBlock(parsedData.block))];
+                const blocksToPaste: BlockModel[] = [decoupleReference(this.parent.blockService.generateNewIdsForBlock(parsedData.block))];
                 const cursorBlock: BlockModel = getBlockModelById(this.parent.currentFocusedBlock.id, this.parent.getEditorBlocks());
                 const parentBlock: BlockModel = getBlockModelById(cursorBlock.parentId, this.parent.getEditorBlocks());
                 if (parentBlock) {
@@ -365,23 +352,22 @@ export class ClipboardAction {
         if (!range) { return; }
 
         const cursorBlockElement: HTMLElement = findClosestParent(range.startContainer, '.' + constants.BLOCK_CLS);
+        const contentEle: HTMLElement = getBlockContentElement(cursorBlockElement);
         const cursorBlock: BlockModel = getBlockModelById(cursorBlockElement.id, this.parent.getEditorBlocks());
-        const oldBlock: BlockModel = decoupleReference(sanitizeBlock(cursorBlock));
+        const oldBlock: BlockModel = decoupleReference(cursorBlock);
 
-        const splitContent: ISplitContentData = NodeCutter.splitContent(
+        const splitContent: ISplitContentData = this.parent.nodeCutter.splitContent(
             getBlockContentElement(cursorBlockElement), range.startContainer, range.startOffset
         );
 
         const beforeModels: ContentModel[] = this.parent.blockCommand.getContentModelForFragment(
-            splitContent.beforeFragment,
-            cursorBlock,
-            null
+            splitContent.beforeFragment
         );
         const afterModels: ContentModel[] = this.parent.blockCommand.getContentModelForFragment(
-            splitContent.afterFragment,
-            cursorBlock,
-            splitContent.beforeFragment.lastChild
+            splitContent.afterFragment
         );
+        const pastedLength: number = content.reduce((sum: number, c: ContentModel) => sum + (c.content.length), 0);
+        const targetOffset: number = getAbsoluteOffset(contentEle, range.startContainer, range.startOffset) + pastedLength;
 
         /* Update model */
         this.parent.blockService.updateContent(cursorBlock.id, [
@@ -395,17 +381,17 @@ export class ClipboardAction {
             data: [ { block: cursorBlock, oldBlock: oldBlock } ]
         }});
 
-        const lastNode: HTMLElement = getContentElementBasedOnId(content.pop().id, cursorBlockElement);
-        setCursorPosition(lastNode, lastNode.textContent.length);
+        setCursorPosition(contentEle, targetOffset);
 
         this.parent.undoRedoAction.pushActionIntoUndoStack({
             action: actionType.clipboardPaste,
             data: {
                 type: 'content',
                 oldContent: oldBlock.content,
-                newContent: decoupleReference(sanitizeContents(cursorBlock.content)),
+                newContent: decoupleReference(cursorBlock.content),
                 targetBlockId: cursorBlock.id,
-                isSelectivePaste: this.isSelectivePaste
+                isSelectivePaste: this.isSelectivePaste,
+                pasteEndOffset: targetOffset
             }
         });
     }
@@ -425,9 +411,9 @@ export class ClipboardAction {
         if (!range) { return; }
 
         const editorBlocks: BlockModel[] = this.parent.getEditorBlocks();
-        const cursorBlockElement: HTMLElement = findClosestParent(range.startContainer, '.' + constants.BLOCK_CLS);
+        let cursorBlockElement: HTMLElement = findClosestParent(range.startContainer, '.' + constants.BLOCK_CLS);
         const cursorBlock: BlockModel = getBlockModelById(cursorBlockElement.id, editorBlocks);
-        const oldCursorBlock: BlockModel = decoupleReference(sanitizeBlock(cursorBlock));
+        const oldCursorBlock: BlockModel = decoupleReference(cursorBlock);
         const contentElement: HTMLElement = getBlockContentElement(cursorBlockElement);
         const isContentEmpty: boolean = contentElement && isElementEmpty(contentElement);
         const isCursorAtStart: boolean = isAtStartOfBlock(contentElement);
@@ -435,6 +421,7 @@ export class ClipboardAction {
             || findCellById(cursorBlock.parentId, editorBlocks);
         const specialTypes: string[] = [BlockType.Table, BlockType.Image];
         const isFirstBlkSpecialType: boolean = specialTypes.indexOf(blocks[0].blockType) !== -1;
+        let cursorBlockAfterSplit: BlockModel;
         let isFirstBlkProcessed: boolean = false;
 
         if (parentBlock) {
@@ -459,9 +446,17 @@ export class ClipboardAction {
             isFirstBlkProcessed = true;
             this.parent.execCommand({ command: 'SplitBlock', state: { preventEventTrigger: true } });
 
-            const updatedCursorBlock: BlockModel = getBlockModelById(cursorBlockElement.id, this.parent.getEditorBlocks());
+            /* When split at start, empty block will be appended before target */
+            cursorBlockElement = ((range.startOffset === 0)
+                ? cursorBlockElement.previousElementSibling
+                : cursorBlockElement) as HTMLElement;
+
+            const updatedCursorBlock: BlockModel = getBlockModelById(
+                cursorBlockElement.id, this.parent.getEditorBlocks()
+            );
             if (!updatedCursorBlock) { return; }
 
+            cursorBlockAfterSplit = decoupleReference(updatedCursorBlock);
             const isContentEmptyAfterSplit: boolean = !updatedCursorBlock.content || (updatedCursorBlock.content
                 && updatedCursorBlock.content.length === 1 && updatedCursorBlock.content[0].content === '');
 
@@ -481,10 +476,11 @@ export class ClipboardAction {
         this.parent.blockCommand.addBulkBlocks({
             blocks: blocks.slice(!isFirstBlkProcessed ? 0 : 1)
                 .map((block: BlockModel) => this.parent.blockService.generateNewIdsForBlock(block)),
-            targetBlockId: cursorBlock.id,
+            targetBlockId: cursorBlockElement.id,
             isUndoRedoAction: isUndoRedoAction,
             insertionType: 'blocks',
-            clipboardBlocks: blocks.map((block: BlockModel) => decoupleReference(sanitizeBlock(block))),
+            clipboardBlocks: blocks.map((block: BlockModel) => decoupleReference(block)),
+            cursorBlockAfterSplit: cursorBlockAfterSplit,
             oldBlockModel: oldCursorBlock,
             isPastedAtStart: isCursorAtStart,
             isSelectivePaste: this.isSelectivePaste
@@ -495,8 +491,42 @@ export class ClipboardAction {
 
     private handleCodeBlockContentPaste(content: string, blockModel: BlockModel): void {
         const codeBlockContentElement: HTMLElement = document.getElementById(blockModel.id).querySelector('.e-code-content');
-        codeBlockContentElement.textContent += content;
-        blockModel.content[0].content = codeBlockContentElement.textContent;
+        // Store the old block state for undo/redo tracking
+        const oldBlockModel: BlockModel = decoupleReference(blockModel);
+        // Get current cursor position
+        const range: Range = getSelectedRange();
+        let cursorPosition: number = 0;
+
+        if (range && range.startContainer === codeBlockContentElement
+            || codeBlockContentElement.contains(range.startContainer as HTMLElement)) {
+            // Calculate cursor position from the beginning of text content
+            const preCaretRange: Range = range.cloneRange();
+            preCaretRange.selectNodeContents(codeBlockContentElement);
+            preCaretRange.setEnd(range.endContainer, range.endOffset);
+            cursorPosition = preCaretRange.toString().length;
+        }
+
+        // Get current text content
+        const currentText: string = codeBlockContentElement.textContent === '\n' ? '' : codeBlockContentElement.textContent;
+
+        // Insert pasted content at cursor position
+        const beforeCursor: string = currentText.substring(0, cursorPosition);
+        const afterCursor: string = currentText.substring(cursorPosition);
+        const newText: string = beforeCursor + content + afterCursor;
+
+        // Update DOM
+        codeBlockContentElement.textContent = newText;
+
+        // Update model
+        blockModel.content[0].content = newText;
+
+        // Position cursor after pasted content
+        const newCursorPosition: number = cursorPosition + content.length;
+        setCursorPosition(codeBlockContentElement, newCursorPosition);
+
+        // Track the change for undo/redo
+        const clonedBlock: BlockModel = decoupleReference(blockModel);
+        this.parent.undoRedoAction.trackContentChangedForUndoRedo(oldBlockModel, clonedBlock);
     }
 
     private handleHtmlPaste(html: string): void {
@@ -560,7 +590,7 @@ export class ClipboardAction {
                 const targetRow: number = ctx.startDataRow + r;
                 const targetCol: number = ctx.startDataCol + c;
                 const oldBlocks: BlockModel[] = (ctx.props.rows[targetRow as number].cells[targetCol as number].blocks)
-                    .map((b: BlockModel) => decoupleReference(sanitizeBlock(b)));
+                    .map((b: BlockModel) => decoupleReference(b));
                 const newBlocks: BlockModel[] = payload.cells[r as number][c as number];
                 oldNewPairs.push({ dataRow: targetRow, dataCol: targetCol, oldBlocks, newBlocks });
                 this.parent.tableService.setCellBlocks(ctx.tableEl, targetRow, targetCol, newBlocks);
@@ -583,7 +613,7 @@ export class ClipboardAction {
 
     private performCellCut(tableCtx: TableContext): void {
         const selectedCells: HTMLTableCellElement[] = Array.from(
-            this.parent.tableSelectionManager.getSelectedCells(tableCtx.tableBlockEl)
+            getSelectedCells(tableCtx.tableBlockEl)
         );
         const tableEl: HTMLTableElement = tableCtx.tableEl;
         const props: ITableBlockSettings = tableCtx.props;

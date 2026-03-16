@@ -1,7 +1,7 @@
 /**
   * Gantt base spec
   */
-import { Gantt, DayMarkers , Selection, Edit, PdfExport} from '../../src/index';
+import { Gantt, DayMarkers , Selection, Edit, PdfExport } from '../../src/index';
 import { createGantt, destroyGantt, triggerMouseEvent } from '../base/gantt-util.spec';
 interface EJ2Instance extends HTMLElement {
     ej2_instances: Object[];
@@ -1418,5 +1418,86 @@ describe('Calendar Setting', () => {
                destroyGantt(ganttObj);
            }
        });
+    });
+});
+describe('New Taskbar added is not correct after enabling the Include Weekend', () => {
+    Gantt.Inject(DayMarkers, Selection, Edit);
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: [],
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                endDate: 'EndDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor',
+                child: 'subtasks',
+                segments: 'Segments'
+            },
+            editSettings: {
+                allowAdding: true,
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            columns: [
+                { field: 'TaskID', width: 60 },
+                { field: 'TaskName', headerText: 'Job Name', width: '250', clipMode: 'EllipsisWithTooltip' },
+                { field: 'StartDate' },
+                { field: 'EndDate' },
+                { field: 'Duration' },
+                { field: 'Progress' },
+                { field: 'Predecessor' }
+            ],
+            eventMarkers: [
+                {
+                    day: '04/10/2019',
+                    cssClass: 'e-custom-event-marker',
+                    label: 'Project approval and kick-off'
+                }
+            ],
+            holidays: [{
+                from: "04/04/2019",
+                to: "04/05/2019",
+                label: " Public holidays",
+                cssClass: "e-custom-holiday"
+
+            },
+            {
+                from: "04/12/2019",
+                to: "04/12/2019",
+                label: " Public holiday",
+                cssClass: "e-custom-holiday"
+
+            }],
+            includeWeekend: true,
+            weekWorkingTime: [
+                { dayOfWeek: 'Monday', timeRange: [{ from: 8, to: 17 }] }
+            ],
+            projectStartDate: new Date('02/04/2019'),
+            projectEndDate: new Date('03/05/2019')
+        }, done);
+    });
+    it('Adding new task and check duration seconds ', () => {
+        let data: object = {
+            Duration: '1 day',
+              StartDate: new Date('02/03/2019'),
+              EndDate: null
+       };
+        ganttObj.actionComplete = function (args: any): void {
+            if (args.requestType == 'add') {
+                expect(ganttObj.currentViewData[0].ganttProperties.width).toBe(33);
+            }
+        }
+        ganttObj.addRecord(data);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
     });
 });

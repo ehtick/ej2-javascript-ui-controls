@@ -974,7 +974,45 @@ describe('Spreadsheet formula module ->', () => {
             done();
         });
     });
-
+    describe('INDEX Formula ->', function () {
+        beforeAll((done: Function) => {
+            helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] }, done);
+        });
+        afterAll(() => {
+            helper.invoke('destroy');
+        });
+        it('INDEX formula for area range as boolean', function (done: Function) {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            helper.invoke('selectRange', ['I1']);
+            helper.edit('I1', '=INDEX((B14:B20,B6:C11,H6:I11,H15:I19),1,TRUE,FALSE)');
+            expect(spreadsheet.sheets[0].rows[0].cells[8].value).toBe('#VALUE!');
+            done();
+        });
+        it('INDEX formula for empty area range', function (done: Function) {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            helper.edit('I2', '=INDEX(3,1,1,)');
+            expect(spreadsheet.sheets[0].rows[1].cells[8].value).toBe('#VALUE!');
+            done();
+        });
+        it('INDEX formula for empty column range', function (done: Function) {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            helper.edit('I3', '=INDEX(3,1,,1)');
+            expect(spreadsheet.sheets[0].rows[2].cells[8].value).toBe('3');
+            done();
+        });
+        it('INDEX() returns value instead of #REF! error when first argument is scalar and row/column > 1', function (done: Function) {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            helper.edit('I4', '=INDEX(3,2,1)');
+            helper.edit('I5', '=INDEX(3,1,5)');
+            helper.edit('I6', '=INDEX(3,,1)');
+            helper.edit('I7', '=INDEX("b",4,24)');
+            expect(spreadsheet.sheets[0].rows[3].cells[8].value).toBe('#REF!');
+            expect(spreadsheet.sheets[0].rows[4].cells[8].value).toBe('#REF!');
+            expect(spreadsheet.sheets[0].rows[5].cells[8].value).toBe('3');
+            expect(spreadsheet.sheets[0].rows[6].cells[8].value).toBe('#REF!');
+            done();
+        });
+    });
     describe('Reported MONTH Formulae - Checking III ->', () => {
         beforeAll((done: Function) => {
             helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: reportedBugData }] }] }, done);
@@ -6086,6 +6124,9 @@ describe('Spreadsheet formula module ->', () => {
             helper.edit('M7', '3');
             helper.edit('M8', '=EDATE("31-Jan-2020",M7)');
             expect(helper.invoke('getCell', [7, 12]).textContent).toBe('43951');
+            helper.edit('M7', '#DIV/0!');
+            helper.edit('M8', '=EDATE(M7,2)');
+            expect(helper.invoke('getCell', [7, 12]).textContent).toBe('#DIV/0!');
             done();
         });
         it('EDATE Formula with absolute cell refernces as arguments->', (done: Function) => {
@@ -14207,6 +14248,9 @@ describe('Spreadsheet formula module ->', () => {
             expect(helper.invoke('getCell', [8, 9]).textContent).toBe('5');
             helper.edit('J10', '=COUNTIFS(H2:H11,"=10",D2:D11,"=10")');
             expect(helper.invoke('getCell', [9, 9]).textContent).toBe('1');
+            helper.edit('J11', '50');
+            helper.edit('J12', '=COUNTIFS(J11,">=40")');
+            expect(helper.invoke('getCell', [11, 9]).textContent).toBe('1');
             done();
         });
         it('COUNTIFS Formula with wildcard * as criteria* ->', (done: Function) => {
@@ -14892,6 +14936,9 @@ describe('Spreadsheet formula module ->', () => {
             expect(helper.invoke('getCell', [19, 11]).textContent).toBe('FALSE');
             helper.edit('L21', '=IF(J4="",,)');
             expect(helper.invoke('getCell', [20, 11]).textContent).toBe('0');
+            helper.edit('A2', 'Casual, Shoes');
+            helper.edit('L22', '=IF(3=3,VLOOKUP(A2,A1:D11,1,FALSE),G10)');
+            expect(helper.invoke('getCell', [21, 11]).textContent).toBe('Casual, Shoes');
             done();
         });
         it('IF Formula with absolute cell refernces as arguments->', (done: Function) => {
@@ -14966,6 +15013,11 @@ describe('Spreadsheet formula module ->', () => {
             helper.click('.e-validation-error-dlg.e-dialog .e-btn.e-primary');
             helper.edit('N1', '=IF(D2=H2,1,2)');
             expect(helper.invoke('getCell', [0, 13]).textContent).toBe('1');
+            done();
+        });
+        it('COUNTA formula are not working when nested with SORT', (done: Function) => {
+            helper.edit('N2', '=COUNTA(SORT(A3:A11,1,1))');
+            expect(helper.invoke('getCell', [1, 13]).textContent).toBe('9');
             done();
         });
     });
@@ -15513,7 +15565,7 @@ describe('Spreadsheet formula module ->', () => {
                 done();
             });
         });
-        describe('FB23112, EJ2-60666, EJ2-939665, EJ2-994048,EJ2-1000965 ->', () => {
+        describe('FB23112, EJ2-60666, EJ2-939665, EJ2-994048, EJ2-1000965 ->', () => {
             beforeAll((done: Function) => {
                 helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] }, done);
             });
@@ -18601,6 +18653,7 @@ describe('Spreadsheet formula module ->', () => {
             done();
         });
         it('AVERAGEIFS Formula with different kind of value as criteria ->', (done: Function) => {
+            const spreadsheet: any = helper.getInstance();
             helper.edit('K11', '=AVERAGEIFS(D2:D11,E2:E11,20,F2:F11,200)');
             expect(helper.invoke('getCell', [10, 10]).textContent).toBe('10');
             helper.edit('K12', '=AVERAGEIFS(D2:D11,E2:E11,">20",F2:F11,">200")');
@@ -18609,10 +18662,24 @@ describe('Spreadsheet formula module ->', () => {
             expect(helper.invoke('getCell', [12, 10]).textContent).toBe('10');
             helper.edit('K14', '=AVERAGEIFS(D2:D11,E2:E11,"<>"&D8,F2:F11,"<>"&F2)');
             expect(helper.invoke('getCell', [13, 10]).textContent).toBe('32');
-            helper.edit('K15', '=AVERAGEIFS(E2:E11,"*"&E6,D2:D11,30)');
-            expect(helper.invoke('getCell', [14, 10]).textContent).toBe('20');
-            helper.edit('K16', '=AVERAGEIFS(E2:E11,E6&"*",D2:D11,30)');
-            expect(helper.invoke('getCell', [15, 10]).textContent).toBe('20');
+            spreadsheet.selectRange('K15');
+            helper.invoke('startEdit');
+            spreadsheet.editModule.editCellData.value = '=AVERAGEIFS(E2:E11,"*"&E6,D2:D11,30)';
+            helper.getElement('.e-spreadsheet-edit').textContent = '=AVERAGEIFS(E2:E11,"*"&E6,D2:D11,30)';
+            helper.triggerKeyNativeEvent(13);
+            const dialog1: HTMLElement =  helper.getElement('.e-validation-error-dlg.e-dialog .e-dlg-content');
+            expect(dialog1.textContent).toBe('We found that you typed a formula with a wrong number of arguments.');
+            helper.click('.e-validation-error-dlg.e-dialog .e-btn.e-primary');
+            helper.edit('K15', '=AVERAGEIFS(G2:G9,H2:H9,">5")');
+            spreadsheet.selectRange('K16');
+            helper.invoke('startEdit');
+            spreadsheet.editModule.editCellData.value = '=AVERAGEIFS(E2:E11,E6&"*",D2:D11,30)';
+            helper.getElement('.e-spreadsheet-edit').textContent = '=AVERAGEIFS(E2:E11,E6&"*",D2:D11,30)';
+            helper.triggerKeyNativeEvent(13);
+            const dialog2: HTMLElement =  helper.getElement('.e-validation-error-dlg.e-dialog .e-dlg-content');
+            expect(dialog2.textContent).toBe('We found that you typed a formula with a wrong number of arguments.');
+            helper.click('.e-validation-error-dlg.e-dialog .e-btn.e-primary');
+            helper.edit('K16', '=AVERAGEIFS(G2:G9,H2:H9,">5")');
             helper.edit('K17', '=AVERAGEIFS(D2:D11,A2:A11,"Casual Shoes",E2:E11,20)');
             expect(helper.invoke('getCell', [16, 10]).textContent).toBe('10');
             done();
@@ -18651,8 +18718,15 @@ describe('Spreadsheet formula module ->', () => {
             helper.edit('L4', '=AVERAGEIFS(G2:G9,H2:H9,">5")');
             helper.edit('L5', '=AVERAGEIFS(E2:E9,F2:F9,)');
             expect(helper.invoke('getCell', [4, 11]).textContent).toBe('#DIV/0!');
-            helper.edit('L6', '=AVERAGEIFS(A2:A11,,H4:H9,)');
-            expect(helper.invoke('getCell', [5, 11]).textContent).toBe('#VALUE!');
+            spreadsheet.selectRange('L6');
+            helper.invoke('startEdit');
+            spreadsheet.editModule.editCellData.value = '=AVERAGEIFS(A2:A11,,H4:H9,)';
+            helper.getElement('.e-spreadsheet-edit').textContent = '=AVERAGEIFS(A2:A11,,H4:H9,)';
+            helper.triggerKeyNativeEvent(13);
+            const dialog: HTMLElement =  helper.getElement('.e-validation-error-dlg.e-dialog .e-dlg-content');
+            expect(dialog.textContent).toBe('We found that you typed a formula with a wrong number of arguments.');
+            helper.click('.e-validation-error-dlg.e-dialog .e-btn.e-primary');
+            helper.edit('L6', '=AVERAGEIFS(G2:G9,H2:H9,">5")');
             helper.edit('L7', '=AVERAGEIFS(E4:E11,A3:A11,"",D4:D11,"=20")');
             expect(helper.invoke('getCell', [6, 11]).textContent).toBe('#VALUE!');
             helper.edit('L8', '=AVERAGEIFS(E3:E11,F3:F11,"300",H3:H13,">50")');
@@ -19687,7 +19761,7 @@ describe('Spreadsheet formula module ->', () => {
             helper.edit('M1', '=NOT("")');
             expect(helper.invoke('getCell', [0, 12]).textContent).toBe('#VALUE!');
             helper.edit('M2', '=NOT(IF(1=1,T,F))');
-            expect(helper.invoke('getCell', [1, 12]).textContent).toBe('#NAME?');
+            expect(helper.invoke('getCell', [1, 12]).textContent).toBe('#VALUE!');
             helper.edit('M3', '=NOT(HELLO)');
             expect(helper.invoke('getCell', [2, 12]).textContent).toBe('#NAME?');
             helper.edit('M4', '=NOT("@")');
@@ -19810,6 +19884,8 @@ describe('Spreadsheet formula module ->', () => {
             expect(helper.invoke('getCell', [21, 9]).textContent).toBe('9.433970532');
             helper.edit('J23', '=SQRT(1>5)');
             expect(helper.invoke('getCell', [22, 9]).textContent).toBe('0');
+            helper.edit('J24', '=SQRT("34/3")');
+            expect(helper.invoke('getCell', [23, 9]).textContent).toBe('#VALUE!');
             done();
         });
         it('SQRT Formula with cell references as arguments ->', (done: Function) => {
@@ -20340,6 +20416,7 @@ describe('Spreadsheet formula module ->', () => {
             done();
         });
         it('SUMIFS Formula with different kind of value as criteria ->', (done: Function) => {
+            const spreadsheet: any = helper.getInstance();
             helper.edit('K11', '=SUMIFS(D2:D11,E2:E11,20,F2:F11,200)');
             expect(helper.invoke('getCell', [10, 10]).textContent).toBe('10');
             helper.edit('K12', '=SUMIFS(D2:D11,E2:E11,">20",F2:F11,">200")');
@@ -20348,12 +20425,28 @@ describe('Spreadsheet formula module ->', () => {
             expect(helper.invoke('getCell', [12, 10]).textContent).toBe('10');
             helper.edit('K14', '=SUMIFS(D2:D11,E2:E11,"<>"&D8,F2:F11,"<>"&F2)');
             expect(helper.invoke('getCell', [13, 10]).textContent).toBe('192');
-            helper.edit('K15', '=SUMIFS(E2:E11,E6&"*",D2:D11,30)');
-            expect(helper.invoke('getCell', [14, 10]).textContent).toBe('20');
-            helper.edit('K16', '=SUMIFS(E2:E11,E6&"*",D2:D11,30)');
-            expect(helper.invoke('getCell', [15, 10]).textContent).toBe('20');
+            spreadsheet.selectRange('K15');
+            helper.invoke('startEdit');
+            spreadsheet.editModule.editCellData.value = '=SUMIFS(E2:E11,E6&"*",D2:D11,30)';
+            helper.getElement('.e-spreadsheet-edit').textContent = '=SUMIFS(E2:E11,E6&"*",D2:D11,30)';
+            helper.triggerKeyNativeEvent(13);
+            let dialog1: HTMLElement =  helper.getElement('.e-validation-error-dlg.e-dialog .e-dlg-content');
+            expect(dialog1.textContent).toBe('We found that you typed a formula with a wrong number of arguments.');
+            helper.click('.e-validation-error-dlg.e-dialog .e-btn.e-primary');
+            helper.edit('K15', '=SUMIFS(G2:G9,H2:H9,">5")');
+            spreadsheet.selectRange('K16');
+            helper.invoke('startEdit');
+            spreadsheet.editModule.editCellData.value = '=SUMIFS(E2:E11,E6&"*",D2:D11,30)';
+            helper.getElement('.e-spreadsheet-edit').textContent = '=SUMIFS(E2:E11,E6&"*",D2:D11,30)';
+            helper.triggerKeyNativeEvent(13);
+            let dialog2: HTMLElement =  helper.getElement('.e-validation-error-dlg.e-dialog .e-dlg-content');
+            expect(dialog2.textContent).toBe('We found that you typed a formula with a wrong number of arguments.');
+            helper.click('.e-validation-error-dlg.e-dialog .e-btn.e-primary');
+            helper.edit('K16', '=SUMIFS(G2:G9,H2:H9,">5")');
             helper.edit('K17', '=SUMIFS(D2:D11,A2:A11,"Casual Shoes",E2:E11,20)');
             expect(helper.invoke('getCell', [16, 10]).textContent).toBe('10');
+            helper.edit('K18', '=SUMIFS(E2:E10,A2:A10,"")');
+            expect(helper.invoke('getCell', [17, 10]).textContent).toBe('0');
             done();
         });
         it('SUMIFS Formula with experssion as criteria ->', (done: Function) => {
@@ -20386,15 +20479,22 @@ describe('Spreadsheet formula module ->', () => {
             done();
         })
         it('SUMIFS Formula with worst case value as argument->', (done: Function) => {
+            const spreadsheet: any = helper.getInstance();
             helper.edit('L5', '=SUMIFS(E2:E9,F2:F9,)');
             expect(helper.invoke('getCell', [4, 11]).textContent).toBe('0');
-            helper.edit('L6', '=SUMIFS(A2:A11,,H4:H9,)');
-            expect(helper.invoke('getCell', [5, 11]).textContent).toBe('#VALUE!');
+            spreadsheet.selectRange('L6');
+            helper.invoke('startEdit');
+            spreadsheet.editModule.editCellData.value = '=SUMIFS(A2:A11,,H4:H9,)';
+            helper.getElement('.e-spreadsheet-edit').textContent = '=SUMIFS(A2:A11,,H4:H9,)';
+            helper.triggerKeyNativeEvent(13);
+            let dialog2: HTMLElement =  helper.getElement('.e-validation-error-dlg.e-dialog .e-dlg-content');
+            expect(dialog2.textContent).toBe('We found that you typed a formula with a wrong number of arguments.');
+            helper.click('.e-validation-error-dlg.e-dialog .e-btn.e-primary');
+            helper.edit('L6', '=SUMIFS(G2:G9,H2:H9,">5")');
             helper.edit('L7', '=SUMIFS(E4:E11,A3:A11,"",D4:D11,"=20")');
             expect(helper.invoke('getCell', [6, 11]).textContent).toBe('#VALUE!');
             helper.edit('L8', '=SUMIFS(E3:E11,F3:F11,"300",H3:H13,">50")');
             expect(helper.invoke('getCell', [7, 11]).textContent).toBe('#VALUE!');
-            const spreadsheet: any = helper.getInstance();
             spreadsheet.selectRange('L9');
             helper.invoke('startEdit');
             spreadsheet.editModule.editCellData.value = '=SUMIFS()';
@@ -20524,6 +20624,8 @@ describe('Spreadsheet formula module ->', () => {
             expect(helper.invoke('getCell', [5, 14]).textContent).toBe('11');
             helper.edit('O7', '=SUMIFS(Sheet1!G5:G6,Sheet2!A8:A9,"Q2")');
             expect(helper.invoke('getCell', [6, 14]).textContent).toBe('10');
+            helper.edit('O12', '=SUMIFS(G5,F2:F10,"300")');
+            expect(helper.invoke('getCell', [11, 14]).textContent).toBe('#VALUE!');
             done();
         });
         it('SUMIFS formula with wildcard * in both starting and end of criteria->', (done: Function) => {
@@ -23534,8 +23636,8 @@ describe('Spreadsheet formula module ->', () => {
         });
         it('INDEX - FORMULA WITH CELL REFERENCE - XIV', (done: Function) => {
             helper.edit('L14', '=INDEX(3,1,1,)');
-            expect(helper.invoke('getCell', [13, 11]).textContent).toBe('#REF!');
-            expect(JSON.stringify(helper.getInstance().sheets[0].rows[13].cells[11])).toBe('{"value":"#REF!","formula":"=INDEX(3,1,1,)"}');
+            expect(helper.invoke('getCell', [13, 11]).textContent).toBe('#VALUE!');
+            expect(JSON.stringify(helper.getInstance().sheets[0].rows[13].cells[11])).toBe('{"value":"#VALUE!","formula":"=INDEX(3,1,1,)"}');
             done();
         });
         it('INDEX - FORMULA WITH CELL REFERENCE - XV', (done: Function) => {
@@ -25733,6 +25835,7 @@ describe('Spreadsheet formula module ->', () => {
             expect(sheet.rows[13].cells[8].value).toBe('NUMBER');
             done();
         });
+
     });
 
     describe('EJ2-971975 ->', () => {
@@ -25805,23 +25908,46 @@ describe('Spreadsheet formula module ->', () => {
             expect(JSON.stringify(helper.getInstance().sheets[0].rows[7].cells[8])).toBe('{"value":"#VALUE!","formula":"=INDEX((A2:B8,C2:E8,F2:H8),3,3,0)"}');
             done();
         });
-        it('EJ2-1002968 -> Cell values not maintained properly when applying number format', (done: Function) => {
-            const sheet: SheetModel = helper.getInstance().sheets[0];
-            helper.edit('A15', '16.994999999997');
-            helper.edit('A16', '=2583.24/152');
-            helper.edit('A17', '=2583.23/152');
-            helper.edit('A18', '=SUM(2583.24/152)');
-            helper.edit('A19', '=SUM(16.994999999997)');
-            helper.edit('A20', '=SUM(169949999999979.9999)');
-            helper.edit('A21', '=SUM(16994999999997989)');
-            helper.invoke('numberFormat', ['0.00', 'A15:A21']);
-            expect(sheet.rows[14].cells[0].formattedText).toBe('16.99');
-            expect(sheet.rows[15].cells[0].formattedText).toBe('17.00');
-            expect(sheet.rows[16].cells[0].formattedText).toBe('16.99');
-            expect(sheet.rows[17].cells[0].formattedText).toBe('17.00');
-            expect(sheet.rows[18].cells[0].formattedText).toBe('16.99');
-            expect(sheet.rows[19].cells[0].formattedText).toBe('169949999999980.00');
-            expect(sheet.rows[20].cells[0].formattedText).toBe('16994999999997988.00');
+        it('EJ2-1002092: Improper value returns while passing a number string as an argument in AND formula.', (done: Function) => {
+            helper.edit('J19', '=AND("5")');
+            expect(helper.invoke('getCell', [18, 9]).textContent).toBe('#VALUE!');
+            helper.edit('J20', '=OR("5")');
+            expect(helper.invoke('getCell', [19, 9]).textContent).toBe('#VALUE!');
+            helper.edit('J21', '=NOT("5")');
+            expect(helper.invoke('getCell', [20, 9]).textContent).toBe('#VALUE!');
+            done();
+        });
+    });
+
+    describe('EJ2-1002086 ->', () => {
+        beforeAll((done: Function) => {
+            helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] }, done);
+        });
+        afterAll(() => {
+            helper.invoke('destroy');
+        });
+        it('Different error is throwing for the ODD, EVEN and ABS formulas compared to MS Excel', (done: Function) => {
+            helper.edit('A15', '#NAME?');
+            helper.edit('A16', '#DIV/0!');
+            helper.edit('A17', '#REF!');
+            helper.edit('C15', '=ODD(A15)');
+            helper.edit('C16', '=ODD(A16)');
+            helper.edit('C17', '=ODD(A17)');
+            expect(helper.invoke('getCell', [14, 2]).textContent).toBe('#NAME?');
+            expect(helper.invoke('getCell', [15, 2]).textContent).toBe('#DIV/0!');
+            expect(helper.invoke('getCell', [16, 2]).textContent).toBe('#REF!');
+            helper.edit('D15', '=EVEN(A15)');
+            helper.edit('D16', '=EVEN(A16)');
+            helper.edit('D17', '=EVEN(A17)');
+            expect(helper.invoke('getCell', [14, 3]).textContent).toBe('#NAME?');
+            expect(helper.invoke('getCell', [15, 3]).textContent).toBe('#DIV/0!');
+            expect(helper.invoke('getCell', [16, 3]).textContent).toBe('#REF!');
+            helper.edit('E15', '=ABS(A15)');
+            helper.edit('E16', '=ABS(A16)');
+            helper.edit('E17', '=ABS(A17)');
+            expect(helper.invoke('getCell', [14, 4]).textContent).toBe('#NAME?');
+            expect(helper.invoke('getCell', [15, 4]).textContent).toBe('#DIV/0!');
+            expect(helper.invoke('getCell', [16, 4]).textContent).toBe('#REF!');
             done();
         });
     });

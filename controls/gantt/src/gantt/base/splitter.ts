@@ -89,8 +89,11 @@ export class Splitter {
                         this.splitterObject.paneSettings[1].size = null;
                         this.splitterObject.paneSettings[1].size = this.getSpliterPositionInPercentage(this.splitterPreviousPositionChart);
                     }
-                    if (isNullOrUndefined(this.parent.projectEndDate)) {
+                    if (isNullOrUndefined(this.parent.projectEndDate) && this.parent.timelineSettings.viewEndDate === 'auto') {
                         this.parent.timelineModule.updateTimelineAfterZooming(this.parent.timelineModule.timelineEndDate, true);
+                    }
+                    else if (this.parent.timelineSettings.viewStartDate !== 'auto' && this.parent.timelineSettings.viewEndDate === 'auto') {
+                        this.parent.timelineModule.adjustEndDateToFillChart(true);
                     }
                     callBackPromise.resolve(splitterResizedArgs);
                 });
@@ -120,9 +123,9 @@ export class Splitter {
         } else if (splitter.view === 'Chart') {
             return this.parent.enableRtl ? '100%' : '0%';
         } else {
-            if (!isNullOrUndefined(splitter.position) && splitter.position !== '') {
+            if ((isNullOrUndefined(this.parent['splitterUpdateType']) || this.parent['splitterUpdateType'] === 'position') && !isNullOrUndefined(splitter.position) && splitter.position !== '') {
                 return this.getSpliterPositionInPercentage(splitter.position);
-            } else if (!isNullOrUndefined(splitter.columnIndex) && splitter.columnIndex >= 0) {
+            } else if ((isNullOrUndefined(this.parent['splitterUpdateType']) || this.parent['splitterUpdateType'] === 'columnIndex') && !isNullOrUndefined(splitter.columnIndex) && splitter.columnIndex >= 0) {
                 if ((splitter.columnIndex * 150) < this.parent.ganttWidth || !this.parent.element.classList.contains('e-device')) {
                     return this.getSpliterPositionInPercentage(
                         this.getTotalColumnWidthByIndex(splitter.columnIndex).toString() + 'px');
@@ -197,8 +200,11 @@ export class Splitter {
             this.splitterObject.paneSettings[0].size = splitterPosition;
         }
         this.isSplitterResized = false;
-        if (isNullOrUndefined(this.parent.projectEndDate)) {
+        if (isNullOrUndefined(this.parent.projectEndDate) && this.parent.timelineSettings.viewEndDate === 'auto') {
             this.parent.timelineModule.updateTimelineAfterZooming(this.parent.timelineModule.timelineEndDate, true);
+        }
+        else if (this.parent.timelineSettings.viewStartDate !== 'auto' && this.parent.timelineSettings.viewEndDate === 'auto') {
+            this.parent.timelineModule.adjustEndDateToFillChart(true);
         }
     }
     /**

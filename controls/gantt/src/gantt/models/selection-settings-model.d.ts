@@ -28,6 +28,8 @@ export interface SelectionSettingsModel {
      * @default Syncfusion.EJ2.Grids.CellSelectionMode.Flow
      * @isEnumeration true
      * @aspType Syncfusion.EJ2.Grids.CellSelectionMode
+     *
+     * {% codeBlock src='gantt/cellSelectionMode/index.md' %}{% endcodeBlock %}
      */
     cellSelectionMode?: CellSelectionMode;
 

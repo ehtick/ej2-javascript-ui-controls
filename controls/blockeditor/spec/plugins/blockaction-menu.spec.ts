@@ -1,9 +1,9 @@
 import { createElement } from '@syncfusion/ej2-base';
-import { BlockActionItemSelectEventArgs, BlockActionMenuClosingEventArgs, BlockActionMenuOpeningEventArgs } from '../../src/models/eventargs';
+import { BlockActionItemSelectEventArgs, BlockActionMenuBeforeCloseEventArgs, BlockActionMenuBeforeOpenEventArgs } from '../../src/models/eventargs';
 import { createEditor } from '../common/util.spec';
 import { getBlockContentElement } from '../../src/common/utils/index';
 import { BlockActionItemModel, BlockModel } from '../../src/models/index';
-import { BlockType, ContentType, CommandName } from '../../src/models/enums';
+import { BlockType, ContentType } from '../../src/models/enums';
 import { BlockEditor } from '../../src/index';
 
 describe('Block Action Menu', () => {
@@ -35,14 +35,14 @@ describe('Block Action Menu', () => {
                         id: 'paragraph1',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'content1', contentType: ContentType.Text, content: 'Test content 1' }
+                            { contentType: ContentType.Text, content: 'Test content 1' }
                         ]
                     },
                     {
                         id: 'paragraph2',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'content2', contentType: ContentType.Text, content: 'Test content 2' }
+                            { contentType: ContentType.Text, content: 'Test content 2' }
                         ]
                     },
                 ]
@@ -70,7 +70,7 @@ describe('Block Action Menu', () => {
                 done();
             }, 200);
         });
-
+        
         it('should hide action popup on document click', (done) => {
             const blockElement = editor.element.querySelector('#paragraph1') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
@@ -230,6 +230,7 @@ describe('Block Action Menu', () => {
             let modelBlocks = editor.blocks;
             const blockElement = editor.element.querySelector('#paragraph1') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
+            triggerMouseMove(blockElement, 10, 10);
 
             //Trigger Ctrl + D to duplicate the block
             editor.element.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyD', key: 'D', ctrlKey: true }));
@@ -247,6 +248,95 @@ describe('Block Action Menu', () => {
             expect(blockElement.nextElementSibling.textContent).toBe('Test content 1');
             expect(blockElement.id !== blockElement.nextElementSibling.id).toBe(true);
             expect(blockElement.nextElementSibling.id).not.toBe('paragraph2');
+        });
+
+        it('popup shortcut should act on hovered block - delete via shortcut', (done) => {
+            const block1 = editor.element.querySelector('#paragraph1') as HTMLElement;
+            const block2 = editor.element.querySelector('#paragraph2') as HTMLElement;
+
+            // Focus on first block, hover over second block
+            editor.blockManager.setFocusToBlock(block1);
+            triggerMouseMove(block2, 10, 10);
+
+            // Open popup for hovered (second) block
+            const floatingIconContainer = editor.element.querySelector('.e-floating-icons') as HTMLElement;
+            const dragIcon = floatingIconContainer.querySelector('.e-block-drag-icon') as HTMLElement;
+            expect(dragIcon).not.toBeNull();
+            dragIcon.click();
+
+            setTimeout(() => {
+                const popup = document.querySelector('.e-blockeditor-blockaction-popup');
+                expect(popup).not.toBeNull();
+                // Ensure focus and hovered are different as precondition
+                expect(editor.blockManager.currentFocusedBlock.id).toBe(block1.id);
+                expect(editor.blockManager.currentHoveredBlock.id).toBe(block2.id);
+
+                // Trigger Ctrl+Shift+D (delete shortcut)
+                editor.element.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyD', key: 'D', ctrlKey: true, shiftKey: true }));
+
+                setTimeout(() => {
+                    // block2 should be deleted
+                    expect(editor.element.querySelector('#paragraph2')).toBeNull();
+                    const remaining = editor.element.querySelectorAll<HTMLElement>('.e-block');
+                    expect(remaining.length).toBe(1);
+                    expect(remaining[0].id).toBe('paragraph1');
+                    done();
+                }, 10);
+            }, 50);
+        });
+
+        it('popup shortcut should act on hovered block - duplicate via shortcut', (done) => {
+            const block1 = editor.element.querySelector('#paragraph1') as HTMLElement;
+            const block2 = editor.element.querySelector('#paragraph2') as HTMLElement;
+
+            editor.blockManager.setFocusToBlock(block1);
+            triggerMouseMove(block2, 10, 10);
+
+            const floatingIconContainer = editor.element.querySelector('.e-floating-icons') as HTMLElement;
+            const dragIcon = floatingIconContainer.querySelector('.e-block-drag-icon') as HTMLElement;
+            expect(dragIcon).not.toBeNull();
+            dragIcon.click();
+
+            setTimeout(() => {
+                // Trigger Ctrl+D (duplicate shortcut)
+                editor.element.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyD', key: 'D', ctrlKey: true }));
+
+                setTimeout(() => {
+                    // paragraph2 should be duplicated below it
+                    const domBlocks = editor.element.querySelectorAll<HTMLElement>('.e-block');
+                    expect(domBlocks.length).toBe(3);
+                    const idx = Array.from(domBlocks).findIndex(b => b.id === 'paragraph2');
+                    expect(domBlocks[idx + 1].textContent).toBe('Test content 2');
+                    done();
+                }, 10);
+            }, 50);
+        });
+
+        it('popup shortcut should act on hovered block - move up via shortcut', (done) => {
+            const block1 = editor.element.querySelector('#paragraph1') as HTMLElement;
+            const block2 = editor.element.querySelector('#paragraph2') as HTMLElement;
+
+            // Focus on first block, hover over third block (to move it up)
+            editor.blockManager.setFocusToBlock(block1);
+            triggerMouseMove(block2, 10, 10);
+
+            const floatingIconContainer = editor.element.querySelector('.e-floating-icons') as HTMLElement;
+            const dragIcon = floatingIconContainer.querySelector('.e-block-drag-icon') as HTMLElement;
+            expect(dragIcon).not.toBeNull();
+            dragIcon.click();
+
+            setTimeout(() => {
+                // Trigger Ctrl+Shift+ArrowUp (move up)
+                editor.element.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowUp', key: 'ArrowUp', ctrlKey: true, shiftKey: true }));
+
+                setTimeout(() => {
+                    // block2 should have moved up one position
+                    const domBlocks = editor.element.querySelectorAll<HTMLElement>('.e-block');
+                    const idx = Array.from(domBlocks).findIndex(b => b.id === 'paragraph2');
+                    expect(idx).toBe(0);
+                    done();
+                }, 10);
+            }, 50);
         });
 
         it('should display the tooltip properly', (done) => {
@@ -327,7 +417,7 @@ describe('Block Action Menu', () => {
                         id: 'paragraph1',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'content1', contentType: ContentType.Text, content: 'Test content 1' }
+                            { contentType: ContentType.Text, content: 'Test content 1' }
                         ]
                     }
                 ]
@@ -370,14 +460,14 @@ describe('Block Action Menu', () => {
                         id: 'paragraph1',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'content1', contentType: ContentType.Text, content: 'Test content 1' }
+                            { contentType: ContentType.Text, content: 'Test content 1' }
                         ]
                     },
                     {
                         id: 'paragraph2',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'content2', contentType: ContentType.Text, content: 'Test content 2' }
+                            { contentType: ContentType.Text, content: 'Test content 2' }
                         ]
                     },
                 ],
@@ -431,10 +521,10 @@ describe('Block Action Menu', () => {
         });
 
         it('should trigger open and close events', (done) => {
-            editor.blockActionMenuSettings.opening = (args: BlockActionMenuOpeningEventArgs) => {
+            editor.blockActionMenuSettings.beforeOpen = (args: BlockActionMenuBeforeOpenEventArgs) => {
                 isOpened = true;
             },
-            editor.blockActionMenuSettings.closing = (args: BlockActionMenuClosingEventArgs) => {
+            editor.blockActionMenuSettings.beforeClose = (args: BlockActionMenuBeforeCloseEventArgs) => {
                 isClosed = true;
             },
             editor.blockManager.blockActionMenuModule.toggleBlockActionPopup(false);
@@ -447,7 +537,7 @@ describe('Block Action Menu', () => {
 
         it('should cancel open event', (done) => {
             const popup = document.querySelector('.e-blockeditor-blockaction-popup');
-            editor.blockActionMenuSettings.opening = (args: BlockActionMenuOpeningEventArgs) => {
+            editor.blockActionMenuSettings.beforeOpen = (args: BlockActionMenuBeforeOpenEventArgs) => {
                 args.cancel = true;
             },
             editor.blockManager.blockActionMenuModule.toggleBlockActionPopup(false);
@@ -457,7 +547,7 @@ describe('Block Action Menu', () => {
 
         it('should cancel close event', (done) => {
             const popup = document.querySelector('.e-blockeditor-blockaction-popup');
-            editor.blockActionMenuSettings.closing = (args: BlockActionMenuClosingEventArgs) => {
+            editor.blockActionMenuSettings.beforeClose = (args: BlockActionMenuBeforeCloseEventArgs) => {
                 args.cancel = true;
             },
             editor.blockManager.blockActionMenuModule.toggleBlockActionPopup(false);
@@ -504,14 +594,14 @@ describe('Block Action Menu', () => {
                         id: 'paragraph1',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'content1', contentType: ContentType.Text, content: 'Test content 1' }
+                            { contentType: ContentType.Text, content: 'Test content 1' }
                         ]
                     },
                     {
                         id: 'paragraph2',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'content2', contentType: ContentType.Text, content: 'Test content 2' }
+                            { contentType: ContentType.Text, content: 'Test content 2' }
                         ]
                     },
                     {
@@ -523,7 +613,6 @@ describe('Block Action Menu', () => {
                                     id: 'callout-children',
                                     blockType: BlockType.Paragraph,
                                     content: [{
-                                        id: 'callout-content',
                                         contentType: ContentType.Text,
                                         content: 'Important: Block Editor supports various content types including Text, Link, Code, Mention, and Label.',
                                         styles: {
@@ -538,7 +627,7 @@ describe('Block Action Menu', () => {
                         id: 'paragraph3',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'content2', contentType: ContentType.Text, content: 'Test content 3' }
+                            { contentType: ContentType.Text, content: 'Test content 3' }
                         ]
                     },
                 ]
@@ -587,7 +676,7 @@ describe('Block Action Menu', () => {
                 expect(editor.blocks[3].id).toBe('paragraph3');
                 expect(domBlocks[4].id).toBe('paragraph3'); //as callout child block involved
                 done();
-            });
+            }, 500);
 
         });
 
@@ -623,7 +712,7 @@ describe('Block Action Menu', () => {
                 expect(popup.querySelector('#movedown').classList.contains('e-disabled')).toBe(true);
                 expect(editor.blocks.some(b => b.id === 'callout-children')).toBe(false); // checks if child block moves to top lvl block
                 done();
-            });
+            }, 500);
         });
 
         it('should return when blockelement is null', function (done) {
@@ -671,7 +760,7 @@ describe('Block Action Menu', () => {
                         id: 'paragraph1',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'content1', contentType: ContentType.Text, content: 'Test content 1' }
+                            { contentType: ContentType.Text, content: 'Test content 1' }
                         ]
                     }
                 ]
@@ -745,7 +834,7 @@ describe('Block Action Menu', () => {
                 blocks.push({
                     id: `paragraph-${i}`,
                     blockType: BlockType.Paragraph,
-                    content: [{ id: `content-${i}`, contentType: ContentType.Text, content: `Paragraph block ${i}` }]
+                    content: [{ contentType: ContentType.Text, content: `Paragraph block ${i}` }]
                 });
             }
 

@@ -26,6 +26,8 @@ export type TextOverflow =
  * None - Text will not have any specific decoration
  */
 export type TextDecoration =
+    /** Underline LineThrough - Decorates the text with an underline and strikeout */
+    'Underline LineThrough' |
     /** Overline - Decorates the text with a line above the text */
     'Overline' |
     /** Underline - Decorates the text with an underline */

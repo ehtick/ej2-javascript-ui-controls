@@ -862,8 +862,6 @@ describe('Image ->', () => {
             setTimeout(() => {
                 let cell: CellModel = spreadsheet.sheets[0].rows[11].cells[4];
                 expect(cell.image.length).toBe(1);
-                expect(spreadsheet.sheets[0].rows[11].cells[4].image.length).toBe(1);
-                expect(cell.image.length).toBe(1);
                 const imageArr: ImageModel = cell.image[0];
                 expect(imageArr.height).toBe(300);
                 expect(imageArr.width).toBe(400);
@@ -871,6 +869,39 @@ describe('Image ->', () => {
                 expect(imageArr.left).toBe(265);
                 cell = spreadsheet.sheets[0].rows[2].cells[0];
                 expect(cell.image).toBeDefined();
+                done();
+            });
+        });
+        it('Freezepane check for image', (done: Function) => {
+            const json: object = {
+                Workbook: {
+                    sheets: [
+                        {
+                            rows: [
+                                {
+                                    cells: [
+                                        {
+                                            image: [<ExtendedImageModel>{ src: 'https://www.w3schools.com/images/w3schools_green.jpg', height: 100, width: 200, top: 40, left: 64, id: "sf-designer-container_overlay_picture__4" }]
+                                        }
+                                    ]
+                                }
+                            ],
+                            selectedRange: "H13:H13", usedRange: { colIndex: 22, rowIndex: 9 }, frozenRows: 4, frozenColumns: 2
+                        }
+                    ]
+                }
+            };
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            spreadsheet.openFromJson({ file: json });
+            setTimeout(() => {
+                expect(spreadsheet.sheets[0].rows[0].cells[0].image).toBeDefined();
+                const cell: CellModel = spreadsheet.sheets[0].rows[2].cells[1];
+                expect(cell.image.length).toBe(1);
+                const imageArr: ImageModel = cell.image[0];
+                expect(imageArr.height).toBe(100);
+                expect(imageArr.width).toBe(200);
+                expect(imageArr.top).toBe(40);
+                expect(imageArr.left).toBe(64);
                 done();
             });
         });

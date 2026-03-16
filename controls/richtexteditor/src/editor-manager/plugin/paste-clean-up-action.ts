@@ -41,24 +41,86 @@ export class PasteCleanupAction {
     }
 
     /**
-     * Extracts file from clipboard data if available
+     * Extracts file extension from file mime type
+     *
+     * @param {string} fileName - The name of the file to extract extension from
+     * @returns {string} The file extension (e.g., '.png', '.mp4')
+     * @private
+     */
+    private getExtensionFromMimeType(fileName: string): string {
+        const dotIndex: number = fileName.lastIndexOf('.');
+        if (!fileName || dotIndex === -1) {
+            return '';
+        }
+        const extension: string = fileName.substring(dotIndex).toLowerCase();
+        return extension;
+    }
+
+    /**
+     * Combines allowed types from all media settings (images, videos, audio)
+     *
+     * @returns {string[]} Array of allowed file extensions
+     * @private
+     */
+    private getCombinedAllowedExtensions(): string[] {
+        // Array to hold combined allowed extensions
+        const allowedExtensions: string[] = [];
+        if (this.pasteModel) {
+            // Add image allowed types
+            if (this.pasteModel.insertImageSettings && this.pasteModel.insertImageSettings.allowedTypes) {
+                allowedExtensions.push(...this.pasteModel.insertImageSettings.allowedTypes);
+            }
+            // Add video allowed types
+            if (this.pasteModel.insertVideoSettings && this.pasteModel.insertVideoSettings.allowedTypes) {
+                allowedExtensions.push(...this.pasteModel.insertVideoSettings.allowedTypes);
+            }
+            // Add audio allowed types
+            if (this.pasteModel.insertAudioSettings && this.pasteModel.insertAudioSettings.allowedTypes) {
+                allowedExtensions.push(...this.pasteModel.insertAudioSettings.allowedTypes);
+            }
+        }
+        return allowedExtensions;
+    }
+
+    /**
+     * Extracts files from clipboard data if available and filters by allowed extensions
      *
      * @param {NotifyArgs} e - The notification arguments containing clipboard data
-     * @returns {File} The extracted file from clipboard
+     * @returns {File[] | null} Array of extracted files from clipboard or null if no valid files found
      * @public
      * @hidden
      */
-    public extractFileFromClipboard(e: NotifyArgs): File {
-        if (!e || !e.args || !(e.args as ClipboardEvent).clipboardData ||
-            (e.args as ClipboardEvent).clipboardData.items.length === 0) {
+    public extractFileFromClipboard(e: NotifyArgs): File[] | null {
+        // Validate clipboard event and ensure clipboard items exist
+        if (!e || !e.args || !(e.args as ClipboardEvent).clipboardData || (e.args as ClipboardEvent).clipboardData.items.length === 0) {
+            // Return null if no clipboard data available
             return null;
         }
-        const items: DataTransferItemList = (e.args as ClipboardEvent).clipboardData.items;
-        const file: File = items[0].getAsFile();
-        if (file !== null) {
-            return file;
+        // Get clipboard items from the paste event
+        const clipboardItems: DataTransferItemList = (e.args as ClipboardEvent).clipboardData.items;
+        // Get combined allowed extensions from all media settings (images, videos, audio)
+        const allowedExtensions: string[] = this.getCombinedAllowedExtensions();
+        // Array to collect all valid files
+        const pastedFiles: File[] = [];
+        // Iterate through clipboard items to collect all valid files
+        for (const item of Array.from(clipboardItems)) {
+            // Skip non-file items
+            if (item.kind !== 'file') {
+                continue;
+            }
+            // Extract File object from clipboard item
+            const file: File | null = item.getAsFile();
+            if (file) {
+                // Get the file extension from the mime type
+                const fileExtension: string = this.getExtensionFromMimeType(file.name);
+                // Only add file if extension is in allowed list
+                if (allowedExtensions.indexOf(fileExtension) !== -1) {
+                    pastedFiles.push(file);
+                }
+            }
         }
-        return !isNOU(items[1]) ? items[1].getAsFile() : null;
+        // Return array of files if found, otherwise null
+        return pastedFiles.length > 0 ? pastedFiles : null;
     }
 
     /**
@@ -172,7 +234,11 @@ export class PasteCleanupAction {
     public base64ToFile(base64: string, filename: string): File {
         const baseStr: string[] = base64.split(',');
         const typeStr: string = baseStr[0].match(/:(.*?);/)[1];
-        const extension: string = typeStr.split('/')[1];
+        let extension: string = typeStr.split('/')[1];
+        // Map quicktime MIME subtype to mov file extension
+        if (extension === 'quicktime') {
+            extension = 'mov';
+        }
         const decodeStr: string = atob(baseStr[1]);
         let strLen: number = decodeStr.length;
         const decodeArr: Uint8Array = new Uint8Array(strLen);
@@ -214,19 +280,31 @@ export class PasteCleanupAction {
     }
 
     /**
-     * Converts base64 image sources to blob URLs.
+     * Converts base64 media sources to blob URLs.
      *
-     * @param {NodeListOf<HTMLImageElement>} allImgElm - Collection of image elements to process
+     * @param {NodeListOf<HTMLImageElement | HTMLAudioElement | HTMLVideoElement>} mediaElement - Collection of media elements to process
+     * @param {string} mediaType - The type of media being processed
      * @returns {void} Nothing is returned
      * @public
      * @hidden
      */
-    public getBlob(allImgElm: NodeListOf<HTMLImageElement>): void {
-        for (let i: number = 0; i < allImgElm.length; i++) {
-            const imgSrc: string = allImgElm[i as number].getAttribute('src');
-            if (!isNOU(imgSrc) && imgSrc.split(',')[0].indexOf('base64') >= 0) {
-                const blobUrl: string = URL.createObjectURL(convertToBlob(imgSrc));
-                allImgElm[i as number].setAttribute('src', blobUrl);
+    public getBlob(mediaElement: NodeListOf<HTMLImageElement | HTMLAudioElement | HTMLVideoElement>, mediaType?: string): void {
+        // Process each media element to convert base64 sources to blob URLs
+        let sourceElement: HTMLElement | HTMLSourceElement;
+        for (let i: number = 0; i < mediaElement.length; i++) {
+            // Determine the source element based on media type
+            if (mediaType === 'audio'  || mediaType === 'video') {
+                sourceElement = mediaElement[i as number].querySelector('source');
+            }
+            else {
+                sourceElement = mediaElement[i as number] as HTMLElement;
+            }
+            // Get the source URL from the element
+            const sourceUrl: string = sourceElement.getAttribute('src');
+            // Convert base64 source to blob URL if applicable
+            if (!isNOU(sourceUrl) && sourceUrl.split(',')[0].indexOf('base64') >= 0) {
+                const blobUrl: string = URL.createObjectURL(convertToBlob(sourceUrl));
+                sourceElement.setAttribute('src', blobUrl);
             }
         }
     }
@@ -548,7 +626,9 @@ export class PasteCleanupAction {
         const hasImg: boolean = clipBoardElem.getElementsByTagName('img').length > 0;
         const hasTable: boolean = clipBoardElem.getElementsByTagName('table').length > 0;
         const hasBr: boolean = clipBoardElem.getElementsByTagName('br').length > 0;
-        return hasText || hasImg || hasTable || hasBr;
+        const hasVideo: boolean = clipBoardElem.getElementsByTagName('video').length > 0;
+        const hasAudio: boolean = clipBoardElem.getElementsByTagName('audio').length > 0;
+        return hasText || hasImg || hasTable || hasBr || hasVideo || hasAudio;
     }
 
     /**

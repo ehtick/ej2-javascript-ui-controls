@@ -4,11 +4,11 @@ import { Node } from '../../../src/diagram/objects/node';
 import { NodeModel, BpmnShapeModel, BpmnGatewayModel, BpmnSubProcessModel } from '../../../src/diagram/objects/node-model';
 import { ShapeStyleModel, ShadowModel } from '../../../src/diagram/core/appearance-model';
 import { PathElement } from '../../../src/diagram/core/elements/path-element';
-import { NodeConstraints } from '../../../src/diagram/enum/enum';
+import { AnnotationConstraints, NodeConstraints, PortVisibility } from '../../../src/diagram/enum/enum';
 import { BpmnDiagrams } from '../../../src/diagram/objects/bpmn';
 import  {profile , inMB, getMemoryProfile} from '../../../spec/common.spec';
 import { ConnectorModel } from '../../../src';
-import { BpmnFlowModel, HierarchicalTree, } from '../../../src/diagram/index';
+import { BpmnFlowModel, BpmnShape, HierarchicalTree, } from '../../../src/diagram/index';
 import { MouseEvents } from '../interaction/mouseevents.spec';
 Diagram.Inject(BpmnDiagrams,HierarchicalTree);
 
@@ -60,6 +60,8 @@ describe('Diagram Control', () => {
         afterAll((): void => {
             diagram.destroy();
             ele.remove();
+            diagram = null;
+            ele = null;
         });
 
         it('BPMN shapes -  Message', (done: Function) => {
@@ -115,6 +117,8 @@ describe('Diagram Control', () => {
         afterAll((): void => {
             diagram.destroy();
             ele.remove();
+            diagram = null;
+            ele = null;
         });
 
         it('Checking BPMN shapes -  Message', (done: Function) => {
@@ -201,6 +205,8 @@ describe('Diagram Control', () => {
         afterAll((): void => {
             diagram.destroy();
             ele.remove();
+            diagram = null;
+            ele = null;
         });
 
         it('Checking BPMN shapes without size', (done: Function) => {
@@ -369,6 +375,8 @@ describe('Diagram Control', () => {
         afterAll((): void => {
             diagram.destroy();
             ele.remove();
+            diagram = null;
+            ele = null;
         });
 
         it('BPMN Shapes trigger change run time change issue', (done: Function) => {
@@ -662,6 +670,8 @@ describe('Diagram Control', () => {
         afterAll((): void => {
             diagram.destroy();
             ele.remove();
+            diagram = null;
+            ele = null;
         });
 
         it('Child is not positioned properly when calling doLayout() method', (done: Function) => {
@@ -742,6 +752,8 @@ describe('Diagram Control', () => {
         afterAll((): void => {
             diagram.destroy();
             ele.remove();
+            diagram = null;
+            ele = null;
         });
         function getDefaultSequenceConnector(): ConnectorModel {
             return {
@@ -810,6 +822,8 @@ describe('Diagram Control', () => {
         afterAll((): void => {
             diagram.destroy();
             ele.remove();
+            diagram = null;
+            ele = null;
         });
 
         it('Strokecolor for BPMN Gateway and subprocess initial rendering', (done: Function) => { 
@@ -833,8 +847,6 @@ describe('Diagram Control', () => {
             done();
         });
     });
-
-    
 
 describe('BPMN subprocess save and load issue ', () => {
         let diagram: Diagram;
@@ -874,6 +886,8 @@ describe('BPMN subprocess save and load issue ', () => {
         afterAll((): void => {
             diagram.destroy();
             ele.remove();
+            diagram = null;
+            ele = null;
         });
 
         it('BPMN subprocess save and load issue', (done: Function) => { 
@@ -887,9 +901,6 @@ describe('BPMN subprocess save and load issue ', () => {
         });
         
     });
-
-
-
 
     describe('BPMN subprocess annotation moving issue ', () => {
         let diagram: Diagram;
@@ -944,6 +955,8 @@ describe('BPMN subprocess save and load issue ', () => {
         afterAll((): void => {
             diagram.destroy();
             ele.remove();
+            diagram = null;
+            ele = null;
         });
 
         it('BPMN subprocess annotation moving issue', (done: Function) => { 
@@ -960,6 +973,638 @@ describe('BPMN subprocess save and load issue ', () => {
             done();
         });
         
+    });
+   describe('swap subProcess Child in Dom', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+        let darkColor = '#C7D4DF';
+        let lightColor = '#f5f5f5';
+        let mouseEvents: MouseEvents = new MouseEvents();
+        beforeAll((): void => {
+            const isDef = (o: any) => o !== undefined && o !== null;
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                this.skip(); //Skips test (in Chai)
+                return;
+            }
+            ele = createElement('div', { id: 'subProcessdiagram' });
+            document.body.appendChild(ele);
+            let nodes: NodeModel[] = [
+                {
+                    id: 'firstBpmnchild', width: 100, height: 100,
+                    shape: {
+                        type: 'Bpmn', shape: 'Event',
+                        event: { event: 'Start' }
+                    }
+                },
+                {
+                    id: 'firstsubProcess',
+                    width: 200, height: 150,
+                    constraints: NodeConstraints.Default | NodeConstraints.AllowDrop,
+                    offsetX: 600, offsetY: 700,
+                    shape: {
+                        type: 'Bpmn', shape: 'Activity', activity: {
+                            activity: 'SubProcess',
+                            subProcess: {
+                                collapsed: false,
+                                processes: ['firstBpmnchild'],
+                            },
+                        },
+                    },
+                },
+                {
+                    id: 'bpmnchild', width: 35, height: 35,
+                    margin: { left: 10, top: 10 },
+                    shape: {
+                        type: 'Bpmn', shape: 'Event',
+                        event: { event: 'Start' }
+                    }
+                },
+                {
+                    id: 'swimlane',
+                    shape: {
+                        orientation: 'Vertical',
+                        type: 'SwimLane',
+                        header: {
+                            annotation: { content: 'ONLINE' },
+                            height: 50, style: { fill: darkColor, fontSize: 11 },
+                        },
+                        lanes: [
+
+                            {
+                                id: 'stackCanvas2',
+                                header: {
+                                    annotation: { content: 'ONLINE' }, height: 50,
+                                    style: { fill: darkColor, fontSize: 11 }
+                                },
+                                style: { fill: lightColor }, width: 120,
+                                children: [
+                                    {
+                                        id: 'subProcessChild',
+                                        width: 200, height: 100,
+                                        constraints: NodeConstraints.Default | NodeConstraints.AllowDrop,
+                                        offsetX: 500, offsetY: 200,
+                                        shape: {
+                                            type: 'Bpmn', shape: 'Activity', activity: {
+                                                activity: 'SubProcess',
+                                                subProcess: {
+                                                    collapsed: false,
+                                                    processes: ['bpmnchild']
+                                                },
+                                            },
+                                        },
+                                    },
+
+                                ],
+                            },
+                        ],
+                        phases: [
+
+                            {
+                                id: 'phase2', offset: 400,
+                                style: { strokeWidth: 1, strokeDashArray: '3,3', strokeColor: '#606060' },
+                                header: { annotation: { content: 'Phase' } }
+                            },
+                        ],
+                        phaseSize: 20,
+                    },
+                    offsetX: 200, offsetY: 290,
+                    height: 200, width: 300
+                },
+                {
+                    id: 'start',
+                    height: 100,
+                    width: 100,
+                    offsetX: 650,
+                    offsetY: 200,
+                    margin: { left: 50, top: 50 },
+                    shape: { type: 'Bpmn', shape: 'Event' },
+                },
+                {
+                    id: 'subProcess',
+                    width: 400, height: 250,
+                    constraints: NodeConstraints.Default | NodeConstraints.AllowDrop,
+                    offsetX: 600, offsetY: 200,
+                    shape: {
+                        type: 'Bpmn', shape: 'Activity', activity: {
+                            activity: 'SubProcess',
+                            subProcess: {
+                                collapsed: false,
+                                processes: ['start'],
+                            },
+                        },
+                    },
+                },
+                {
+                    id: 'subProcessNode',
+                    width: 300, height: 250,
+                    constraints: NodeConstraints.Default | NodeConstraints.AllowDrop,
+                    offsetX: 200, offsetY: 700,
+                    shape: {
+                        type: 'Bpmn', shape: 'Activity', activity: {
+                            activity: 'SubProcess',
+                            subProcess: {
+                                collapsed: false,
+                            },
+                        },
+                    },
+                }
+            ];
+            diagram = new Diagram({ width: 1000, height: 1000, nodes: nodes, });
+            diagram.appendTo('#subProcessdiagram');
+        });
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+            diagram = null;
+            ele = null;
+            mouseEvents = null;
+        });
+        it('swap subProcess into subProcess Child in Dom', (done: Function) => {
+            let diagramCanvas = document.getElementById(diagram.element.id + 'content');
+            const canvasRect = diagramCanvas.getBoundingClientRect();
+            diagram.select([diagram.nodes[11]]);
+            const childCenterX = 190;
+            const childCenterY = 230;
+            const subprocCenterX = 650;
+            const subprocCenterY = 200;
+            const startX = Math.round(canvasRect.left + childCenterX);
+            const startY = Math.round(canvasRect.top + childCenterY);
+            const endX = Math.round(canvasRect.left + subprocCenterX);
+            const endY = Math.round(canvasRect.top + subprocCenterY);
+            mouseEvents.dragAndDropEvent(
+                diagramCanvas,
+                startX, startY,
+                endX, endY
+            );
+            expect(diagram.nodes.length > 5).toBe(true);
+            done();
+        });
+        it('update Subprocess Node Index', (done: Function) => {
+            let diagramCanvas = document.getElementById(diagram.element.id + 'content');
+            const canvasRect = diagramCanvas.getBoundingClientRect();
+            const centerX = 608;
+            const centerY = 708;
+
+            const procCenterX = 208;
+            const procCenterY = 708;
+            diagram.select([diagram.nodes[1]]);
+            const secondStartX = Math.round(canvasRect.left + centerX);
+            const secondStartY = Math.round(canvasRect.top + centerY);
+            const secondEndX = Math.round(canvasRect.left + procCenterX);
+            const secondEndY = Math.round(canvasRect.top + procCenterY);
+            mouseEvents.dragAndDropEvent(diagramCanvas, secondStartX, secondStartY, secondEndX, secondEndY);
+            expect(diagram.nodes.length > 10).toBe(true);
+            done();
+        });
+    });
+    describe('update BPMN node property at runtime', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+        beforeAll((): void => {
+            const isDef = (o: any) => o !== undefined && o !== null;
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                this.skip(); //Skips test (in Chai)
+                return;
+            }
+            ele = createElement('div', { id: 'updateBPMN' });
+            document.body.appendChild(ele);
+            let subNodes: NodeModel[] = [
+
+                {
+                    id: 'Child',
+                    offsetX: 250,
+                    offsetY: 250,
+                    width: 100,
+                    height: 100,
+                    shape: {
+                        type: 'Bpmn',
+                        shape: 'Activity',
+                        activity: {
+                            activity: 'SubProcess',
+                            subProcess: {
+                                collapsed: true,
+                                type: 'Transaction',
+                                transaction: {
+                                    success: {
+                                        id: 'success',
+                                        event: 'Start',
+                                        trigger: 'None',
+                                    },
+                                    failure: {
+                                        id: 'failure',
+                                        event: 'ThrowingIntermediate'
+                                    },
+                                    cancel: {
+                                        id: 'cancel',
+                                        event: 'End',
+                                        trigger: 'Cancel',
+
+                                    },
+                                },
+                            },
+                        },
+                    },
+                }, {
+                    id: 'node1', width: 190, height: 190, offsetX: 600, offsetY: 200,
+                    shape: {
+                        type: 'Bpmn', shape: 'Activity', activity: {
+                            activity: 'SubProcess',
+                            subProcess: {
+                                type: 'Event', loop: 'ParallelMultiInstance',
+                                compensation: true, adhoc: false,
+                                boundary: 'Event', collapsed: true,
+                                events: [{
+                                    height: 20, width: 20,
+                                    offset: { x: 0, y: 0 },
+                                    margin: { left: 10, top: 10 },
+                                    horizontalAlignment: 'Left',
+                                    verticalAlignment: 'Top',
+                                    annotations: [{
+                                        id: 'label3', margin: { bottom: 10 },
+                                        horizontalAlignment: 'Center',
+                                        verticalAlignment: 'Top',
+                                        content: 'Event', offset: { x: 0.5, y: 1 },
+                                        style: {
+                                            color: 'black', fontFamily: 'Fantasy', fontSize: 8
+                                        }
+                                    }],
+                                    ports: [{
+                                        id: 'port1',
+                                        offset: {
+                                            x: 0.5,
+                                            y: 0.5
+                                        },
+                                        visibility: PortVisibility.Visible
+                                    }],
+                                    event: 'Intermediate', trigger: 'Error'
+                                }]
+                            }
+                        }
+                    }
+                }
+
+            ]
+            diagram = new Diagram({ width: 1000, height: 600, nodes:subNodes});
+            diagram.appendTo('#updateBPMN');
+        });
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+            diagram = null;
+            ele = null;
+        });
+        it('update BPMN node property', (done: Function) => {
+            (diagram.nodes[0].shape as BpmnShape).activity.subProcess.transaction.cancel.trigger = 'Error';
+            (diagram.nodes[1].shape as BpmnShape).activity.subProcess.events[0].margin.right = 20;
+            (diagram.nodes[1].shape as BpmnShape).activity.subProcess.events[0].horizontalAlignment = 'Right';
+            (diagram.nodes[1].shape as BpmnShape).activity.subProcess.events[0].verticalAlignment = 'Center';
+            (diagram.nodes[1].shape as BpmnShape).activity.subProcess.events[0].annotations[0].content = 'Update';
+            (diagram.nodes[1].shape as BpmnShape).activity.subProcess.events[0].ports[0].width = 15;
+            expect(diagram.nodes.length > 1).toBe(true);
+            done();
+        });
+    });
+     describe('Event handler code coverage', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+        let mouseEvents: MouseEvents = new MouseEvents();
+        beforeAll(() => {
+            ele = createElement('div', { id: 'eventfile' });
+            document.body.appendChild(ele);
+
+            let nodes: NodeModel[] = [
+                {
+                    id: 'Node1',
+                    offsetX: 150,
+                    offsetY: 150,
+                    width: 200,
+                    height: 200,
+                    annotations: [{ content: 'Node' }],
+                },
+                {
+                    id: 'start',
+                    height: 50,
+                    width: 50,
+                    margin: { left: 50, top: 50 },
+                    shape: { type: 'Bpmn', shape: 'Event' },
+                },
+                {
+                    id: 'event2',
+                    height: 50,
+                    width: 50,
+                    margin: { left: 150, top: 50 },
+                    shape: { type: 'Bpmn', shape: 'Event', },
+                },
+                {
+                    id: 'subProcess',
+                    width: 320,
+                    height: 250,
+                    offsetX: 200,
+                    offsetY: 400,
+                    constraints: NodeConstraints.Default | NodeConstraints.AllowDrop,
+                    shape: {
+                        shape: 'Activity',
+                        type: 'Bpmn',
+                        activity: {
+                            activity: 'SubProcess',
+                            subProcess: {
+                                collapsed: false,
+                                processes: ['start', 'event2'],
+                            },
+                        },
+                    },
+                },
+            ];
+            let connectors: ConnectorModel[] = [
+                {
+                    id: 'connector1', sourceID: 'start', targetID: 'event2'
+                }
+            ]
+            diagram = new Diagram({
+                width: 600, height: 600, nodes: nodes, connectors: connectors
+
+            });
+            diagram.appendTo('#eventfile');
+        });
+        afterAll(() => {
+            diagram.destroy();
+            ele.remove();
+            (diagram as any) = null;
+            (ele as any) = null;
+            mouseEvents = null;
+        });
+        it('click and edit the annotation', (done: Function) => {
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            mouseEvents.mouseMoveEvent(diagramCanvas, 152, 156);
+            mouseEvents.dblclickEvent(diagramCanvas, 152, 156);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 200, 100);
+            mouseEvents.mouseWheelEvent(diagramCanvas, 200, 200);
+            mouseEvents.clickEvent(diagramCanvas, 200, 200);
+            expect(diagram.nodes.length > 1).toBe(true);
+            done();
+        });
+        it('Click and drag the connector target point', (done: Function) => {
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            diagram.select([diagram.connectors[0]])
+
+            mouseEvents.mouseMoveEvent(diagramCanvas, 195, 356);
+            mouseEvents.mouseDownEvent(diagramCanvas, 195, 356);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 190, 386);
+            mouseEvents.mouseUpEvent(diagramCanvas, 190, 386);
+            expect(diagram.connectors.length === 1).toBe(true);
+            done();
+        })
+
+    });
+     describe('Remove child node from the subprocess', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+        let mouseEvents = new MouseEvents();
+        beforeAll((): void => {
+            const isDef = (o: any) => o !== undefined && o !== null;
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                this.skip(); //Skips test (in Chai)
+                return;
+            }
+            ele = createElement('div', { id: 'updateCommandManager' });
+            document.body.appendChild(ele);
+            let nodeCollection: NodeModel[] = [
+                {
+                    id: 'node1',
+                    width: 100,
+                    height: 100,
+                    offsetX: 100,
+                    offsetY: 100,
+                    style: { fill: 'yellow' }
+                }, {
+                    id: 'node2',
+                    width: 100,
+                    height: 100,
+                    offsetX: 250,
+                    offsetY: 100,
+                    style: { fill: 'green' }
+                }, {
+                    id: 'node3',
+                    width: 100,
+                    height: 100,
+                    offsetX: 400,
+                    offsetY: 100,
+                    style: { fill: 'red' }
+                },
+                {
+                    id: 'subProcess',
+                    width: 320,
+                    height: 250,
+                    offsetX: 1000,
+                    offsetY: 600,
+                    constraints: NodeConstraints.Default | NodeConstraints.AllowDrop,
+                    shape: {
+                        shape: 'Activity',
+                        type: 'Bpmn',
+                        activity: {
+                            activity: 'SubProcess',
+                            subProcess: {
+                                collapsed: false,
+                                processes: ['eventNode', 'textNode'],
+                            },
+                        },
+                    },
+                },
+                {
+                    id: 'eventNode', style: { strokeWidth: 2 },
+                    height: 70, width: 70,
+                    margin: { top: 10, left: 50 },
+                    shape: {
+                        type: 'Bpmn', shape: 'Event',
+                        event: { event: 'Start', trigger: 'None' },
+                    }
+                },
+                {
+                    id: 'textNode', width: 70, height: 70,
+                    margin: { top: 50, left: 90 },
+                    annotations: [{ content: 'textNode' }],
+                    shape: {
+                        type: 'Bpmn', shape: 'TextAnnotation',
+                        textAnnotation: { textAnnotationDirection: 'Auto', textAnnotationTarget: 'eventNode' }
+                    }
+                },
+                {
+                    id: 'swimlane2',
+                    shape: {
+                        type: 'SwimLane',
+                        orientation: 'Horizontal',
+                        header: {
+                            annotation: { content: 'ONLINE' },
+                            height: 50, style: { fontSize: 11 },
+                        },
+                        lanes: [
+                            {
+                                id: 'stackCanvas1',
+                                header: {
+                                    annotation: { content: 'CUSTOMER' }, width: 50,
+                                    style: { fontSize: 11 }
+                                },
+                                height: 150,
+                            },
+                        ],
+                        phases: [
+                            {
+                                id: 'phase1', offset: 170,
+                                header: { annotation: { content: 'Phase' } }
+                            },
+                        ],
+                        phaseSize: 20,
+                    },
+                    offsetX: 420, offsetY: 270,
+                    height: 100,
+                    width: 650,
+                    maxWidth: 700
+                },
+            ];
+            let connectorCollection: ConnectorModel[] = [
+                {
+                    id: 'connector1', type: 'Orthogonal',
+                    sourcePoint: { x: 1100, y: 200 },
+                    targetPoint: { x: 1250, y: 100 },
+                    segments: [
+                        {
+                            type: 'Orthogonal',
+                            direction: 'Top',
+                            length: 100,
+                        }
+                    ]
+                }, {
+                    id: 'connector2', type: 'Orthogonal',
+                    sourcePoint: { x: 200, y: 600 },
+                    targetPoint: { x: 400, y: 600 },
+                    annotations: [{
+                        content: 'Node',
+                        constraints: AnnotationConstraints.Interaction,
+                        horizontalAlignment: 'Left',
+                        verticalAlignment: 'Bottom',
+                        height: 100,
+                        width: 100
+                    }],
+                },
+                {
+                    id: 'connector3', type: 'Orthogonal',
+                    sourcePoint: { x: 1300, y: 200 },
+                    targetPoint: { x: 1400, y: 100 },
+                    segments: [
+                        {
+                            type: 'Orthogonal',
+                            direction: 'Right',
+                            length: 100,
+                        }
+                    ]
+                }
+            ]
+            diagram = new Diagram({
+                width: 1500, height: 900, connectors: connectorCollection,
+                nodes: nodeCollection,
+            });
+            diagram.appendTo('#updateCommandManager');
+        });
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+            diagram = null;
+            ele = null;
+        });
+        it('update Swimlane Children Zindex', (done: Function) => {
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            const canvasRect = diagramCanvas.getBoundingClientRect();
+            // source and target by id
+            const source = diagram.nameTable['node2'];
+            const target = diagram.nameTable['swimlane2stackCanvas10'];
+            // Select source for visual feedback
+            diagram.remove(diagram.nodes[0]);
+            diagram.remove(diagram.nodes[1]);
+            diagram.select([source]);
+            // Start inside the node: slightly to the right of the center (ensures hit inside node area)
+            const startX = Math.round(canvasRect.left + source.offsetX + (source.width || 0) * 0.18);
+            const startY = Math.round(canvasRect.top + source.offsetY);
+            // Compute a drop point inside the swimlane's lane area (inset from left/top)
+            const laneLeft = target.offsetX - (target.width / 2);
+            const laneTop = target.offsetY - (target.height / 2);
+            const endX = Math.round(canvasRect.left + laneLeft + Math.min(80, (target.width || 0) / 4));
+            const endY = Math.round(canvasRect.top + laneTop + Math.min(60, (target.height || 0) / 3));
+            mouseEvents.dragAndDropEvent(diagramCanvas, startX, startY, endX, endY);
+            expect(diagram.nodes.length > 5).toBe(true);
+            done();
+        });
+        it('Remove Child From Bpmn subprocess', (done: Function) => {
+            
+            diagram.clearSelection();
+            const diagramCanvas = document.getElementById(diagram.element.id + 'content');
+            const canvasRect = diagramCanvas.getBoundingClientRect();
+            // source and target by id
+            const source = diagram.nameTable['eventNode'];
+            const subProcess = diagram.nameTable['subProcess'];
+            diagram.select([source]);
+            // Try an incremental slow drag to avoid the text annotation getting stuck
+            let startX = Math.round(canvasRect.left + source.offsetX + ((source.width || 0) * 0.18));
+            let startY = Math.round(canvasRect.top + source.offsetY);
+            let subLeft = subProcess ? (canvasRect.left + subProcess.offsetX - ((subProcess.width || 0) / 2)) : (canvasRect.left + source.offsetX - 150);
+            let nodeWidth = source.width || 70;
+            let endX = Math.round(subLeft - nodeWidth - 80); // move well left of subprocess
+            let endY = Math.round(canvasRect.top + (subProcess ? subProcess.offsetY - 20 : source.offsetY - 20));
+            mouseEvents.mouseMoveEvent(diagramCanvas, startX, startY);
+            mouseEvents.mouseDownEvent(diagramCanvas, startX, startY);
+            let steps = 6;
+            for (let i = 1; i <= steps; i++) {
+                let ix = Math.round(startX + (endX - startX) * (i / steps));
+                let iy = Math.round(startY + (endY - startY) * (i / steps));
+                mouseEvents.mouseMoveEvent(diagramCanvas, ix, iy);
+            }
+            mouseEvents.mouseUpEvent(diagramCanvas, endX, endY);
+            expect(diagram.nodes.length > 5).toBe(true);
+            done();
+        });
+        it('drag TargetEnd - previous direction top', (done: Function) => {
+            diagram.clearSelection();
+            const diagramCanvas = document.getElementById(diagram.element.id + 'content');
+            const canvasRect = diagramCanvas.getBoundingClientRect();
+            // source and target by id
+            const connector = diagram.nameTable['connector1'];
+            diagram.select([connector]);
+            if (connector && connector.targetPoint) {
+                const tStartX = Math.round(canvasRect.left + connector.targetPoint.x - 6);
+                const tStartY = Math.round(canvasRect.top + connector.targetPoint.y);
+                const tEndX = Math.round(canvasRect.left + 1300);
+                const tEndY = Math.round(canvasRect.top + 100);
+                mouseEvents.mouseMoveEvent(diagramCanvas, tStartX, tStartY);
+                mouseEvents.mouseDownEvent(diagramCanvas, tStartX, tStartY);
+                mouseEvents.mouseMoveEvent(diagramCanvas, 1308, 108);
+                mouseEvents.mouseUpEvent(diagramCanvas, tEndX, tEndY);
+            };
+            expect(diagram.connectors.length > 3).toBe(true);
+            done();
+        });
+        it('drag TargetEnd - previous direction Right', (done: Function) => {
+            
+            diagram.clearSelection();
+            const diagramCanvas = document.getElementById(diagram.element.id + 'content');
+            const canvasRect = diagramCanvas.getBoundingClientRect();
+            // source and target by id
+            const connector = diagram.nameTable['connector3'];
+            diagram.select([connector]);
+            if (connector && connector.targetPoint) {
+                const tStartX = Math.round(canvasRect.left + connector.targetPoint.x - 6);
+                const tStartY = Math.round(canvasRect.top + connector.targetPoint.y);
+                const tEndX = Math.round(canvasRect.left + 1400);
+                const tEndY = Math.round(canvasRect.top + 60);
+                mouseEvents.mouseMoveEvent(diagramCanvas, tStartX, tStartY);
+                mouseEvents.mouseDownEvent(diagramCanvas, tStartX, tStartY);
+                mouseEvents.mouseMoveEvent(diagramCanvas, 1400, 60);
+                mouseEvents.mouseUpEvent(diagramCanvas, tEndX, tEndY);
+            };
+            expect(diagram.connectors.length > 3).toBe(true);
+            done();
+        });
     });
 });
 
@@ -1012,6 +1657,8 @@ describe('BPMN Flow connectors not changed properly at runtime ', () => {
     afterAll((): void => {
         diagram.destroy();
         ele.remove();
+        diagram = null;
+        ele = null;
     });
 
     it('Checking Bpmn association flow connector after changing its association type at runtime', (done: Function) => { 
@@ -1130,6 +1777,8 @@ describe('BPMN Shapes strokecolor changing', () => {
     afterAll((): void => {
         diagram.destroy();
         ele.remove();
+        diagram = null;
+        ele = null;
     });
 
     it('BPMN Shapes strokecolor changing at runtime', (done: Function) => {
@@ -1199,6 +1848,10 @@ describe('BPMN sub process Shape render highlighter', () => {
     afterAll((): void => {
         diagram.destroy();
         ele.remove();
+        events = null;
+        diagram = null;
+        ele = null;
+        diagramCanvas = null;
     });
 
     it('check highlighter for sub process when connetor dock', (done: Function) => {
@@ -1228,3 +1881,126 @@ describe('BPMN sub process Shape render highlighter', () => {
     });
 });
 
+describe('command manager code coverage', () => {
+    let diagram: Diagram;
+    let ele: HTMLElement;
+    let mouseEvents: MouseEvents = new MouseEvents();
+    beforeAll(() => {
+        ele = createElement('div', { id: 'cmdmngrCI' });
+        document.body.appendChild(ele);
+
+        let nodeCollection: NodeModel[] = [
+
+            {
+                id: 'node2',
+                margin: { left: 200, top: 130 },
+                width: 100, height: 100,
+                style: { fill: 'white', strokeColor: '#2546BB', strokeWidth: 1 },
+                shape: { type: 'Basic', shape: 'Rectangle', cornerRadius: 4 },
+                annotations: [{ content: 'Node' }]
+            },
+            {
+                id: 'container',
+                width: 350, height: 280,
+                offsetX: 250, offsetY: 250,
+                shape: {
+                    type: 'Container',
+                    children: ['node2'],
+                },
+                style: { fill: '#E9EEFF', strokeColor: '#2546BB', strokeWidth: 1 }
+            },
+            {
+                id: 'subProcess',
+                width: 320,
+                height: 250,
+                offsetX: 350,
+                offsetY: 600,
+                constraints: NodeConstraints.Default | NodeConstraints.AllowDrop,
+                shape: {
+                    shape: 'Activity',
+                    type: 'Bpmn',
+                    activity: {
+                        activity: 'SubProcess',
+                        subProcess: {
+                            collapsed: false,
+
+                        },
+                    },
+                },
+            },
+            {
+                id: 'eventNode', style: { strokeWidth: 2 },
+                height: 70, width: 70,
+                offsetX: 650,
+                offsetY: 600,
+                shape: {
+                    type: 'Bpmn', shape: 'Event',
+                    event: { event: 'Start', trigger: 'None' },
+                }
+            },
+            {
+                id: 'textNode', width: 70, height: 70,
+                offsetX: 650,
+                offsetY: 700,
+                annotations: [{ content: 'textNode' }],
+                shape: {
+                    type: 'Bpmn', shape: 'TextAnnotation',
+                    textAnnotation: { textAnnotationDirection: 'Auto', textAnnotationTarget: 'eventNode' }
+                }
+            },
+
+        ]
+        diagram = new Diagram({
+            width: 600, height: 600, nodes: nodeCollection,
+
+        });
+        diagram.appendTo('#cmdmngrCI');
+    });
+    afterAll(() => {
+        diagram.destroy();
+        ele.remove();
+        (diagram as any) = null;
+        (ele as any) = null;
+        mouseEvents = null;
+    });
+    it('Rotate the child node inside the container', (done: Function) => {
+        let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+        const canvasRect = diagramCanvas.getBoundingClientRect();
+        const node = diagram.nameTable['node2'];
+
+        diagram.select([node]);
+        // Grab rotation handle (top-center of node2)
+        mouseEvents.mouseMoveEvent(diagramCanvas, Math.round(canvasRect.left + 325), Math.round(canvasRect.top + 220));
+        mouseEvents.mouseDownEvent(diagramCanvas, Math.round(canvasRect.left + 325), Math.round(canvasRect.top + 220));
+
+        // Drag to new angle (≈45° clockwise)
+        mouseEvents.mouseMoveEvent(diagramCanvas, Math.round(canvasRect.left + 276), Math.round(canvasRect.top + 241));
+        mouseEvents.mouseUpEvent(diagramCanvas, Math.round(canvasRect.left + 276), Math.round(canvasRect.top + 241));
+        expect(diagram.nodes.length > 1).toBe(true);
+        done();
+    });
+    it('Drag and drop the bpmn inside subprocess', (done: Function) => {
+        let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+        const canvasRect = diagramCanvas.getBoundingClientRect();
+        const source = diagram.nameTable['eventNode'];
+        const target = diagram.nameTable['subProcess'];
+
+        // Select source for visual feedback
+        diagram.select([source]);
+
+        // Start inside the text annotation: near its center
+        const startX = Math.round(canvasRect.left + source.offsetX + (source.width || 0) * 0.1);
+        const startY = Math.round(canvasRect.top + source.offsetY);
+
+        // Compute a drop point inside the subprocess area (inset from left/top)
+        const tLeft = target.offsetX - (target.width / 2);
+        const tTop = target.offsetY - (target.height / 2);
+        const endX = Math.round(canvasRect.left + tLeft + Math.min(80, (target.width || 0) / 4));
+        const endY = Math.round(canvasRect.top + tTop + Math.min(60, (target.height || 0) / 3));
+
+        mouseEvents.dragAndDropEvent(diagramCanvas, startX, startY, endX, endY);
+        expect(diagram.nodes.length > 1).toBe(true);
+        done();
+    })
+
+});

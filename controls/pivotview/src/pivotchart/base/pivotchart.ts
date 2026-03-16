@@ -24,7 +24,7 @@ import { PivotUtil } from '../../base/util';
 import { OlapEngine, ITupInfo, IDrillInfo } from '../../base/olap/engine';
 import { SummaryTypes } from '../../base/types';
 import { ContextMenu, ContextMenuModel, MenuItemModel, BeforeOpenCloseMenuEventArgs, MenuEventArgs } from '@syncfusion/ej2-navigations';
-import { hideSpinner, OffsetPosition } from '@syncfusion/ej2-popups';
+import { hideSpinner } from '@syncfusion/ej2-popups';
 import { DataManager } from '@syncfusion/ej2-data';
 
 export class PivotChart {
@@ -889,6 +889,9 @@ export class PivotChart {
             this.parent.chart.enableAnimation = this.parent.chartSettings.enableAnimation;
             this.parent.chart.useGroupingSeparator = this.parent.chartSettings.useGroupingSeparator;
             this.parent.chart.highlightPattern = this.parent.chartSettings.highlightPattern;
+            if (this.parent.chartSettings && this.parent.chartSettings.tooltip && this.parent.chartSettings.tooltip.textStyle) {
+                this.parent.chart.tooltip.textStyle = this.parent.chartSettings.tooltip.textStyle;
+            }
             if (this.accumulationType.indexOf(type) > -1) {
                 (this.parent.chart as AccumulationChart).enableBorderOnMouseMove = this.parent.chartSettings.enableBorderOnMouseMove;
                 (this.parent.chart as AccumulationChart).highlightMode = this.parent.chartSettings.highlightMode;
@@ -959,13 +962,21 @@ export class PivotChart {
                 cIndex: dataSource ? (dataSource as { [key: string]: number }[])[args.pointIndex].cIndex : undefined
             };
             this.creatMenu();
-            const pos: OffsetPosition = this.parent.element.getBoundingClientRect();
-            const y: number = (this.parent.element.querySelector('.e-pivot-toolbar') ?
-                this.parent.element.querySelector('.e-pivot-toolbar').clientHeight : 0) +
-                (this.parent.element.querySelector('.e-chart-grouping-bar') ?
-                    this.parent.element.querySelector('.e-chart-grouping-bar').clientHeight : 0) +
-                (window.scrollY || document.documentElement.scrollTop) + pos.top;
-            this.accumulationMenu.open(y + args.y, args.x + pos.left + (window.scrollX || document.documentElement.scrollLeft));
+            const hasChartElement: boolean = !!(this.parent.chart && this.parent.chart.element);
+            let elementPosition: ClientRect | DOMRect = this.parent.element.getBoundingClientRect();
+            if (hasChartElement) {
+                elementPosition = (this.parent.chart.element as HTMLElement).getBoundingClientRect();
+            }
+            const pageYOffset: number = (window.scrollY || document.documentElement.scrollTop);
+            const pageXOffset: number = (window.scrollX || document.documentElement.scrollLeft);
+            let menuYPosition: number = elementPosition.top + pageYOffset;
+            if (!hasChartElement) {
+                const toolbarElement: HTMLElement | null = this.parent.element.querySelector('.e-pivot-toolbar');
+                const groupingBarElement: HTMLElement | null = this.parent.element.querySelector('.e-pivot-grouping-bar');
+                menuYPosition += (toolbarElement ? toolbarElement.clientHeight : 0) +
+                    (groupingBarElement ? groupingBarElement.clientHeight : 0);
+            }
+            this.accumulationMenu.open(menuYPosition + args.y, args.x + elementPosition.left + pageXOffset);
         } else if ((this.parent.allowDrillThrough || this.parent.editSettings.allowEditing) && this.parent.drillThroughModule) {
             const rIndex: number = (dataSource as { [key: string]: number }[])[args.pointIndex].rIndex;
             const cIndex: number = (dataSource as { [key: string]: number }[])[args.pointIndex].cIndex;
@@ -1276,8 +1287,8 @@ export class PivotChart {
     }
 
     private configTooltipSettings(): TooltipSettingsModel {
-        const tooltip: TooltipSettingsModel = this.persistSettings.tooltip ? this.persistSettings.tooltip :
-            this.chartSettings.tooltip;
+        const tooltip: TooltipSettingsModel = (this.persistSettings && this.persistSettings.tooltip) ? this.persistSettings.tooltip :
+            (this.chartSettings.tooltip ? this.chartSettings.tooltip : {});
         tooltip.enable = tooltip.enable === undefined ? true : tooltip.enable;
         if (tooltip.enable && tooltip.template) {
             this.templateFn = this.parent.templateParser(tooltip.template);
@@ -1286,6 +1297,7 @@ export class PivotChart {
             tooltip.template = tooltip.template ? tooltip.template : this.parent.tooltipTemplate;
         }
         tooltip.header = tooltip.header ? tooltip.header : '';
+        tooltip.textStyle = tooltip.textStyle ? tooltip.textStyle : {};
         tooltip.enableMarker = tooltip.enableMarker === undefined ? true : tooltip.enableMarker;
         return tooltip;
     }

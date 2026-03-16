@@ -967,4 +967,35 @@ describe('Note ->', () => {
             done();
         });
     });
+    describe('Notes protection - Add/Edit/Delete disabled when sheet/workbook is protected ->', () => {
+        beforeAll((done: Function) => {
+            helper.initializeSpreadsheet({
+                sheets: [{
+                    ranges: [{ dataSource: defaultData }],
+                    rows: [{ index: 0, cells: [{ index: 0, notes: { text: 'ProtectedNote' } }] }]
+                }]
+            }, done);
+        });
+        afterAll(() => {
+            helper.invoke('destroy');
+        });
+        it('Ribbon notesDDB items should be disabled when sheet is protected', (done: Function) => {
+            helper.invoke('protectSheet', ['Sheet1', { selectCells: true }]);
+            helper.invoke('selectRange', ['B1']);
+            helper.switchRibbonTab(5);
+            const ddbBtn: HTMLElement = helper.getElement('#' + helper.id + '_notes');
+            ddbBtn.click();
+            setTimeout(() => {
+                expect(helper.getElement('#nt_add').classList).toContain('e-disabled');
+                helper.invoke('selectRange', ['A1']);
+                ddbBtn.click();
+                setTimeout(() => {
+                    ddbBtn.click();
+                    expect(helper.getElement('#nt_edit').classList).toContain('e-disabled');
+                    expect(helper.getElement('#nt_delete').classList).toContain('e-disabled');
+                    done();
+                });
+            });
+        });
+    });
 });

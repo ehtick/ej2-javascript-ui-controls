@@ -10,15 +10,15 @@ import { DrawingElement } from '@syncfusion/ej2-drawings';
 import { findActiveElement } from './action';
 import { PdfViewer, PdfViewerBase, MeasureAnnotation, AnnotationSelectorSettingsModel, AnnotationDrawingOptions } from '../index';
 import { PdfAnnotationBaseModel, PdfFormFieldBaseModel } from './pdf-annotation-model';
-import { PdfAnnotationBase } from './pdf-annotation';
+import { PdfAnnotationBase, PdfBounds } from './pdf-annotation';
 import { cloneObject, isLineShapes, updateColorWithOpacity } from './drawing-util';
 import { isNullOrUndefined } from '@syncfusion/ej2-base';
 import { updatePerimeterLabel } from './connector-util';
 import { Browser } from '@syncfusion/ej2-base';
 import { DiagramHtmlElement } from './html-element';
 import { IFormField, IFormFieldBound } from '../form-designer';
-import { AnnotationDrawingOptionsModel, FormFieldModel } from '../pdfviewer-model';
-import { FontStyle, FormFieldType } from '../base';
+import { AnnotationDrawingOptionsModel, AnnotationSettingsModel, FormFieldModel } from '../pdfviewer-model';
+import { FontStyle, FormFieldType, ISize } from '../base';
 
 /**
  * Defines the interactive tools
@@ -253,8 +253,19 @@ export class ToolBase {
         rotateMatrix(matrix, -rotateAngle, 0, 0);
         let deltaWidth: number = 0; let deltaHeight: number = 0;
         let diff: PointModel;
-        const width: number = (shape instanceof TextElement) ? shape.actualSize.width : shape.wrapper.bounds.width;
-        const height: number = (shape instanceof TextElement) ? shape.actualSize.height : shape.wrapper.bounds.height;
+        let width: number = (shape instanceof TextElement) ? shape.actualSize.width : shape.wrapper.bounds.width;
+        let height: number = (shape instanceof TextElement) ? shape.actualSize.height : shape.wrapper.bounds.height;
+        if (shape.shapeAnnotationType === 'Stamp' && rotateAngle !== 0) {
+            const selectedAnnotation: PdfAnnotationBaseModel = this.commandHandler && this.commandHandler.selectedItems &&
+                this.commandHandler.selectedItems.annotations && this.commandHandler.selectedItems.annotations.length > 0 ?
+                this.commandHandler.selectedItems.annotations[0] : null;
+            const wrapperSize: { width: number, height: number } = selectedAnnotation && selectedAnnotation.wrapper &&
+                selectedAnnotation.wrapper.actualSize ? selectedAnnotation.wrapper.actualSize : null;
+            if (wrapperSize) {
+                width = wrapperSize.width;
+                height = wrapperSize.height;
+            }
+        }
         let obj: any = shape;
         if (!shape.formFieldAnnotationType) {
             if (!shape.annotName && !shape.shapeAnnotationType) {
@@ -264,6 +275,9 @@ export class ToolBase {
                 }
             }
         }
+        const isRectBased: boolean = (shape.shapeAnnotationType === 'Rectangle' || shape.shapeAnnotationType === 'Ellipse'
+            || shape.shapeAnnotationType === 'Radius' || shape.shapeAnnotationType === 'Redaction' || shape.shapeAnnotationType === 'FreeText');
+        const isStamp: boolean = (shape.shapeAnnotationType === 'Stamp');
         const annotationSettings: any = this.commandHandler.annotationModule ?
             this.commandHandler.annotationModule.findAnnotationSettings(obj) : {};
         let annotationMaxHeight: number = 0;
@@ -280,7 +294,7 @@ export class ToolBase {
         if (annotationMinHeight || annotationMinWidth || annotationMaxHeight || annotationMaxWidth) {
             isAnnotationSet = true;
         }
-        if (isAnnotationSet && isMouseUp) {
+        if (isAnnotationSet && isMouseUp && !isRectBased && !isStamp) {
             const size: PointModel = this.getPositions(corner, difx, dify);
             const newWidth: number = width + size.x;
             const newHeight: number = height + size.y;
@@ -302,7 +316,10 @@ export class ToolBase {
             dify = 0;
             if (isAnnotationSet) {
                 if (initialBounds.width - difx > annotationMaxWidth) {
-                    difx = annotationMaxWidth - initialBounds.width;
+                    difx = -(annotationMaxWidth - initialBounds.width);
+                }
+                else if (initialBounds.width - difx < annotationMinWidth) {
+                    difx = -(annotationMinWidth - initialBounds.width);
                 }
             }
             deltaWidth = (initialBounds.width - difx) / width; break;
@@ -315,6 +332,9 @@ export class ToolBase {
                 if (initialBounds.width + difx > annotationMaxWidth) {
                     difx = annotationMaxWidth - initialBounds.width;
                 }
+                else if (initialBounds.width + difx < annotationMinWidth) {
+                    difx = annotationMinWidth - initialBounds.width;
+                }
             }
             deltaWidth = (initialBounds.width + difx) / width;
             deltaHeight = 1;
@@ -324,7 +344,10 @@ export class ToolBase {
             diff = transformPointByMatrix(matrix, ({ x: difx, y: dify })); difx = diff.x; dify = diff.y;
             if (isAnnotationSet) {
                 if (initialBounds.height - dify > annotationMaxHeight) {
-                    dify = annotationMaxHeight - initialBounds.height;
+                    dify = -(annotationMaxHeight - initialBounds.height);
+                }
+                else if (initialBounds.height - dify < annotationMinHeight) {
+                    dify = -(annotationMinHeight - initialBounds.height);
                 }
             }
             deltaHeight = (initialBounds.height - dify) / height; break;
@@ -335,52 +358,99 @@ export class ToolBase {
                 if (initialBounds.height + dify > annotationMaxHeight) {
                     dify = annotationMaxHeight - initialBounds.height;
                 }
+                else if (initialBounds.height + dify < annotationMinHeight) {
+                    dify = annotationMinHeight - initialBounds.height;
+                }
             }
             deltaHeight = (initialBounds.height + dify) / height; break;
         case 'ResizeNorthEast':
             diff = transformPointByMatrix(matrix, ({ x: difx, y: dify })); difx = diff.x; dify = diff.y;
-            if (isAnnotationSet) {
+            if (isAnnotationSet && !isStamp) {
                 if (initialBounds.width + difx > annotationMaxWidth) {
                     difx = annotationMaxWidth - initialBounds.width;
                 }
+                else if (initialBounds.width + difx < annotationMinWidth) {
+                    difx = annotationMinWidth - initialBounds.width;
+                }
                 if (initialBounds.height - dify > annotationMaxHeight) {
-                    dify = annotationMaxHeight - initialBounds.height;
+                    if ((shape.shapeAnnotationType === 'FreeText') && (initialBounds.height > annotationMaxHeight)) {
+                        dify = 0;
+                    }
+                    else {
+                        dify = -(annotationMaxHeight - initialBounds.height);
+                    }
+                }
+                else if (initialBounds.height - dify < annotationMinHeight) {
+                    dify = -(annotationMinHeight - initialBounds.height);
                 }
             }
             deltaWidth = (initialBounds.width + difx) / width; deltaHeight = (initialBounds.height - dify) / height;
             break;
         case 'ResizeNorthWest':
             diff = transformPointByMatrix(matrix, ({ x: difx, y: dify })); difx = diff.x; dify = diff.y;
-            if (isAnnotationSet) {
+            if (isAnnotationSet && !isStamp) {
                 if (initialBounds.width - difx > annotationMaxWidth) {
-                    difx = annotationMaxWidth - initialBounds.width;
+                    difx = -(annotationMaxWidth - initialBounds.width);
+                }
+                else if (initialBounds.width - difx < annotationMinWidth) {
+                    difx = -(annotationMinWidth - initialBounds.width);
                 }
                 if (initialBounds.height - dify > annotationMaxHeight) {
-                    dify = annotationMaxHeight - initialBounds.height;
+                    if ((shape.shapeAnnotationType === 'FreeText') && (initialBounds.height > annotationMaxHeight)) {
+                        dify = 0;
+                    }
+                    else {
+                        dify = -(annotationMaxHeight - initialBounds.height);
+                    }
+                }
+                else if (initialBounds.height - dify < annotationMinHeight) {
+                    dify = -(annotationMinHeight - initialBounds.height);
                 }
             }
             deltaWidth = (initialBounds.width - difx) / width; deltaHeight = (initialBounds.height - dify) / height;
             break;
         case 'ResizeSouthEast':
             diff = transformPointByMatrix(matrix, ({ x: difx, y: dify })); difx = diff.x; dify = diff.y;
-            if (isAnnotationSet) {
+            if (isAnnotationSet && !isStamp) {
                 if (initialBounds.width + difx > annotationMaxWidth) {
                     difx = annotationMaxWidth - initialBounds.width;
                 }
+                else if (initialBounds.width + difx < annotationMinWidth) {
+                    difx = annotationMinWidth - initialBounds.width;
+                }
                 if (initialBounds.height + dify > annotationMaxHeight) {
-                    dify = annotationMaxHeight - initialBounds.height;
+                    if ((shape.shapeAnnotationType === 'FreeText') && (initialBounds.height > annotationMaxHeight)) {
+                        dify = 0;
+                    }
+                    else {
+                        dify = annotationMaxHeight - initialBounds.height;
+                    }
+                }
+                else if (initialBounds.height + dify < annotationMinHeight) {
+                    dify = annotationMinHeight - initialBounds.height;
                 }
             }
             deltaHeight = (initialBounds.height + dify) / height; deltaWidth = (initialBounds.width + difx) / width;
             break;
         case 'ResizeSouthWest':
             diff = transformPointByMatrix(matrix, ({ x: difx, y: dify })); difx = diff.x; dify = diff.y;
-            if (isAnnotationSet) {
+            if (isAnnotationSet && !isStamp) {
                 if (initialBounds.width - difx > annotationMaxWidth) {
-                    difx = annotationMaxWidth - initialBounds.width;
+                    difx = -(annotationMaxWidth - initialBounds.width);
+                }
+                else if (initialBounds.width - difx < annotationMinWidth) {
+                    difx = -(annotationMinWidth - initialBounds.width);
                 }
                 if (initialBounds.height + dify > annotationMaxHeight) {
-                    dify = annotationMaxHeight - initialBounds.height;
+                    if ((shape.shapeAnnotationType === 'FreeText') && (initialBounds.height > annotationMaxHeight)) {
+                        dify = 0;
+                    }
+                    else {
+                        dify = annotationMaxHeight - initialBounds.height;
+                    }
+                }
+                else if (initialBounds.height + dify < annotationMinHeight) {
+                    dify = annotationMinHeight - initialBounds.height;
                 }
             }
             deltaWidth = (initialBounds.width - difx) / width; deltaHeight = (initialBounds.height + dify) / height; break;
@@ -473,12 +543,6 @@ export class SelectTool extends ToolBase {
             }
         }
         if (!isLock) {
-            let currentSelctor: any;
-            if ((args.source as PdfAnnotationBaseModel) && (args as PdfAnnotationBaseModel).annotationSelectorSettings !== null) {
-                currentSelctor = (args.source as PdfAnnotationBaseModel).annotationSelectorSettings;
-            } else {
-                currentSelctor = '';
-            }
             if (this.commandHandler) {
                 const selectedObject: SelectorModel = this.commandHandler.selectedItems;
                 if (selectedObject) {
@@ -499,7 +563,8 @@ export class SelectTool extends ToolBase {
                         if ((isNullOrUndefined(formField) || (formField &&
                              formField.id !== (object as PdfAnnotationBaseModel).id)) &&
                               !isNullOrUndefined(this.pdfViewerBase.isFreeTextSelected) && !this.pdfViewerBase.isFreeTextSelected) {
-                            this.commandHandler.select([(object as PdfAnnotationBaseModel).id], currentSelctor);
+                            this.commandHandler.select([(object as PdfAnnotationBaseModel).id], args.source &&
+                            (args.source as PdfAnnotationBaseModel).annotationSelectorSettings);
                             this.commandHandler.viewerBase.isAnnotationMouseDown = true;
                         }
                         this.pdfViewerBase.isFreeTextSelected = false;
@@ -1009,6 +1074,28 @@ export class StampTool extends MoveTool {
                 const defaultFontSize : number = 32; // default font size.
                 nodeElement.bounds.height = nodeElement.fontSize < defaultFontSize ? nodeElement.fontSize * 2 : nodeElement.bounds.height;
                 nodeElement.thickness = 0;
+            }
+            if (nodeElement.shapeAnnotationType === 'Stamp') {
+                // Enforce annotation min/max constraints for stamp size before creation
+                const stampSettings: any = this.commandHandler.annotationModule ?
+                    this.commandHandler.annotationModule.findAnnotationSettings(nodeElement) : {};
+                if (stampSettings && nodeElement && nodeElement.bounds) {
+                    let maxH: number = 0;
+                    let maxW: number = 0;
+                    let minH: number = 0;
+                    let minW: number = 0;
+                    if (stampSettings.minWidth || stampSettings.maxWidth || stampSettings.minHeight || stampSettings.maxHeight) {
+                        maxH = stampSettings.maxHeight ? stampSettings.maxHeight : 2000;
+                        maxW = stampSettings.maxWidth ? stampSettings.maxWidth : 2000;
+                        minH = stampSettings.minHeight ? stampSettings.minHeight : 0;
+                        minW = stampSettings.minWidth ? stampSettings.minWidth : 0;
+                        // Clamp inner bounds
+                        if (minW && nodeElement.bounds.width < minW) { nodeElement.bounds.width = minW; }
+                        if (maxW && nodeElement.bounds.width > maxW) { nodeElement.bounds.width = maxW; }
+                        if (minH && nodeElement.bounds.height < minH) { nodeElement.bounds.height = minH; }
+                        if (maxH && nodeElement.bounds.height > maxH) { nodeElement.bounds.height = maxH; }
+                    }
+                }
             }
             newObject = this.commandHandler.add(nodeElement as PdfAnnotationBase);
             args.source = this.commandHandler.annotations[this.commandHandler.annotations.length - 1] as IElement;
@@ -1722,6 +1809,15 @@ export class ResizeTool extends ToolBase {
         deltaWidth: number, deltaHeight: number, corner: string, startPoint: PointModel, endPoint: PointModel,
         source?: SelectorModel | PdfAnnotationBaseModel, isCtrlKeyPressed?: boolean)
         : boolean {
+        const resizerLoc: any = this.commandHandler.viewerBase.getResizerLocationFrom.call(this, source);
+        if (resizerLoc === 1 && this.commandHandler.viewerBase.isEdgeHandle(corner)) {
+            this.blocked = true;
+            return true;
+        }
+        if (resizerLoc === 2 && this.commandHandler.viewerBase.isCornerHandle(corner)) {
+            this.blocked = true;
+            return true;
+        }
         const annotationSettings: any = this.commandHandler.annotationModule ?
             this.commandHandler.annotationModule.findAnnotationSettings(source) : {};
         let annotationMaxHeight: number = 0;
@@ -1767,6 +1863,34 @@ export class ResizeTool extends ToolBase {
             }
             if (!isCtrlKeyPressed){
                 deltaHeight = deltaWidth = Math.max(deltaHeight, deltaWidth);
+                let maxReached: boolean = false;
+                let minReached: boolean = false;
+                if (annotationSettings.maxWidth || annotationSettings.maxHeight) {
+                    if ((deltaWidth * annotationElement.bounds.width) > annotationMaxWidth) {
+                        deltaWidth = annotationMaxWidth / annotationElement.bounds.width;
+                        maxReached = true;
+                    }
+                    if ((deltaHeight * annotationElement.bounds.height) > annotationMaxHeight) {
+                        deltaHeight = annotationMaxHeight / annotationElement.bounds.height;
+                        maxReached = true;
+                    }
+                    if (maxReached) {
+                        deltaHeight = deltaWidth = Math.min(deltaHeight, deltaWidth);
+                    }
+                }
+                if (annotationSettings.minWidth || annotationSettings.minHeight) {
+                    if ((deltaWidth * annotationElement.bounds.width) < annotationMinWidth) {
+                        deltaWidth = annotationMinWidth / annotationElement.bounds.width;
+                        minReached = true;
+                    }
+                    if ((deltaHeight * annotationElement.bounds.height) < annotationMinHeight) {
+                        deltaHeight = annotationMinHeight / annotationElement.bounds.height;
+                        minReached = true;
+                    }
+                    if (minReached) {
+                        deltaHeight = deltaWidth = Math.max(deltaHeight, deltaWidth);
+                    }
+                }
             }
         } else {
             if ((source as PdfAnnotationBaseModel).shapeAnnotationType === 'Perimeter' || (source as PdfAnnotationBaseModel).shapeAnnotationType === 'Radius') {
@@ -1838,11 +1962,8 @@ export class NodeDrawingTool extends ToolBase {
                 if (this.currentPosition.y >= pageHeight && event.target && (event.target as any).parentElement && (event.target as any).parentElement.classList.contains('foreign-object') && (event as any).path) {
                     const targetParentRect: any = (event as any).path[3].getBoundingClientRect();
                     offsetX = (event as any).clientX - targetParentRect.left;
-                }
-                else if (isNullOrUndefined((event as any).path) && (this.drawingObject.formFieldAnnotationType === 'SignatureField' || this.drawingObject.formFieldAnnotationType === 'InitialField')) {
-                    offsetX = this.currentPosition.x;
                 } else {
-                    offsetX = this.currentPosition.x - left;
+                    offsetX = this.currentPosition.x;
                 }
                 let rect: any;
                 if (this.currentPosition.x >= pageWidth && this.currentPosition.y >= pageHeight) {
@@ -1921,6 +2042,47 @@ export class NodeDrawingTool extends ToolBase {
         return true;
     }
 
+    private checkMinBounds(drawnAnnotation: PdfAnnotationBase): PdfBounds | null {
+        const zoom: number = this.pdfViewerBase.getZoomFactor();
+        const modifiedBounds: PdfBounds = {} as PdfBounds;
+        if (drawnAnnotation.shapeAnnotationType) {
+            if (drawnAnnotation.shapeAnnotationType === 'Rectangle' || drawnAnnotation.shapeAnnotationType === 'Radius'
+                || drawnAnnotation.shapeAnnotationType === 'Ellipse' || drawnAnnotation.shapeAnnotationType === 'Redaction') {
+                const annotationSettings: AnnotationSettingsModel =
+                    this.commandHandler.annotationModule.findAnnotationSettings(drawnAnnotation);
+                const pageSize: ISize = this.pdfViewerBase.pageSize[drawnAnnotation.pageIndex];
+                if ((annotationSettings.minWidth && (annotationSettings.minWidth > 0))
+                    || (annotationSettings.minHeight && (annotationSettings.minHeight > 0))) {
+                    if (annotationSettings.minWidth > drawnAnnotation.wrapper.bounds.width) {
+                        modifiedBounds.width = annotationSettings.minWidth;
+                        if ((drawnAnnotation.wrapper.bounds.x + modifiedBounds.width) > pageSize.width) {
+                            modifiedBounds.x = ((drawnAnnotation.wrapper.bounds.x + drawnAnnotation.wrapper.bounds.width)
+                                                    - (modifiedBounds.width * 0.5));
+                        }
+                        else {
+                            modifiedBounds.x = drawnAnnotation.wrapper.bounds.x + (modifiedBounds.width * 0.5);
+                        }
+                    }
+                    if (annotationSettings.minHeight > drawnAnnotation.wrapper.height) {
+                        modifiedBounds.height = annotationSettings.minHeight;
+                        if ((drawnAnnotation.wrapper.bounds.y + modifiedBounds.height) > pageSize.height) {
+                            modifiedBounds.y = ((drawnAnnotation.wrapper.bounds.y + drawnAnnotation.wrapper.bounds.height)
+                                                    - (modifiedBounds.height * 0.5));
+                        }
+                        else {
+                            modifiedBounds.y = drawnAnnotation.wrapper.bounds.y + (modifiedBounds.height * 0.5);
+                        }
+                    }
+                }
+            }
+            if (JSON.stringify(modifiedBounds) !== '{}') {
+                return modifiedBounds;
+            }
+            return null;
+        }
+        return null;
+    }
+
     /**
      * @private
      * @param {MouseEventArgs} args - Specified the mouse event arguments.
@@ -1929,14 +2091,30 @@ export class NodeDrawingTool extends ToolBase {
     public mouseUp(args: MouseEventArgs): void {
         if (this.drawingObject && this.dragging) {
             this.commandHandler.clearSelection(this.pdfViewerBase.activeElements.activePageID);
-            if (!isNullOrUndefined(args.source) && !isNullOrUndefined((args.source as PdfAnnotationBaseModel).annotationSelectorSettings)) {
-                this.commandHandler.select([this.drawingObject.id], (args.source as PdfAnnotationBaseModel).annotationSelectorSettings);
-            }
-            const drawnAnnotation: any = this.commandHandler.selectedItems.annotations[0];
+            const annotationSelectorSettings: any = cloneObject(this.commandHandler.annotationSelectorSettings);
+            const shapeType: any = this.drawingObject.shapeAnnotationType;
+            this.pdfViewerBase.updateSelector(annotationSelectorSettings, shapeType);
+            this.commandHandler.select([this.drawingObject.id], annotationSelectorSettings);
+            const drawnAnnotation: any = (this.commandHandler.selectedItems && this.commandHandler.selectedItems.annotations &&
+                this.commandHandler.selectedItems.annotations.length > 0)
+                ? this.commandHandler.selectedItems.annotations[0]
+                : this.drawingObject;
+            const selectorSettings: any = {annotationSelectorSettings: annotationSelectorSettings};
             if (!isNullOrUndefined(drawnAnnotation) && !isNullOrUndefined(drawnAnnotation.wrapper)) {
                 this.commandHandler.nodePropertyChange(drawnAnnotation,
                                                        { bounds: { x: drawnAnnotation.wrapper.offsetX,
-                                                           y: drawnAnnotation.wrapper.offsetY } });
+                                                           y: drawnAnnotation.wrapper.offsetY } , annotationSelectorSettings:
+                                                           selectorSettings.annotationSelectorSettings});
+                const modifiedBounds: PdfBounds | null = this.checkMinBounds(drawnAnnotation);
+                if (!isNullOrUndefined(modifiedBounds)) {
+                    this.commandHandler.nodePropertyChange(drawnAnnotation, { bounds: modifiedBounds });
+                    this.commandHandler.clearSelection(this.pdfViewerBase.activeElements.activePageID);
+                    if (!isNullOrUndefined(args.source) &&
+                        !isNullOrUndefined((args.source as PdfAnnotationBaseModel).annotationSelectorSettings)) {
+                        this.commandHandler.select([this.drawingObject.id],
+                                                   (args.source as PdfAnnotationBaseModel).annotationSelectorSettings);
+                    }
+                }
                 this.commandHandler.annotation.updateCalibrateValues(this.drawingObject, true);
                 if (this.commandHandler && !this.isFormDesign) {
 
@@ -1987,9 +2165,21 @@ export class NodeDrawingTool extends ToolBase {
                 annotationMaxWidth = annotationSettings.maxWidth ? annotationSettings.maxWidth : 2000;
                 if (obj.bounds.width > annotationMaxWidth) {
                     obj.bounds.width = annotationMaxWidth;
+                    if ((rect.x + rect.width) === this.currentPosition.x) {
+                        obj.bounds.x = (rect.x / zoom) + obj.bounds.width;
+                    }
+                    else if ((rect.x + rect.width) === this.prevPosition.x) {
+                        obj.bounds.x = rect.right / zoom;
+                    }
                 }
                 if (obj.bounds.height > annotationMaxHeight) {
                     obj.bounds.height = annotationMaxHeight;
+                    if ((rect.y + rect.height) === this.currentPosition.y) {
+                        obj.bounds.y = (rect.y / zoom) + obj.bounds.height;
+                    }
+                    else if ((rect.y + rect.height) === this.prevPosition.y) {
+                        obj.bounds.y = rect.bottom / zoom;
+                    }
                 }
                 if (obj.bounds.height <= annotationMaxHeight && obj.bounds.width <= annotationMaxWidth) {
                     this.commandHandler.nodePropertyChange(obj, { bounds: obj.bounds });
@@ -2056,6 +2246,10 @@ export class PolygonDrawingTool extends ToolBase {
     public mouseDown(args: MouseEventArgs): void {
         super.mouseDown(args);
         this.inAction = true;
+        const annotationSelectorSettings: any = cloneObject(this.commandHandler.annotationSelectorSettings);
+        const shapeType: any = 'Line';
+        const subject: any = (args.source as any) && (args.source as any).subject;
+        this.pdfViewerBase.updateSelector(annotationSelectorSettings, shapeType, null, subject);
         if (!this.drawingObject) {
             this.startPoint = { x: this.startPosition.x, y: this.startPosition.y };
             const nodeAnnotElement: PdfAnnotationBaseModel = {
@@ -2071,7 +2265,7 @@ export class PolygonDrawingTool extends ToolBase {
                 subject: this.commandHandler.drawingObject.subject, borderDashArray: this.commandHandler.drawingObject.borderDashArray,
                 modifiedDate: this.commandHandler.drawingObject.modifiedDate, borderStyle: this.commandHandler.drawingObject.borderStyle,
                 measureType: this.commandHandler.drawingObject.measureType, enableShapeLabel: this.commandHandler.enableShapeLabel,
-                opacity: this.commandHandler.drawingObject.opacity
+                opacity: this.commandHandler.drawingObject.opacity, annotationSelectorSettings: annotationSelectorSettings
             };
             this.pdfViewerBase.updateFreeTextProperties(nodeAnnotElement);
             this.drawingObject = this.commandHandler.add(nodeAnnotElement as any);
@@ -2084,7 +2278,7 @@ export class PolygonDrawingTool extends ToolBase {
             if (!(lastPoint.x === pt.x && lastPoint.x === pt.y)) {
                 this.drawingObject.vertexPoints.push(pt);
             }
-            this.commandHandler.nodePropertyChange(obj, { vertexPoints: obj.vertexPoints });
+            this.commandHandler.nodePropertyChange(obj, { vertexPoints: obj.vertexPoints, annotationSelectorSettings });
         }
     }
 
@@ -2098,6 +2292,10 @@ export class PolygonDrawingTool extends ToolBase {
         if (this.inAction && Point.equals(this.currentPosition, this.prevPosition) === false) {
             this.dragging = true;
             const obj: PdfAnnotationBaseModel = (this.drawingObject);
+            const annotationSelectorSettings: any = cloneObject(this.commandHandler.annotationSelectorSettings);
+            const shapeType: any = (args.source as any) && (args.source as any).shapeAnnotationType;
+            const subject: any = (args.source as any) && (args.source as any).subject;
+            this.pdfViewerBase.updateSelector(annotationSelectorSettings, shapeType, null, subject);
             if (this.drawingObject && this.currentPosition) {
                 const drawingOptions: AnnotationDrawingOptionsModel = this.pdfViewerBase.pdfViewer.annotationDrawingOptions;
 
@@ -2142,14 +2340,10 @@ export class PolygonDrawingTool extends ToolBase {
     public mouseUp(args: MouseEventArgs, isDoubleClineck?: boolean, isMouseLeave?: boolean): void {
         let needToDrawPolygon: boolean = false;
         super.mouseMove(args);
-        let currentSelector: any;
-        if ((args.source as PdfAnnotationBaseModel) && (args as PdfAnnotationBaseModel).annotationSelectorSettings !== null) {
-            currentSelector = (args.source as PdfAnnotationBaseModel).annotationSelectorSettings;
-        }
-        else
-        {
-            currentSelector = '';
-        }
+        const annotationSelectorSettings: any = cloneObject(this.commandHandler.annotationSelectorSettings);
+        const shapeType: any = (args.source as any) && (args.source as any).shapeAnnotationType;
+        const subject: any = (args.source as any) && (args.source as any).subject;
+        this.pdfViewerBase.updateSelector(annotationSelectorSettings, shapeType, null, subject);
         if (this.drawingObject && this.drawingObject.vertexPoints.length === 2 && isDoubleClineck && isMouseLeave) {
             this.commandHandler.remove(this.drawingObject);
             needToDrawPolygon = true;
@@ -2176,7 +2370,8 @@ export class PolygonDrawingTool extends ToolBase {
                                 this.drawingObject.vertexPoints[this.drawingObject.vertexPoints.length] =
                                  this.drawingObject.vertexPoints[0];
                             }
-                            this.commandHandler.nodePropertyChange(this.drawingObject, { vertexPoints: this.drawingObject.vertexPoints });
+                            this.commandHandler.nodePropertyChange(this.drawingObject, { vertexPoints: this.drawingObject.vertexPoints,
+                                annotationSelectorSettings });
                             const cobject: PdfAnnotationBase = cloneObject(this.drawingObject) as PdfAnnotationBase;
                             cobject.shapeAnnotationType = 'Polygon';
                             cobject.bounds.width = cobject.wrapper.actualSize.width;
@@ -2185,7 +2380,7 @@ export class PolygonDrawingTool extends ToolBase {
                             cobject.bounds.y = this.drawingObject.wrapper.bounds.y;
                             this.commandHandler.add(cobject);
                             this.commandHandler.remove(this.drawingObject);
-                            this.commandHandler.select([cobject.id], currentSelector);
+                            this.commandHandler.select([cobject.id], annotationSelectorSettings);
                             const drawingObject: PdfAnnotationBaseModel = this.commandHandler.selectedItems.annotations[0];
                             if (drawingObject) {
                                 if (this.commandHandler.enableShapeAnnotation && (isNullOrUndefined(drawingObject.measureType) || drawingObject.measureType === '')) {
@@ -2225,7 +2420,7 @@ export class PolygonDrawingTool extends ToolBase {
                                 sourceDecoraterShapes: this.commandHandler.drawingObject.sourceDecoraterShapes,
                                 taregetDecoraterShapes: this.commandHandler.drawingObject.taregetDecoraterShapes
                             });
-                            this.commandHandler.select([this.drawingObject.id], currentSelector);
+                            this.commandHandler.select([this.drawingObject.id], annotationSelectorSettings);
                             if (this.commandHandler.enableMeasureAnnotation && this.drawingObject.measureType === 'Perimeter') {
                                 this.commandHandler.renderDrawing(null, this.drawingObject.pageIndex);
                                 this.drawingObject.notes =
@@ -2329,6 +2524,9 @@ export class LineTool extends ToolBase {
         this.currentPosition = args.position;
         if (!this.drawingObject) {
             const measureModule: MeasureAnnotation = this.commandHandler.annotation.measureAnnotationModule;
+            const annotationSelectorSettings: any = cloneObject(this.commandHandler.annotationSelectorSettings);
+            const shapeType: any = 'Distance';
+            this.pdfViewerBase.updateSelector(annotationSelectorSettings, shapeType);
             const annotationNode: PdfAnnotationBaseModel = {
                 vertexPoints: [{ x: this.startPosition.x / this.pdfViewerBase.getZoomFactor(),
                     y: this.startPosition.y / this.pdfViewerBase.getZoomFactor() },
@@ -2343,11 +2541,15 @@ export class LineTool extends ToolBase {
                 borderDashArray: this.commandHandler.drawingObject.borderDashArray,
                 shapeAnnotationType: 'Distance', pageIndex: this.pdfViewerBase.activeElements.activePageID,
                 author: this.commandHandler.drawingObject.author, subject: this.commandHandler.drawingObject.subject,
-                enableShapeLabel: this.commandHandler.enableShapeLabel, leaderHeight: measureModule.leaderLength
+                enableShapeLabel: this.commandHandler.enableShapeLabel, leaderHeight: measureModule.leaderLength,
+                annotationSelectorSettings: annotationSelectorSettings
             };
             this.pdfViewerBase.updateFreeTextProperties(annotationNode);
             this.drawingObject = this.commandHandler.add(annotationNode as any);
         } else if (!this.dragging) {
+            const annotationSelectorSettings: any = cloneObject(this.commandHandler.annotationSelectorSettings);
+            const shapeType: any = this.drawingObject.shapeAnnotationType;
+            this.pdfViewerBase.updateSelector(annotationSelectorSettings, shapeType);
             const nodeAnnot: PdfAnnotationBaseModel = {
                 bounds: { x: this.currentPosition.x, y: this.currentPosition.y, width: 5, height: 5},
                 vertexPoints: [{ x: this.startPosition.x / this.pdfViewerBase.getZoomFactor(),
@@ -2358,15 +2560,122 @@ export class LineTool extends ToolBase {
                 sourceDecoraterShapes: this.drawingObject.sourceDecoraterShapes,
                 taregetDecoraterShapes: this.drawingObject.taregetDecoraterShapes, fillColor: this.drawingObject.fillColor,
                 strokeColor: this.drawingObject.strokeColor, pageIndex: this.pdfViewerBase.activeElements.activePageID,
-                opacity: this.drawingObject.opacity || 1, borderDashArray: this.drawingObject.borderDashArray,
+                opacity: !isNullOrUndefined(this.drawingObject.opacity) ? this.drawingObject.opacity : 1,
+                borderDashArray: this.drawingObject.borderDashArray,
                 thickness: this.drawingObject.thickness,
                 modifiedDate: this.drawingObject.modifiedDate, author: this.drawingObject.author, subject: this.drawingObject.subject,
                 lineHeadEnd: this.drawingObject.lineHeadEnd, lineHeadStart: this.drawingObject.lineHeadStart,
-                measureType: this.commandHandler.drawingObject.measureType, enableShapeLabel: this.commandHandler.enableShapeLabel
+                measureType: this.commandHandler.drawingObject.measureType, enableShapeLabel: this.commandHandler.enableShapeLabel,
+                annotationSelectorSettings: annotationSelectorSettings
             };
             this.pdfViewerBase.updateFreeTextProperties(nodeAnnot);
             this.drawingObject = this.commandHandler.add(nodeAnnot as any);
         }
+    }
+
+    private checkMinBounds(drawnAnnotation: PdfAnnotationBaseModel): PointModel[] | null {
+        const modifiedVertexPoints: PointModel[] = [] as PointModel[];
+        if (drawnAnnotation.shapeAnnotationType) {
+            if ((drawnAnnotation.measureType === '' && (drawnAnnotation.shapeAnnotationType === 'Line'
+                || drawnAnnotation.shapeAnnotationType === 'LineWidthArrowHead')) || drawnAnnotation.measureType === 'Distance') {
+                const annotationSettings: AnnotationSettingsModel =
+                    this.commandHandler.annotationModule.findAnnotationSettings(drawnAnnotation);
+                const margin: number = 3;
+                const minWidth: number = (annotationSettings.minWidth && annotationSettings.minWidth > 0) ? annotationSettings.minWidth : 0;
+                const minHeight: number = (annotationSettings.minHeight && annotationSettings.minHeight > 0) ?
+                    annotationSettings.minHeight : 0;
+                const maxWidth: number = (annotationSettings.maxWidth && annotationSettings.maxWidth > 0) ? annotationSettings.maxWidth : 0;
+                const maxHeight: number = (annotationSettings.maxHeight && annotationSettings.maxHeight > 0) ?
+                    annotationSettings.maxHeight : 0;
+                if (!(minHeight || minWidth || maxHeight || maxWidth)) {
+                    return null;
+                }
+                const pageSize: ISize = this.pdfViewerBase.pageSize[drawnAnnotation.pageIndex];
+                const firstVertex: PointModel = {
+                    x: drawnAnnotation.vertexPoints[0].x,
+                    y: drawnAnnotation.vertexPoints[0].y
+                };
+                const secondVertex: PointModel = {
+                    x: drawnAnnotation.vertexPoints[1].x,
+                    y: drawnAnnotation.vertexPoints[1].y
+                };
+                const adjustAxis: (firstPoint: number, secondPoint: number, min: number, max: number, limit: number)
+                => { firstPoint: number; secondPoint: number; changed: boolean } =
+                    (firstPoint: number, secondPoint: number, min: number, max: number, limit: number) => {
+                        let changed: boolean = false;
+                        const direction: number = (secondPoint >= firstPoint) ? 1 : -1;
+                        const clamp: (val: number, low: number, high: number) => number
+                            = (val: number, low: number, high: number) => Math.max(low, Math.min(high, val));
+                        // calculate the desired length based on constraints
+                        const current: number = Math.abs(secondPoint - firstPoint);
+                        let desired: number = current;
+                        if (min && min > 0 && desired < min) {
+                            desired = min;
+                        }
+                        if (max && max > 0 && desired > max) {
+                            desired = max;
+                        }
+                        if (desired !== current) {
+                            secondPoint = firstPoint + direction * desired;
+                            changed = true;
+                        }
+                        // Enforce page bounds for second point first.
+                        // If clamp affects direction end, re-adjust first point to keep desired.
+                        const low: number = margin;
+                        const high: number = limit - margin;
+                        if (secondPoint < low) {
+                            secondPoint = low;
+                            firstPoint = secondPoint - direction * desired;
+                            changed = true;
+                        } else if (secondPoint > high) {
+                            secondPoint = high;
+                            firstPoint = secondPoint - direction * desired;
+                            changed = true;
+                        }
+                        // Ensure first point is also within bounds.
+                        // if not, clamp and rebuild second point with same desired.
+                        if (firstPoint < low) {
+                            firstPoint = low;
+                            secondPoint = firstPoint + direction * desired;
+                            changed = true;
+                        } else if (firstPoint > high) {
+                            firstPoint = high;
+                            secondPoint = firstPoint + direction * desired;
+                            changed = true;
+                        }
+                        // Final safety clamp so both stay in range,
+                        // possibly compromising desired if the page is too small
+                        firstPoint = clamp(firstPoint, low, high);
+                        secondPoint = clamp(secondPoint, low, high);
+                        return { firstPoint: firstPoint, secondPoint: secondPoint, changed };
+                    };
+                let anyChange: boolean = false;
+                // Adjust along X axis when min/max width specified
+                if (minWidth || maxWidth) {
+                    const resultX: { firstPoint: number, secondPoint: number, changed: boolean }
+                         = adjustAxis(firstVertex.x, secondVertex.x, minWidth, maxWidth, pageSize.width);
+                    firstVertex.x = resultX.firstPoint;
+                    secondVertex.x = resultX.secondPoint;
+                    anyChange = anyChange || resultX.changed;
+                }
+                // Adjust along Y axis when min/max height specified
+                if (minHeight || maxHeight) {
+                    const resultY: { firstPoint: number, secondPoint: number, changed: boolean }
+                        = adjustAxis(firstVertex.y, secondVertex.y, minHeight, maxHeight, pageSize.height);
+                    firstVertex.y = resultY.firstPoint;
+                    secondVertex.y = resultY.secondPoint;
+                    anyChange = anyChange || resultY.changed;
+                }
+                if (anyChange) {
+                    modifiedVertexPoints[0] = firstVertex;
+                    modifiedVertexPoints[1] = secondVertex;
+                }
+            }
+            if (JSON.stringify(modifiedVertexPoints) !== '[]') {
+                return modifiedVertexPoints;
+            }
+        }
+        return null;
     }
 
     /**
@@ -2378,17 +2687,18 @@ export class LineTool extends ToolBase {
         if (this.dragging) {
             super.mouseMove(args);
             if (this.commandHandler) {
-                let currentSelector: any;
-                if ((args.source as PdfAnnotationBaseModel) && (args as PdfAnnotationBaseModel).annotationSelectorSettings !== null) {
-                    currentSelector = (args.source as PdfAnnotationBaseModel).annotationSelectorSettings;
-                } else {
-                    currentSelector = '';
-                }
+                const annotationSelectorSettings: any = cloneObject(args.source && (args.source as any).annotationSelectorSettings);
+                const shapeType: any = (args.source as any) && (args.source as any).shapeAnnotationType;
+                this.pdfViewerBase.updateSelector(annotationSelectorSettings, shapeType);
                 const node: PdfAnnotationBaseModel = this.drawingObject;
+                const modifiedVertexPoints: PointModel[] | null = this.checkMinBounds(node);
+                if (!isNullOrUndefined(modifiedVertexPoints)) {
+                    node.vertexPoints = modifiedVertexPoints;
+                }
                 this.commandHandler.nodePropertyChange(node, { vertexPoints: node.vertexPoints, leaderHeight: node.leaderHeight });
                 this.commandHandler.clearSelection(this.pdfViewerBase.activeElements.activePageID);
-                this.commandHandler.select([node.id], currentSelector);
-                this.commandHandler.renderSelector(this.pdfViewerBase.activeElements.activePageID, currentSelector);
+                this.commandHandler.select([node.id], annotationSelectorSettings);
+                this.commandHandler.renderSelector(this.pdfViewerBase.activeElements.activePageID, annotationSelectorSettings);
             }
             if (this.endPoint && this.endPoint.indexOf('ConnectorSegmentPoint') > -1 && this.dragging) {
                 this.commandHandler.annotation.updateCalibrateValues(this.drawingObject);
@@ -2418,8 +2728,8 @@ export class LineTool extends ToolBase {
             this.currentPosition = args.position;
             this.dragging = true;
             if (this.currentPosition && this.prevPosition) {
-                const diffX: number = this.currentPosition.x - this.prevPosition.x;
-                const diffY: number = this.currentPosition.y - this.prevPosition.y;
+                let diffX: number = this.currentPosition.x - this.prevPosition.x;
+                let diffY: number = this.currentPosition.y - this.prevPosition.y;
                 const drawingOptions: AnnotationDrawingOptionsModel = this.pdfViewerBase.pdfViewer.annotationDrawingOptions;
 
                 if (!isNullOrUndefined(drawingOptions) && (drawingOptions.enableLineAngleConstraints || args.info.shiftKey) &&
@@ -2439,18 +2749,40 @@ export class LineTool extends ToolBase {
                         y: result.y
                     };
                 }
-                let currentSelector: any;
-                if ((args.source as PdfAnnotationBaseModel) && (args as PdfAnnotationBaseModel).annotationSelectorSettings !== null) {
-                    currentSelector = (args.source as PdfAnnotationBaseModel).annotationSelectorSettings;
-                } else {
-                    currentSelector = '';
+                if ((this.drawingObject.measureType === '' && (this.drawingObject.shapeAnnotationType === 'Line'
+                    || this.drawingObject.shapeAnnotationType === 'LineWidthArrowHead'))
+                    || this.drawingObject.measureType === 'Distance') {
+                    const zoom: number = this.commandHandler.viewerBase.getZoomFactor();
+                    const annotationSettings: AnnotationSettingsModel = this.commandHandler.annotationModule ?
+                        this.commandHandler.annotationModule.findAnnotationSettings(this.drawingObject) : {};
+                    if (annotationSettings.maxWidth) {
+                        const directionX: number = (this.currentPosition.x >= this.startPosition.x) ? 1 : -1;
+                        if ((Math.abs(this.startPosition.x - this.currentPosition.x) / zoom) > annotationSettings.maxWidth) {
+                            const dx: number = (Math.abs(this.startPosition.x - this.currentPosition.x) / zoom)
+                                - annotationSettings.maxWidth;
+                            diffX = 0;
+                            this.currentPosition.x = this.currentPosition.x - (directionX * (dx * zoom));
+                        }
+                    }
+                    if (annotationSettings.maxHeight) {
+                        const directionY: number = (this.currentPosition.y >= this.startPosition.y) ? 1 : -1;
+                        if ((Math.abs(this.startPosition.y - this.currentPosition.y) / zoom) > annotationSettings.maxHeight) {
+                            const dy: number = (Math.abs(this.startPosition.y - this.currentPosition.y) / zoom)
+                                - annotationSettings.maxHeight;
+                            diffY = 0;
+                            this.currentPosition.y = this.currentPosition.y - (directionY * (dy * zoom));
+                        }
+                    }
                 }
+                const annotationSelectorSettings: any = cloneObject(this.commandHandler.annotationSelectorSettings);
+                const shapeType: any = (args.source as any) && (args.source as any).shapeAnnotationType;
+                this.pdfViewerBase.updateSelector(annotationSelectorSettings, shapeType);
                 if (this.inAction && this.commandHandler && this.drawingObject &&
                      this.endPoint !== undefined && diffX !== 0 || diffY !== 0) {
                     this.blocked = !this.commandHandler.dragConnectorEnds(this.endPoint, this.drawingObject as IElement,
                                                                           this.currentPosition, this.selectedSegment,
-                                                                          args.target, null, currentSelector);
-                    this.commandHandler.renderSelector(this.pdfViewerBase.activeElements.activePageID, currentSelector);
+                                                                          args.target, null, annotationSelectorSettings);
+                    this.commandHandler.renderSelector(this.pdfViewerBase.activeElements.activePageID, annotationSelectorSettings);
                 }
             }
             this.prevPosition = this.currentPosition;
@@ -2523,7 +2855,7 @@ export class RotateTool extends ToolBase {
                 }, rotateAngle: args.source.wrapper.rotateAngle
             };
         }
-        this.commandHandler.annotation.addAction((this as any).pageIndex, null, args.source, 'Rotate', '', this.undoElement as any, newShapeObject);
+        this.commandHandler.annotation.addAction((this as any).pageIndex, null, (args.source as Selector).annotations[0], 'Rotate', '', this.undoElement as any, newShapeObject);
         this.commandHandler.annotation.stampAnnotationModule.updateSessionStorage(args.source, null, 'Rotate');
         this.commandHandler.annotation.stickyNotesAnnotationModule.updateStickyNotes(args.source, null);
         super.mouseUp(args);

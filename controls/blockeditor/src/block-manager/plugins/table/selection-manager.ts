@@ -2,7 +2,8 @@ import { BlockManager } from '../../base/block-manager';
 import { ITableBlockSettings, BlockModel, TableCellModel, TableRowModel } from '../../../models/index';
 import * as constants from '../../../common/constant';
 import { events } from '../../../common/constant';
-import { findCellById, getAdjacentBlock, getAdjacentCell, getBlockContentElement, getBlockModelById, getDataCell, getDeepestTextNode, getNormalizedKey, getSelectedRange, isAtEndOfBlock, isAtStartOfBlock, setCursorPosition, toDomCol } from '../../../common/utils/index';
+import { decoupleReference, findCellById, getAdjacentBlock, getAdjacentCell, getBlockContentElement, getBlockModelById, getDataCell, getDeepestTextNode, getNormalizedKey, getSelectedCells, getSelectedRange, hasActiveTableSelection, isAtEndOfBlock, isAtStartOfBlock, setCursorPosition, toDomCol } from '../../../common/utils/index';
+import { TableUIManager } from './ui-manager';
 
 export class TableSelectionManager {
     private parent: BlockManager;
@@ -64,13 +65,59 @@ export class TableSelectionManager {
 
             const endRow: number = parseInt(cell.dataset.row, 10);
             const endCol: number = parseInt(cell.dataset.col, 10);
+
+            // to avoid popup flicker
+            if (endRow === this.multiselectEndRow && endCol === this.multiselectEndCol) { return; }
+
             this.updateRectangleFocus(this.multiselectStartRow, this.multiselectStartCol, endRow, endCol, table);
             this.multiselectEndRow = endRow;
             this.multiselectEndCol = endCol;
+            // Auto-scroll while dragging selection to keep current cell in view
+            this.ensureCellVisible(table, cell);
 
             // Clear any native selection range while dragging across cells
             this.clearRangeAndSetCursor(table);
 
+            const blockId: string = table.getAttribute('data-block-id');
+            if (blockId) {
+                const uiManager: TableUIManager = this.parent.blockRenderer.tableRenderer.getManager(blockId);
+                if (uiManager) {
+                    uiManager.hideRowGripper();
+                    uiManager.hideAllPinnedColBars();
+                    const minRow: number = Math.min(this.multiselectStartRow, this.multiselectEndRow);
+                    const maxRow: number = Math.max(this.multiselectStartRow, this.multiselectEndRow);
+                    const minCol: number = Math.min(this.multiselectStartCol, this.multiselectEndCol);
+                    const maxCol: number = Math.max(this.multiselectStartCol, this.multiselectEndCol);
+                    const block: BlockModel = getBlockModelById(blockId, this.parent.getEditorBlocks());
+                    const settings: ITableBlockSettings = block.properties as ITableBlockSettings;
+                    const totalRows: number = settings.rows.length + (settings.enableHeader ? 1 : 0);
+                    const totalCols: number = settings.columns.length;
+                    const isFullRowSelection: boolean = minCol === 0 && maxCol >= totalCols - 1;
+                    uiManager.removeRowColSelection(table);
+                    if (isFullRowSelection) {
+                        let first: boolean = true;
+                        for (let r: number = minRow; r <= maxRow; r++) {
+                            uiManager.showRowGripperForDomRow(r, first);
+                            first = false;
+                        }
+                    } else {
+                        uiManager.hideRowGripper();
+                        if (uiManager.popupObj) {
+                            uiManager.handleRemovePopup();
+                        }
+                    }
+                    const isFullColumnSelection: boolean = minRow === 0 && maxRow >= totalRows - 1;
+                    if (isFullColumnSelection) {
+                        let first: boolean = true;
+                        for (let c: number = minCol; c <= maxCol; c++) {
+                            uiManager.showColGripperForDomCol(c, first);
+                            first = false;
+                        }
+                    } else {
+                        uiManager.hideAllPinnedColBars();
+                    }
+                }
+            }
             e.preventDefault();
             e.stopPropagation();
         };
@@ -79,10 +126,14 @@ export class TableSelectionManager {
             isMouseSelecting = false;
             dragStartCell = null;
             selectionRectActive = false;
-            this.multiselectStartRow = null;
-            this.multiselectStartCol = null;
-            this.multiselectEndRow = null;
-            this.multiselectEndCol = null;
+            // Only clear multi-select if no selection rectangle is active (i.e., mouseup without drag)
+            // If a selection rectangle is active, keep the multi-select state for shift+arrow
+            if (this.multiselectStartRow === this.multiselectEndRow && this.multiselectStartCol === this.multiselectEndCol) {
+                this.multiselectStartRow = null;
+                this.multiselectStartCol = null;
+                this.multiselectEndRow = null;
+                this.multiselectEndCol = null;
+            }
             (blockElement as HTMLElement).style.userSelect = '';
             (table as HTMLElement).style.userSelect = '';
         };
@@ -90,6 +141,23 @@ export class TableSelectionManager {
         table.addEventListener('mousedown', onMouseDown);
         table.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
+    }
+
+    // Ensure the given cell is visible inside the scrollable table container
+    private ensureCellVisible(table: HTMLTableElement, cell: HTMLElement): void {
+        const container: HTMLElement = table.parentElement as HTMLElement;
+        const margin: number = 12; // small breathing room
+        const cRect: DOMRect = container.getBoundingClientRect() as DOMRect;
+        const cellRect: DOMRect = cell.getBoundingClientRect() as DOMRect;
+
+        // Horizontal scroll
+        if (cellRect.left < cRect.left) {
+            const dx: number = cRect.left - cellRect.left + margin;
+            container.scrollLeft -= dx;
+        } else if (cellRect.right > cRect.right) {
+            const dx: number = cellRect.right - cRect.right + margin;
+            container.scrollLeft += dx;
+        }
     }
 
     public getAllCellBlocks(tableBlock: HTMLElement): BlockModel[] {
@@ -105,27 +173,9 @@ export class TableSelectionManager {
         return allBlocks;
     }
 
-    public getSelectedCells(tableBlock: HTMLElement): NodeListOf<HTMLTableCellElement> {
-        const table: HTMLTableElement = tableBlock.querySelector('table') as HTMLTableElement;
-        // 1. Whole row selection
-        if (table.querySelector('tr.e-row-selected')) {
-            return table.querySelectorAll('tr.e-row-selected td:not(.e-row-number)') as NodeListOf<HTMLTableCellElement>;
-        }
-
-        // 2. Whole column selection
-        if (table.querySelector('td.e-col-selected')) {
-            return table.querySelectorAll('td.e-col-selected, th.e-col-selected') as NodeListOf<HTMLTableCellElement>;
-        }
-
-        // 3. Default: individually focused cells
-        return table.querySelectorAll(
-            `td.${constants.TABLE_CELL_FOCUS}, th.${constants.TABLE_CELL_FOCUS}`
-        ) as NodeListOf<HTMLTableCellElement>;
-    }
-
     public getSelectedCellBlocks(tableBlock: HTMLElement): BlockModel[] {
         const tableBlockModel: BlockModel = getBlockModelById(tableBlock.id, this.parent.getEditorBlocks());
-        const selectedCells: NodeListOf<HTMLTableCellElement> = this.getSelectedCells(tableBlock);
+        const selectedCells: NodeListOf<HTMLTableCellElement> = getSelectedCells(tableBlock);
         const selectedBlocks: BlockModel[] = [];
 
         selectedCells.forEach((cell: HTMLTableCellElement) => {
@@ -179,13 +229,21 @@ export class TableSelectionManager {
                     || (tableBlockElement.querySelector('td.e-cell-focus, th.e-cell-focus') as HTMLElement)
                     || (focusedBlk.closest('td, th') as HTMLElement);
         if (!cell) { return; }
-        const block: BlockModel = getBlockModelById(tableBlockElement.id, this.parent.getEditorBlocks());
+        const blockId: string = tableBlockElement.id || tableBlockElement.getAttribute('data-block-id');
+        const block: BlockModel = getBlockModelById(blockId, this.parent.getEditorBlocks());
+        if (!block) { return; }
 
-        if (!cell) { return; }
+        const settings: ITableBlockSettings = block.properties as ITableBlockSettings;
+        const totalRows: number = settings.rows.length + (settings.enableHeader ? 1 : 0);
+        const totalCols: number = settings.columns.length;
 
-        const rowIdx: number = parseInt(cell.dataset.row, 10);
-        const colIdx: number = parseInt(cell.dataset.col, 10);
-
+        const rowIdx: number = parseInt(cell.dataset.row || '-1', 10);
+        const colIdx: number = parseInt(cell.dataset.col || '-1', 10);
+        const tableGripperPopup: HTMLElement = this.parent.rootEditorElement.querySelector('.e-table-gripper-action-popup');
+        if (tableGripperPopup && tableGripperPopup.classList.contains('e-popup-open') && e.key === 'Escape') {
+            this.parent.observer.notify('handleEscapeKey');
+            return;
+        }
         switch (e.key) {
         case 'Tab':
             e.preventDefault();
@@ -193,25 +251,132 @@ export class TableSelectionManager {
             break;
         case 'Escape':
             e.preventDefault();
-            this.exitTableNavigation(table, block, 'forward');
+            this.exitTableNavigation(table, 'forward');
             break;
         case 'Enter':
         case 'Backspace':
         case 'Delete': {
-            if (this.hasActiveTableSelection(tableBlockElement)) {
-                const selectedCells: NodeListOf<HTMLTableCellElement> = this.getSelectedCells(tableBlockElement);
-                if (selectedCells.length <= 1) { return; }
+            if (!hasActiveTableSelection(tableBlockElement)) { break; }
+            e.preventDefault();
+            e.stopPropagation();
 
-                e.preventDefault();
-                e.stopPropagation();
-                if (e.key === 'Enter') {
-                    // Focus last selected cell
-                    this.parent.tableService.removeCellFocus(table);
-                    this.parent.tableService.addCellFocus(selectedCells[(selectedCells.length - 1) as number]);
-                    return;
-                }
-                this.parent.tableService.clearCellContents(table, selectedCells);
+            const targetCells: HTMLTableCellElement[] = Array.from(
+                table.querySelectorAll(`td.${constants.TABLE_CELL_FOCUS}, th.${constants.TABLE_CELL_FOCUS}`)
+            );
+
+            // Gripper fallback if no rectangle focus
+            if (targetCells.length === 0) {
+                // From selected rows
+                table.querySelectorAll('tr.e-row-selected').forEach((tr: HTMLTableRowElement) => {
+                    Array.from((tr as HTMLTableRowElement).cells).forEach((cell: HTMLTableCellElement) => {
+                        if (!cell.classList.contains('e-row-number')) {
+                            targetCells.push(cell as HTMLTableCellElement);
+                        }
+                    });
+                });
+
+                // From selected columns
+                table.querySelectorAll('td.e-col-selected, th.e-col-selected').forEach((cell: HTMLTableCellElement) => {
+                    if (targetCells.indexOf(cell as HTMLTableCellElement) === -1) {
+                        targetCells.push(cell as HTMLTableCellElement);
+                    }
+                });
             }
+
+            if (targetCells.length <= 1) { break; }
+            const uiManager: TableUIManager = this.parent.blockRenderer.tableRenderer.getManager(blockId);
+            const allEmpty: boolean = targetCells.every(
+                (cell: HTMLTableCellElement) => (cell.textContent || '').trim() === ''
+            );
+
+            if (!allEmpty) {
+                // 1st Delete → clear contents
+                this.parent.tableService.clearCellContents(table, targetCells);
+                // Refocus last cell
+                const lastCell: HTMLTableCellElement = targetCells[targetCells.length - 1];
+                if (lastCell.tagName.toLowerCase() === 'td') {
+                    this.parent.tableService.shiftFocusToBlockInCell(lastCell, true);
+                } else {
+                    setCursorPosition(lastCell, 0);
+                }
+                return;
+            }
+            this.parent.lastHighlightedBlockId = blockId;
+
+            let shouldDeleteRows: boolean = false;
+            let shouldDeleteCols: boolean = false;
+            const rowIndicesToDelete: number[] = [];
+
+            // Rectangle mode
+            if (
+                this.multiselectStartRow !== null &&
+                this.multiselectEndRow !== null &&
+                this.multiselectStartCol !== null &&
+                this.multiselectEndCol !== null
+            ) {
+                const minRow: number = Math.min(this.multiselectStartRow, this.multiselectEndRow);
+                const maxRow: number = Math.max(this.multiselectStartRow, this.multiselectEndRow);
+                const minCol: number = Math.min(this.multiselectStartCol, this.multiselectEndCol);
+                const maxCol: number = Math.max(this.multiselectStartCol, this.multiselectEndCol);
+
+                const isFullRow: boolean = minCol === 0 && maxCol >= totalCols - 1;
+                const isFullCol: boolean = minRow === 0 && maxRow >= totalRows - 1;
+
+                if (isFullRow) {
+                    shouldDeleteRows = true;
+                    for (let r: number = minRow; r <= maxRow; r++) { rowIndicesToDelete.push(r); }
+                }
+                if (isFullCol) { shouldDeleteCols = true; }
+            }
+
+            // Gripper mode
+            const selectedRows: NodeListOf<HTMLTableRowElement> = table.querySelectorAll('tr.e-row-selected');
+            if (selectedRows.length > 0) {
+                shouldDeleteRows = true;
+                Array.from(selectedRows).forEach((tr: HTMLTableRowElement) => {
+                    const index: number = parseInt((tr as HTMLElement).dataset.row || '-1', 10);
+                    if (index >= 0 && rowIndicesToDelete.indexOf(index) === -1) {
+                        rowIndicesToDelete.push(index);
+                    }
+                });
+            }
+
+            const selectedColCells: NodeListOf<HTMLTableCellElement> = table.querySelectorAll('td.e-col-selected, th.e-col-selected');
+            if (selectedColCells.length > 0) {
+                const colCount: Map<number, number> = new Map<number, number>();
+                Array.from(selectedColCells).forEach((cell: HTMLTableCellElement) => {
+                    const col: number = parseInt((cell as HTMLElement).dataset.col || '-1', 10);
+                    if (col >= 0) {
+                        colCount.set(col, (colCount.get(col) || 0) + 1);
+                    }
+                });
+
+                colCount.forEach((count: number) => {
+                    if (count >= totalRows - (settings.enableHeader ? 1 : 0)) {
+                        shouldDeleteCols = true;
+                    }
+                });
+            }
+
+            // Execute deletion
+            if (shouldDeleteCols && uiManager) {
+                uiManager.deleteSelectedColumns();
+                this.multiselectStartRow = this.multiselectEndRow =
+                this.multiselectStartCol = this.multiselectEndCol = null;
+            }
+            else if (shouldDeleteRows && uiManager) {
+                rowIndicesToDelete.sort((a: number, b: number) => b - a); // bottom to top
+                rowIndicesToDelete.forEach((rowIdx: number) => {
+                    uiManager.deleteSelectedRows(rowIdx);
+                });
+                this.multiselectStartRow = this.multiselectEndRow =
+                this.multiselectStartCol = this.multiselectEndCol = null;
+            }
+
+            // Always clean UI
+            uiManager.hideRowGripper();
+            uiManager.hideAllPinnedColBars();
+            uiManager.handleRemovePopup();
             break;
         }
         case 'ArrowUp':
@@ -233,15 +398,26 @@ export class TableSelectionManager {
                 }
                 e.preventDefault();
                 this.handleMultiselect(direction, table);
+                this.ensureCellVisible(table, getDataCell(table, this.multiselectEndRow, this.multiselectEndCol));
                 this.clearRangeAndSetCursor(table);
             } else {
+                // Clearing multi-select state
                 this.multiselectStartRow = null;
                 this.multiselectStartCol = null;
                 this.multiselectEndRow = null;
                 this.multiselectEndCol = null;
-                const selectedCells: NodeListOf<HTMLTableCellElement> = this.getSelectedCells(tableBlockElement);
+                // Clear all row & column visual selections
+                const blockId: string = table.getAttribute('data-block-id');
+                const uiManager: TableUIManager = this.parent.blockRenderer.tableRenderer.getManager(blockId);
+                if (uiManager) {
+                    uiManager.removeRowColSelection(table);
+                    uiManager.hideRowGripper();                    // Hides row pinned bars
+                    uiManager.hideAllPinnedColBars();              // Hides col pinned bars
+                    uiManager.handleRemovePopup();                 // Closes any popup if open
+                }
+                const selectedCells: NodeListOf<HTMLTableCellElement> = getSelectedCells(tableBlockElement);
                 const cellName: string = cell.tagName.toLowerCase();
-                if (this.hasActiveTableSelection(tableBlockElement) && (selectedCells && selectedCells.length > 1)) {
+                if (hasActiveTableSelection(tableBlockElement) && (selectedCells && selectedCells.length > 1)) {
                     if (cellName === 'td') {
                         this.parent.tableService.shiftFocusToBlockInCell(cell);
                     } else {
@@ -273,7 +449,7 @@ export class TableSelectionManager {
                     if (isHeaderCell && direction === 'up') {
                         e.preventDefault();
                         this.parent.tableService.removeCellFocus(table);
-                        this.exitTableNavigation(table, block, 'backward');
+                        this.exitTableNavigation(table, 'backward');
                         return;
                     }
                     // Use the TH itself as the source when in header (no inner block exists)
@@ -316,7 +492,7 @@ export class TableSelectionManager {
 
                         if (atBoundary && isEdgeRow && !hasAdjacentBlockInCell) {
                             e.preventDefault();
-                            this.exitTableNavigation(table, block, direction === 'up' ? 'backward' : 'forward');
+                            this.exitTableNavigation(table, direction === 'up' ? 'backward' : 'forward');
                             return;
                         }
                     }
@@ -375,20 +551,6 @@ export class TableSelectionManager {
         return atEnd && !next;
     }
 
-    // Returns true if there is any visual selection in the table block
-    public hasActiveTableSelection(tableBlockElement: HTMLElement): boolean {
-        if (!tableBlockElement) { return false; }
-
-        const selectedCells: NodeListOf<HTMLTableCellElement> = this.getSelectedCells(tableBlockElement);
-        // Rectangle selection
-        if (selectedCells && selectedCells.length > 1) { return true; }
-        // Row selection
-        if (tableBlockElement.querySelector('tbody tr.e-row-selected')) { return true; }
-        // Column selection
-        if (tableBlockElement.querySelector('td.e-col-selected, th.e-col-selected')) { return true; }
-        return false;
-    }
-
     // Helpers for keyboard shift selection behavior
     private isSelectionWithinCell(cell: HTMLElement): boolean {
         const sel: Selection = this.parent.nodeSelection.getSelection();
@@ -409,6 +571,7 @@ export class TableSelectionManager {
         if (this.multiselectEndRow || this.multiselectEndCol) {
             return true;
         }
+
         const sel: Selection = window.getSelection && window.getSelection();
         if (!sel || sel.rangeCount === 0) { return false; }
         if (!this.isSelectionWithinCell(cell)) { return false; }
@@ -486,6 +649,47 @@ export class TableSelectionManager {
         );
         this.multiselectEndRow = newEndRow;
         this.multiselectEndCol = newEndCol;
+
+        // clear previous row/column selections
+        const uiManager: TableUIManager = this.parent.blockRenderer.tableRenderer.getManager(blockId);
+        if (uiManager) {
+            uiManager.removeRowColSelection(table);
+            uiManager.hideRowGripper();
+            uiManager.hideAllPinnedColBars();
+        }
+
+        const minRow: number = Math.min(this.multiselectStartRow, this.multiselectEndRow);
+        const maxRow: number = Math.max(this.multiselectStartRow, this.multiselectEndRow);
+        const minCol: number = Math.min(this.multiselectStartCol, this.multiselectEndCol);
+        const maxCol: number = Math.max(this.multiselectStartCol, this.multiselectEndCol);
+
+        // Re-check if full row selection (all columns selected)
+        const isFullRowSelection: boolean = minCol === 0 && maxCol >= totalCols - 1;
+        if (isFullRowSelection && uiManager) {
+            let first: boolean = true;
+            for (let r: number = minRow; r <= maxRow; r++) {
+                uiManager.addRowSelection(table, r);
+                uiManager.showRowGripperForDomRow(r, first);
+                first = false;
+            }
+        }
+
+        // Re-check if full column selection (all rows selected)
+        const isFullColumnSelection: boolean = minRow === 0 && maxRow >= totalRows - 1;
+        if (isFullColumnSelection && uiManager) {
+            let first: boolean = true;
+            for (let c: number = minCol; c <= maxCol; c++) {
+                uiManager.addColumnSelection(table, c);
+                uiManager.showColGripperForDomCol(c, first);
+                first = false;
+            }
+        }
+        if (!isFullRowSelection && !isFullColumnSelection) {
+            uiManager.handleRemovePopup();  // Close popup when shrunk to single cell
+        }
+
+        this.ensureCellVisible(table, getDataCell(table, this.multiselectEndRow, this.multiselectEndCol));
+        this.clearRangeAndSetCursor(table);
     }
 
     private moveCellFocus(
@@ -537,6 +741,9 @@ export class TableSelectionManager {
         if (nextCell) {
             this.parent.tableService.removeCellFocus(table);
             this.parent.tableService.addCellFocus(nextCell, true, cursorAtStart);
+
+            // Ensure focused cell is visible when navigating with arrow keys
+            this.ensureCellVisible(table, nextCell);
 
             // If header cell, set caret directly in TH so cursor doesn’t remain in previous row’s TD
             if (nextCell.tagName && nextCell.tagName.toLowerCase() === 'th') {
@@ -602,7 +809,7 @@ export class TableSelectionManager {
         // Backward past the header (or top when no header) -> exit table
         // Note: only exit when we went before row 0 entirely.
         if (!forward && nextRow < 0 && nextCol < 0) {
-            this.exitTableNavigation(table, block, 'backward');
+            this.exitTableNavigation(table, 'backward');
             return;
         }
         // Clamp candidate row into [0, totalRows-1] to allow selecting header row as well
@@ -613,6 +820,8 @@ export class TableSelectionManager {
             const targetCell: HTMLElement = rowElement.cells[domCol as number];
             if (targetCell) {
                 this.parent.tableService.addCellFocus(targetCell, true);
+                this.ensureCellVisible(table, targetCell);
+
                 if (targetCell.tagName.toLowerCase() === 'th') {
                     const th: HTMLElement = targetCell as HTMLElement;
                     // For Tab forward, place at start; for Shift+Tab, place at end
@@ -628,6 +837,8 @@ export class TableSelectionManager {
             const domCol: number = toDomCol(0, settings.enableRowNumbers);
             const fallbackCell: HTMLElement = table.rows[targetDOMRowIndex as number].cells[domCol as number] as HTMLElement;
             this.parent.tableService.addCellFocus(fallbackCell, true);
+
+            this.ensureCellVisible(table, fallbackCell);
             if (fallbackCell && fallbackCell.tagName.toLowerCase() === 'th') {
                 const th: HTMLElement = fallbackCell as HTMLElement;
                 requestAnimationFrame(() => setCursorPosition(th, 0));
@@ -637,6 +848,8 @@ export class TableSelectionManager {
             const domCol: number = toDomCol(totalCols - 1, settings.enableRowNumbers);
             const fallbackCell: HTMLElement = table.rows[targetDOMRowIndex as number].cells[domCol as number] as HTMLElement;
             this.parent.tableService.addCellFocus(fallbackCell, true);
+
+            this.ensureCellVisible(table, fallbackCell);
             if (fallbackCell && fallbackCell.tagName.toLowerCase() === 'th') {
                 const th: HTMLElement = fallbackCell as HTMLElement;
                 requestAnimationFrame(() => setCursorPosition(th, (th.textContent || '').length));
@@ -644,7 +857,7 @@ export class TableSelectionManager {
         }
     }
 
-    private exitTableNavigation(table: HTMLTableElement, block: BlockModel, direction: 'forward' | 'backward'): void {
+    private exitTableNavigation(table: HTMLTableElement, direction: 'forward' | 'backward'): void {
         const blockEl: HTMLElement = table.closest('.e-block') as HTMLElement;
         const nextBlock: HTMLElement = (direction === 'forward'
             ? blockEl.nextElementSibling : blockEl.previousElementSibling) as HTMLElement;

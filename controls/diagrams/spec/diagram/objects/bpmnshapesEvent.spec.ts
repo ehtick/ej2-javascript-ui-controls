@@ -423,7 +423,7 @@ describe('Diagram Control', () => {
             diagram.nodes[0].style.fill = 'red';
             diagram.dataBind();
             let wrapper: Canvas = (diagram.nodes[0] as NodeModel).wrapper.children[0] as Canvas;
-            expect(wrapper.children[0].style.fill == 'red').toBe(true);
+            expect(wrapper.children[1].style.fill == 'red').toBe(true);
             expect(wrapper.style.fill == 'transparent').toBe(true);
             expect(wrapper.style.strokeColor == 'transparent').toBe(true);
             done();

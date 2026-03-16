@@ -48,6 +48,9 @@ export class WorkbookSave extends SaveWorker {
      */
     public destroy(): void {
         this.removeEventListener();
+        this.saveJSON = {}; this.pdfLayoutSettings = {};
+        this.isFullPost = null; this.needBlobData = null;
+        this.customParams = null; this.isProcessCompleted = null;
         this.parent = null;
     }
 
@@ -129,7 +132,7 @@ export class WorkbookSave extends SaveWorker {
      * @returns {void} - Process sheets properties.
      */
     private processSheets(autoDetectFormat?: boolean, jsonConfig?: SerializationOptions, isSkipWorkerPipeline?: boolean): void {
-        const skipProps: string[] = ['dataSource', 'startCell', 'query', 'showFieldAsHeader', 'result', 'preservePos', 'comments'];
+        const skipProps: string[] = ['dataSource', 'startCell', 'query', 'showFieldAsHeader', 'result', 'preservePos'];
         if (this.parent.isAngular) {
             skipProps.push('template');
         }
@@ -338,11 +341,15 @@ export class WorkbookSave extends SaveWorker {
         this.parent.notify(events.saveCompleted, {});
     }
 
-    private performStringifyAction(args: { sheet: SheetModel, skipProps: string[], model?: string }): void {
+    private performStringifyAction(args: { sheet: SheetModel, skipProps: string[], model?: string, sheetIdx?: number }): void {
         args.model = '{"jsonObject":{"Workbook":{"sheets":[';
-        for (let sheetIdx: number = 0, sheetCount: number = this.parent.sheets.length - 1; sheetIdx <= sheetCount; sheetIdx++) {
-            args.model += this.getStringifyObject(this.parent.sheets[sheetIdx as number], args.skipProps, sheetIdx) +
-                (sheetIdx < sheetCount ? ',' : ']}}}');
+        if (args.sheetIdx === undefined) {
+            for (let sheetIdx: number = 0, sheetCount: number = this.parent.sheets.length - 1; sheetIdx <= sheetCount; sheetIdx++) {
+                args.model += this.getStringifyObject(this.parent.sheets[sheetIdx as number], args.skipProps, sheetIdx) +
+                    (sheetIdx < sheetCount ? ',' : ']}}}');
+            }
+        } else {
+            args.model += this.getStringifyObject(this.parent.sheets[args.sheetIdx], args.skipProps, args.sheetIdx) + ']}}}';
         }
     }
 

@@ -4310,6 +4310,31 @@ describe('Datepicker', () => {
             expect(document.querySelector('.e-focused-date').textContent).toBe('10');
         });
     });
+    describe('EJ2-69736', function () {
+        let datePicker: any;
+        beforeEach(function () {
+            let element: HTMLElement = createElement('input', { id: 'date' });
+            document.body.appendChild(element);
+        });
+        afterEach(function () {
+            if (datePicker) {
+                datePicker.destroy();
+            }
+            document.body.innerHTML = '';
+        });
+        it('Error class is not applied immediately when we set the max date dynamically', function () {
+            datePicker = new DatePicker({
+                value: new Date(2024, 11, 1)
+            });
+            datePicker.appendTo('#date');
+            datePicker.max = new Date('11/25/2024');
+            datePicker.dataBind();
+            expect(datePicker.inputWrapper.container.classList.contains("e-error")).toBe(true);
+            datePicker.max = null;
+            datePicker.dataBind();
+             expect(datePicker.inputWrapper.container.classList.contains("e-error")).toBe(false);
+        });
+    });
 });
 
 
@@ -5676,31 +5701,6 @@ describe('DatePicker - Full Screen Layout in Mobile Mode', function () {
                 (<HTMLElement>document.getElementsByClassName(' e-input-group-icon e-date-icon e-icons')[0]).dispatchEvent(clickEvent);
             }
             expect(document.getElementsByClassName(' e-datepicker e-popup-wrapper')[0].classList.contains('e-popup-expand')).toBe(true);
-        });
-    });
-    describe('EJ2-69736', function () {
-        let datePicker: any;
-        beforeEach(function () {
-            let element: HTMLElement = createElement('input', { id: 'date' });
-            document.body.appendChild(element);
-        });
-        afterEach(function () {
-            if (datePicker) {
-                datePicker.destroy();
-            }
-            document.body.innerHTML = '';
-        });
-        it('Error class is not applied immediately when we set the max date dynamically', function () {
-            datePicker = new DatePicker({
-                value: new Date(2024, 11, 1)
-            });
-            datePicker.appendTo('#date');
-            datePicker.max = new Date('11/25/2024');
-            datePicker.dataBind();
-            expect(datePicker.inputWrapper.container.classList.contains("e-error")).toBe(true);
-            datePicker.max = null;
-            datePicker.dataBind();
-             expect(datePicker.inputWrapper.container.classList.contains("e-error")).toBe(false);
         });
     });
 });

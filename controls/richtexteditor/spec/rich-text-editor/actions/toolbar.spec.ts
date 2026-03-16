@@ -2855,21 +2855,18 @@ describe('941202 - None Option Incorrectly Selected in List Dropdown for Normal 
 
 describe('941202 - None Option Incorrectly Selected in List Dropdown for Normal Paragraph Content', () => {
     let editor: RichTextEditor;
-    beforeEach((done: DoneFn)=> {
+    beforeEach(()=> {
         editor = renderRTE({
             toolbarSettings: {
                 items: ['BulletFormatList']
             }
         })
-        done();
     });
-    afterEach((done: DoneFn)=> {
+    afterEach(()=> {
         destroy(editor);
-        done();
     });
     it ('Should not update the dropdown status for the paragraph.', (done: DoneFn)=> {
-        editor.value = '<p>Test</p>';
-        editor.dataBind();
+        editor.inputElement.innerHTML = '<p>Test</p>';
         editor.focusIn();
         const range: Range = new Range();
         range.setStart(editor.inputElement.querySelector('p').firstChild, 2);
@@ -2884,8 +2881,7 @@ describe('941202 - None Option Incorrectly Selected in List Dropdown for Normal 
         }, 100);
     });
     it ('Should update the dropdown status for the Unordered List.', (done: DoneFn)=> {
-        editor.value = '<ul><li>Test</li></ul>';
-        editor.dataBind();
+        editor.inputElement.innerHTML = '<ul><li>Test</li></ul>';
         editor.focusIn();
         const range: Range = new Range();
         range.setStart(editor.inputElement.querySelector('li').firstChild, 2);
@@ -2900,8 +2896,7 @@ describe('941202 - None Option Incorrectly Selected in List Dropdown for Normal 
         }, 100);
     });
     it ('Should not update the dropdown status for the Ordered List.', (done: DoneFn)=> {
-        editor.value = '<ol><li>Test</li></ol>';
-        editor.dataBind();
+        editor.inputElement.innerHTML = '<ol><li>Test</li></ol>';
         editor.focusIn();
         const range: Range = new Range();
         range.setStart(editor.inputElement.querySelector('li').firstChild, 2);
@@ -2958,7 +2953,7 @@ describe('962827: Fails to change bullet list to numbered list in Rich Text Edit
     let rteObj: RichTextEditor;
     let rteEle: HTMLElement;
     let controlId: string;
-    beforeEach((done: Function) => {
+    beforeEach(() => {
         rteObj = renderRTE({
             toolbarSettings: {
                 items: ['NumberFormatList', 'BulletFormatList']
@@ -2967,7 +2962,6 @@ describe('962827: Fails to change bullet list to numbered list in Rich Text Edit
         });
         rteEle = rteObj.element;
         controlId = rteEle.id;
-        done();
     });
     it(' Check the NumberFormatList icon button clicking', (done) => {
         rteObj.formatter.editorManager.nodeSelection.setSelectionText(document, rteObj.element.querySelector('#rte').childNodes[0], rteObj.element.querySelector('#rte').childNodes[0], 0, 14);
@@ -2987,8 +2981,7 @@ describe('962827: Fails to change bullet list to numbered list in Rich Text Edit
         expect(rteObj.element.querySelector('#rte').parentElement.tagName === 'UL').toBe(true);
         done();
     });
-    afterEach((done: DoneFn) => {
+    afterEach(() => {
         destroy(rteObj);
-        done();
     });
 });

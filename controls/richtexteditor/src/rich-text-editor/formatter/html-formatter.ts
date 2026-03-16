@@ -49,7 +49,7 @@ export class HTMLFormatter extends Formatter {
                 editableElement: editElement as HTMLElement,
                 options: options,
                 formatPainterSettings: formatPainterSettings
-            });
+            }, false);
         }
     }
 }

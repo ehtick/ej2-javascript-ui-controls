@@ -763,6 +763,16 @@ export class Popup extends Component<HTMLElement> implements INotifyPropertyChan
         if (this.collision.X !== 'none' || this.collision.Y !== 'none') {
             removeClass([this.element], CLASSNAMES.CLOSE);
             addClass([this.element], CLASSNAMES.OPEN);
+            if (this.element.classList.contains('e-sticky')) {
+                this.element.classList.remove('e-sticky');
+                if (this.element.offsetParent && this.element.offsetParent.classList.contains('sf-grid')) {
+                    this.fixedParent = true;
+                }
+                this.element.classList.add('e-sticky');
+            }
+            else if (this.element.offsetParent && this.element.offsetParent.classList.contains('sf-grid') && this.enableRtl) {
+                this.position.X = 'left';
+            }
             this.checkCollision();
             removeClass([this.element], CLASSNAMES.OPEN);
             addClass([this.element], CLASSNAMES.CLOSE);

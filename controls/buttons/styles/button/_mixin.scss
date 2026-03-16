@@ -373,7 +373,7 @@
 }
 
 @mixin outline-primary-disabled {
-  @if $skin-name == 'bootstrap5'  or $skin-name == 'bootstrap5.3' {
+  @if $skin-name == 'bootstrap5' {
     background: $btn-outline-primary-disabled-border-color;
     border-color: $btn-outline-primary-disabled-color;
   }

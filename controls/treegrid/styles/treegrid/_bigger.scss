@@ -21,6 +21,9 @@
 
         .e-hierarchycheckbox {
           padding-left: 2px;
+          @if $skin-name =='fluent2' or $skin-name =='fluent2-dark' {
+            line-height: 0px;
+          }
         }
 
         .e-hierarchycheckbox .e-frame {

@@ -6,7 +6,7 @@ import { extractGradientStops, formatCoordinate, getDecoratorDimensions, getDeco
 import { ParsingContext } from './visio-import-export';
 import { setDefaultData } from './visio-model-parsers';
 import { VisioMaster, VisioPage } from './visio-models';
-import { getBPMNFlowShapes, getShapeKeywordsFromMaster, getTextDecoration, getUMLConnectors } from './visio-nodes';
+import { getBPMNFlowShapes, getShapeKeywordsFromMaster, getTextDecoration, getUMLConnectors, mergeGeometrySectionsByIndex, resolveMasterSourceForNode } from './visio-nodes';
 import { AccentColorDefinition, ActiveThemeResult, ColorInfo, ThemeColorElement, ThemeEntry, applyThemeStyles, defaultStroke, extractColorWithModifiers, fontMapping, getConnectorFontType, hasOwn, isActiveThemeApplied, normalizeRange, resolveAccentColor } from './visio-theme';
 import {
     Attributes,
@@ -45,7 +45,9 @@ import {
     BPMNFlowShapeResult,
     CellAttribute,
     ConnectorResolvedStyle,
-    ResolvedAnnotationStyle
+    ResolvedAnnotationStyle,
+    ShapeAddInfo,
+    GroupTransform
 } from './visio-types';
 
 /**
@@ -55,6 +57,8 @@ import {
 export class VisioConnector {
     /** Unique identifier for the connector */
     id: string;
+    /** Retrieved data from import */
+    addInfo: ShapeAddInfo;
     /** ID of the source shape */
     sourceId?: string;
     /** ID of the target shape */
@@ -124,9 +128,18 @@ export class VisioConnector {
      * @static
      * @param {VisioShapesNode} obj - The Visio shapes container object
      * @param {ParsingContext} context - Parsing context containing page and connector data
+     * @param {GroupTransform} [parentTransform] - Optional parent group transform for nested shapes
      * @returns {VisioConnector[]} Array of parsed connector objects
      */
-    static fromJs(obj: VisioShapesNode, context: ParsingContext): VisioConnector[] {
+    static fromJs(
+        obj: VisioShapesNode,
+        context: ParsingContext,
+        parentTransform?: GroupTransform
+    ): VisioConnector[] {
+        // If no shapes container or no shapes, return empty array
+        if (!obj || !obj.Shape) {
+            return [];
+        }
         const connectors: VisioConnector[] = [];
         const shapes: VisioShapeNode[] = Array.isArray(obj.Shape) ? (obj.Shape as VisioShapeNode[]) : [obj.Shape as VisioShapeNode];
         const pageHeight: number = inchToPx(context.data.currentPage.pageHeight);
@@ -155,29 +168,63 @@ export class VisioConnector {
 
                 // Extract basic connector properties
                 connector.id = shape.$!.ID;
+                // Need to retrieve shape data for export
+                connector.addInfo = {
+                    data: shape,
+                    isModified: false,
+                    masterId: shape.$.Master
+                };
                 connector.conLineRouteExt = getCell('ConLineRouteExt') || '0';
                 connector.shapeRouteStyle = getCell('ShapeRouteStyle') || '0';
                 connector.type = getConnectorType(shape, connector, context);
 
                 // Extract and convert begin coordinates
-                const beginXCell: string = getCell('BeginX') || (defaultData.beginX as string);
-                connector.beginX = Number(beginXCell) * 96;
-                const beginYCell: string = getCell('BeginY') || (defaultData.beginY as string);
-                if (beginYCell) {
-                    // Invert Y-axis: page height - Visio Y coordinate
-                    connector.beginY = pageHeight - (Number(beginYCell) * 96);
+                let beginXIn: number = 0;
+                let beginYIn: number = 0;
+                let endXIn: number = 0;
+                let endYIn: number = 0;
+
+                const beginXCell: string | undefined = getCell('BeginX');
+                if (beginXCell) { beginXIn = Number(beginXCell); }
+                else if (defaultData && (defaultData.beginX as string)) { beginXIn = Number(defaultData.beginX as string); }
+
+                const beginYCell: string | undefined = getCell('BeginY');
+                if (beginYCell) { beginYIn = Number(beginYCell); }
+                else if (defaultData && (defaultData.beginY as string)) { beginYIn = Number(defaultData.beginY as string); }
+
+                const endXCell: string | undefined = getCell('EndX');
+                if (endXCell) { endXIn = Number(endXCell); }
+                else if (defaultData && (defaultData.endX as string)) { endXIn = Number(defaultData.endX as string); }
+
+                const endYCell: string | undefined = getCell('EndY');
+                if (endYCell) { endYIn = Number(endYCell); }
+                else if (defaultData && (defaultData.endY as string)) { endYIn = Number(defaultData.endY as string); }
+
+                // Apply parent group translation (PinX/PinY - LocPinX/LocPinY) if present
+                if (parentTransform) {
+                    const dx: number = parentTransform.pinX - parentTransform.locPinX;
+                    const dy: number = parentTransform.pinY - parentTransform.locPinY;
+                    beginXIn = beginXIn + dx;
+                    beginYIn = beginYIn + dy;
+                    endXIn = endXIn + dx;
+                    endYIn = endYIn + dy;
                 }
 
-                // Extract and convert end coordinates
-                const endXCell: string = getCell('EndX') || (defaultData.endX as string);
-                connector.endX = Number(endXCell) * 96;
-                const endYCell: string = getCell('EndY') || (defaultData.endY as string);
-                if (endYCell) {
-                    connector.endY = pageHeight - (Number(endYCell) * 96);
-                }
+                // Convert to page pixels (invert Y with page height)
+                const beginXpx: number = inchToPx(beginXIn);
+                const beginYpx: number = inchToPx(beginYIn);
+                const endXpx: number = inchToPx(endXIn);
+                const endYpx: number = inchToPx(endYIn);
+
+                connector.beginX = beginXpx;
+                connector.beginY = pageHeight - beginYpx;
+                connector.endX = endXpx;
+                connector.endY = pageHeight - endYpx;
 
                 // Extract styling and annotation properties
-                connector.cornerRadius = Number(getCell('Rounding'));
+                if (getCell('Rounding')) {
+                    connector.cornerRadius = Number(getCell('Rounding'));
+                }
                 connector.visible = getVisibility(shape.Section);
                 connector.masterId = shape.$!.Master;
                 connector.IsConnector = true;
@@ -221,6 +268,50 @@ export class VisioConnector {
                 }
 
                 connectors.push(connector);
+            } else {
+                // Recurse into nested Shapes; if this 'shape' is a group, compute its translation
+                let effectiveTransform: GroupTransform | undefined = parentTransform;
+
+                let isGroup: boolean = false;
+                if (shape && shape.$ && shape.$.Type != null) {
+                    isGroup = String(shape.$.Type).toLowerCase() === 'group';
+                }
+
+                if (isGroup) {
+                    const thisTx: GroupTransform = getGroupTranslation(shape);
+                    // Compose translations (no rotation): add to parent if present
+                    if (effectiveTransform) {
+                        effectiveTransform = {
+                            pinX: effectiveTransform.pinX + (thisTx.pinX - thisTx.locPinX),
+                            pinY: effectiveTransform.pinY + (thisTx.pinY - thisTx.locPinY),
+                            locPinX: 0, locPinY: 0,
+                            angle: 0, flipX: 0, flipY: 0,
+                            width: 0, height: 0
+                        };
+                    } else {
+                        effectiveTransform = {
+                            pinX: (thisTx.pinX - thisTx.locPinX),
+                            pinY: (thisTx.pinY - thisTx.locPinY),
+                            locPinX: 0, locPinY: 0,
+                            angle: 0, flipX: 0, flipY: 0,
+                            width: 0, height: 0
+                        };
+                    }
+                }
+
+                if (shape && (shape as VisioShapeNode).Shapes) {
+                    const nestedShapesContainer: VisioShapesNode = (shape as VisioShapeNode).Shapes as VisioShapesNode;
+                    if (nestedShapesContainer && (nestedShapesContainer as VisioShapesNode).Shape) {
+                        const nestedConnectors: VisioConnector[] = VisioConnector.fromJs(
+                            nestedShapesContainer,
+                            context,
+                            effectiveTransform
+                        );
+                        for (let nestedIndex: number = 0; nestedIndex < nestedConnectors.length; nestedIndex++) {
+                            connectors.push(nestedConnectors[parseInt(nestedIndex.toString(), 10)]);
+                        }
+                    }
+                }
             }
         }
         return connectors;
@@ -323,6 +414,44 @@ function isOrthogonalRouting(srs: string): boolean {
 }
 
 /**
+ * Resolves master-aware Geometry sections for a connector (master-preferred, instance-supplement).
+ * Mirrors node parsing flow by reusing resolveMasterSourceForNode + mergeGeometrySectionsByIndex.
+ * @param {VisioShapeNode} pageConnector - Page instance connector node
+ * @param {ParsingContext} context - Parsing context with master index
+ * @returns {VisioSection[]} Geometry sections (may be empty)
+ */
+function resolveGeometrySectionsForConnector(
+    pageConnector: VisioShapeNode,
+    context: ParsingContext
+): VisioSection[] {
+    // Collect instance Geometry sections
+    const instanceGeometrySections: VisioSection[] = [];
+    if (pageConnector && (pageConnector as VisioShapeNode).Section) {
+        const sectionArray: VisioSection[] = Array.isArray((pageConnector as VisioShapeNode).Section)
+            ? ((pageConnector as VisioShapeNode).Section as VisioSection[])
+            : [((pageConnector as VisioShapeNode).Section as VisioSection)];
+        for (let i: number = 0; i < sectionArray.length; i++) {
+            const sec: VisioSection = sectionArray[parseInt(i.toString(), 10)];
+            if (sec && sec.$ && sec.$.N === 'Geometry') {
+                instanceGeometrySections.push(sec);
+            }
+        }
+    }
+
+    // Resolve master node exactly like node parsing
+    const masterNode: VisioShapeNode | null = resolveMasterSourceForNode(pageConnector, context, undefined);
+
+    // Merge master + instance Geometry (master-preferred) when master exists
+    if (masterNode) {
+        const merged: VisioSection[] = mergeGeometrySectionsByIndex(masterNode, pageConnector);
+        return merged;
+    }
+
+    // Fallback to instance-only Geometry if no master
+    return instanceGeometrySections;
+}
+
+/**
  * Determines the connector type (Straight, Orthogonal, or Bezier) based on routing settings.
  * @function getConnectorType
  * @param {any} shape - The Visio shape object containing Cell data
@@ -336,39 +465,35 @@ function getConnectorType(shape: any, connector: any, context: ParsingContext): 
     const srs: string = connector.shapeRouteStyle;
     const pageLineRouteExt: string = page.lineRouteExt;
     const pageRouteStyle: string = page.routeStyle;
-    //1004838 - bezier connectors are rendering as orthogonal connectors.
-    let geometrySection: VisioSection;
-    if (Array.isArray(shape.Section)) {
-        for (const section of shape.Section as VisioSection[]) {
-            if (section.$ && section.$.N === 'Geometry') {
-                geometrySection = section;
-                break;
+
+    // Master-aware Geometry scan
+    const mergedGeometry: VisioSection[] = resolveGeometrySectionsForConnector(
+        shape as VisioShapeNode,
+        context
+    );
+
+    // Detect pure Bezier: has ArcTo rows and absolutely no LineTo rows
+    let hasArcTo: boolean = false;
+    let hasLineTo: boolean = false;
+
+    for (let s: number = 0; s < mergedGeometry.length; s++) {
+        const section: VisioSection = mergedGeometry[parseInt(s.toString(), 10)];
+        if (!section || !section.Row) { continue; }
+        const rows: VisioRow[] = Array.isArray(section.Row) ? (section.Row as VisioRow[]) : [section.Row as VisioRow];
+        for (let r: number = 0; r < rows.length; r++) {
+            const row: VisioRow = rows[parseInt(r.toString(), 10)];
+            if (row && row.$ && row.$.T) {
+                const t: string = row.$.T;
+                if (t === 'ArcTo') { hasArcTo = true; }
+                if (t === 'LineTo') { hasLineTo = true; }
             }
         }
     }
-    else if (shape.Section && (shape.Section as VisioSection).$ && (shape.Section as VisioSection).$.N === 'Geometry') {
-        geometrySection = shape.Section as VisioSection;
+
+    if (hasArcTo && !hasLineTo) {
+        return 'Bezier';
     }
-    if (!geometrySection) {
-        const masterShape: any = context.data.shapes.find((item: any) => {
-            if (item.masterID === shape.$.Master) { return item; }
-        });
-        if (masterShape) {
-            geometrySection = masterShape.Row && masterShape.Row[0];
-        }
-    }
-    if (geometrySection) {
-        for (let i: number = 0; i < (geometrySection.Row as VisioRow[]).length; i++) {
-            const row: VisioRow = (geometrySection.Row as VisioRow[])[parseInt(i.toString(), 10)];
-            const rowType: string | undefined = row && row.$ && row.$.T;
-            if (rowType === 'ArcTo') {
-                return 'Bezier';
-            }
-            if ((geometrySection.Row as VisioRow[]).length === 2 && rowType !== 'LineTo') {
-                return 'Straight';
-            }
-        }
-    }
+    // Else let curvature + routing logic below decide Straight vs Orthogonal
 
     // ==================== STEP 1: Determine Curvature (Appearance) ====================
     /**
@@ -535,10 +660,13 @@ export class VisioStyleModel {
         }
 
         // Extract and convert dash pattern
-        const linePattern: string = getCell('LinePattern') || '0';
-        style.strokeWidth = getCell('LineWeight') != null ? Number(getCell('LineWeight')) : 0;
-        style.strokeDashArray = VisioStyleModel.convertDashPattern(linePattern);
-
+        const linePattern: string = getCell('LinePattern');
+        if (getCell('LineWeight') != null) {
+            style.strokeWidth =  Number(getCell('LineWeight'));
+        }
+        if (linePattern) {
+            style.strokeDashArray = VisioStyleModel.convertDashPattern(linePattern);
+        }
         return style;
     }
 
@@ -617,8 +745,9 @@ export class VisioDecoratorStyleModel {
             }
 
             // Extract stroke width
-            style.strokeWidth = getCell('LineWeight') != null ? Number(getCell('LineWeight')) : 0;
-
+            if (getCell('LineWeight') != null) {
+                style.strokeWidth = Number(getCell('LineWeight'));
+            }
             // Extract gradient angle in radians
             style.gradientAngle = getCell('LineGradientAngle') != null ? Number(getCell('LineGradientAngle')) : 0;
 
@@ -678,6 +807,14 @@ export class VisioDecoratorModel {
     QuickStyleLineMatrix?: number;
     /** Flag indicating this is a connector decorator */
     IsConnector?: boolean;
+    /** Flag indicating if connector source decorator shape is changed */
+    isSourceShapeChanged?: boolean;
+    /** Flag indicating if connector target decorator shape is changed*/
+    isTargetShapeChanged?: boolean;
+    /** Flag indicating this is a connector source decorator */
+    isSource?: boolean;
+    /** decorator dimensions of a connector */
+    arrowDimension?: string;
 
     /**
      * Creates a VisioDecoratorModel instance from a Visio connector shape.
@@ -701,24 +838,28 @@ export class VisioDecoratorModel {
             const cell: VisioCell = cells.find((c: VisioCell) => c.$.N === name);
             return cell ? (cell.$.V as string) : undefined;
         };
-
+        decorator.isSource = isSource;
         // Extract arrow properties based on source or target end
         const beginArrowSize: string = isSource ? getCell('BeginArrowSize')! : getCell('EndArrowSize')!;
         const beginArrow: string = isSource ? getCell('BeginArrow')! : getCell('EndArrow')!;
-
+        if (beginArrow !== undefined) {
+            if (isSource) {
+                decorator.isSourceShapeChanged = true;
+            }
+            else {
+                decorator.isTargetShapeChanged = true;
+            }
+        }
         // Convert arrow code to type (0 for no arrow, 4 for default arrow)
         const arrowType: number = beginArrow !== undefined ? Number(beginArrow) : 0;
-        const arrowSize: string = beginArrowSize || '2';
-
+        const arrowSize: string = beginArrowSize;
+        decorator.arrowDimension = arrowSize;
         // Get decorator shape name and dimensions
         const arrowShape: string = getDecoratorShape(arrowType);
-        const dimensions: { width: number; height: number } = getDecoratorDimensions(arrowSize, arrowShape);
 
         // Set decorator properties
         decorator.shape = arrowShape as DecoratorShapes;
         decorator.IsConnector = true;
-        decorator.width = dimensions.width;
-        decorator.height = dimensions.height;
         decorator.QuickStyleLineColor = getCell('QuickStyleLineColor') !== undefined ? Number(getCell('QuickStyleLineColor')) : undefined;
         decorator.QuickStyleLineMatrix = getCell('QuickStyleLineMatrix') !== undefined ?
             Number(getCell('QuickStyleLineMatrix')) : undefined;
@@ -1762,7 +1903,12 @@ export function isConnectorShape(shape: VisioShapeNode, context: ParsingContext)
 
     // Get all cell names in the shape
     const cellArray: VisioCell[] = VisioConnectorUtils.isArrayCell(shape);
-    const cellNames: any = cellArray.map((cell: VisioCell) => cell.$ && cell.$.N);
+    const cellNames: any = cellArray.map((cell: VisioCell) => {
+        if (cell !== undefined && cell.$ && cell.$.N !== undefined) {
+            return cell.$.N;
+        }
+        return '';
+    });
 
     // Check for connector-specific cells
     const hasBeginEndPoints: boolean =
@@ -1771,13 +1917,7 @@ export function isConnectorShape(shape: VisioShapeNode, context: ParsingContext)
         cellNames.includes('EndX') ||
         cellNames.includes('EndY');
 
-    // Check if master is valid
-    const masterId: string | undefined = shape.$ && shape.$.Master;
-    const hasValidMaster: boolean =
-        masterId !== undefined &&
-        masters.some((m: { id: string }) => m.id === masterId);
-
-    return hasBeginEndPoints && hasValidMaster;
+    return hasBeginEndPoints;
 }
 
 /**
@@ -1862,6 +2002,38 @@ function getType(type: ConnectorType, context: ParsingContext): Segments {
     } else {
         return 'Straight'; // Default value
     }
+}
+
+/**
+ * Extracts minimal group translation info from a group node (in inches).
+ * @param {VisioShapeNode} groupNode - The group shape node
+ * @returns {GroupTransform} Minimal transform containing PinX, PinY, LocPinX, LocPinY; other fields set to 0
+ */
+function getGroupTranslation(groupNode: VisioShapeNode): GroupTransform {
+    const cells: VisioCell[] = VisioConnectorUtils.isArrayCell(groupNode);
+    let pinX: number = 0;
+    let pinY: number = 0;
+    let locPinX: number = 0;
+    let locPinY: number = 0;
+
+    for (let i: number = 0; i < cells.length; i += 1) {
+        const c: VisioCell = cells[parseInt(i.toString(), 10)];
+        if (!c || !c.$) { continue; }
+        const n: string = c.$.N;
+        const v: string = c.$.V as string;
+        if (n === 'PinX') { pinX = Number(v); }
+        else if (n === 'PinY') { pinY = Number(v); }
+        else if (n === 'LocPinX') { locPinX = Number(v); }
+        else if (n === 'LocPinY') { locPinY = Number(v); }
+    }
+
+    // Return only what we need; other fields kept at zero to avoid side effects
+    return {
+        pinX: pinX, pinY: pinY,
+        locPinX: locPinX, locPinY: locPinY,
+        angle: 0, flipX: 0, flipY: 0,
+        width: 0, height: 0
+    };
 }
 
 /**
@@ -2450,6 +2622,7 @@ export function bindVisioConnectors(connectorData: VisioConnector, context: Pars
     // Return Syncfusion connector object
     return {
         id: connectorData.id,
+        addInfo: connectorData.addInfo,
         type: getType(connectorData.type, context),
         sourceID: connectorData.sourceId,
         targetID: connectorData.targetId,
@@ -2463,9 +2636,9 @@ export function bindVisioConnectors(connectorData: VisioConnector, context: Pars
             x: formatCoordinate(connectorData.endX),
             y: formatCoordinate(connectorData.endY)
         },
-        cornerRadius: connectorData.cornerRadius ? inchToPoint(connectorData.cornerRadius) : 0,
         visible: connectorData.visible,
         style: setConnectorStyle(connectorData, context),
+        cornerRadius: connectorData.cornerRadius,
         annotations: getVisioConnectorAnnotations(connectorData, context),
         sourceDecorator: getDecoratorStyle(connectorData.sourceDecorator!, context),
         targetDecorator: getDecoratorStyle(connectorData.targetDecorator!, context),
@@ -2494,6 +2667,7 @@ function getVisioConnectorAnnotations(connectorData: VisioConnector, context: Pa
     const pagePoint: Pt = InchesToPagePx(beginPx, endPx, annotation.txtPinX, annotation.txtPinY);
     const annotationOffset: number = pathOffsetAlongPolyline(annotationPx, pagePoint);
     const margin: Margin = AnnotationMargin(connectorData, annotation as any, annotationOffset);
+    const style: ResolvedAnnotationStyle = setconnectorAnnotation(connectorData, context);
 
     // Return annotations only if content exists and is non-empty
     if (connectorData.annotation && connectorData.annotation.content && connectorData.annotation.content.trim() !== '') {
@@ -2504,8 +2678,8 @@ function getVisioConnectorAnnotations(connectorData: VisioConnector, context: Pa
             constraints: setAnnotationConstraints(connectorData.annotation),
             verticalAlignment: connectorData.annotation.verticalAlignment,
             horizontalAlignment: connectorData.annotation.horizontalAlignment,
-            style: setconnectorAnnotation(connectorData, context),
-            hyperlink: setHyperLink(connectorData),
+            style: style,
+            hyperlink: setHyperLink(connectorData, style),
             offset: annotationOffset,
             margin: margin
         }];
@@ -2518,13 +2692,15 @@ function getVisioConnectorAnnotations(connectorData: VisioConnector, context: Pa
  * Extracts hyperlink information from a connector annotation.
  * @function setHyperLink
  * @param {VisioConnector} connectorData - The connector with annotation
+ * @param {ResolvedAnnotationStyle} style - The connector with annotation
  * @returns {any} Hyperlink object, or undefined if no hyperlink present
  */
-function setHyperLink(connectorData: VisioConnector): any {
+function setHyperLink(connectorData: VisioConnector, style: ResolvedAnnotationStyle): any {
     if (connectorData.annotation && connectorData.annotation.hyperlink && connectorData.annotation.hyperlink.link) {
         return {
             link: connectorData.annotation.hyperlink.link,
-            content: connectorData.annotation.hyperlink.content || '',
+            content: connectorData.annotation.content || '',
+            color: style.color,
             hyperlinkOpenState: connectorData.annotation.hyperlink.newWindow ? 'NewWindow' : 'NewTab'
         };
     }
@@ -2546,6 +2722,7 @@ function setConnectorStyle(connector: VisioConnector, context: ParsingContext): 
     if (connectorStyle.strokeDashArray) {
         context.addWarning('[WARNING] :: Stroke dash arrays differ between Visio and Syncfusion.');
     }
+    connector.cornerRadius = connectorStyle.cornerRadius ? inchToPx(connectorStyle.cornerRadius) : 0;
 
     return {
         strokeColor: typeof connectorStyle.strokeColor !== 'undefined' ? connectorStyle.strokeColor : defaultStroke,
@@ -2569,18 +2746,37 @@ function getDecoratorStyle(decorator: VisioDecoratorModel, context: ParsingConte
         'Fletch', 'OpenFetch', 'IndentedArrow', 'OutdentedArrow',
         'DoubleArrow', 'Custom'
     ];
-
+    let decoratorSize: { width: number; height: number };
     const decoratorstyle: any = applyThemeStyles(decorator as any, context);
-    const height: number = decoratorstyle.themed ? (decoratorstyle).height : decorator.height!;
-    const width: number = (decoratorstyle).themed ? (decoratorstyle).width : decorator.width!;
 
     // Warn about approximations
     context.addWarning('[WARNING] :: Decorator sizes are approximated.');
 
-    const shape: DecoratorShapes = decorator.shape!;
+    const shape: DecoratorShapes = decorator.isSource ? decorator.isSourceShapeChanged ? decorator.shape : decoratorstyle.startDecorator
+        : decorator.isTargetShapeChanged ? decorator.shape : decoratorstyle.endDecorator;
     if (validDecoratorShapes.indexOf(shape) !== -1) {
         context.addWarning('[WARNING] :: Decorator shapes available in Visio are 45; in Syncfusion only 12 shapes are available. Unsupported shapes are rendered as Arrow shape.');
     }
+    // Extract source decorator size
+    if (decorator.isSource) {
+        if (decoratorstyle.startDecoratorSize) {
+            decoratorSize = getDecoratorDimensions(decoratorstyle.startDecoratorSize, shape);
+        }
+        else {
+            decoratorSize = getDecoratorDimensions(decorator.arrowDimension, shape);
+        }
+    }
+    // Extract target decorator size
+    else {
+        if (decoratorstyle.endDecoratorSize) {
+            decoratorSize = getDecoratorDimensions(decoratorstyle.endDecoratorSize, shape);
+        }
+        else {
+            decoratorSize = getDecoratorDimensions(decorator.arrowDimension, shape);
+        }
+    }
+    const height: number = decoratorSize.height || 8;
+    const width: number = decoratorSize.width || 8;
 
     // Extract colors
     const fill: string = decorator.style!.fill ? decorator.style!.fill : decoratorstyle.strokeColor;
@@ -2660,7 +2856,7 @@ function setconnectorAnnotation(connectorData: VisioConnector, context: ParsingC
             const first: ThemeEntry = activeTheme.theme[0];
 
             // Apply theme font if available
-            if (!resolvedFontFamily && first && typeof first.fontFamily === 'string') {
+            if (first && typeof first.fontFamily === 'string') {
                 let fontName: string = first.fontFamily;
                 if (fontMapping && typeof fontMapping === 'object' && hasOwn(fontMapping, fontName)) {
                     fontName = (fontMapping as Record<string, string>)[`${fontName}`];
@@ -2694,7 +2890,7 @@ function setconnectorAnnotation(connectorData: VisioConnector, context: ParsingC
             ? resolvedColor
             : (incomingStyle.color !== undefined && incomingStyle.color !== null && incomingStyle.color !== ''
                 ? incomingStyle.color as string
-                : '#3D64AC');
+                : '#000000');
 
     const finalFontFamily: string | undefined = themeFontApplied ? resolvedFontFamily : incomingStyle.fontFamily;
     const finalFontSize: number = typeof incomingStyle.fontSize === 'number' ? incomingStyle.fontSize : 8 * 1.33;

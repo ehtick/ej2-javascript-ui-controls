@@ -1,4 +1,4 @@
-import { _PdfBaseStream, _PdfCrossReference, _PdfDictionary, PdfPage } from '@syncfusion/ej2-pdf';
+import { _PdfBaseStream, _PdfCrossReference, _PdfDictionary, _PdfReference, PdfPage } from '@syncfusion/ej2-pdf';
 import { ImageFormat } from '../enum';
 export class _ImageStructure {
     _width: number;
@@ -15,6 +15,9 @@ export class _ImageStructure {
     _isImageInterpolated: boolean = false;
     _smask: any; // eslint-disable-line
     _mask: any; // eslint-disable-line
+    _imageReference: _PdfReference;
+    _smaskReference: _PdfReference;
+    _maskReference: _PdfReference;
     constructor(stream: any, crossReference: _PdfCrossReference, page: PdfPage) { // eslint-disable-line
         this._stream = stream;
         this._crossReference = crossReference;
@@ -32,6 +35,7 @@ export class _ImageStructure {
         if (dictionary.has('Mask')) {
             this._isImageMasked = true;
             this._smask = dictionary.get('Mask');
+            this._maskReference = dictionary.getRaw('Mask');
         }
         if (dictionary.has('ImageMask')) {
             this._isImageMask = dictionary.get('ImageMask');
@@ -39,6 +43,7 @@ export class _ImageStructure {
         if (dictionary.has('SMask')) {
             this._isSoftMasked = true;
             this._smask = dictionary.get('SMask');
+            this._smaskReference = dictionary.getRaw('SMask');
         }
         if (dictionary.has('isImageInterpolate')) {
             this._isImageInterpolated = true;

@@ -1,4 +1,4 @@
-import { Collection, ChildProperty, Property, Event, EmitType } from '@syncfusion/ej2-base';import { ContextMenuItem } from './context-menu-item';import { ContextMenuItemModel } from './index';import { ContextMenuClosingEventArgs, ContextMenuOpeningEventArgs, ContextMenuItemSelectEventArgs } from '../eventargs';
+import { Collection, ChildProperty, Property, Event, EmitType } from '@syncfusion/ej2-base';import { ContextMenuItem } from './context-menu-item';import { ContextMenuItemModel } from './index';import { ContextMenuBeforeCloseEventArgs, ContextMenuBeforeOpenEventArgs, ContextMenuItemSelectEventArgs } from '../eventargs';
 
 /**
  * Interface for a class ContextMenuSettings
@@ -39,16 +39,16 @@ export interface ContextMenuSettingsModel {
     /**
      * Triggers before the context menu opens.
      *
-     * @event Opening
+     * @event beforeOpen
      */
-    opening?: EmitType<ContextMenuOpeningEventArgs>;
+    beforeOpen?: EmitType<ContextMenuBeforeOpenEventArgs>;
 
     /**
      * Triggers before the context menu closes.
      *
-     * @event closing
+     * @event beforeClose
      */
-    closing?: EmitType<ContextMenuClosingEventArgs>;
+    beforeClose?: EmitType<ContextMenuBeforeCloseEventArgs>;
 
     /**
      * Triggers when an item in the context menu is being clicked.

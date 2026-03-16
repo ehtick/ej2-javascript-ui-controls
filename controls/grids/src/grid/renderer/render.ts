@@ -682,6 +682,10 @@ export class Render {
             return;
         }
         this.parent.isEdit = false;
+        if (gObj.editSettings.showAddNewRow && args.requestType === 'delete') {
+            gObj.editModule.destroyWidgets();
+            gObj.editModule.destroyForm();
+        }
         this.parent.notify(events.editReset, {});
         this.parent.notify(events.tooltipDestroy, {});
         if (args && !((args.requestType === 'infiniteScroll' || args.requestType === 'delete' || args.action === 'add') &&
@@ -693,6 +697,11 @@ export class Render {
         gObj.notify(events.refreshInfiniteCurrentViewData, { args: args, data: dataArgs.result });
         if (dataArgs.count && !gObj.allowPaging && (gObj.enableVirtualization || gObj.enableInfiniteScrolling)) {
             gObj.totalDataRecordsCount = dataArgs.count;
+        }
+        if ((dataArgs as { actual?: { lazyLoadRecordsCount?: number } }).actual &&
+            !isNullOrUndefined((dataArgs as { actual?: { lazyLoadRecordsCount?: number } }).actual.lazyLoadRecordsCount) &&
+            this.parent.groupSettings.enableLazyLoading) {
+            gObj.totalDataRecordsCount = (dataArgs as { actual?: { lazyLoadRecordsCount?: number } }).actual.lazyLoadRecordsCount;
         }
         if (!len && dataArgs.count && gObj.allowPaging && args && args.requestType !== 'delete' as Action) {
             if (this.parent.groupSettings.enableLazyLoading

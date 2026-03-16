@@ -1,12 +1,12 @@
 import { IDataOptions, IFieldOptions, IFilter, ISort, IFormatSettings, IFieldListOptions, IMembers, PivotEngine, IDataSet } from './engine';
 import { IDrillOptions, IValueSortSettings, IGroupSettings, IConditionalFormatSettings, ICustomGroups, FieldItemInfo } from './engine';
 import { ICalculatedFieldSettings, IAuthenticationInfo, IGridValues, IAxisSet } from './engine';
-import { isNullOrUndefined, select } from '@syncfusion/ej2-base';
+import { isNullOrUndefined, L10n, select } from '@syncfusion/ej2-base';
 import { PivotView, PivotViewModel } from '../pivotview';
 import { PivotFieldList, PivotFieldListModel } from '../pivotfieldlist';
 import { DataManager, Query } from '@syncfusion/ej2-data';
 import { SummaryTypes } from './types';
-import { IOlapCustomProperties, IOlapField, IOlapFieldListOptions } from './olap/engine';
+import { IOlapCustomProperties, IOlapField, IOlapFieldListOptions, OlapEngine } from './olap/engine';
 import { HeadersSortEventArgs } from '../common/base/interface';
 import { PdfPageSize } from '@syncfusion/ej2-grids';
 import { SizeF } from '@syncfusion/ej2-pdf-export';
@@ -1213,5 +1213,83 @@ export class PivotUtil {
             }
         }
         return drillMem;
+    }
+
+    /**
+     * Determines if the pivot table is empty.
+     *
+     * @param {PivotView} parent - The PivotView instance.
+     * @param {PivotEngine | OlapEngine} engine - The engine instance (pivot or olap).
+     * @returns {boolean} - Whether the pivot table is empty.
+     * @hidden
+     */
+    public static getPivotEmptyInfo(parent: PivotView, engine: PivotEngine | OlapEngine): boolean {
+        const hasValueFields: boolean = !isNullOrUndefined(parent) &&
+            !isNullOrUndefined(parent.dataSourceSettings) && parent.dataSourceSettings.values &&
+            parent.dataSourceSettings.values.length > 0;
+        return (parent.dataType === 'olap' && parent.dataSourceSettings.url !== '' &&
+            engine.isEmptyData) || (parent.dataType === 'pivot' && parent.engineModule.data.length > 0 &&
+                (!hasValueFields || engine.isEmptyData));
+    }
+
+    /**
+     * Generates empty pivot table values with grand total and empty data cell.
+     *
+     * @param {PivotView} control - The PivotView instance.
+     * @returns {Array<Array<IAxisSet>>} A 2D array containing the empty pivot table structure with grand total rows and columns.
+     * @hidden
+     */
+    public static getEmptyPivotValues(control: PivotView): IAxisSet[][] {
+        const localeObj: L10n = control && control.localeObj;
+        const emptyDataText: string = localeObj ? localeObj.getConstant('emptyData') : 'No records to display';
+        const grandTotalText: string = localeObj ? localeObj.getConstant('grandTotal') : 'Grand Total';
+        const baseGrandTotal: IAxisSet = PivotUtil.createGrandTotalCell(grandTotalText);
+        const columnGrandTotal: IAxisSet = Object.assign({}, baseGrandTotal, {
+            axis: 'column',
+            colIndex: 1,
+            rowIndex: 0
+        });
+        const rowGrandTotal: IAxisSet = Object.assign({}, baseGrandTotal, {
+            axis: 'row',
+            colIndex: 0,
+            rowIndex: 1
+        });
+        const emptyDataCell: IAxisSet = {
+            axis: 'value',
+            isDrilled: false,
+            indexObject: {},
+            members: [],
+            actualText: emptyDataText,
+            formattedText: emptyDataText,
+            rowIndex: 1,
+            colIndex: 1,
+            rowSpan: 1,
+            colSpan: 1
+        };
+        return [
+            [null, columnGrandTotal],
+            [rowGrandTotal, emptyDataCell]
+        ];
+    }
+    private static createGrandTotalCell(grandTotalText: string): IAxisSet {
+        return {
+            hasChild: false,
+            index: [],
+            level: 0,
+            isDrilled: false,
+            indexObject: {},
+            members: [],
+            actualText: grandTotalText,
+            formattedText: grandTotalText,
+            ordinal: 0,
+            type: 'grand sum',
+            valueSort: {
+                'Grand Total': 1,
+                'levelName': grandTotalText,
+                'uniqueName': grandTotalText
+            },
+            rowSpan: 1,
+            colSpan: 1
+        };
     }
 }

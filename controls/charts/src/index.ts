@@ -11,3 +11,4 @@ export * from './smithchart/index';
 export * from './sparkline/index';
 export * from './chart3d/index';
 export * from './circularchart3d/index';
+export * from './sankey/index';

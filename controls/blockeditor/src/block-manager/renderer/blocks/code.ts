@@ -1,7 +1,7 @@
 import { ChangeEventArgs } from '@syncfusion/ej2-dropdowns';
 import { BlockType } from '../../../models/enums';
 import { BlockModel, CodeLanguageModel } from '../../../models/index';
-import { setCursorPosition, getSelectedRange } from '../../../common/utils/selection';
+import { setCursorPosition, getSelectedRange, captureSelectionState } from '../../../common/utils/selection';
 import { ICodeBlockSettings } from '../../../models/block/index';
 import { getLanguageItems } from '../../../common/utils/data';
 import { getBlockModelById, getParentBlock } from '../../../common/utils/block';
@@ -10,7 +10,6 @@ import { events } from '../../../common/constant';
 import { BlockFactory } from '../../services/index';
 import { BlockManager } from '../../base/block-manager';
 import { createElement } from '@syncfusion/ej2-base';
-import { sanitizeBlock } from '../../../common/utils/transform';
 
 export class CodeRenderer {
     private parent: BlockManager;
@@ -48,18 +47,13 @@ export class CodeRenderer {
         const { container, preElement, codeElement } = this.createCodeContainer(block);
         const { toolbar, copyButton } = this.createCodeToolbar();
 
-        const languageSelector: HTMLElement = createElement('input', {
-            className: 'e-code-block-languages'
-        });
-        toolbar.appendChild(languageSelector);
-
-        this.initializeLanguageSelector(codeBlockSettings, preElement, codeElement, languageSelector);
+        this.initializeLanguageSelector(codeBlockSettings, preElement, codeElement, toolbar);
 
         toolbar.appendChild(copyButton);
         container.appendChild(toolbar);
         container.appendChild(preElement);
 
-        setCursorPosition(codeElement.lastChild as HTMLElement, 0);
+        setCursorPosition(codeElement, 0);
         return container;
     }
 
@@ -79,6 +73,12 @@ export class CodeRenderer {
             }
         });
 
+        this.addCopyButtonClick(toolbar, copyButton);
+
+        return { toolbar, copyButton };
+    }
+
+    public addCopyButtonClick(toolbar: HTMLElement, copyButton: HTMLElement): void {
         copyButton.addEventListener('click', () => {
             const codeElement: HTMLElement = toolbar.closest('.e-code-block-container').querySelector('code');
             if (codeElement) {
@@ -99,8 +99,6 @@ export class CodeRenderer {
                     });
             }
         });
-
-        return { toolbar, copyButton };
     }
 
     private initializeLanguageSelector(
@@ -113,12 +111,20 @@ export class CodeRenderer {
         if (this.parent.codeBlockSettings.languages.length === 0) {
             this.parent.codeBlockSettings.languages = languageDataSource;
         }
+        this.renderDropDown(codeBlockSettings, preElement, codeElement, targetElement);
+    }
 
+    public renderDropDown(
+        codeBlockSettings: ICodeBlockSettings,
+        preElement: HTMLElement,
+        codeElement: HTMLElement,
+        targetElement: HTMLElement
+    ): void {
         this.parent.observer.notify('renderDropdownList', {
             targetElement: targetElement,
             dataSource: this.parent.codeBlockSettings.languages as { [key: string]: Object }[],
             fields: { text: 'label', value: 'language' },
-            value: this.parent.codeBlockSettings.defaultLanguage,
+            value: codeBlockSettings.language || this.parent.codeBlockSettings.defaultLanguage,
             change: (e: ChangeEventArgs) => {
                 const newLanguage: string = e.value as string;
                 if (codeElement && preElement) {
@@ -144,7 +150,6 @@ export class CodeRenderer {
         });
         const hasContent: boolean = block.content && block.content.length > 0;
         const codeElement: HTMLElement = createElement('code', {
-            id: hasContent ? block.content[0].id : '',
             className: `e-code-content e-block-content language-${this.parent.codeBlockSettings.defaultLanguage}`,
             attrs: { contenteditable: 'true' }
         });
@@ -152,7 +157,7 @@ export class CodeRenderer {
             codeElement.textContent = block.content[0].content;
         }
         else {
-            codeElement.innerHTML = '<br>';
+            codeElement.textContent = '\n';
         }
         preElement.appendChild(codeElement);
         return { container, preElement, codeElement };
@@ -187,15 +192,25 @@ export class CodeRenderer {
 
     private handleEnterKey(e: KeyboardEvent, codeElement: HTMLElement, block: BlockModel): void {
         e.preventDefault();
-
+        this.parent.previousSelection = captureSelectionState();
         const action: { shouldExit: boolean; indentation: string } = this.determineEnterAction(codeElement);
         if (action.shouldExit) {
             this.exitCodeBlock(codeElement, block);
             return;
         }
 
-        const afterTwoBr: boolean = this.isAfterTwoBrTags();
-        this.insertTextAtCursor(!afterTwoBr, action.indentation);
+        // Store the old block state for undo/redo tracking
+        const oldBlockModel: BlockModel = decoupleReference(block);
+
+        // Insert single newline with indentation
+        this.insertTextAtCursor(action.indentation);
+
+        // Update the block model after inserting line breaks
+        this.updateBlockModel(codeElement, block);
+
+        // Track the change for undo/redo
+        const clonedBlock: BlockModel = decoupleReference(block);
+        this.parent.undoRedoAction.trackContentChangedForUndoRedo(oldBlockModel, clonedBlock);
     }
 
     private determineEnterAction(codeElement: HTMLElement): { shouldExit: boolean; indentation: string } {
@@ -215,9 +230,17 @@ export class CodeRenderer {
 
         if ((textContent.length === 1) || (range.toString() === textContent)) {
             e.preventDefault();
-            codeElement.innerHTML = '<br>';
-            setCursorPosition(codeElement.firstChild as HTMLElement, 0);
+
+            // Store the old block state for undo/redo tracking
+            const oldBlockModel: BlockModel = decoupleReference(block);
+
+            codeElement.textContent = '\n';
+            setCursorPosition(codeElement, 0);
             this.updateBlockModel(codeElement, block);
+
+            // Track the change for undo/redo
+            const clonedBlock: BlockModel = decoupleReference(block);
+            this.parent.undoRedoAction.trackContentChangedForUndoRedo(oldBlockModel, clonedBlock);
         }
         if (shouldPreventDefault) {
             e.preventDefault();
@@ -227,11 +250,25 @@ export class CodeRenderer {
 
     private handleTabKey(e: KeyboardEvent, codeElement: HTMLElement): void {
         e.preventDefault();
+        this.parent.previousSelection = captureSelectionState();
+        const block: BlockModel = getBlockModelById(this.parent.currentFocusedBlock.id, this.parent.getEditorBlocks());
+        if (!block) { return; }
+
+        // Store the old block state for undo/redo tracking
+        const oldBlockModel: BlockModel = decoupleReference(block);
+
         if (e.shiftKey) {
             this.removeIndentation(codeElement);
         } else {
             this.addIndentation();
         }
+
+        // Update block model after indentation change
+        this.updateBlockModel(codeElement, block);
+
+        // Track the change for undo/redo
+        const clonedBlock: BlockModel = decoupleReference(block);
+        this.parent.undoRedoAction.trackContentChangedForUndoRedo(oldBlockModel, clonedBlock);
     }
 
     private handleCodeBlockInput(e: Event): void {
@@ -240,11 +277,26 @@ export class CodeRenderer {
         const block: BlockModel = getBlockModelById(this.parent.currentFocusedBlock.id, this.parent.getEditorBlocks());
         if (!codeElement || block.blockType !== BlockType.Code) { return; }
 
+        // Store the old block state for undo/redo tracking
+        const oldBlockModel: BlockModel = decoupleReference(block);
+
         const textContent: string = codeElement.textContent || '';
-        if (!textContent.trim() && codeElement.innerHTML !== '<br>') {
-            codeElement.innerHTML = '<br>';
+        if (!textContent.trim() && codeElement.textContent !== '\n') {
+            codeElement.textContent = '\n';
         }
         this.updateBlockModel(codeElement, block);
+
+        // Track the change for undo/redo and notify block change event
+        const clonedBlock: BlockModel = decoupleReference(block);
+        this.parent.undoRedoAction.trackContentChangedForUndoRedo(oldBlockModel, clonedBlock);
+        this.parent.eventService.addChange({
+            action: 'Update',
+            data: {
+                block: clonedBlock,
+                prevBlock: oldBlockModel
+            }
+        });
+        this.parent.observer.notify('triggerBlockChange', this.parent.eventService.getChanges());
     }
 
     private handleCtrlASelection(e: KeyboardEvent, codeElement: HTMLElement): void {
@@ -268,28 +320,42 @@ export class CodeRenderer {
         return preCaretRange.toString().length;
     }
 
-    private insertTextAtCursor(isDoubleBr: boolean, indentValue: string): void {
+    private insertTextAtCursor(indentValue: string): void {
         const selection: Selection = window.getSelection();
         if (!selection.rangeCount) { return; }
 
+        const codeElement: HTMLElement = this.parent.currentFocusedBlock.querySelector('code');
+        if (!codeElement) { return; }
+
         const range: Range = selection.getRangeAt(0);
-        const brElement: Node = createElement('br');
-        range.insertNode(brElement);
-        if (isDoubleBr) {
-            const consecutiveBr: Node = createElement('br');
-            range.insertNode(consecutiveBr);
-            range.setStartAfter(consecutiveBr);
-            range.setEndAfter(consecutiveBr);
+        const cursorPositionBefore: number = this.getCursorPosition(codeElement);
+        const textContent: string = codeElement.textContent || '';
+
+        // 1. Delete any selected text
+        range.deleteContents();
+
+        // 2. Determine if we're truly at the document end
+        const atEnd: boolean = cursorPositionBefore >= textContent.length;
+        let newlineToInsert: string = '\n';
+
+        if (atEnd) {
+            // Check the character right before the cursor (if any)
+            if (cursorPositionBefore > 0 && textContent[cursorPositionBefore - 1] === '\n') {
+                // Already ends with newline → just one more \n
+                newlineToInsert = '\n';
+            } else {
+                // Does NOT end with newline → most editors insert double newline
+                newlineToInsert = '\n\n';
+            }
         }
-        else {
-            range.setStartAfter(brElement);
-            range.setEndAfter(brElement);
-        }
-        if (indentValue) {
-            range.insertNode(document.createTextNode(indentValue));
-        }
-        selection.removeAllRanges();
-        selection.addRange(range);
+        const textToInsert: string = newlineToInsert + (indentValue || '');
+        const textNode: Text = document.createTextNode(textToInsert);
+        range.insertNode(textNode);
+
+        // Calculate new cursor position and set it
+        const newCursorPosition: number = cursorPositionBefore + textToInsert.length;
+        codeElement.normalize();
+        setCursorPosition(codeElement, newCursorPosition);
     }
 
     private getCurrentLineIndentation(element: HTMLElement, cursorPosition: number): string {
@@ -301,40 +367,18 @@ export class CodeRenderer {
         return indentMatch ? indentMatch[1] : '';
     }
 
-    private isAfterTwoBrTags(): boolean {
-        const selection: Selection = window.getSelection();
-        if (!selection.rangeCount) { return false; }
-
-        const range: Range = selection.getRangeAt(0);
-        const container: Node = range.startContainer;
-
-        let node: Node = container;
-        let brCount: number = 0;
-
-        while (node && brCount < 2) {
-            if (node.nodeType === Node.ELEMENT_NODE && (node as HTMLElement).tagName === 'BR') {
-                brCount++;
-            } else if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== '') {
-                break;
-            }
-            node = node.previousSibling;
-        }
-        return brCount >= 2;
-    }
-
     private shouldExitCodeBlock(element: HTMLElement): boolean {
-        const children: NodeList = element.childNodes;
-        let brCount: number = 0;
+        const textContent: string = element.textContent;
+        const cursorPosition: number = this.getCursorPosition(element);
 
-        for (let i: number = children.length - 1; i >= 0; i--) {
-            const node: Node = children[i as number];
-            if (node.nodeType === Node.ELEMENT_NODE && (node as HTMLElement).tagName === 'BR') {
-                brCount++;
-            } else if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== '') {
-                break;
-            }
+        // Check if cursor is at the end of content
+        if (cursorPosition !== textContent.length) {
+            return false;
         }
-        return brCount >= 3;
+
+        // Exit only when content ends with three newlines (user pressed Enter 3 times at the end)
+        // This means there are two empty lines at the end
+        return textContent.endsWith('\n\n\n');
     }
 
     private exitCodeBlock(codeElement: HTMLElement, block: BlockModel): void {
@@ -356,21 +400,22 @@ export class CodeRenderer {
         const range: Range = this.parent.nodeSelection.getRange();
         range.insertNode(document.createTextNode(indent));
         const endContainer: Node = range.endContainer;
-        setCursorPosition(endContainer as HTMLElement, endContainer.textContent.length);
+        setCursorPosition(endContainer as HTMLElement, range.startOffset + indent.length);
     }
 
     private removeIndentation(element: HTMLElement): void {
         const cursorPosition: number = this.getCursorPosition(element);
         const textContent: string = element.textContent;
-        const beforeCursor: string = textContent.substring(0, cursorPosition);
-        const lastNewlineIndex: number = beforeCursor.lastIndexOf('\n');
-        const lineStart: number = lastNewlineIndex + 1;
-        const currentLine: string = textContent.substring(lineStart, cursorPosition);
-        const spacesToRemove: number = Math.min(this.INDENT_SIZE, currentLine.match(/^ */)[0].length);
 
-        if (spacesToRemove > 0) {
-            element.textContent = textContent.substring(0, lineStart) + textContent.substring(lineStart + spacesToRemove);
-            setCursorPosition(element, cursorPosition - spacesToRemove);
+        // Check for spaces right before the cursor position
+        const startCheckPos: number = Math.max(0, cursorPosition - this.INDENT_SIZE);
+        const beforeCursor: string = textContent.substring(startCheckPos, cursorPosition);
+        const spacesBeforeCursor: number = beforeCursor.match(/\s*$/)[0].length;
+
+        if (spacesBeforeCursor > 0) {
+            const removeStart: number = cursorPosition - spacesBeforeCursor;
+            element.textContent = textContent.substring(0, removeStart) + textContent.substring(cursorPosition);
+            setCursorPosition(element, removeStart);
         }
     }
 
@@ -383,17 +428,21 @@ export class CodeRenderer {
     }
 
     private updateBlockModel(codeElement: HTMLElement, block: BlockModel): void {
-        const textContent: string = Array.from(codeElement.childNodes)
-            .map((node: Node) => {
-                if (node.nodeName === 'BR') { return '\n'; }
-                if (node.nodeType === Node.TEXT_NODE) { return node.textContent; }
-                return '';
-            })
-            .join('')
-            .replace(/\n$/, '');
+        // Since we're using literal newlines now, just use textContent directly
+        let textContent: string = codeElement.textContent || '';
+
+        // Remove trailing newline if it's the only character or if there are multiple trailing newlines,
+        // keep only the structure we want
+        if (textContent === '\n') {
+            textContent = '';
+        } else if (textContent.endsWith('\n')) {
+            // Preserve newlines in the middle of content, but trim excessive trailing newlines
+            textContent = textContent.replace(/\n+$/, '');
+        }
+
         if (!block.content || block.content.length === 0) {
             this.parent.blockService.replaceBlock(block.id, {
-                ...decoupleReference(sanitizeBlock(block)),
+                ...decoupleReference(block),
                 content: [BlockFactory.createTextContent({ content: textContent })]
             });
         } else {

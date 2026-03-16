@@ -1,6 +1,6 @@
 import { NodeSelection } from './../../selection/index';
 import { KeyboardEventArgs } from '@syncfusion/ej2-base';
-import { IHtmlFormatterCallBack, IAdvanceListItem, IDropDownItemModel } from '../../common/interface';
+import { IHtmlFormatterCallBack, IAdvanceListItem, IHTMLEnterKeyCallBack, IDropDownItemModel } from '../../common/interface';
 import { IFormatPainterActionValue } from './enum';
 
 /**
@@ -87,7 +87,7 @@ export interface IHtmlItem {
     subCommand: string
     value: string
     selector: string
-    callBack(args: IHtmlFormatterCallBack): () => void,
+    callBack(args: IHtmlFormatterCallBack | IHTMLEnterKeyCallBack): () => void,
     enterAction?: string
 }
 

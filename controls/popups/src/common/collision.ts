@@ -1,7 +1,7 @@
 /**
  * Collision module.
  */
-import { calculatePosition, OffsetPosition } from './position';
+import { calculatePosition, calculateRelativeBasedPosition, OffsetPosition } from './position';
 import { isNullOrUndefined } from '@syncfusion/ej2-base';
 
 interface TopCorners {
@@ -36,6 +36,7 @@ interface PositionLocation {
 }
 let parentDocument: Document;
 let targetContainer: HTMLElement;
+let currentCollideSide: string;
 
 /**
  * Provides information about a CollisionCoordinates.
@@ -246,6 +247,36 @@ function setPopup(element: HTMLElement, pos: PositionLocation, elementRect: Clie
     }
     element.style.top = ((pos.position.top / scaleY) + pos.offsetY - (top / scaleY)) + 'px';
     element.style.left = ((pos.position.left / scaleX) + pos.offsetX - (left / scaleX)) + 'px';
+    let offsetElement: HTMLElement | null = null;
+    if (element.classList.contains('e-sticky')) {
+        element.classList.remove('e-sticky');
+        offsetElement = element.offsetParent && (element.offsetParent as HTMLElement).classList.contains('sf-grid') ? element.offsetParent as HTMLElement : null;
+        element.classList.add('e-sticky');
+    }
+    if (offsetElement && (element.classList.contains('e-filter-popup') || element.classList.contains('e-ccdlg'))) {
+        const newpos: OffsetPosition = calculateRelativeBasedPosition(offsetElement, element);
+        const dlgWidth: number = element.clientWidth;
+        let leftPos: number = newpos.left - dlgWidth + offsetElement.clientWidth;
+        if (leftPos < 1) {
+            leftPos = dlgWidth + leftPos - 16;
+        } else {
+            leftPos = leftPos - 4;
+        }
+        const parentElementOffsetWidth: number = offsetElement.offsetWidth;
+        if ((parentElementOffsetWidth - leftPos) < dlgWidth) {
+            const actualWidthAllocated: number = parentElementOffsetWidth - leftPos;
+            const requiredWidth: number = dlgWidth - actualWidthAllocated;
+            element.style.left = leftPos - requiredWidth + 'px';
+        }
+    }
+    if (element.classList.contains('e-filter-popup') && element.offsetParent) {
+        const currentLeftPos: number = parseFloat(element.style.left);
+        const gridWidth: number = element.offsetParent.clientWidth;
+        const dlgWidth: number = element.clientWidth;
+        if (currentLeftPos < 0 || currentLeftPos + dlgWidth > gridWidth) {
+            element.style.left = Math.max(0, Math.min(currentLeftPos, gridWidth - dlgWidth)) + 'px';
+        }
+    }
 }
 
 export function getZoomValue(element: HTMLElement): number {
@@ -344,12 +375,25 @@ function leftFlip(
     pos: PositionLocation,
     elementRect: ClientRect,
     deepCheck: boolean): void {
+    const isWrapper: boolean = /\b(e-date-wrapper|e-datetime-wrapper)\b/.test(target.className);
+    let overlap: number = 0;
+    if (isWrapper && !deepCheck) {
+        if (currentCollideSide === 'leftSide') {
+            edge.TL.left += Math.abs((tEdge.TL.left - getBodyScrollLeft()) - ContainerLeft());
+        }
+        else if (currentCollideSide === 'rightSide') {
+            edge.TR.left -= (tEdge.TR.left - ContainerRight());
+        }
+    }
     const collideSide: LeftCorners = leftCollideCheck(edge.TL.left, edge.TR.left);
+    currentCollideSide = collideSide.leftSide ? 'leftSide' : 'rightSide';
     if ((tEdge.TL.left - getBodyScrollLeft()) <= ContainerLeft()) {
-        collideSide.leftSide = false;
+        if (isWrapper) { overlap = (tEdge.TL.left - getBodyScrollLeft()) - ContainerLeft(); }
+        else { collideSide.leftSide = false; }
     }
     if (tEdge.TR.left > ContainerRight()) {
-        collideSide.rightSide = false;
+        if (isWrapper) { overlap = tEdge.TR.left - ContainerRight(); }
+        else { collideSide.rightSide = false; }
     }
     if ((collideSide.leftSide && !collideSide.rightSide) || (!collideSide.leftSide && collideSide.rightSide)) {
         if (pos.posX === 'right') {
@@ -357,9 +401,16 @@ function leftFlip(
         } else {
             pos.posX = 'right';
         }
-        pos.offsetX = pos.offsetX + elementRect.width;
-        pos.offsetX = -1 * pos.offsetX;
-        pos.position = calculatePosition(target, pos.posX, pos.posY, false);
+        if (isWrapper) {
+            pos.offsetX += collideSide.leftSide ? Math.abs(overlap) : (-1 * (elementRect.width + (isWrapper ? overlap : 0)));
+            if (currentCollideSide === 'rightSide') {
+                pos.position = calculatePosition(target, pos.posX, pos.posY, false);
+            }
+        } else {
+            pos.offsetX = pos.offsetX + elementRect.width;
+            pos.offsetX = -1 * pos.offsetX;
+            pos.position = calculatePosition(target, pos.posX, pos.posY, false);
+        }
         setPosition(edge, pos, elementRect);
         if (deepCheck) {
             leftFlip(target, edge, tEdge, pos, elementRect, false);

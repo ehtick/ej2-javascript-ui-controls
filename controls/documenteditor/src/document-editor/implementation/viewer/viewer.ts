@@ -1400,7 +1400,7 @@ export class DocumentHelper {
             attrs: {
                 'aria-live': 'assertive',
                 'role': 'region',
-                'tabindex': "1",
+                'tabindex': "0",
                 'style': 'position:absolute;left:0px;top:-1px;height:0px;width:0px;overflow:hidden;z-index:-2;opacity:0;',
             },
             id: element.id + 'readableDiv'

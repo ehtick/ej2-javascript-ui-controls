@@ -343,6 +343,13 @@ export class Lists {
             startNode.innerHTML = '<br>';
         }
         clonedContent.normalize();
+        // Remove explicit `value` attributes from the cloned fragment so browser auto-numbers correctly after insertion
+        const fragmentList: NodeListOf<HTMLLIElement> = (clonedContent as ParentNode).querySelectorAll('li') as NodeListOf<HTMLLIElement>;
+        for (let i: number = 0; i < fragmentList.length; i++) {
+            if (fragmentList[i as number].hasAttribute('value')) {
+                fragmentList[i as number].removeAttribute('value');
+            }
+        }
         const firstPosition: { node: Node; position: number } =
             this.parent.nodeSelection.findFirstContentNode(clonedContent);
         if (startNode.nextElementSibling) {
@@ -1358,6 +1365,8 @@ export class Lists {
     private applyLists(elements: HTMLElement[], type: string, selector?: string,
                        item?: IAdvanceListItem, e?: IHtmlSubCommands, checkCursorPointer?: boolean, isCheckedCheckList?: boolean): void {
         let isReverse: boolean = true;
+        const currentRange: Range = this.parent.nodeSelection.getRange(this.parent.currentDocument);
+        const isCusrsoratTableEnd: boolean = this.parent.nodeSelection.processedTableImageCursor(currentRange).endName === 'TABLE';
         if (type === 'Checklist') {
             type = 'UL';
         }
@@ -1493,7 +1502,22 @@ export class Lists {
             setEditFrameFocus(this.parent.editableElement, selector);
         }
         this.saveSelection = this.domNode.saveMarker(this.saveSelection);
-        this.saveSelection.restore();
+        if (!isCusrsoratTableEnd) {
+            this.saveSelection.restore();
+        }
+        else {
+            const tables: HTMLTableElement[] = Array.from(this.parent.editableElement.querySelectorAll('table'));
+            if (tables.length > 0 && elements && elements.length > 0) {
+                for (const table of tables) {
+                    const next: Element = table.nextElementSibling;
+                    if (next && next.textContent && elements[0].textContent &&
+                        table.nextElementSibling.textContent === elements[0].textContent) {
+                        this.saveSelection.setCursorPoint(this.parent.currentDocument, next, 0);
+                        break; // stop after placing once
+                    }
+                }
+            }
+        }
     }
     private extractAllAttributes(element: HTMLElement | null): Record<string, string> {
         const attributes: Record<string, string> = {};

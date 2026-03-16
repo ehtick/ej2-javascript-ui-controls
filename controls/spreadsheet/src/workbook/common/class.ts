@@ -848,6 +848,14 @@ export class Chart extends ChildProperty<CellModel> {
     @Complex<DataLabelSettingsModel>({}, DataLabelSettings)
     public dataLabelSettings: DataLabelSettingsModel;
 
+    /**
+     * The data label for the series.
+     *
+     * @default null
+     * @hidden
+     */
+    series?: { range: string, name?: string, category?: string }[];
+
 }
 
 /**

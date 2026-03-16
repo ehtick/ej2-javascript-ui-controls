@@ -2428,7 +2428,7 @@ export class PdfRenderedFields {
     public TabIndex: number;
     public FontFamily: string;
     public CustomData: object;
-    IsUnisonSelected: any;
+    IsUnisonSelected: boolean;
     constructor() {
         this.ActualFieldName = null;
         this.FontColor = { R: 0, G: 0, B: 0 };

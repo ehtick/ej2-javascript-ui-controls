@@ -4,7 +4,7 @@
 import { createElement } from '@syncfusion/ej2-base';
 import { Gantt, Selection, Toolbar, DayMarkers, Edit, Filter, Reorder, Resize, ColumnMenu, VirtualScroll, Sort, RowDD, ContextMenu, ExcelExport, PdfExport, IQueryTaskbarInfoEventArgs } from '../../src/index';
 import * as cls from '../../src/gantt/base/css-constants';
-import { baselineData, resourceData, projectData, projectNewData18, projectNewData19, projectNewData20, splitData, projectNewData21, taskModeData4, taskModeData5, projectNewData22, CR899690, addDependency, manualParentdata, CR991733 } from './data-source.spec';
+import { baselineData, resourceData, projectData, projectNewData18, projectNewData19, projectNewData20, splitData, projectNewData21, taskModeData4, taskModeData5, projectNewData22, CR899690, addDependency, manualParentdata, CR991733, CR1005919, CRres1005919 } from './data-source.spec';
 import { createGantt, destroyGantt, triggerMouseEvent } from './gantt-util.spec';
 Gantt.Inject(Selection, Toolbar, DayMarkers, Edit, Filter, Reorder, Resize, ColumnMenu, VirtualScroll, Sort, RowDD, ContextMenu, ExcelExport, PdfExport);
 describe('Gantt taskbar rendering', () => {
@@ -1644,6 +1644,88 @@ describe('CR-991733-Right label not rendered when multitaskbar is enabled and re
         triggerMouseEvent(collapseallToolbar, 'click');
         let rightLabelElement: HTMLElement = ganttObj.chartPane.querySelectorAll('.e-label')[1] as HTMLElement;
         expect(rightLabelElement.innerText).toBe('1');
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('CR-1005919: Dynamically changing values are not reflected in actionBegin event', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: CR1005919,
+                resources: CRres1005919,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    duration: 'Duration',
+                    progress: 'Progress',
+                    dependency: 'Predecessor',
+                    parentID: 'ParentId',
+                    notes: 'info',
+                    resourceInfo: 'resources'
+                },
+                resourceFields : {
+                    id: 'resourceId',
+                    name: 'resourceName',
+                },
+                actionBegin(args) {
+                    if (args.requestType == 'beforeSave' && args.data.Duration < 1) {
+                        // dynamic changing values here
+                        args.data.Duration = 1;
+                    }
+                },
+                editSettings: {
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll', 'Search',
+                    'PrevTimeSpan', 'NextTimeSpan'],
+                allowSelection: true,
+                gridLines: "Both",
+                showColumnMenu: false,
+                highlightWeekends: true,
+                timelineSettings: {
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                        count: 1
+                    }
+                },
+                columns: [
+                    { field: 'TaskID', headerText: 'Task ID' },
+                    { field: 'TaskName', headerText: 'Task Name', allowReordering: false  },
+                    { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+                    { field: 'EndDate', headerText: 'End Date', allowSorting: false },
+                    { field: 'Duration', headerText: 'Duration' },
+                    { field: 'Progress', headerText: 'Progress', allowFiltering: false }
+                ],
+                labelSettings: {
+                    leftLabel: 'TaskName',
+                    taskLabel: 'Progress'
+                },
+                height: '550px',
+                allowUnscheduledTasks: true
+            }, done);
+    });
+    it('check if task left resize, will updates actionBegins duration value', () => {
+        let dragElement: HTMLElement = ganttObj.element.querySelector('#' + ganttObj.element.id + 'GanttTaskTableBody > tr:nth-child(2) > td > div.e-taskbar-main-container > div.e-taskbar-right-resizer.e-icon') as HTMLElement;
+        triggerMouseEvent(dragElement, 'mousedown', dragElement.offsetLeft, dragElement.offsetTop);
+        triggerMouseEvent(dragElement, 'mousemove', -400, 0);
+        triggerMouseEvent(dragElement, 'mouseup');
+        expect(ganttObj.getFormatedDate(ganttObj.flatData[1].ganttProperties.endDate, 'M/dd/yyyy HH:mm')).toBe('4/02/2025 17:00');
+        expect(ganttObj.flatData[1].ganttProperties.duration).toBe(1);
+        expect(ganttObj.flatData[1].ganttProperties.isMilestone).toBe(false);
     });
     afterAll(() => {
         if (ganttObj) {

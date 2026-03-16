@@ -1270,7 +1270,7 @@ describe('Editor specs', ()=> {
                 toolbarSettings: {
                     items: ['CreateTable', 'Formats']
                 },
-                value: '<p id="p1">Paragraph <img src="blob:null/abfb97c2-cd30-4405-81e0-2993d05bfa35" class="e-rte-image e-imginline" alt="blazor.PNG" width="auto" height="auto" style="min-width: 0px; max-width: 1199px; min-height: 0px;"> </p>'
+                value: '<p id="p1">Paragraph <img src="blob:null/abfb97c2-cd30-4405-81e0-2993d05bfa35" class="e-rte-image e-img-inline" alt="blazor.PNG" width="auto" height="auto" style="min-width: 0px; max-width: 1199px; min-height: 0px;"> </p>'
             });
         });
         it(' Enter key press before the image in a paragraph ', (done: DoneFn) => {
@@ -1441,7 +1441,7 @@ describe('Editor specs', ()=> {
         let rteEle: HTMLElement;
         let rteObj: RichTextEditor;
         let clickEvent: any;
-        let innerHTML: string = `<p style="cursor: auto;"><img src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png" class="e-rte-image e-imginline e-resize e-img-focus" alt="employee-icon.jpg" width="auto" height="auto" style="min-width: 0px; max-width: 1455px; min-height: 0px; width: 247px; height: 247px;"> </p>`;
+        let innerHTML: string = `<p style="cursor: auto;"><img src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png" class="e-rte-image e-img-inline e-resize e-img-focus" alt="employee-icon.jpg" width="auto" height="auto" style="min-width: 0px; max-width: 1455px; min-height: 0px; width: 247px; height: 247px;"> </p>`;
         beforeAll(() => {
             rteObj = renderRTE({
                 height: 400,
@@ -1849,7 +1849,7 @@ describe('Editor specs', ()=> {
 
     describe(' EJ2-65567 - Underline and Strikethrough toolbar styles doesnt work properly CASE 7 Image Element Alt Text' , () => {
         let rteObject : RichTextEditor ;
-        let innerHTML: string = '<p><span class="e-img-caption e-rte-img-caption null e-caption-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap null"><img src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png" class="e-rte-image e-imginline e-resize" alt="RTEImage-Feather.png" width="auto" height="auto" style="min-width: 0px; max-width: 1277px; min-height: 0px;"><span class="e-img-inner null" contenteditable="true">Caption</span></span></span> </p>';
+        let innerHTML: string = '<p><span class="e-img-caption-container e-img-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap null"><img src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png" class="e-rte-image e-resize" alt="RTEImage-Feather.png" width="auto" height="auto" style="min-width: 0px; max-width: 1277px; min-height: 0px;"><span class="e-img-caption-text null" contenteditable="true">Caption</span></span></span> </p>';
         beforeAll( () => {
             rteObject = renderRTE({ 
                 toolbarSettings : { items: [ 'Underline', 'StrikeThrough', '|',
@@ -1861,7 +1861,7 @@ describe('Editor specs', ()=> {
             destroy( rteObject );
         })
         it('should wrap span element with font size to around the style span node', (done : Function) => {
-            const contentElem : HTMLElement = rteObject.element.querySelector('.e-img-inner');
+            const contentElem : HTMLElement = rteObject.element.querySelector('.e-img-caption-text');
             let range : Range = new Range();
             range.setStart( contentElem, 0 );
             range.setEnd( contentElem, 1 );
@@ -2075,7 +2075,7 @@ describe('Editor specs', ()=> {
             rteObj.value = '<p><img src=x onerror=alert(document.domain)></p>';
             rteObj.dataBind();
             setTimeout(() => {
-                expect((rteObj as any).inputElement.innerHTML === `<p><img src="x" class="e-rte-image e-imginline"></p>`).toBe(true);
+                expect((rteObj as any).inputElement.innerHTML === `<p><img src="x" class="e-rte-image e-img-inline"></p>`).toBe(true);
                 done();
             }, 100);
         });
@@ -2493,26 +2493,24 @@ describe('Editor specs', ()=> {
     });
     
     describe('847097 - Image get duplicated when we press enter key next to the copy pasted image content from Word', () => {
-        let rteEle: HTMLElement;
         let rteObj: RichTextEditor;
-        let keyboardEventArgs = {
-            preventDefault: function () { },
-            keyCode: 13, which: 13, shiftKey: false, code : 'Enter'
-        };
+        let keyboardEventArgs = new KeyboardEvent('keydown', ENTERKEY_EVENT_INIT)
         beforeAll(()=> {
             rteObj = renderRTE({
                 toolbarSettings: {
                     items: ['CreateTable', 'Formats']
                 },
-                value: '<p style="margin-top:0in;margin-right:0in;margin-bottom:8.0pt;margin-left:0in;line-height:107%;font-size:11.0pt;font-family:&quot;Calibri&quot;,sans-serif;"><b><span lang="EN-IN" style="font-size:16.0pt;line-height:107%;">Quote 1 -</span></b></p><p style="margin-top:0in;margin-right:0in;margin-bottom:8.0pt;margin-left:0in;line-height:107%;font-size:11.0pt;font-family:&quot;Calibri&quot;,sans-serif;"><span id="msWordImg-clip_image001"><img width="624" height="196" src="blob:http://127.0.0.1:5500/a11f1f65-5f82-4231-bac2-2370d08635d0" v:shapes="Picture_x0020_1" id="msWordImg-clip_image002" class="e-rte-image e-imginline" style="opacity: 1;"></span></p><p style="margin-top:0in;margin-right:0in;margin-bottom:8.0pt;margin-left:0in;line-height:107%;font-size:11.0pt;font-family:&quot;Calibri&quot;,sans-serif;"><b><span lang="EN-IN" style="font-size:18.0pt;line-height:107%;">Explore 1 -</span></b></p><p style="margin-top:0in;margin-right:0in;margin-bottom:8.0pt;margin-left:0in;line-height:107%;font-size:11.0pt;font-family:&quot;Calibri&quot;,sans-serif;"><span><img width="624" height="163" src="blob:http://127.0.0.1:5500/fd4c90de-5cb5-4ef0-89ba-2105a769bfb5" v:shapes="Picture_x0020_2" id="msWordImg-clip_image004" class="e-rte-image e-imginline" style="opacity: 1;"> </span></p>'
+                value: '<p style="margin-top:0in;margin-right:0in;margin-bottom:8.0pt;margin-left:0in;line-height:107%;font-size:11.0pt;font-family:&quot;Calibri&quot;,sans-serif;"><b><span lang="EN-IN" style="font-size:16.0pt;line-height:107%;">Quote 1 -</span></b></p><p style="margin-top:0in;margin-right:0in;margin-bottom:8.0pt;margin-left:0in;line-height:107%;font-size:11.0pt;font-family:&quot;Calibri&quot;,sans-serif;"><span id="msWordImg-clip_image001"><img width="624" height="196" src="blob:http://127.0.0.1:5500/a11f1f65-5f82-4231-bac2-2370d08635d0" v:shapes="Picture_x0020_1" id="msWordImg-clip_image002" class="e-rte-image e-img-inline" style="opacity: 1;"></span></p><p style="margin-top:0in;margin-right:0in;margin-bottom:8.0pt;margin-left:0in;line-height:107%;font-size:11.0pt;font-family:&quot;Calibri&quot;,sans-serif;"><b><span lang="EN-IN" style="font-size:18.0pt;line-height:107%;">Explore 1 -</span></b></p><p style="margin-top:0in;margin-right:0in;margin-bottom:8.0pt;margin-left:0in;line-height:107%;font-size:11.0pt;font-family:&quot;Calibri&quot;,sans-serif;"><span><img width="624" height="163" src="blob:http://127.0.0.1:5500/fd4c90de-5cb5-4ef0-89ba-2105a769bfb5" v:shapes="Picture_x0020_2" id="msWordImg-clip_image004" class="e-rte-image e-img-inline" style="opacity: 1;"> </span></p>'
             });
         });
-        it('Image gets duplicate paste from ms word ', () => {
-            rteEle = rteObj.element;
+        it('Image gets duplicate paste from ms word ', (done: DoneFn) => {
             let start: HTMLElement = document.getElementById('msWordImg-clip_image001');;
             setCursorPoint(start, 1);
-            (rteObj as any).keyDown(keyboardEventArgs);
-            expect(rteObj.contentModule.getEditPanel().querySelectorAll('p').length === 5).toBe(true);
+            rteObj.inputElement.dispatchEvent(keyboardEventArgs);
+            setTimeout(() => {
+                expect(rteObj.contentModule.getEditPanel().querySelectorAll('p').length === 5).toBe(true);
+                done();
+            }, 100);
         });
         afterAll(() => {
             destroy(rteObj);
@@ -2647,7 +2645,7 @@ describe('Editor specs', ()=> {
               <circle cx='50' cy='50' r='40' stroke='green' stroke-width='4' fill='yellow' />
             </svg>
           </div><p>text</p>`);
-          expect(rteObj.contentModule.getEditPanel().innerHTML === '<div> <p>test</p> <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"> <circle cx="50" cy="50" r="40" stroke="green" stroke-width="4" fill="yellow"></circle> </svg> </div><p>text</p>').toBe(true);
+          expect(rteObj.contentModule.getEditPanel().innerHTML === '<div><p>test</p><svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"> <circle cx="50" cy="50" r="40" stroke="green" stroke-width="4" fill="yellow"></circle></svg></div><p>text</p>').toBe(true);
         });
     });
 
@@ -2841,7 +2839,8 @@ describe('Editor specs', ()=> {
             const enterKeyEvent: KeyboardEvent = new KeyboardEvent('keydown', ENTERKEY_EVENT_INIT);
             rteObj.inputElement.dispatchEvent(enterKeyEvent);
             setTimeout(() => {
-                expect(rteObj.inputElement.querySelector('.currentStartMark').childNodes.length === 11).toBe(true);
+                // in previous childNodes length is 11 empty texxt also getting added as child now it is 10
+                expect(rteObj.inputElement.querySelector('.currentStartMark').childNodes.length === 10).toBe(true);
                 done();
             }, 100);
         });
@@ -2938,7 +2937,7 @@ describe('Editor specs', ()=> {
                     items: ['Image', 'Bold']
                 },
                 insertImageSettings: { resize: false },
-                value: `<p><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 440px" class="e-rte-image e-imginline" /></p>`
+                value: `<p><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 440px" class="e-rte-image e-img-inline" /></p>`
             });
             editor.formatter.editorManager.imgObj = new ImageCommand(editor.formatter.editorManager);
         });
@@ -3286,7 +3285,7 @@ describe('Editor specs', ()=> {
         let keyBoardEvent: any = { type: 'keydown', preventDefault: () => { }, ctrlKey: true, key: 'Enter', keyCode: 13, stopPropagation: () => { }, shiftKey: false, which: 8};
         beforeAll(() => {
             rteObj = renderRTE({
-                value: `<p style="margin-top:0in;margin-right:0in;margin-bottom:8.0pt;margin-left:0in;line-height:106%;font-size:11.0pt;font-family:&quot;Calibri&quot;,sans-serif;"><span style="font-size:10.0pt;line-height:106%;">Afterwards, a new option\n"InsertLoremIpsum" will show in the "plugin" menu entry. A\nrestart may be required. &gt;&gt; screenshots<u><br clear="all">\n</u></span><span><img width="476" height="220" src="blob:http://127.0.0.1:5501/a004d4d0-4153-44c9-8ce9-5b1bb5bd25d0" v:shapes="Picture_x0020_1" id="msWordImg-clip_image001" class="e-rte-image e-imginline" style="opacity: 1;"> </span></p>`
+                value: `<p style="margin-top:0in;margin-right:0in;margin-bottom:8.0pt;margin-left:0in;line-height:106%;font-size:11.0pt;font-family:&quot;Calibri&quot;,sans-serif;"><span style="font-size:10.0pt;line-height:106%;">Afterwards, a new option\n"InsertLoremIpsum" will show in the "plugin" menu entry. A\nrestart may be required. &gt;&gt; screenshots<u><br clear="all">\n</u></span><span><img width="476" height="220" src="blob:http://127.0.0.1:5501/a004d4d0-4153-44c9-8ce9-5b1bb5bd25d0" v:shapes="Picture_x0020_1" id="msWordImg-clip_image001" class="e-rte-image e-img-inline" style="opacity: 1;"> </span></p>`
             });
         });
         it('img with enter key', () => {

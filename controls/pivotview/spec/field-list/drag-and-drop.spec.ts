@@ -822,7 +822,7 @@ describe('Pivot Field List Rendering', () => {
         });
         it('expect sort state icon after drag row axis field to value axis field', () => {
             let sortElement: string = pivotGridObj.element.querySelectorAll('td')[2].innerText;
-            expect(document.querySelectorAll('.e-content tr')[0].querySelector('td .e-cellvalue').textContent == sortElement).toBe(true);
+            expect(document.querySelectorAll('.e-content tr')[0].querySelector('.e-cellvalue').textContent == sortElement).toBe(true);
             expect(document.querySelectorAll('.e-group-rows .e-sort')[0].classList.contains('e-descend')).toBe(true);
         });
         it('uncheck country field', () => {

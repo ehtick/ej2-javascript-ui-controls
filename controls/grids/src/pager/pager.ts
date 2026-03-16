@@ -1126,12 +1126,12 @@ export class Pager extends Component<HTMLElement> implements INotifyPropertyChan
         this.element.appendChild(createElement(
             'div', {
                 className: 'e-mfirst e-icons e-icon-first',
-                attrs: { title: this.getLocalizedLabel('firstPageTooltip'), tabindex: '-1' }
+                attrs: { title: this.getLocalizedLabel('firstPageTooltip'), tabindex: '-1', role: 'button' }
             }));
         this.element.appendChild(createElement(
             'div', {
                 className: 'e-mprev e-icons e-icon-prev',
-                attrs: { title: this.getLocalizedLabel('previousPageTooltip'), tabindex: '-1' }
+                attrs: { title: this.getLocalizedLabel('previousPageTooltip'), tabindex: '-1', role: 'button' }
             }));
     }
 
@@ -1139,12 +1139,12 @@ export class Pager extends Component<HTMLElement> implements INotifyPropertyChan
         this.element.appendChild(createElement(
             'div', {
                 className: 'e-mnext e-icons e-icon-next',
-                attrs: { title: this.getLocalizedLabel('nextPageTooltip'), tabindex: '-1' }
+                attrs: { title: this.getLocalizedLabel('nextPageTooltip'), tabindex: '-1', role: 'button' }
             }));
         this.element.appendChild(createElement(
             'div', {
                 className: 'e-mlast e-icons e-icon-last',
-                attrs: { title: this.getLocalizedLabel('lastPageTooltip'), tabindex: '-1' }
+                attrs: { title: this.getLocalizedLabel('lastPageTooltip'), tabindex: '-1', role: 'button' }
             }));
     }
 

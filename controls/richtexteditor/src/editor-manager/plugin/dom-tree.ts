@@ -209,6 +209,9 @@ export class DOMMethods {
      * @hidden
      */
     public getParentBlockNode(node: Node): HTMLElement  {
+        if (this.isBlockNode(node as Element)) {
+            return node as HTMLElement;
+        }
         const treeWalker: TreeWalker = this.currentDocument.createTreeWalker(
             this.editableElement, // root
             NodeFilter.SHOW_ELEMENT, // whatToShow

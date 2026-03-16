@@ -182,7 +182,15 @@ export class VirtualRowModelGenerator implements IModelGenerator<Column> {
         info.blockIndexes = loadedBlocks;
         const grouping: string = 'records';
         if (this.parent.allowGrouping && this.parent.groupSettings.columns.length) {
-            this.parent.currentViewData[`${grouping}`] = result.map((m: Row<Column>) => m.data);
+            if (this.parent.groupSettings.enableLazyLoading) {
+                result.filter((row: Row<Column>) => {
+                    if (row.isDataRow) {
+                        this.parent.currentViewData[row.index] = row.data;
+                    }
+                });
+            } else {
+                this.parent.currentViewData[`${grouping}`] = result.map((m: Row<Column>) => m.data);
+            }
         } else {
             this.parent.currentViewData = result.map((m: Row<Column>) => m.data);
         }

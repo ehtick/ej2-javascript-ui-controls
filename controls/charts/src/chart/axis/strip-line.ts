@@ -209,7 +209,7 @@ export class StripLine {
                         stripline.sizeType !== 'Pixel') {
                         segmentAxis = this.getSegmentAxis(axes, axis, stripline);
                     }
-                    if (stripline.isRepeat && stripline.repeatEvery != null && stripline.size !== null && stripline.sizeType !== 'Pixel') {
+                    if (stripline.isRepeat && stripline.repeatEvery != null && stripline.repeatEvery > 0 && stripline.size !== null && stripline.sizeType !== 'Pixel') {
                         limit = (stripline.repeatUntil != null) ? ((axis.valueType === 'DateTime') ?
                             this.dateToMilliSeconds(stripline.repeatUntil, chart) : +stripline.repeatUntil) : axis.actualRange.max;
                         startValue = axis.valueType === 'DateTime' && this.isCoreDate(stripline.start) ?
@@ -233,7 +233,7 @@ export class StripLine {
                             count++;
                             startValue = this.getStartValue(axis, stripline, startValue);
                         }
-                    } else {
+                    } else if (stripline.size !== null || stripline.sizeType !== 'Pixel') {
                         this.renderStripLineElement(
                             axis, stripline, seriesClipRect, id, striplineGroup, chart, null, segmentAxis, count
                         );
@@ -345,6 +345,7 @@ export class StripLine {
         }
         const image: ImageOption = new ImageOption(rect.height, rect.width, stripline.imageUrl, rect.x, rect.y, id, 'visible', 'none');
         const htmlObject: HTMLElement = chart.renderer.drawImage(image) as HTMLElement;
+        htmlObject.setAttribute('opacity', (isNullOrUndefined(stripline.opacity) ? 1 : stripline.opacity).toString());
         appendChildElement(chart.enableCanvas, parent, htmlObject, chart.redraw, true, 'x', 'y', null, null, true, true);
     }
 

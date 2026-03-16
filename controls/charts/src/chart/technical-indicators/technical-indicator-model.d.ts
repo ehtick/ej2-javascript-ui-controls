@@ -1,4 +1,4 @@
-import { Property, Complex } from '@syncfusion/ej2-base';import { TechnicalIndicators, FinancialDataFields, MacdType } from './../utils/enum';import { Series, SeriesBase } from '../series/chart-series';import { firstToLowerCase } from '../../common/utils/helper';import { Rect } from '@syncfusion/ej2-svg-base';import { Chart } from '../chart';import { ConnectorModel, AccessibilityModel } from '../../common/model/base-model';import { Connector, Accessibility } from '../../common/model/base';
+import { Property, Complex } from '@syncfusion/ej2-base';import { TechnicalIndicators, FinancialDataFields, MacdType } from './../utils/enum';import { Series, SeriesBase } from '../series/chart-series';import { firstToLowerCase } from '../../common/utils/helper';import { Rect } from '@syncfusion/ej2-svg-base';import { Chart } from '../chart';import { ConnectorModel, AccessibilityModel, LinearGradientModel, RadialGradientModel } from '../../common/model/base-model';import { Connector, Accessibility, LinearGradient, RadialGradient } from '../../common/model/base';
 import {SeriesBaseModel} from "../series/chart-series-model";
 
 /**
@@ -150,6 +150,20 @@ export interface TechnicalIndicatorModel extends SeriesBaseModel{
      * Options to improve accessibility for technical indicator elements.
      */
     accessibility?: AccessibilityModel;
+
+    /**
+     * Applies a linear gradient fill to the indicator.
+     *
+     * @default null
+     */
+    linearGradient?: LinearGradientModel;
+
+    /**
+     * Applies a radial gradient fill to the indicator.
+     *
+     * @default null
+     */
+    radialGradient?: RadialGradientModel;
 
     /**
      * Specifies the name of the series to be used for displaying the indicator data.

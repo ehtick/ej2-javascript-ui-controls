@@ -1,16 +1,16 @@
-import { isNullOrUndefined as isNOU } from '@syncfusion/ej2-base';
 import { BlockType, ContentType } from '../../../models/enums';
 import { DeletionType } from '../../../common/enums';
-import { BaseChildrenProp, BlockModel, ContentModel, TableCellModel, ITableBlockSettings, TableColumnModel } from '../../../models/index';
+import { BaseChildrenProp, BlockModel, TableCellModel, ITableBlockSettings, TableColumnModel } from '../../../models/index';
 import { getAdjacentBlock, getBlockContentElement, getBlockModelById, isNonContentEditableBlock } from '../../../common/utils/block';
-import { IUndoRedoState, IMoveOperation, IBlockData, IAddOperation, IMoveBlocksInteraction, ITransformOperation, IMultiDeleteOperation, IClipboardPasteOperation, IDeleteBlockInteraction, IFromBlockData, IFormattingOperation } from '../../../common/interface';
+import { IUndoRedoState, IMoveOperation, IBlockData, IAddOperation, IMoveBlocksInteraction, ITransformOperation, IMultipleBlocksTransformOperation, IMultiDeleteOperation, IClipboardPasteOperation, IDeleteBlockInteraction, IFromBlockData, IFormattingOperation, BlockDatas, IToBlockData } from '../../../common/interface';
 import { UndoRedoAction } from '../../actions/undo';
 import * as constants from '../../../common/constant';
 import { actionType } from '../../../common/constant';
 import { setCursorPosition } from '../../../common/utils/selection';
 import { BlockManager } from '../../base/block-manager';
-import { decoupleReference, findCellById, getDataCell, getTableElements, sanitizeBlock, toDomRow } from '../../../common/index';
-import { ColMeta, IBulkColumnsDeleteOperation, IBulkRowsDeleteOperation, ITableCellsClearOperation, ITableCellsPasteOperation, ITableColumnInsertOptions, ITableHeaderInputOperation, ITableRowInsertOptions, PastedCellContext, PayloadCell, RowMeta } from '../../base/interface';
+import { decoupleReference, findCellById, getDataCell, getTableElements, toDomCol, toDomRow } from '../../../common/index';
+import { isNullOrUndefined } from '@syncfusion/ej2-base';
+import { ColMeta, IBulkColumnsDeleteOperation, IBulkRowsDeleteOperation, ITableCellsClearOperation, ITableCellsPasteOperation, ITableColumnInsertOptions, ITableColumnResizeOperation, ITableHeaderInputOperation, ITableRowInsertOptions, PastedCellContext, PayloadCell, RowMeta } from '../../base/interface';
 
 /**
  * Manages undo redo actions for the BlockEditor component
@@ -79,6 +79,7 @@ export class UndoRedoManager {
         if (!data.isTypingWithFormat) {
             this.parent.formattingAction.nodeSelection.savedSelectionState = data.selectionState;
             this.parent.formattingAction.nodeSelection.restoreSelection();
+            this.parent.setFocusToBlock(this.parent.getBlockElementById(data.selectionState.startBlockId));
         }
     }
 
@@ -106,15 +107,37 @@ export class UndoRedoManager {
                 return { ...fromEntry, index, parent };
             });
 
+        let targetId: string = '';
         // insert in its old position
         for (const entry of oldDatas) {
             const { model: entryModel, index, parent } = entry;
             const insertToArray: BlockModel[] = parent ? (parent.properties as BaseChildrenProp).children : editorBlocks;
+            if (targetId === '') {
+                // to get the correct target id for the moved blocks.
+                const targetBlockModel: BlockModel = insertToArray[args.isMovedUp ? index - 1 : index];
+                targetId = targetBlockModel.id;
+            }
             entryModel.parentId = parent ? parent.id : '';
             insertToArray.splice(index, 0, entryModel);
         }
-
         this.parent.stateManager.updateManagerBlocks();
+        oldDatas.forEach((data: IFromBlockData) => {
+            const prevParent: IFromBlockData = fromEntries.find(
+                (fromModel: IFromBlockData) => fromModel.parent !== null
+            );
+            const currParent: BlockModel = getBlockModelById(data.model.parentId, editorBlocks);
+            this.parent.eventService.addChange({
+                action: 'Moved',
+                data: {
+                    block: data.model,
+                    targetId: targetId,
+                    isMovingUp: !args.isMovedUp,
+                    prevParent: prevParent ? prevParent.model : undefined,
+                    currentParent: currParent ? currParent : undefined
+                } as BlockDatas
+            });
+        });
+        this.parent.observer.notify('triggerBlockChange', this.parent.eventService.getChanges());
 
         // DOM updates
         for (const entry of args.isMovedUp ? oldDatas.reverse() : oldDatas) {
@@ -133,11 +156,22 @@ export class UndoRedoManager {
                 ? parentElement.querySelectorAll('.' + constants.BLOCK_CLS)[parseInt(indexVal.toString(), 10)]
                 : allBlocks[parseInt(indexVal.toString(), 10)]) as HTMLElement;
 
-            const wrapperClassName: string = parent
-                ? parent.blockType === BlockType.Callout ? '.' + constants.CALLOUT_CONTENT_CLS
-                    : parent.blockType.toString().startsWith('Collapsible') ? '.' + constants.TOGGLE_CONTENT_CLS
-                        : ''
-                : '';
+            let wrapperClassName: string = '';
+            if (parent) {
+                switch (parent.blockType) {
+                case BlockType.Callout:
+                    wrapperClassName = '.' + constants.CALLOUT_CONTENT_CLS;
+                    break;
+                case BlockType.Quote:
+                    wrapperClassName = '.' + constants.QUOTE_CONTENT_CLS;
+                    break;
+                default:
+                    if (parent.blockType.toString().startsWith('Collapsible')) {
+                        wrapperClassName = '.' + constants.TOGGLE_CONTENT_CLS;
+                    }
+                    break;
+                }
+            }
 
             const wrapperElement: HTMLElement = wrapperClassName
                 ? parentElement.querySelector(wrapperClassName)
@@ -208,8 +242,78 @@ export class UndoRedoManager {
             blockElement: blockElement,
             newBlockType: newBlockType,
             isUndoRedoAction: true,
-            props: storedBlockModel.properties
+            props: storedBlockModel.properties,
+            oldBlockModel: storedBlockModel
         });
+    }
+
+    /**
+     * Handles undo/redo action for image insertion (placeholder → uploaded image)
+     *
+     * @param {IUndoRedoState} currentState - Specifies the current state of the undo redo action
+     * @returns {void} - Returns void
+     * @hidden
+     */
+    public handleImageInsertion(currentState: IUndoRedoState): void {
+        const imageData: ITransformOperation = currentState.data as ITransformOperation;
+        if (!imageData) { return; }
+
+        const blockId: string = imageData.blockId;
+        const blockElement: HTMLElement = this.parent.blockContainer.querySelector(`#${blockId}`) as HTMLElement;
+
+        if (!blockElement) { return; }
+
+        // replace the block model in the editor
+        this.parent.blockService.replaceBlock(blockId, this.undoRedoAction.isUndoing ? imageData.oldBlockModel : imageData.newBlockModel);
+        this.parent.stateManager.updateManagerBlocks();
+
+        // Re-render the block content to reflect the model change
+        this.parent.observer.notify('modelChanged', { type: 'ReplaceBlock', state: {
+            targetBlockId: blockId,
+            block: this.undoRedoAction.isUndoing ? imageData.oldBlockModel : imageData.newBlockModel,
+            oldBlock: this.undoRedoAction.isUndoing ? imageData.newBlockModel : imageData.oldBlockModel
+        }});
+
+        // Set focus to the block
+        this.parent.setFocusToBlock(blockElement);
+    }
+
+    /**
+     * Handles undo redo action for multiple block transformations
+     *
+     * @param {IUndoRedoState} currentState - Specifies the current state of the undo redo action
+     * @returns {void} - Returns void
+     * @hidden
+     */
+    public reTransformMultipleBlocks(currentState: IUndoRedoState): void {
+        const multiTransformData: IMultipleBlocksTransformOperation = currentState.data as IMultipleBlocksTransformOperation;
+        if (!multiTransformData || !multiTransformData.transformedBlocks || multiTransformData.transformedBlocks.length === 0) { return; }
+
+        // Prevent individual undo tracking during batch redo
+        this.undoRedoAction.beginBatchTransform();
+
+        for (const transform of multiTransformData.transformedBlocks) {
+            const currentBlockModel: BlockModel = getBlockModelById(transform.blockId, this.parent.getEditorBlocks());
+            const storedBlockModel: BlockModel = this.undoRedoAction.isUndoing
+                ? transform.oldBlockModel : transform.newBlockModel;
+            const blockElement: HTMLElement = this.parent.blockContainer.querySelector(`#${transform.blockId}`) as HTMLElement;
+            const newBlockType: string = this.undoRedoAction.isUndoing
+                ? transform.oldBlockModel.blockType : transform.newBlockModel.blockType;
+
+            if (currentBlockModel && blockElement) {
+                this.parent.blockCommand.handleBlockTransformation({
+                    block: currentBlockModel,
+                    blockElement: blockElement,
+                    newBlockType: newBlockType,
+                    isUndoRedoAction: true,
+                    props: storedBlockModel.properties,
+                    oldBlockModel: storedBlockModel
+                });
+            }
+        }
+
+        // End batch mode without pushing to undo stack
+        this.undoRedoAction.endBatchTransform();
     }
 
     /**
@@ -302,7 +406,7 @@ export class UndoRedoManager {
         const insertArray: BlockModel[] = parent
             ? (parent.properties as BaseChildrenProp).children
             : (tableParent ? tableParent.blocks : editorBlocks);
-        insertArray.splice(insertIndex, deleteCount, decoupleReference(sanitizeBlock(block)));
+        insertArray.splice(insertIndex, deleteCount, decoupleReference(block));
 
         if (blockElement) {
             this.parent.observer.notify('modelChanged', { type: 'ReRenderBlockContent', state: {
@@ -475,6 +579,12 @@ export class UndoRedoManager {
 
         const updatedBlock: BlockModel = decoupleReference(getBlockModelById(data.blockId, this.parent.getEditorBlocks()));
         this.parent.tableService.triggerBlockUpdate(updatedBlock, oldBlock);
+        const blockId: string = data.blockId;
+        const blockEle: HTMLElement | null = this.parent.getBlockElementById(blockId);
+        if (blockEle) {
+            this.parent.selectionOverlay.show(blockId);
+            if (this.parent.nodeSelection) { this.parent.nodeSelection.clearSelection(); }
+        }
     }
 
     public handleTableCellsPasted(state: IUndoRedoState): void {
@@ -617,15 +727,39 @@ export class UndoRedoManager {
         });
     }
 
+    public handleTableColumnResized(state: IUndoRedoState): void {
+        const data: ITableColumnResizeOperation = state.data as ITableColumnResizeOperation;
+
+        const blockModel: BlockModel = getBlockModelById(data.blockId, this.parent.getEditorBlocks());
+        if (!blockModel) { return; }
+
+        const props: ITableBlockSettings = blockModel.properties as ITableBlockSettings;
+        const blockEl: HTMLElement = this.parent.getBlockElementById(blockModel.id);
+        const table: HTMLTableElement = blockEl.querySelector('table.e-table-element');
+        const colgroup: HTMLElement = table.querySelector('colgroup');
+
+        const useOld: boolean = this.undoRedoAction.isUndoing;
+        const updatedWidth: number = useOld ? data.oldWidthValue : data.newWidthValue;
+
+        // Update model
+        props.columns[data.resizedColIndex].width = `${updatedWidth}px`;
+
+        // Update DOM colgroup
+        const domLeftIdx: number = toDomCol(data.resizedColIndex, props.enableRowNumbers);
+        (colgroup.children[domLeftIdx as number] as HTMLTableColElement).style.width = `${updatedWidth}px`;
+    }
+
     private handleClipboardUndo(currentState: IUndoRedoState): void {
         const { type, blocks, targetBlockId, clipboardData, oldContent, isPastedAtStart,
-            isSelectivePaste }: IClipboardPasteOperation = currentState.data as IClipboardPasteOperation;
+            isSelectivePaste, cursorBlockAfterSplit }: IClipboardPasteOperation = currentState.data as IClipboardPasteOperation;
         const targetBlock: BlockModel = getBlockModelById(targetBlockId, this.parent.getEditorBlocks());
-        const oldTargetBlock: BlockModel = decoupleReference(sanitizeBlock(targetBlock));
-
+        const oldTargetBlock: BlockModel = decoupleReference(targetBlock);
         if (type === 'blocks') {
             const clipboardBlocks: BlockModel[] = clipboardData.blocks;
-            const oldBlock: BlockModel = decoupleReference(sanitizeBlock(currentState.oldBlockModel));
+            const nonMergableTypes: string[] = [BlockType.Table, BlockType.Image, BlockType.Divider];
+            const isFirstBlkNonMergableType: boolean = clipboardBlocks ?
+                nonMergableTypes.indexOf(clipboardData.blocks[0].blockType) !== -1 : false;
+            const oldBlock: BlockModel = decoupleReference(currentState.oldBlockModel);
             const isEmptyTargetBlock: boolean = oldBlock && oldBlock.content
                 && ((oldBlock.content.length === 1 && oldBlock.content[0].contentType === ContentType.Text &&
                     (oldBlock.content[0].content === '' || !oldBlock.content[0].content))
@@ -651,11 +785,8 @@ export class UndoRedoManager {
                     preventEventTrigger: true
                 }});
             }
-            else {
-                const pastedContentIds: Set<string> = new Set(clipboardBlocks[0].content.map((c: ContentModel) => c.id));
-                const newContent: ContentModel[] = targetBlock.content.filter((content: ContentModel) => !pastedContentIds.has(content.id));
-                this.parent.blockService.updateContent(targetBlock.id, newContent);
-
+            else if (!isFirstBlkNonMergableType) {
+                this.parent.blockService.updateContent(targetBlock.id, cursorBlockAfterSplit.content);
                 this.parent.observer.notify('modelChanged', { type: 'ReRenderBlockContent', state: {
                     data: [ { block: targetBlock, oldBlock: oldTargetBlock } ],
                     preventEventTrigger: true
@@ -699,10 +830,11 @@ export class UndoRedoManager {
 
         const editorBlocks: BlockModel[] = this.parent.getEditorBlocks();
         const targetBlock: BlockModel = getBlockModelById(targetBlockId, editorBlocks);
-        const oldTargetBlock: BlockModel = decoupleReference(sanitizeBlock(targetBlock));
+        const oldTargetBlock: BlockModel = decoupleReference(targetBlock);
         const clipboardBlocks: BlockModel[] = clipboardData ? clipboardData.blocks : null;
-        const specialTypes: string[] = [BlockType.Table, BlockType.Image];
-        const isFirstBlkSpecialType: boolean = clipboardBlocks ? specialTypes.indexOf(clipboardData.blocks[0].blockType) !== -1 : false;
+        const nonMergableTypes: string[] = [BlockType.Table, BlockType.Image, BlockType.Divider];
+        const isFirstBlkNonMergableType: boolean = clipboardBlocks ?
+            nonMergableTypes.indexOf(clipboardData.blocks[0].blockType) !== -1 : false;
         let isFirstBlkProcessed: boolean = false;
 
         if (type === 'blocks') {
@@ -713,7 +845,7 @@ export class UndoRedoManager {
 
             if (isEmptyTargetBlock) {
                 isFirstBlkProcessed = true;
-                const block: BlockModel = decoupleReference(sanitizeBlock(clipboardBlocks[0]));
+                const block: BlockModel = decoupleReference(clipboardBlocks[0]);
                 this.parent.blockService.generateNewIdsForBlock(block);
                 block.id = targetBlockId;
 
@@ -728,14 +860,14 @@ export class UndoRedoManager {
                     preventEventTrigger: true
                 }});
             }
-            else if (!isFirstBlkSpecialType) {
+            else if (!isFirstBlkNonMergableType) {
                 isFirstBlkProcessed = true;
                 if (!isSelectivePaste) {
                     this.undoRedoAction.applyNextRedoSibling();
                 }
 
                 const originalBlock: BlockModel = getBlockModelById(targetBlockId, this.parent.getEditorBlocks());
-                const originalClone: BlockModel = decoupleReference(sanitizeBlock(originalBlock));
+                const originalClone: BlockModel = decoupleReference(originalBlock);
                 this.parent.blockService.updateContent(originalBlock.id, [
                     ...originalBlock.content,
                     ...clipboardBlocks[0].content
@@ -768,6 +900,15 @@ export class UndoRedoManager {
                 data: [ { block: targetBlock, oldBlock: oldTargetBlock } ],
                 preventEventTrigger: true
             }});
+            const pasteEndOffset: number = (currentState.data as IClipboardPasteOperation).pasteEndOffset;
+            if (!isNullOrUndefined(pasteEndOffset)) {
+                const blockElement: HTMLElement = this.parent.getBlockElementById(targetBlock.id);
+                if (blockElement) {
+                    const contentEl: HTMLElement = getBlockContentElement(blockElement);
+                    this.parent.setFocusToBlock(blockElement);
+                    setCursorPosition(contentEl, pasteEndOffset);
+                }
+            }
         }
         this.parent.stateManager.updateManagerBlocks();
 
@@ -795,6 +936,15 @@ export class UndoRedoManager {
         case actionType.blockRemoved:
             if (this.undoRedoAction.isUndoing) {
                 this.createBlock(currentState);
+                // If last deletion was a soft-selected special block, restore overlay on undo
+                const restoredId: string = currentState.oldBlockModel && currentState.oldBlockModel.id;
+                if (restoredId && this.parent.lastHighlightedBlockId === restoredId) {
+                    const blockEle: HTMLElement | null = this.parent.getBlockElementById(restoredId);
+                    if (blockEle) {
+                        this.parent.selectionOverlay.show(currentState.oldBlockModel.id);
+                        if (this.parent.nodeSelection) { this.parent.nodeSelection.clearSelection(); }
+                    }
+                }
             }
             else {
                 this.removeBlock(currentState);
@@ -814,7 +964,7 @@ export class UndoRedoManager {
         const deletedBLockIndex: number = currentState.data ? (currentState.data as IAddOperation).currentIndex : -1;
         if (deletedBLockIndex < 0) { return; }
 
-        const { blockBeforeSplit, blocksAfterSplit, isSplitting, splitOffset }: IAddOperation = (currentState.data) as IAddOperation;
+        const { blockBeforeSplit, blocksAfterSplit, isSplitting, isTargetDeletion }: IAddOperation = (currentState.data) as IAddOperation;
         const parentId: string = blockBeforeSplit ? blockBeforeSplit.parentId : currentState.oldBlockModel.parentId;
         const parentBlock: BlockModel = getBlockModelById(parentId, this.parent.getEditorBlocks());
         const parentCell: TableCellModel = findCellById(parentId, this.parent.getEditorBlocks());
@@ -835,33 +985,29 @@ export class UndoRedoManager {
         });
 
         if (isSplitting && blocksAfterSplit) {
-            const currentId: string = (currentState.action === 'blockRemoved' && splitOffset === 0)
-                ? blocksAfterSplit[1].id
-                : blocksAfterSplit[0].id;
-            this.parent.blockService.replaceBlock(currentId, blocksAfterSplit[0]);
+            const cursorBlock: BlockModel = blocksAfterSplit[0];
+            this.parent.blockService.replaceBlock(cursorBlock.id, cursorBlock);
             this.parent.stateManager.updateManagerBlocks();
 
-            if (splitOffset === 0) {
-                currentBlockElement = this.parent.blockRenderer.createAndReplaceBlockElement(currentId, blocksAfterSplit[0].id);
-            }
-            else {
-                this.parent.observer.notify('modelChanged', { type: 'ReRenderBlockContent', state: {
-                    data: [ { block: getBlockModelById(blocksAfterSplit[0].id, this.parent.getEditorBlocks()) } ],
-                    preventEventTrigger: true
-                }});
-            }
+            this.parent.observer.notify('modelChanged', { type: 'ReRenderBlockContent', state: {
+                data: [ { block: getBlockModelById(cursorBlock.id, this.parent.getEditorBlocks()) } ],
+                preventEventTrigger: true
+            }});
         }
-
-        if (!isSplitting) {
+        else {
             const newBlockElement: HTMLElement = this.parent.getBlockElementById(addedBlock.id);
-            if (isNonContentEditableBlock(currentState.oldBlockModel.blockType)) {
-                const adjacentSibling: HTMLElement = (newBlockElement.nextElementSibling
-                    || newBlockElement.previousElementSibling) as HTMLElement;
-                if (adjacentSibling) {
-                    this.parent.setFocusAndUIForNewBlock(adjacentSibling);
-                }
+            const direction: string = isTargetDeletion ? 'next' : 'previous';
+            const adjacentBlock: HTMLElement = getAdjacentBlock(newBlockElement, direction);
+            const canSetFocusToAdjacent: boolean = (adjacentBlock &&
+                (isTargetDeletion || isNonContentEditableBlock(currentState.oldBlockModel.blockType))
+            );
+            if (canSetFocusToAdjacent) {
+                this.parent.setFocusAndUIForNewBlock(adjacentBlock);
             }
-            if (currentState.oldBlockModel.blockType === BlockType.Callout) {
+            else if (currentState.oldBlockModel.blockType === BlockType.Callout) {
+                this.parent.setFocusAndUIForNewBlock(newBlockElement.querySelector('.' + constants.BLOCK_CLS));
+            }
+            else if (currentState.oldBlockModel.blockType === BlockType.Quote) {
                 this.parent.setFocusAndUIForNewBlock(newBlockElement.querySelector('.' + constants.BLOCK_CLS));
             }
         }
@@ -877,38 +1023,32 @@ export class UndoRedoManager {
      * @hidden
      */
     public removeBlock(currentState: IUndoRedoState): void {
-        const { splitOffset, isSplitting }: IDeleteBlockInteraction = (currentState.data) as IDeleteBlockInteraction;
-        const { blockBeforeSplit, blocksAfterSplit }: IAddOperation = (currentState.data) as IAddOperation;
+        const { blockBeforeSplit, isAfter, isSplitting }: IAddOperation = (currentState.data) as IAddOperation;
         const blockElement: HTMLElement = this.parent.blockContainer.querySelector(`#${(currentState.data as IBlockData).blockId}`) as HTMLElement;
-        const shouldNeedsMerge: boolean = !isNOU(splitOffset) && splitOffset > -1 && isSplitting;
 
-        if (shouldNeedsMerge) {
-            let targetBlockElement: HTMLElement = this.parent.getBlockElementById(blockBeforeSplit.id);
+        if (isSplitting) {
+            const targetBlockElement: HTMLElement = this.parent.getBlockElementById(blockBeforeSplit.id);
             const newCursorPos: number = getBlockContentElement(targetBlockElement).textContent.length;
-            const newBlock: BlockModel = (currentState.action === 'blockRemoved' && splitOffset === 0)
-                ? blocksAfterSplit[1]
-                : blockBeforeSplit;
+            const newBlock: BlockModel = blockBeforeSplit;
             this.parent.blockCommand.deleteBlock({ blockElement: blockElement, isUndoRedoAction: true, preventEventTrigger: true });
             this.parent.blockService.replaceBlock(blockBeforeSplit.id, newBlock);
             this.parent.stateManager.updateManagerBlocks();
 
-            if (splitOffset === 0) {
-                targetBlockElement = this.parent.blockRenderer.createAndReplaceBlockElement(blockBeforeSplit.id, newBlock.id);
-            }
-            else {
-                this.parent.observer.notify('modelChanged', { type: 'ReRenderBlockContent', state: {
-                    data: [ { block: getBlockModelById(blockBeforeSplit.id, this.parent.getEditorBlocks()) } ],
-                    preventEventTrigger: true
-                }});
-            }
+            this.parent.observer.notify('modelChanged', { type: 'ReRenderBlockContent', state: {
+                data: [ { block: getBlockModelById(blockBeforeSplit.id, this.parent.getEditorBlocks()) } ],
+                preventEventTrigger: true
+            }});
             this.parent.setFocusToBlock(targetBlockElement);
             setCursorPosition(getBlockContentElement(targetBlockElement), newCursorPos);
         }
         else {
-            const adjacentBlock: HTMLElement = getAdjacentBlock(blockElement, 'next') || getAdjacentBlock(blockElement, 'previous');
-            if (adjacentBlock) {
-                this.parent.setFocusAndUIForNewBlock(adjacentBlock);
+            const direction: string = isAfter ? 'previous' : 'next';
+            let adjacentBlock: HTMLElement = getAdjacentBlock(blockElement, direction);
+            if (!adjacentBlock) {
+                // Fallback - try with opposite direction
+                adjacentBlock = getAdjacentBlock(blockElement, (direction === 'previous' ? 'next' : 'previous'));
             }
+            this.parent.setFocusAndUIForNewBlock(adjacentBlock);
             this.parent.blockCommand.deleteBlock({ blockElement: blockElement, isUndoRedoAction: true, preventEventTrigger: true });
         }
 

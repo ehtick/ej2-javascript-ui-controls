@@ -157,6 +157,131 @@ export class NavigationPane {
         }
     }
 
+    /**
+     * @private
+     * Update navigation pane layout for RTL dynamically.
+     * @param {boolean} enable - true to enable RTL, false to disable
+     * @returns {void}
+     */
+    public updateRtl(enable: boolean): void {
+        if (this.sideBarToolbar) {
+            this.sideBarToolbar.style.cssFloat = enable ? 'right' : '';
+            if (enable) {
+                this.sideBarToolbar.style.right = '1px';
+                this.sideBarToolbar.style.position = 'relative';
+            } else {
+                this.sideBarToolbar.style.right = '';
+                this.sideBarToolbar.style.position = '';
+            }
+            const bookmarkView: HTMLElement = document.getElementById(this.pdfViewer.element.id + '_bookmark_view');
+            if (bookmarkView) {
+                bookmarkView.classList.remove('e-rtl');
+                bookmarkView.classList.remove('e-ltr');
+                bookmarkView.classList.add(enable ? 'e-rtl' : 'e-ltr');
+            }
+        }
+        if (this.sideBarToolbarSplitter) {
+            this.sideBarToolbarSplitter.classList.remove(enable ? 'e-left' : 'e-right');
+            this.sideBarToolbarSplitter.classList.add(enable ? 'e-right' : 'e-left');
+        }
+        if (this.sideBarContentContainer) {
+            this.sideBarContentContainer.classList.remove(enable ? 'e-left' : 'e-right');
+            this.sideBarContentContainer.classList.add(enable ? 'e-right' : 'e-left');
+            if (this.sideBarContentSplitter) {
+                this.sideBarContentSplitter.style.right = enable ? '0px' : '';
+            }
+        }
+        if (this.sideBarContent) {
+            this.sideBarContent.style.right = enable ? '0px' : '';
+            this.sideBarContent.style.direction = enable ? 'rtl' : 'ltr';
+        }
+        if (this.sideBarTitleContainer) {
+            this.sideBarTitleContainer.style.right = enable ? '0px' : '';
+        }
+        if (this.sideBarTitle) {
+            this.sideBarTitle.classList.remove(enable ? 'e-left' : 'e-right');
+            this.sideBarTitle.classList.add(enable ? 'e-right' : 'e-left');
+        }
+        if (this.sideBarResizer) {
+            this.sideBarResizer.classList.remove(enable ? 'e-left' : 'e-right');
+            this.sideBarResizer.classList.add(enable ? 'e-right' : 'e-left');
+            if (enable) {
+                this.sideBarResizer.style.left = '';
+                this.sideBarResizer.style.right = this.sideBarTitleContainer.style.width;
+            }
+            else {
+                this.sideBarResizer.style.right = '';
+                this.sideBarResizer.style.left = this.sideBarTitleContainer.style.width;
+            }
+        }
+        // Comment panel positioning
+        if (this.commentPanelContainer) {
+            if (enable) {
+                this.commentPanelContainer.style.left = '0px';
+                this.commentPanelContainer.style.right = '';
+            } else {
+                this.commentPanelContainer.style.right = '0px';
+                this.commentPanelContainer.style.left = '';
+            }
+        }
+        if (this.commentPanelResizer) {
+            this.commentPanelResizer.classList.remove(enable ? 'e-right' : 'e-left');
+            this.commentPanelResizer.classList.add(enable ? 'e-left' : 'e-right');
+            if (enable) {
+                this.commentPanelResizer.style.left = this.commentPanelContainer.style.width;
+                this.commentPanelResizer.style.right = '';
+            } else {
+                this.commentPanelResizer.style.right = this.commentPanelContainer.style.width;
+                this.commentPanelResizer.style.left = '';
+            }
+        }
+        // Close button position
+        if (this.closeDiv) {
+            if (enable) {
+                this.closeDiv.style.left = '8px';
+                this.closeDiv.style.right = '';
+            } else {
+                // Position close button similar to initial creation: consider current sidebar width
+                if (this.sideBarContentContainer && this.sideBarContentContainer.clientWidth) {
+                    const leftPos: number = this.sideBarContentContainer.clientWidth - this.contentContainerScrollWidth;
+                    this.closeDiv.style.left = leftPos + 'px';
+                } else {
+                    this.closeDiv.style.left = this.closeButtonLeft + 'px';
+                }
+                this.closeDiv.style.right = '';
+            }
+        }
+        // Update EJ2 components
+        if (this.annotationMenuObj) {
+            this.annotationMenuObj.enableRtl = enable;
+        }
+        if (this.toolbar) {
+            this.toolbar.enableRtl = enable;
+        }
+        // Update viewer container positions
+        if (this.pdfViewerBase && this.pdfViewerBase.viewerContainer) {
+            if (enable) {
+                this.pdfViewerBase.viewerContainer.style.right = this.getViewerContainerLeft() + 'px';
+                this.pdfViewerBase.viewerContainer.style.left = this.getViewerContainerRight() + 'px';
+            } else {
+                this.pdfViewerBase.viewerContainer.style.left = this.getViewerContainerLeft() + 'px';
+                this.pdfViewerBase.viewerContainer.style.right = this.getViewerContainerRight() + 'px';
+            }
+            this.pdfViewerBase.viewerContainer.style.width = ((this.pdfViewer.element.clientWidth > 0 ? this.pdfViewer.element.clientWidth : this.pdfViewer.element.offsetWidth) - this.getViewerContainerLeft() - this.getViewerContainerRight()) + 'px';
+            if (this.pdfViewerBase.pageContainer) {
+                this.pdfViewerBase.pageContainer.style.width = this.pdfViewerBase.viewerContainer.clientWidth + 'px';
+            }
+        }
+        if (this.pdfViewer.toolbarModule &&
+            this.pdfViewer.toolbarModule.annotationToolbarModule && this.pdfViewer.isAnnotationToolbarVisible) {
+            this.pdfViewer.toolbarModule.annotationToolbarModule.adjustViewer(true);
+        }
+        if (this.pdfViewer.toolbarModule && this.pdfViewer.toolbarModule.formDesignerToolbarModule &&
+            this.pdfViewer.isFormDesignerToolbarVisible) {
+            this.pdfViewer.toolbarModule.formDesignerToolbarModule.adjustViewer(true);
+        }
+    }
+
     private createNavigationPane(): void {
         const isblazor: boolean = isBlazor();
         if (!isblazor) {

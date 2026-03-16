@@ -297,7 +297,7 @@ export class UndoRedo {
                 if (args.isUndo) {
                     if (undoRedoArgs.action === 'resizeToFit' && !eventArgs.isCol) {
                         const maxHgts: { [key: number]: number } = sheet.maxHgts[eventArgs.index as number] as { [key: number]: number };
-                        if (maxHgts && maxHgts[-1 as number] && maxHgts[-1 as number] === parseFloat(eventArgs.oldHeight)) {
+                        if (maxHgts[-1 as number] && maxHgts[-1 as number] === parseFloat(eventArgs.oldHeight)) {
                             delete maxHgts[-1 as number];
                         }
                     }
@@ -310,7 +310,7 @@ export class UndoRedo {
                 } else {
                     if (undoRedoArgs.action === 'resizeToFit' && !eventArgs.isCol) {
                         const maxHgts: { [key: number]: number } = sheet.maxHgts[eventArgs.index as number] as { [key: number]: number };
-                        if (maxHgts && !maxHgts[-1 as number]) {
+                        if (!maxHgts[-1 as number]) {
                             setMaxHgt(sheet, eventArgs.index, -1, parseFloat(eventArgs.height));
                         }
                     }
@@ -850,7 +850,7 @@ export class UndoRedo {
                     } else if (cellValue === 'line-through') {
                         changedValue = value === 'line-through' ? 'none' : 'underline line-through';
                     } else if (cellValue === 'underline line-through') {
-                        changedValue = value === 'underline' ? 'line-through' : 'underline'; removeProp = true;
+                        changedValue = value; removeProp = true;
                     }
                     if (changedValue === 'none') { removeProp = true; }
                     (argsEventArgs.style as CellStyleModel).textDecoration = changedValue;
@@ -874,7 +874,7 @@ export class UndoRedo {
                                 }
                             } else if (cellValue === 'underline line-through') {
                                 if (removeProp) {
-                                    changedStyle.textDecoration = value === 'underline' ? 'line-through' : 'underline';
+                                    changedStyle.textDecoration = value;
                                 } else {
                                     continue;
                                 }
@@ -1230,6 +1230,7 @@ export class UndoRedo {
         if (this.undoCollection.length > 0) { this.undoCollection = []; }
         if (this.redoCollection.length > 0) { this.redoCollection = []; }
         if (this.beforeActionData && this.beforeActionData.cellDetails) { this.beforeActionData.cellDetails = []; }
+        this.isUndo = null; this.undoRedoStep = null;
         this.parent = null;
     }
     /**

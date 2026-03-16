@@ -1,4 +1,4 @@
-import { KeyboardEventArgs, removeClass, selectAll, isNullOrUndefined as isNOU, EventHandler, detach } from '@syncfusion/ej2-base';
+import { KeyboardEventArgs, removeClass, selectAll, isNullOrUndefined as isNOU, EventHandler, detach, createElement } from '@syncfusion/ej2-base';
 import { IRichTextEditor, IRenderer } from '../base/interface';
 import { ActionBeginEventArgs } from '../../common/interface';
 import * as events from '../base/constant';
@@ -67,10 +67,18 @@ export class ViewSource {
             keyAction: this.previewKeyDown.bind(this), keyConfigs: this.parent.formatter.keyConfig, eventName: 'keydown'
         });
         EventHandler.add(this.previewElement, 'mousedown', this.mouseDownHandler, this);
+        const getTextArea: HTMLInputElement = this.parent.element.querySelector('.' + CLS_RTE_SOURCE_CODE_TXTAREA);
+        if (this.parent.maxLength !== -1) {
+            EventHandler.add(getTextArea, 'keydown', this.maxLengthHandlingCodeview, this);
+            EventHandler.add(getTextArea, 'paste', this.onSourceCodePaste, this);
+        }
     }
     private unWireEvent(): void {
         if (this.previewElement) {
             EventHandler.remove(this.previewElement, 'mousedown', this.mouseDownHandler);
+            const getTextArea: HTMLInputElement = this.parent.element.querySelector('.' + CLS_RTE_SOURCE_CODE_TXTAREA);
+            EventHandler.remove(getTextArea, 'keydown', this.maxLengthHandlingCodeview);
+            EventHandler.remove(getTextArea, 'paste', this.onSourceCodePaste);
         }
         if (this.keyboardModule && !this.keyboardModule.isDestroyed) {
             this.keyboardModule.destroy();
@@ -146,7 +154,7 @@ export class ViewSource {
                 const tbItems: HTMLElement[] = selectAll('.' + CLS_TB_ITEM, this.parent.element);
                 this.contentModule = this.rendererFactory.getRenderer(RenderType.Content);
                 const height: number = this.parent.inputElement.getBoundingClientRect().height +
-                this.parent.toolbarModule.getExpandTBarPopHeight();
+                    this.parent.toolbarModule.getExpandTBarPopHeight();
                 this.parent.rootContainer.classList.add('e-source-code-enabled');
                 this.parent.notify(events.updateToolbarItem, {
                     targetItem: 'SourceCode', updateItem: 'Preview',
@@ -281,6 +289,40 @@ export class ViewSource {
             });
         }
         return value;
+    }
+
+    private maxLengthHandlingCodeview(e: KeyboardEventArgs): void {
+        const getTextArea: HTMLInputElement = this.parent.element.querySelector('.' + CLS_RTE_SOURCE_CODE_TXTAREA);
+        const currentLength: number = this.getHtmlTextLengthRegex(getTextArea.value);
+        const selectionLength: number = Math.abs(getTextArea.selectionStart - getTextArea.selectionEnd);
+        const lengthAfterInput: number = currentLength - selectionLength + 1;
+        const allowedKeys: string[] = [ 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Backspace', 'Delete', 'Shift', 'Home', 'End', 'Tab', 'Control', 'Meta', 'Alt', 'Escape'];
+        // Allow all keyboard shortcuts (Ctrl/Cmd/Alt combinations)
+        if (e.ctrlKey || e.metaKey || e.altKey) {
+            return;
+        }
+        if ((this.parent.maxLength !== -1) && (lengthAfterInput > this.parent.maxLength) && ((allowedKeys.indexOf(e.key) === -1))) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }
+    private getHtmlTextLengthRegex(html: string): number {
+        const tempElement: HTMLElement = createElement('div');
+        tempElement.innerHTML = html;
+        const textString : string = (tempElement).innerText;
+        return textString.length;
+    }
+    private onSourceCodePaste (e: ClipboardEvent): void {
+        const getTextArea: HTMLInputElement = this.parent.element.querySelector('.' + CLS_RTE_SOURCE_CODE_TXTAREA);
+        const pastedText: string = e.clipboardData.getData('text/plain') || '';
+        const selectionLength: number = Math.abs(getTextArea.selectionStart - getTextArea.selectionEnd);
+        const pastedLength: number = this.getHtmlTextLengthRegex(pastedText);
+        const currentContent: number = this.getHtmlTextLengthRegex(getTextArea.value);
+        const finalLength: number = currentContent - selectionLength + pastedLength;
+        if (finalLength > this.parent.maxLength) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
     }
 
     private getTextAreaValue(): string {

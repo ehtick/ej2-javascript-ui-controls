@@ -1065,7 +1065,7 @@ export class Resize implements IAction {
                 removeClass([contentTable], ['e-tableborder']);
             }
             else {
-                if (contentwidth < contentTable.scrollWidth) {
+                if (contentwidth > contentTable.scrollWidth) {
                     addClass([headerTable, contentTable], ['e-tableborder']);
                 }
             }

@@ -222,6 +222,7 @@ $gantt-rowdd-topbottom-border: 1px solid #0070f0 !default;
 $gantt-rowdd-boxshadow:  #0070f0 !default;
 $gantt-rowdd-childborder-width: 1px 0 0 !default;
 $gantt-chartrow-hover-bg-color: $grey-light !default;
+$gantt-chartrow-selection-hover-bg-color: color-mix(in srgb, $grey-88, rgba(57, 57, 57, .2)) !default;
 $gantt-timelinecell-hover-bg-color: $gray-dark !default;
 $gantt-headercell-hover-bg-color: $gray-dark !default;
 $gantt-weekendcell-hover-bg-color: $grey-88 !default;

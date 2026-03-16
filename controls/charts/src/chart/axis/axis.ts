@@ -1620,6 +1620,61 @@ export class Axis extends ChildProperty<Axis> {
             appendChildElement(chart.enableCanvas, axisElement, chartAxisLayoutPanel.element, chart.redraw);
         }
     }
+
+    /**
+     * Used to collect the rect of axes, to check whether they collide with series names or not.
+     *
+     * @param {Chart} chart - The current chart instance.
+     * @returns {void}
+     * @private
+     */
+    public registerAxisLabelRects(chart: Chart): void {
+        if (!this.visible || !this.internalVisibility || !this.rect || !(this.visibleLabels.length as number)) { return; }
+        const padding: number = this.labelPadding;
+        const tick: number = this.majorTickLines.height as number;
+
+        const push: (rect: Rect) => void = (rect: Rect) => { chart.axisLabelCollections.push(rect); };
+
+        for (let i: number = 0; i < this.visibleLabels.length; i++) {
+            const label: VisibleLabels = this.visibleLabels[i as number];
+            if (!label || !label.size) { continue; }
+
+            let x: number; let y: number;
+            const width: number = label.size.width;
+            const height: number = label.size.height;
+
+            if (this.orientation === 'Horizontal') {
+                x = (valueToCoefficient(label.value, this) * this.rect.width) + this.rect.x - width / 2;
+                if (this.edgeLabelPlacement === 'Shift') {
+                    if (i === 0 && x < this.rect.x) { x = this.rect.x; }
+                    if (i === this.visibleLabels.length - 1 && (x + width) > (this.rect.x + this.rect.width)) {
+                        x = this.rect.x + this.rect.width - width;
+                    }
+                }
+                if (this.labelPosition === 'Inside') {
+                    y = this.isAxisOpposedPosition
+                        ? (this.rect.y + padding)                // inside near top of axis rect
+                        : (this.rect.y + this.rect.height - height - padding);
+                } else {
+                    y = this.isAxisOpposedPosition
+                        ? (this.rect.y - tick - padding - height)     // above axis
+                        : (this.rect.y + this.rect.height + tick + padding); // below axis
+                }
+            } else {
+                y = (valueToCoefficient(label.value, this) * this.rect.height) + this.rect.y - height / 2;
+                if (this.labelPosition === 'Inside') {
+                    x = this.isAxisOpposedPosition
+                        ? (this.rect.x + this.rect.width - width - padding)   // inside near right
+                        : (this.rect.x + padding);                         // inside near left
+                } else {
+                    x = this.isAxisOpposedPosition
+                        ? (this.rect.x + this.rect.width + tick + padding) // right of axis
+                        : (this.rect.x - tick - padding - width);              // left of axis
+                }
+            }
+            push(new Rect(x, y, width, height));
+        }
+    }
 }
 
 /** @private */

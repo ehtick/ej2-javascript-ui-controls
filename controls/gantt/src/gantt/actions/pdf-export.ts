@@ -150,6 +150,8 @@ export class PdfExport {
                 this.parent.zoomingProjectEndDate = this.helper.beforeSinglePageExport['zoomingProjectEndDate'];
                 this.parent.cloneProjectStartDate = this.helper.beforeSinglePageExport['cloneProjectStartDate'];
                 this.parent.cloneProjectEndDate = this.helper.beforeSinglePageExport['cloneProjectEndDate'];
+                this.parent.cloneTimelineStartDate = this.helper.beforeSinglePageExport['cloneTimelineStartDate'];
+                this.parent.cloneTimelineEndDate = this.helper.beforeSinglePageExport['cloneTimelineEndDate'];
                 this.parent.timelineModule.customTimelineSettings = this.helper.beforeSinglePageExport['customTimelineSettings'];
                 this.parent.isTimelineRoundOff = this.helper.beforeSinglePageExport['isTimelineRoundOff'];
                 this.parent.timelineModule.topTier = this.helper.beforeSinglePageExport['topTier'];
@@ -165,9 +167,17 @@ export class PdfExport {
                 this.parent.perDayWidth = this.helper.beforeSinglePageExport['perDayWidth'];
                 this.parent.updatedConnectorLineCollection = this.helper.beforeSinglePageExport['updatedConnectorLineCollection'];
             }
-            if (this.gantt.changeCloneProjectDates) {
-                this.parent.cloneProjectStartDate.setHours(0);
+            if (this.gantt.changeCloneProjectDates && this.parent.cloneProjectStartDate) {
+                if (this.parent.cloneProjectStartDate instanceof Date) {
+                    this.parent.cloneProjectStartDate.setHours(0);
+                }
                 this.gantt.changeCloneProjectDates = false;
+            }
+            if (this.gantt.changeCloneTimelineDates && this.parent.cloneTimelineStartDate) {
+                if (this.parent.cloneTimelineStartDate instanceof Date) {
+                    this.parent.cloneTimelineStartDate.setHours(0);
+                }
+                this.gantt.changeCloneTimelineDates = false;
             }
             if (!isMultipleExport) {
                 if (!this.isBlob) {

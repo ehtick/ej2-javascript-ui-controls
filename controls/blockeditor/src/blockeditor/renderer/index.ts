@@ -6,3 +6,5 @@ export * from './context-menu';
 export * from './blockaction-menu';
 export * from './link';
 export * from './floating-icon';
+export * from './image/image-uploader';
+export * from './image/image-progress';

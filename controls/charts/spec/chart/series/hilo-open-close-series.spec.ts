@@ -1417,6 +1417,70 @@ describe('Chart Control Series', () => {
         
     });
 
+    describe('Chart HiloOpenClose - Checking with gradient', () => {
+        let chartObj: Chart;
+        let elem: HTMLElement = createElement('div', { id: 'container' });
+        let targetElement: HTMLElement;
+        let loaded: EmitType<ILoadedEventArgs>;
+        beforeAll(() => {
+            document.body.appendChild(elem);
+            chartObj = new Chart({
+                primaryXAxis: {
+                    title: 'Month',
+                    valueType: 'Category'
+                },
+                primaryYAxis:
+                {
+                    title: 'Price in Dollar',
+                    minimum: 60,
+                    maximum: 200,
+                    interval: 20,
+                    labelFormat: '${value}'
+                },
+                series: [
+                    {
+                        dataSource: [
+                            { x: 'Jan', open: 120, high: 160, low: 100, close: 140 },
+                            { x: 'Feb', open: 150, high: 190, low: 130, close: 170 },
+                            { x: 'Mar', open: 130, high: 170, low: 110, close: 150 },
+                            { x: 'Apr', open: 160, high: 180, low: 120, close: 140 },
+                            { x: 'May', open: 150, high: 170, low: 110, close: 130 }
+                        ],
+                        xName: 'x', open: 'open',
+                        close: 'close', high: 'high', low: 'low',
+                        // Series type as HiloOpenClose
+                        type: 'HiloOpenClose',
+                        linearGradient: {
+                        x1: 0, y1: 0,
+                        x2: 0, y2: 1,
+                        gradientColorStop: [
+                            { offset: 0, color: '#FF0000', opacity: 1, lighten: 0.3, brighten: 0.2 },
+                            { offset: 50, color: '#FF6B00', opacity: 0.9, lighten: 0.1, brighten: 0 },
+                            { offset: 100, color: '#0000FF', opacity: 1, lighten: 1, brighten: 1 }
+                        ]
+                    }
+                    }
+                ],
+                title: 'Financial Analysis'
+            });
+            chartObj.appendTo('#container');
+        });
+        afterAll((): void => {
+            chartObj.destroy();
+            elem.remove();
+        });
+
+        it('Checking HiloOpenClose series with linear gradient', (done: Function) => {
+            loaded = (args: Object): void => {
+                const seriesElement: Element = document.getElementById('container_Series_0_Point_1');
+                expect(seriesElement.getAttribute('fill') === 'url(#container_series_0_linear_gradient)').toBe(true);
+                done();
+            };
+            chartObj.loaded = loaded;
+            chartObj.refresh();
+        });
+    });
+
     async function wait(ms: number): Promise<void> {
         return new Promise(resolve => setTimeout(resolve, ms));
     }

@@ -12,7 +12,7 @@ import { DiagramNativeElement } from '../../../src/diagram/core/elements/native-
 import { TextElement } from '../../../src/diagram/core/elements/text-element';
 import { NodeConstraints, HtmlModel, Ruler, ComplexHierarchicalTree } from '../../../src/index';
 import { MouseEvents } from '../interaction/mouseevents.spec';
-import { SnapConstraints, PortVisibility, ConnectorModel, PointModel, PortConstraints, AnnotationConstraints, ConnectorConstraints, LayoutModel, randomId, Thickness, DataBinding, DiagramConstraints, UserHandleModel } from '../../../src/diagram/index';
+import { SnapConstraints, PortVisibility, ConnectorModel, PointModel, PortConstraints, AnnotationConstraints, ConnectorConstraints, LayoutModel, randomId, Thickness, DataBinding, DiagramConstraints, UserHandleModel, Container } from '../../../src/diagram/index';
 import { IScrollChangeEventArgs, IBlazorScrollChangeEventArgs, DiagramTools, State } from '../../../src/diagram/index';
 
 import { PointPortModel } from '../../../src/diagram/objects/port-model';
@@ -552,13 +552,10 @@ describe('Diagram Control', () => {
             (diagram as any) = null; (ele as any) = null;
         });
         it('Checking Native node on proper layer', (done: Function) => {
-            // setTimeout(
-                // () => {
-                    let svgElement: SVGSVGElement = document.getElementsByClassName('e-native-layer')[0] as SVGSVGElement;
-                    let gElement: SVGElement = svgElement.getElementById(diagram.nodes[0].id + '_content_groupElement') as SVGElement;
-                    expect(gElement != null).toBe(true);
-                    done();
-                // }, 40);
+            let svgElement: SVGSVGElement = document.getElementsByClassName('e-native-layer')[0] as SVGSVGElement;
+            let gElement: SVGElement = svgElement.getElementById(diagram.nodes[0].id + '_content_groupElement') as SVGElement;
+            expect(gElement != null).toBe(true);
+            done();
         });
         it('Checking Native node', (done: Function) => {
             wrapper = (diagram.nodes[0] as Node).wrapper;
@@ -663,29 +660,26 @@ describe('Diagram Control', () => {
             }, 50);
         });
 
-        //commented for issue
-
-        // it('Checking node shape type changed to native on runtime', (done: Function) => {
-        //     let node: Node = diagram.nodes[8] as Node;
-        //     node.shape.type = 'Native';
-        //     diagram.dataBind();
-        //     let wrapper: Container = node.wrapper; 
-        //     (node.shape as NativeModel).content = '<g><path d="M90,43.841c0,24.213-19.779,43.841-44.182,43.841c-7.747,0-15.025-1.98-21.357-5.455L0,90l7.975-23.522' +
-        //     'c-4.023-6.606-6.34-14.354-6.34-22.637C1.635,19.628,21.416,0,45.818,0C70.223,0,90,19.628,90,43.841z M45.818,6.982' +
-        //     'c-20.484,0-37.146,16.535-37.146,36.859c0,8.065,2.629,15.534,7.076,21.61L11.107,79.14l14.275-4.537' +
-        //     'c5.865,3.851,12.891,6.097,20.437,6.097c20.481,0,37.146-16.533,37.146-36.857S66.301,6.982,45.818,6.982z M68.129,53.938' +
-        //     'c-0.273-0.447-0.994-0.717-2.076-1.254c-1.084-0.537-6.41-3.138-7.4-3.495c-0.993-0.358-1.717-0.538-2.438,0.537' +
-        //     'c-0.721,1.076-2.797,3.495-3.43,4.212c-0.632,0.719-1.263,0.809-2.347,0.271c-1.082-0.537-4.571-1.673-8.708-5.333' +
-        //     'c-3.219-2.848-5.393-6.364-6.025-7.441c-0.631-1.075-0.066-1.656,0.475-2.191c0.488-0.482,1.084-1.255,1.625-1.882' +
-        //     'c0.543-0.628,0.723-1.075,1.082-1.793c0.363-0.717,0.182-1.344-0.09-1.883c-0.27-0.537-2.438-5.825-3.34-7.977' +
-        //     'c-0.902-2.15-1.803-1.792-2.436-1.792c-0.631,0-1.354-0.09-2.076-0.09c-0.722,0-1.896,0.269-2.889,1.344' +
-        //     'c-0.992,1.076-3.789,3.676-3.789,8.963c0,5.288,3.879,10.397,4.422,11.113c0.541,0.716,7.49,11.92,18.5,16.223' +
-        //     'C58.2,65.771,58.2,64.336,60.186,64.156c1.984-0.179,6.406-2.599,7.312-5.107C68.398,56.537,68.398,54.386,68.129,53.938z"></path></g>';
-        //     diagram.dataBind(); 
-        //     expect(wrapper && wrapper.children && wrapper.children.length &&
-        //         wrapper.children[0] instanceof NativeElement).toBe(true);
-        //     done();
-        // });
+        it('Checking node shape type changed to native on runtime', (done: Function) => {
+            let node: Node = diagram.nodes[8] as Node;
+            node.shape.type = 'Native';
+            diagram.dataBind();
+            let wrapper: GroupableView = node.wrapper;
+            (node.shape as NativeModel).content = '<g><path d="M90,43.841c0,24.213-19.779,43.841-44.182,43.841c-7.747,0-15.025-1.98-21.357-5.455L0,90l7.975-23.522' +
+                'c-4.023-6.606-6.34-14.354-6.34-22.637C1.635,19.628,21.416,0,45.818,0C70.223,0,90,19.628,90,43.841z M45.818,6.982' +
+                'c-20.484,0-37.146,16.535-37.146,36.859c0,8.065,2.629,15.534,7.076,21.61L11.107,79.14l14.275-4.537' +
+                'c5.865,3.851,12.891,6.097,20.437,6.097c20.481,0,37.146-16.533,37.146-36.857S66.301,6.982,45.818,6.982z M68.129,53.938' +
+                'c-0.273-0.447-0.994-0.717-2.076-1.254c-1.084-0.537-6.41-3.138-7.4-3.495c-0.993-0.358-1.717-0.538-2.438,0.537' +
+                'c-0.721,1.076-2.797,3.495-3.43,4.212c-0.632,0.719-1.263,0.809-2.347,0.271c-1.082-0.537-4.571-1.673-8.708-5.333' +
+                'c-3.219-2.848-5.393-6.364-6.025-7.441c-0.631-1.075-0.066-1.656,0.475-2.191c0.488-0.482,1.084-1.255,1.625-1.882' +
+                'c0.543-0.628,0.723-1.075,1.082-1.793c0.363-0.717,0.182-1.344-0.09-1.883c-0.27-0.537-2.438-5.825-3.34-7.977' +
+                'c-0.902-2.15-1.803-1.792-2.436-1.792c-0.631,0-1.354-0.09-2.076-0.09c-0.722,0-1.896,0.269-2.889,1.344' +
+                'c-0.992,1.076-3.789,3.676-3.789,8.963c0,5.288,3.879,10.397,4.422,11.113c0.541,0.716,7.49,11.92,18.5,16.223' +
+                'C58.2,65.771,58.2,64.336,60.186,64.156c1.984-0.179,6.406-2.599,7.312-5.107C68.398,56.537,68.398,54.386,68.129,53.938z"></path></g>';
+            diagram.dataBind();
+            expect(wrapper && wrapper.children && wrapper.children.length && wrapper.children[0] instanceof DiagramNativeElement).toBe(true);
+            done();
+        });
 
         it('Checking Native node on proper layer if deleted', (done: Function) => {
             let id: string = diagram.nodes[0].id;
@@ -750,6 +744,7 @@ describe('Diagram Control', () => {
         });
 
         afterAll((): void => {
+            diagram.expandStateChange = undefined;
             diagram.destroy();
             ele.remove();
             (diagram as any) = null; (ele as any) = null;
@@ -1623,6 +1618,7 @@ describe('Diagram Control', () => {
         });
 
         afterAll((): void => {
+            diagram.selectionChange = undefined
             diagram.destroy();
             ele.remove();
             (diagram as any) = null; (ele as any) = null;
@@ -1936,6 +1932,7 @@ describe('Diagram Control', () => {
         });
 
         afterAll((): void => {
+            diagram.scrollChange = undefined;
             diagram.destroy();
             elements.remove();
             (diagram as any) = null; (elements as any) = null;
@@ -3083,139 +3080,209 @@ describe('Bug 913796- Multiselect swimlane with outside node, drag, rotate is no
         done();
     });
 });
-// describe('Restrict Negative Axis Drag Drop Test', () => {
-//     let diagram: Diagram;
-//     let ele: HTMLElement;
-//     let mouseEvents = new MouseEvents();
-//     let diagramCanvas: HTMLElement;
-//     let offsetLeft: number;
-//     let offsetTop: number;
-//     beforeAll((): void => {
-//         ele = createElement('div', { id: 'diagramAxisRestriction27' });
-//         document.body.appendChild(ele);
-//         let node: NodeModel[] = [{
-//             id: 'node1',
-//             width: 100,
-//             height: 100,
-//             offsetX: 100,
-//             offsetY: 100,
-//             annotations: [{ content: 'Node 1' }]
-//         },
-//         {
-//             shape: {
-//                 type: 'SwimLane',
-//                 orientation: 'Horizontal',
-//                 header: {
-//                     annotation: { content: 'ONLINE PURCHASE STATUS' },
-//                     height: 50, style: { fontSize: 11 },
-//                 },
-//                 lanes: [
-//                     {
-//                         id: 'stackCanvas1',
-//                         height: 100,
-//                         addInfo: { name: 'lane1' }
-//                     },
-//                 ],
-//                 phases: [
-//                     {
-//                         id: 'phase1', offset: 170,
-//                         header: { annotation: { content: 'Phase' } }
-//                     },
-//                 ],
-//                 phaseSize: 20,
-//             },
-//             offsetX: 400, offsetY: 400,
-//             height: 200,
-//             width: 350
-//         }];
-//         let connector: ConnectorModel[] = [{
-//             id: 'connector1',
-//             sourcePoint: { x: 200, y: 200 },
-//             targetPoint: { x: 300, y: 300 }
-//         },
-//         {
-//             id: 'connector2',
-//             sourcePoint: { x: 100, y: 500 },
-//             targetPoint: { x: 200, y: 600 }
-//         }];
-//         diagram = new Diagram({
-//             width: '100%',
-//             height: '700px',
-//             nodes: node,
-//             connectors: connector,
-//             constraints: DiagramConstraints.Default | DiagramConstraints.RestrictNegativeAxisDragDrop
-//         });
-//         diagram.appendTo('#diagramAxisRestriction27');
-//         diagramCanvas = document.getElementById(diagram.element.id + 'content');
-//         offsetLeft = diagram.element.offsetLeft;
-//         offsetTop = diagram.element.offsetTop;
-//     });
-//     afterAll((): void => {
-//         diagram.destroy();
-//         ele.remove();
-//         (diagram as any) = null; (ele as any) = null;
-//     });
-//     it('Restrict dragging node to negative axis', (done: Function) => {
-//         mouseEvents.mouseDownEvent(diagramCanvas, 100, 100);
-//         mouseEvents.mouseMoveEvent(diagramCanvas, 80, 100);
-//         mouseEvents.mouseMoveEvent(diagramCanvas, 60, 100);
-//         diagram.undo();
-//         mouseEvents.mouseMoveEvent(diagramCanvas, 40, 100);
-//         diagram.redo();
-//         mouseEvents.mouseMoveEvent(diagramCanvas, 30, 100);
-//         mouseEvents.mouseMoveEvent(diagramCanvas, 40, 100);
-//         mouseEvents.mouseUpEvent(diagramCanvas, 40, 100);
-//         let nodePosition = diagram.nodes[0].offsetX;
-//         expect(nodePosition == 50).toBe(true);
-//         done();
-//     });
-//     it('Restrict dragging swimlane with negativeAxixrestriction', (done: Function) => {
-//         mouseEvents.mouseDownEvent(diagramCanvas, 400, 310);
-//         mouseEvents.mouseMoveEvent(diagramCanvas, 600, 400);
-//         mouseEvents.mouseUpEvent(diagramCanvas, 600, 400);
-//         let nodePosition1 = diagram.nodes[1].offsetX;
-//         expect(nodePosition1 >= 0).toBe(true);
-//         done();
-//     });
-//     it(' dragging target  point connector  ', function (done) {
-//         var conn = diagram.connectors[0];
-//         mouseEvents.clickEvent(diagramCanvas, 300, 300);
-//         mouseEvents.dragAndDropEvent(diagramCanvas, offsetLeft + conn.targetPoint.x, offsetTop + conn.targetPoint.y, offsetLeft + conn.targetPoint.x - 60, offsetTop + conn.targetPoint.y);
-//         mouseEvents.dragAndDropEvent(diagramCanvas, offsetLeft + conn.targetPoint.x, offsetTop + conn.targetPoint.y, offsetLeft + conn.targetPoint.x - 40, offsetTop + conn.targetPoint.y);
-//         mouseEvents.dragAndDropEvent(diagramCanvas, offsetLeft + conn.targetPoint.x, offsetTop + conn.targetPoint.y, offsetLeft + conn.targetPoint.x - 60, offsetTop + conn.targetPoint.y);
-//         mouseEvents.dragAndDropEvent(diagramCanvas, offsetLeft + conn.targetPoint.x, offsetTop + conn.targetPoint.y, offsetLeft + conn.targetPoint.x - 40, offsetTop + conn.targetPoint.y);
-//         mouseEvents.dragAndDropEvent(diagramCanvas, offsetLeft + conn.targetPoint.x, offsetTop + conn.targetPoint.y, offsetLeft + conn.targetPoint.x - 100, offsetTop + conn.targetPoint.y + 40);
-//         mouseEvents.dragAndDropEvent(diagramCanvas, offsetLeft + conn.targetPoint.x, offsetTop + conn.targetPoint.y, offsetLeft + conn.targetPoint.x - 80, offsetTop + conn.targetPoint.y + 40);
-//         expect(diagram.connectors[0].targetPoint.x >= 0).toBe(true);
-//         done();
-//     });
-//     it(' dragging source point connector  ', function (done) {
-//         var conn = diagram.connectors[0];
-//         mouseEvents.clickEvent(diagramCanvas, 200, 200);
-//         mouseEvents.dragAndDropEvent(diagramCanvas, offsetLeft + conn.sourcePoint.x, offsetTop + conn.sourcePoint.y, offsetLeft + conn.sourcePoint.x - 60, offsetTop + conn.sourcePoint.y);
-//         mouseEvents.dragAndDropEvent(diagramCanvas, offsetLeft + conn.sourcePoint.x, offsetTop + conn.sourcePoint.y, offsetLeft + conn.sourcePoint.x - 40, offsetTop + conn.sourcePoint.y);
-//         mouseEvents.dragAndDropEvent(diagramCanvas, offsetLeft + conn.sourcePoint.x, offsetTop + conn.sourcePoint.y, offsetLeft + conn.sourcePoint.x - 60, offsetTop + conn.sourcePoint.y);
-//         mouseEvents.dragAndDropEvent(diagramCanvas, offsetLeft + conn.sourcePoint.x, offsetTop + conn.sourcePoint.y, offsetLeft + conn.sourcePoint.x - 40, offsetTop + conn.sourcePoint.y);
-//         mouseEvents.dragAndDropEvent(diagramCanvas, offsetLeft + conn.sourcePoint.x, offsetTop + conn.sourcePoint.y, offsetLeft + conn.sourcePoint.x - 100, offsetTop + conn.sourcePoint.y + 40);
-//         mouseEvents.dragAndDropEvent(diagramCanvas, offsetLeft + conn.sourcePoint.x, offsetTop + conn.sourcePoint.y, offsetLeft + conn.sourcePoint.x - 80, offsetTop + conn.sourcePoint.y + 40);
-//         expect(diagram.connectors[0].sourcePoint.x >= 0).toBe(true);
-//         done();
-//     });
-//     it('Restrict dragging connector to negative axis', (done: Function) => {
-//         mouseEvents.clickEvent(diagramCanvas, 150, 550);
-//         mouseEvents.mouseDownEvent(diagramCanvas, 150, 550);
-//         mouseEvents.mouseMoveEvent(diagramCanvas, 130, 550);
-//         mouseEvents.mouseMoveEvent(diagramCanvas, 100, 550);
-//         mouseEvents.mouseMoveEvent(diagramCanvas, -10, 550);
-//         mouseEvents.mouseMoveEvent(diagramCanvas, 100, 550);
-//         mouseEvents.mouseMoveEvent(diagramCanvas, 200, 550);
-//         mouseEvents.mouseMoveEvent(diagramCanvas, 300, 550);
-//         mouseEvents.mouseUpEvent(diagramCanvas, 300, 550);
-//         var nodePosition = diagram.connectors[1].sourcePoint;
-//         expect(nodePosition.x >= 0 && nodePosition.y >= 0).toBe(true);
-//         done();
-//     });
-// });
+
+describe('Restrict Negative Axis Drag Drop Test', () => {
+    let diagram: Diagram;
+    let ele: HTMLElement;
+    let mouseEvents = new MouseEvents();
+    let diagramCanvas: HTMLElement;
+    let offsetLeft: number;
+    let offsetTop: number;
+    beforeAll((): void => {
+        ele = createElement('div', { id: 'diagramAxisRestriction27' });
+        document.body.appendChild(ele);
+        let node: NodeModel[] = [{
+            id: 'node1',
+            width: 100,
+            height: 100,
+            offsetX: 100,
+            offsetY: 100,
+            annotations: [{ content: 'Node 1' }]
+        },
+        {
+            shape: {
+                type: 'SwimLane',
+                orientation: 'Horizontal',
+                header: {
+                    annotation: { content: 'ONLINE PURCHASE STATUS' },
+                    height: 50, style: { fontSize: 11 },
+                },
+                lanes: [
+                    {
+                        id: 'stackCanvas1',
+                        height: 100,
+                        addInfo: { name: 'lane1' }
+                    },
+                ],
+                phases: [
+                    {
+                        id: 'phase1', offset: 170,
+                        header: { annotation: { content: 'Phase' } }
+                    },
+                ],
+                phaseSize: 20,
+            },
+            offsetX: 400, offsetY: 400,
+            height: 200,
+            width: 350
+        }];
+        let connector: ConnectorModel[] = [{
+            id: 'connector1',
+            sourcePoint: { x: 200, y: 200 },
+            targetPoint: { x: 300, y: 300 }
+        },
+        {
+            id: 'connector2',
+            sourcePoint: { x: 100, y: 500 },
+            targetPoint: { x: 200, y: 600 }
+        }];
+        diagram = new Diagram({
+            width: '100%',
+            height: '700px',
+            nodes: node,
+            connectors: connector,
+            constraints: DiagramConstraints.Default | DiagramConstraints.RestrictNegativeAxisDragDrop
+        });
+        diagram.appendTo('#diagramAxisRestriction27');
+        diagramCanvas = document.getElementById(diagram.element.id + 'content');
+        offsetLeft = diagram.element.offsetLeft;
+        offsetTop = diagram.element.offsetTop;
+    });
+    afterAll((): void => {
+        diagram.destroy();
+        ele.remove();
+        (diagram as any) = null; (ele as any) = null;
+    });
+    it('Restrict dragging node to negative axis', (done: Function) => {
+        const node = diagram.nodes[0];
+        // Normalize environment
+        diagram.scrollSettings.horizontalOffset = 0;
+        diagram.scrollSettings.verticalOffset = 0;
+        diagram.scroller.currentZoom = 1;
+
+        // Simulate drag toward negative axis
+        mouseEvents.mouseDownEvent(diagramCanvas, 100, 100);
+        mouseEvents.mouseMoveEvent(diagramCanvas, 80, 100);
+        mouseEvents.mouseMoveEvent(diagramCanvas, 60, 100);
+        diagram.undo(); // exercise history
+        mouseEvents.mouseMoveEvent(diagramCanvas, 40, 100);
+        diagram.redo();
+        mouseEvents.mouseMoveEvent(diagramCanvas, 30, 100);
+        mouseEvents.mouseMoveEvent(diagramCanvas, 40, 100);
+        mouseEvents.mouseUpEvent(diagramCanvas, 40, 100);
+        // Let diagram settle if needed
+        diagram.dataBind();
+
+        let nodePosition = node.offsetX;
+        expect(nodePosition == 50).toBe(true);
+        done();
+    });
+    it('Restrict dragging swimlane with negativeAxixrestriction', (done: Function) => {
+        mouseEvents.mouseDownEvent(diagramCanvas, 400, 310);
+        mouseEvents.mouseMoveEvent(diagramCanvas, 600, 400);
+        mouseEvents.mouseUpEvent(diagramCanvas, 600, 400);
+        let nodePosition1 = diagram.nodes[1].offsetX;
+        expect(nodePosition1 >= 0).toBe(true);
+        done();
+    });
+    it(' dragging target  point connector  ', function (done) {
+        const c = diagram.connectors[0];
+        const canvas = diagramCanvas;
+        const rect = canvas.getBoundingClientRect();
+        const toClient: any = (p: { x: number; y: number }) => ({
+            x: rect.left + p.x,
+            y: rect.top + p.y
+        });
+        // Helper to drag current target to a new position in diagram coords
+        const dragTargetTo = (x: number, y: number) => {
+
+            const start = toClient(c.targetPoint);
+            const end = toClient({ x, y });
+            mouseEvents.dragAndDropEvent(canvas, start.x, start.y, end.x, end.y);
+            diagram.dataBind();
+        };
+
+        // Ensure initial focus/select
+        mouseEvents.clickEvent(canvas, toClient(diagram.connectors[0].targetPoint).x, toClient(diagram.connectors[0].targetPoint).y);
+
+        // Sequence of drags; recompute start each time
+        const c0 = diagram.connectors[0];
+        dragTargetTo(c0.targetPoint.x - 60, c0.targetPoint.y);
+        dragTargetTo(diagram.connectors[0].targetPoint.x - 40, diagram.connectors[0].targetPoint.y);
+        dragTargetTo(diagram.connectors[0].targetPoint.x - 100, diagram.connectors[0].targetPoint.y + 40);
+        dragTargetTo(diagram.connectors[0].targetPoint.x - 80, diagram.connectors[0].targetPoint.y + 40);
+        const connector = diagram.connectors[0];
+        expect(connector.targetPoint.x >= 0).toBe(true);
+        done();
+    });
+    it(' dragging source point connector  ', function (done) {
+        const canvas = diagramCanvas;
+
+        const rect = canvas.getBoundingClientRect();
+        const toClient: any = (p: { x: number; y: number }) => ({ x: rect.left + p.x, y: rect.top + p.y });
+
+        // Helper: drag current source to a new diagram-space coordinate
+        const dragSourceTo = (x: number, y: number) => {
+            const c = diagram.connectors[0];
+            const start = toClient(c.sourcePoint);
+            const end = toClient({ x, y });
+            // Click to ensure the handle is active, then drag
+            mouseEvents.clickEvent(canvas, start.x, start.y);
+            mouseEvents.dragAndDropEvent(canvas, start.x, start.y, end.x, end.y);
+            diagram.dataBind();
+        };
+        let c = diagram.connectors[0];
+        dragSourceTo(c.sourcePoint.x - 60, c.sourcePoint.y);
+
+        c = diagram.connectors[0];
+        dragSourceTo(c.sourcePoint.x - 40, c.sourcePoint.y);
+
+        c = diagram.connectors[0];
+        dragSourceTo(c.sourcePoint.x - 60, c.sourcePoint.y);
+
+        c = diagram.connectors[0];
+        dragSourceTo(c.sourcePoint.x - 40, c.sourcePoint.y);
+
+        c = diagram.connectors[0];
+        dragSourceTo(c.sourcePoint.x - 100, c.sourcePoint.y + 40);
+
+        c = diagram.connectors[0];
+        dragSourceTo(c.sourcePoint.x - 80, c.sourcePoint.y + 40);
+        const srcX = diagram.connectors[0].sourcePoint.x;
+        expect(srcX >= 0).toBe(true);
+        done();
+
+    });
+    it('Restrict dragging connector to negative axis', (done: Function) => {
+        const canvas = diagramCanvas;
+        const rect = canvas.getBoundingClientRect();
+        const toClient: any = (p: { x: number; y: number }) => ({ x: rect.left + p.x, y: rect.top + p.y });
+
+        // Ensure we’re interacting with the intended connector
+        const conn = diagram.connectors[1];
+        // Helper to drag current source to a new diagram-space coordinate
+        const dragSourceTo = (x: number, y: number) => {
+            const c = diagram.connectors[1];
+            const start = toClient(c.sourcePoint);
+            const end = toClient({ x, y });
+            // Click to activate handle, then drag
+            mouseEvents.clickEvent(canvas, start.x, start.y);
+            mouseEvents.mouseDownEvent(canvas, start.x, start.y);
+            mouseEvents.mouseMoveEvent(canvas, end.x, end.y);
+            mouseEvents.mouseUpEvent(canvas, end.x, end.y);
+            diagram.dataBind();
+        };
+        const startSP = conn.sourcePoint;
+        dragSourceTo(Math.max(2, startSP.x - 200), startSP.y); // try pushing to the left boundary
+        // Then move around a bit to the right as in your sequence
+        dragSourceTo(100, startSP.y);
+        dragSourceTo(200, startSP.y);
+        dragSourceTo(300, startSP.y);
+        const nodePosition = diagram.connectors[1].sourcePoint;
+        expect(nodePosition.x >= 0 && nodePosition.y >= 0).toBe(true);
+        done();
+    });
+});
 describe('Testing resizing - With RestrictNegativeAxisDragDrop ', () => {
     let diagram: Diagram;
     let ele: HTMLElement;
@@ -3271,7 +3338,7 @@ describe('Testing resizing - With RestrictNegativeAxisDragDrop ', () => {
     });
     it('Checking single node resizing - left center', (done: Function) => {
         diagram.clearSelection();
-        
+
         let leftCenter: PointModel = (diagram.nodes[1] as NodeModel).wrapper.bounds.middleLeft;
         mouseEvents.clickEvent(diagramCanvas, 50, 250);
         mouseEvents.dragAndDropEvent(diagramCanvas, leftCenter.x + offsetLeft, leftCenter.y - 1 + offsetTop, leftCenter.x - 20 + offsetLeft, leftCenter.y + offsetTop - 1);
@@ -3537,872 +3604,872 @@ describe('Diagram Port Distribution with Connectors', () => {
         done();
     });
 });
+//commented
+describe('Diagram Port AutoPortDistribution with Connectors', () => {
+    let diagram: Diagram;
+    let ele: HTMLElement;
+    let bottomPorts: PointPortModel[] = [
+        //Bottom
+        { id: 'port1', offset: { y: 1, x: 0.2 }, visibility: PortVisibility.Visible },
+        { id: 'port2', offset: { y: 1, x: 0.4 }, visibility: PortVisibility.Visible },
+        { id: 'port3', offset: { y: 1, x: 0.6 }, visibility: PortVisibility.Visible },
+        { id: 'port4', offset: { y: 1, x: 0.8 }, visibility: PortVisibility.Visible }
+    ]
+    let topPorts: PointPortModel[] = [
+        //Top
+        { id: 'port1', offset: { y: 0, x: 0.2 }, visibility: PortVisibility.Visible },
+        { id: 'port2', offset: { y: 0, x: 0.4 }, visibility: PortVisibility.Visible },
+        { id: 'port3', offset: { y: 0, x: 0.6 }, visibility: PortVisibility.Visible },
+        { id: 'port4', offset: { y: 0, x: 0.8 }, visibility: PortVisibility.Visible },
+    ]
+    let rightPorts: PointPortModel[] = [
+        //Right
+        { id: 'port1', offset: { x: 1, y: 0.2 }, visibility: PortVisibility.Visible },
+        { id: 'port2', offset: { x: 1, y: 0.4 }, visibility: PortVisibility.Visible },
+        { id: 'port3', offset: { x: 1, y: 0.6 }, visibility: PortVisibility.Visible },
+        { id: 'port4', offset: { x: 1, y: 0.8 }, visibility: PortVisibility.Visible },
+    ]
+    let leftPorts: PointPortModel[] = [
+        //Left
+        { id: 'port1', offset: { x: 0, y: 0.2 }, visibility: PortVisibility.Visible },
+        { id: 'port2', offset: { x: 0, y: 0.4 }, visibility: PortVisibility.Visible },
+        { id: 'port3', offset: { x: 0, y: 0.6 }, visibility: PortVisibility.Visible },
+        { id: 'port4', offset: { x: 0, y: 0.8 }, visibility: PortVisibility.Visible },
+    ]
+    beforeAll(() => {
+        ele = document.createElement('div');
+        ele.id = 'diagramAutoPort32';
+        document.body.appendChild(ele);
+        let nodes: NodeModel[] = [
+            {
+                id: 'node1', width: 100, height: 60, offsetX: 450, offsetY: 200, style: { fill: 'red' },
+                annotations: [{ content: 'Network \nInterface' }],
+                ports: [
+                    { id: 'port1', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible },
+                    { id: 'port2', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible },
+                    { id: 'port3', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible },
+                    { id: 'port4', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible },
+                    { id: 'port5', offset: { x: 1, y: 0.5 }, visibility: PortVisibility.Visible },
+                    { id: 'port6', offset: { x: 1, y: 0.5 }, visibility: PortVisibility.Visible }
+                ]
+            },
+            {
+                id: 'node2', width: 100, height: 60, offsetX: 640, offsetY: 200,
+                style: { fill: '#82DF82' }, annotations: [{ content: 'Controller' }],
+                ports: [
+                    { id: 'port1', offset: { x: 0, y: 0.5 }, visibility: PortVisibility.Visible },
+                    { id: 'port2', offset: { x: 0, y: 0.5 }, visibility: PortVisibility.Visible },
+                    { id: 'port3', offset: { x: 1, y: 0.5 }, visibility: PortVisibility.Visible },
+                    { id: 'port4', offset: { x: 1, y: 0.5 }, visibility: PortVisibility.Visible }
+                ]
+            },
+            {
+                id: 'node3', width: 100, height: 60, offsetX: 830, offsetY: 200, style: { fill: '#5E1770' },
+                annotations: [{ content: 'Operator \nInterface' }],
+                ports: [
+                    { id: 'port1', offset: { x: 0, y: 0.5 }, visibility: PortVisibility.Visible },
+                    { id: 'port2', offset: { x: 0, y: 0.5 }, visibility: PortVisibility.Visible }
+                ]
+            },
+            {
+                id: 'node4', width: 100, height: 60, offsetX: 200, offsetY: 400, style: { fill: 'red' },
+                annotations: [{ content: 'Network \nInterface' }],
+                ports: [
+                    { id: 'port1', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
+                    { id: 'port2', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
+                    { id: 'port3', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
+                    { id: 'port4', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
+                    { id: 'port5', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible },
+                    { id: 'port6', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible }
+                ]
+            },
+            {
+                id: 'node5', width: 120, height: 60, offsetX: 200, offsetY: 500,
+                style: { fill: '#82DF82' }, annotations: [{ content: 'Controller' }],
+                ports: [
+                    { id: 'port1', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
+                    { id: 'port2', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
+                    { id: 'port3', offset: { x: 1, y: 0.5 }, visibility: PortVisibility.Visible },
+                    { id: 'port4', offset: { x: 1, y: 0.5 }, visibility: PortVisibility.Visible },
+                    { id: 'port5', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible },
+                    { id: 'port6', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible }
+                ]
+            },
+            {
+                id: 'node6', width: 100, height: 60, offsetX: 370, offsetY: 500, style: { fill: '#5E1770' },
+                annotations: [{ content: 'Operator \nInterface' }],
+                ports: [
+                    { id: 'port1', offset: { x: 0, y: 0.5 }, visibility: PortVisibility.Visible },
+                    { id: 'port2', offset: { x: 0, y: 0.5 }, visibility: PortVisibility.Visible }
+                ]
+            },
+            {
+                id: 'node7', width: 50, height: 60, offsetX: 150, offsetY: 600, style: { fill: 'cornflowerblue' },
+                annotations: [{ content: 'Sensors', offset: { x: 0.5, y: 1.3 }, }],
+                ports: [
+                    { id: 'port1', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible }
+                ]
+            },
+            {
+                id: 'node8', width: 50, height: 60, offsetX: 250, offsetY: 600, style: { fill: 'cornflowerblue' },
+                annotations: [{ content: 'Actuators', offset: { x: 0.5, y: 1.3 }, }],
+                ports: [
+                    { id: 'port1', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible }
+                ]
+            },
+            {
+                id: 'node9', width: 100, height: 60, offsetX: 580, offsetY: 400, style: { fill: 'red' },
+                annotations: [{ content: 'Network \nInterface' }],
+                ports: [
+                    { id: 'port1', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
+                    { id: 'port2', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
+                    { id: 'port3', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
+                    { id: 'port4', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
+                    { id: 'port5', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible },
+                    { id: 'port6', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible }
+                ]
+            },
+            {
+                id: 'node10', width: 120, height: 60, offsetX: 580, offsetY: 500,
+                style: { fill: '#82DF82' }, annotations: [{ content: 'Controller' }],
+                ports: [
+                    { id: 'port1', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
+                    { id: 'port2', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
+                    { id: 'port3', offset: { x: 1, y: 0.5 }, visibility: PortVisibility.Visible },
+                    { id: 'port4', offset: { x: 1, y: 0.5 }, visibility: PortVisibility.Visible },
+                    { id: 'port5', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible },
+                    { id: 'port6', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible }
+                ]
+            },
+            {
+                id: 'node11', width: 100, height: 60, offsetX: 750, offsetY: 500, style: { fill: '#5E1770' },
+                annotations: [{ content: 'Operator \nInterface' }],
+                ports: [
+                    { id: 'port1', offset: { x: 0, y: 0.5 }, visibility: PortVisibility.Visible },
+                    { id: 'port2', offset: { x: 0, y: 0.5 }, visibility: PortVisibility.Visible }
+                ]
+            },
+            {
+                id: 'node12', width: 50, height: 60, offsetX: 530, offsetY: 600, style: { fill: 'cornflowerblue' },
+                annotations: [{ content: 'Sensors', offset: { x: 0.5, y: 1.3 }, }],
+                ports: [
+                    { id: 'port1', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible }
+                ]
+            },
+            {
+                id: 'node13', width: 50, height: 60, offsetX: 620, offsetY: 600, style: { fill: 'cornflowerblue' },
+                annotations: [{ content: 'Actuators', offset: { x: 0.5, y: 1.3 }, }],
+                ports: [
+                    { id: 'port1', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible }
+                ]
+            },
+            {
+                id: 'node14', width: 100, height: 60, offsetX: 1000, offsetY: 400, style: { fill: 'red' },
+                annotations: [{ content: 'Network \nInterface' }],
+                ports: [
+                    { id: 'port1', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
+                    { id: 'port2', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
+                    { id: 'port3', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
+                    { id: 'port4', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
+                    { id: 'port5', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible },
+                    { id: 'port6', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible }
+                ]
+            },
+            {
+                id: 'node15', width: 120, height: 60, offsetX: 1000, offsetY: 500,
+                style: { fill: '#82DF82' }, annotations: [{ content: 'Controller', }],
+                ports: [
+                    { id: 'port1', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
+                    { id: 'port2', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
+                    { id: 'port3', offset: { x: 1, y: 0.5 }, visibility: PortVisibility.Visible },
+                    { id: 'port4', offset: { x: 1, y: 0.5 }, visibility: PortVisibility.Visible },
+                    { id: 'port5', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible },
+                    { id: 'port6', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible }
+                ]
+            },
+            {
+                id: 'node16', width: 100, height: 60, offsetX: 1170, offsetY: 500, style: { fill: '#5E1770' },
+                annotations: [{ content: 'Operator \nInterface' }],
+                ports: [
+                    { id: 'port1', offset: { x: 0, y: 0.5 }, visibility: PortVisibility.Visible },
+                    { id: 'port2', offset: { x: 0, y: 0.5 }, visibility: PortVisibility.Visible }
+                ]
+            },
+            {
+                id: 'node17', width: 50, height: 60, offsetX: 950, offsetY: 600, style: { fill: 'cornflowerblue' },
+                annotations: [{ content: 'Sensors', offset: { x: 0.5, y: 1.3 }, }],
+                ports: [
+                    { id: 'port1', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible }
+                ]
+            },
+            {
+                id: 'node18', width: 50, height: 60, offsetX: 1050, offsetY: 600, style: { fill: 'cornflowerblue' },
+                annotations: [{ content: 'Actuators', offset: { x: 0.5, y: 1.3 } }],
+                ports: [
+                    { id: 'port1', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible }
+                ]
+            },
+            {
+                id: 'node19', width: 100, height: 60, offsetX: 1130, offsetY: 200, style: { fill: '#5E1770' },
+                ports: [
+                    { id: 'port1', offset: { x: 0.1, y: 0.3 }, visibility: PortVisibility.Visible },
+                    { id: 'port2', offset: { x: 0.1, y: 0.6 }, visibility: PortVisibility.Visible },
+                    { id: 'port3', offset: { x: 0.3, y: 0.1 }, visibility: PortVisibility.Visible },
+                    { id: 'port4', offset: { x: 0.7, y: 0.1 }, visibility: PortVisibility.Visible },
+                    { id: 'port5', offset: { x: 0.9, y: 0.3 }, visibility: PortVisibility.Visible },
+                    { id: 'port6', offset: { x: 0.9, y: 0.6 }, visibility: PortVisibility.Visible },
+                    { id: 'port7', offset: { x: 0.7, y: 0.9 }, visibility: PortVisibility.Visible },
+                    { id: 'port8', offset: { x: 0.3, y: 0.9 }, visibility: PortVisibility.Visible },
+                ]
+            },
+        ];
 
-// describe('Diagram Port AutoPortDistribution with Connectors', () => {
-//     let diagram: Diagram;
-//     let ele: HTMLElement;
-//     let bottomPorts: PointPortModel[] = [
-//         // //Bottom
-//         { id: 'port1', offset: { y: 1, x: 0.2 }, visibility: PortVisibility.Visible },
-//         { id: 'port2', offset: { y: 1, x: 0.4 }, visibility: PortVisibility.Visible },
-//         { id: 'port3', offset: { y: 1, x: 0.6 }, visibility: PortVisibility.Visible },
-//         { id: 'port4', offset: { y: 1, x: 0.8 }, visibility: PortVisibility.Visible }
-//     ]
-//     let topPorts: PointPortModel[] = [
-//         //  //Top
-//         { id: 'port1', offset: { y: 0, x: 0.2 }, visibility: PortVisibility.Visible },
-//         { id: 'port2', offset: { y: 0, x: 0.4 }, visibility: PortVisibility.Visible },
-//         { id: 'port3', offset: { y: 0, x: 0.6 }, visibility: PortVisibility.Visible },
-//         { id: 'port4', offset: { y: 0, x: 0.8 }, visibility: PortVisibility.Visible },
-//     ]
-//     let rightPorts: PointPortModel[] = [
-//         // //Right
-//         { id: 'port1', offset: { x: 1, y: 0.2 }, visibility: PortVisibility.Visible },
-//         { id: 'port2', offset: { x: 1, y: 0.4 }, visibility: PortVisibility.Visible },
-//         { id: 'port3', offset: { x: 1, y: 0.6 }, visibility: PortVisibility.Visible },
-//         { id: 'port4', offset: { x: 1, y: 0.8 }, visibility: PortVisibility.Visible },
-//     ]
-//     let leftPorts: PointPortModel[] = [
-//         // //Left
-//         { id: 'port1', offset: { x: 0, y: 0.2 }, visibility: PortVisibility.Visible },
-//         { id: 'port2', offset: { x: 0, y: 0.4 }, visibility: PortVisibility.Visible },
-//         { id: 'port3', offset: { x: 0, y: 0.6 }, visibility: PortVisibility.Visible },
-//         { id: 'port4', offset: { x: 0, y: 0.8 }, visibility: PortVisibility.Visible },
-//     ]
-//     beforeAll(() => {
-//         ele = document.createElement('div');
-//         ele.id = 'diagramAutoPort32';
-//         document.body.appendChild(ele);
-//         let nodes: NodeModel[] = [
-//             {
-//                 id: 'node1', width: 100, height: 60, offsetX: 450, offsetY: 200, style: { fill: 'red' },
-//                 annotations: [{ content: 'Network \nInterface' }],
-//                 ports: [
-//                     { id: 'port1', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible },
-//                     { id: 'port2', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible },
-//                     { id: 'port3', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible },
-//                     { id: 'port4', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible },
-//                     { id: 'port5', offset: { x: 1, y: 0.5 }, visibility: PortVisibility.Visible },
-//                     { id: 'port6', offset: { x: 1, y: 0.5 }, visibility: PortVisibility.Visible }
-//                 ]
-//             },
-//             {
-//                 id: 'node2', width: 100, height: 60, offsetX: 640, offsetY: 200,
-//                 style: { fill: '#82DF82' }, annotations: [{ content: 'Controller' }],
-//                 ports: [
-//                     { id: 'port1', offset: { x: 0, y: 0.5 }, visibility: PortVisibility.Visible },
-//                     { id: 'port2', offset: { x: 0, y: 0.5 }, visibility: PortVisibility.Visible },
-//                     { id: 'port3', offset: { x: 1, y: 0.5 }, visibility: PortVisibility.Visible },
-//                     { id: 'port4', offset: { x: 1, y: 0.5 }, visibility: PortVisibility.Visible }
-//                 ]
-//             },
-//             {
-//                 id: 'node3', width: 100, height: 60, offsetX: 830, offsetY: 200, style: { fill: '#5E1770' },
-//                 annotations: [{ content: 'Operator \nInterface' }],
-//                 ports: [
-//                     { id: 'port1', offset: { x: 0, y: 0.5 }, visibility: PortVisibility.Visible },
-//                     { id: 'port2', offset: { x: 0, y: 0.5 }, visibility: PortVisibility.Visible }
-//                 ]
-//             },
-//             {
-//                 id: 'node4', width: 100, height: 60, offsetX: 200, offsetY: 400, style: { fill: 'red' },
-//                 annotations: [{ content: 'Network \nInterface' }],
-//                 ports: [
-//                     { id: 'port1', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
-//                     { id: 'port2', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
-//                     { id: 'port3', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
-//                     { id: 'port4', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
-//                     { id: 'port5', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible },
-//                     { id: 'port6', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible }
-//                 ]
-//             },
-//             {
-//                 id: 'node5', width: 120, height: 60, offsetX: 200, offsetY: 500,
-//                 style: { fill: '#82DF82' }, annotations: [{ content: 'Controller' }],
-//                 ports: [
-//                     { id: 'port1', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
-//                     { id: 'port2', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
-//                     { id: 'port3', offset: { x: 1, y: 0.5 }, visibility: PortVisibility.Visible },
-//                     { id: 'port4', offset: { x: 1, y: 0.5 }, visibility: PortVisibility.Visible },
-//                     { id: 'port5', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible },
-//                     { id: 'port6', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible }
-//                 ]
-//             },
-//             {
-//                 id: 'node6', width: 100, height: 60, offsetX: 370, offsetY: 500, style: { fill: '#5E1770' },
-//                 annotations: [{ content: 'Operator \nInterface' }],
-//                 ports: [
-//                     { id: 'port1', offset: { x: 0, y: 0.5 }, visibility: PortVisibility.Visible },
-//                     { id: 'port2', offset: { x: 0, y: 0.5 }, visibility: PortVisibility.Visible }
-//                 ]
-//             },
-//             {
-//                 id: 'node7', width: 50, height: 60, offsetX: 150, offsetY: 600, style: { fill: 'cornflowerblue' },
-//                 annotations: [{ content: 'Sensors', offset: { x: 0.5, y: 1.3 }, }],
-//                 ports: [
-//                     { id: 'port1', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible }
-//                 ]
-//             },
-//             {
-//                 id: 'node8', width: 50, height: 60, offsetX: 250, offsetY: 600, style: { fill: 'cornflowerblue' },
-//                 annotations: [{ content: 'Actuators', offset: { x: 0.5, y: 1.3 }, }],
-//                 ports: [
-//                     { id: 'port1', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible }
-//                 ]
-//             },
-//             {
-//                 id: 'node9', width: 100, height: 60, offsetX: 580, offsetY: 400, style: { fill: 'red' },
-//                 annotations: [{ content: 'Network \nInterface' }],
-//                 ports: [
-//                     { id: 'port1', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
-//                     { id: 'port2', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
-//                     { id: 'port3', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
-//                     { id: 'port4', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
-//                     { id: 'port5', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible },
-//                     { id: 'port6', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible }
-//                 ]
-//             },
-//             {
-//                 id: 'node10', width: 120, height: 60, offsetX: 580, offsetY: 500,
-//                 style: { fill: '#82DF82' }, annotations: [{ content: 'Controller' }],
-//                 ports: [
-//                     { id: 'port1', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
-//                     { id: 'port2', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
-//                     { id: 'port3', offset: { x: 1, y: 0.5 }, visibility: PortVisibility.Visible },
-//                     { id: 'port4', offset: { x: 1, y: 0.5 }, visibility: PortVisibility.Visible },
-//                     { id: 'port5', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible },
-//                     { id: 'port6', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible }
-//                 ]
-//             },
-//             {
-//                 id: 'node11', width: 100, height: 60, offsetX: 750, offsetY: 500, style: { fill: '#5E1770' },
-//                 annotations: [{ content: 'Operator \nInterface' }],
-//                 ports: [
-//                     { id: 'port1', offset: { x: 0, y: 0.5 }, visibility: PortVisibility.Visible },
-//                     { id: 'port2', offset: { x: 0, y: 0.5 }, visibility: PortVisibility.Visible }
-//                 ]
-//             },
-//             {
-//                 id: 'node12', width: 50, height: 60, offsetX: 530, offsetY: 600, style: { fill: 'cornflowerblue' },
-//                 annotations: [{ content: 'Sensors', offset: { x: 0.5, y: 1.3 }, }],
-//                 ports: [
-//                     { id: 'port1', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible }
-//                 ]
-//             },
-//             {
-//                 id: 'node13', width: 50, height: 60, offsetX: 620, offsetY: 600, style: { fill: 'cornflowerblue' },
-//                 annotations: [{ content: 'Actuators', offset: { x: 0.5, y: 1.3 }, }],
-//                 ports: [
-//                     { id: 'port1', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible }
-//                 ]
-//             },
-//             {
-//                 id: 'node14', width: 100, height: 60, offsetX: 1000, offsetY: 400, style: { fill: 'red' },
-//                 annotations: [{ content: 'Network \nInterface' }],
-//                 ports: [
-//                     { id: 'port1', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
-//                     { id: 'port2', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
-//                     { id: 'port3', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
-//                     { id: 'port4', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
-//                     { id: 'port5', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible },
-//                     { id: 'port6', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible }
-//                 ]
-//             },
-//             {
-//                 id: 'node15', width: 120, height: 60, offsetX: 1000, offsetY: 500,
-//                 style: { fill: '#82DF82' }, annotations: [{ content: 'Controller', }],
-//                 ports: [
-//                     { id: 'port1', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
-//                     { id: 'port2', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible },
-//                     { id: 'port3', offset: { x: 1, y: 0.5 }, visibility: PortVisibility.Visible },
-//                     { id: 'port4', offset: { x: 1, y: 0.5 }, visibility: PortVisibility.Visible },
-//                     { id: 'port5', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible },
-//                     { id: 'port6', offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible }
-//                 ]
-//             },
-//             {
-//                 id: 'node16', width: 100, height: 60, offsetX: 1170, offsetY: 500, style: { fill: '#5E1770' },
-//                 annotations: [{ content: 'Operator \nInterface' }],
-//                 ports: [
-//                     { id: 'port1', offset: { x: 0, y: 0.5 }, visibility: PortVisibility.Visible },
-//                     { id: 'port2', offset: { x: 0, y: 0.5 }, visibility: PortVisibility.Visible }
-//                 ]
-//             },
-//             {
-//                 id: 'node17', width: 50, height: 60, offsetX: 950, offsetY: 600, style: { fill: 'cornflowerblue' },
-//                 annotations: [{ content: 'Sensors', offset: { x: 0.5, y: 1.3 }, }],
-//                 ports: [
-//                     { id: 'port1', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible }
-//                 ]
-//             },
-//             {
-//                 id: 'node18', width: 50, height: 60, offsetX: 1050, offsetY: 600, style: { fill: 'cornflowerblue' },
-//                 annotations: [{ content: 'Actuators', offset: { x: 0.5, y: 1.3 } }],
-//                 ports: [
-//                     { id: 'port1', offset: { x: 0.5, y: 0 }, visibility: PortVisibility.Visible }
-//                 ]
-//             },
-//             {
-//                 id: 'node19', width: 100, height: 60, offsetX: 1130, offsetY: 200, style: { fill: '#5E1770' },
-//                 ports: [
-//                     { id: 'port1', offset: { x: 0.1, y: 0.3 }, visibility: PortVisibility.Visible },
-//                     { id: 'port2', offset: { x: 0.1, y: 0.6 }, visibility: PortVisibility.Visible },
-//                     { id: 'port3', offset: { x: 0.3, y: 0.1 }, visibility: PortVisibility.Visible },
-//                     { id: 'port4', offset: { x: 0.7, y: 0.1 }, visibility: PortVisibility.Visible },
-//                     { id: 'port5', offset: { x: 0.9, y: 0.3 }, visibility: PortVisibility.Visible },
-//                     { id: 'port6', offset: { x: 0.9, y: 0.6 }, visibility: PortVisibility.Visible },
-//                     { id: 'port7', offset: { x: 0.7, y: 0.9 }, visibility: PortVisibility.Visible },
-//                     { id: 'port8', offset: { x: 0.3, y: 0.9 }, visibility: PortVisibility.Visible },
-//                 ]
-//             },
-//         ];
+        const connectors: ConnectorModel[] = [
+            {
+                id: 'Connector1', sourceID: "node1", targetID: "node14",
+                sourcePortID: 'port3', targetPortID: 'port3',
+                style: { strokeColor: 'red', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector2', sourceID: "node14", targetID: "node1",
+                sourcePortID: 'port4', targetPortID: 'port4',
+                style: { strokeColor: 'red', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector3', sourceID: "node1", targetID: "node2",
+                sourcePortID: 'port5', targetPortID: 'port1',
+                style: { strokeColor: 'blue', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector4', sourceID: "node2", targetID: "node1",
+                sourcePortID: 'port2', targetPortID: 'port6',
+                style: { strokeColor: 'yellow', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector5', sourceID: "node2", targetID: "node3",
+                sourcePortID: 'port3', targetPortID: 'port1',
+                style: { strokeColor: 'blue', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector6', sourceID: "node3", targetID: "node2",
+                sourcePortID: 'port2', targetPortID: 'port4',
+                style: { strokeColor: 'yellow', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector7', sourceID: "node1", targetID: "node4",
+                sourcePortID: 'port1', targetPortID: 'port1',
+                style: { strokeColor: 'yellow', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector8', sourceID: "node4", targetID: "node1",
+                sourcePortID: 'port2', targetPortID: 'port2',
+                style: { strokeColor: 'yellow', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector9', sourceID: "node4", targetID: "node9",
+                sourcePortID: 'port3', targetPortID: 'port1',
+                style: { strokeColor: 'purple', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector10', sourceID: "node9", targetID: "node4",
+                sourcePortID: 'port2', targetPortID: 'port4',
+                style: { strokeColor: 'purple', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector11', sourceID: "node9", targetID: "node14",
+                sourcePortID: 'port3', targetPortID: 'port1',
+                style: { strokeColor: 'violet', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector12', sourceID: "node14", targetID: "node9",
+                sourcePortID: 'port2', targetPortID: 'port4',
+                style: { strokeColor: 'violet', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector13', sourceID: "node5", targetID: "node4",
+                sourcePortID: 'port2', targetPortID: 'port6',
+                style: { strokeColor: 'violet', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector14', sourceID: "node4", targetID: "node5",
+                sourcePortID: 'port5', targetPortID: 'port1',
+                style: { strokeColor: 'violet', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector15', sourceID: "node5", targetID: "node6",
+                sourcePortID: 'port3', targetPortID: 'port1',
+                style: { strokeColor: 'violet', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector16', sourceID: "node6", targetID: "node5",
+                sourcePortID: 'port2', targetPortID: 'port4',
+                style: { strokeColor: 'violet', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector17', sourceID: "node5", targetID: "node7",
+                sourcePortID: 'port5', targetPortID: 'port1',
+                style: { strokeColor: 'green', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector18', sourceID: "node8", targetID: "node5",
+                sourcePortID: 'port1', targetPortID: 'port6',
+                style: { strokeColor: 'green', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector19', sourceID: "node9", targetID: "node10",
+                sourcePortID: 'port5', targetPortID: 'port1',
+                style: { strokeColor: 'lime', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector20', sourceID: "node10", targetID: "node9",
+                sourcePortID: 'port2', targetPortID: 'port6',
+                style: { strokeColor: 'lime', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector21', sourceID: "node10", targetID: "node11",
+                sourcePortID: 'port3', targetPortID: 'port1',
+                style: { strokeColor: 'violet', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector22', sourceID: "node11", targetID: "node10",
+                sourcePortID: 'port2', targetPortID: 'port4',
+                style: { strokeColor: 'violet', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector23', sourceID: "node10", targetID: "node12",
+                sourcePortID: 'port5', targetPortID: 'port1',
+                style: { strokeColor: 'green', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector24', sourceID: "node13", targetID: "node10",
+                sourcePortID: 'port1', targetPortID: 'port6',
+                style: { strokeColor: 'green', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector25', sourceID: "node14", targetID: "node15",
+                sourcePortID: 'port5', targetPortID: 'port1',
+                style: { strokeColor: 'violet', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector26', sourceID: "node15", targetID: "node14",
+                sourcePortID: 'port2', targetPortID: 'port6',
+                style: { strokeColor: 'violet', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector27', sourceID: "node15", targetID: "node16",
+                sourcePortID: 'port3', targetPortID: 'port1',
+                style: { strokeColor: 'violet', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector28', sourceID: "node16", targetID: "node15",
+                sourcePortID: 'port2', targetPortID: 'port4',
+                style: { strokeColor: 'violet', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector29', sourceID: "node15", targetID: "node17",
+                sourcePortID: 'port5', targetPortID: 'port1',
+                style: { strokeColor: 'green', strokeWidth: 3 }, type: 'Orthogonal'
+            },
+            {
+                id: 'Connector30', sourceID: "node18", targetID: "node15",
+                sourcePortID: 'port1', targetPortID: 'port6',
+                style: { strokeColor: 'green', strokeWidth: 3 }, type: 'Orthogonal'
+            }
+        ];
+        diagram = new Diagram({
+            width: 1200, height: 950,
+            nodes: nodes, connectors: connectors
+        });
+        diagram.appendTo('#diagramAutoPort32');
+    });
+    afterAll(() => {
+        diagram.destroy();
+        ele.remove();
+        (diagram as any) = null; (ele as any) = null;
+    });
+    it('Distribute ports', (done: Function) => {
+        diagram.distributePorts(['node1', 'node2', 'node3', 'node4', 'node5', 'node6', 'node7', 'node8', 'node9', 'node10',
+            'node11', 'node12', 'node13', 'node14', 'node15', 'node16', 'node17', 'node18', 'node19']);
+        diagram.dataBind();
+        const n1 = diagram.nameTable['node1'];
+        expect(n1.ports[0].offset.x).toBe(0.2);
+        expect(n1.ports[0].offset.y).toBe(1);
+        done();
+    });
+    it('Distribute ports source Bottom', (done: Function) => {
+        diagram.clear();
+        let nodes: NodeModel[] = [
+            {
+                id: 'node1', offsetX: 500, offsetY: 350, width: 500, height: 100,
+                style: { fill: '#6BA5D7', strokeColor: 'white' }, annotations: [{ content: 'node1' }],
 
-//         const connectors: ConnectorModel[] = [
-//             {
-//                 id: 'Connector1', sourceID: "node1", targetID: "node14",
-//                 sourcePortID: 'port3', targetPortID: 'port3',
-//                 style: { strokeColor: 'red', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector2', sourceID: "node14", targetID: "node1",
-//                 sourcePortID: 'port4', targetPortID: 'port4',
-//                 style: { strokeColor: 'red', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector3', sourceID: "node1", targetID: "node2",
-//                 sourcePortID: 'port5', targetPortID: 'port1',
-//                 style: { strokeColor: 'blue', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector4', sourceID: "node2", targetID: "node1",
-//                 sourcePortID: 'port2', targetPortID: 'port6',
-//                 style: { strokeColor: 'yellow', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector5', sourceID: "node2", targetID: "node3",
-//                 sourcePortID: 'port3', targetPortID: 'port1',
-//                 style: { strokeColor: 'blue', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector6', sourceID: "node3", targetID: "node2",
-//                 sourcePortID: 'port2', targetPortID: 'port4',
-//                 style: { strokeColor: 'yellow', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector7', sourceID: "node1", targetID: "node4",
-//                 sourcePortID: 'port1', targetPortID: 'port1',
-//                 style: { strokeColor: 'yellow', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector8', sourceID: "node4", targetID: "node1",
-//                 sourcePortID: 'port2', targetPortID: 'port2',
-//                 style: { strokeColor: 'yellow', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector9', sourceID: "node4", targetID: "node9",
-//                 sourcePortID: 'port3', targetPortID: 'port1',
-//                 style: { strokeColor: 'purple', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector10', sourceID: "node9", targetID: "node4",
-//                 sourcePortID: 'port2', targetPortID: 'port4',
-//                 style: { strokeColor: 'purple', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector11', sourceID: "node9", targetID: "node14",
-//                 sourcePortID: 'port3', targetPortID: 'port1',
-//                 style: { strokeColor: 'violet', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector12', sourceID: "node14", targetID: "node9",
-//                 sourcePortID: 'port2', targetPortID: 'port4',
-//                 style: { strokeColor: 'violet', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector13', sourceID: "node5", targetID: "node4",
-//                 sourcePortID: 'port2', targetPortID: 'port6',
-//                 style: { strokeColor: 'violet', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector14', sourceID: "node4", targetID: "node5",
-//                 sourcePortID: 'port5', targetPortID: 'port1',
-//                 style: { strokeColor: 'violet', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector15', sourceID: "node5", targetID: "node6",
-//                 sourcePortID: 'port3', targetPortID: 'port1',
-//                 style: { strokeColor: 'violet', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector16', sourceID: "node6", targetID: "node5",
-//                 sourcePortID: 'port2', targetPortID: 'port4',
-//                 style: { strokeColor: 'violet', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector17', sourceID: "node5", targetID: "node7",
-//                 sourcePortID: 'port5', targetPortID: 'port1',
-//                 style: { strokeColor: 'green', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector18', sourceID: "node8", targetID: "node5",
-//                 sourcePortID: 'port1', targetPortID: 'port6',
-//                 style: { strokeColor: 'green', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector19', sourceID: "node9", targetID: "node10",
-//                 sourcePortID: 'port5', targetPortID: 'port1',
-//                 style: { strokeColor: 'lime', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector20', sourceID: "node10", targetID: "node9",
-//                 sourcePortID: 'port2', targetPortID: 'port6',
-//                 style: { strokeColor: 'lime', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector21', sourceID: "node10", targetID: "node11",
-//                 sourcePortID: 'port3', targetPortID: 'port1',
-//                 style: { strokeColor: 'violet', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector22', sourceID: "node11", targetID: "node10",
-//                 sourcePortID: 'port2', targetPortID: 'port4',
-//                 style: { strokeColor: 'violet', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector23', sourceID: "node10", targetID: "node12",
-//                 sourcePortID: 'port5', targetPortID: 'port1',
-//                 style: { strokeColor: 'green', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector24', sourceID: "node13", targetID: "node10",
-//                 sourcePortID: 'port1', targetPortID: 'port6',
-//                 style: { strokeColor: 'green', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector25', sourceID: "node14", targetID: "node15",
-//                 sourcePortID: 'port5', targetPortID: 'port1',
-//                 style: { strokeColor: 'violet', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector26', sourceID: "node15", targetID: "node14",
-//                 sourcePortID: 'port2', targetPortID: 'port6',
-//                 style: { strokeColor: 'violet', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector27', sourceID: "node15", targetID: "node16",
-//                 sourcePortID: 'port3', targetPortID: 'port1',
-//                 style: { strokeColor: 'violet', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector28', sourceID: "node16", targetID: "node15",
-//                 sourcePortID: 'port2', targetPortID: 'port4',
-//                 style: { strokeColor: 'violet', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector29', sourceID: "node15", targetID: "node17",
-//                 sourcePortID: 'port5', targetPortID: 'port1',
-//                 style: { strokeColor: 'green', strokeWidth: 3 }, type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector30', sourceID: "node18", targetID: "node15",
-//                 sourcePortID: 'port1', targetPortID: 'port6',
-//                 style: { strokeColor: 'green', strokeWidth: 3 }, type: 'Orthogonal'
-//             }
-//         ];
-//         diagram = new Diagram({
-//             width: 1200, height: 950,
-//             nodes: nodes, connectors: connectors
-//         });
-//         diagram.appendTo('#diagramAutoPort32');
-//     });
-//     afterAll(() => {
-//         diagram.destroy();
-//         ele.remove();
-//         (diagram as any) = null; (ele as any) = null;
-//     });
-//     it('Distribute ports', (done: Function) => {
-//         diagram.distributePorts(['node1', 'node2', 'node3', 'node4', 'node5', 'node6', 'node7', 'node8', 'node9', 'node10',
-//             'node11', 'node12', 'node13', 'node14', 'node15', 'node16', 'node17', 'node18', 'node19']);
-//         diagram.dataBind();
-//         const n1 = diagram.nameTable['node1'];
-//         expect(n1.ports[0].offset.x).toBe(0.2);
-//         expect(n1.ports[0].offset.y).toBe(1);
-//         done();
-//     });
-//     it('Distribute ports source Bottom', (done: Function) => {
-//         diagram.clear();
-//         let nodes: NodeModel[] = [
-//             {
-//                 id: 'node1', offsetX: 500, offsetY: 350, width: 500, height: 100,
-//                 style: { fill: '#6BA5D7', strokeColor: 'white' }, annotations: [{ content: 'node1' }],
-
-//                 ports: [
-//                     // //Bottom
-//                     { id: 'port1', offset: { y: 1, x: 0.1 }, visibility: PortVisibility.Visible },
-//                     { id: 'port2', offset: { y: 1, x: 0.18 }, visibility: PortVisibility.Visible },
-//                     { id: 'port3', offset: { y: 1, x: 0.25 }, visibility: PortVisibility.Visible },
-//                     { id: 'port4', offset: { y: 1, x: 0.30 }, visibility: PortVisibility.Visible },
-//                     { id: 'port5', offset: { y: 1, x: 0.35 }, visibility: PortVisibility.Visible },
-//                     { id: 'port6', offset: { y: 1, x: 0.40 }, visibility: PortVisibility.Visible },
-//                     { id: 'port7', offset: { y: 1, x: 0.45 }, visibility: PortVisibility.Visible },
-//                     { id: 'port8', offset: { y: 1, x: 0.50 }, visibility: PortVisibility.Visible },
-//                     { id: 'port9', offset: { y: 1, x: 0.55 }, visibility: PortVisibility.Visible },
-//                     { id: 'port10', offset: { y: 1, x: 0.60 }, visibility: PortVisibility.Visible },
-//                     { id: 'port11', offset: { y: 1, x: 0.65 }, visibility: PortVisibility.Visible },
-//                     { id: 'port12', offset: { y: 1, x: 0.70 }, visibility: PortVisibility.Visible },
-//                     { id: 'port13', offset: { y: 1, x: 0.75 }, visibility: PortVisibility.Visible },
-//                     { id: 'port14', offset: { y: 1, x: 0.80 }, visibility: PortVisibility.Visible },
-//                     { id: 'port15', offset: { y: 1, x: 0.85 }, visibility: PortVisibility.Visible },
-//                     { id: 'port16', offset: { y: 1, x: 0.9 }, visibility: PortVisibility.Visible },
-//                 ]
-//             },
-//             {
-//                 id: 'node2', offsetX: 150, offsetY: 500, width: 100, height: 100,
-//                 style: { fill: '#6BA5D7', strokeColor: 'white' }, annotations: [{ content: 'node2' }], ports: rightPorts
-//             },
-//             {
-//                 id: 'node3', offsetX: 800, offsetY: 150, width: 100, height: 100,
-//                 annotations: [{ content: 'node3' }], style: { fill: '#6BA5D7', strokeColor: 'white' }, ports: bottomPorts,
-//             },
-//             {
-//                 id: 'node4', offsetX: 800, offsetY: 500, width: 100, height: 100,
-//                 annotations: [{ content: 'node4' }], style: { fill: '#6BA5D7', strokeColor: 'white' }, ports: leftPorts,
-//             },
-//             {
-//                 id: 'node5', offsetX: 450, offsetY: 700, width: 100, height: 100,
-//                 annotations: [{ content: 'node5' }], style: { fill: '#6BA5D7', strokeColor: 'white' }, ports: topPorts,
-//             },
-//         ];
-//         let connectors: ConnectorModel[] = [
-//             {
-//                 id: 'Connector1', sourceID: "node1", targetID: "node2",
-//                 sourcePortID: 'port1', targetPortID: 'port4', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector2', sourceID: "node1", targetID: "node2",
-//                 sourcePortID: 'port2', targetPortID: 'port3', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector3', sourceID: "node1", targetID: "node2",
-//                 sourcePortID: 'port3', targetPortID: 'port2', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector4', sourceID: "node1", targetID: "node2",
-//                 sourcePortID: 'port4', targetPortID: 'port1', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector5', sourceID: "node1", targetID: "node4",
-//                 sourcePortID: 'port5', targetPortID: 'port4', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector6', sourceID: "node1", targetID: "node4",
-//                 sourcePortID: 'port6', targetPortID: 'port3', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector7', sourceID: "node1", targetID: "node4",
-//                 sourcePortID: 'port7', targetPortID: 'port2', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector8', sourceID: "node1", targetID: "node4",
-//                 sourcePortID: 'port8', targetPortID: 'port1', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector9', sourceID: "node1", targetID: "node5",
-//                 sourcePortID: 'port9', targetPortID: 'port3', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector10', sourceID: "node1", targetID: "node5",
-//                 sourcePortID: 'port10', targetPortID: 'port4', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector11', sourceID: "node1", targetID: "node5",
-//                 sourcePortID: 'port11', targetPortID: 'port1', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector12', sourceID: "node1", targetID: "node5",
-//                 sourcePortID: 'port12', targetPortID: 'port2', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector13', sourceID: "node1", targetID: "node3",
-//                 sourcePortID: 'port13', targetPortID: 'port4', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector14', sourceID: "node1", targetID: "node3",
-//                 sourcePortID: 'port14', targetPortID: 'port1', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector15', sourceID: "node1", targetID: "node3",
-//                 sourcePortID: 'port15', targetPortID: 'port2', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector16', sourceID: "node1", targetID: "node3",
-//                 sourcePortID: 'port16', targetPortID: 'port3', type: 'Orthogonal'
-//             },
-//         ];
-//         diagram.addElements(nodes);
-//         diagram.addElements(connectors);
-//         diagram.distributePorts(['node1', 'node2', 'node3', 'node4', 'node5']);
-//         diagram.dataBind();
-//         const n1 = diagram.nameTable['node1'];
-//         expect(n1.ports[0].offset.x === 0.23529411764705882).toBe(true);
-//         expect(n1.ports[0].offset.y === 1).toBe(true);
-//         done();
-//     });
-//     it('Distribute ports source Top', (done: Function) => {
-//         diagram.clear();
-//         let nodes: NodeModel[] = [
-//             {
-//                 id: 'node1', offsetX: 500, offsetY: 550, width: 500, height: 100,
-//                 style: { fill: '#6BA5D7', strokeColor: 'white' }, annotations: [{ content: 'node1' }],
-//                 ports: [
-//                     // //Top
-//                     { id: 'port1', offset: { y: 0, x: 0.1 }, visibility: PortVisibility.Visible },
-//                     { id: 'port2', offset: { y: 0, x: 0.18 }, visibility: PortVisibility.Visible },
-//                     { id: 'port3', offset: { y: 0, x: 0.25 }, visibility: PortVisibility.Visible },
-//                     { id: 'port4', offset: { y: 0, x: 0.30 }, visibility: PortVisibility.Visible },
-//                     { id: 'port5', offset: { y: 0, x: 0.35 }, visibility: PortVisibility.Visible },
-//                     { id: 'port6', offset: { y: 0, x: 0.40 }, visibility: PortVisibility.Visible },
-//                     { id: 'port7', offset: { y: 0, x: 0.45 }, visibility: PortVisibility.Visible },
-//                     { id: 'port8', offset: { y: 0, x: 0.50 }, visibility: PortVisibility.Visible },
-//                     { id: 'port9', offset: { y: 0, x: 0.55 }, visibility: PortVisibility.Visible },
-//                     { id: 'port10', offset: { y: 0, x: 0.60 }, visibility: PortVisibility.Visible },
-//                     { id: 'port11', offset: { y: 0, x: 0.65 }, visibility: PortVisibility.Visible },
-//                     { id: 'port12', offset: { y: 0, x: 0.70 }, visibility: PortVisibility.Visible },
-//                     { id: 'port13', offset: { y: 0, x: 0.75 }, visibility: PortVisibility.Visible },
-//                     { id: 'port14', offset: { y: 0, x: 0.80 }, visibility: PortVisibility.Visible },
-//                     { id: 'port15', offset: { y: 0, x: 0.85 }, visibility: PortVisibility.Visible },
-//                     { id: 'port16', offset: { y: 0, x: 0.9 }, visibility: PortVisibility.Visible },
-//                 ]
-//             },
-//             {
-//                 id: 'node2', offsetX: 150, offsetY: 450, width: 100, height: 100,
-//                 style: { fill: '#6BA5D7', strokeColor: 'white' }, annotations: [{ content: 'node2' }], ports: rightPorts
-//             },
-//             {
-//                 id: 'node3', offsetX: 680, offsetY: 350, width: 100, height: 100,
-//                 annotations: [{ content: 'node3' }], style: { fill: '#6BA5D7', strokeColor: 'white' }, ports: bottomPorts,
-//             },
-//             {
-//                 id: 'node4', offsetX: 680, offsetY: 200, width: 100, height: 100,
-//                 annotations: [{ content: 'node4' }], style: { fill: '#6BA5D7', strokeColor: 'white' }, ports: leftPorts,
-//             },
-//             {
-//                 id: 'node5', offsetX: 330, offsetY: 100, width: 100, height: 100,
-//                 annotations: [{ content: 'node5' }], style: { fill: '#6BA5D7', strokeColor: 'white' }, ports: topPorts,
-//             },
-//         ];
-//         let connectors: ConnectorModel[] = [
-//             {
-//                 id: 'Connector1', sourceID: "node1", targetID: "node2",
-//                 sourcePortID: 'port1', targetPortID: 'port4', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector2', sourceID: "node1", targetID: "node2",
-//                 sourcePortID: 'port2', targetPortID: 'port3', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector3', sourceID: "node1", targetID: "node2",
-//                 sourcePortID: 'port3', targetPortID: 'port2', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector4', sourceID: "node1", targetID: "node2",
-//                 sourcePortID: 'port4', targetPortID: 'port1', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector5', sourceID: "node1", targetID: "node4",
-//                 sourcePortID: 'port5', targetPortID: 'port4', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector6', sourceID: "node1", targetID: "node4",
-//                 sourcePortID: 'port6', targetPortID: 'port3', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector7', sourceID: "node1", targetID: "node4",
-//                 sourcePortID: 'port7', targetPortID: 'port2', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector8', sourceID: "node1", targetID: "node4",
-//                 sourcePortID: 'port8', targetPortID: 'port1', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector9', sourceID: "node1", targetID: "node5",
-//                 sourcePortID: 'port9', targetPortID: 'port3', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector10', sourceID: "node1", targetID: "node5",
-//                 sourcePortID: 'port10', targetPortID: 'port4', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector11', sourceID: "node1", targetID: "node5",
-//                 sourcePortID: 'port11', targetPortID: 'port1', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector12', sourceID: "node1", targetID: "node5",
-//                 sourcePortID: 'port12', targetPortID: 'port2', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector13', sourceID: "node1", targetID: "node3",
-//                 sourcePortID: 'port13', targetPortID: 'port4', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector14', sourceID: "node1", targetID: "node3",
-//                 sourcePortID: 'port14', targetPortID: 'port1', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector15', sourceID: "node1", targetID: "node3",
-//                 sourcePortID: 'port15', targetPortID: 'port2', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector16', sourceID: "node1", targetID: "node3",
-//                 sourcePortID: 'port16', targetPortID: 'port3', type: 'Orthogonal'
-//             },
-//         ];
-//         diagram.addElements(nodes);
-//         diagram.addElements(connectors);
-//         diagram.distributePorts(['node1', 'node2', 'node3', 'node4', 'node5']);
-//         diagram.dataBind();
-//         const n1 = diagram.nameTable['node1'];
-//         expect(n1.ports[0].offset.x === 0.058823529411764705).toBe(true);
-//         expect(n1.ports[0].offset.y === 0).toBe(true);
-//         done();
-//     });
-//     it('Distribute ports source Right', (done: Function) => {
-//         diagram.clear();
-//         let nodes: NodeModel[] = [
-//             {
-//                 id: 'node1', offsetX: 250, offsetY: 450, width: 200, height: 500,
-//                 style: { fill: '#6BA5D7', strokeColor: 'white' }, annotations: [{ content: 'node1' }],
-//                 ports: [
-//                     // //Right
-//                     { id: 'port1', offset: { x: 1, y: 0.1 }, visibility: PortVisibility.Visible },
-//                     { id: 'port2', offset: { x: 1, y: 0.18 }, visibility: PortVisibility.Visible },
-//                     { id: 'port3', offset: { x: 1, y: 0.25 }, visibility: PortVisibility.Visible },
-//                     { id: 'port4', offset: { x: 1, y: 0.30 }, visibility: PortVisibility.Visible },
-//                     { id: 'port5', offset: { x: 1, y: 0.35 }, visibility: PortVisibility.Visible },
-//                     { id: 'port6', offset: { x: 1, y: 0.40 }, visibility: PortVisibility.Visible },
-//                     { id: 'port7', offset: { x: 1, y: 0.45 }, visibility: PortVisibility.Visible },
-//                     { id: 'port8', offset: { x: 1, y: 0.50 }, visibility: PortVisibility.Visible },
-//                     { id: 'port9', offset: { x: 1, y: 0.55 }, visibility: PortVisibility.Visible },
-//                     { id: 'port10', offset: { x: 1, y: 0.60 }, visibility: PortVisibility.Visible },
-//                     { id: 'port11', offset: { x: 1, y: 0.65 }, visibility: PortVisibility.Visible },
-//                     { id: 'port12', offset: { x: 1, y: 0.70 }, visibility: PortVisibility.Visible },
-//                     { id: 'port13', offset: { x: 1, y: 0.75 }, visibility: PortVisibility.Visible },
-//                     { id: 'port14', offset: { x: 1, y: 0.80 }, visibility: PortVisibility.Visible },
-//                     { id: 'port15', offset: { x: 1, y: 0.85 }, visibility: PortVisibility.Visible },
-//                     { id: 'port16', offset: { x: 1, y: 0.9 }, visibility: PortVisibility.Visible },
-//                 ]
-//             },
-//             {
-//                 id: 'node2', offsetX: 500, offsetY: 150, width: 100, height: 100,
-//                 style: { fill: '#6BA5D7', strokeColor: 'white' }, annotations: [{ content: 'node2' }], ports: rightPorts
-//             },
-//             {
-//                 id: 'node3', offsetX: 750, offsetY: 280, width: 100, height: 100,
-//                 annotations: [{ content: 'node3' }], style: { fill: '#6BA5D7', strokeColor: 'white' }, ports: bottomPorts,
-//             },
-//             {
-//                 id: 'node4', offsetX: 650, offsetY: 500, width: 100, height: 100,
-//                 annotations: [{ content: 'node4' }], style: { fill: '#6BA5D7', strokeColor: 'white' }, ports: leftPorts,
-//             },
-//             {
-//                 id: 'node5', offsetX: 500, offsetY: 750, width: 100, height: 100,
-//                 annotations: [{ content: 'node5' }], style: { fill: '#6BA5D7', strokeColor: 'white' }, ports: topPorts,
-//             },
-//         ];
-//         let connectors: ConnectorModel[] = [
-//             {
-//                 id: 'Connector1', sourceID: "node1", targetID: "node2",
-//                 sourcePortID: 'port1', targetPortID: 'port4', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector2', sourceID: "node1", targetID: "node2",
-//                 sourcePortID: 'port2', targetPortID: 'port3', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector3', sourceID: "node1", targetID: "node2",
-//                 sourcePortID: 'port3', targetPortID: 'port2', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector4', sourceID: "node1", targetID: "node2",
-//                 sourcePortID: 'port4', targetPortID: 'port1', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector5', sourceID: "node1", targetID: "node4",
-//                 sourcePortID: 'port5', targetPortID: 'port4', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector6', sourceID: "node1", targetID: "node4",
-//                 sourcePortID: 'port6', targetPortID: 'port3', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector7', sourceID: "node1", targetID: "node4",
-//                 sourcePortID: 'port7', targetPortID: 'port2', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector8', sourceID: "node1", targetID: "node4",
-//                 sourcePortID: 'port8', targetPortID: 'port1', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector9', sourceID: "node1", targetID: "node5",
-//                 sourcePortID: 'port9', targetPortID: 'port3', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector10', sourceID: "node1", targetID: "node5",
-//                 sourcePortID: 'port10', targetPortID: 'port4', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector11', sourceID: "node1", targetID: "node5",
-//                 sourcePortID: 'port11', targetPortID: 'port1', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector12', sourceID: "node1", targetID: "node5",
-//                 sourcePortID: 'port12', targetPortID: 'port2', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector13', sourceID: "node1", targetID: "node3",
-//                 sourcePortID: 'port13', targetPortID: 'port4', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector14', sourceID: "node1", targetID: "node3",
-//                 sourcePortID: 'port14', targetPortID: 'port1', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector15', sourceID: "node1", targetID: "node3",
-//                 sourcePortID: 'port15', targetPortID: 'port2', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector16', sourceID: "node1", targetID: "node3",
-//                 sourcePortID: 'port16', targetPortID: 'port3', type: 'Orthogonal'
-//             },
-//         ];
-//         diagram.addElements(nodes);
-//         diagram.addElements(connectors);
-//         diagram.distributePorts(['node1', 'node2', 'node3', 'node4', 'node5']);
-//         diagram.dataBind();
-//         const n1 = diagram.nameTable['node1'];
-//         expect(n1.ports[0].offset.x === 1).toBe(true);
-//         expect(n1.ports[0].offset.y === 0.058823529411764705).toBe(true);
-//         done();
-//     });
-//     it('Distribute ports source Left', (done: Function) => {
-//         diagram.clear();
-//         let nodes: NodeModel[] = [
-//             {
-//                 id: 'node1', offsetX: 500, offsetY: 450, width: 200, height: 500,
-//                 style: { fill: '#6BA5D7', strokeColor: 'white' }, annotations: [{ content: 'node1' }],
-//                 ports: [
-//                     // //Left
-//                     { id: 'port1', offset: { x: 0, y: 0.1 }, visibility: PortVisibility.Visible },
-//                     { id: 'port2', offset: { x: 0, y: 0.18 }, visibility: PortVisibility.Visible },
-//                     { id: 'port3', offset: { x: 0, y: 0.25 }, visibility: PortVisibility.Visible },
-//                     { id: 'port4', offset: { x: 0, y: 0.30 }, visibility: PortVisibility.Visible },
-//                     { id: 'port5', offset: { x: 0, y: 0.35 }, visibility: PortVisibility.Visible },
-//                     { id: 'port6', offset: { x: 0, y: 0.40 }, visibility: PortVisibility.Visible },
-//                     { id: 'port7', offset: { x: 0, y: 0.45 }, visibility: PortVisibility.Visible },
-//                     { id: 'port8', offset: { x: 0, y: 0.50 }, visibility: PortVisibility.Visible },
-//                     { id: 'port9', offset: { x: 0, y: 0.55 }, visibility: PortVisibility.Visible },
-//                     { id: 'port10', offset: { x: 0, y: 0.60 }, visibility: PortVisibility.Visible },
-//                     { id: 'port11', offset: { x: 0, y: 0.65 }, visibility: PortVisibility.Visible },
-//                     { id: 'port12', offset: { x: 0, y: 0.70 }, visibility: PortVisibility.Visible },
-//                     { id: 'port13', offset: { x: 0, y: 0.75 }, visibility: PortVisibility.Visible },
-//                     { id: 'port14', offset: { x: 0, y: 0.80 }, visibility: PortVisibility.Visible },
-//                     { id: 'port15', offset: { x: 0, y: 0.85 }, visibility: PortVisibility.Visible },
-//                     { id: 'port16', offset: { x: 0, y: 0.9 }, visibility: PortVisibility.Visible },
-//                 ]
-//             },
-//             {
-//                 id: 'node2', offsetX: 250, offsetY: 400, width: 100, height: 100,
-//                 style: { fill: '#6BA5D7', strokeColor: 'white' }, annotations: [{ content: 'node2' }], ports: rightPorts
-//             },
-//             {
-//                 id: 'node3', offsetX: 100, offsetY: 400, width: 100, height: 100,
-//                 annotations: [{ content: 'node3' }], style: { fill: '#6BA5D7', strokeColor: 'white' }, ports: bottomPorts,
-//             },
-//             {
-//                 id: 'node4', offsetX: 530, offsetY: 100, width: 100, height: 100,
-//                 annotations: [{ content: 'node4' }], style: { fill: '#6BA5D7', strokeColor: 'white' }, ports: leftPorts,
-//             },
-//             {
-//                 id: 'node5', offsetX: 250, offsetY: 750, width: 100, height: 100,
-//                 annotations: [{ content: 'node5' }], style: { fill: '#6BA5D7', strokeColor: 'white' }, ports: topPorts,
-//             },
-//         ];
-//         let connectors: ConnectorModel[] = [
-//             {
-//                 id: 'Connector1', sourceID: "node1", targetID: "node2",
-//                 sourcePortID: 'port1', targetPortID: 'port4', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector2', sourceID: "node1", targetID: "node2",
-//                 sourcePortID: 'port2', targetPortID: 'port3', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector3', sourceID: "node1", targetID: "node2",
-//                 sourcePortID: 'port3', targetPortID: 'port2', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector4', sourceID: "node1", targetID: "node2",
-//                 sourcePortID: 'port4', targetPortID: 'port1', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector5', sourceID: "node1", targetID: "node4",
-//                 sourcePortID: 'port5', targetPortID: 'port4', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector6', sourceID: "node1", targetID: "node4",
-//                 sourcePortID: 'port6', targetPortID: 'port3', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector7', sourceID: "node1", targetID: "node4",
-//                 sourcePortID: 'port7', targetPortID: 'port2', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector8', sourceID: "node1", targetID: "node4",
-//                 sourcePortID: 'port8', targetPortID: 'port1', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector9', sourceID: "node1", targetID: "node5",
-//                 sourcePortID: 'port9', targetPortID: 'port3', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector10', sourceID: "node1", targetID: "node5",
-//                 sourcePortID: 'port10', targetPortID: 'port4', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector11', sourceID: "node1", targetID: "node5",
-//                 sourcePortID: 'port11', targetPortID: 'port1', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector12', sourceID: "node1", targetID: "node5",
-//                 sourcePortID: 'port12', targetPortID: 'port2', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector13', sourceID: "node1", targetID: "node3",
-//                 sourcePortID: 'port13', targetPortID: 'port4', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector14', sourceID: "node1", targetID: "node3",
-//                 sourcePortID: 'port14', targetPortID: 'port1', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector15', sourceID: "node1", targetID: "node3",
-//                 sourcePortID: 'port15', targetPortID: 'port2', type: 'Orthogonal'
-//             },
-//             {
-//                 id: 'Connector16', sourceID: "node1", targetID: "node3",
-//                 sourcePortID: 'port16', targetPortID: 'port3', type: 'Orthogonal'
-//             },
-//         ];
-//         diagram.addElements(nodes);
-//         diagram.addElements(connectors);
-//         diagram.distributePorts(['node1', 'node2', 'node3', 'node4', 'node5']);
-//         diagram.dataBind();
-//         const n1 = diagram.nameTable['node1'];
-//         expect(n1.ports[0].offset.x === 0).toBe(true);
-//         expect(n1.ports[0].offset.y === 0.47058823529411764).toBe(true);
-//         done();
-//     });
-// });
+                ports: [
+                    //Bottom
+                    { id: 'port1', offset: { y: 1, x: 0.1 }, visibility: PortVisibility.Visible },
+                    { id: 'port2', offset: { y: 1, x: 0.18 }, visibility: PortVisibility.Visible },
+                    { id: 'port3', offset: { y: 1, x: 0.25 }, visibility: PortVisibility.Visible },
+                    { id: 'port4', offset: { y: 1, x: 0.30 }, visibility: PortVisibility.Visible },
+                    { id: 'port5', offset: { y: 1, x: 0.35 }, visibility: PortVisibility.Visible },
+                    { id: 'port6', offset: { y: 1, x: 0.40 }, visibility: PortVisibility.Visible },
+                    { id: 'port7', offset: { y: 1, x: 0.45 }, visibility: PortVisibility.Visible },
+                    { id: 'port8', offset: { y: 1, x: 0.50 }, visibility: PortVisibility.Visible },
+                    { id: 'port9', offset: { y: 1, x: 0.55 }, visibility: PortVisibility.Visible },
+                    { id: 'port10', offset: { y: 1, x: 0.60 }, visibility: PortVisibility.Visible },
+                    { id: 'port11', offset: { y: 1, x: 0.65 }, visibility: PortVisibility.Visible },
+                    { id: 'port12', offset: { y: 1, x: 0.70 }, visibility: PortVisibility.Visible },
+                    { id: 'port13', offset: { y: 1, x: 0.75 }, visibility: PortVisibility.Visible },
+                    { id: 'port14', offset: { y: 1, x: 0.80 }, visibility: PortVisibility.Visible },
+                    { id: 'port15', offset: { y: 1, x: 0.85 }, visibility: PortVisibility.Visible },
+                    { id: 'port16', offset: { y: 1, x: 0.9 }, visibility: PortVisibility.Visible },
+                ]
+            },
+            {
+                id: 'node2', offsetX: 150, offsetY: 500, width: 100, height: 100,
+                style: { fill: '#6BA5D7', strokeColor: 'white' }, annotations: [{ content: 'node2' }], ports: rightPorts
+            },
+            {
+                id: 'node3', offsetX: 800, offsetY: 150, width: 100, height: 100,
+                annotations: [{ content: 'node3' }], style: { fill: '#6BA5D7', strokeColor: 'white' }, ports: bottomPorts,
+            },
+            {
+                id: 'node4', offsetX: 800, offsetY: 500, width: 100, height: 100,
+                annotations: [{ content: 'node4' }], style: { fill: '#6BA5D7', strokeColor: 'white' }, ports: leftPorts,
+            },
+            {
+                id: 'node5', offsetX: 450, offsetY: 700, width: 100, height: 100,
+                annotations: [{ content: 'node5' }], style: { fill: '#6BA5D7', strokeColor: 'white' }, ports: topPorts,
+            },
+        ];
+        let connectors: ConnectorModel[] = [
+            {
+                id: 'Connector1', sourceID: "node1", targetID: "node2",
+                sourcePortID: 'port1', targetPortID: 'port4', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector2', sourceID: "node1", targetID: "node2",
+                sourcePortID: 'port2', targetPortID: 'port3', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector3', sourceID: "node1", targetID: "node2",
+                sourcePortID: 'port3', targetPortID: 'port2', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector4', sourceID: "node1", targetID: "node2",
+                sourcePortID: 'port4', targetPortID: 'port1', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector5', sourceID: "node1", targetID: "node4",
+                sourcePortID: 'port5', targetPortID: 'port4', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector6', sourceID: "node1", targetID: "node4",
+                sourcePortID: 'port6', targetPortID: 'port3', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector7', sourceID: "node1", targetID: "node4",
+                sourcePortID: 'port7', targetPortID: 'port2', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector8', sourceID: "node1", targetID: "node4",
+                sourcePortID: 'port8', targetPortID: 'port1', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector9', sourceID: "node1", targetID: "node5",
+                sourcePortID: 'port9', targetPortID: 'port3', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector10', sourceID: "node1", targetID: "node5",
+                sourcePortID: 'port10', targetPortID: 'port4', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector11', sourceID: "node1", targetID: "node5",
+                sourcePortID: 'port11', targetPortID: 'port1', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector12', sourceID: "node1", targetID: "node5",
+                sourcePortID: 'port12', targetPortID: 'port2', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector13', sourceID: "node1", targetID: "node3",
+                sourcePortID: 'port13', targetPortID: 'port4', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector14', sourceID: "node1", targetID: "node3",
+                sourcePortID: 'port14', targetPortID: 'port1', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector15', sourceID: "node1", targetID: "node3",
+                sourcePortID: 'port15', targetPortID: 'port2', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector16', sourceID: "node1", targetID: "node3",
+                sourcePortID: 'port16', targetPortID: 'port3', type: 'Orthogonal'
+            },
+        ];
+        diagram.addElements(nodes);
+        diagram.addElements(connectors);
+        diagram.distributePorts(['node1', 'node2', 'node3', 'node4', 'node5']);
+        diagram.dataBind();
+        const n1 = diagram.nameTable['node1'];
+        expect(n1.ports[0].offset.x === 0.23529411764705882).toBe(true);
+        expect(n1.ports[0].offset.y === 1).toBe(true);
+        done();
+    });
+    it('Distribute ports source Top', (done: Function) => {
+        diagram.clear();
+        let nodes: NodeModel[] = [
+            {
+                id: 'node1', offsetX: 500, offsetY: 550, width: 500, height: 100,
+                style: { fill: '#6BA5D7', strokeColor: 'white' }, annotations: [{ content: 'node1' }],
+                ports: [
+                    //Top
+                    { id: 'port1', offset: { y: 0, x: 0.1 }, visibility: PortVisibility.Visible },
+                    { id: 'port2', offset: { y: 0, x: 0.18 }, visibility: PortVisibility.Visible },
+                    { id: 'port3', offset: { y: 0, x: 0.25 }, visibility: PortVisibility.Visible },
+                    { id: 'port4', offset: { y: 0, x: 0.30 }, visibility: PortVisibility.Visible },
+                    { id: 'port5', offset: { y: 0, x: 0.35 }, visibility: PortVisibility.Visible },
+                    { id: 'port6', offset: { y: 0, x: 0.40 }, visibility: PortVisibility.Visible },
+                    { id: 'port7', offset: { y: 0, x: 0.45 }, visibility: PortVisibility.Visible },
+                    { id: 'port8', offset: { y: 0, x: 0.50 }, visibility: PortVisibility.Visible },
+                    { id: 'port9', offset: { y: 0, x: 0.55 }, visibility: PortVisibility.Visible },
+                    { id: 'port10', offset: { y: 0, x: 0.60 }, visibility: PortVisibility.Visible },
+                    { id: 'port11', offset: { y: 0, x: 0.65 }, visibility: PortVisibility.Visible },
+                    { id: 'port12', offset: { y: 0, x: 0.70 }, visibility: PortVisibility.Visible },
+                    { id: 'port13', offset: { y: 0, x: 0.75 }, visibility: PortVisibility.Visible },
+                    { id: 'port14', offset: { y: 0, x: 0.80 }, visibility: PortVisibility.Visible },
+                    { id: 'port15', offset: { y: 0, x: 0.85 }, visibility: PortVisibility.Visible },
+                    { id: 'port16', offset: { y: 0, x: 0.9 }, visibility: PortVisibility.Visible },
+                ]
+            },
+            {
+                id: 'node2', offsetX: 150, offsetY: 450, width: 100, height: 100,
+                style: { fill: '#6BA5D7', strokeColor: 'white' }, annotations: [{ content: 'node2' }], ports: rightPorts
+            },
+            {
+                id: 'node3', offsetX: 680, offsetY: 350, width: 100, height: 100,
+                annotations: [{ content: 'node3' }], style: { fill: '#6BA5D7', strokeColor: 'white' }, ports: bottomPorts,
+            },
+            {
+                id: 'node4', offsetX: 680, offsetY: 200, width: 100, height: 100,
+                annotations: [{ content: 'node4' }], style: { fill: '#6BA5D7', strokeColor: 'white' }, ports: leftPorts,
+            },
+            {
+                id: 'node5', offsetX: 330, offsetY: 100, width: 100, height: 100,
+                annotations: [{ content: 'node5' }], style: { fill: '#6BA5D7', strokeColor: 'white' }, ports: topPorts,
+            },
+        ];
+        let connectors: ConnectorModel[] = [
+            {
+                id: 'Connector1', sourceID: "node1", targetID: "node2",
+                sourcePortID: 'port1', targetPortID: 'port4', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector2', sourceID: "node1", targetID: "node2",
+                sourcePortID: 'port2', targetPortID: 'port3', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector3', sourceID: "node1", targetID: "node2",
+                sourcePortID: 'port3', targetPortID: 'port2', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector4', sourceID: "node1", targetID: "node2",
+                sourcePortID: 'port4', targetPortID: 'port1', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector5', sourceID: "node1", targetID: "node4",
+                sourcePortID: 'port5', targetPortID: 'port4', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector6', sourceID: "node1", targetID: "node4",
+                sourcePortID: 'port6', targetPortID: 'port3', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector7', sourceID: "node1", targetID: "node4",
+                sourcePortID: 'port7', targetPortID: 'port2', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector8', sourceID: "node1", targetID: "node4",
+                sourcePortID: 'port8', targetPortID: 'port1', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector9', sourceID: "node1", targetID: "node5",
+                sourcePortID: 'port9', targetPortID: 'port3', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector10', sourceID: "node1", targetID: "node5",
+                sourcePortID: 'port10', targetPortID: 'port4', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector11', sourceID: "node1", targetID: "node5",
+                sourcePortID: 'port11', targetPortID: 'port1', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector12', sourceID: "node1", targetID: "node5",
+                sourcePortID: 'port12', targetPortID: 'port2', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector13', sourceID: "node1", targetID: "node3",
+                sourcePortID: 'port13', targetPortID: 'port4', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector14', sourceID: "node1", targetID: "node3",
+                sourcePortID: 'port14', targetPortID: 'port1', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector15', sourceID: "node1", targetID: "node3",
+                sourcePortID: 'port15', targetPortID: 'port2', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector16', sourceID: "node1", targetID: "node3",
+                sourcePortID: 'port16', targetPortID: 'port3', type: 'Orthogonal'
+            },
+        ];
+        diagram.addElements(nodes);
+        diagram.addElements(connectors);
+        diagram.distributePorts(['node1', 'node2', 'node3', 'node4', 'node5']);
+        diagram.dataBind();
+        const n1 = diagram.nameTable['node1'];
+        expect(n1.ports[0].offset.x === 0.058823529411764705).toBe(true);
+        expect(n1.ports[0].offset.y === 0).toBe(true);
+        done();
+    });
+    it('Distribute ports source Right', (done: Function) => {
+        diagram.clear();
+        let nodes: NodeModel[] = [
+            {
+                id: 'node1', offsetX: 250, offsetY: 450, width: 200, height: 500,
+                style: { fill: '#6BA5D7', strokeColor: 'white' }, annotations: [{ content: 'node1' }],
+                ports: [
+                    //Right
+                    { id: 'port1', offset: { x: 1, y: 0.1 }, visibility: PortVisibility.Visible },
+                    { id: 'port2', offset: { x: 1, y: 0.18 }, visibility: PortVisibility.Visible },
+                    { id: 'port3', offset: { x: 1, y: 0.25 }, visibility: PortVisibility.Visible },
+                    { id: 'port4', offset: { x: 1, y: 0.30 }, visibility: PortVisibility.Visible },
+                    { id: 'port5', offset: { x: 1, y: 0.35 }, visibility: PortVisibility.Visible },
+                    { id: 'port6', offset: { x: 1, y: 0.40 }, visibility: PortVisibility.Visible },
+                    { id: 'port7', offset: { x: 1, y: 0.45 }, visibility: PortVisibility.Visible },
+                    { id: 'port8', offset: { x: 1, y: 0.50 }, visibility: PortVisibility.Visible },
+                    { id: 'port9', offset: { x: 1, y: 0.55 }, visibility: PortVisibility.Visible },
+                    { id: 'port10', offset: { x: 1, y: 0.60 }, visibility: PortVisibility.Visible },
+                    { id: 'port11', offset: { x: 1, y: 0.65 }, visibility: PortVisibility.Visible },
+                    { id: 'port12', offset: { x: 1, y: 0.70 }, visibility: PortVisibility.Visible },
+                    { id: 'port13', offset: { x: 1, y: 0.75 }, visibility: PortVisibility.Visible },
+                    { id: 'port14', offset: { x: 1, y: 0.80 }, visibility: PortVisibility.Visible },
+                    { id: 'port15', offset: { x: 1, y: 0.85 }, visibility: PortVisibility.Visible },
+                    { id: 'port16', offset: { x: 1, y: 0.9 }, visibility: PortVisibility.Visible },
+                ]
+            },
+            {
+                id: 'node2', offsetX: 500, offsetY: 150, width: 100, height: 100,
+                style: { fill: '#6BA5D7', strokeColor: 'white' }, annotations: [{ content: 'node2' }], ports: rightPorts
+            },
+            {
+                id: 'node3', offsetX: 750, offsetY: 280, width: 100, height: 100,
+                annotations: [{ content: 'node3' }], style: { fill: '#6BA5D7', strokeColor: 'white' }, ports: bottomPorts,
+            },
+            {
+                id: 'node4', offsetX: 650, offsetY: 500, width: 100, height: 100,
+                annotations: [{ content: 'node4' }], style: { fill: '#6BA5D7', strokeColor: 'white' }, ports: leftPorts,
+            },
+            {
+                id: 'node5', offsetX: 500, offsetY: 750, width: 100, height: 100,
+                annotations: [{ content: 'node5' }], style: { fill: '#6BA5D7', strokeColor: 'white' }, ports: topPorts,
+            },
+        ];
+        let connectors: ConnectorModel[] = [
+            {
+                id: 'Connector1', sourceID: "node1", targetID: "node2",
+                sourcePortID: 'port1', targetPortID: 'port4', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector2', sourceID: "node1", targetID: "node2",
+                sourcePortID: 'port2', targetPortID: 'port3', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector3', sourceID: "node1", targetID: "node2",
+                sourcePortID: 'port3', targetPortID: 'port2', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector4', sourceID: "node1", targetID: "node2",
+                sourcePortID: 'port4', targetPortID: 'port1', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector5', sourceID: "node1", targetID: "node4",
+                sourcePortID: 'port5', targetPortID: 'port4', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector6', sourceID: "node1", targetID: "node4",
+                sourcePortID: 'port6', targetPortID: 'port3', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector7', sourceID: "node1", targetID: "node4",
+                sourcePortID: 'port7', targetPortID: 'port2', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector8', sourceID: "node1", targetID: "node4",
+                sourcePortID: 'port8', targetPortID: 'port1', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector9', sourceID: "node1", targetID: "node5",
+                sourcePortID: 'port9', targetPortID: 'port3', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector10', sourceID: "node1", targetID: "node5",
+                sourcePortID: 'port10', targetPortID: 'port4', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector11', sourceID: "node1", targetID: "node5",
+                sourcePortID: 'port11', targetPortID: 'port1', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector12', sourceID: "node1", targetID: "node5",
+                sourcePortID: 'port12', targetPortID: 'port2', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector13', sourceID: "node1", targetID: "node3",
+                sourcePortID: 'port13', targetPortID: 'port4', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector14', sourceID: "node1", targetID: "node3",
+                sourcePortID: 'port14', targetPortID: 'port1', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector15', sourceID: "node1", targetID: "node3",
+                sourcePortID: 'port15', targetPortID: 'port2', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector16', sourceID: "node1", targetID: "node3",
+                sourcePortID: 'port16', targetPortID: 'port3', type: 'Orthogonal'
+            },
+        ];
+        diagram.addElements(nodes);
+        diagram.addElements(connectors);
+        diagram.distributePorts(['node1', 'node2', 'node3', 'node4', 'node5']);
+        diagram.dataBind();
+        const n1 = diagram.nameTable['node1'];
+        expect(n1.ports[0].offset.x === 1).toBe(true);
+        expect(n1.ports[0].offset.y === 0.058823529411764705).toBe(true);
+        done();
+    });
+    it('Distribute ports source Left', (done: Function) => {
+        diagram.clear();
+        let nodes: NodeModel[] = [
+            {
+                id: 'node1', offsetX: 500, offsetY: 450, width: 200, height: 500,
+                style: { fill: '#6BA5D7', strokeColor: 'white' }, annotations: [{ content: 'node1' }],
+                ports: [
+                    //Left
+                    { id: 'port1', offset: { x: 0, y: 0.1 }, visibility: PortVisibility.Visible },
+                    { id: 'port2', offset: { x: 0, y: 0.18 }, visibility: PortVisibility.Visible },
+                    { id: 'port3', offset: { x: 0, y: 0.25 }, visibility: PortVisibility.Visible },
+                    { id: 'port4', offset: { x: 0, y: 0.30 }, visibility: PortVisibility.Visible },
+                    { id: 'port5', offset: { x: 0, y: 0.35 }, visibility: PortVisibility.Visible },
+                    { id: 'port6', offset: { x: 0, y: 0.40 }, visibility: PortVisibility.Visible },
+                    { id: 'port7', offset: { x: 0, y: 0.45 }, visibility: PortVisibility.Visible },
+                    { id: 'port8', offset: { x: 0, y: 0.50 }, visibility: PortVisibility.Visible },
+                    { id: 'port9', offset: { x: 0, y: 0.55 }, visibility: PortVisibility.Visible },
+                    { id: 'port10', offset: { x: 0, y: 0.60 }, visibility: PortVisibility.Visible },
+                    { id: 'port11', offset: { x: 0, y: 0.65 }, visibility: PortVisibility.Visible },
+                    { id: 'port12', offset: { x: 0, y: 0.70 }, visibility: PortVisibility.Visible },
+                    { id: 'port13', offset: { x: 0, y: 0.75 }, visibility: PortVisibility.Visible },
+                    { id: 'port14', offset: { x: 0, y: 0.80 }, visibility: PortVisibility.Visible },
+                    { id: 'port15', offset: { x: 0, y: 0.85 }, visibility: PortVisibility.Visible },
+                    { id: 'port16', offset: { x: 0, y: 0.9 }, visibility: PortVisibility.Visible },
+                ]
+            },
+            {
+                id: 'node2', offsetX: 250, offsetY: 400, width: 100, height: 100,
+                style: { fill: '#6BA5D7', strokeColor: 'white' }, annotations: [{ content: 'node2' }], ports: rightPorts
+            },
+            {
+                id: 'node3', offsetX: 100, offsetY: 400, width: 100, height: 100,
+                annotations: [{ content: 'node3' }], style: { fill: '#6BA5D7', strokeColor: 'white' }, ports: bottomPorts,
+            },
+            {
+                id: 'node4', offsetX: 530, offsetY: 100, width: 100, height: 100,
+                annotations: [{ content: 'node4' }], style: { fill: '#6BA5D7', strokeColor: 'white' }, ports: leftPorts,
+            },
+            {
+                id: 'node5', offsetX: 250, offsetY: 750, width: 100, height: 100,
+                annotations: [{ content: 'node5' }], style: { fill: '#6BA5D7', strokeColor: 'white' }, ports: topPorts,
+            },
+        ];
+        let connectors: ConnectorModel[] = [
+            {
+                id: 'Connector1', sourceID: "node1", targetID: "node2",
+                sourcePortID: 'port1', targetPortID: 'port4', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector2', sourceID: "node1", targetID: "node2",
+                sourcePortID: 'port2', targetPortID: 'port3', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector3', sourceID: "node1", targetID: "node2",
+                sourcePortID: 'port3', targetPortID: 'port2', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector4', sourceID: "node1", targetID: "node2",
+                sourcePortID: 'port4', targetPortID: 'port1', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector5', sourceID: "node1", targetID: "node4",
+                sourcePortID: 'port5', targetPortID: 'port4', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector6', sourceID: "node1", targetID: "node4",
+                sourcePortID: 'port6', targetPortID: 'port3', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector7', sourceID: "node1", targetID: "node4",
+                sourcePortID: 'port7', targetPortID: 'port2', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector8', sourceID: "node1", targetID: "node4",
+                sourcePortID: 'port8', targetPortID: 'port1', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector9', sourceID: "node1", targetID: "node5",
+                sourcePortID: 'port9', targetPortID: 'port3', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector10', sourceID: "node1", targetID: "node5",
+                sourcePortID: 'port10', targetPortID: 'port4', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector11', sourceID: "node1", targetID: "node5",
+                sourcePortID: 'port11', targetPortID: 'port1', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector12', sourceID: "node1", targetID: "node5",
+                sourcePortID: 'port12', targetPortID: 'port2', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector13', sourceID: "node1", targetID: "node3",
+                sourcePortID: 'port13', targetPortID: 'port4', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector14', sourceID: "node1", targetID: "node3",
+                sourcePortID: 'port14', targetPortID: 'port1', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector15', sourceID: "node1", targetID: "node3",
+                sourcePortID: 'port15', targetPortID: 'port2', type: 'Orthogonal'
+            },
+            {
+                id: 'Connector16', sourceID: "node1", targetID: "node3",
+                sourcePortID: 'port16', targetPortID: 'port3', type: 'Orthogonal'
+            },
+        ];
+        diagram.addElements(nodes);
+        diagram.addElements(connectors);
+        diagram.distributePorts(['node1', 'node2', 'node3', 'node4', 'node5']);
+        diagram.dataBind();
+        const n1 = diagram.nameTable['node1'];
+        expect(n1.ports[0].offset.x === 0).toBe(true);
+        expect(n1.ports[0].offset.y === 0.47058823529411764).toBe(true);
+        done();
+    });
+});
 
 describe('Node Annotation Drag and Resize with RestrictNegativeAxisDragDrop', () => {
     let diagram: Diagram;
@@ -4677,6 +4744,138 @@ describe('Distribute with connectors selected', () => {
         diagram.dataBind();
         let node = diagram.nodes[0];
         expect(node.offsetX === 400 && node.offsetY === 250).toBe(true);
+        done();
+    });
+});
+describe('Testing resizing - With Aspect Ratio and MinWidth and height', () => {
+    let diagram: Diagram;
+    let ele: HTMLElement;
+    let mouseEvents: MouseEvents = new MouseEvents();
+    beforeAll((): void => {
+        const isDef = (o: any) => o !== undefined && o !== null;
+        if (!isDef(window.performance)) {
+            console.log("Unsupported environment, window.performance.memory is unavailable");
+            this.skip(); //Skips test (in Chai)
+            return;
+        }
+        ele = createElement('div', { id: 'diagramwithAspectRatio' });
+        document.body.appendChild(ele);
+        let node1: NodeModel = {
+            id: 'node1', width: 81, height: 81, offsetX: 200, offsetY: 200,
+            minHeight: 80, minWidth: 80,
+            constraints: NodeConstraints.Default | NodeConstraints.AspectRatio,
+        };
+        let node2: NodeModel = {
+            id: 'node2', width: 100, height: 81, offsetX: 500, offsetY: 200,
+            minHeight: 80,
+            constraints: NodeConstraints.Default | NodeConstraints.AspectRatio,
+        };
+        let node3: NodeModel = {
+            id: 'node3', width: 118, height: 118, offsetX: 800, offsetY: 200,
+            maxHeight: 120, maxWidth: 120,
+            constraints: NodeConstraints.Default | NodeConstraints.AspectRatio,
+        };
+        let node4: NodeModel = {
+            id: 'node4', width: 100, height: 120, offsetX: 200, offsetY: 500,
+            maxWidth: 130, maxHeight: 130,
+            constraints: NodeConstraints.Default | NodeConstraints.AspectRatio,
+        };
+        let node5: NodeModel = {
+            id: 'node5', width: 100, height: 81, offsetX: 500, offsetY: 500,
+            minHeight: 80, minWidth: 80,
+            constraints: NodeConstraints.Default | NodeConstraints.AspectRatio,
+        };
+        diagram = new Diagram({
+            width: 1100, height: 850, nodes: [node1, node2, node3, node4, node5]
+        });
+        diagram.appendTo('#diagramwithAspectRatio');
+    });
+    afterAll((): void => {
+        diagram.destroy();
+        ele.remove();
+    });
+    it('Checking single node resizing - with minHeight and minWidth ', (done: Function) => {
+        diagram.clearSelection();
+        let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+        diagram.select([diagram.nodes[0]]);
+        let element = document.getElementById('resizeNorthEast');
+        let bounds = element.getBoundingClientRect();
+        let cx: number = bounds.left + bounds.width / 2;
+        let cy: number = bounds.top + bounds.height / 2;
+        mouseEvents.mouseDownEvent(diagramCanvas, cx, cy);
+        mouseEvents.mouseMoveEvent(diagramCanvas, cx - 20, cy + 20);
+        mouseEvents.mouseUpEvent(diagramCanvas, cx - 21, cy + 21);
+        expect(diagram.nodes[0].width == 80).toBe(true);
+        done();
+    });
+    it('Checking single node resizing - with minHeight', (done: Function) => {
+        diagram.clearSelection();
+        let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+        diagram.select([diagram.nodes[1]]);
+        let element = document.getElementById('resizeNorthEast');
+        let bounds = element.getBoundingClientRect();
+        let cx: number = bounds.left + bounds.width / 2;
+        let cy: number = bounds.top + bounds.height / 2;
+        mouseEvents.mouseDownEvent(diagramCanvas, cx, cy);
+        mouseEvents.mouseMoveEvent(diagramCanvas, cx - 20, cy + 20);
+        mouseEvents.mouseUpEvent(diagramCanvas, cx - 21, cy + 21);
+        expect(diagram.nodes[1].height == 80).toBe(true);
+        done();
+    });
+    it('Checking single node resizing - with maxWidth and maxHeight', (done: Function) => {
+        diagram.clearSelection();
+        let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+        diagram.select([diagram.nodes[2]]);
+        let element = document.getElementById('resizeNorthEast');
+        let bounds = element.getBoundingClientRect();
+        let cx: number = bounds.left + bounds.width / 2;
+        let cy: number = bounds.top + bounds.height / 2;
+        mouseEvents.mouseDownEvent(diagramCanvas, cx, cy);
+        mouseEvents.mouseMoveEvent(diagramCanvas, cx + 20, cy - 20);
+        mouseEvents.mouseUpEvent(diagramCanvas, cx + 21, cy - 21);
+        expect(diagram.nodes[2].width == 120).toBe(true);
+        done();
+    });
+    it('Checking single node resizing - with maxheight greater than maxWidth', (done: Function) => {
+        diagram.clearSelection();
+        let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+        diagram.select([diagram.nodes[3]]);
+        let element = document.getElementById('resizeNorthEast');
+        let bounds = element.getBoundingClientRect();
+        let cx: number = bounds.left + bounds.width / 2;
+        let cy: number = bounds.top + bounds.height / 2;
+        mouseEvents.mouseDownEvent(diagramCanvas, cx, cy);
+        mouseEvents.mouseMoveEvent(diagramCanvas, cx + 20, cy - 20);
+        mouseEvents.mouseUpEvent(diagramCanvas, cx + 21, cy - 21);
+        expect(diagram.nodes[3].height == 130).toBe(true);
+        done();
+    });
+    it('Checking single node resizing - with minHeight lesser than minWidth', (done: Function) => {
+        diagram.clearSelection();
+        let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+        diagram.select([diagram.nodes[4]]);
+        let element = document.getElementById('resizeNorthEast');
+        let bounds = element.getBoundingClientRect();
+        let cx: number = bounds.left + bounds.width / 2;
+        let cy: number = bounds.top + bounds.height / 2;
+        mouseEvents.mouseDownEvent(diagramCanvas, cx, cy);
+        mouseEvents.mouseMoveEvent(diagramCanvas, cx - 20, cy + 20);
+        mouseEvents.mouseUpEvent(diagramCanvas, cx - 21, cy + 21);
+        expect(diagram.nodes[4].height == 80).toBe(true);
+        done();
+    });
+    it('Checking single node pivot change - x to 1', (done: Function) => {
+        diagram.clearSelection();
+        diagram.nodes[0].pivot.x = 1;
+        diagram.dataBind();
+        expect(diagram.nodes[0].pivot.x).toBe(1);
+        done();
+    });
+    it('Checking single node pivot change - y to 1', (done: Function) => {
+        diagram.clearSelection();
+        diagram.nodes[1].pivot.y = 1;
+        diagram.dataBind();
+        expect(diagram.nodes[1].pivot.y).toBe(1);
         done();
     });
 });

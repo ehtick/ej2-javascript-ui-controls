@@ -279,9 +279,6 @@ export class GroupingBar implements IAction {
                     setStyleAttribute(this.rightAxisPanel, { width: rightAxisPanelWidth });
                     this.groupingTable.style.display = '';
                     const rightPanelHeight: number = (valuePanel.offsetHeight / 2);
-                    if (this.parent.displayOption.primary === 'Chart') {
-                        this.groupingTable.style.display = 'none';
-                    }
                     if (rightPanelHeight > columnPanel.offsetHeight) {
                         setStyleAttribute(filterPanel, { height: formatUnit(rightPanelHeight) });
                         setStyleAttribute(columnPanel, { height: formatUnit(rightPanelHeight + 2) });
@@ -402,8 +399,8 @@ export class GroupingBar implements IAction {
             const level: number = this.parent.isTabular && this.parent.engineModule.rowMaxLevel > 0
                 ? this.parent.engineModule.rowMaxLevel + 1
                 : 1;
-            const pvtBtn: NodeListOf<Element> = !isNullOrUndefined(this.parent.element.querySelectorAll('.e-group-rows')[0]) ?
-                this.parent.element.querySelectorAll('.e-group-rows')[0].querySelectorAll('.e-pvt-btn-div') : null;
+            const pvtBtn: NodeListOf<Element> = this.rowPanel && !isNullOrUndefined(this.rowPanel) ?
+                this.rowPanel.querySelectorAll('.e-pvt-btn-div') : null;
             let btnHeight: number = 0;
             if (!isNullOrUndefined(pvtBtn)) {
                 pvtBtn.forEach((ele: HTMLElement) => {
@@ -535,140 +532,143 @@ export class GroupingBar implements IAction {
         this.parent.element.querySelector('.' + cls.HEADERCONTENT).querySelector('.e-columnheader') as HTMLElement;
         const element: HTMLElement = this.groupingTable ? this.groupingTable : this.groupingChartTable;
         const leftAxisPanel: HTMLElement = element.getElementsByClassName(cls.LEFT_AXIS_PANEL_CLASS)[0] as HTMLElement;
-        if (this.parent.isTabular && this.parent.engineModule.rowMaxLevel >= 1) {
-            if (!isNullOrUndefined(leftAxisPanel.querySelector('.e-axis-row'))) {
-                leftAxisPanel.querySelector('.e-axis-row').remove();
-            }
-            const headerCell: NodeListOf<Element> = emptyRowHeader.querySelectorAll('.' + cls.HEADERCELL);
-            for (let i: number = 0; i < this.parent.engineModule.rowMaxLevel + 1; i++) {
-                if (!isNullOrUndefined(headerCell[i as number])) {
-                    addClass([headerCell[i as number]], 'e-group-row');
-                    const groupRow: NodeListOf<Element> = emptyRowHeader.querySelectorAll('.e-group-row');
-                    if (!groupRow[i as number].querySelector('.e-row-axis-panel')) {
-                        const clonedPanel: Node = this.rowAxisPanel.cloneNode(true);
-                        (clonedPanel as HTMLElement).classList.add('e-row-axis-panel');
-                        if ((clonedPanel as HTMLElement).querySelectorAll('.e-pvt-btn-div')) {
-                            (clonedPanel as HTMLElement).querySelectorAll('.e-pvt-btn-div').forEach((btn: Element) => btn.remove());
-                        }
-                        groupRow[i as number].appendChild(clonedPanel);
-                    }
+        if (!isNullOrUndefined(this.groupingTable)) {
+            if (this.parent.isTabular && this.parent.engineModule.rowMaxLevel >= 1) {
+                if (!isNullOrUndefined(leftAxisPanel.querySelector('.e-axis-row'))) {
+                    leftAxisPanel.querySelector('.e-axis-row').remove();
                 }
-                this.parent.axisFieldModule.render();
-            }
-        } else {
-            addClass([emptyRowHeader.querySelector('.' + cls.HEADERCELL)], 'e-group-row');
-            emptyRowHeader.querySelector('.e-group-row').appendChild(this.rowAxisPanel);
-        }
-        const colGroupElement: HTMLElement =
-            this.parent.element.querySelector('.' + cls.HEADERCONTENT).querySelector('colgroup').children[0] as HTMLElement;
-        if (this.parent.isTabular) {
-            this.setTabularWidth();
-        }
-        if (this.rowPanel.querySelector('.' + cls.PIVOT_BUTTON_CLASS)) {
-            if (!this.parent.isAdaptive) {
-                const pivotButtons: HTMLElement[] = [].slice.call(this.rowPanel.querySelectorAll('.' + cls.PIVOT_BUTTON_WRAPPER_CLASS));
-                const lastButton: HTMLElement = pivotButtons[pivotButtons.length - 1];
-                const indentWidth: number = this.parent.isTabular ? 0 : (lastButton.querySelector('.e-indent-div') as HTMLElement).offsetWidth + 20;
-                const lastButtonWidth: number = ((lastButton.querySelector('.' + cls.PIVOT_BUTTON_CLASS) as HTMLElement).offsetWidth +
-                    indentWidth);
-                let buttonWidth: string = formatUnit(lastButtonWidth < this.resColWidth ? this.resColWidth : lastButtonWidth);
-                const rowHeaderTable: HTMLElement =
-                this.parent.element.querySelector('.' + cls.HEADERCONTENT).querySelector('.' + cls.HEADERCELL) as HTMLElement;
-                //const rowContentTable: HTMLElement =
-                //this.parent.element.querySelector('.' + cls.CONTENT_CLASS).querySelector('tbody').querySelector('.' + cls.FREEZED_CELL);
-                const rowContent: HTMLElement =
-                this.parent.element.querySelector('.' + cls.CONTENT_CLASS).querySelector('colgroup').children[0] as HTMLElement;
-                const colwidth: number = parseInt(buttonWidth, 10);
-                const hasPivotColumns: boolean = this.parent.pivotColumns.length > 0;
-                const gridColumn: Column[] = this.parent.grid.columns as Column[];
-                this.resColWidth = this.parent.resizeInfo && this.parent.resizeInfo['0.formattedText'] > 100 ? this.parent.resizeInfo['0.formattedText'] : this.resColWidth;
-                if (gridColumn && gridColumn.length > 0) {
-                    gridColumn[0].width = gridColumn[0].autoFit ?
-                        gridColumn[0].width : (colwidth > this.resColWidth ? colwidth : this.resColWidth);
-                }
-                let valueColWidth: number;
-                if (this.parent.dataType === 'olap') {
-                    valueColWidth = this.parent.renderModule.calculateColWidth(
-                        this.parent.olapEngineModule.pivotValues.length > 0 ?
-                            this.parent.olapEngineModule.pivotValues[0].length : 2);
-                } else {
-                    valueColWidth = this.parent.renderModule.calculateColWidth((this.parent.dataSourceSettings.values.length > 0 &&
-                        this.parent.engineModule.pivotValues.length > 0) ?
-                        this.parent.engineModule.pivotValues[0].length : 2);
-                }
-                for (let cCnt: number = 0; cCnt < gridColumn.length; cCnt++) {
-                    if (cCnt !== 0) {
-                        if ((gridColumn[cCnt as number] as Column).columns) {
-                            this.parent.setCommonColumnsWidth(
-                                (this.parent.renderModule.pivotColumns[cCnt as number] as Column).columns as Column[], valueColWidth
-                            );
-                        } else {
-                            if ((gridColumn[cCnt as number] as Column).width !== 'auto') {
-                                const levelName: string = gridColumn[cCnt as number].customAttributes ?
-                                    (gridColumn[cCnt as number].customAttributes.cell as IAxisSet).valueSort.levelName as string : '';
-                                const columnWidth: number = this.parent.renderModule.setSavedWidth(levelName, valueColWidth);
-                                gridColumn[cCnt as number].width = (gridColumn[cCnt as number].autoFit || (hasPivotColumns
-                                    && this.parent.pivotColumns[cCnt as number].autoFit)) ? gridColumn[cCnt as number].width :
-                                    ((this.parent.renderModule.lastColumn &&
-                                        this.parent.renderModule.lastColumn.field === gridColumn[cCnt as number].field) ?
-                                        (columnWidth - 3) : columnWidth);
-                            } else {
-                                (gridColumn[cCnt as number] as Column).minWidth = valueColWidth;
+                const headerCell: NodeListOf<Element> = emptyRowHeader.querySelectorAll('.' + cls.HEADERCELL);
+                for (let i: number = 0; i < this.parent.engineModule.rowMaxLevel + 1; i++) {
+                    if (!isNullOrUndefined(headerCell[i as number])) {
+                        addClass([headerCell[i as number]], 'e-group-row');
+                        const groupRow: NodeListOf<Element> = emptyRowHeader.querySelectorAll('.e-group-row');
+                        if (!groupRow[i as number].querySelector('.e-row-axis-panel')) {
+                            const clonedPanel: Node = this.rowAxisPanel.cloneNode(true);
+                            (clonedPanel as HTMLElement).classList.add('e-row-axis-panel');
+                            if ((clonedPanel as HTMLElement).querySelectorAll('.e-pvt-btn-div')) {
+                                (clonedPanel as HTMLElement).querySelectorAll('.e-pvt-btn-div').forEach((btn: Element) => btn.remove());
                             }
+                            groupRow[i as number].appendChild(clonedPanel);
                         }
                     }
-                }
-                if (this.parent.isTabular) {
-                    const firstRow: IAxisSet[] = this.parent.pivotValues[0];
-                    let rowDepth: number = 0;
-                    if (firstRow && isNullOrUndefined(firstRow[0])) {
-                        const lastIndex: number = firstRow.lastIndexOf(
-                            this.parent.dataSourceSettings.mode === 'Server' ? null : undefined
-                        );
-                        rowDepth = lastIndex + 1;
-                    }
-                    if ((this.rowAxisWidth > (this.parent.resizedValue ? this.parent.resizedValue : 150)) && rowDepth > 1) {
-                        const btnWidth: number = pivotButtons[0].getBoundingClientRect().width + 6;
-                        buttonWidth = this.rowAxisWidth < rowDepth * btnWidth ? `${btnWidth}px` :
-                            rowDepth > 1 ? `${btnWidth}px` : `${this.rowAxisWidth - ((rowDepth - 1) * btnWidth)}px`;
-                    }
-                }
-                this.parent.posCount = 0;
-                this.parent.setGridColumns(this.parent.grid.columns as ColumnModel[]);
-                if (!this.parent.firstColWidth) {
-                    buttonWidth = this.parent.isTabular ? this.resColWidth.toString() : gridColumn[0].autoFit ?
-                        gridColumn[0].width.toString() : buttonWidth;
-                    colGroupElement.style.width = buttonWidth;
-                    rowContent.style.width = buttonWidth;
-                    rowHeaderTable.style.width = buttonWidth;
-                    //rowContentTable.style.width = buttonWidth;
-                    setStyleAttribute(rowHeaderTable, { 'width': buttonWidth });
-                    //setStyleAttribute(rowContentTable, { 'width': buttonWidth });
+                    this.parent.axisFieldModule.render();
                 }
             } else {
-                if (!this.parent.firstColWidth) {
+                addClass([emptyRowHeader.querySelector('.' + cls.HEADERCELL)], 'e-group-row');
+                emptyRowHeader.querySelector('.e-group-row').appendChild(this.rowAxisPanel);
+            }
+            const colGroupElement: HTMLElement =
+                this.parent.element.querySelector('.' + cls.HEADERCONTENT).querySelector('colgroup').children[0] as HTMLElement;
+            if (this.parent.isTabular) {
+                this.setTabularWidth();
+            }
+            if (this.rowPanel.querySelector('.' + cls.PIVOT_BUTTON_CLASS)) {
+                if (!this.parent.isAdaptive) {
+                    const pivotButtons: HTMLElement[] = [].slice.call(this.rowPanel.querySelectorAll('.' + cls.PIVOT_BUTTON_WRAPPER_CLASS));
+                    const lastButton: HTMLElement = pivotButtons[pivotButtons.length - 1];
+                    const indentWidth: number = this.parent.isTabular ? 0 : (lastButton.querySelector('.e-indent-div') as HTMLElement).offsetWidth + 20;
+                    const lastButtonWidth: number = ((lastButton.querySelector('.' + cls.PIVOT_BUTTON_CLASS) as HTMLElement).offsetWidth +
+                        indentWidth);
+                    let buttonWidth: string = formatUnit(lastButtonWidth < this.resColWidth ? this.resColWidth : lastButtonWidth);
+                    const rowHeaderTable: HTMLElement =
+                        this.parent.element.querySelector('.' + cls.HEADERCONTENT).querySelector('.' + cls.HEADERCELL) as HTMLElement;
+                    //const rowContentTable: HTMLElement =
+                    //this.parent.element.querySelector('.' + cls.CONTENT_CLASS).querySelector('tbody').querySelector('.' + cls.FREEZED_CELL);
+                    const rowContent: HTMLElement =
+                        this.parent.element.querySelector('.' + cls.CONTENT_CLASS).querySelector('colgroup').children[0] as HTMLElement;
+                    const colwidth: number = parseInt(buttonWidth, 10);
+                    const hasPivotColumns: boolean = this.parent.pivotColumns.length > 0;
                     const gridColumn: Column[] = this.parent.grid.columns as Column[];
+                    this.resColWidth = this.parent.resizeInfo && this.parent.resizeInfo['0.formattedText'] > 100 ? this.parent.resizeInfo['0.formattedText'] : this.resColWidth;
                     if (gridColumn && gridColumn.length > 0) {
-                        if (this.parent.isTabular) {
-                            this.rowAxisWidth = this.parent.dataSourceSettings.rows.length * this.parent.gridSettings.columnWidth;
-                            for (let i: number = 0; i < this.parent.engineModule.rowMaxLevel; i++) {
-                                if (!isNullOrUndefined(gridColumn[i as number])) {
-                                    gridColumn[i as number].width = this.parent.gridSettings.columnWidth;
+                        gridColumn[0].width = gridColumn[0].autoFit ?
+                            gridColumn[0].width : (colwidth > this.resColWidth ? colwidth : this.resColWidth);
+                    }
+                    let valueColWidth: number;
+                    if (this.parent.dataType === 'olap') {
+                        valueColWidth = this.parent.renderModule.calculateColWidth(
+                            this.parent.olapEngineModule.pivotValues.length > 0 ?
+                                this.parent.olapEngineModule.pivotValues[0].length : 2);
+                    } else {
+                        valueColWidth = this.parent.renderModule.calculateColWidth((this.parent.dataSourceSettings.values.length > 0 &&
+                            this.parent.engineModule.pivotValues.length > 0) ?
+                            this.parent.engineModule.pivotValues[0].length : 2);
+                    }
+                    for (let cCnt: number = 0; cCnt < gridColumn.length; cCnt++) {
+                        if (cCnt !== 0) {
+                            if ((gridColumn[cCnt as number] as Column).columns) {
+                                this.parent.setCommonColumnsWidth(
+                                    (this.parent.renderModule.pivotColumns[cCnt as number] as Column).columns as Column[], valueColWidth
+                                );
+                            } else {
+                                if ((gridColumn[cCnt as number] as Column).width !== 'auto') {
+                                    const levelName: string = gridColumn[cCnt as number].customAttributes ?
+                                        (gridColumn[cCnt as number].customAttributes.cell as IAxisSet).valueSort.levelName as string : '';
+                                    const columnWidth: number = this.parent.renderModule.setSavedWidth(levelName, valueColWidth);
+                                    gridColumn[cCnt as number].width = (gridColumn[cCnt as number].autoFit || (hasPivotColumns
+                                        && this.parent.pivotColumns[cCnt as number].autoFit)) ? gridColumn[cCnt as number].width :
+                                        ((this.parent.renderModule.lastColumn &&
+                                            this.parent.renderModule.lastColumn.field === gridColumn[cCnt as number].field) ?
+                                            (columnWidth - 3) : columnWidth);
+                                } else {
+                                    (gridColumn[cCnt as number] as Column).minWidth = valueColWidth;
                                 }
                             }
-                        } else {
-                            gridColumn[0].width = this.resColWidth;
+                        }
+                    }
+                    if (this.parent.isTabular) {
+                        const firstRow: IAxisSet[] = this.parent.pivotValues[0];
+                        let rowDepth: number = 0;
+                        if (firstRow && isNullOrUndefined(firstRow[0])) {
+                            const lastIndex: number = firstRow.lastIndexOf(
+                                this.parent.dataSourceSettings.mode === 'Server' ? null : undefined
+                            );
+                            rowDepth = lastIndex + 1;
+                        }
+                        if ((this.rowAxisWidth > (this.parent.resizedValue ? this.parent.resizedValue : 150)) && rowDepth > 1) {
+                            const btnWidth: number = pivotButtons[0].getBoundingClientRect().width + 6;
+                            buttonWidth = this.rowAxisWidth < rowDepth * btnWidth ? `${btnWidth}px` :
+                                rowDepth > 1 ? `${btnWidth}px` : `${this.rowAxisWidth - ((rowDepth - 1) * btnWidth)}px`;
                         }
                     }
                     this.parent.posCount = 0;
+                    this.parent.setGridColumns(this.parent.grid.columns as ColumnModel[]);
+                    if (!this.parent.firstColWidth) {
+                        buttonWidth = this.parent.isTabular ? this.resColWidth.toString() : gridColumn[0].autoFit ?
+                            gridColumn[0].width.toString() : buttonWidth;
+                        colGroupElement.style.width = buttonWidth;
+                        rowContent.style.width = buttonWidth;
+                        rowHeaderTable.style.width = buttonWidth;
+                        //rowContentTable.style.width = buttonWidth;
+                        setStyleAttribute(rowHeaderTable, { 'width': buttonWidth });
+                        //setStyleAttribute(rowContentTable, { 'width': buttonWidth });
+                    }
+                } else {
+                    if (!this.parent.firstColWidth) {
+                        const gridColumn: Column[] = this.parent.grid.columns as Column[];
+                        if (gridColumn && gridColumn.length > 0) {
+                            if (this.parent.isTabular) {
+                                this.rowAxisWidth = this.parent.dataSourceSettings.rows.length * this.parent.gridSettings.columnWidth;
+                                for (let i: number = 0; i < this.parent.engineModule.rowMaxLevel; i++) {
+                                    if (!isNullOrUndefined(gridColumn[i as number])) {
+                                        gridColumn[i as number].width = this.parent.gridSettings.columnWidth;
+                                    }
+                                }
+                            } else {
+                                gridColumn[0].width = this.resColWidth;
+                            }
+                        }
+                        this.parent.posCount = 0;
+                    }
                 }
+            } else {
+                if (this.parent.grid.columns && this.parent.grid.columns.length > 0) {
+                    (this.parent.grid.columns[0] as Column).width =
+                        (this.parent.grid.columns[0] as Column).width as number > this.resColWidth ?
+                            (this.parent.grid.columns[0] as Column).width : this.resColWidth;
+                }
+                this.parent.grid.headerModule.refreshUI();
             }
-        } else {
-            if (this.parent.grid.columns && this.parent.grid.columns.length > 0) {
-                (this.parent.grid.columns[0] as Column).width = (this.parent.grid.columns[0] as Column).width as number > this.resColWidth
-                    ? (this.parent.grid.columns[0] as Column).width : this.resColWidth;
-            }
-            this.parent.grid.headerModule.refreshUI();
         }
         if (this.groupingTable || this.groupingChartTable) {
             this.refreshUI();

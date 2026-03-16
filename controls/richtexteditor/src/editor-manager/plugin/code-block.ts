@@ -101,9 +101,8 @@ export class CodeBlockPlugin {
     }
     /* Determines if the 'Enter' action occurs within a valid code block structure. */
     public isCodeBlockEnterAction(range: Range, e: KeyboardEvent): boolean {
-        const cursorAtPointer: boolean = range.startContainer === range.endContainer &&
-            range.startOffset === range.endOffset;
-        if (e.keyCode === 13 && cursorAtPointer && !isNullOrUndefined(this.isValidCodeBlockStructure(range.startContainer))) {
+        if (e.keyCode === 13  && (!isNullOrUndefined(this.isValidCodeBlockStructure(range.startContainer)
+            || this.isValidCodeBlockStructure(range.endContainer)))) {
             return true;
         } else {
             return false;
@@ -1279,6 +1278,7 @@ export class CodeBlockPlugin {
         range = this.parent.nodeSelection.getRange(this.parent.editableElement.ownerDocument);
         const commonAncestor: Node = range.commonAncestorContainer;
         this.includeFullNodeForRange(rangeStart, rangeEnd, rangePoint);
+        const isCellCommonAncestor: boolean = (commonAncestor != null) && (commonAncestor.nodeName === 'TD' || commonAncestor.nodeName === 'TH');
         const treeWalker: TreeWalker = doc.createTreeWalker(
             commonAncestor,
             NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT,
@@ -1287,7 +1287,8 @@ export class CodeBlockPlugin {
                     const isTextNode: boolean = node.nodeType === Node.ELEMENT_NODE && node.previousSibling && node.previousSibling.nodeName === 'SPAN' && (node.previousSibling as Element).classList.contains('e-rte-cursor-marker');
                     const range: Range = this.parent.nodeSelection.getRange(this.parent.editableElement.ownerDocument);
                     if ((node.nodeType === Node.TEXT_NODE || node.nodeName === 'BR' || isTextNode)
-                        && node !== this.parent.editableElement && range.intersectsNode(node)) {
+                        && node !== this.parent.editableElement && (range.intersectsNode(node) ||
+                        (isCellCommonAncestor && range.intersectsNode(commonAncestor)))) {
                         return NodeFilter.FILTER_ACCEPT;
                     }
                     return NodeFilter.FILTER_SKIP;
@@ -1478,21 +1479,21 @@ export class CodeBlockPlugin {
     }
     // Inserts a document fragment at the appropriate position, handling list items specially
     private insertFragmentAtNode(fragment: DocumentFragment, firstNode: Node, parentNode: Node): void {
-        let liParent: HTMLLIElement | null = null;
+        let blockElement: HTMLElement | null = null;
         let currentNode: Node | null = firstNode;
         while (currentNode && currentNode !== this.parent.editableElement) {
-            if (currentNode.nodeName === 'LI') {
-                liParent = currentNode as HTMLLIElement;
+            if (this.parent.domNode.isBlockNode(currentNode as Element)) {
+                blockElement = currentNode as HTMLElement;
                 break;
             }
             currentNode = currentNode.parentNode;
         }
-        if (liParent) {
+        if (blockElement.nodeName === 'LI') {
             const li: HTMLElement = createElement('li');
             li.appendChild(fragment);
-            liParent.parentNode.insertBefore(li, liParent);
-            if (liParent.textContent.trim() === '') {
-                liParent.remove();
+            blockElement.parentNode.insertBefore(li, blockElement);
+            if (blockElement.textContent.trim() === '') {
+                blockElement.remove();
             }
         } else {
             parentNode.insertBefore(fragment, firstNode);
@@ -1501,15 +1502,7 @@ export class CodeBlockPlugin {
     // Removes original nodes after they've been processed into a code block
     private removeNodes(nodes: HTMLElement[]): void {
         for (let i: number = 0; i < nodes.length; i++) {
-            const node: HTMLElement = nodes[i as number];
-            if (node.nodeName !== '#text' && (node as HTMLElement).closest('li')) {
-                const li: HTMLElement = (node as HTMLElement).closest('li');
-                li.remove();
-            } else if (node.nodeName === 'LI') {
-                node.remove();
-            } else {
-                node.remove();
-            }
+            nodes[i as number].remove();
         }
     }
     // Recursively processes nodes to preserve content structure when creating code blocks

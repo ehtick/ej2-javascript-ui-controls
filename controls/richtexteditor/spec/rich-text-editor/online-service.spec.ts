@@ -212,7 +212,7 @@ xdescribe('Test case with online service', () => {
 
     describe('882579 - Pasted Blob images are not uploaded to the server in RichTextEditor', () => {
         let editor: RichTextEditor;
-        const content: string = '\n\n\x3C!--StartFragment--><img src="" class="e-rte-image e-imginline" alt="QuickFormatToolbarImage" width="auto" height="auto" style="box-sizing: border-box; border: 0px; vertical-align: bottom; cursor: pointer; display: inline-block; float: none; margin: auto 5px; max-width: 946px; position: relative; padding: 1px; z-index: 1000; color: rgb(33, 37, 41); font-family: system-ui, -apple-system, &quot;Segoe UI&quot;, Roboto, &quot;Helvetica Neue&quot;, arial, &quot;Noto Sans&quot;, &quot;Liberation Sans&quot;, sans-serif, &quot;apple color emoji&quot;, &quot;Segoe UI emoji&quot;, &quot;Segoe UI Symbol&quot;, &quot;Noto color emoji&quot;; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; min-width: 0px; min-height: 0px;">\x3C!--EndFragment-->\n\n'
+        const content: string = '\n\n\x3C!--StartFragment--><img src="" class="e-rte-image e-img-inline" alt="QuickFormatToolbarImage" width="auto" height="auto" style="box-sizing: border-box; border: 0px; vertical-align: bottom; cursor: pointer; display: inline-block; float: none; margin: auto 5px; max-width: 946px; position: relative; padding: 1px; z-index: 1000; color: rgb(33, 37, 41); font-family: system-ui, -apple-system, &quot;Segoe UI&quot;, Roboto, &quot;Helvetica Neue&quot;, arial, &quot;Noto Sans&quot;, &quot;Liberation Sans&quot;, sans-serif, &quot;apple color emoji&quot;, &quot;Segoe UI emoji&quot;, &quot;Segoe UI Symbol&quot;, &quot;Noto color emoji&quot;; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; min-width: 0px; min-height: 0px;">\x3C!--EndFragment-->\n\n'
         let isServerOnline: boolean = false;
         beforeAll(async (done: DoneFn) => {
             isServerOnline = await checkServiceStatus();
@@ -311,7 +311,7 @@ xdescribe('Test case with online service', () => {
     describe('882579 - Pasted Blob images are not uploaded to the server in RichTextEditor', () => {
         let editor: RichTextEditor;
         let isServerOnline: boolean = false;
-        const content: string = '\n\n\x3C!--StartFragment--><img src="" class="e-rte-image e-imginline" alt="QuickFormatToolbarImage" width="auto" height="auto" style="box-sizing: border-box; border: 0px; vertical-align: bottom; cursor: pointer; display: inline-block; float: none; margin: auto 5px; max-width: 946px; position: relative; padding: 1px; z-index: 1000; color: rgb(33, 37, 41); font-family: system-ui, -apple-system, &quot;Segoe UI&quot;, Roboto, &quot;Helvetica Neue&quot;, arial, &quot;Noto Sans&quot;, &quot;Liberation Sans&quot;, sans-serif, &quot;apple color emoji&quot;, &quot;Segoe UI emoji&quot;, &quot;Segoe UI Symbol&quot;, &quot;Noto color emoji&quot;; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; min-width: 0px; min-height: 0px;">\x3C!--EndFragment-->\n\n'
+        const content: string = '\n\n\x3C!--StartFragment--><img src="" class="e-rte-image e-img-inline" alt="QuickFormatToolbarImage" width="auto" height="auto" style="box-sizing: border-box; border: 0px; vertical-align: bottom; cursor: pointer; display: inline-block; float: none; margin: auto 5px; max-width: 946px; position: relative; padding: 1px; z-index: 1000; color: rgb(33, 37, 41); font-family: system-ui, -apple-system, &quot;Segoe UI&quot;, Roboto, &quot;Helvetica Neue&quot;, arial, &quot;Noto Sans&quot;, &quot;Liberation Sans&quot;, sans-serif, &quot;apple color emoji&quot;, &quot;Segoe UI emoji&quot;, &quot;Segoe UI Symbol&quot;, &quot;Noto color emoji&quot;; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; min-width: 0px; min-height: 0px;">\x3C!--EndFragment-->\n\n'
         beforeAll(async (done: DoneFn) => {
             isServerOnline = await checkServiceStatus();
             editor = renderRTE({
@@ -396,7 +396,7 @@ xdescribe('Test case with online service', () => {
             } else {
                 setTimeout(() => {
                     expect(editor.inputElement.querySelectorAll('img').length).toBe(1);
-                    expect(editor.inputElement.querySelector('img').classList.contains('e-imginline')).toBe(true);
+                    expect(editor.inputElement.querySelector('img').classList.contains('e-img-inline')).toBe(true);
                     expect(editor.inputElement.querySelector('img').src).toBe(`${hostURL} RichTextEditor/RTE-Feather.png`);
                     done();
                 }, UPLOADER_TIME_OUT);
@@ -483,7 +483,7 @@ xdescribe('Test case with online service', () => {
             } else {
                 setTimeout(() => {
                     expect(editor.inputElement.querySelectorAll('img').length).toBe(1);
-                    expect(editor.inputElement.querySelector('img').classList.contains('e-imgbreak')).toBe(true);
+                    expect(editor.inputElement.querySelector('img').classList.contains('e-img-break')).toBe(true);
                     expect(editor.inputElement.querySelector('img').src).toBe(`${hostURL}RichTextEditor/RTE-Feather.png`);
                     done();
                 }, UPLOADER_TIME_OUT);
@@ -521,7 +521,7 @@ xdescribe('Test case with online service', () => {
             } else {
                 setTimeout(() => {
                     expect(editor.inputElement.querySelectorAll('img').length).toBe(1);
-                    expect(editor.inputElement.querySelector('img').classList.contains('e-imginline')).toBe(true);
+                    expect(editor.inputElement.querySelector('img').classList.contains('e-img-inline')).toBe(true);
                     expect(editor.inputElement.querySelector('img').src.indexOf(hostURL) > -1).toBe(true);
                     done();
                 }, UPLOADER_TIME_OUT);
@@ -560,7 +560,7 @@ xdescribe('Test case with online service', () => {
             } else {
                 setTimeout(() => {
                     expect(editor.inputElement.querySelectorAll('img').length).toBe(1);
-                    expect(editor.inputElement.querySelector('img').classList.contains('e-imgbreak')).toBe(true);
+                    expect(editor.inputElement.querySelector('img').classList.contains('e-img-break')).toBe(true);
                     expect(editor.inputElement.querySelector('img').src.indexOf(hostURL) > -1).toBe(true);
                     done();
                 }, UPLOADER_TIME_OUT);

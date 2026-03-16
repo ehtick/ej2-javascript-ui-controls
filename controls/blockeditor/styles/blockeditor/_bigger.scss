@@ -58,12 +58,14 @@
       /* User and label mention Chip styles */
       .e-user-chip {
         height: $be-user-mention-chip-height-bigger;
-        padding: $be-user-mention-chip-padding-bigger;
+        padding: 2px;
+        align-items: baseline;
         .em-avatar {
           height: $be-user-mention-avatar-height-bigger;
           width: $be-user-mention-avatar-width-bigger;
           font-size: $be-user-mention-chip-font-size-bigger;
           line-height: $be-user-mention-chip-line-height-bigger;
+          display: inline-block;
         }
         .em-text {
           font-size: $be-user-mention-chip-font-size-bigger;
@@ -72,8 +74,8 @@
       }
 
       .e-label-chip {
-        height: $be-label-mention-chip-height-bigger;
-        padding: $be-label-mention-chip-padding-bigger;
+        height: 26px;
+        padding: 2px 4px;
         font-size: $be-label-mention-chip-font-size-bigger;
         line-height: $be-label-mention-chip-line-height-bigger;
       }
@@ -140,6 +142,29 @@
       }
     }
 
+    /* ======== Image placeholder Styles ======== */
+    .e-image-placeholder {
+      height: $be-image-placeholder-ele-height-bigger;
+      padding: $be-image-placeholder-ele-padding-bigger;
+      gap: $be-image-placeholder-text-icon-gap-bigger;
+
+      .e-placeholder-icon-container {
+        .e-icons {
+          font-weight: $be-image-placeholder-icon-font-weight-bigger;
+          font-size: $be-image-placeholder-icon-font-size-bigger;
+        }
+      }
+
+      .e-placeholder-text {
+        font-weight: $be-image-placeholder-text-font-weight-bigger;
+        font-size: $be-image-placeholder-text-font-size-bigger;
+        line-height: $be-image-placeholder-text-line-height-bigger;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+    }
+
     .e-block {
       .e-row-action-handle,
       .e-col-action-handle {
@@ -154,6 +179,22 @@
         height: $be-table-col-gripper-height-bigger;
         top: $be-table-col-gripper-top-bigger;
       }
+    }
+
+    /* Image upload popup styles */
+    .e-image-upload-popup {
+      .e-tab .e-content {
+        padding: $be-image-upload-popup-tab-content-padding-bigger;
+      }
+      .e-embed-actions {
+        padding-top: $be-embed-btn-padding-top-bigger;
+      }
+    }
+
+    .e-image-container .e-badge {
+      position: absolute;
+      top: $be-image-block-badge-top-bigger;
+      right: $be-image-block-badge-right-bigger;
     }
   }
 
@@ -278,6 +319,14 @@
       .e-toolbar-color-dropdown .e-icons.e-btn-icon,
       .e-toolbar-bgcolor-dropdown .e-icons.e-btn-icon {
         font-size: $be-inline-btn-icon-bigger-size;
+      }
+    }
+    .e-colorpicker-wrapper .e-split-btn-wrapper {
+      .e-split-colorpicker {
+        .e-selected-color {
+          width: $be-color-picker-width;
+          height: $be-color-picker-height;
+        }
       }
     }
 

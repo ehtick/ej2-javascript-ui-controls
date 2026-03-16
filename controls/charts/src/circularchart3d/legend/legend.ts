@@ -860,7 +860,7 @@ export class CircularChartLegend3D extends BaseLegend {
                         }
                         (<CircularChart3D>this.chart).circular3DPolygon = [];
                         (<CircularChart3D>this.chart).visibleSeries[0].segments = [];
-                        this.chart.animateSeries = false;
+                        (<CircularChart3D>this.chart).animateSeries = false;
                         (<CircularChart3D>this.chart).calculateBounds();
                         (<CircularChart3D>this.chart).renderElements();
                         if (chart.circularChartHighlight3DModule && (chart.highlightMode !== 'None' || chart.legendSettings.enableHighlight)) {

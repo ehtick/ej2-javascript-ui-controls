@@ -13,13 +13,13 @@ import { Tooltip, TooltipEventArgs, createSpinner, showSpinner, hideSpinner } fr
 import * as events from '../../common/base/constant';
 import * as cls from '../../common/base/css-constant';
 import { AxisFields } from '../../common/grouping-bar/axis-field-renderer';
-import { LoadEventArgs, EnginePopulatingEventArgs, DrillThroughEventArgs, MultiLevelLabelRenderEventArgs, EditCompletedEventArgs, ExportPageSize, ExcelExportProperties } from '../../common/base/interface';
+import { LoadEventArgs, EnginePopulatingEventArgs, DrillThroughEventArgs, MultiLevelLabelRenderEventArgs, EditCompletedEventArgs, ExportPageSize, ExcelExportProperties, PdfExportProperties } from '../../common/base/interface';
 import { BeforeServiceInvokeEventArgs, FetchRawDataArgs, UpdateRawDataArgs, PivotActionBeginEventArgs, PivotActionCompleteEventArgs } from '../../common/base/interface';
 import { MultiLevelLabelClickEventArgs, PivotActionInfo, AfterServiceInvokeEventArgs, PivotColumn, ChartLabelInfo, PivotActionFailureEventArgs } from '../../common/base/interface';
 import { FetchReportArgs, LoadReportArgs, RenameReportArgs, RemoveReportArgs, ToolbarArgs } from '../../common/base/interface';
 import { PdfCellRenderArgs, NewReportArgs, ChartSeriesCreatedEventArgs, AggregateEventArgs } from '../../common/base/interface';
 import { ResizeInfo, ScrollInfo, ColumnRenderEventArgs, PivotCellSelectedEventArgs, SaveReportArgs, ExportCompleteEventArgs } from '../../common/base/interface';
-import { CellClickEventArgs, FieldDroppedEventArgs, HyperCellClickEventArgs } from '../../common/base/interface';
+import { CellClickEventArgs, FieldDroppedEventArgs, HyperCellClickEventArgs, ExcelHeaderQueryCellInfoEventArgs, ExcelQueryCellInfoEventArgs } from '../../common/base/interface';
 import { BeforeExportEventArgs, EnginePopulatedEventArgs, BeginDrillThroughEventArgs, DrillArgs } from '../../common/base/interface';
 import { FieldListRefreshedEventArgs, MemberFilteringEventArgs, FieldDropEventArgs } from '../../common/base/interface';
 import { MemberEditorOpenEventArgs, FieldRemoveEventArgs, AggregateMenuOpenEventArgs } from '../../common/base/interface';
@@ -39,8 +39,8 @@ import { SelectionType, ContextMenuItemModel } from '@syncfusion/ej2-grids';
 import { CellSelectEventArgs, RowSelectEventArgs, ResizeArgs, getScrollBarWidth } from '@syncfusion/ej2-grids';
 import { RowDeselectEventArgs, ContextMenuClickEventArgs } from '@syncfusion/ej2-grids';
 import { EditSettingsModel, HeaderCellInfoEventArgs, CellDeselectEventArgs } from '@syncfusion/ej2-grids';
-import { PdfExportProperties, ExcelQueryCellInfoEventArgs, ColumnDragEventArgs } from '@syncfusion/ej2-grids';
-import { ExcelHeaderQueryCellInfoEventArgs, PdfQueryCellInfoEventArgs, PdfHeaderQueryCellInfoEventArgs } from '@syncfusion/ej2-grids';
+import { ColumnDragEventArgs } from '@syncfusion/ej2-grids';
+import { PdfQueryCellInfoEventArgs, PdfHeaderQueryCellInfoEventArgs } from '@syncfusion/ej2-grids';
 import { ExcelExport } from '../actions/excel-export';
 import { PDFExport } from '../actions/pdf-export';
 import { CalculatedField } from '../../common/calculatedfield/calculated-field';
@@ -77,85 +77,177 @@ import { ExportType as PivotExportType } from '../../common/base/enum';
  * Allows a set of options for customizing the grouping bar UI with a variety of settings such as UI visibility to a specific view port,
  * customizing the pivot button features such as filtering, sorting, changing aggregate types, removing any fields.
  * The options available to customize the grouping bar UI are:
- * * `showFilterIcon`: Allows you to show or hide the filter icon that used to be displayed on the pivot button of the grouping bar UI.
+ * * `showFilterIcon`: Allows to show or hide the filter icon that used to be displayed on the pivot button of the grouping bar UI.
  * This filter icon is used to filter the members of a particular field at runtime in the pivot table.
- * * `showSortIcon`: Allows you to show or hide the sort icon that used to be displayed in the pivot button of the grouping bar UI.
+ * * `showSortIcon`: Allows to show or hide the sort icon that used to be displayed in the pivot button of the grouping bar UI.
  * This sort icon is used to order members of a particular fields either in ascending or descending at runtime.
- * * `showRemoveIcon`: Allows you to show or hide the remove icon that used to be displayed in the pivot button of the grouping bar UI.
+ * * `showRemoveIcon`: Allows to show or hide the remove icon that used to be displayed in the pivot button of the grouping bar UI.
  * This remove icon is used to remove any field during runtime.
- * * `showValueTypeIcon`: Allows you to show or hide the value type icon that used to be displayed in the pivot button of the grouping bar UI.
+ * * `showValueTypeIcon`: Allows to show or hide the value type icon that used to be displayed in the pivot button of the grouping bar UI.
  * This value type icon helps to select the appropriate aggregation type to value fields at runtime.
  * * `displayMode`: Allow options to show the grouping bar UI to specific view port such as either pivot table or pivot chart or both table and chart.
  * For example, to show the grouping bar UI to pivot table on its own, set the property `displayMode` to **Table**.
- * * `allowDragAndDrop`: Allows you to restrict the pivot buttons that were used to drag on runtime in the grouping bar UI. This will prevent you from modifying the current report.
+ * * `allowDragAndDrop`: Allows to restrict the pivot buttons that were used to drag on runtime in the grouping bar UI. This will prevent modifying the current report.
+ * Learn more about the [`grouping bar`](../../pivotview/grouping-bar) feature in Pivot Table.
  */
 export class GroupingBarSettings extends ChildProperty<GroupingBarSettings> {
     /**
-     * Allows you to show or hide the filter icon that used to be displayed on the pivot button of the grouping bar UI.
+     * Allows to show or hide the filter icon that used to be displayed on the pivot button of the `Grouping Bar` UI.
      * This filter icon is used to filter the members of a particular field at runtime in the pivot table.
-     * > By default, the filter icon is enabled in the grouping bar.
+     * > By default, the filter icon is enabled in the `Grouping Bar`.
      *
      * @default true
+     * @remarks
+     * - Effective only when `showGroupingBar` is `true`.
+     * - To disable globally, set {@link GroupingBarSettings.showFilterIcon} to `false`.
+     * - To disable for a specific field, set `showFilterIcon: false` in that field within {@link DataSourceSettings} (e.g., `rows`, `columns`).
+     *
+     * @example
+     * const pivotObj = new PivotView({
+     *   showGroupingBar: true,
+     *   groupingBarSettings: { showFilterIcon: false }
+     * });
+     * pivotObj.appendTo('#PivotView');
+     *
+     * @see {@link GroupingBarSettings}
+     * @see {@link DataSourceSettings}
      */
     @Property(true)
     public showFilterIcon: boolean;
 
     /**
-     * Allows you to show or hide the sort icon that used to be displayed in the pivot button of the grouping bar UI.
+     * Allows to show or hide the sort icon that used to be displayed in the pivot button of the `Grouping Bar` UI.
      * This sort icon is used to order members of a particular fields either in ascending or descending at runtime.
-     * > By default, the sort icon is enabled in the grouping bar.
+     * > By default, the sort icon is enabled in the `Grouping Bar`.
      *
      * @default true
+     * @remarks
+     * - Effective only when `showGroupingBar` is `true`.
+     * - Default behavior: Enabled for all fields; members are initially arranged in ascending order.
+     * - To disable globally, set {@link GroupingBarSettings.showSortIcon} to `false`.
+     * - To disable for a specific field, set `showSortIcon: false` in that field within {@link DataSourceSettings} (e.g., `rows`, `columns`).
+     *
+     * @example
+     * const pivotObj = new PivotView({
+     *   showGroupingBar: true,
+     *   groupingBarSettings: { showSortIcon: false }
+     * });
+     * pivotObj.appendTo('#PivotView');
+     *
+     * @see {@link GroupingBarSettings}
+     * @see {@link DataSourceSettings}
      */
     @Property(true)
     public showSortIcon: boolean;
 
     /**
-     * Allows you to show or hide the remove icon that used to be displayed in the pivot button of the grouping bar UI. This remove icon is used to remove any field during runtime.
-     * > By default, the remove icon is enabled in the grouping bar.
+     * Allows to show or hide the remove icon that used to be displayed in the pivot button of the `Grouping Bar` UI. This remove icon is used to remove any field during runtime.
+     * > By default, the remove icon is enabled in the `Grouping Bar`.
      *
      * @default true
+     * @remarks
+     * - Effective only when `showGroupingBar` is `true`.
+     * - To disable globally, set {@link GroupingBarSettings.showRemoveIcon} to `false`.
+     * - To disable for a specific field, set `showRemoveIcon: false` in that field within {@link DataSourceSettings} (e.g., `rows`, `columns`).
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   showGroupingBar: true,
+     *   groupingBarSettings: { showRemoveIcon: false }
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * @see {@link GroupingBarSettings}
+     * @see {@link DataSourceSettings}
      */
     @Property(true)
     public showRemoveIcon: boolean;
 
     /**
-     * Allows you to show or hide the value type icon that used to be displayed in the pivot button of the grouping bar UI.
+     * Allows to show or hide the value type icon that used to be displayed in the pivot button of the `Grouping Bar` UI.
      * This value type icon helps to select the appropriate aggregation type to value fields at runtime.
-     * > By default, the icon to set aggregate types is enabled in the grouping bar.
+     * > By default, the icon to set aggregate types is enabled in the `Grouping Bar`.
      *
      * @default true
+     * @remarks
+     * - Effective only when `showGroupingBar` is `true`.
+     * - To disable globally, set {@link GroupingBarSettings.showValueTypeIcon} to `false`.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   showGroupingBar: true,
+     *   groupingBarSettings: { showValueTypeIcon: false }
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * @see {@link GroupingBarSettings}
      */
     @Property(true)
     public showValueTypeIcon: boolean;
 
     /**
-     * Allow options to show the grouping bar UI to specific view port such as either pivot table or pivot chart or both table and chart.
-     * For example, to show the grouping bar UI to pivot table on its own, set the property `displayMode` to **Table**.
-     * > By default, the grouping bar UI will be shown to both pivot table as well as pivot chart.
+     * Allow options to show the `Grouping Bar` UI to specific view port such as either pivot table or pivot chart or both table and chart.
+     * For example, to show the `Grouping Bar` UI to pivot table on its own, set the property `displayMode` to **Table**.
+     * > By default, the `Grouping Bar` UI will be shown to both pivot table as well as pivot chart.
      *
      * @default Both
+     * @remarks
+     * - Effective only when `showGroupingBar` is `true`.
+     * - Possible values: `'Table'`, `'Chart'`, `'Both'`.
+     *
+     * @example
+     * const pivotObj = new PivotView({
+     *   showGroupingBar: true,
+     *   groupingBarSettings: { displayMode: 'Table' }
+     * });
+     * pivotObj.appendTo('#PivotView');
+     *
+     * @see {@link GroupingBarSettings}
      */
     @Property('Both')
     public displayMode: View;
 
     /**
-     * Allows you to restrict the pivot buttons that were used to drag on runtime in the grouping bar UI.
-     * This will prevent you from modifying the current report.
-     * > By default, all fields are available for drag-and-drop operation in the grouping bar.
+     * Allows to restrict the pivot buttons that were used to drag on runtime in the `Grouping Bar` UI.
+     * This will prevent modifying the current report.
+     * > By default, all fields are available for drag-and-drop operation in the `Grouping Bar`.
      *
      * @default true
+     * @remarks
+     * - Effective only when `showGroupingBar` is `true`.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   showGroupingBar: true,
+     *   groupingBarSettings: { allowDragAndDrop: false }
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * @see {@link GroupingBarSettings}
      */
     @Property(true)
     public allowDragAndDrop: boolean;
 
     /**
-     * Allows you to show an additional UI along with the grouping bar UI, which contains the fields that aren't bound in the current report.
-     * It allows you to modify the report by re-arranging the pivot buttons through drag-and-drop operation between axes (row, column, value and filter)
+     * Allows to show an additional UI along with the `Grouping Bar` UI, which contains the fields that aren't bound in the current report.
+     * It allows modifying the report by re-arranging the pivot buttons through drag-and-drop operation between axes (row, column, value and filter)
      * that are used to update the pivot table during runtime.
      * > This property is applicable only for relational data source.
      *
      * @default false
+     * @remarks
+     * - Effective only when `showGroupingBar` is `true`.
+     * - Applicable only for relational data sources.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   showGroupingBar: true,
+     *   groupingBarSettings: { showFieldsPanel: true }
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * @see {@link GroupingBarSettings}
+     * @see {@link DataSourceSettings}
      */
     @Property(false)
     public showFieldsPanel: boolean;
@@ -166,58 +258,112 @@ export class GroupingBarSettings extends ChildProperty<GroupingBarSettings> {
  * The raw items can be viewed in a data grid that used to be displayed as a dialog by double-clicking the appropriate value cell in the pivot table.
  * CRUD operations can be performed in this data grid either by double-clicking the cells or using toolbar options.
  * The options available are as follows:
- * * `allowAdding`: Allows you to add a new record to the data grid used to update the appropriate cells in the pivot table.
- * * `allowEditing`: Allows you to edit the existing record in the data grid that used to update the appropriate cells in the pivot table.
- * * `allowDeleting`: Allows you to delete the existing record from the data grid that used to  update the appropriate cells in the pivot table.
+ * * `allowAdding`: Allows to add a new record to the data grid used to update the appropriate cells in the pivot table.
+ * * `allowEditing`: Allows to edit the existing record in the data grid that used to update the appropriate cells in the pivot table.
+ * * `allowDeleting`: Allows to delete the existing record from the data grid that used to  update the appropriate cells in the pivot table.
  * * `allowCommandColumns`: Allows an additional column appended in the data grid layout holds the command buttons to perform the CRUD operations to edit,
  * delete, and update the raw items to the data grid that used to update the appropriate cells in the pivot table.
  * * `mode`: Allow options for performing CRUD operations with different modes in the data grid that used to update the appropriate cells in the pivot table.
  * The available modes are normal, batch and dialog. **Normal** mode is enabled for CRUD operations in the data grid by default.
- * * `allowEditOnDblClick`: Allows you to restrict CRUD operations by double-clicking the appropriate value cell in the pivot table.
- * * `showConfirmDialog`: Allows you to show the confirmation dialog to save and discard CRUD operations performed in the data grid that used to update the appropriate cells in the pivot table.
- * * `showDeleteConfirmDialog`: Allows you to show the confirmation dialog to delete any records from the data grid.
+ * * `allowEditOnDblClick`: Allows to restrict CRUD operations by double-clicking the appropriate value cell in the pivot table.
+ * * `showConfirmDialog`: Allows to show the confirmation dialog to save and discard CRUD operations performed in the data grid that used to update the appropriate cells in the pivot table.
+ * * `showDeleteConfirmDialog`: Allows to show the confirmation dialog to delete any records from the data grid.
  *
  * > This feature is applicable only for the relational data source.
+ * See the [`editing`](../../pivotview/editing) section in the Pivot Table documentation for implementation details.
  */
 export class CellEditSettings extends ChildProperty<CellEditSettings> implements EditSettingsModel {
     /**
-     * Allows you to add a new record to the data grid used to update the appropriate cells in the pivot table.
+     * Allows to add a new record to the data grid used to update the appropriate cells in the pivot table.
      *
      * @default false
+     * @remarks
+     * - Effective only when `editing` is enabled and the `editing` UI is available (for example, in the `drill-through` grid).
+     * - To enable this icon, set the property `allowAdding` in `editSettings` to `true`.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   editSettings: { allowAdding: true }
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * @see {@link CellEditSettings}
      */
     @Property(false)
     public allowAdding: boolean;
 
     /**
-     * Allows you to edit the existing record in the data grid that used to update the appropriate cells in the pivot table.
+     * Allows to edit the existing record in the data grid that used to update the appropriate cells in the pivot table.
      *
      * @default false
+     * @remarks
+     * - Effective only when `editing` is enabled and the `editing` UI is available (for example, in the `drill-through` grid).
+     * - To enable this icon, set the property `allowEditing` in `editSettings` to `true`.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   editSettings: { allowEditing: true }
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * @see {@link CellEditSettings}
      */
     @Property(false)
     public allowEditing: boolean;
 
     /**
-     * Allows you to delete the existing record from the data grid that used to  update the appropriate cells in the pivot table.
+     * Allows to delete the existing record from the data grid that used to update the appropriate cells in the pivot table.
      *
      * @default false
+     * @remarks
+     * - Effective only when `editing` is enabled and the `editing` UI is available (for example, in the `drill-through` grid).
+     * - To enable this icon, set the property `allowDeleting` in `editSettings` to `true`.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   editSettings: { allowDeleting: true }
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * @see {@link CellEditSettings}
      */
     @Property(false)
     public allowDeleting: boolean;
 
     /**
-     * Allows an additional column appended in the data grid layout holds the command buttons to perform the CRUD operations to
-     * edit, delete, and update the raw items to the data grid that used to update the appropriate cells in the pivot table.
+     * Allows an additional column appended in the data grid layout holds the command buttons to perform the CRUD operations to edit, delete, and update the raw items to the data grid that used to update the appropriate cells in the pivot table.
      *
      * @default false
+     * @remarks
+     * - Effective only when `editing` is enabled and the `editing` UI is available (for example, in the drill-through grid).
+     * - To enable this column, set the property `allowCommandColumns` in `editSettings` to `true`.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   editSettings: { allowCommandColumns: true }
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * @see {@link CellEditSettings}
      */
     @Property(false)
     public allowCommandColumns: boolean;
 
     /**
-     * Allows direct editing of a value cell without opening the edit dialog. NOTE: It is applicable only if the value cell is made by a single raw data. Otherwise editing dialog will be shown.
+     * Allows direct `editing` of a value cell without opening the edit dialog. NOTE: It is applicable only if the value cell is made by a single raw data. Otherwise editing dialog will be shown.
      * > The `allowInlineEditing` property supports all modes of editing.
      *
      * @default false
+     * @remarks
+     * - Effective only when `editing` is enabled and the `editing` UI is available (for example, in the `drill-through` grid).
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   editSettings: { allowInlineEditing: true }
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * @see {@link CellEditSettings}
      */
     @Property(false)
     public allowInlineEditing: boolean;
@@ -225,40 +371,85 @@ export class CellEditSettings extends ChildProperty<CellEditSettings> implements
     /**
      * Allow options for performing CRUD operations with different modes in the data grid that used to update the appropriate cells in the pivot table.
      * The available modes are as follows:
-     * * `Normal`: Allows the currently selected row alone will be completely changed to edit state. You can change the cell values and save it to the data source by clicking “Update” toolbar button.
-     * * `Dialog`: Allows the currently selected row data will be shown in an exclusive dialog. You can change the cell values and save it to the data source by clicking “Save” button in the dialog.
-     * * `Batch`: Allows you to perform double-click on any data specific cell in the data grid, the state of that selected cell will be changed to edit state.
-     * You can perform bulk changes like add, edit and delete data of the cells and finally save to the data source by clicking “Update” toolbar button.
-     *
-     * > Normal mode is enabled for CRUD operations in the data grid by default.
+     * * `Normal`: Allows the currently selected row alone will be completely changed to edit state. It is possible to change the cell values and save it to the data source by clicking “Update” toolbar button.
+     * * `Dialog`: Allows the currently selected row data will be shown in an exclusive dialog. It is possible to change the cell values and save it to the data source by clicking “Save” button in the dialog.
+     * * `Batch`: Allows to perform double-click on any data specific cell in the data grid, the state of that selected cell will be changed to edit state.
+     *   It is possible to perform bulk changes like add, edit and delete data of the cells and finally save to the data source by clicking “Update” toolbar button.
      *
      * @default Normal
+     * @remarks
+     * - `Normal` mode is enabled for CRUD operations in the data grid by default.
+     * - Effective only when `editing` is enabled and the `editing` UI is available (for example, the `drill-through` grid).
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   editSettings: { mode: 'Batch' }
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * @see {@link CellEditSettings}
      */
     @Property('Normal')
     public mode: EditMode;
 
     /**
-     * Allows you to restrict CRUD operations by double-clicking the appropriate value cell in the pivot table.
+     * Allows to restrict CRUD operations by double-clicking the appropriate value cell in the pivot table.
      *
      * @default true
+     * @remarks
+     * - Effective only when `allowEditing` is `true` in {@link CellEditSettings}.
+     * - Primarily used in `Batch` edit mode for direct cell access.
+     * - To disable, set to `false` in {@link PivotView.editSettings}.
+     *
+     * @example
+     * const pivotObj = new PivotView({
+     *   editSettings: { allowEditing: true, mode: 'Batch', allowEditOnDblClick: false }
+     * });
+     * pivotObj.appendTo('#PivotView');
+     *
+     * @see {@link CellEditSettings}
+     * @see {@link CellEditSettings.allowEditing}
      */
     @Property(true)
     public allowEditOnDblClick: boolean;
 
     /**
-     * Allows you to show a confirmation dialog to save and discard CRUD operations performed in the data grid that used to update the appropriate cells in the pivot table.
-     * > To use this option, it requires the property `mode` to be **Batch**, meaning, the `showConfirmDialog` option is only applicable for batch edit mode.
+     * Allows to show the confirmation dialog to save and discard CRUD operations performed in the data grid that used to update the appropriate cells in the pivot table.
+     * > To use this option, it requires {@link CellEditSettings.mode} is `Batch`, meaning, the `showConfirmDialog` option is only applicable for `Batch` edit mode.
      *
      * @default true
+     * @remarks
+     * - Effective only when `editing` is enabled via {@link PivotView.editSettings}.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   editSettings: { allowEditing: true, mode: 'Batch', showConfirmDialog: true }
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * @see {@link CellEditSettings}
+     * @see {@link CellEditSettings.mode}
      */
     @Property(true)
     public showConfirmDialog: boolean;
 
     /**
-     * Allows you to show the confirmation dialog to delete any records from the data grid.
+     * Allows to show the confirmation dialog to delete any records from the data grid.
      * > The `showDeleteConfirmDialog` property supports all modes of editing.
      *
      * @default false
+     * @remarks
+     * - Effective only when editing is enabled via {@link PivotView.editSettings}.
+     * - Supported in all edit modes: `Normal`, `Dialog`, and `Batch`.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   editSettings: { allowEditing: true, showDeleteConfirmDialog: true }
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * @see {@link CellEditSettings}
+     * @see {@link CellEditSettings.mode}
      */
     @Property(false)
     public showDeleteConfirmDialog: boolean;
@@ -270,48 +461,124 @@ export class CellEditSettings extends ChildProperty<CellEditSettings> implements
  * * `condition`: Allows you to choose the operator type such as equals, greater than, less than, etc.
  * * `value1`: Allows you to set the start value.
  * * `value2`: Allows you to set the end value. This option will be used by default when the operator **Between** and **NotBetween** is chosen to apply.
+ * Explore the [`ConditionalSettings`](../../pivotview/hyper-link#condition-based-hyperlink) guide for advanced usage in Pivot Table.
  */
 export class ConditionalSettings extends ChildProperty<ConditionalSettings> {
 
     /**
-     * Allows you to specify the value field caption to get visibility of hyperlink option for specific measure.
+     * Allows to specify the value field caption to get visibility of hyperlink option for specific measure.
+     *
+     * @remarks
+     * - Effective only within `hyperlinkSettings.conditionalSettings`.
+     * - Must exactly match the `caption` of a value item in {@link DataSourceSettings.values}.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: {
+     *     conditionalSettings: [
+     *       { measure: 'Sales Amount'},
+     *     ]
+     *   },
+     *   dataSourceSettings: {
+     *     values: [{ name: 'Amount', caption: 'Sales Amount' }]
+     *   }
+     * });
+     * pivot.appendTo('#PivotTable');
+     *
+     * @see {@link HyperlinkSettings.conditionalSettings}
+     * @see {@link DataSourceSettings.values}
      */
     @Property()
     public measure: string;
 
     /**
-     * Allows you to specify the row or column header to get visibility of hyperlink option for specific row or column header.
+     * Allows to specify the row or column header to get visibility of hyperlink option for specific row or column header.
+     *
+     * @remarks
+     * - Effective only within `hyperlinkSettings.conditionalSettings`.
+     * - Must exactly match the displayed header `caption` (for example, a member such as `Country`).
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: {
+     *     conditionalSettings: [
+     *       { label: 'Country' }
+     *     ]
+     *   }
+     * });
+     * pivot.appendTo('#PivotTable');
+     *
+     * @see {@link HyperlinkSettings.conditionalSettings}
+     * @see {@link DataSourceSettings.rows}
+     * @see {@link DataSourceSettings.columns}
      */
     @Property()
     public label: string;
 
     /**
-     * Allows you to choose the operator type such as equals, greater than, less than, etc. The available operators are as follows:
-     * * `LessThan`: Allows you to get the cells that have a value that is less than the start value.
-     * * `GreaterThan`: Allows you to get the cells that have a value that is greater than the start value.
-     * * `LessThanOrEqualTo`: Allows you to get the cells that have a value that is lesser than or equal to the start value.
-     * * `GreaterThanOrEqualTo`: Allows you to get the cells that have a value that is greater than or equal to the start value.
-     * * `Equals`:  Allows you to get the cells that have a value that matches with the start value.
-     * * `NotEquals`: Allows you to get the cells that have a value that does not match with the start value.
-     * * `Between`: Allows you to get the cells that have a value that between the start and end value.
-     * * NotBetween: Allows you to get the cells that have a value that is not between the start and end value.
+     * Allows to choose the operator type such as `Equals`, `GreaterThan`, `LessThan`, etc. The available operators are as follows:
+     * * `LessThan`: Allows to get the cells that have a value that is less than the start value.
+     * * `GreaterThan`: Allows to get the cells that have a value that is greater than the start value.
+     * * `LessThanOrEqualTo`: Allows to get the cells that have a value that is lesser than or equal to the start value.
+     * * `GreaterThanOrEqualTo`: Allows to get the cells that have a value that is greater than or equal to the start value.
+     * * `Equals`:  Allows to get the cells that have a value that matches with the start value.
+     * * `NotEquals`: Allows to get the cells that have a value that does not match with the start value.
+     * * `Between`: Allows to get the cells that have a value that between the start and end value.
+     * * NotBetween: Allows to get the cells that have a value that is not between the start and end value.
      *
      * @default NotEquals
+     * @remarks
+     * - When `conditions` is `Between` or `NotBetween`, both `value1` (start) and `value2` (end) must be specified.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: {
+     *     conditionalSettings: [{ measure: 'Sold', conditions: 'Between', value1: 150, value2: 200 }]
+     *   }
+     * });
+     * pivot.appendTo('#PivotTable');
+     *
+     * @see {@link Condition}
      */
     @Property('NotEquals')
     public conditions: Condition;
 
     /**
-     * Allows you to set the start value to get visibility of hyperlink option based on the condition applied.
+     * Allows to set the start value to get visibility of hyperlink option based on the condition applied.
      * For example, if the start value is 500 and the condition Equals is used, the hyperlink should be enabled to the cells that hold the value of 500 alone.
+     *
+     * @remarks
+     * - For `Condition.Between` and `Condition.NotBetween`, this is the lower bound of the range.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: {
+     *     conditionalSettings: [{ measure: 'Sold', conditions: 'Equals', value1: 500 }]
+     *   }
+     * });
+     * pivot.appendTo('#PivotTable');
      */
     @Property()
     public value1: number;
 
     /**
      * Allows you to set the end value to get visibility of hyperlink option based on the condition applied.
-     * For example, if the start value is 500, the end value is 1500 and the condition Between is used, the hyperlink should be enabled to the cells that holds the value between 500 to 1500.
+     * For example, if the start value is 500, the end value is 1500 and the condition `Between` is used, the hyperlink should be enabled to the cells that holds the value between 500 to 1500.
      * > This option will be used by default when the operator **Between** and **NotBetween** is chosen to apply.
+     * End value used by the comparison defined in {@link conditions}.
+     *
+     * @remarks
+     * - Used when `conditions` is `Condition.Between` or `Condition.NotBetween`; acts as the upper bound.
+     * - Must be specified together with {@link value1} for range-based operators.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: {
+     *     conditionalSettings: [{ measure: 'Sold', conditions: 'Between', value1: 500, value2: 1500 }]
+     *   }
+     * });
+     * pivot.appendTo('#PivotTable');
+     *
      */
     @Property()
     public value2: number;
@@ -319,66 +586,142 @@ export class ConditionalSettings extends ChildProperty<ConditionalSettings> {
 
 /**
  * Allow a set of options to display a hyperlink to link data for individual cells that are shown in the pivot table.
- * These options allow you to enable a separate hyperlink for row headers, column headers, value cells, and summary cells in the `hyperlinkSettings` class.
+ * These options allow to enable a separate hyperlink for row headers, column headers, value cells, and summary cells in the `hyperlinkSettings` class.
  * The options available are:
- * * `showHyperlink`: Allows you to set the visibility of hyperlink in all cells.
- * * `showRowHeaderHyperlink`: Allows you to set the visibility of hyperlink in row headers.
- * * `showColumnHeaderHyperlink`: Allows you to set the visibility of hyperlink in column headers.
- * * `showValueCellHyperlink`: Allows you to set the visibility of hyperlink in value cells.
- * * `showSummaryCellHyperlink`: Allows you to set the visibility of hyperlink in summary cells.
- * * `headerText`: Allows you to set the visibility of hyperlink based on header text.
- * * `conditionalSettings`: Allows you to set the visibility of hyperlink based on specific condition.
- * * `cssClass`: Allows you to add CSS class name to the hyperlink options.
+ * * `showHyperlink`: Allows to set the visibility of hyperlink in all cells.
+ * * `showRowHeaderHyperlink`: Allows to set the visibility of hyperlink in row headers.
+ * * `showColumnHeaderHyperlink`: Allows to set the visibility of hyperlink in column headers.
+ * * `showValueCellHyperlink`: Allows to set the visibility of hyperlink in value cells.
+ * * `showSummaryCellHyperlink`: Allows to set the visibility of hyperlink in summary cells.
+ * * `headerText`: Allows to set the visibility of hyperlink based on header text.
+ * * `conditionalSettings`: Allows to set the visibility of hyperlink based on specific condition.
+ * * `cssClass`: Allows to add CSS class name to the hyperlink options.
  *
  * > By default, the hyperlink options are disabled for all cells in the pivot table.
+ * Refer to the [`hyper link`](../../pivotview/hyper-link) documentation for complete configuration steps.
  */
 export class HyperlinkSettings extends ChildProperty<HyperlinkSettings> {
     /**
-     * Allows you to set the visibility of hyperlink in all cells that are currently shown in the pivot table.
+     * Allows to set the visibility of hyperlink in all cells that are currently shown in the pivot table.
+     *
+     * @remarks
+     * - Applies to the current view only. To target specific fields or values, use `hyperlinkSettings.conditionalSettings`.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: { showHyperlink: true }
+     * });
+     * pivot.appendTo('#PivotTable');
      *
      * @default false
+     * @see {@link HyperlinkSettings.conditionalSettings}
      */
     @Property(false)
     public showHyperlink: boolean;
 
     /**
-     * Allows you to set the visibility of hyperlink in row headers that are currently shown in the pivot table.
+     * Allows to set the visibility of hyperlink in row headers that are currently shown in the pivot table.
+     *
+     * @remarks
+     * - Applies to the current view only.
+     * - To enable hyperlinks globally for all visible cells, use `hyperlinkSettings.showHyperlink`.
+     * - To target specific fields or values, use `hyperlinkSettings.conditionalSettings`.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: { showRowHeaderHyperlink: true }
+     * });
+     * pivot.appendTo('#PivotTable');
      *
      * @default false
+     * @see {@link HyperlinkSettings.showHyperlink}
+     * @see {@link HyperlinkSettings.conditionalSettings}
      */
     @Property(false)
     public showRowHeaderHyperlink: boolean;
 
     /**
-     * Allows you to set the visibility of hyperlink in column headers that are currently shown in the pivot table.
+     * Allows to set the visibility of hyperlink in column headers that are currently shown in the pivot table.
+     *
+     * @remarks
+     * - Applies to the current view only.
+     * - To enable hyperlinks globally for all visible cells, use `hyperlinkSettings.showHyperlink`.
+     * - To target specific fields or values, use `hyperlinkSettings.conditionalSettings`.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: { showColumnHeaderHyperlink: true }
+     * });
+     * pivot.appendTo('#PivotTable');
      *
      * @default false
+     * @see {@link HyperlinkSettings.showHyperlink}
+     * @see {@link HyperlinkSettings.conditionalSettings}
      */
     @Property(false)
     public showColumnHeaderHyperlink: boolean;
 
     /**
-     * Allows you to set the visibility of hyperlink in value cells that are currently shown in the pivot table.
+     * Allows to set the visibility of hyperlink in value cells that are currently shown in the pivot table.
+     *
+     * @remarks
+     * - Applies to the current view only.
+     * - To enable hyperlinks globally for all visible cells, use `hyperlinkSettings.showHyperlink`.
+     * - To target specific fields or values, use `hyperlinkSettings.conditionalSettings`.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: { showValueCellHyperlink: true }
+     * });
+     * pivot.appendTo('#PivotTable');
      *
      * @default false
+     * @see {@link HyperlinkSettings.showHyperlink}
+     * @see {@link HyperlinkSettings.conditionalSettings}
      */
     @Property(false)
     public showValueCellHyperlink: boolean;
 
     /**
-     * Allows you to set the visibility of hyperlink in summary cells that are currently shown in the pivot table.
+     * Allows to set the visibility of hyperlink in summary cells that are currently shown in the pivot table.
+     *
+     * @remarks
+     * - Applies to the current view only.
+     * - To enable hyperlinks globally for all visible cells, use `hyperlinkSettings.showHyperlink`.
+     * - To target specific fields or values, use `hyperlinkSettings.conditionalSettings`.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: { showSummaryCellHyperlink: true }
+     * });
+     * pivot.appendTo('#PivotTable');
      *
      * @default false
+     * @see {@link HyperlinkSettings.showHyperlink}
+     * @see {@link HyperlinkSettings.conditionalSettings}
      */
     @Property(false)
     public showSummaryCellHyperlink: boolean;
 
     /**
      * Allow options for setting the visibility of hyperlink based on specific condition. The options available here are as follows:
-     * * `measure`: Allows you to specify the value field caption to get visibility of hyperlink option for specific measure.
-     * * `condition`: Allows you to choose the operator type such as equals, greater than, less than, etc.
-     * * `value1`: Allows you to set the start value.
-     * * `value2`: Allows you to set the end value. This option will be used by default when the operator **Between** and **NotBetween** is chosen to apply.
+     * * `measure`: Allows to specify the value field caption to get visibility of hyperlink option for specific measure.
+     * * `condition`: Allows to choose the operator type such as equals, greater than, less than, etc.
+     * * `value1`: Allows to set the start value.
+     * * `value2`: Allows to set the end value. This option will be used by default when the operator **Between** and **NotBetween** is chosen to apply.
+     *
+     * @remarks
+     * - When `conditions` is `Between` or `NotBetween`, both `value1` and `value2` must be provided.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: {
+     *     conditionalSettings: [
+     *       { measure: 'Sold', conditions: 'Between', value1: 150, value2: 200 }
+     *     ]
+     *   }
+     * });
+     * pivot.appendTo('#PivotTable');
      *
      * @default []
      */
@@ -386,13 +729,31 @@ export class HyperlinkSettings extends ChildProperty<HyperlinkSettings> {
     public conditionalSettings: ConditionalSettingsModel[];
 
     /**
-     * Allows you to set the visibility of hyperlink in the cells based on specific row or column header.
+     * Header caption (row or column) used to set the visibility of hyperlink in the cells based on specific row or column header.
+     *
+     * @remarks
+     * - Must exactly match the displayed header caption. For hierarchical captions, use a dot-separated path (for example, "FY 2015.Q1.Units Sold").
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: {
+     *     headerText: 'FY 2015.Q1.Units Sold',
+     *   }
+     * });
+     * pivot.appendTo('#PivotTable');
+     *
      */
     @Property()
     public headerText: string;
 
     /**
-     * Allows you to add the CSS class name to the hyperlink options. Use this class name you can apply styles to a hyperlink easily at your end.
+     * Allows to add the CSS class name to the hyperlink options. Use this class name to apply styles to a hyperlink easily.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: { showHyperlink: true, cssClass: 'e-custom-class' }
+     * });
+     * pivot.appendTo('#PivotTable');
      *
      * @default ''
      */
@@ -401,113 +762,263 @@ export class HyperlinkSettings extends ChildProperty<HyperlinkSettings> {
 }
 
 /**
- * Allows you to configure page information such as page size and current page details for each axis in order to display the pivot table with a specific page when paging.
+ * Allows you to configure page information such as page size and current page details for each axis in order to display the pivot table with a specific page when paging is enabled.
+ * For additional guidance, check the [`paging`](../../pivotview/paging) in Pivot Table documentation.
  */
 export class PageSettings extends ChildProperty<PageSettings> {
     /**
-     * It allows to set the total column count of the pivot table.
+     * Allows to set the total number of records to be displayed on each page of the pivot table’s column axis.
+     *
+     * @remarks
+     * - Affects the column pager. Increase to show more columns per page.
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pageSettings: { columnPageSize: 8 }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default 5
+     * @see {@link PageSettings}
      */
     @Property(5)
     public columnPageSize: number;
     /**
-     * It allows to set the total row count of the pivot table.
+     * Allows to set the total number of records to be displayed on each page of the pivot table’s row axis.
+     *
+     * @remarks
+     * - Affects the row pager. Increase to show more rows per page.
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pageSettings: { rowPageSize: 20 }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default 5
+     * @see {@link PageSettings}
      */
     @Property(5)
     public rowPageSize: number;
     /**
-     * It allows to set the current column page count displayed in the pivot table.
+     * Allows to set the current column page number to be displayed in the pivot table.
+     *
+     * @remarks
+     * - Set to navigate between column pages.
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pageSettings: { currentColumnPage: 2 }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default 1
+     * @see {@link PageSettings}
      */
     @Property(1)
     public currentColumnPage: number;
     /**
-     * It allows to set the current row page count displayed in the pivot table.
+     * Allows to set the current row page number to be displayed in the pivot table.
+     *
+     * @remarks
+     * - Set to navigate between row pages.
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pageSettings: { currentRowPage: 3 }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default 1
+     * @see {@link PageSettings}
      */
     @Property(1)
     public currentRowPage: number;
 }
 
 /**
- * Allows a set of options for customizing the paging UI with a variety of settings such as UI position, template and visibility to a specific axis info such as page size, paging data.
- * > To use this option, it requires the property `enablePaging` to be true.
+ * Allows a set of options for customizing the `Paging` UI with a variety of settings such as UI position, template and visibility to a specific axis info such as page size, paging data.
+ * > To use this option, it requires the property `enablePaging` to be `true`.
+ * For additional guidance, check the [`paging`](../../pivotview/paging) in Pivot Table documentation.
  */
 export class PagerSettings extends ChildProperty<PagerSettings> {
     /**
-     * Allows to display the pager UI either at top or bottom of the Pivot Table UI.
+     * Allows to display the `Pager` UI either at top or bottom of the `Pivot Table` UI.
+     *
+     * @remarks
+     * - Controls where the pager renders relative to the Pivot Table.
+     * - Typical values: 'Top' or 'Bottom'.
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pagerSettings: { position: 'Top' }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default Bottom
+     * @see {@link PagerSettings}
      */
     @Property('Bottom')
     public position: PagerPosition;
     /**
      * When the property is set to “true”, it allows to display the row and column paging options as vice versa.
-     * > In pager UI, paging options for column axis will be shown at left-side and for row will be shown at right-side.
+     * > In `Pager` UI, paging options for column axis will be shown at left-side and for row will be shown at right-side.
+     *
+     * @remarks
+     * - When `true`, column paging appears on the left and row paging on the right (swapped layout).
+     * - When `false`, uses the default layout.
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pagerSettings: { isInversed: true }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default false
+     * @see {@link PagerSettings}
      */
     @Property(false)
     public isInversed: boolean;
     /**
-     * Allows to show or hide row paging options in the pager UI.
+     * Allows to show or hide row paging options in the `Pager` UI.
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pagerSettings: { showRowPager: false, showColumnPager: true }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default true
+     * @see {@link PagerSettings}
      */
     @Property(true)
     public showRowPager: boolean;
     /**
-     * Allows to show or hide column paging options in the pager UI.
+     * Allows to show or hide column paging options in the `Pager` UI.
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pagerSettings: { showRowPager: true, showColumnPager: false }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default true
+     * @see {@link PagerSettings}
      */
     @Property(true)
     public showColumnPager: boolean;
     /**
-     * Allows to show row page size information in the pager UI.
+     * Allows to show row page size information in the `Pager` UI.
+     *
+     * @remarks
+     * - When enabled, allows viewing or changing how many rows are shown per page.
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pagerSettings: {
+     *     showRowPageSize: true,
+     *   }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default true
+     * @see {@link PagerSettings}
      */
     @Property(true)
     public showRowPageSize: boolean;
     /**
-     * Allows to show column page size information in the pager UI.
+     * Allows to show column page size information in the `Pager` UI.
+     *
+     * @remarks
+     * - When enabled, allows viewing or changing how many columns are shown per page.
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pagerSettings: {
+     *     showColumnPageSize: true,
+     *   }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default true
+     * @see {@link PagerSettings}
      */
     @Property(true)
     public showColumnPageSize: boolean;
     /**
-     * Allows you to choose from a variety of page sizes in the paging UI that can be used to display the pivot table's rows.
+     * Allows to choose from a variety of page sizes in the `Paging` UI that can be used to display the pivot table's rows.
+     *
+     * @remarks
+     * - When enabled, allows viewing or changing how many rows are shown per page.
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pagerSettings: {
+     *     rowPageSizes: [10, 25, 50, 100]
+     *   }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default [10, 50, 100, 200]
+     * @see {@link PagerSettings}
      */
     @Property([10, 50, 100, 200])
     public rowPageSizes: number[];
     /**
-     * Allows you to choose from a variety of page sizes in the paging UI that can be used to display the pivot table's columns.
+     * Allows to choose from a variety of page sizes in the `Paging` UI that can be used to display the pivot table's columns.
+     *
+     * @remarks
+     * - One of these values can be selected to control how many columns are shown per page.
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pagerSettings: {
+     *     columnPageSizes: [5, 10, 20, 50]
+     *   }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default [5, 10, 20, 50, 100]
+     * @see {@link PagerSettings}
      */
     @Property([5, 10, 20, 50, 100])
     public columnPageSizes: number[];
     /**
-     * Allows the paging UI to be displayed with the absolute minimum of information by hiding all paging data except for the navigation options.
+     * Allows the `Paging` UI to be displayed with the absolute minimum of information by hiding all paging data except for the navigation options.
+     *
+     * @remarks
+     * - When `true`, the pager shows only the essential navigation UI (previous/next, etc.).
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pagerSettings: { enableCompactView: true }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default false
+     * @see {@link PagerSettings}
      */
     @Property(false)
     public enableCompactView: boolean;
     /**
-     * Allows the pager UI to be customized by using an HTML string or the element's ID to display custom elements instead of the standard ones.
+     * Allows the `Pager` UI to be customized by using an HTML string or the element's ID to display custom elements instead of the standard ones.
+     *
+     * @remarks
+     * - Use this to fully customize the pager (for example, add custom labels or layout).
+     * - When a string is provided, it can be raw HTML or an element selector/ID.
+     *
+     * @example
+     * <div id="pagerTpl"><span class="my-pager">Custom pager</span></div>
+     * let pivotObj: PivotView = new PivotView({
+     *   pagerSettings: {
+     *     template: '#pagerTpl'
+     *   }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default null
      * @aspType string
+     * @see {@link PagerSettings}
      */
     @Property()
     public template: string | Function;
@@ -526,18 +1037,31 @@ export class DisplayOption extends ChildProperty<DisplayOption> {
      * * `Both`: Allows you to render the component as both table and chart.
      * > By default, **Table** is used as a default view in the component.
      *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   displayOption: { view: 'Chart' },
+     * });
+     * pivotObj.appendTo('#PivotTable');
+     *
      * @default Table
+     * @see {@link DisplayOption}
      */
     @Property('Table')
     public view: View;
-
     /**
      * Allows you to set the primary view to be either table or chart.The available options are:
      * * `Table`: Allows you to display the pivot table as primary view.
      * * `Chart`: Allows you to display the pivot chart as primary view.
-     * > To use this option, it requires the property `view` to be **Both**.
+     * > To use this option, it requires the property `view` to be **Both**.default).
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   displayOption: { view: 'Both', primary: 'Chart' },
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default Table
+     * @see {@link DisplayOption}
      */
     @Property('Table')
     public primary: Primary;
@@ -545,6 +1069,11 @@ export class DisplayOption extends ChildProperty<DisplayOption> {
 
 /**
  * Represents a class that allows defining values for options relating to the virtual scrolling experience in the pivot table.
+ * - Effective only when `enableVirtualization` is `true` on the {@link PivotView}.
+ * - `Virtual scrolling` renders a subset of rows/columns based on the current viewport to improve performance with large datasets.
+ * - For detailed guidance and performance notes, refer to the official documentation for [`pivotview/virtual scrolling`](../../pivotview/virtual-scrolling).
+ *
+ * @see {@link PivotView.virtualScrollSettings}.
  */
 export class VirtualScrollSettings extends ChildProperty<VirtualScrollSettings> {
     /**
@@ -552,7 +1081,22 @@ export class VirtualScrollSettings extends ChildProperty<VirtualScrollSettings> 
      * or also show the previous and next page in the pivot table. By rendering only the rows and columns relevant to the current view port for display
      * in the pivot table, it improves the pivot table's performance.
      *
+     * @remarks
+     * - `false` (default): Renders the current viewport plus the previous and next pages to provide smoother scrolling.
+     * - `true`: Renders only the rows and columns in the current viewport, reducing CPU and memory usage.
+     * - Improves performance for large datasets during initial render and UI actions (`drill up/down`, `sorting`, `filtering`).
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   enableVirtualization: true,
+     *   virtualScrollSettings: {
+     *     allowSinglePage: true
+     *   }
+     * });
+     * pivot.appendTo('#PivotTable');
+     *
      * @default false
+     * @see {@link PivotView.virtualScrollSettings}.
      */
     @Property(false)
     public allowSinglePage: boolean;
@@ -703,6 +1247,7 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
 
     private defaultLocale: object;
     private timeOutObj: ReturnType<typeof setTimeout>;
+    private onWindowResizeHandler: (e: UIEvent) => void;
     private savedDataSourceSettings: DataSourceSettingsModel;
     /** @hidden */
     public isEmptyGrid: boolean;
@@ -2288,6 +2833,9 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
         if (this.chartSettings.enableExport && (this.displayOption.view === 'Both' || this.displayOption.view === 'Chart')) {
             this.chartExportModule = new ChartExport(this);
         }
+        if (this.maxNodeLimitInMemberEditor <= 0) {
+            this.maxNodeLimitInMemberEditor = 1;
+        }
         this.defaultLocale = {
             applyToGrandTotal: 'Apply to Grand Total',
             grandTotal: 'Grand Total',
@@ -3586,9 +4134,38 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
     }
 
     /**
-     * Method to open conditional formatting dialog.
+     * Opens the `Conditional Formatting` dialog to create, edit, or remove rules applied to value cells in the Pivot Table.
+     * This method shows the built-in UI for defining conditions and styles that highlight values based on thresholds and operators. When applied, the rules are stored in {@link DataSourceSettings} and reflected in the grid after refresh.
+     * > Note: This method requires the `Conditional Formatting` feature to be available at runtime. Ensure that the `ConditionalFormatting` module is injected into PivotView (for example, PivotView.Inject(ConditionalFormatting)) and that the allowConditionalFormatting property is enabled in your configuration. If the module is not available, this method will have no effect.
+     *
+     * Explore the [`conditional formatting`](../../pivotview/conditional-formatting) guide for advanced usage in Pivot Table
      *
      * @returns {void}
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   allowConditionalFormatting: true,
+     *   dataSourceSettings: {
+     *     conditionalFormatSettings: [
+     *       {
+     *         measure: 'Amount',
+     *         value1: 350000,
+     *         conditions: 'LessThan',
+     *         style: {
+     *           backgroundColor: '#80cbc4',
+     *           color: 'black',
+     *           fontFamily: 'Tahoma',
+     *           fontSize: '12px'
+     *         }
+     *       }
+     *     ]
+     *   }
+     * });
+     * pivot.appendTo('#PivotView');
+     * pivot.showConditionalFormattingDialog();
+     *
+     * @see {@link DataSourceSettings}
+     * @see {@link allowConditionalFormatting}
      */
     public showConditionalFormattingDialog(): void {
         if (this.conditionalFormattingModule) {
@@ -3597,9 +4174,28 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
     }
 
     /**
-     * Method to open calculated field dialog.
+     * Opens the `Calculated Field` dialog to create or edit custom measures in the Pivot Table.
+     * This method programmatically displays the built-in UI for defining calculated measures using formulas based on existing fields.
+     * Changes applied in the dialog are persisted to the component by updating {@link DataSourceSettings} and refreshing the view, so the
+     * newly created or edited calculated fields become available under the Values area.
+     *
+     * > Note: This method requires the `Calculated Field` feature to be available at runtime. Ensure that the `CalculatedField` module is injected into PivotView (for example, PivotView.Inject(CalculatedField))
+     * and that the `allowCalculatedField` property is enabled in your configuration. If the module is not available, this method will have no effect.
+     * For additional guidance, check the [`calculated field`](../../pivotview/calculated-field) in Pivot Table documentation.
      *
      * @returns {void}
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   allowCalculatedField: true,
+     * });
+     * pivot.appendTo('#PivotView');
+     * pivot.createCalculatedFieldDialog();
+     *
+     * @see {@link showToolbar}
+     * @see {@link toolbar}
+     * @see {@link allowCalculatedField}
+     * @default false
      */
     public createCalculatedFieldDialog(): void {
         if (this.calculatedFieldModule) {
@@ -3749,6 +4345,11 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
             case 'height':
             case 'width':
                 this.layoutRefresh();
+                break;
+            case 'maxNodeLimitInMemberEditor':
+                if (this.maxNodeLimitInMemberEditor <= 0) {
+                    this.maxNodeLimitInMemberEditor = 1;
+                }
                 break;
             case 'pivotValues':
             case 'displayOption': {
@@ -3997,6 +4598,10 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
             case 'allowCalculatedField':
                 if (this.pivotFieldListModule) {
                     this.pivotFieldListModule.allowCalculatedField = this.allowCalculatedField;
+                }
+                if (this.showGroupingBar && this.groupingBarModule && this.element.querySelector('.' + cls.GROUPING_BAR_CLASS)) {
+                    clearTimeout(this.timeOutObj);
+                    this.timeOutObj = setTimeout(this.groupingBarModule.alignIcon.bind(this.groupingBarModule));
                 }
                 break;
             case 'allowDeferLayoutUpdate':
@@ -4434,12 +5039,23 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
 
     /**
      * Export the Pivot table data to an Excel file (.xlsx).
+     * This method serializes the table with its current view state, including `filtering`, `sorting`, and `drill positions`, and produces an Excel file for further analysis.
+     * See the [`excel export`](../../pivotview/excel-export) section in the Pivot Table documentation for implementation details
      *
-     * @param  {ExcelExportProperties} excelExportProperties - Defines the export properties for customizing the table, such as custom columns, data source, and theme.
-     * @param  {boolean} isMultipleExport - Specifies whether multiple exports are enabled.
-     * @param  {workbook} workbook - Defines the Workbook if multiple exports are enabled.
-     * @param  {boolean} isBlob - If set to true, the exported file will be returned as blob data.
+     * @param {ExcelExportProperties} excelExportProperties - Defines the export properties for customizing the table, such as custom columns, data source, and theme.
+     * @param {boolean} isMultipleExport - Specifies whether multiple exports are enabled.
+     * @param {workbook} workbook - Defines the Workbook if multiple exports are enabled.
+     * @param {boolean} isBlob - If set to true, the exported file will be returned as blob data.
      * @returns {Promise<Workbook>} A promise that resolves to the generated Excel workbook.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   allowExcelExport: true,
+     * });
+     * pivot.appendTo('#PivotView');
+     * pivot.excelExport();
+     *
+     * @see {@link allowExcelExport}
      */
     public excelExport(
         excelExportProperties?: ExcelExportProperties, isMultipleExport?: boolean, workbook?: Workbook, isBlob?: boolean
@@ -4448,6 +5064,9 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
         if (this.dataSourceSettings.mode === 'Server') {
             this.getEngine('onExcelExport', null, null, null, null, null, null, null, null, excelExportProperties);
         } else {
+            if (isNullOrUndefined(this.excelExportModule)) {
+                return null;
+            }
             const exportPivots: string[] = excelExportProperties ? excelExportProperties.pivotTableIds : undefined;
             if (exportPivots && exportPivots.length && isMultipleExport) {
                 const pivotIds: string[] = exportPivots.slice();
@@ -4506,19 +5125,15 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
      * @returns {void}
      *
      * @example
-     * // Initialize PivotView with server mode and enable Excel export
      * const pivotObj = new PivotView({
      *     dataSourceSettings: {
      *         url: 'https://services.syncfusion.com/js/production/api/pivot/post',
      *         mode: 'Server',
-     *         // additional settings...
      *     },
      *     allowExcelExport: true,
-     *     // other configurations...
      * });
      * pivotObj.appendTo('#PivotView');
      *
-     * // Export to Excel on button click
      * document.getElementById('export-btn').onclick = () => {
      *     pivotObj.exportAsPivot(ExportType.Excel);
      * };
@@ -4534,13 +5149,24 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
     }
 
     /**
-     * Export the Pivot table data to a CSV file (.csv).
+     * Exports the current Pivot Table view to a CSV file in a flattened, tabular (non-pivot) format.
+     * This method captures the table's visible state, including applied `filtering`, `sorting`, and `drilling`, and generates a comma-separated values file.
+     * Explore the [`csvExport`](../../pivotview/excel-export#export-data-to-a-csv-file) guide for advanced usage in Pivot Table.
      *
-     * @param  {ExcelExportProperties} excelExportProperties - Defines the export properties for customizing the table, such as custom columns, data source, and theme.
-     * @param  {boolean} isMultipleExport - Specifies whether multiple exports are enabled.
-     * @param  {workbook} workbook - Defines the Workbook if multiple exports are enabled.
-     * @param  {boolean} isBlob - If set to true, the export will be returned as blob data.
+     * @param {ExcelExportProperties} excelExportProperties - Defines the export properties for customizing the table, such as custom columns, data source, and theme.
+     * @param {boolean} isMultipleExport - Specifies whether multiple exports are enabled.
+     * @param {workbook} workbook - Defines the Workbook if multiple exports are enabled.
+     * @param {boolean} isBlob - If set to true, the export will be returned as blob data.
      * @returns {void}
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   allowExcelExport: true,
+     * });
+     * pivot.appendTo('#PivotView');
+     * pivot.csvExport();
+     *
+     * @see {@link DataSourceSettings}
      */
     public csvExport(excelExportProperties?: ExcelExportProperties, isMultipleExport?: boolean, workbook?: Workbook,
                      isBlob?: boolean): void {
@@ -4549,6 +5175,9 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
         } else {
             if ((this.enableVirtualization || this.enablePaging || this.allowEngineExport || (this.allowConditionalFormatting
                  && this.dataSourceSettings.conditionalFormatSettings.length > 0))) {
+                if (isNullOrUndefined(this.excelExportModule)) {
+                    return null;
+                }
                 this.excelExportModule.exportToExcel('CSV', excelExportProperties, isBlob);
             } else {
                 this.exportType = 'CSV';
@@ -4578,6 +5207,9 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
     private gridPdfExport(
         pdfExportProperties?: PdfExportProperties, isMultipleExport?: boolean, pdfDoc?: Object, isBlob?: boolean
     ): Promise<Object> {
+        if (isNullOrUndefined(this.pdfExportModule) && this.dataSourceSettings.mode !== 'Server') {
+            return null;
+        }
         const args: BeforeExportEventArgs = {
             pdfExportProperties: pdfExportProperties, isMultipleExport: isMultipleExport, isBlob: isBlob, pdfDoc: pdfDoc, currentExportView: 'Table',
             pdfMargins: {}
@@ -4587,13 +5219,19 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
         if (this.pdfExportModule) {
             this.pdfExportModule.exportProperties = args;
         }
-        if (this.dataSourceSettings.mode !== 'Server' && ((this.enableVirtualization || this.enablePaging || this.allowEngineExport ||
-            Object.keys(args.pdfMargins).length > 0) || args.height || args.width || (this.allowConditionalFormatting &&
-                this.dataSourceSettings.conditionalFormatSettings.length > 0))
-        ) {
-            pdfDocument = this.pdfExportModule.exportToPDF(args.pdfExportProperties, args.isMultipleExport, args.pdfDoc, args.isBlob);
-        } else {
+        if (this.dataSourceSettings.mode === 'Server') {
             pdfDocument = this.grid.pdfExport(args.pdfExportProperties, args.isMultipleExport, args.pdfDoc, args.isBlob);
+        } else {
+            const exportPivots: string[] = (args && args.pdfExportProperties) ? args.pdfExportProperties.pivotTableIds : undefined;
+            if (exportPivots && exportPivots.length && args.isMultipleExport) {
+                const pivotIds: string[] = exportPivots.slice();
+                pdfDocument = this.exportMultiplePdfPivotTable(
+                    pivotIds, args.pdfExportProperties, args.isMultipleExport, args.pdfDoc, args.isBlob
+                );
+            }
+            else {
+                pdfDocument = this.pdfExportModule.exportToPDF(args.pdfExportProperties, args.isMultipleExport, args.pdfDoc, args.isBlob);
+            }
         }
         this.actionObj.actionName = this.getActionCompleteName();
         const actionInfo: PivotActionInfo = {
@@ -4606,8 +5244,42 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
         return pdfDocument;
     }
 
+    private exportMultiplePdfPivotTable(
+        pivotIds: string[], pdfExportProperties?: PdfExportProperties, isMultipleExport?: boolean,
+        pdfDoc?: Object, isBlob?: boolean
+    ): Promise<Object> {
+        const pivot: PivotView = this as PivotView;
+        if (pivotIds.length !== 0) {
+            const currentPivotId: string = pivotIds.shift();
+            const currentPivotInstance: PivotView = select('#' + currentPivotId, document) ?
+                getInstance(select('#' + currentPivotId, document), PivotView) as PivotView : undefined;
+            if (currentPivotInstance.pdfExportModule) {
+                currentPivotInstance.pdfExportModule.exportProperties = {
+                    pdfExportProperties: pdfExportProperties,
+                    isMultipleExport: isMultipleExport,
+                    isBlob: isBlob,
+                    pdfDoc: pdfDoc,
+                    currentExportView: 'Table',
+                    pdfMargins: {}
+                };
+                const exportPromise: Promise<Object | void> = currentPivotInstance.pdfExportModule ?
+                    currentPivotInstance.pdfExportModule.exportToPDF(
+                        pdfExportProperties, isMultipleExport, pdfDoc, isBlob, currentPivotInstance
+                    ) : Promise.resolve();
+                return exportPromise.then(function (exportedPivotResults: object): Promise<Object> {
+                    isMultipleExport = pivotIds.length === 1 ? false : true;
+                    return pivot.exportMultiplePdfPivotTable(pivotIds, pdfExportProperties, isMultipleExport, exportedPivotResults, isBlob);
+                });
+            }
+        }
+        return null;
+    }
+
     /**
-     * Method allow to export the pivot chart as PDF and image formats like PNG, JPEG, and SVG.
+     * Exports the currently rendered `Pivot Chart` to a file (for example, PNG, JPEG, SVG, or PDF), depending on the configured options.
+     * This method targets the chart visualization produced by the `PivotView` and saves it independently of the grid data. The exported content reflects the chart’s current state, including theme and runtime interactions.
+     * > Note: Ensure that the chart is currently visible by configuring {@link DisplayOption} (for example, set view to 'Chart' or 'Both'). If no chart is rendered, this method performs no action.
+     * Learn more about the [`chartExport`](../../pivotview/pivot-chart#export) feature in Pivot Table.
      *
      * @param {ExportType} type - Defines the export type.
      * @param {PdfExportProperties} pdfExportProperties - Allows to define the export properties for the chart.
@@ -4615,6 +5287,16 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
      * @param {Object} pdfDoc - Allows the export of an external PDF document along with current PDF document.
      * @param {boolean} isBlob - Allows the PDF document to be saved as blob data.
      * @returns {Promise<Object>} - Method returns the pivot chart as PDF and image formats like PNG, JPEG, and SVG.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   displayOption: { view: 'Both', primary: 'Chart' },
+     *   allowPdfExport: true,
+     * });
+     * pivot.appendTo('#PivotView');
+     * pivot.chartExport();
+     *
+     * @see {@link DisplayOption}
      */
     public chartExport(
         type: ExportType, pdfExportProperties?: PdfExportProperties, isMultipleExport?: boolean, pdfDoc?: Object, isBlob?: boolean
@@ -4650,7 +5332,9 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
     }
 
     /**
-     * Method allow to export both pivot table and pivot chart in a same PDF document.
+     * Exports the current Pivot Table view to a PDF document.
+     * This method captures the table with its active state—including applied `filters`, `sorting`, and `drill-down` levels—and generates a read-only PDF suitable for sharing.
+     * Learn more about the [`pdfExport`](../../pivotview/pdf-export) feature in Pivot Table.
      *
      * @param {PdfExportProperties} pdfExportProperties - Allows to define the export properties for the table and chart.
      * @param {boolean} isMultipleExport - Allows to export multiple tables and charts into a single PDF document.
@@ -4658,6 +5342,15 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
      * @param {boolean} isBlob - Allows the PDF document to be saved as blob data.
      * @param {boolean} exportBothTableAndChart - When the `view` property inside the `displayOption` is set to **Both**, both table and chart data can be exported into a single PDF document.
      * @returns {Promise<Object>} - Method returns the both pivot table and pivot chart in a same PDF document.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   allowPdfExport: true,
+     * });
+     * pivot.appendTo('#PivotView');
+     * pivot.pdfExport();
+     *
+     * @see {@link allowPdfExport}
      */
     public pdfExport(
         pdfExportProperties?: PdfExportProperties, isMultipleExport?: boolean, pdfDoc?: Object,
@@ -4687,9 +5380,22 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
     }
 
     /**
-     * Print method for the chart.
+     * Prints the rendered `Pivot Chart` using the browser’s native print dialog.
+     * This method triggers the host browser’s print workflow for the current chart visualization, enabling quick hard copies or print-to-PDF based on the print settings.
+     * > Note: Ensure that a chart is currently displayed via {@link DisplayOption} (for example, set view to 'Chart' or 'Both') so that there is printable chart content.
+     *
+     * See the [`printChart`](../../pivotview/pivot-chart#print) section in the Pivot Table documentation for implementation details
      *
      * @returns {void}
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   displayOption: { view: 'Chart' },
+     * });
+     * pivot.appendTo('#PivotView');
+     * pivot.printChart();
+     *
+     * @see {@link DisplayOption}
      */
 
     public printChart(): void {
@@ -5266,6 +5972,28 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
         this.isChartLoaded = false;
         if (!this.isEmptyGrid) {
             this.trigger(events.dataBound);
+            if (this.displayOption.view === 'Both' && this.showFieldList && this.element) {
+                const toolbarHeight: number = (this.showToolbar && this.toolbarModule && this.toolbarModule.toolbar &&
+                    this.toolbarModule.toolbar.element) ? this.toolbarModule.toolbar.element.offsetHeight : 0;
+                const pagerHeight: number = (this.enablePaging && this.pagerModule.pager && this.pagerModule.pager.element) ?
+                    this.pagerModule.pager.element.offsetHeight : 0;
+                const gridContentHeight: number = (this.grid && this.grid.element) ? this.grid.element.offsetHeight : 0;
+                let gridGroupingBarHeight: number = 0;
+                let chartGroupingBarHeight: number = 0;
+                if (this.showGroupingBar && this.groupingBarModule) {
+                    gridGroupingBarHeight = this.groupingBarModule['groupingTable'] ? this.groupingBarModule['groupingTable'].offsetHeight : 0;
+                    chartGroupingBarHeight = this.groupingBarModule['groupingChartTable'] ?
+                        this.groupingBarModule['groupingChartTable'].offsetHeight : 0;
+                }
+                const tableTotalHeight: number = toolbarHeight + gridGroupingBarHeight + gridContentHeight + pagerHeight;
+                const chartElementHeight: number = (this.chart && this.chart.element) ? this.chart.element.offsetHeight : 0;
+                const chartTotalHeight: number = chartGroupingBarHeight + chartElementHeight;
+                const totalControlHeight: number = tableTotalHeight + chartTotalHeight;
+                const wrapper: HTMLElement = document.getElementById(this.element.id + 'containerwrapper');
+                if (wrapper && totalControlHeight > 0) {
+                    wrapper.style.height = `${totalControlHeight + 2}px`;
+                }
+            }
         }
         this.actionObj.actionName = this.getActionCompleteName();
         if (this.actionObj.actionName) {
@@ -6098,10 +6826,12 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
                     if (this.gridSettings.selectionSettings.mode !== 'Column' && !observedArgs.cancel) {
                         if (this.gridSettings.selectionSettings.type === 'Multiple' ? (!e.ctrlKey && !e.shiftKey) : true && this.selectedRowIndex !== rowIndex) {
                             this.selectedRowIndex = rowIndex;
+                            this.setProperties({ gridSettings: { selectedRowIndex: rowIndex - 1 }}, true);
                             this.grid.selectionModule.selectRow(rowIndex - this.renderModule.rowStartPos);
                             ele.classList.add(cls.FOCUSED_CLASS);
                         } else {
                             this.selectedRowIndex = undefined;
+                            this.setProperties({ gridSettings: { selectedRowIndex: undefined }}, true);
                         }
                     }
                 }
@@ -6197,6 +6927,7 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
         let pivotValue: IAxisSet = this.engineModule.pivotValues[rowIndex as number][colIndex as number] as IAxisSet;
         if (!e.ctrlKey && !e.shiftKey && pivotValue && this.selectedRowIndex !== rowIndex) {
             this.selectedRowIndex = rowIndex;
+            this.setProperties({ gridSettings: { selectedRowIndex: rowIndex - 1 }}, true);
             const parentLevel: number = pivotValue.level;
             let rCount: number = rowIndex;
             do {
@@ -6216,6 +6947,7 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
             }
         } else {
             this.selectedRowIndex = undefined;
+            this.setProperties({ gridSettings: { selectedRowIndex: undefined }}, true);
         }
     }
 
@@ -6946,7 +7678,10 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
             }
         }
         EventHandler.add(document, this.isAdaptive ? 'touchend' : 'click', this.removeButtonFocus, this);
-        window.addEventListener('resize', this.onWindowResize.bind(this), true);
+        if (!this.onWindowResizeHandler) {
+            this.onWindowResizeHandler = this.onWindowResize.bind(this);
+        }
+        window.addEventListener('resize', this.onWindowResizeHandler, true);
     }
     private headerScrollUpdate(): void {
         if (this.element.querySelector('.' + cls.MOVABLEHEADER_DIV).scrollLeft !== this.element.querySelector('.' + cls.GRID_CONTENT).querySelector('.' + cls.CONTENT_CLASS).scrollLeft) {
@@ -6964,12 +7699,17 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
             EventHandler.remove(this.element, 'mouseup', this.mouseUpHandler);
             EventHandler.remove(this.element, this.isAdaptive ? 'touchend' : 'contextmenu', this.mouseRclickHandler);
             if (this.virtualscrollModule && this.enableVirtualization && this.element.querySelector('.' + cls.GRID_CONTENT)) {
-                EventHandler.remove(this.element.querySelector('.' + cls.GRID_CONTENT).querySelector('.' + cls.CONTENT_CLASS),
-                                    'scroll', this.headerScrollUpdate);
+                EventHandler.remove(
+                    this.element.querySelector('.' + cls.GRID_CONTENT).querySelector('.' + cls.CONTENT_CLASS),
+                    'scroll', this.headerScrollUpdate
+                );
             }
         }
         EventHandler.remove(document, this.isAdaptive ? 'touchend' : 'click', this.removeButtonFocus);
-        window.removeEventListener('resize', this.onWindowResize.bind(this), true);
+        if (this.onWindowResizeHandler) {
+            window.removeEventListener('resize', this.onWindowResizeHandler, true);
+            this.onWindowResizeHandler = null;
+        }
     }
 
     /** @hidden */
@@ -7168,12 +7908,29 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
      * @returns {void}
      */
     public destroy(): void {
+        if (this.timeOutObj) {
+            clearTimeout(this.timeOutObj);
+            this.timeOutObj = undefined;
+        }
         this.removeInternalEvents();
         if (this.engineModule) {
             this.engineModule.fieldList = {};
             this.engineModule.rMembers = null;
             this.engineModule.cMembers = null;
             this.engineModule.valueMatrix = [];
+            this.engineModule.data = [];
+            this.engineModule.actualData = [];
+            this.engineModule.pivotValues = [];
+            this.engineModule.aggregatedValueMatrix = [];
+            this.engineModule.headerContent = null;
+            this.engineModule.valueContent = [];
+            this.engineModule.formatFields = {};
+            this.engineModule.calculatedFields = {};
+            this.engineModule.calculatedFormulas = {};
+            this.engineModule.groupingFields = {};
+            this.engineModule.saveDataHeaders = {};
+            this.engineModule.groupRawIndex = {};
+            this.engineModule.fieldKeys = {};
             this.engineModule = {} as PivotEngine;
         }
         if (this.olapEngineModule) {
@@ -7357,9 +8114,22 @@ export class PivotView extends Component<HTMLElement> implements INotifyProperty
     }
 
     /**
-     * Method to open the number formatting dialog to set the format dynamically.
+     * Opens the `Number Formatting` dialog to configure numeric formats such as decimals, currency, and percentage for value fields.
+     * This method presents the built-in UI for applying display formats to measures. The selected formats are written to {@link DataSourceSettings} and applied to the Pivot Table after the dialog is confirmed.
+     * > Note: This method requires the `Number Formatting` feature to be available at runtime. Ensure that the `NumberFormatting` module is injected into PivotView (for example, PivotView.Inject(NumberFormatting)) and that the `allowNumberFormatting` property is enabled in your configuration. If the module is not available, this method will have no effect.
      *
      * @returns {void}
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   allowNumberFormatting: true,
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * pivot.showNumberFormattingDialog();
+     *
+     * @see {@link DataSourceSettings}
+     * @see {@link allowNumberFormatting}
      */
     public showNumberFormattingDialog(): void {
         if (this.allowNumberFormatting) {

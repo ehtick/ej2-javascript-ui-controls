@@ -6,7 +6,7 @@ import { AccumulationSeriesModel } from './acc-base-model';
 import { IChartEventArgs } from '../../chart/model/chart-interface';
 import { LegendShape, SelectionPattern } from '../../common/utils/enum';
 import { Size } from '@syncfusion/ej2-svg-base';
-import { BorderModel, FontModel } from '../../common/model/base-model';
+import { BorderModel, FontModel, LinearGradientModel, RadialGradientModel } from '../../common/model/base-model';
 import { AccumulationChart } from '../accumulation';
 import { AccumulationTheme } from './enum';
 /**
@@ -134,6 +134,10 @@ export interface IAccPointRenderEventArgs extends IChartEventArgs {
     width?: number;
     /** Defines the current point fill pattern. */
     pattern: SelectionPattern;
+    /** Defines the linear gradient. */
+    linearGradient?: LinearGradientModel;
+    /**  Defines the radial gradient. */
+    radialGradient?: RadialGradientModel;
 }
 /**
  * Accumulation Chart Load or Loaded event arguments.
@@ -153,6 +157,8 @@ export interface IAccLegendRenderEventArgs extends IChartEventArgs {
     fill: string;
     /** Defines the legend text. */
     text: string;
+    /** Defines the legend template */
+    template: string;
 }
 export interface IAccumulationChartTemplate {
     /** Accumulation point x value. */

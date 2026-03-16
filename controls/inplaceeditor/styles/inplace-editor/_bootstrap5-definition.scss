@@ -1,3 +1,6 @@
+@use 'ej2-base/styles/definition/bootstrap5' as *;
+@forward 'ej2-base/styles/definition/bootstrap5';
+
 //Layout Variable Start
 $editor-big-value-text-font-size: $text-base !default;
 $editor-nrml-value-text-font-size: $text-sm !default;
@@ -67,3 +70,11 @@ $editable-overlay-icon: 0 !default;
 $editor-btn-icon-color: $icon-color !default;
 
 //Theme Variable End
+
+$padding-zero: 0;
+$editor-bgr-content-min-height: 70px !default;
+$editor-value-min-height: 38px !default;
+$editor-content-min-height: 60px !default;
+$editable-bgr-tip-width: auto !default;
+$editor-rtl-spinner-right: 5px !default;
+$inplace-editor-editable-radius: 4px !default;

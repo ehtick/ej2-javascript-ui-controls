@@ -20,7 +20,7 @@ const imageSRC: string = 'https://ej2.syncfusion.com/demos/src/rich-text-editor/
 
 const EDITOR_CONTENT: string = `<p>Text Content</p>
             <p><a class="e-rte-anchor" href="https://ej2.syncfusion.com/demos/#/tailwind3/rich-text-editor/tools.html"  aria-label="Open in new window">Link Content</a></p>
-            <p><img alt="Logo" style="width: 300px;" src="${imageSRC}" class="e-rte-image e-imginline"></p>
+            <p><img alt="Logo" style="width: 300px;" src="${imageSRC}" class="e-rte-image e-img-inline"></p>
             <p><span class="e-video-wrap" contenteditable="false"><video controls="" style="width: 30%;" class="e-rte-video e-video-inline"><source src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Ocean-Waves.mp4" type="video/mp4"></video></span><br></p>
             <table class="e-rte-table" style="width: 80.4728%; min-width: 0px; height: 406px;"><tbody><tr style="height: 6.38821%;"><td style="width: 50%;">Issues</td><td style="width: 50%;">Status<br></td></tr><tr style="height: 6.38821%;"><td style="width: 50%;" class="">Color picker popup opens outside the editor</td><td style="width: 50%;" class="">Not started</td></tr><tr style="height: 11.5479%;"><td style="width: 50%;" class="">Native quick toolbar opened when text selection on Mobile device</td><td style="width: 50%;" class="">Not Started<br></td></tr><tr style="height: 6.38821%;"><td style="width: 50%;" class="">On window resize dialog does not close.</td><td style="width: 50%;" class="">Not Started</td></tr><tr style="height: 11.5479%;"><td style="width: 50%;" class="">Text quick toolbar opened when the Image resize is completed.</td><td style="width: 50%;" class="">Not Started</td></tr></tbody></table>`;
 
@@ -81,7 +81,7 @@ describe("Quick Toolbar Module", () => {
             target.dispatchEvent(MOUSEUP_EVENT);
             setTimeout(() => {
                 expect(document.querySelectorAll('.e-rte-quick-popup')[0].id.indexOf('Image_Quick_Popup') >= 0).toBe(true);
-                expect(editor.quickToolbarSettings.image.length).toBe(14);
+                expect(editor.quickToolbarSettings.image.length).toBe(15);
                 editor.inputElement.blur();
                 done();
             }, 100);
@@ -166,7 +166,7 @@ describe("Quick Toolbar Module", () => {
             editor.inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
             const target: HTMLElement = editor.inputElement.querySelector('img');
             setCursorPoint(target, 0);
-            expect(editor.quickToolbarSettings.image.length).toBe(14);
+            expect(editor.quickToolbarSettings.image.length).toBe(15);
             target.dispatchEvent(MOUSEUP_EVENT);
             setTimeout(() => {
                 const imageQuickToolbar: HTMLElement = document.body.querySelector('.' + CLS_IMG_QUICK_TB);
@@ -176,15 +176,16 @@ describe("Quick Toolbar Module", () => {
                 expect(items[2].classList.contains('e-separator')).toBe(true);
                 expect(items[3].title).toBe('Align');
                 expect(items[4].title).toBe('Display');
-                expect(items[5].classList.contains('e-separator')).toBe(true);
-                expect(items[6].title).toBe('Insert Link');
-                expect(items[7].title).toBe('Open Link');
-                expect(items[8].title).toBe('Edit Link');
-                expect(items[9].title).toBe('Remove Link');
-                expect(items[10].classList.contains('e-separator')).toBe(true);
-                expect(items[11].title).toBe('Change Size');
-                expect(items[12].title).toBe('Replace');
-                expect(items[13].title).toBe('Remove');
+                expect(items[5].title).toBe('Wrap Text');
+                expect(items[6].classList.contains('e-separator')).toBe(true);
+                expect(items[7].title).toBe('Insert Link');
+                expect(items[8].title).toBe('Open Link');
+                expect(items[9].title).toBe('Edit Link');
+                expect(items[10].title).toBe('Remove Link');
+                expect(items[11].classList.contains('e-separator')).toBe(true);
+                expect(items[12].title).toBe('Change Size');
+                expect(items[13].title).toBe('Replace');
+                expect(items[14].title).toBe('Remove');
                 editor.inputElement.blur();
                 done();
             }, 100);
@@ -1786,7 +1787,7 @@ describe("Quick Toolbar Module", () => {
             rteObj.inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
             let target: HTMLElement = rteEle.querySelector('#imgTag');
             setCursorPoint(target, 0);
-            expect(rteObj.quickToolbarSettings.image.length).toBe(14);
+            expect(rteObj.quickToolbarSettings.image.length).toBe(15);
             target.dispatchEvent(MOUSEUP_EVENT);
             setTimeout(() => {
                 (document.querySelectorAll(".e-rte-dropdown-btn")[1] as HTMLElement).click();

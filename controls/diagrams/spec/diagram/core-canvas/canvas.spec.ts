@@ -8,6 +8,9 @@ import { DiagramElement } from '../../../src/diagram/core/elements/diagram-eleme
 import { Canvas } from '../../../src/diagram/core/containers/canvas';
 import { Thickness } from '../../../src/diagram/core/appearance';
 import { profile, inMB, getMemoryProfile } from '../../../spec/common.spec';
+import { ShadowModel, RadialGradientModel, StopModel, LinearGradientModel } from '../../../src/diagram/core/appearance-model';
+import { NodeModel } from '../../../src/diagram/objects/node-model';
+import { IExportOptions } from '../../../src/diagram/objects/interface/interfaces';
 
 describe('Diagram Control', () => {
     describe('Simple canvas panel without children', () => {
@@ -249,8 +252,6 @@ describe('Diagram Control', () => {
         });
     });
 
-
-
     describe('Simple canvas panel with padding and two children', () => {
         let diagram: Diagram;
         let ele: HTMLElement;
@@ -484,6 +485,7 @@ describe('Diagram Control', () => {
             done();
         });
     });
+    
     describe('Rotated canvas panel without size and two rotated children', () => {
         let diagram: Diagram;
         let ele: HTMLElement;
@@ -544,6 +546,53 @@ describe('Diagram Control', () => {
             //Check the final memory usage against the first usage, there should be little change if everything was properly deallocated
             expect(memory).toBeLessThan(profile.samples[0] + 0.25);
         })
+    });
+
+    describe('Export Diargram with Gradients', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+        let options: IExportOptions = {};
+        let svg: string | SVGElement;
+
+        beforeAll((): void => {
+            const isDef = (o: any) => o !== undefined && o !== null;
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                this.skip(); //Skips test (in Chai)
+                return;
+            }
+            ele = createElement('div', { id: 'diagramGradient' });
+            document.body.appendChild(ele);
+            let gradient1: LinearGradientModel = {
+                x1: 0, y1: 0,
+                x2: 50, y2: 50,
+                stops: [{ color: 'white', offset: 0 },
+                { color: '#6BA5D7', offset: 100 }],
+                type: 'Linear'
+            };
+            let node: NodeModel = {
+                id: 'node1', width: 150, height: 100, offsetX: 100, offsetY: 100,
+                annotations: [{ content: 'Node1', height: 50, width: 50 }],
+                style: {gradient: gradient1, strokeColor: 'white' }
+            };
+            
+            diagram = new Diagram({width: '1000px', height: '600px', nodes: [node] });
+            diagram.appendTo('#diagramGradient');
+        });
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+            (diagram as any) = null; (ele as any) = null;
+        });
+
+        it('Checking export diagram with gradient', (done: Function) => {
+            options.mode = 'Data';
+            options.format = 'PNG';
+            options.region = 'PageSettings';
+            svg = diagram.exportDiagram(options);
+            expect(svg).not.toBeNull();
+            done();
+        });
     });
     //write test case for nested canvas
 

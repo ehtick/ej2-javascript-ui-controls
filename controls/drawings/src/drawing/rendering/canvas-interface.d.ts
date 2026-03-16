@@ -14,6 +14,7 @@ export interface StyleAttributes {
     gradient?: GradientModel;
     class?: string;
     thickness?: number;
+    isSharpEdge?: boolean;
 }
 /** @private */
 export interface BaseAttributes extends StyleAttributes {
@@ -64,6 +65,8 @@ export interface PathAttributes extends BaseAttributes {
 }
 /** @private */
 export interface TextAttributes extends BaseAttributes {
+    isShapeLabel: boolean;
+    freeTextSelectorWidth: number;
     whiteSpace: string;
     content: string;
     breakWord: string;

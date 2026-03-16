@@ -139,6 +139,12 @@ describe('Data validation ->', () => {
             spreadsheet.dataBind();
             helper.invoke('selectRange', ['H2:H2']);
             expect(cellEle.querySelector('.e-validation-list')).toBeNull();
+            spreadsheet.allowDataValidation = false;
+            spreadsheet.dataBind();
+            expect(cellEle.querySelector('.e-validation-list')).toBeNull();
+            spreadsheet.allowDataValidation = true;
+            spreadsheet.dataBind();
+            expect(cellEle.querySelector('.e-validation-list')).toBeNull();
             helper.invoke('selectRange', ['H3:H3']);
             expect(cellEle.querySelector('.e-validation-list')).not.toBeNull();
             done();
@@ -3281,12 +3287,17 @@ describe('Data validation ->', () => {
             }
             done();
         });
-        it('Time data validation checking with public method', (done: Function) => {
+        it('Time and date data validation checking with public method', (done: Function) => {
             const spreadsheet: any = helper.getInstance();
             helper.invoke('addDataValidation', [{ type: 'Time', operator: 'EqualTo', value1: '22:23:34' }, 'D2']);
-            const cell: CellModel = spreadsheet.sheets[0].rows[1].cells[3];
-            expect(JSON.stringify(cell.validation)).toBe('{"type":"Time","operator":"EqualTo","value1":"22:23:34"}');
+            expect(JSON.stringify(spreadsheet.sheets[0].rows[1].cells[3].validation)).toBe('{"type":"Time","operator":"EqualTo","value1":"0.9330324074074074"}');
             expect(spreadsheet.sheets[0].rows[1].cells[3].validation).toBeDefined();
+            helper.invoke('addDataValidation', [{ type: 'Time', operator: 'EqualTo', value1: '09:10:32 AM' }, 'D3']);
+            expect(JSON.stringify(spreadsheet.sheets[0].rows[2].cells[3].validation)).toBe('{"type":"Time","operator":"EqualTo","value1":"0.38231481481481483"}');
+            expect(spreadsheet.sheets[0].rows[2].cells[3].validation).toBeDefined();
+            helper.invoke('addDataValidation', [{ type: 'Date', operator: 'Between', value1: '2/1/2014', value2: '10/2/2014', ignoreBlank: true}, 'B2:B11']);
+            expect(JSON.stringify(spreadsheet.sheets[0].rows[2].cells[1].validation)).toBe('{"type":"Date","operator":"Between","value1":"41671","value2":"41914","ignoreBlank":true}');
+            expect(spreadsheet.sheets[0].rows[2].cells[1].validation).toBeDefined();
             const skipProps: string[] = ['dataSource', 'startCell', 'query', 'showFieldAsHeader'];
             for (let i: number = 0, sheetCount: number = spreadsheet.sheets.length; i < sheetCount; i++) {
                 spreadsheet.workbookSaveModule.getStringifyObject(spreadsheet.sheets[i], skipProps, i);

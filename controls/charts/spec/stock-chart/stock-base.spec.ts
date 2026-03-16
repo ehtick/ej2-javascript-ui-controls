@@ -967,6 +967,122 @@ describe('default stock chart', () => {
         //     chart.refresh();
         // });
     })
+
+    describe('checking linear gradient for stock chart series', () => {
+        let chart: StockChart;
+        let chartElement: Element = createElement('div', { id: 'stock' });
+        let element: Element;
+        beforeAll(() => {
+            document.body.appendChild(chartElement);
+            chart = new StockChart({
+                width: '1100px',
+                height: '455px',
+                primaryXAxis: {
+                    valueType: 'DateTime'
+                },
+                indicatorType: [],
+                trendlineType: [],
+                series: [
+                    {
+                        dataSource: chartData, xName: 'x', name: 'China', legendShape: 'Pentagon',
+                        linearGradient: {
+                            x1: 0, y1: 0,
+                            x2: 0, y2: 1,
+                            gradientColorStop: [
+                                { color: 'red', offset: 0, opacity: 1, lighten: 0.3, brighten: 0.3 },
+                                { color: 'blue', offset: 100, opacity: 1, lighten: 0.3, brighten: 0.3 },
+                            ]
+                        }
+                    }
+                ],
+                title: 'Unemployment Rates 1975-2010',
+                tooltip: { enable: true },
+                legendSettings: {
+                    visible: true,
+                    position: 'Top',
+                    alignment: 'Center',
+                    shapeHeight: 15, shapeWidth: 15
+                }
+            });
+            chart.appendTo('#stock');
+        });
+        afterAll((): void => {
+            chart.destroy();
+            chartElement.remove();
+        });
+        it('Linear Gradient in series and legends', (done: Function) => {
+            chart.loaded = (args: Object): void => {
+                element = document.getElementById('stock_stockChart_chart_Series_0_Point_19');
+                expect(element.getAttribute('fill') === 'url(#stock_stockChart_chart_series_0_linear_gradient)').toBe(true);
+
+                element = document.getElementById('stock_stockChart_rangeSelector_Series_0');
+                expect(element.getAttribute('stroke') === 'url(#stock_series_0_linear_gradient)').toBe(true);
+
+                element = document.getElementById('stock_chart_legend_shape_0');
+                expect(element.getAttribute('fill') === 'url(#stock_stockChart_chart_series_0_linear_gradient)').toBe(true);
+                done();
+            };
+            chart.refresh();
+        });
+    });
+
+    describe('checking radial gradient for stock chart series', () => {
+        let chart: StockChart;
+        let chartElement: Element = createElement('div', { id: 'stock' });
+        let element: Element;
+        beforeAll(() => {
+            document.body.appendChild(chartElement);
+            chart = new StockChart({
+                width: '1100px',
+                height: '455px',
+                primaryXAxis: {
+                    valueType: 'DateTime'
+                },
+                indicatorType: [],
+                trendlineType: [],
+                series: [
+                    {
+                        dataSource: chartData, xName: 'x', name: 'China', legendShape: 'Pentagon',
+                        radialGradient: {
+                            cx: 0.5, cy: 0.5, r: 1,
+                            fx: 0.5, fy: 0.5,
+                            gradientColorStop: [
+                                { color: 'red', offset: 0, opacity: 1, lighten: 0.2, brighten: 0 },
+                                { color: 'blue', offset: 100, opacity: 1, lighten: 0, brighten: 0.5 },
+                            ]
+                        }
+                    }
+                ],
+                title: 'Unemployment Rates 1975-2010',
+                tooltip: { enable: true },
+                legendSettings: {
+                    visible: true,
+                    position: 'Top',
+                    alignment: 'Center',
+                    shapeHeight: 15, shapeWidth: 15
+                }
+            });
+            chart.appendTo('#stock');
+        });
+        afterAll((): void => {
+            chart.destroy();
+            chartElement.remove();
+        });
+        it('Radial Gradient in series and legends', (done: Function) => {
+            chart.loaded = (args: Object): void => {
+                element = document.getElementById('stock_stockChart_chart_Series_0_Point_19');
+                expect(element.getAttribute('fill') === 'url(#stock_stockChart_chart_series_0_radial_gradient)').toBe(true);
+
+                element = document.getElementById('stock_stockChart_rangeSelector_Series_0');
+                expect(element.getAttribute('stroke') === 'url(#stock_series_0_radial_gradient)').toBe(true);
+
+                element = document.getElementById('stock_chart_legend_shape_0');
+                expect(element.getAttribute('fill') === 'url(#stock_stockChart_chart_series_0_radial_gradient)').toBe(true);
+                done();
+            };
+            chart.refresh();
+        });
+    });
 it('memory leak', () => {
     profile.sample();
     let average: any = inMB(profile.averageChange)

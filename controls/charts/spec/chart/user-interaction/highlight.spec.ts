@@ -11,6 +11,7 @@ import { ColumnSeries } from '../../../src/chart/series/column-series';
 import { StackingColumnSeries } from '../../../src/chart/series/stacking-column-series';
 import { StackingAreaSeries } from '../../../src/chart/series/stacking-area-series';
 import { AreaSeries } from '../../../src/chart/series/area-series';
+import { Tooltip } from '../../../src/chart/user-interaction/tooltip';
 import { Legend } from '../../../src/chart/legend/legend';
 import { MouseEvents } from '../base/events.spec';
 import { DataEditing } from '../../../src/chart/user-interaction/data-editing';
@@ -22,7 +23,7 @@ import { ILoadedEventArgs } from '../../../src/chart/model/chart-interface';
 import { Index, Indexes } from '../../../src/common/model/base';
 
 Chart.Inject(
-    LineSeries, DataEditing, StepLineSeries, ColumnSeries, AreaSeries, StackingAreaSeries, Highlight,
+    LineSeries, DataEditing, StepLineSeries, ColumnSeries, AreaSeries, StackingAreaSeries, Highlight, Tooltip,
     StackingColumnSeries, Legend
 );
 let seriesCollection: SeriesModel[] = [];
@@ -109,6 +110,30 @@ describe('Chart Control Highlight ', () => {
         };
         chartObj.loaded = loaded;
         chartObj.refresh();
+    });
+    it('Highlight Mode Point with tooltip', (done: Function) => {
+        loaded = () => {
+            element = document.getElementById(id + '_Series_0_Point_' + 2);
+            let rect = element.getBoundingClientRect();
+            let x = Math.ceil(rect.left + rect.width / 2);
+            let y = Math.ceil(rect.top + rect.height / 2);
+            trigger.mousemovetEvent(element, x, y);
+            expect(chartObj.tooltip.enable).toBe(true);
+            expect(element.getAttribute('opacity')).toBe('1');
+            expect(document.getElementsByClassName(selection + '0').length).toBe(2);
+            element = document.getElementById(id + '_Series_0_Point_' + 5);
+            rect = element.getBoundingClientRect();
+            x = Math.ceil(rect.left + rect.width / 2);
+            y = Math.ceil(rect.top + rect.height / 2);
+            trigger.mousemovetEvent(element, x, y);
+            expect(element.getAttribute('opacity')).toBe('1');
+            expect(document.getElementsByClassName(selection + '0').length).toBe(2);
+            done();
+        };
+        chartObj.loaded = loaded;
+        chartObj.tooltip = { enable: true };
+        chartObj.refresh();
+        chartObj.tooltip = { enable: false };
     });
     it('Highlight Mode Cluster', (done: Function) => {
         loaded = () => {

@@ -76,7 +76,8 @@ export class Filter {
         if (this.cBox) { this.cBox.remove(); this.cBox = null; }
         const filterPopupElement: NodeListOf<Element> = document.querySelectorAll('.e-filter-popup');
         if (filterPopupElement) {
-            filterPopupElement.forEach(function (element: Element): void {
+            filterPopupElement.forEach((element: HTMLElement): void => {
+                EventHandler.remove(element, getStartEvent(), this.filterMouseDownHandler);
                 element.remove();
             });
         }

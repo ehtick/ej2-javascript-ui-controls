@@ -6,9 +6,9 @@ import { CellStyleModel, getRangeAddress, getSheetIndexFromId, getSheetName, Num
 import { RowModel, getFormattedCellObject, workbookFormulaOperation, checkIsFormula, Sheet, mergedRange } from '../../workbook/index';
 import { ExtendedSheet, Cell, setMerge, MergeArgs, getCellIndexes, ChartModel } from '../../workbook/index';
 import { ribbonClick, ICellRenderer, copy, paste, PasteSpecialType, initiateFilterUI, setPosition, isLockedCells, focus, readonlyAlert, BeforeActionData, isValidUrl, refreshCommentsPane } from '../common/index';
-import { BeforePasteEventArgs, hasTemplate, getTextHeightWithBorder, getLines, getExcludedColumnWidth, editAlert } from '../common/index';
+import { BeforePasteEventArgs, hasTemplate, getTextHeightWithBorder, getLines, getExcludedColumnWidth, editAlert, getDefaultHeight } from '../common/index';
 import { enableToolbarItems, rowHeightChanged, completeAction, DialogBeforeOpenEventArgs, insertImage } from '../common/index';
-import { clearCopy, selectRange, dialog, contentLoaded, tabSwitch, cMenuBeforeOpen, createImageElement, setMaxHgt, getDefaultHeight } from '../common/index';
+import { clearCopy, selectRange, dialog, contentLoaded, tabSwitch, cMenuBeforeOpen, createImageElement, setMaxHgt } from '../common/index';
 import { getMaxHgt, setRowEleHeight, locale, deleteImage, getRowIdxFromClientY, getColIdxFromClientX, cut } from '../common/index';
 import { colWidthChanged, PasteModelArgs, getFilterRange, FilterInfoArgs } from '../common/index';
 import { Dialog } from '../services/index';
@@ -402,6 +402,7 @@ export class Clipboard {
                         cell = isExternal ? (rows[i as number] && rows[i as number].cells[j as number]) || {} :
                             extend({}, (isInRange && cRows[i as number] && cRows[i as number].cells[j as number]) ?
                                 cRows[i as number].cells[j as number] : getCell(i, j, prevSheet), null, true);
+                        const cellFormat: string = cell.format;
                         column = getColumn(prevSheet, j);
                         if (!cell.validation && checkColumnValidation(column, i, j)) {
                             const validation: ValidationModel = Object.assign({}, column.validation);
@@ -515,6 +516,13 @@ export class Clipboard {
                                         const newFormula: string = getUpdatedFormula([x + l, colInd], [i, j], prevSheet, this.parent);
                                         if (!isNullOrUndefined(newFormula)) {
                                             cell.formula = newFormula;
+                                            if (cell.format) {
+                                                delete cell.format;
+                                                delete cell.formattedText;
+                                            }
+                                            if (cellFormat) {
+                                                cell.format = cellFormat;
+                                            }
                                         }
                                     }
                                     if (this.copiedInfo && !this.copiedInfo.isCut && cell.validation) {
@@ -1172,7 +1180,7 @@ export class Clipboard {
                     }
                     Object.keys(cell.style).forEach((style: string) => {
                         let cellStyleValue: string = cell.style[`${style}`];
-                        if (style.includes('border') && cellStyleValue.includes('dashed') && cellStyleValue.includes('1px')) {
+                        if (style.includes('border') && cellStyleValue && cellStyleValue.includes('dashed') && cellStyleValue.includes('1px')) {
                             cellStyleValue = cellStyleValue.replace('1px', 'thin');
                         }
                         const regex: RegExpMatchArray = style.match(/[A-Z]/);
@@ -1642,6 +1650,7 @@ export class Clipboard {
 
     public destroy(): void {
         this.removeEventListener();
+        this.clearCopiedInfo();
         const ele: HTMLInputElement = this.getClipboardEle();
         detach(ele);
         this.parent = null;

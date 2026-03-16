@@ -1,7 +1,7 @@
 import { L10n } from '@syncfusion/ej2-base';
 import { BlockActionItemModel, CommandItemModel, ContextMenuItemModel, LabelItemModel, CodeLanguageModel } from '../../models/index';
 import { BlockType, CommandName } from '../../models/enums';
-import { IToolbarItemModel } from '../../models/interface';
+import { IToolbarItemModel, TransformItemModel } from '../../models/interface';
 
 /**
  * Checks if the current operating system is macOS.
@@ -266,6 +266,12 @@ export function getBlockActionsMenuItems(): BlockActionItemModel[] {
 export function getInlineToolbarItems(): IToolbarItemModel[] {
     const modifier: string = getModifierKey();
     const inlineToolbarItems: IToolbarItemModel[] = [
+        {
+            id: 'transform',
+            tooltipText: 'Transform to',
+            command: CommandName.Transform,
+            template: '<span class="e-toolbar-transform-dropdown e-tbar-btn" id="toolbar-transform-dropdown"><span class="e-be-transform-block"></span></span>'
+        },
         { id: 'bold', iconCss: 'e-icons e-bold', tooltipText: `Bold (${modifier}+B)`, command: CommandName.Bold, htmlAttributes: { 'data-command': CommandName.Bold } },
         { id: 'italic', iconCss: 'e-icons e-italic', tooltipText: `Italic (${modifier}+I)`, command: CommandName.Italic, htmlAttributes: { 'data-command': CommandName.Italic } },
         { id: 'underline', iconCss: 'e-icons e-underline', tooltipText: `Underline (${modifier}+U)`, command: CommandName.Underline, htmlAttributes: { 'data-command': CommandName.Underline } },
@@ -274,19 +280,27 @@ export function getInlineToolbarItems(): IToolbarItemModel[] {
         { id: 'lowercase', iconCss: 'e-icons e-lower-case', tooltipText: 'Lowercase', command: CommandName.Lowercase, htmlAttributes: { 'data-command': CommandName.Lowercase } },
         { id: 'superscript', iconCss: 'e-icons e-superscript', tooltipText: 'Superscript', command: CommandName.Superscript, htmlAttributes: { 'data-command': CommandName.Superscript } },
         { id: 'subscript', iconCss: 'e-icons e-subscript', tooltipText: 'Subscript', command: CommandName.Subscript, htmlAttributes: { 'data-command': CommandName.Subscript } },
+        { id: 'inlineCode', iconCss: 'e-icons e-insert-code', tooltipText: `InlineCode (${modifier}+\`)`, command: CommandName.InlineCode, htmlAttributes: { 'data-command': CommandName.InlineCode } },
         {
             id: 'color',
             tooltipText: 'Color',
             command: CommandName.Color,
             htmlAttributes: { 'data-command': CommandName.Color },
-            template: '<span class="e-toolbar-color-dropdown e-tbar-btn" id="toolbar-color-dropdown"></span>'
+            template: '<span id="toolbar-color-dropdown"></span>'
         },
         {
             id: 'bgColor',
             tooltipText: 'Background Color',
             command: CommandName.BackgroundColor,
             htmlAttributes: { 'data-command': CommandName.BackgroundColor },
-            template: '<span class="e-toolbar-bgcolor-dropdown e-tbar-btn" id="toolbar-bgcolor-dropdown"></span>'
+            template: '<span id="toolbar-bgcolor-dropdown"></span>'
+        },
+        {
+            id: 'link',
+            iconCss: 'e-icons e-link',
+            tooltipText: `Link (${modifier}+K)`,
+            command: CommandName.Link,
+            htmlAttributes: { 'data-command': CommandName.Link }
         }
     ];
     return inlineToolbarItems;
@@ -367,7 +381,16 @@ export function getLocaleItems(): { [key: string]: string } {
         linkInsert: 'Insert',
         linkRemove: 'Remove',
         linkCancel: 'Cancel',
-        codeCopyTooltip: 'Copy code'
+        codeCopyTooltip: 'Copy code',
+        imagePlaceholder: 'Add an image',
+        embedImage: 'Embed image',
+        tabHeaderUpload: 'Upload',
+        tabHeaderEmbed: 'Embed link',
+        embedPlaceholder: 'Paste the image link...',
+        imgPlaceholderAriaLabel: 'Insert image - press Enter or Space to open upload dialog',
+        badgeSuccess: 'Success',
+        badgeError: 'Error',
+        imageUrl: 'Image URL input'
     };
 }
 
@@ -402,6 +425,82 @@ export function getCurrentLocaleJson(localeInstance: L10n): { [key: string]: str
         linkInsert: localeInstance.getConstant('linkInsert'),
         linkRemove: localeInstance.getConstant('linkRemove'),
         linkCancel: localeInstance.getConstant('linkCancel'),
-        codeCopyTooltip: localeInstance.getConstant('codeCopyTooltip')
+        codeCopyTooltip: localeInstance.getConstant('codeCopyTooltip'),
+        imagePlaceholder: localeInstance.getConstant('imagePlaceholder'),
+        embedImage: localeInstance.getConstant('embedImage'),
+        tabHeaderUpload: localeInstance.getConstant('tabHeaderUpload'),
+        tabHeaderEmbed: localeInstance.getConstant('tabHeaderEmbed'),
+        embedPlaceholder: localeInstance.getConstant('embedPlaceholder'),
+        imgPlaceholderAriaLabel: localeInstance.getConstant('imgPlaceholderAriaLabel'),
+        badgeSuccess: localeInstance.getConstant('badgeSuccess'),
+        badgeError: localeInstance.getConstant('badgeError'),
+        imageUrl: localeInstance.getConstant('imageUrl')
     };
 }
+
+export const defaultTransformModel: TransformItemModel[] = [
+    {
+        id: 'paragraph-command',
+        label: 'Paragraph',
+        type: BlockType.Paragraph,
+        iconCss: 'e-icons e-be-paragraph',
+        shortcut: `${getModifierKey()}+Alt+P`,
+        tooltip: 'Paragraph'
+    },
+    {
+        id: 'heading1-command',
+        label: 'Heading 1',
+        type: BlockType.Heading,
+        iconCss: 'e-icons e-be-h1',
+        shortcut: `${getModifierKey()}+Alt+1`,
+        tooltip: 'Heading 1'
+    },
+    {
+        id: 'heading2-command',
+        label: 'Heading 2',
+        type: BlockType.Heading,
+        iconCss: 'e-icons e-be-h2',
+        shortcut: `${getModifierKey()}+Alt+2`,
+        tooltip: 'Heading 2'
+    },
+    {
+        id: 'heading3-command',
+        label: 'Heading 3',
+        type: BlockType.Heading,
+        iconCss: 'e-icons e-be-h3',
+        shortcut: `${getModifierKey()}+Alt+3`,
+        tooltip: 'Heading 3'
+    },
+    {
+        id: 'heading4-command',
+        label: 'Heading 4',
+        type: BlockType.Heading,
+        iconCss: 'e-icons e-be-h4',
+        shortcut: `${getModifierKey()}+Alt+4`,
+        tooltip: 'Heading 4'
+    },
+    {
+        id: 'checklist-command',
+        label: 'Checklist',
+        type: BlockType.Checklist,
+        iconCss: 'e-icons e-check-box',
+        shortcut: `${getModifierKey()}+Shift+7`,
+        tooltip: 'Checklist'
+    },
+    {
+        id: 'bullet-list-command',
+        label: 'Bullet List',
+        type: BlockType.BulletList,
+        iconCss: 'e-icons e-list-unordered',
+        shortcut: `${getModifierKey()}+Shift+8`,
+        tooltip: 'Bullet List'
+    },
+    {
+        id: 'numbered-list-command',
+        label: 'Numbered List',
+        type: BlockType.NumberedList,
+        iconCss: 'e-icons e-list-ordered',
+        shortcut: `${getModifierKey()}+Shift+9`,
+        tooltip: 'Numbered List'
+    }
+];

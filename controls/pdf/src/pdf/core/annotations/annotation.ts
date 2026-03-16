@@ -12268,15 +12268,26 @@ export class PdfRubberStampAnnotation extends PdfComment {
         if (!this._appearance) {
             this._drawStampAppearance(template);
         }
-        if (this._dictionary.has('AP')) {
-            _removeDuplicateReference(this._dictionary.get('AP'), this._crossReference, 'N');
+        let hasAppearanceReference: boolean;
+        let appearanceReference: _PdfReference;
+        if (this._dictionary && this._dictionary.has('AP')) {
+            const appearance: _PdfDictionary = this._dictionary.get('AP');
+            if (appearance && appearance.has('N')) {
+                appearanceReference = appearance.getRaw('N');
+                if (appearanceReference instanceof _PdfReference) {
+                    this._crossReference._cacheMap.delete(appearanceReference);
+                    hasAppearanceReference = true;
+                }
+            }
         }
         const dictionary: _PdfDictionary = new _PdfDictionary();
         template._content.dictionary._updated = true;
-        const reference: _PdfReference = this._crossReference._getNextReference();
-        this._crossReference._cacheMap.set(reference, template._content);
-        template._content.reference = reference;
-        dictionary.set('N', reference);
+        if (!hasAppearanceReference) {
+            appearanceReference = this._crossReference._getNextReference();
+        }
+        this._crossReference._cacheMap.set(appearanceReference, template._content);
+        template._content.reference = appearanceReference;
+        dictionary.set('N', appearanceReference);
         dictionary._updated = true;
         this._dictionary.set('AP', dictionary);
         this._dictionary.set('Border', [this.border.hRadius, this.border.vRadius, this.border.width]);

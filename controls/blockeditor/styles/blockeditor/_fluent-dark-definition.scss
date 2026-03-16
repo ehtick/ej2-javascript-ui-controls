@@ -38,6 +38,8 @@ $be-floating-icon-border-color: transparent !default;
 $be-floating-icon-color: $secondary-text-color !default;
 $be-floating-icon-color-hover: $secondary-text-color-pressed !default;
 $be-floating-icon-hover-bg-color: $secondary-bg-color-pressed !default;
+$be-drag-icon-selected-color: $secondary-text-color-pressed !default;
+$be-drag-icon-selected-bg-color: $secondary-bg-color-pressed !default;
 
 /* ======== Inline toolbar Styles ======== */
 $be-inline-toolbar-border-radius: 6px !default;
@@ -49,6 +51,31 @@ $be-inline-toolbar-item-active-bg-color: $content-bg-color-alt5 !default;
 $be-inline-toolbar-item-active-color: $icon-color !default;
 $be-inline-toolbar-items-margin: 0 8px !default;
 $be-inline-toolbar-item-padding: 0 !default;
+
+$be-colorpicker-custom-palette-padding: 0 !default;
+$be-color-picker-margin-top: 3px !default;
+$be-color-picker-width: 100%;
+$be-color-picker-height: auto;
+
+$be-split-btn-focus-bg: none !default;
+$be-button-focus-box-shadow: inset 0 0 0 1px !default;
+$be-icon-color: $icon-color !default;
+$be-hover-icons-color: $icon-color !default;
+
+$be-quick-tb-btn-hover: $content-bg-color-alt4 !default;
+$be-quick-pop-item-focus-bg: $content-bg-color-alt4 !default;
+$be-quick-item-active-bg: $content-bg-color-alt5 !default;
+$be-split-btn-border-radius: $inputs-radius !default;
+$be-default-btn-bg: $transparent !default;
+$be-split-btn-border: 1px solid transparent !default;
+$be-quick-popup-bg-color: $flyout-bg-color !default;
+$be-split-btn-hover-bg: $content-bg-color-alt3 !default;
+$be-hover-split-btn-border: 1px solid transparent !default;
+$be-split-btn-span-hover-bg: $content-bg-color-alt5 !default;
+$be-active-btn-icons-color: $content-text-color !default;
+$be-default-icon-color: $icon-color !default;
+$be-drop-btn-active-bg: $content-bg-color-alt5 !default;
+$be-btn-active-bg: $content-bg-color-alt4 !default;
 
 /* ======== Block level syles ======== */
 $be-block-placeholder-color: $placeholder-text-color !default;
@@ -82,6 +109,54 @@ $be-toggle-icon-margin: 8px !default;
 $be-toggle-icon-height-bigger: 16px !default;
 $be-toggle-icon-width-bigger: 16px !default;
 $be-toggle-icon-margin-bigger: 12px !default;
+
+/* ======== Selection Overlay ======== */
+$be-selection-overlay-border-width: 1px !default;
+$be-selection-overlay-border-radius: 4px !default;
+$be-selection-overlay-border-color: $primary-light !default;
+$be-selection-overlay-bg-color: $primary-light !default;
+
+/* ======== Image Placeholder Styles ======== */
+$be-image-placeholder-ele-height: 48px !default;
+$be-image-placeholder-ele-height-bigger: 56px !default;
+$be-image-placeholder-ele-border-radius: 12px !default;
+$be-image-placeholder-ele-padding: 13px 16px !default;
+$be-image-placeholder-ele-padding-bigger: 16px !default;
+$be-image-placeholder-text-icon-gap: 8px !default;
+$be-image-placeholder-text-icon-gap-bigger: 8px !default;
+$be-image-placeholder-icon-font-weight: 400 !default;
+$be-image-placeholder-icon-font-weight-bigger: 400 !default;
+$be-image-placeholder-icon-font-size: 16px !default;
+$be-image-placeholder-icon-font-size-bigger: 16px !default;
+$be-image-placeholder-text-font-size: 14px !default;
+$be-image-placeholder-text-font-size-bigger: 16px !default;
+$be-image-placeholder-text-font-weight: 400 !default;
+$be-image-placeholder-text-font-weight-bigger: 400 !default;
+$be-image-placeholder-text-line-height: 22px !default;
+$be-image-placeholder-text-line-height-bigger: 24px !default;
+$be-image-placeholder-border-width: 1px !default;
+$be-image-placeholder-border-color: $border-light !default;
+$be-image-placeholder-bg-color: $content-bg-color !default;
+$be-image-placeholder-icon-color: $icon-color !default;
+$be-image-placeholder-text-color: $placeholder-text-color !default;
+
+/* ======== Image Uploader popup ======== */
+$be-image-upload-popup-radius: 8px !default;
+$be-image-upload-popup-tab-content-padding: 10px 10px 20px 10px !default;
+$be-image-upload-popup-tab-content-padding-bigger: 20px 28px !default;
+$be-embed-btn-padding-top: 16px !default;
+$be-embed-btn-padding-top-bigger: 16px !default;
+$be-image-upload-popup-boder-width: 1px !default;
+$be-image-upload-popup-boder-color: rgba(255, 255, 255, 0) !default;
+$be-image-upload-popup-bg-color: $content-bg-color !default;
+$be-image-upload-popup-box-shadow: $shadow-lg !default;
+$be-upload-popup-tab-content-border-top-color: $border-dark !default;
+$be-upload-popup-drag-boder-color: $primary-border-color !default;
+$be-upload-popup-drag-hover-color: $primary-lighter !default;
+$be-image-block-badge-top: 8px !default;
+$be-image-block-badge-right: 8px !default;
+$be-image-block-badge-top-bigger: 8px !default;
+$be-image-block-badge-right-bigger: 8px !default;
 
 /* ======== Divider Block ======== */
 $be-divider-selected-bg-color: $primary-light !default;

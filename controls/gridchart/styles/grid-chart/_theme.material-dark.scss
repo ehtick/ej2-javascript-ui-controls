@@ -1,0 +1,5 @@
+@use 'sass:color';
+@use 'ej2-base/styles/common/mixin' as *;
+@import 'ej2-grids/styles/grid/theme-variables.material-dark';
+@import './theme-variables.material-dark';
+@import './_theme';

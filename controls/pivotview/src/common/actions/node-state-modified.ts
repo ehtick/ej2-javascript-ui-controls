@@ -3,6 +3,7 @@ import { PivotCommon } from '../base/pivot-common';
 import * as cls from '../base/css-constant';
 import { DragAndDropEventArgs } from '@syncfusion/ej2-navigations';
 import { OlapEngine } from '../../base/olap/engine';
+import { PivotView } from '../../pivotview';
 
 /**
  * `DialogAction` module is used to handle field list dialog related behaviour.
@@ -105,7 +106,7 @@ export class NodeStateModified {
                 nodeDropped = false;
                 return nodeDropped;
             }
-            droppedPosition = this.getButtonPosition(args.target, droppedClass);
+            droppedPosition = this.getButtonPosition(args.target, args.element, droppedClass);
         } else if (this.parent.engineModule.fieldList[fieldName as string]) {
             this.parent.engineModule.fieldList[fieldName as string].isSelected = false;
             if (this.parent.dataType === 'olap') {
@@ -116,17 +117,51 @@ export class NodeStateModified {
         return nodeDropped;
     }
 
-    private getButtonPosition(target: HTMLElement, droppedClass: string): number {
+    private getButtonPosition(target: HTMLElement, element: HTMLElement, droppedClass: string): number {
         let droppedPosition: number = -1;
-        let targetBtn: Element = closest(target, '.' + cls.PIVOT_BUTTON_WRAPPER_CLASS) as HTMLElement;
-        if (!isNullOrUndefined(targetBtn)) {
-            targetBtn = targetBtn.querySelector('.' + cls.PIVOT_BUTTON_CLASS);
-            const axisPanel: Element = this.parent.element.querySelector('.e-' + droppedClass);
-            const pivotButtons: HTMLElement[] = [].slice.call(axisPanel.querySelectorAll('.' + cls.PIVOT_BUTTON_CLASS));
-            for (let i: number = 0, n: number = pivotButtons.length; i < n; i++) {
-                if (pivotButtons[i as number].id === targetBtn.id) {
-                    droppedPosition = i;
-                    break;
+        const draggedClass: string = !isNullOrUndefined(element) && !isNullOrUndefined(element.closest('.e-tabular-pvt-btn')) ?
+            element.closest('.e-tabular-pvt-btn').getAttribute('data-tag').split(':')[0] : '';
+        if ((this.parent.dataSourceUpdate.control as PivotView).isTabular && droppedClass === 'rows' && draggedClass === 'rows') {
+            let targetBtn: Element = closest(target, '.' + cls.PIVOT_BUTTON_WRAPPER_CLASS) as HTMLElement ?
+                closest(target, '.' + cls.PIVOT_BUTTON_WRAPPER_CLASS) as HTMLElement :
+                target.querySelector('.' + cls.PIVOT_BUTTON_WRAPPER_CLASS);
+            if (!isNullOrUndefined(targetBtn)) {
+                targetBtn = targetBtn.querySelector('.' + cls.PIVOT_BUTTON_CLASS);
+                const DraggedField: string = element.closest('.e-pivot-button').getAttribute('data-uid');
+                const targetField: string = targetBtn.getAttribute('data-uid');
+                if (DraggedField === '[Measures]') {
+                    const allRowGroupingBars: NodeListOf<Element> = this.parent.element.querySelectorAll('.e-group-rows');
+                    const allRowButtons: HTMLElement[] = [];
+                    allRowGroupingBars.forEach((groupingBar: Element) => {
+                        const buttons: HTMLElement[] = [].slice.call(groupingBar.querySelectorAll('.' + cls.PIVOT_BUTTON_CLASS));
+                        allRowButtons.push(...buttons);
+                    });
+                    for (let i: number = 0; i < allRowButtons.length; i++) {
+                        if (allRowButtons[i as number].id === targetBtn.id) {
+                            droppedPosition = i;
+                            break;
+                        }
+                    }
+                } else {
+                    for (let i: number = 0; i < this.parent.dataSourceSettings.rows.length; i++) {
+                        if (this.parent.dataSourceSettings.rows[i as number].name === targetField) {
+                            droppedPosition = i;
+                            break;
+                        }
+                    }
+                }
+            }
+        } else {
+            let targetBtn: Element = closest(target, '.' + cls.PIVOT_BUTTON_WRAPPER_CLASS) as HTMLElement;
+            if (!isNullOrUndefined(targetBtn)) {
+                targetBtn = targetBtn.querySelector('.' + cls.PIVOT_BUTTON_CLASS);
+                const axisPanel: Element = this.parent.element.querySelector('.e-' + droppedClass);
+                const pivotButtons: HTMLElement[] = [].slice.call(axisPanel.querySelectorAll('.' + cls.PIVOT_BUTTON_CLASS));
+                for (let i: number = 0, n: number = pivotButtons.length; i < n; i++) {
+                    if (pivotButtons[i as number].id === targetBtn.id) {
+                        droppedPosition = i;
+                        break;
+                    }
                 }
             }
         }

@@ -935,3 +935,34 @@ describe('templatecompiler Spec for empty method ', () => {
         (<any>listObj).remainingItems(datasource1 , fields);
     })
 });
+describe('Skeleton instance coverage', () => {
+    let listObj: any;
+    let element: HTMLElement;
+    let datasource1 = [
+            { name: 'Audi', id: "1" },
+            { name: 'BMW', id: "2" },
+            { name: 'Bently', id: "3" },
+            { name: 'Rolls Royce', id: "4" },
+            { name: 'Tata', id: "5" }
+        ];
+    let fields = {
+        value: 'id',
+        text: 'name',
+    };
+    beforeEach(() => {
+        element = createElement('div', { id: 'dropdownbase' });
+        document.body.appendChild(element);
+    });
+    afterEach(() => {
+        if (element) {
+            element.remove();
+        };
+        document.body.innerHTML = '';
+    });
+    it('destroy skeleton method', () => {
+        listObj = new DropDownBase({ dataSource: datasource });
+        listObj.appendTo(element);
+        (<any>listObj).skeletonInstances = [{isDestroyed: true}, {isDestroyed: true}];
+        (<any>listObj).destroySkeletons();
+    });
+});

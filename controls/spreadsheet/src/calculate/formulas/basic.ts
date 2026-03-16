@@ -2,7 +2,7 @@ import { FormulasErrorsStrings, CommonErrors, IBasicFormula, getSkeletonVal } fr
 import { Calculate, getAlphalabel, CalcSheetFamilyItem } from '../base/index';
 import { isNullOrUndefined, getValue, Internationalization } from '@syncfusion/ej2-base';
 import { DataUtil } from '@syncfusion/ej2-data';
-import { DateFormatCheckArgs, checkDateFormat, dateToInt, isNumber, isCellReference, isValidCellReference, getSheetIndexByName, workbookFormulaOperation, getRangeIndexes, getCellAddress } from '../../workbook/index';
+import { DateFormatCheckArgs, checkDateFormat, dateToInt, isNumber, isCellReference, isValidCellReference, getCellAddress, workbookFormulaOperation, getRangeIndexes } from '../../workbook/index';
 
 /**
  * Represents the basic formulas module.
@@ -2060,6 +2060,9 @@ export class BasicFormulas {
         let val: string;
         if (isCellReference(args[0])) {
             val = this.parent.getValueFromArg(args[0]);
+            if (this.parent.getErrorStrings().indexOf(val) > -1) {
+                return val;
+            }
             if (val === this.parent.trueValue) {
                 val = '1';
             } else if (val === '' || val === this.parent.falseValue) {
@@ -2110,6 +2113,9 @@ export class BasicFormulas {
         let value1: string;
         if (isCellReference(args[0])) {
             value1 = this.parent.getValueFromArg(args[0]);
+            if (this.parent.getErrorStrings().indexOf(value1) > -1) {
+                return value1;
+            }
             if (value1 === this.parent.trueValue) {
                 value1 = '1';
             } else if (value1 === '' || value1 === this.parent.falseValue) {
@@ -2250,6 +2256,9 @@ export class BasicFormulas {
             dValue = this.parent.getValueFromArg(args[0].split(this.parent.tic).join('')) || '0';
             if (dValue.indexOf(this.parent.tic) > -1) {
                 return this.parent.getErrorStrings()[CommonErrors.Value];
+            }
+            if (this.parent.getErrorStrings().indexOf(dValue.toString()) > -1) {
+                return dValue.toString();
             }
         } else {
             dValue = this.parent.getValueFromArg(args[0].split(this.parent.tic).join(''));
@@ -3179,7 +3188,7 @@ export class BasicFormulas {
         if (this.parent.isCellReference(argArr[0])) {
             cellvalue = this.parent.getValueFromArg(argArr[0]);
             if (this.parent.getErrorStrings().indexOf(cellvalue) > -1) {
-                return this.parent.getErrorStrings()[CommonErrors.Value];
+                return cellvalue;
             }
             if (cellvalue === this.parent.trueValue) {
                 cellvalue = '1';
@@ -3481,11 +3490,7 @@ export class BasicFormulas {
             return this.parent.formulaErrorStrings[FormulasErrorsStrings.InvalidArguments];
         } else if (argArr.length < 2 || argArr.length > 4) {
             return this.parent.formulaErrorStrings[FormulasErrorsStrings.WrongNumberArguments];
-        } else if (argArr[0] === '') {
-            return errCollection[CommonErrors.Value];
-        } else if (argArr[0].indexOf(':') === -1) {
-            return errCollection[CommonErrors.Ref];
-        } else if (argArr[3] && argArr[3] === '0') {
+        } else if (argArr[0] === '' || argArr[3] === '' ||  (argArr[3] && (argArr[3] === '0' || argArr[3] === 'FALSE'))) {
             return errCollection[CommonErrors.Value];
         }
         let row: number; let col: number; let area: number;
@@ -3535,17 +3540,24 @@ export class BasicFormulas {
         col = processArgs(argArr[2]);
         if (errCollection.indexOf(col.toString()) > -1) { return col.toString(); }
         const i: number = value.indexOf(':');
-        const startRow: number = this.parent.rowIndex(value.substring(0, i));
-        const endRow: number = this.parent.rowIndex(value.substring(i + 1));
-        const startCol: number = this.parent.colIndex(value.substring(0, i));
-        const endCol: number = this.parent.colIndex(value.substring(i + 1));
-        if (row > endRow - startRow + 1 || col > endCol - startCol + 1) {
-            return errCollection[CommonErrors.Ref];
+        if (i === -1) {
+            if (row > 1 || col > 1) {
+                return errCollection[CommonErrors.Ref];
+            }
+            value = this.parent.isCellReference(value) ? this.parent.getValueFromArg(value) : value;
+        } else {
+            const startRow: number = this.parent.rowIndex(value.substring(0, i));
+            const endRow: number = this.parent.rowIndex(value.substring(i + 1));
+            const startCol: number = this.parent.colIndex(value.substring(0, i));
+            const endCol: number = this.parent.colIndex(value.substring(i + 1));
+            if (row > endRow - startRow + 1 || col > endCol - startCol + 1) {
+                return errCollection[CommonErrors.Ref];
+            }
+            row = startRow + row - 1; col = startCol + col - 1;
+            value = this.parent.getValueFromArg(
+                this.getSheetReference(value) + this.parent.convertAlpha(col) + row
+            );
         }
-        row = startRow + row - 1; col = startCol + col - 1;
-        value = this.parent.getValueFromArg(
-            this.getSheetReference(value) + this.parent.convertAlpha(col) + row
-        );
         if (value === '') { return 0; }
         if (nestedFormula && errCollection.indexOf(value) === -1 &&
             !this.parent.isNumber(value) && value !== this.parent.trueValue && value !== this.parent.falseValue) {
@@ -4024,10 +4036,10 @@ export class BasicFormulas {
     }
 
     private calculateIFS(ranges: string[], isAvgIfs?: string): string | number {
-        if (isNullOrUndefined(ranges) || ranges[0] === '' || ranges.length < 2 || ranges.length > 127) {
+        if (isNullOrUndefined(ranges) || ranges[0] === '' || ranges.length < 2 || ranges.length > 127 || ranges.length % 2 === 0) {
             return this.parent.formulaErrorStrings[FormulasErrorsStrings.WrongNumberArguments];
         }
-        if (ranges.length === 3) { // SUMIFS and AVERAGEIFS OR operation will contains only 3 arguments.
+        if (ranges.length === 3 && ranges[2] !== '""') { // SUMIFS and AVERAGEIFS OR operation will contains only 3 arguments.
             if (ranges[2].includes(this.parent.tic + this.parent.tic)) {
                 let result: string = ''; let sumVal: string;
                 const separator: string = this.parent.getParseArgumentSeparator();
@@ -4948,10 +4960,13 @@ export class BasicFormulas {
             return sqrtValue;
         }
         sqrtValue = sqrtValue === this.parent.trueValue ? '1' : sqrtValue === this.parent.falseValue ? '0' : sqrtValue;
-        if (this.parent.parseFloat(sqrtValue) < 0) {
+        const parsedValue: number = this.parent.parseFloat(sqrtValue);
+        if (parsedValue < 0) {
             return this.parent.getErrorStrings()[CommonErrors.Num];
-        } else if (isNaN(this.parent.parseFloat(sqrtValue))) {
-            const dateTimeCheck: DateFormatCheckArgs = { value: sqrtValue };
+        } else if (isNaN(parsedValue) ||
+            (arrValue.indexOf(this.parent.tic) > -1 && isNaN(this.parent.parseFloat(arrValue)))) {
+            const dateTimeCheck: DateFormatCheckArgs = { value: isNaN(parsedValue) ?
+                sqrtValue : arrValue.split(this.parent.tic).join('') };
             (<{ notify: Function }>this.parent.parentObject).notify(checkDateFormat, dateTimeCheck);
             if (dateTimeCheck.isDate || dateTimeCheck.isTime) {
                 sqrtValue = dateTimeCheck.updatedVal;

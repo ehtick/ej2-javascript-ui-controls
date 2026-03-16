@@ -172,6 +172,19 @@ export class Marker extends MarkerExplode {
                 if ((series.removedPointIndex !== null && series.removedPointIndex <= point.index)) {
                     (parentElement.lastChild as HTMLElement).id = this.elementId + '_Series_' + seriesIndex + '_Point_' + point.index + '_Symbol' + (index ? index : '');
                 }
+                if (this.chart.seriesLabelModule && series.labelSettings.visible) {
+                    const cx: number = location.x; // location already has marker.offset applied
+                    const cy: number = location.y;
+                    const width: number = markerWidth;
+                    const height: number = markerHeight;
+
+                    // Create rect in global chart coords (add series.clipRect offsets)
+                    const rx: number = series.clipRect.x + (cx - width / 2);
+                    const ry: number = series.clipRect.y + (cy - height / 2);
+                    if (series.chart && series.chart.markerCollections) {
+                        series.chart.markerCollections.push(new Rect(rx, ry, width, height));
+                    }
+                }
             }
             point.marker = {
                 border: markerBorder, fill: markerFill, height: markerHeight,

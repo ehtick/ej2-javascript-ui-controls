@@ -2177,6 +2177,14 @@ export interface PhaseModel {
     offset?: number;
 
     /**
+     * Sets the initial offset of the phase
+     *
+     * @default 100
+     * @private
+     */
+    initialOffset?: number;
+
+    /**
      * Allows the user to save custom information about phases. Example: addInfo: {'phase': 'phase 1 info' }
      *
      * @aspDefaultValueIgnore

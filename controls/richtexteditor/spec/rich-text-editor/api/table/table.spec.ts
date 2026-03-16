@@ -1,6 +1,8 @@
 /**
  * Table spec
  */
+import { isNullOrUndefined } from '@syncfusion/ej2-base';
+import { BASIC_MOUSE_EVENT_INIT, CONTROL_A_EVENT_INIT } from '../../../constant.spec';
 import { RichTextEditor } from './../../../../src/index';
 import { renderRTE, destroy, dispatchEvent, setCursorPoint } from './../../render.spec';
 
@@ -20,8 +22,8 @@ describe('RTE Table - ', () => {
                 format: {
                     types: [
                         { text: 'Paragraph', value: 'P' },
-                        { text: 'Code', value: 'Pre'},
-                        { text: 'Quotation', value: 'BlockQuote'},
+                        { text: 'Code', value: 'Pre' },
+                        { text: 'Quotation', value: 'BlockQuote' },
                         { text: 'Heading 1', value: 'H1' },
                         { text: 'Heading 2', value: 'H2' },
                         { text: 'Heading 3', value: 'H3' },

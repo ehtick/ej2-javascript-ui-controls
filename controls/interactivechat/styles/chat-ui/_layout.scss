@@ -1,5 +1,4 @@
 @use 'ej2-base/styles/common/mixin' as *;
-@use './theme-variables' as *;
 @mixin chat-display-alignment($chat-display, $chat-align-items) {
   display: $chat-display;
   align-items: $chat-align-items;

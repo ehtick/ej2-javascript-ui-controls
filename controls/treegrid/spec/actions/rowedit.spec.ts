@@ -4230,3 +4230,71 @@ describe('Add Multiple record using addRecord method - Bottom', () => {
         destroy(gridObj);
     });
 });
+describe('Row Update with aggregates', () => {
+    let gridObj: TreeGrid;
+    let actionComplete: () => void;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                height: 400,
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    mode: 'Row',
+
+
+                },
+                aggregates: [{
+                    showChildSummary: true,
+                    columns: [
+                        {
+                            type: 'Max',
+                            field: 'duration',
+                            columnName: 'duration',
+                            footerTemplate: 'Maximum: ${Max}'
+                        }
+                    ]
+                }],
+                toolbar: ['Add', 'Delete', 'Update', 'Cancel'],
+                columns: [
+                    {
+                        field: 'taskID', headerText: 'Task ID', isPrimaryKey: true, textAlign: 'Right',
+                        validationRules: { required: true, number: true}, width: 90
+                    },
+                    { field: 'taskName', headerText: 'Task Name', editType: 'stringedit', width: 220, validationRules: {required: true} },
+                    { field: 'startDate', headerText: 'Start Date', textAlign: 'Right', width: 130, editType: 'datepickeredit',
+                        format: 'yMd', validationRules: { date: true} },
+                    {
+                        field: 'duration', headerText: 'Duration', textAlign: 'Right', width: 100, editType: 'numericedit',
+                        validationRules: { number: true, min: 0}, edit: { params: {  format: 'n'}}
+                    }
+                ]
+            },
+            done
+        );
+    });
+    it('Edit Row', (done: Function) => {
+        actionComplete = (args?: any): void => {
+            if (args.requestType === 'save') {
+                expect((gridObj.getRows()[0].getElementsByClassName('e-treecell')[0] as HTMLElement).innerText === 'test').toBe(true);
+            }
+            done();
+        };
+        gridObj.actionComplete = actionComplete;
+        const event: MouseEvent = new MouseEvent('dblclick', {
+            'view': window,
+            'bubbles': true,
+            'cancelable': true
+        });
+        gridObj.getCellFromIndex(0, 1).dispatchEvent(event);
+        gridObj.grid.editModule.formObj.element.getElementsByTagName('input')[1].value = 'test';
+        (<any>gridObj.grid.toolbarModule).toolbarClickHandler({ item: { id: gridObj.grid.element.id + '_update' } });
+    });
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});

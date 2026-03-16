@@ -12,3 +12,4 @@ export * from './command-item-model';
 export * from './command-menu-settings-model';
 export * from './inline-toolbar-settings-model';
 export * from './context-menu-item-model';
+export * from './transform-settings-model';

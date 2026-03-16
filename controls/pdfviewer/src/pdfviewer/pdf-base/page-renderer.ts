@@ -448,6 +448,13 @@ export class PageRenderer{
                                     }
                                 }
                             }
+                            if ((stampAnnotation._dictionary.has('AnnotationSelectorSettings') || stampAnnotation._dictionary.has('annotationselectorsettings')) && (!isNullOrUndefined(stampAnnotation._dictionary.get('AnnotationSelectorSettings') || !isNullOrUndefined(stampAnnotation._dictionary.get('annotationselectorsettings'))))) {
+                                const AnnotationSelectorSettings: any = stampAnnotation._dictionary.get('AnnotationSelectorSettings') ? stampAnnotation._dictionary.get('AnnotationSelectorSettings') : stampAnnotation._dictionary.get('annotationselectorsettings');
+                                rubberStampAnnotation.AnnotationSelectorSettings = AnnotationSelectorSettings;
+                            }
+                            if (stampAnnotation._dictionary.has('IsPrint')) {
+                                rubberStampAnnotation.IsPrint = stampAnnotation._dictionary.get('IsPrint');
+                            }
                             this.rubberStampAnnotationList.push(rubberStampAnnotation);
                             this.annotationOrder.push(rubberStampAnnotation);
                             if (isNullOrUndefined(dictionary)) {
@@ -604,6 +611,13 @@ export class PageRenderer{
         if (isNullOrUndefined(template)) {
             template = annotation.createTemplate();
         }
+        // Usage:
+        const appearance: any = JSON.parse(template._appearance);
+        // Mutates the object to remove CA/ca everywhere
+        this.removeOpacityEntriesInPlace(appearance);
+
+        // If you need a string again:
+        template._appearance = JSON.stringify(appearance);
         //Store custom stamp model calss
         rubberStampAnnotation.template = template._appearance;
         rubberStampAnnotation.templateSize = template.size;
@@ -645,6 +659,29 @@ export class PageRenderer{
                 AnnotName: rubberStampAnnotation.AnnotName, rubberStampAnnotationPageNumber: rubberStampAnnotation.pageNumber,
                 annotationOrder: JSON.stringify(this.annotationOrder), collectionOrder: collectionOrder,
                 pageSize: pageSize, rotation: page.rotation }, TaskPriorityLevel.High);
+        }
+    }
+
+    private removeOpacityEntriesInPlace(node: any): void {
+        if (Array.isArray(node)) {
+            for (const item of node) {
+                this.removeOpacityEntriesInPlace(item);
+            }
+            return;
+        }
+        if (node && typeof node === 'object') {
+            const obj: Record<string, any> = node as Record<string, any>;
+            // Remove the keys if present (works whether values are numbers, objects with {fixed: ...}, etc.)
+            if ('CA' in obj) {
+                delete obj.CA;
+            }
+            if ('ca' in obj) {
+                delete obj.ca;
+            }
+            // Recurse into children
+            for (const key of Object.keys(obj)) {
+                this.removeOpacityEntriesInPlace(obj[key as string]);
+            }
         }
     }
 
@@ -692,7 +729,8 @@ export class PageRenderer{
                     for (let i: number = 0; i < annotObject.length; i++) {
                         for (let j: number = 0; j < annotObject[parseInt(i.toString(), 10)].annotations.length; j++) {
                             if (annotObject[parseInt(i.toString(), 10)].annotations[parseInt(j.toString(), 10)].
-                                annotName === currentAnnot.AnnotName) {
+                                annotName === currentAnnot.AnnotName && annotObject[parseInt(i.toString(), 10)].
+                                annotations[parseInt(j.toString(), 10)].pageNumber === currentAnnot.pageNumber) {
                                 shouldRender = false;
                             }
                         }

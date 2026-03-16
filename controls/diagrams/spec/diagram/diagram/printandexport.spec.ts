@@ -7,7 +7,7 @@ import { Rect } from '../../../src/index';
 import { PrintAndExport } from '../../../src/diagram/print-settings';
 import { PageSettingsModel, BackgroundModel } from '../../../src/diagram/diagram/page-settings-model';
 import { IExportOptions } from '../../../src/diagram/objects/interface/interfaces';
-import { GroupableView, DataBinding, DiagramModel, HierarchicalTree, ImageElement, StackPanel, TextElement, TreeInfo, ZoomOptions } from '../../../src/diagram/index';
+import { GroupableView, DataBinding, DiagramModel, HierarchicalTree, ImageElement, StackPanel, TextElement, TreeInfo, ZoomOptions, GradientModel, LinearGradientModel, RadialGradientModel } from '../../../src/diagram/index';
 import { UndoRedo } from '../../../src/diagram/objects/undo-redo';
 import { profile, inMB, getMemoryProfile } from '../../../spec/common.spec';
 import { DataManager, Query } from '@syncfusion/ej2-data';
@@ -2367,4 +2367,88 @@ describe('Print and export', () => {
         });
 
     });
+    describe('Print Settings', () => {
+         let diagram: Diagram;
+        let ele: HTMLElement;
+        let options: IExportOptions = {};
+        beforeAll((): void => {
+            const isDef = (o: any) => o !== undefined && o !== null;
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                this.skip(); //Skips test (in Chai)
+                return;
+            }
+            ele = createElement('div', { id: 'printSetting' });
+            let linearGradient: GradientModel | LinearGradientModel | RadialGradientModel;
+            linearGradient = {
+                x1: 0, y1: 0,
+                x2: 50, y2: 50,
+                stops: [{ color: 'white', offset: 0 },
+                { color: '#6BA5D7', offset: 100 }],
+                type: 'Linear'
+            };
+            let radialGradient: GradientModel | LinearGradientModel | RadialGradientModel;
+            radialGradient = {
+                cx: 50, cy: 50,
+                fx: 25, fy: 25,
+                r: 50,
+
+                stops: [{ color: 'white', offset: 0 },
+                { color: '#6BA5D7', offset: 100 }],
+                type: 'Radial'
+            };
+            let nodes: NodeModel []= [{
+
+                offsetX: 250,
+                offsetY: 250,
+
+                width: 100,
+                height: 100,
+                style: { gradient: linearGradient, strokeColor: 'white' }
+
+            }, {
+                offsetX: 400,
+                offsetY: 250,
+
+                width: 100,
+                height: 100,
+                style: { gradient: radialGradient, strokeColor: 'white' }
+            }]
+            document.body.appendChild(ele);
+      
+     
+            diagram = new Diagram({
+               width: '850px', height: '1000px', nodes: nodes,
+            });
+            diagram.appendTo('#printSetting');
+
+        });
+
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+            (diagram as any) = null;
+            (ele as any) = null; 
+        });
+        it('Print data with gradients', (done: Function) => {
+            
+            options.mode = 'Data';
+            options.region = 'PageSettings';
+            options.multiplePage = true;
+            options.pageOrientation = 'Landscape';
+            options.pageWidth = 600;
+            diagram.print(options);
+            done();
+        });
+        it('Export the diagram', (done: Function) => {
+            
+            options.mode = 'Download';
+            options.region = 'PageSettings';
+            options.multiplePage = true;
+            options.pageOrientation = 'Landscape';
+            options.margin = { left: 50, top: 50, right: 50, bottom: 50 };
+            diagram.exportDiagram(options);
+            done();
+        });
+    })
 });

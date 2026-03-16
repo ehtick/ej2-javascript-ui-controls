@@ -35,6 +35,7 @@ export class PdfGantt extends PdfTreeGrid {
     public chartPageIndex: number;
     public eventMarker : EventMarker;
     public changeCloneProjectDates: boolean = false;
+    public changeCloneTimelineDates: boolean = false;
     public currentPage: number = 0;
     public parent: Gantt;
 
@@ -148,10 +149,19 @@ export class PdfGantt extends PdfTreeGrid {
             }
             detail.startPoint = range[0];
             detail.endPoint = range[1];
-            if (this.parent.cloneProjectStartDate.getHours() === 0 && this.parent.cloneProjectStartDate.getMinutes() === 0
+            if (this.parent.projectStartDate && this.parent.cloneProjectStartDate.getHours() === 0 &&
+                this.parent.cloneProjectStartDate.getMinutes() === 0
             && this.parent.cloneProjectStartDate.getSeconds() === 0 ) {
                 this.changeCloneProjectDates = true;
                 this.parent.cloneProjectStartDate.setHours(8);
+            }
+            if (this.parent.timelineSettings.viewStartDate &&
+                !isNullOrUndefined(this.parent.cloneTimelineStartDate) &&
+                this.parent.cloneTimelineStartDate.getHours() === 0 &&
+                this.parent.cloneTimelineStartDate.getMinutes() === 0 &&
+                this.parent.cloneTimelineStartDate.getSeconds() === 0) {
+                this.changeCloneTimelineDates = true;
+                this.parent.cloneTimelineStartDate.setHours(8);
             }
             const timelineStartDate: Date = this.parent.dataOperation.getDateFromFormat(this.parent.timelineModule.timelineStartDate);
             let count: number = timelineSettings.customTimelineSettings.bottomTier.count;

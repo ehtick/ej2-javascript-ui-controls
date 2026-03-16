@@ -406,6 +406,23 @@ describe('Collision Module Specs', () => {
             expect(calculatePosition(getElem('#targetElement'), 'left', 'top')).
                 toEqual(calculatePosition(getElem('.popup'), 'left', 'bottom'));
         });
+        it('DatePicker popup opens outside the viewport when input element is partially hidden - left', function () {
+            removeTarget();
+            removePopup();
+            appendTarget('margin: 85px -70px;');
+            let eleme: Node = getPop('Am a Top Element');
+            let target: HTMLElement = <HTMLElement>getElem('#targetElement');
+            target.classList.add('e-date-wrapper');
+            collision.flip(<HTMLElement>eleme, target, 0, -(<Element>eleme).getBoundingClientRect().height, 'left', 'top');
+        });
+        it('DatePicker popup opens outside the viewport when input element is partially hidden - Right', function () {
+            removeTarget();
+            removePopup();
+            appendTarget('margin: ' + (getViewPortHeight() - 150) + 'px 50px 50px ' + (getViewPortWidth() - 45) + 'px;');
+            let target: HTMLElement = <HTMLElement>getElem('#targetElement');
+            target.classList.add('e-date-wrapper');
+            collision.flip(<HTMLElement>getPop('Am a Bottom Element'), target, 0, 0, 'left', 'bottom');
+        });
     });
     describe('(With Collision,without flip.)-Element positioning.', () => {
         beforeAll(() => {
@@ -1027,6 +1044,180 @@ describe('Collision Module Specs', () => {
                     toEqual([]);
          });
      });
+     describe('Grid boundary constraint feature - Filter dialogs and column chooser dialogs', () => {
+        beforeAll(() => {
+            removeContainerContent();
+        });
+        afterAll(() => {
+            removeContainerContent();
+        });
+
+        it('Mobile viewport: e-filter-popup clamped to max left position when exceeding grid right boundary', () => {
+            const mockGrid: HTMLElement = document.createElement('div');
+            mockGrid.classList.add('sf-grid');
+            mockGrid.style.width = '390px';
+            mockGrid.style.position = 'relative';
+            document.body.appendChild(mockGrid);
+
+            const filterDialog: HTMLElement = document.createElement('div');
+            filterDialog.classList.add('e-filter-popup');
+            filterDialog.style.width = '100px';
+            filterDialog.style.height = '100px';
+            filterDialog.style.position = 'absolute';
+            filterDialog.style.left = '350px';
+            
+            Object.defineProperty(filterDialog, 'clientWidth', { value: 100, configurable: true });
+            Object.defineProperty(mockGrid, 'clientWidth', { value: 390, configurable: true });
+            
+            mockGrid.appendChild(filterDialog);
+
+            collision.flip(filterDialog, mockGrid, 0, 0, 'left', 'top');
+
+            const leftPos: number = parseFloat(filterDialog.style.left);
+            expect(leftPos).toBeLessThanOrEqual(290);
+            expect(leftPos).toBeGreaterThanOrEqual(0);
+            
+            mockGrid.remove();
+        });
+
+        it('Mobile viewport: e-filter-popup with negative left position clamped to 0', () => {
+            const mockGrid: HTMLElement = document.createElement('div');
+            mockGrid.classList.add('sf-grid');
+            mockGrid.style.width = '390px';
+            mockGrid.style.position = 'relative';
+            document.body.appendChild(mockGrid);
+
+            const filterDialog: HTMLElement = document.createElement('div');
+            filterDialog.classList.add('e-filter-popup');
+            filterDialog.style.width = '100px';
+            filterDialog.style.height = '100px';
+            filterDialog.style.position = 'absolute';
+            filterDialog.style.left = '-50px';
+            
+            Object.defineProperty(filterDialog, 'clientWidth', { value: 100, configurable: true });
+            Object.defineProperty(mockGrid, 'clientWidth', { value: 390, configurable: true });
+            
+            mockGrid.appendChild(filterDialog);
+
+            collision.flip(filterDialog, mockGrid, -50, 0, 'left', 'top');
+
+            const leftPos: number = parseFloat(filterDialog.style.left);
+            expect(leftPos).toBeGreaterThanOrEqual(0);
+            
+            mockGrid.remove();
+        });
+
+        it('Filter dialog with null offsetParent: position remains unclamped (fallback behavior)', () => {
+            const filterDialog: HTMLElement = document.createElement('div');
+            filterDialog.classList.add('e-filter-popup');
+            filterDialog.style.width = '100px';
+            filterDialog.style.height = '100px';
+            filterDialog.style.position = 'absolute';
+            filterDialog.style.left = '350px';
+            
+            Object.defineProperty(filterDialog, 'clientWidth', { value: 100, configurable: true });
+            
+            document.body.appendChild(filterDialog);
+
+            collision.flip(filterDialog, null, 0, 0, 'left', 'top');
+
+            const leftPos: number = parseFloat(filterDialog.style.left);
+            expect(leftPos).toBeDefined();
+            
+            filterDialog.remove();
+        });
+
+        it('Filter dialog positioned at grid boundary: left = 0 (minimum boundary)', () => {
+            const mockGrid: HTMLElement = document.createElement('div');
+            mockGrid.classList.add('sf-grid');
+            mockGrid.style.width = '390px';
+            mockGrid.style.position = 'relative';
+            document.body.appendChild(mockGrid);
+
+            const filterDialog: HTMLElement = document.createElement('div');
+            filterDialog.classList.add('e-filter-popup');
+            filterDialog.style.width = '100px';
+            filterDialog.style.height = '100px';
+            filterDialog.style.position = 'absolute';
+            filterDialog.style.left = '0px';
+            
+            Object.defineProperty(filterDialog, 'clientWidth', { value: 100, configurable: true });
+            Object.defineProperty(mockGrid, 'clientWidth', { value: 390, configurable: true });
+            
+            mockGrid.appendChild(filterDialog);
+
+            collision.flip(filterDialog, mockGrid, 0, 0, 'left', 'top');
+
+            const leftPos: number = parseFloat(filterDialog.style.left);
+            expect(leftPos).toBeGreaterThanOrEqual(0);
+            
+            mockGrid.remove();
+        });
+
+        it('Filter dialog positioned at grid boundary: left = gridWidth - dialogWidth (maximum boundary)', () => {
+            const mockGrid: HTMLElement = document.createElement('div');
+            mockGrid.classList.add('sf-grid');
+            mockGrid.style.width = '390px';
+            mockGrid.style.position = 'relative';
+            document.body.appendChild(mockGrid);
+
+            const filterDialog: HTMLElement = document.createElement('div');
+            filterDialog.classList.add('e-filter-popup');
+            filterDialog.style.width = '100px';
+            filterDialog.style.height = '100px';
+            filterDialog.style.position = 'absolute';
+            filterDialog.style.left = '290px';
+            
+            Object.defineProperty(filterDialog, 'clientWidth', { value: 100, configurable: true });
+            Object.defineProperty(mockGrid, 'clientWidth', { value: 390, configurable: true });
+            
+            mockGrid.appendChild(filterDialog);
+
+            collision.flip(filterDialog, mockGrid, 0, 0, 'left', 'top');
+
+            const leftPos: number = parseFloat(filterDialog.style.left);
+            expect(leftPos + 100).toBeLessThanOrEqual(390);
+            
+            mockGrid.remove();
+        });
+
+        it('Filter dialog: multiple boundaries tested - ensures Math.min/Math.max clamping logic', () => {
+            const mockGrid: HTMLElement = document.createElement('div');
+            mockGrid.classList.add('sf-grid');
+            mockGrid.style.width = '500px';
+            mockGrid.style.position = 'relative';
+            document.body.appendChild(mockGrid);
+
+            const filterDialog: HTMLElement = document.createElement('div');
+            filterDialog.classList.add('e-filter-popup');
+            filterDialog.style.width = '100px';
+            filterDialog.style.height = '100px';
+            filterDialog.style.position = 'absolute';
+            
+            Object.defineProperty(filterDialog, 'clientWidth', { value: 100, configurable: true });
+            Object.defineProperty(mockGrid, 'clientWidth', { value: 500, configurable: true });
+            
+            mockGrid.appendChild(filterDialog);
+
+            filterDialog.style.left = '450px';
+            collision.flip(filterDialog, mockGrid, 0, 0, 'left', 'top');
+            let leftPos: number = parseFloat(filterDialog.style.left);
+            expect(leftPos).toBeLessThanOrEqual(400);
+
+            filterDialog.style.left = '-20px';
+            collision.flip(filterDialog, mockGrid, -20, 0, 'left', 'top');
+            leftPos = parseFloat(filterDialog.style.left);
+            expect(leftPos).toBeGreaterThanOrEqual(0);
+
+            filterDialog.style.left = '200px';
+            collision.flip(filterDialog, mockGrid, 0, 0, 'left', 'top');
+            leftPos = parseFloat(filterDialog.style.left);
+            expect(leftPos).toBeGreaterThanOrEqual(0);
+            expect(leftPos + 100).toBeLessThanOrEqual(500);
+
+            mockGrid.remove();
+        });
+    });
      describe('fit function scenario test cases', () => {
         beforeAll(() => {
             removeContainerContent();

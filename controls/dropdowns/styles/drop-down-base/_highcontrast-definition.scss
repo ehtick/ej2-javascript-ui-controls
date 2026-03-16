@@ -84,13 +84,13 @@ $ddl-zero-spacing: 0 !default;
 $ddl-auto-height: auto !default;
 $ddl-full-height: 100% !default;
 $ddl-full-width: 100% !default;
-$ddl-bgr-dropbase-list-icon-item-padding: 0 12px 0 0 !default;
+$ddl-bgr-dropbase-list-icon-item-padding: 12px !default;
 
 @include export-module('dropdownbase-highcontrast') {
   .e-dropdownbase {
     #{if(&, '&', '*')} .e-list-item {
       #{if(&, '&', '*')} .e-list-icon {
-        padding: 0 10px 0 0;
+        padding-inline-end: 10px;
       }
       #{if(&, '&', '*')}:not(.e-active) {
         #{if(&, '&', '*')}.e-hover {
@@ -112,6 +112,6 @@ $ddl-bgr-dropbase-list-icon-item-padding: 0 12px 0 0 !default;
   }
 
   .e-small .e-dropdownbase .e-list-item .e-list-icon {
-    padding: 0 8px 0 0;
+    padding-inline-end: 8px;
   }
 }

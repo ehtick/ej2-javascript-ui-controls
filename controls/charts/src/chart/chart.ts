@@ -4,7 +4,7 @@ import { TapEventArgs, EmitType, ChildProperty } from '@syncfusion/ej2-base';
 import { remove, extend } from '@syncfusion/ej2-base';
 import { INotifyPropertyChanged, Browser, Touch } from '@syncfusion/ej2-base';
 import { Event, EventHandler, Complex, Collection } from '@syncfusion/ej2-base';
-import { findClipRect, showTooltip, ImageOption, removeElement, appendChildElement, withInBounds, getValueXByPoint, getValueYByPoint } from '../common/utils/helper';
+import { findClipRect, showTooltip, ImageOption, removeElement, appendChildElement, withInBounds, getValueXByPoint, getValueYByPoint, applyGradientsToSeries } from '../common/utils/helper';
 import { textElement, RectOption, createSvg, firstToLowerCase, titlePositionX, PointData, redrawElement, getTextAnchor } from '../common/utils/helper';
 import { appendClipElement, ChartLocation } from '../common/utils/helper';
 import { ChartModel, CrosshairSettingsModel, ZoomSettingsModel, RangeColorSettingModel } from './chart-model';
@@ -64,6 +64,7 @@ import { Legend } from './legend/legend';
 import { Zoom } from './user-interaction/zooming';
 import { Selection } from './user-interaction/selection';
 import { DataLabel } from './series/data-label';
+import { SeriesLabel } from './series/series-label';
 import { LastValueLabel } from './series/last-value-label';
 import { StripLine } from './axis/strip-line';
 import { MultiLevelLabel } from './axis/multi-level-labels';
@@ -106,7 +107,7 @@ import { DataManager } from '@syncfusion/ej2-data';
 import { StockChart } from '../stock-chart/stock-chart';
 import { Export } from './print-export/export';
 import { PrintUtils } from '../common/utils/print';
-import { IAfterExportEventArgs, IExportEventArgs } from '../common/model/interface';
+import { IAfterExportEventArgs, IExportEventArgs, ICrosshairLabelRenderEventArgs } from '../common/model/interface';
 import { createTemplate } from '../common/utils/helper';
 import { createElement } from '@syncfusion/ej2-base';
 /**
@@ -200,7 +201,15 @@ export class CrosshairSettings extends ChildProperty<CrosshairSettings> {
     public opacity: number;
 
     /**
-     * If set to `true`, the horizontal crosshair snaps to the nearest data point.
+     * Enables or disables the crosshair snap behavior.
+     *
+     * When set to `true`, the crosshair line and its labels snap
+     * to the nearest visible data point, ensuring precise
+     * alignment and accurate value reading.
+     *
+     * When set to `false`, the crosshair moves freely along
+     * the axis without snapping, showing interpolated values
+     * based on the pointer position.
      *
      * @default false
      */
@@ -520,6 +529,10 @@ export class Chart extends Component<HTMLElement> implements INotifyPropertyChan
      * `dataLabelModule` is used to manipulate and add data label to the series.
      */
     public dataLabelModule: DataLabel;
+    /**
+     * `seriesLabelModule` is used to manipulate and add series label to the series.
+     */
+    public seriesLabelModule: SeriesLabel;
     /**
      * `dateTimeModule` is used to manipulate and add date time axis to the chart.
      */
@@ -1284,6 +1297,7 @@ export class Chart extends Component<HTMLElement> implements INotifyPropertyChan
 
     @Event()
     public seriesRender: EmitType<ISeriesRenderEventArgs>;
+
     /**
      * Triggers before each axis label is rendered. This event allows for the customization of axis label and its font style before rendering on the chart.
      *
@@ -1347,6 +1361,14 @@ export class Chart extends Component<HTMLElement> implements INotifyPropertyChan
 
     @Event()
     public sharedTooltipRender: EmitType<ISharedTooltipRenderEventArgs>;
+    /**
+     * Triggers before the crosshair for the series is rendered. This event allows customization of the crosshair properties such as text, style, and fill before it is rendered on the chart.
+     *
+     * @event crosshairLabelRender
+     */
+
+    @Event()
+    public crosshairLabelRender: EmitType<ICrosshairLabelRenderEventArgs>;
 
     /**
      * Triggers on hovering over the chart.
@@ -1616,12 +1638,21 @@ export class Chart extends Component<HTMLElement> implements INotifyPropertyChan
     /** @private */
     public dataLabelCollections: Rect[];
     /** @private */
+    public seriesLabelCollections: Rect[];
+    /** @private */
+    public axisLabelCollections: Rect[];
+    /** @private */
+    public markerCollections: Rect[];
+    /** @private */
+    public errorBarCollections: Rect[];
+    /** @private */
     public lastValueLabelCollections: Rect[];
     /** @private */
     public rotatedDataLabelCollections: ChartLocation[][] = [];
     /** @private */
     public dataLabelElements: Element;
     /** @private */
+    public seriesLabelElements: Element;
     public lastValueLabelElements: Element;
     /** @private */
     public mouseX: number;
@@ -1958,6 +1989,9 @@ export class Chart extends Component<HTMLElement> implements INotifyPropertyChan
 
     public refreshBound(): void {
         this.rotatedDataLabelCollections = [];
+        if (!this.enableCanvas) {
+            applyGradientsToSeries(this.svgObject, this.enableCanvas, this.visibleSeries, this.element);
+        }
         if (this.legendModule && this.legendSettings.visible) {
             this.legendModule.getLegendOptions(this.visibleSeries, this);
         }
@@ -2197,12 +2231,21 @@ export class Chart extends Component<HTMLElement> implements INotifyPropertyChan
         }
         const rect: ClientRect = this.element.getBoundingClientRect();
         const svgRect: ClientRect =  getElement(this.svgId).getBoundingClientRect();
-        element.style.left = Math.max(((svgRect.left - rect.left) / this.scaleX), 0) + 'px';
-        element.style.top = Math.max(((svgRect.top - rect.top) / this.scaleY), 0) + 'px';
+        if (this.tooltip.split) {
+            element.setAttribute('transform', `translate(${Math.max(((svgRect.left - rect.left) / this.scaleX), 0) + 'px'}
+            ,${Math.max(((svgRect.top - rect.top) / this.scaleY), 0) + 'px'}) `);
+        } else {
+            element.style.left = Math.max(((svgRect.left - rect.left) / this.scaleX), 0) + 'px';
+            element.style.top = Math.max(((svgRect.top - rect.top) / this.scaleY), 0) + 'px';
+        }
     }
     private initializeModuleElements(): void {
         this.dataLabelCollections = [];
+        this.seriesLabelCollections = [];
         this.lastValueLabelCollections = [];
+        this.axisLabelCollections = [];
+        this.markerCollections = [];
+        this.errorBarCollections = [];
         const elementId: string = this.element.id;
         if (this.series.length) {
             this.seriesElements = this.svgRenderer.createGroup({ id: elementId + 'SeriesCollection' });
@@ -2212,6 +2255,10 @@ export class Chart extends Component<HTMLElement> implements INotifyPropertyChan
         }
         if (this.hasTrendlines()) {
             this.trendLineElements = this.renderer.createGroup({ id: elementId + 'TrendLineCollection' });
+        }
+        if (this.isSeriesLabelEnabled()) {
+            this.seriesLabelElements = this.renderer.createGroup({ id: elementId + 'SeriesLabelCollection'});
+            this.seriesLabelElements.setAttribute('aria-hidden', 'true');
         }
         if (this.lastValueLabelModule) {
             this.lastValueLabelElements = this.renderer.createGroup({id: elementId + 'LastValueLabelCollection'});
@@ -2228,6 +2275,19 @@ export class Chart extends Component<HTMLElement> implements INotifyPropertyChan
             }
         }
         return isTrendline;
+    }
+    /**
+     * Check whether series label feature is enabled or not.
+     *
+     * @returns {boolean} true if enables, else false.
+     */
+    private isSeriesLabelEnabled(): boolean {
+        for (const series of this.series) {
+            if (series.labelSettings.visible) {
+                return true;
+            }
+        }
+        return false;
     }
     private renderSeriesElements(axisElement: Element): void {
         // Initialize the series elements values
@@ -2321,6 +2381,11 @@ export class Chart extends Component<HTMLElement> implements INotifyPropertyChan
             else if (item.isLegendClicked && (item.type.indexOf('StackingArea') > -1 || item.type.indexOf('StackingBar') > -1 || item.type.indexOf('StackingColumn') > -1)) {
                 findClipRect(item, this.enableCanvas);
                 item.renderSeries(this);
+            }
+        }
+        for (const item of this.visibleSeries) {
+            if (item.labelSettings.visible && this.seriesLabelModule) {
+                this.seriesLabelModule.render(item, this, item.labelSettings);
             }
         }
         if (this.enableCanvas) {
@@ -2424,6 +2489,11 @@ export class Chart extends Component<HTMLElement> implements INotifyPropertyChan
         }
         if (this.lastValueLabelElements && this.lastValueLabelElements.hasChildNodes()) {
             appendChildElement(this.enableCanvas, this.svgObject, this.lastValueLabelElements, this.redraw);
+        }
+        if (this.seriesLabelModule) {
+            for (const axis of this.axisCollections) {
+                axis.registerAxisLabelRects(this);
+            }
         }
     }
     private applyZoomkit(): void {
@@ -2737,6 +2807,12 @@ export class Chart extends Component<HTMLElement> implements INotifyPropertyChan
                 techIndicator.index = i;
                 this[type + 'IndicatorModule'].initSeriesCollection(techIndicator, this);
                 for (const targetSeries of techIndicator.targetSeries) {
+                    if (!isNullOrUndefined(techIndicator.linearGradient)) {
+                        (targetSeries as Series).linearGradient = techIndicator.linearGradient;
+                    }
+                    if (!isNullOrUndefined(techIndicator.radialGradient)) {
+                        (targetSeries as Series).radialGradient = techIndicator.radialGradient;
+                    }
                     if (indicator.seriesName || indicator.dataSource) {
                         this.visibleSeries.push(targetSeries);
                     }
@@ -3187,6 +3263,8 @@ export class Chart extends Component<HTMLElement> implements INotifyPropertyChan
         this.dataLabelCollections = null;
         this.visibleSeriesCount = null;
         this.dataLabelElements = null;
+        this.seriesLabelCollections = null;
+        this.seriesLabelElements = null;
         this.lastValueLabelCollections = null;
         this.lastValueLabelElements = null;
         this.xAxisLabelTemplate = null;
@@ -3383,7 +3461,7 @@ export class Chart extends Component<HTMLElement> implements INotifyPropertyChan
             this.scaleY = svgRect.height / this.availableSize.height;
             this.mouseY = ((pageY - rect.top) - Math.max(svgRect.top - rect.top, 0)) / this.scaleY;
             this.mouseX = ((pageX - rect.left) - Math.max(svgRect.left - rect.left, 0)) / this.scaleX;
-            if (this.stockChart) {
+            if (this.stockChart && this.stockChart.stockLegendModule) {
                 this.mouseX += this.stockChart.legendSettings.position === 'Left' ? this.stockChart.stockLegendModule.legendBounds.width : 0;
                 this.mouseY += this.stockChart.legendSettings.position === 'Top' ? this.stockChart.stockLegendModule.legendBounds.height : 0;
             }
@@ -3612,6 +3690,7 @@ export class Chart extends Component<HTMLElement> implements INotifyPropertyChan
         if (titleElement) { titleElement.setAttribute('class', 'e-chart-focused'); }
         if (seriesElement && seriesElement.firstElementChild && seriesElement.firstElementChild.children[1]) {
             const firstChild: HTMLElement = seriesElement.firstElementChild.children[1] as HTMLElement;
+
             let className: string = firstChild.getAttribute('class');
             if (className && className.indexOf('e-chart-focused') === -1) {
                 className = className + ' e-chart-focused';
@@ -3622,14 +3701,16 @@ export class Chart extends Component<HTMLElement> implements INotifyPropertyChan
         }
         if (legendElement) {
             const firstChild: HTMLElement = legendElement.firstElementChild as HTMLElement;
-            let className: string = firstChild.getAttribute('class');
-            if (className && className.indexOf('e-chart-focused') === -1) {
-                className = className + ' e-chart-focused';
+            if (firstChild) {
+                let className: string = firstChild.getAttribute('class');
+                if (className && className.indexOf('e-chart-focused') === -1) {
+                    className = className + ' e-chart-focused';
+                }
+                else if (!className) {
+                    className = 'e-chart-focused';
+                }
+                firstChild.setAttribute('class', className);
             }
-            else if (!className) {
-                className = 'e-chart-focused';
-            }
-            firstChild.setAttribute('class', className);
         }
         if (pagingElement) { pagingElement.setAttribute('class', 'e-chart-focused'); }
 
@@ -3701,7 +3782,18 @@ export class Chart extends Component<HTMLElement> implements INotifyPropertyChan
                 }
             }
             else if ((targetId.indexOf('_chart_legend_') > -1)) {
-                const legendElement: HTMLCollection = targetElement.parentElement.children;
+                let legendElement: HTMLCollection | Element[] = targetElement.parentElement.children;
+                if (targetId.indexOf('_chart_legend_template_') > -1) {
+                    const children: HTMLCollection = targetElement.parentElement.children;
+                    const filtered: Element[] = [];
+                    for (let i: number = 0; i < children.length; i++) {
+                        const child: Element = children[i as number] as Element;
+                        if (child.id && child.id.indexOf('_chart_legend_template_') > -1) {
+                            filtered.push(child);
+                        }
+                    }
+                    legendElement = filtered;
+                }
                 legendElement[this.currentLegendIndex].removeAttribute('tabindex');
 
                 this.currentLegendIndex += (e.code === 'ArrowUp' || e.code === 'ArrowRight') ? + 1 : - 1;
@@ -3711,7 +3803,7 @@ export class Chart extends Component<HTMLElement> implements INotifyPropertyChan
                 this.focusChild(currentLegend as HTMLElement);
                 this.removeNavigationStyle();
                 this.setNavigationStyle(currentLegend.id);
-                targetId = currentLegend.children[1].id;
+                targetId = currentLegend.children[(targetId.indexOf('_chart_legend_template') > -1) ? 0 : 1].id;
                 actionKey = this.highlightMode !== 'None' ? 'ArrowMove' : '';
             }
             else if (targetId.indexOf('_Series_') > -1) {
@@ -3749,10 +3841,21 @@ export class Chart extends Component<HTMLElement> implements INotifyPropertyChan
                 actionKey = 'ArrowMove';
             }
         }
-        else if ((e.code === 'Enter' || e.code === 'Space') && ((targetId.indexOf('_chart_legend_') > -1) ||
-            (targetId.indexOf('_Point_') > -1))) {
-            targetId = (targetId.indexOf('_chart_legend_page') > -1) ? targetId : ((targetId.indexOf('_chart_legend_') > -1) ?
-                targetElement.children[1].id : targetId);
+        else if (
+            (e.code === 'Enter' || e.code === 'Space') &&
+            (targetId.indexOf('_chart_legend_') > -1 || targetId.indexOf('_Point_') > -1)
+        ) {
+            targetId = (
+                targetId.indexOf('_chart_legend_page') > -1 ||
+                targetId.indexOf('_chart_legend_template_') > -1
+            )
+                ? targetId
+                : (
+                    targetId.indexOf('_chart_legend_') > -1
+                        ? targetElement.children[1].id
+                        : targetId
+                );
+
             actionKey = 'Enter';
         }
         if (actionKey !== '') {
@@ -3904,8 +4007,8 @@ export class Chart extends Component<HTMLElement> implements INotifyPropertyChan
             if (targetId.indexOf('_chart_legend_') > -1) {
                 this.isLegendClicked = true;
                 this.legendModule.click(e as Event);
-                this.focusChild(document.getElementById(targetId).parentElement);
-                this.setNavigationStyle(document.getElementById(targetId).parentElement.id);
+                this.focusChild(targetId.indexOf('_chart_legend_template') > -1 ? document.getElementById(targetId) : document.getElementById(targetId).parentElement);
+                this.setNavigationStyle(targetId.indexOf('_chart_legend_template') > -1 ? targetId : document.getElementById(targetId).parentElement.id);
             } else {
                 if (this.selectionModule) {
                     this.selectionModule.calculateSelectedElements(document.getElementById(targetId), 'click');
@@ -4310,6 +4413,7 @@ export class Chart extends Component<HTMLElement> implements INotifyPropertyChan
         let moduleName: string; let errorBarVisible: boolean = false;
         let isPointDrag: boolean = false;
         let dataLabelEnable: boolean = false; const zooming: ZoomSettingsModel = this.zoomSettings;
+        let seriesLabelEnable: boolean = false;
         let lastValueLabelEnable: boolean = false;
         this.chartAreaType = (series.length > 0 && (series[0].type === 'Polar' || series[0].type === 'Radar')) ? 'PolarRadar' : 'Cartesian';
         if (this.tooltip.enable) {
@@ -4323,6 +4427,7 @@ export class Chart extends Component<HTMLElement> implements INotifyPropertyChan
             moduleName = value.type.indexOf('100') !== -1 ? value.type.replace('100', '') + 'Series' : value.type + 'Series';
             errorBarVisible = value.errorBar.visible || errorBarVisible;
             dataLabelEnable = value.marker.dataLabel.visible || dataLabelEnable || (value.type === 'Pareto' && value.paretoOptions.marker.dataLabel.visible);
+            seriesLabelEnable = value.labelSettings.visible || seriesLabelEnable;
             lastValueLabelEnable = value.lastValueLabel.enable || lastValueLabelEnable;
             isPointDrag = value.dragSettings.enable || isPointDrag;
             if (!modules.some((currentModule: ModuleDeclaration) => {
@@ -4410,6 +4515,12 @@ export class Chart extends Component<HTMLElement> implements INotifyPropertyChan
         if (dataLabelEnable || this.stackLabels.visible) {
             modules.push({
                 member: 'DataLabel',
+                args: [this, series]
+            });
+        }
+        if (seriesLabelEnable) {
+            modules.push({
+                member: 'SeriesLabel',
                 args: [this, series]
             });
         }
@@ -4992,6 +5103,16 @@ export class Chart extends Component<HTMLElement> implements INotifyPropertyChan
                             series.bearFillColor || series.bullFillColor)) {
                             extend(this.getVisibleSeries(this.visibleSeries, i), series, null, true);
                             seriesRefresh = true;
+                        }
+                        if (!seriesRefresh && !isNullOrUndefined(series)) {
+                            const oldSeries: SeriesModel = oldProp.series && oldProp.series[i as number];
+                            const linearChanged: boolean = !isNullOrUndefined(series.linearGradient) &&
+                                (isNullOrUndefined(oldSeries) || oldSeries.linearGradient !== series.linearGradient);
+                            const radialChanged: boolean = !isNullOrUndefined(series.radialGradient) &&
+                                (isNullOrUndefined(oldSeries) || oldSeries.radialGradient !== series.radialGradient);
+                            if (linearChanged || radialChanged) {
+                                refreshBounds = true;
+                            }
                         }
                     }
                     if (seriesRefresh) {

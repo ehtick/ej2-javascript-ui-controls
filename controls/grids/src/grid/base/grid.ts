@@ -7,7 +7,7 @@ import { Query, DataManager, DataUtil, DataOptions, UrlAdaptor } from '@syncfusi
 import { ItemModel, ClickEventArgs } from '@syncfusion/ej2-navigations';
 import { createSpinner, hideSpinner, showSpinner, Tooltip } from '@syncfusion/ej2-popups';
 import { GridModel, ResizeSettingsModel } from './grid-model';
-import { iterateArrayOrObject, prepareColumns, parentsUntil, wrap, templateCompiler, isGroupAdaptive, refreshForeignData, getScrollBarWidth } from './util';
+import { iterateArrayOrObject, prepareColumns, parentsUntil, wrap, templateCompiler, isGroupAdaptive, refreshForeignData, getScrollBarWidth, setEnableSeamlessScrolling } from './util';
 import { getRowHeight, setColumnIndex, Global, ispercentageWidth, getNumberFormat, getTransformValues } from './util';
 import { setRowElements, resetRowIndex, compareChanges, getCellByColAndRowIndex, performComplexDataOperation } from './util';
 import * as events from '../base/constant';
@@ -910,10 +910,12 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
     private mediaCol: Column[];
     private getShowHideService: ShowHide;
     private keyA: boolean = false;
-    private frozenRightCount: number = 0;
+    /** @hidden */
+    public frozenRightCount: number = 0;
     private freezeColumnRefresh: boolean = true;
     private rightcount: number = 0;
-    private frozenLeftCount: number = 0;
+    /** @hidden */
+    public frozenLeftCount: number = 0;
     private leftcount: number = 0;
     private tablesCount: number = 1;
     private movableCount: number = 0;
@@ -1087,6 +1089,8 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
     public commandDelIndex: number = undefined;
     /** @hidden */
     public preventAutoFit: boolean = false;
+    /** @hidden */
+    public enableSeamlessScrolling: boolean = false;
     /** @hidden */
     public asyncTimeOut: number = 50;
     /** @hidden */
@@ -3293,13 +3297,27 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
         }
         if (this.isReact) {
             const args: LoadEventArgs = {requireTemplateRef: this.requireTemplateRef};
-            this.trigger(events.load, args);
+            if (this.enableVirtualization || this.enableColumnVirtualization) {
+                args.enableSeamlessScrolling = this.enableSeamlessScrolling;
+                this.trigger(events.load, args);
+                this.enableSeamlessScrolling = args.enableSeamlessScrolling;
+                setEnableSeamlessScrolling(this.enableSeamlessScrolling);
+            } else {
+                this.trigger(events.load, args);
+            }
             if (!args.requireTemplateRef) {
                 this.requireTemplateRef = args.requireTemplateRef;
             }
         }
         else {
-            this.trigger(events.load);
+            if (this.enableVirtualization || this.enableColumnVirtualization) {
+                const args: LoadEventArgs = { enableSeamlessScrolling : this.enableSeamlessScrolling };
+                this.trigger(events.load, args);
+                this.enableSeamlessScrolling = args.enableSeamlessScrolling;
+                setEnableSeamlessScrolling(this.enableSeamlessScrolling);
+            } else {
+                this.trigger(events.load);
+            }
         }
         if (typeof this.isRowSelectable === 'string') {
             this.isRowSelectable = getValue(this.isRowSelectable, window);
@@ -4623,6 +4641,35 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
     }
 
     /**
+     * Gets the persisted column configurations from the Grid's state as a JSON string.
+     * Only persistable column properties are included (excludes templates, formatters, valueAccessors, functions)
+     *
+     * @returns {string} JSON string of the columns; returns '' if none or on parse errors.
+     */
+    public getPersistColumns(): string {
+        const persistData: string = JSON.parse(this.addOnPersist(['columns']));
+        const persistColumns: Column[] = (<{ columns?: Column[] }>persistData).columns;
+        if (persistColumns) {
+            return JSON.stringify(persistColumns);
+        } else {
+            return '';
+        }
+    }
+
+    /**
+     * Sets new column definitions to the Grid and refreshes the column layout.
+     * Replaces current columns with the provided definitions.
+     *
+     * @param {Column[]} columns - Array of column definitions to apply.
+     * @returns {void}
+     */
+    public setColumns(columns: Column[]): void {
+        if (!isNullOrUndefined(columns) && columns instanceof Array && columns.length) {
+            this.setProperties({ columns: columns }, false);
+        }
+    }
+
+    /**
      * @private
      * @param {string} stackedHeader - Defines the stacked header
      * @param {Column[]} col - Defines the column
@@ -5123,6 +5170,40 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
     }
 
     /**
+     * Updates a single cell value (by primary key) and resolves after an optional delay.
+     *
+     * The primary key column must be set using the `columns.isPrimaryKey` property.
+     * Use `delay` when you need to wait for re-rendering or framework updates.
+     *
+     * @param {string | number} key - The primary key value of the row.
+     * @param {string} field - The field (column) name to update.
+     * @param {string | number | boolean | Date | null} value - The new cell value.
+     * @param {number} [delay] - Optional delay (ms) before the promise resolves.
+     *
+     * @returns {Promise<void>} Resolves after the value is set (and delay, if given).
+     *
+     * @example
+     * await grid.setCellValueAsync(1001, 'ShipName', 'Speedy Express', 50);
+     */
+    public setCellValueAsync(key: string | number, field: string,
+                             value: string | number | boolean | Date | null, delay: number): Promise<void> {
+        return new Promise<void>((resolve: () => void, reject: (reason?: Error) => void) => {
+            try {
+                this.setCellValue(key, field, value);
+                if (!isNullOrUndefined(delay) && delay > 0) {
+                    setTimeout(() => {
+                        resolve();
+                    }, delay);
+                } else {
+                    resolve();
+                }
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    /**
      * @param {string} columnUid - Defines column uid
      * @param {boolean} renderTemplates - Defines renderTemplates need to invoke
      * @returns {void}
@@ -5287,6 +5368,35 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
         } else {
             return;
         }
+    }
+
+    /**
+     * Updates a full row (by primary key) and resolves after an optional delay.
+     *
+     * @param {string | number} key - The primary key value of the row.
+     * @param {Object} rowData - The new data object for the row.
+     * @param {number} [delay] - Optional delay (ms) before the promise resolves.
+     *
+     * @returns {Promise<void>} Resolves when the row is updated (and delay, if given).
+     *
+     * @example
+     * await grid.setRowDataAsync(1001, { OrderID: 1001, ShipCity: 'Seattle' }, 0);
+     */
+    public setRowDataAsync(key: string | number, rowData?: Object, delay?: number): Promise<void> {
+        return new Promise<void>((resolve: () => void, reject: (reason?: Error) => void) => {
+            try {
+                this.setRowData(key, rowData);
+                if (!isNullOrUndefined(delay) && delay > 0) {
+                    setTimeout(() => {
+                        resolve();
+                    }, delay);
+                } else {
+                    resolve();
+                }
+            } catch (error) {
+                reject(error);
+            }
+        });
     }
 
     private setFrozenRowData(fTr: Row<Column>, rowData: Object): void {
@@ -6504,6 +6614,26 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
     }
 
     /**
+     * Navigates to the given page number and resolves when paging completes.
+     *
+     * @param {number} pageNo - The page number to navigate to.
+     *
+     * @returns {Promise<void>} Resolves after the paging action finishes.
+     *
+     * @example
+     * await grid.goToPageAsync(3);
+     */
+    public goToPageAsync(pageNo: number): Promise<void> {
+        if (this.pagerModule) {
+            return this.executeAsyncOperation(
+                'paging',
+                () => this.pagerModule.goToPage(pageNo)
+            );
+        }
+        return Promise.resolve();
+    }
+
+    /**
      * Defines the text of external message.
      *
      * @param  {string} message - Defines the message to update.
@@ -6529,6 +6659,59 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
         if (this.sortModule) {
             this.sortModule.sortColumn(columnName, direction, isMultiSort);
         }
+    }
+
+    private executeAsyncOperation(requestType: string, operation: () => void): Promise<void> {
+        return new Promise<void>((resolve: () => void, reject: (reason?: Error) => void) => {
+            const completeHandler: (args: NotifyArgs) => void = (args: NotifyArgs) => {
+                if (args.requestType === requestType) {
+                    this.removeEventListener(events.actionComplete, completeHandler);
+                    this.off(events.actionFailure, failureHandler);
+                    this.off(events.cancelBegin, cancelHandler);
+                    resolve();
+                }
+            };
+            const cancelHandler: (args: NotifyArgs) => void = (args: NotifyArgs) => {
+                if (args.requestType === requestType) {
+                    this.removeEventListener(events.actionComplete, completeHandler);
+                    this.off(events.actionFailure, failureHandler);
+                    this.off(events.cancelBegin, cancelHandler);
+                    resolve();
+                }
+            };
+            const failureHandler: () => void = () => {
+                this.removeEventListener(events.actionComplete, completeHandler);
+                this.off(events.actionFailure, failureHandler);
+                this.off(events.cancelBegin, cancelHandler);
+                reject();
+            };
+            this.on(events.cancelBegin, cancelHandler);
+            this.addEventListener(events.actionComplete, completeHandler);
+            this.addEventListener(events.actionFailure, failureHandler);
+            operation();
+        });
+    }
+
+    /**
+     * Sorts a column and resolves when sorting finishes.
+     *
+     * @param {string} columnName - The column name to sort.
+     * @param {SortDirection} direction - The sort direction ('Ascending' | 'Descending').
+     * @param {boolean} [isMultiSort] - Set `true` to keep existing sorts (multi-sort).
+     *
+     * @returns {Promise<void>} Resolves after sorting completes.
+     *
+     * @example
+     * await grid.sortColumnAsync('OrderDate', 'Descending', true);
+     */
+    public sortColumnAsync(columnName: string, direction: SortDirection, isMultiSort?: boolean): Promise<void> {
+        if (this.sortModule) {
+            return this.executeAsyncOperation(
+                'sorting',
+                () => this.sortModule.sortColumn(columnName, direction, isMultiSort)
+            );
+        }
+        return Promise.resolve();
     }
 
     /**
@@ -6603,6 +6786,24 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
     }
 
     /**
+     * Clears all sorted columns and resolves when done.
+     *
+     * @returns {Promise<void>} Resolves after sorting is cleared.
+     *
+     * @example
+     * await grid.clearSortingAsync();
+     */
+    public clearSortingAsync(): Promise<void> {
+        if (this.sortModule) {
+            return this.executeAsyncOperation(
+                'sorting',
+                () => this.sortModule.clearSorting()
+            );
+        }
+        return Promise.resolve();
+    }
+
+    /**
      * Remove sorted column by field name.
      *
      * @param {string} field - Defines the column field name to remove sort.
@@ -6659,6 +6860,40 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
     }
 
     /**
+     * Applies a filter on a column and resolves when filtering completes.
+     *
+     * @param {string} fieldName - The field (column) name to filter.
+     * @param {string} filterOperator - The filter operator (e.g., 'equal', 'contains').
+     * @param {string | number | Date | boolean | number[] | string[] | Date[] | boolean[] | null} filterValue - The value used to filter.
+     * @param {string} [predicate] - Logical relation to previous filters ('and' | 'or').
+     * @param {boolean} [matchCase] - If `true`, matches case for string filters.
+     * @param {boolean} [ignoreAccent] - If `true`, ignores diacritics.
+     * @param {string} [actualFilterValue] - Raw filter value (for UI scenarios).
+     * @param {string} [actualOperator] - Raw operator (for UI scenarios).
+     *
+     * @returns {Promise<void>} Resolves after the filter is applied.
+     *
+     * @example
+     * await grid.filterByColumnAsync('CustomerID', 'equal', 'ALFKI');
+     */
+    public filterByColumnAsync(fieldName: string, filterOperator: string,
+                               filterValue: string | number | Date | boolean | number[] | string[] | Date[] | boolean[] | null,
+                               predicate?: string, matchCase?: boolean,
+                               ignoreAccent?: boolean, actualFilterValue?: string, actualOperator?: string
+    ): Promise<void> {
+        if (this.filterModule) {
+            return this.executeAsyncOperation(
+                'filtering',
+                () => this.filterModule.filterByColumn(
+                    fieldName, filterOperator, filterValue, predicate, matchCase, ignoreAccent,
+                    actualFilterValue, actualOperator
+                )
+            );
+        }
+        return Promise.resolve();
+    }
+
+    /**
      * Clears all the filtered rows of the Grid.
      *
      * @param {string[]} fields - Defines the Fields
@@ -6668,6 +6903,28 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
         if (this.filterModule) {
             this.filterModule.clearFiltering(fields);
         }
+    }
+
+    /**
+     * Clears filters (optionally for specific fields) and resolves when done.
+     *
+     * @param {string[]} [fields] - Field names to clear. If omitted, clears all filters.
+     *
+     * @returns {Promise<void>} Resolves after filtering is cleared.
+     *
+     * @example
+     * await grid.clearFilteringAsync(['CustomerID', 'ShipCity']);
+     * // or clear all:
+     * await grid.clearFilteringAsync();
+     */
+    public clearFilteringAsync(fields?: string[]): Promise<void> {
+        if (this.filterModule) {
+            return this.executeAsyncOperation(
+                'refresh',
+                () => this.filterModule.clearFiltering(fields)
+            );
+        }
+        return Promise.resolve();
     }
 
     /**
@@ -6764,6 +7021,26 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
     }
 
     /**
+     * Searches the Grid using the given text and resolves when complete.
+     *
+     * @param {string} searchString - The text to search in all searchable columns.
+     *
+     * @returns {Promise<void>} Resolves after the search is applied.
+     *
+     * @example
+     * await grid.searchAsync('London');
+     */
+    public searchAsync(searchString: string): Promise<void> {
+        if (this.searchModule) {
+            return this.executeAsyncOperation(
+                'searching',
+                () => this.searchModule.search(searchString)
+            );
+        }
+        return Promise.resolve();
+    }
+
+    /**
      * By default, prints all the pages of the Grid and hides the pager.
      * > You can customize print options using the
      * [`printMode`](./#printmode).
@@ -6791,6 +7068,59 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
     }
 
     /**
+     * Deletes a record and resolves when the delete action completes.
+     *
+     * @param {string} [fieldname] - The field used to identify the record (primary key field).
+     * @param {Object} [data] - The record object to delete. If not given, deletes selected row(s).
+     *
+     * @returns {Promise<void>} Resolves after delete finishes (or immediately if nothing to delete).
+     *
+     * @example
+     * await grid.deleteRecordAsync('OrderID', { OrderID: 10248 });
+     */
+    public deleteRecordAsync(fieldname?: string, data?: Object): Promise<void> {
+        return new Promise<void>((resolve: () => void, reject: (reason?: Error) => void) => {
+            const completeHandler: (args: NotifyArgs) => void = (args: NotifyArgs) => {
+                if (args.requestType === 'delete') {
+                    this.removeEventListener(events.actionComplete, completeHandler);
+                    this.off(events.cancelBegin, cancelHandler);
+                    resolve();
+                }
+            };
+            const cancelHandler: (args: NotifyArgs) => void = (args: NotifyArgs) => {
+                if (args.requestType === 'delete') {
+                    this.removeEventListener(events.actionComplete, completeHandler);
+                    this.off(events.cancelBegin, cancelHandler);
+                    resolve();
+                }
+            };
+            const failureHandler: (args: NotifyArgs) => void = (args: NotifyArgs) => {
+                if (args.requestType === 'delete') {
+                    this.removeEventListener(events.actionComplete, completeHandler);
+                    this.off(events.actionFailure, failureHandler);
+                    this.off(events.cancelBegin, cancelHandler);
+                }
+                reject();
+            };
+            if (this.editModule) {
+                this.on(events.cancelBegin, cancelHandler);
+                this.addEventListener(events.actionFailure, failureHandler);
+                this.addEventListener(events.actionComplete, completeHandler);
+                const seletectedRecords: Object[] = this.getSelectedRecords();
+                this.editModule.deleteRecord(fieldname, data);
+                if ((isNullOrUndefined(fieldname) || isNullOrUndefined(data)) && seletectedRecords.length === 0) {
+                    this.removeEventListener(events.actionComplete, completeHandler);
+                    this.off(events.actionFailure, failureHandler);
+                    this.off(events.cancelBegin, cancelHandler);
+                    resolve();
+                }
+            } else {
+                resolve();
+            }
+        });
+    }
+
+    /**
      * Starts edit the selected row. At least one row must be selected before invoking this method.
      * `editSettings.allowEditing` should be true.
      * {% codeBlock src='grid/startEdit/index.md' %}{% endcodeBlock %}
@@ -6812,6 +7142,49 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
         if (this.editModule) {
             this.editModule.endEdit();
         }
+    }
+
+    /**
+     * Saves the current edit (add or update) and resolves when saved.
+     *
+     * @returns {Promise<void>} Resolves after the edit is saved.
+     *
+     * @example
+     * await grid.endEditAsync();
+     */
+    public endEditAsync(): Promise<void> {
+        return new Promise<void>((resolve: () => void, reject: (reason?: Error) => void) => {
+            const completeHandler: (args: NotifyArgs) => void = (args: NotifyArgs) => {
+                if (args.requestType === 'save') {
+                    this.removeEventListener(events.actionComplete, completeHandler);
+                    this.off(events.cancelBegin, cancelHandler);
+                    this.off(events.actionFailure, failureHandler);
+                    resolve();
+                }
+            };
+            const cancelHandler: (args: NotifyArgs) => void = (args: NotifyArgs) => {
+                if (args.action === 'edit') {
+                    this.removeEventListener(events.actionComplete, completeHandler);
+                    this.off(events.cancelBegin, cancelHandler);
+                    this.off(events.actionFailure, failureHandler);
+                    resolve();
+                }
+            };
+            const failureHandler: () => void = () => {
+                this.removeEventListener(events.actionComplete, completeHandler);
+                this.off(events.actionFailure, failureHandler);
+                this.off(events.cancelBegin, cancelHandler);
+                reject();
+            };
+            if (this.editModule) {
+                this.on(events.cancelBegin, cancelHandler);
+                this.addEventListener(events.actionFailure, failureHandler);
+                this.addEventListener(events.actionComplete, completeHandler);
+                this.editModule.endEdit();
+            } else {
+                resolve();
+            }
+        });
     }
 
     /**
@@ -6840,6 +7213,56 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
     }
 
     /**
+     * Adds a new record (and saves it) and resolves when done.
+     *
+     * @param {Object} [data] - The new record data. If omitted, switches the grid to add mode.
+     * @param {number} [index] - The position to insert the row.
+     *
+     * @returns {Promise<void>} Resolves after add/save completes (or immediately if only entering add mode).
+     *
+     * @example
+     * await grid.addRecordAsync({ CustomerID: 'ALFKI', ShipCity: 'Berlin' });
+     */
+    public addRecordAsync(data?: Object, index?: number): Promise<void> {
+        return new Promise<void>((resolve: () => void, reject: (reason?: Error) => void) => {
+            const completeHandler: (args: NotifyArgs) => void = (args: NotifyArgs) => {
+                if (args.action === 'add' && args.requestType === 'save') {
+                    this.removeEventListener(events.actionComplete, completeHandler);
+                    this.off(events.cancelBegin, cancelHandler);
+                    resolve();
+                }
+            };
+            const cancelHandler: (args: NotifyArgs) => void = (args: NotifyArgs) => {
+                if (args.action === 'add') {
+                    this.removeEventListener(events.actionComplete, completeHandler);
+                    this.off(events.cancelBegin, cancelHandler);
+                    resolve();
+                }
+            };
+            const failureHandler: () => void = () => {
+                this.removeEventListener(events.actionComplete, completeHandler);
+                this.off(events.actionFailure, failureHandler);
+                this.off(events.cancelBegin, cancelHandler);
+                reject();
+            };
+            if (this.editModule) {
+                this.on(events.cancelBegin, cancelHandler);
+                this.addEventListener(events.actionFailure, failureHandler);
+                this.addEventListener(events.actionComplete, completeHandler);
+                this.editModule.addRecord(data, index);
+                if (!data) {
+                    this.removeEventListener(events.actionComplete, completeHandler);
+                    this.off(events.actionFailure, failureHandler);
+                    this.off(events.cancelBegin, cancelHandler);
+                    resolve();
+                }
+            } else {
+                resolve();
+            }
+        });
+    }
+
+    /**
      * Delete any visible row by TR element.
      *
      * @param {HTMLTableRowElement} tr - Defines the table row element.
@@ -6849,6 +7272,27 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
         if (this.editModule) {
             this.editModule.deleteRow(tr);
         }
+    }
+
+    /**
+     * Deletes a row using its HTML table row element and resolves when done.
+     *
+     * @param {HTMLTableRowElement} tr - The row element to delete.
+     *
+     * @returns {Promise<void>} Resolves after the delete action completes.
+     *
+     * @example
+     * const tr = grid.getRowByIndex(0);
+     * await grid.deleteRowAsync(tr);
+     */
+    public deleteRowAsync(tr: HTMLTableRowElement): Promise<void> {
+        if (this.editModule) {
+            return this.executeAsyncOperation(
+                'delete',
+                () => this.editModule.deleteRow(tr)
+            );
+        }
+        return Promise.resolve();
     }
 
     /**
@@ -6906,6 +7350,52 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
         if (this.editModule) {
             this.editModule.updateRow(index, data);
         }
+    }
+
+    /**
+     * Updates a row by index (without entering edit mode) and resolves when saved.
+     *
+     * @param {number} index - The zero-based row index to update.
+     * @param {Object} data - The new data object for that row.
+     *
+     * @returns {Promise<void>} Resolves after the row is updated.
+     *
+     * @example
+     * await grid.updateRowAsync(2, { ShipCity: 'Madrid' });
+     */
+    public updateRowAsync(index: number, data: Object): Promise<void> {
+        return new Promise<void>((resolve: () => void, reject: (reason?: Error) => void) => {
+            const completeHandler: (args: NotifyArgs) => void = (args: NotifyArgs) => {
+                if ( args.requestType === 'save') {
+                    this.removeEventListener(events.actionComplete, completeHandler);
+                    this.off(events.cancelBegin, cancelHandler);
+                    this.off(events.actionFailure, failureHandler);
+                    resolve();
+                }
+            };
+            const cancelHandler: (args: NotifyArgs) => void = (args: NotifyArgs) => {
+                if (args.action === 'edit') {
+                    this.removeEventListener(events.actionComplete, completeHandler);
+                    this.off(events.cancelBegin, cancelHandler);
+                    this.off(events.actionFailure, failureHandler);
+                    resolve();
+                }
+            };
+            const failureHandler: () => void = () => {
+                this.removeEventListener(events.actionComplete, completeHandler);
+                this.off(events.actionFailure, failureHandler);
+                this.off(events.cancelBegin, cancelHandler);
+                reject();
+            };
+            if (this.editModule) {
+                this.on(events.cancelBegin, cancelHandler);
+                this.addEventListener(events.actionFailure, failureHandler);
+                this.addEventListener(events.actionComplete, completeHandler);
+                this.editModule.updateRow(index, data);
+            } else {
+                resolve();
+            }
+        });
     }
 
     /**
@@ -8242,6 +8732,27 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
             this.groupModule.groupColumn(columnName);
         }
     }
+
+    /**
+     * Groups a column and resolves when grouping completes.
+     *
+     * @param {string} columnName - The column name to group by.
+     *
+     * @returns {Promise<void>} Resolves after grouping finishes.
+     *
+     * @example
+     * await grid.groupColumnAsync('ShipCountry');
+     */
+    public groupColumnAsync(columnName: string): Promise<void> {
+        if (this.groupModule) {
+            return this.executeAsyncOperation(
+                'grouping',
+                () => this.groupModule.groupColumn(columnName)
+            );
+        }
+        return Promise.resolve();
+    }
+
     /**
      * Expands all the grouped rows of the Grid.
      *
@@ -8285,6 +8796,25 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
             this.groupModule.clearGrouping();
         }
     }
+
+    /**
+     * Clears all grouped columns and resolves when done.
+     *
+     * @returns {Promise<void>} Resolves after all grouping is cleared.
+     *
+     * @example
+     * await grid.clearGroupingAsync();
+     */
+    public clearGroupingAsync(): Promise<void> {
+        if (this.groupModule) {
+            return this.executeAsyncOperation(
+                'ungrouping',
+                () => this.groupModule.clearGrouping()
+            );
+        }
+        return Promise.resolve();
+    }
+
     /**
      * Ungroups a column by column name.
      *
@@ -8298,6 +8828,26 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
         if (this.groupModule) {
             this.groupModule.ungroupColumn(columnName);
         }
+    }
+
+    /**
+     * Ungroups a column and resolves when ungrouping completes.
+     *
+     * @param {string} columnName - The column name to ungroup.
+     *
+     * @returns {Promise<void>} Resolves after the column is ungrouped.
+     *
+     * @example
+     * await grid.ungroupColumnAsync('ShipCountry');
+     */
+    public ungroupColumnAsync(columnName: string): Promise<void> {
+        if (this.groupModule) {
+            return this.executeAsyncOperation(
+                'ungrouping',
+                () => this.groupModule.ungroupColumn(columnName)
+            );
+        }
+        return Promise.resolve();
     }
 
     /**

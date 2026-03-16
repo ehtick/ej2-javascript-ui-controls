@@ -10,7 +10,8 @@ import { Browser, isBlazor, isNullOrUndefined, SanitizeHtmlHelper  } from '@sync
 import { PointModel } from '@syncfusion/ej2-drawings';
 import { PdfAnnotationBase } from '../drawing/pdf-annotation';
 import { PdfAnnotationBaseModel, PdfFontModel } from '../drawing/pdf-annotation-model';
-import { AnnotationSelectorSettingsModel } from '../pdfviewer-model';
+import { AnnotationSelectorSettingsModel, AnnotationSettingsModel, FreeTextSettingsModel } from '../pdfviewer-model';
+import { cloneObject } from '../drawing/drawing-util';
 
 /**
  * @hidden
@@ -73,6 +74,22 @@ export class FreeTextAnnotation {
      * @private
      */
     public defaultHeight: number;
+    /**
+     * @private
+     */
+    public defaultMinHeight: number;
+    /**
+     * @private
+     */
+    public defaultMinWidth: number;
+    /**
+     * @private
+     */
+    public defaultMaxHeight: number;
+    /**
+     * @private
+     */
+    public defaultMaxWidth: number;
     /**
      * @private
      */
@@ -238,20 +255,48 @@ export class FreeTextAnnotation {
     }
 
     /**
-     * @param {any} fontStyle - Refers the font style
+     * @param {any} fontStyle - Refers the fontstyle
      * @private
      * @returns {void}
      */
     public updateTextProperties(fontStyle?: any): void {
+        const freeTextSettings: FreeTextSettingsModel = this.pdfViewer.freeTextSettings;
+        const annotationSettings: AnnotationSettingsModel = this.pdfViewer.annotationSettings;
+        if (freeTextSettings.minHeight || freeTextSettings.minWidth || freeTextSettings.maxHeight || freeTextSettings.maxWidth) {
+            this.defaultMinHeight = freeTextSettings.minHeight && (freeTextSettings.minHeight > 0) ? freeTextSettings.minHeight : 0;
+            this.defaultMinWidth = freeTextSettings.minWidth && (freeTextSettings.minWidth > 0) ? freeTextSettings.minWidth : 0;
+            this.defaultMaxHeight = freeTextSettings.maxHeight && (freeTextSettings.maxHeight > 0) ? freeTextSettings.maxHeight : 2000;
+            this.defaultMaxWidth = freeTextSettings.maxWidth && (freeTextSettings.maxWidth > 0) ? freeTextSettings.maxWidth : 2000;
+        }
+        else if (annotationSettings.minHeight || annotationSettings.minWidth || annotationSettings.maxHeight
+            || annotationSettings.maxWidth) {
+            this.defaultMinHeight = annotationSettings.minHeight && (annotationSettings.minHeight > 0) ? annotationSettings.minHeight : 0;
+            this.defaultMinWidth = annotationSettings.minWidth && (annotationSettings.minWidth > 0) ? annotationSettings.minWidth : 0;
+            this.defaultMaxHeight = annotationSettings.maxHeight && (annotationSettings.maxHeight > 0)
+                ? annotationSettings.maxHeight : 2000;
+            this.defaultMaxWidth = annotationSettings.maxWidth && (annotationSettings.maxWidth > 0) ? annotationSettings.maxWidth : 2000;
+        }
         this.defautWidth = this.pdfViewer.freeTextSettings.width ? this.pdfViewer.freeTextSettings.width : 151;
         this.defaultHeight = this.pdfViewer.freeTextSettings.height ? this.pdfViewer.freeTextSettings.height : 24.6;
+        if (this.defaultHeight < this.defaultMinHeight) {
+            this.defaultHeight = this.defaultMinHeight;
+        }
+        if (this.defautWidth < this.defaultMinWidth) {
+            this.defautWidth = this.defaultMinWidth;
+        }
+        if (this.defautWidth > this.defaultMaxWidth) {
+            this.defautWidth = this.defaultMaxWidth;
+        }
+        if (this.defaultHeight > this.defaultMaxHeight) {
+            this.defaultHeight = this.defaultMaxHeight;
+        }
         this.borderColor = this.pdfViewer.freeTextSettings.borderColor ? this.pdfViewer.freeTextSettings.borderColor : '#ffffff00';
         this.fillColor = this.pdfViewer.freeTextSettings.fillColor ? this.pdfViewer.freeTextSettings.fillColor : '#fff';
         this.borderStyle = this.pdfViewer.freeTextSettings.borderStyle ? this.pdfViewer.freeTextSettings.borderStyle : 'solid';
         this.borderWidth = !isNullOrUndefined(this.pdfViewer.freeTextSettings.borderWidth) ?
             this.pdfViewer.freeTextSettings.borderWidth : 0;
         this.fontSize = this.pdfViewer.freeTextSettings.fontSize ? this.pdfViewer.freeTextSettings.fontSize : 16;
-        this.opacity = this.pdfViewer.freeTextSettings.opacity ? this.pdfViewer.freeTextSettings.opacity : 1;
+        this.opacity = !isNullOrUndefined(this.pdfViewer.freeTextSettings.opacity) ? this.pdfViewer.freeTextSettings.opacity : 1;
         this.fontColor = this.pdfViewer.freeTextSettings.fontColor ? this.pdfViewer.freeTextSettings.fontColor : '#000';
         this.author = (this.pdfViewer.freeTextSettings.author && this.pdfViewer.freeTextSettings.author !== 'Guest') ? this.pdfViewer.freeTextSettings.author : this.pdfViewer.annotationSettings.author ? this.pdfViewer.annotationSettings.author : 'Guest';
         if (!isNullOrUndefined(this.pdfViewer.annotationModule)) {
@@ -337,6 +382,15 @@ export class FreeTextAnnotation {
                         }
                         annotation.AnnotationSettings = annotation.AnnotationSettings ?
                             annotation.AnnotationSettings : this.pdfViewer.annotationModule.updateSettings(this.pdfViewer.freeTextSettings);
+                        if (isImportAction) {
+                            annotation.AnnotationSettings = { minHeight: 0, minWidth: 0,
+                                // eslint-disable-next-line security/detect-object-injection
+                                maxHeight: this.pdfViewerBase.pageSize[pageNumber].height,
+                                // eslint-disable-next-line security/detect-object-injection
+                                maxWidth: this.pdfViewerBase.pageSize[pageNumber].width,
+                                isPrint: true, isLock: false
+                            };
+                        }
                         if (annotation.IsLocked) {
                             annotation.AnnotationSettings.isLock = annotation.IsLocked;
                         }
@@ -597,8 +651,8 @@ export class FreeTextAnnotation {
         if (annotation.AnnotationSelectorSettings) {
             selector = typeof(annotation.AnnotationSelectorSettings) === 'string' ? JSON.parse(annotation.AnnotationSelectorSettings) : annotation.AnnotationSelectorSettings;
         } else if (this.pdfViewer.freeTextSettings.annotationSelectorSettings) {
-            selector = this.pdfViewer.freeTextSettings.annotationSelectorSettings;
-            this.pdfViewerBase.updateSelectorSettings(selector);
+            selector = cloneObject(this.pdfViewer.annotationSelectorSettings);
+            this.pdfViewerBase.updateSelector(selector, annotation.shapeAnnotationType);
         }
         return selector;
     }
@@ -753,6 +807,12 @@ export class FreeTextAnnotation {
                 const pageAnnotationObject: IPageAnnotations = annotationCollection[parseInt(i.toString(), 10)];
                 if (pageAnnotationObject) {
                     for (let z: number = 0; pageAnnotationObject.annotations.length > z; z++) {
+                        if (this.pdfViewer.printModule && this.pdfViewer.printModule.canPrint &&
+                            pageAnnotationObject.annotations[parseInt(z.toString(), 10)].isPrint === false) {
+                            pageAnnotationObject.annotations.splice(parseInt(z.toString(), 10), 1);
+                            z--;
+                            continue;
+                        }
                         this.pdfViewer.annotationModule.updateModifiedDate(pageAnnotationObject.annotations[parseInt(z.toString(), 10)]);
                         pageAnnotationObject.annotations[parseInt(z.toString(), 10)].bounds =
                          this.getBoundsBasedOnRotation(pageAnnotationObject.annotations[parseInt(z.toString(), 10)].bounds,
@@ -924,8 +984,8 @@ export class FreeTextAnnotation {
                     document.getElementById(commentsDivid).id = annotationName;
                 }
                 const annotationSelectorSettings: AnnotationSelectorSettingsModel =
-                this.pdfViewer.freeTextSettings.annotationSelectorSettings;
-                this.pdfViewerBase.updateSelectorSettings(annotationSelectorSettings);
+                cloneObject(this.pdfViewer.annotationSelectorSettings);
+                this.pdfViewerBase.updateSelector(annotationSelectorSettings, 'FreeText');
                 const annotationSettings: any = this.pdfViewer.annotationModule.updateSettings(this.pdfViewer.freeTextSettings);
                 this.author = this.author ? this.author : this.pdfViewer.freeTextSettings.author ? this.pdfViewer.freeTextSettings.author : 'Guest';
                 this.subject = this.subject ? this.subject : this.pdfViewer.freeTextSettings.subject ? this.pdfViewer.freeTextSettings.subject : 'Text Box';
@@ -1418,6 +1478,28 @@ export class FreeTextAnnotation {
         } else {
             this.applyFreetextStyles(zoomFactor);
         }
+        if (isNullOrUndefined(annotation) && this.pdfViewer.selectedItems.annotations.length === 0) {
+            if (this.defaultMinHeight || this.defaultMinWidth || this.defaultMaxHeight || this.defaultMaxWidth) {
+                const freeTextStyleObj: any = this.inputBoxElement.style;
+                const resultantBounds: IRect = {
+                    y: parseInt(freeTextStyleObj.top, 10),
+                    x: parseInt(freeTextStyleObj.left, 10),
+                    height: parseInt(freeTextStyleObj.height, 10),
+                    width: parseInt(freeTextStyleObj.width, 10)
+                } as IRect;
+                if (resultantBounds.y < 0) {
+                    this.inputBoxElement.style.top = currentPosition.y + 'px';
+                    resultantBounds.y = currentPosition.y;
+                }
+                if ((resultantBounds.y + resultantBounds.height) > this.pdfViewerBase.getPageHeight(pageIndex)) {
+                    this.inputBoxElement.style.top = (currentPosition.y - resultantBounds.height) + 'px';
+                    resultantBounds.y = (currentPosition.y - resultantBounds.height);
+                }
+                if ((resultantBounds.x + resultantBounds.width + (3 * zoomFactor)) > (this.pdfViewerBase.getPageWidth(pageIndex))) {
+                    this.inputBoxElement.style.left = (this.pdfViewerBase.getPageWidth(pageIndex) - (resultantBounds.width + (3 * zoomFactor))) + 'px';
+                }
+            }
+        }
         if (this.isBold) {
             this.inputBoxElement.style.fontWeight = 'bold';
         } else {
@@ -1728,7 +1810,10 @@ export class FreeTextAnnotation {
                 }
             }
             annotation.AnnotationSettings = annotation.AnnotationSettings ? annotation.AnnotationSettings :
-                this.pdfViewer.annotationModule.updateSettings(this.pdfViewer.freeTextSettings);
+            // eslint-disable-next-line security/detect-object-injection
+                { minWidth: 0, minHeight: 0, maxHeight: this.pdfViewerBase.pageSize[pageNumber].height,
+                    // eslint-disable-next-line security/detect-object-injection
+                    maxWidth: this.pdfViewerBase.pageSize[pageNumber].width, isPrint: true, isLock: false };
             if (annotation.IsLocked) {
                 annotation.AnnotationSettings.isLock = annotation.IsLocked;
             }
@@ -1786,8 +1871,8 @@ export class FreeTextAnnotation {
         const annotationName: string = this.pdfViewer.annotation.createGUID();
         const fontStyle: FontStyle = annotationObject.fontStyle ? annotationObject.fontStyle : FontStyle.None;
         //Creating annotation settings
-        const annotationSelectorSettings: any = this.pdfViewer.freeTextSettings.annotationSelectorSettings;
-        this.pdfViewerBase.updateSelectorSettings(annotationSelectorSettings);
+        const annotationSelectorSettings: any = cloneObject(this.pdfViewer.annotationSelectorSettings);
+        this.pdfViewerBase.updateSelector(annotationSelectorSettings, 'FreeText');
         const annotationSettings: any = this.pdfViewer.annotationModule.updateSettings(this.pdfViewer.freeTextSettings);
         const allowedInteractions: any = this.pdfViewer.freeTextSettings.allowedInteractions ?
             this.pdfViewer.freeTextSettings.allowedInteractions : this.pdfViewer.annotationSettings.allowedInteractions;
@@ -1848,7 +1933,7 @@ export class FreeTextAnnotation {
             MarkupText: annotationObject.defaultText ? annotationObject.defaultText : 'Type Here',
             ModifiedDate: '',
             Name: annotationName,
-            Opacity: annotationObject.opacity ? annotationObject.opacity : 1,
+            Opacity: !isNullOrUndefined(annotationObject.opacity) ? annotationObject.opacity : 1,
             Page: null,
             PageTags: null,
             ReviewHistory: null,
@@ -1897,6 +1982,21 @@ export class FreeTextAnnotation {
     }
 
     /**
+     * Validates and normalizes min/max width and height constraints for Free Text settings.
+     * @private
+     * @param {FreeTextSettingsModel} settings - represents the freeTextSettings
+     * @returns {void}
+     */
+    public validateFreeTextSettings(settings?: FreeTextSettingsModel): void {
+        const freeText: FreeTextSettingsModel = !isNullOrUndefined(settings) ?
+            settings : this.pdfViewer.freeTextSettings;
+        if (freeText && (freeText.minHeight || freeText.minWidth || freeText.maxHeight || freeText.maxWidth)) {
+            this.pdfViewerBase.normalizeMinMaxPair(freeText, 'minWidth', 'maxWidth');
+            this.pdfViewerBase.normalizeMinMaxPair(freeText, 'minHeight', 'maxHeight');
+        }
+    }
+
+    /**
      * @private
      * @returns {void}
      */
@@ -1912,6 +2012,10 @@ export class FreeTextAnnotation {
         this.borderWidth = null;
         this.defautWidth = null;
         this.defaultHeight = null;
+        this.defaultMinHeight = null;
+        this.defaultMinWidth = null;
+        this.defaultMaxHeight = null;
+        this.defaultMaxWidth = null;
         this.inputBoxElement = null;
         this.borderStyle = null;
         this.author = null;

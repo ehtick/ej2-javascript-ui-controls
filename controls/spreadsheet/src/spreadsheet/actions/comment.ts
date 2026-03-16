@@ -457,7 +457,7 @@ export class SpreadsheetComment {
     }
 
     private createBodyContent(thread: ExtendedThreadedCommentModel, rebuild: boolean, inPane: boolean, cId?: string): HTMLElement {
-        if (thread && thread.createdTime && thread.createdTime instanceof Date) {
+        if (thread && thread.createdTime instanceof Date) {
             thread.createdTime = getISOTime(thread.createdTime);
             if (thread.replies) {
                 thread.replies.forEach((reply: ExtendedThreadedCommentModel) => {
@@ -1034,14 +1034,19 @@ export class SpreadsheetComment {
         const offsetTop: number = (elementPosition === 'absolute' ? 0 : this.parent.element.offsetTop);
         const offsetLeft: number = (elementPosition === 'absolute' ? 0 : this.parent.element.offsetLeft);
         commentContainer.style.position = 'absolute';
-        let containerTop: number = cellRect.top - (elementClientRect.top - offsetTop);
-        if (!isNullOrUndefined(selectAllCell) && !isNullOrUndefined(scroller) &&
-            cellRect.top < selectAllCell.getBoundingClientRect().bottom) {
-            containerTop = selectAllCell.getBoundingClientRect().bottom - (elementClientRect.top - offsetTop) + 5;
-        } else if (containerTop < 0) {
-            containerTop = 5;
+        let topPos: number = cellRect.top - (elementClientRect.top - offsetTop);
+        if (!isNullOrUndefined(scroller)) {
+            const spaceToBottom: number = scroller.getBoundingClientRect().top - (cellRect.top);
+            if (spaceToBottom < commentContainer.offsetHeight) {
+                topPos -= (commentContainer.offsetHeight - spaceToBottom + 5);
+            } else if (!isNullOrUndefined(selectAllCell) && cellRect.top < selectAllCell.getBoundingClientRect().bottom) {
+                topPos = selectAllCell.getBoundingClientRect().bottom - (elementClientRect.top - offsetTop) + 5;
+            }
         }
-        commentContainer.style.top = `${containerTop}px`;
+        if (topPos < 0) {
+            topPos = 5;
+        }
+        commentContainer.style.top = `${topPos}px`;
         let leftPos: number;
         const preferredWidth: number = 244;
         let actualWidth: number = preferredWidth;

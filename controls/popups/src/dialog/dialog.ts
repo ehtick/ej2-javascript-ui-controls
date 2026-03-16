@@ -4,6 +4,7 @@ import { NotifyPropertyChanges, INotifyPropertyChanged, ChildProperty, isBlazor 
 import { isNullOrUndefined, formatUnit, append, EventHandler, Draggable, extend } from '@syncfusion/ej2-base';
 import { BlazorDragEventArgs, SanitizeHtmlHelper, Browser } from '@syncfusion/ej2-base';
 import { Button, ButtonModel } from '@syncfusion/ej2-buttons';
+import { Tooltip, Position } from '../tooltip/tooltip';
 import { Popup, PositionData, getZindexPartial } from '../popup/popup';
 import { PositionDataModel } from '../popup/popup-model';
 import { ButtonPropsModel, DialogModel, AnimationSettingsModel } from './dialog-model';
@@ -440,6 +441,8 @@ export class Dialog extends Component<HTMLElement> implements INotifyPropertyCha
     private dlgClosedBy: string;
     private isModelResize: boolean;
     private boundWindowResizeHandler: () => void;
+    private tooltipInstance: { [key: string]: Tooltip };
+    private tooltipIndex: number;
     private keyDownHandler: () => void;
     /**
      * Specifies the value that can be displayed in dialog's content area.
@@ -833,6 +836,8 @@ export class Dialog extends Component<HTMLElement> implements INotifyPropertyCha
         this.headerContent = null;
         this.allowMaxHeight = true;
         this.preventVisibility = true;
+        this.tooltipInstance = {};
+        this.tooltipIndex = 0;
         this.clonedEle = <HTMLElement>this.element.cloneNode(true);
         this.closeIconClickEventHandler = (event: Event): void => {
             this.dlgClosedBy = DLG_CLOSE_ICON_CLOSED;
@@ -964,11 +969,13 @@ export class Dialog extends Component<HTMLElement> implements INotifyPropertyCha
     }
 
     private onResizing(args: MouseEvent | TouchEvent, dialogObj: Dialog): void {
+        this.closeOverflowTooltips();
         dialogObj.trigger('resizing', args);
     }
 
     private onResizeComplete(args: MouseEvent | TouchEvent, dialogObj: Dialog): void {
         dialogObj.trigger('resizeStop', args);
+        this.applyOverflowTooltips();
         this.updatePersistData();
     }
 
@@ -1229,6 +1236,7 @@ export class Dialog extends Component<HTMLElement> implements INotifyPropertyCha
                         this.focusContent();
                     }
                 });
+                this.applyOverflowTooltips();
             },
             // eslint-disable-next-line
              close: (event: Event) => {
@@ -1246,7 +1254,7 @@ export class Dialog extends Component<HTMLElement> implements INotifyPropertyCha
                 this.trigger('close', this.closeArgs);
                 if (!isNullOrUndefined(this.storeActiveElement) && !isNullOrUndefined(this.storeActiveElement.focus)
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                && !(this.closeArgs as any).preventFocus) {
+                && !isNullOrUndefined(this.closeArgs) && !(this.closeArgs as any).preventFocus) {
                     this.storeActiveElement.focus();
                 }
             }
@@ -1382,8 +1390,10 @@ export class Dialog extends Component<HTMLElement> implements INotifyPropertyCha
                     this.isModelResize = false;
                     this.element.classList.remove(DLG_RESTRICT_LEFT_VALUE);
                     this.updatePersistData();
+                    this.applyOverflowTooltips();
                 },
                 drag: (event: Object) => {
+                    this.closeOverflowTooltips();
                     this.trigger('drag', event);
                 }
             });
@@ -1608,6 +1618,74 @@ export class Dialog extends Component<HTMLElement> implements INotifyPropertyCha
             this.ftrTemplateContent.innerHTML = this.buttonContent.join('');
         }
         this.element.appendChild(this.ftrTemplateContent);
+        if (this.element.classList.contains('e-dlg-tooltip')) {
+            Array.from(this.ftrTemplateContent.children).forEach((el: Element) => {
+                (el as HTMLElement).classList.add('e-footer-btn');
+            });
+        }
+    }
+    private attachEllipsisTooltip(element: HTMLElement, content: string, position: Position, width: number): void {
+        if (!element || element.getAttribute('data-has-tooltip') === 'true') { return; }
+        const dialogWidth: number = typeof this.width === 'string' ? parseFloat(this.width as string) : (this.width as number);
+        const tip: Tooltip = new Tooltip({ content, position, opensOn: 'Hover', width: width >= dialogWidth ? dialogWidth : width }, element);
+        const tooltipKey: string = 'tooltip_' + (this.tooltipIndex++);
+        this.tooltipInstance[tooltipKey as string] = tip;
+        element.setAttribute('data-tooltip-key', tooltipKey);
+        element.setAttribute('data-has-tooltip', 'true');
+    }
+    private applyOverflowTooltips(): void {
+        if (!this.element.classList.contains('e-dlg-tooltip')) {
+            return;
+        }
+        if (this.headerEle) {
+            const raw: string = (this.header as string).trim();
+            const headerText: string = /<[^>]+>/.test(raw) ? (this.headerEle.textContent || '').trim() : (this.header as string);
+            if (headerText && this.headerEle.scrollWidth > this.headerEle.clientWidth) {
+                this.attachEllipsisTooltip(this.headerEle, headerText, 'BottomCenter', this.headerEle.scrollWidth);
+            }
+        }
+        if (this.ftrTemplateContent) {
+            const buttons: NodeListOf<Element> = this.ftrTemplateContent.querySelectorAll('.e-footer-btn');
+            buttons.forEach((btn: Element) => {
+                const btnEl: HTMLElement = btn as HTMLElement;
+                const textSpan: HTMLElement = btnEl.querySelector('.e-btn-text') as HTMLElement || btnEl;
+                const text: string = (textSpan.innerText || textSpan.textContent || '').trim();
+                if (text && textSpan.scrollWidth > textSpan.clientWidth) {
+                    this.attachEllipsisTooltip(btnEl, text, 'TopCenter', textSpan.scrollWidth);
+                }
+            });
+        }
+    }
+    private closeOverflowTooltips(cssClass?: string): void {
+        if (cssClass !== 'cssClass' && !this.element.classList.contains('e-dlg-tooltip')) {
+            return;
+        }
+        const elements: HTMLElement[] = [];
+        if (this.headerEle) {
+            this.headerEle.removeAttribute('aria-describedby');
+            this.headerEle.removeAttribute('data-tooltip-id');
+            elements.push(this.headerEle);
+        }
+        if (this.ftrTemplateContent) {
+            elements.push(...Array.from(this.ftrTemplateContent.querySelectorAll('.e-footer-btn')) as HTMLElement[]);
+        }
+        elements.forEach((el: HTMLElement) => {
+            const tooltipKey: string | null = el.getAttribute('data-tooltip-key');
+            const tip: Tooltip | undefined = tooltipKey ? this.tooltipInstance[tooltipKey as string] : undefined;
+            if (tip && typeof tip.getModuleName === 'function' && tip.getModuleName() === 'tooltip') {
+                if (typeof tip.close === 'function') { tip.close(); }
+                if (typeof tip.destroy === 'function') { tip.destroy(); }
+                if (el && typeof el.removeAttribute === 'function') {
+                    el.removeAttribute('data-has-tooltip');
+                    el.removeAttribute('data-tooltip-id');
+                    el.removeAttribute('data-tooltip-key');
+                }
+                if (tooltipKey) {
+                    delete this.tooltipInstance[tooltipKey as string];
+                    this.tooltipIndex--;
+                }
+            }
+        });
     }
 
     private createHeaderContent(): void {
@@ -1814,6 +1892,8 @@ export class Dialog extends Component<HTMLElement> implements INotifyPropertyCha
                     }
                 } else {
                     this.setHeader();
+                    this.closeOverflowTooltips();
+                    this.applyOverflowTooltips();
                 } break;
             case 'footerTemplate':
                 if (this.footerTemplate === '' || isNullOrUndefined(this.footerTemplate)) {
@@ -1865,7 +1945,10 @@ export class Dialog extends Component<HTMLElement> implements INotifyPropertyCha
                     this.calculatezIndex = false;
                 } break;
             case 'cssClass':
-                this.setCSSClass(oldProp.cssClass); break;
+                this.setCSSClass(oldProp.cssClass);
+                this.closeOverflowTooltips('cssClass');
+                this.applyOverflowTooltips();
+                break;
             case 'buttons': {
                 this.unWireButtonEvents();
                 this.destroyButtons();
@@ -1875,6 +1958,8 @@ export class Dialog extends Component<HTMLElement> implements INotifyPropertyCha
                 }
                 this.footerTemplate = '';
                 this.setButton();
+                this.closeOverflowTooltips();
+                this.applyOverflowTooltips();
                 break;
             }
             case 'allowDragging':
@@ -2306,6 +2391,7 @@ export class Dialog extends Component<HTMLElement> implements INotifyPropertyCha
                     this.visible = false;
                     this.preventVisibility = false;
                     this.isProtectedOnChange = prevOnChange;
+                    this.closeOverflowTooltips();
                 }
                 this.dlgClosedBy = DLG_USER_ACTION_CLOSED;
             });

@@ -417,7 +417,7 @@ export interface DropDownTreeModel extends ComponentModel{
     enableHtmlSanitizer?: boolean;
 
     /**
-     * Enables rendering of raw text content in the Dropdown Tree component without HTML encoding.
+     * Enables rendering of raw text content in the Dropdown component without HTML encoding.
      * When set to true, the text will be displayed exactly as provided (including HTML tags or special characters),
      * instead of being encoded or truncated (e.g., `hiiih<hihi` will be shown as-is).
      *

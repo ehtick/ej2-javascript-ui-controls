@@ -1267,33 +1267,13 @@ export class FormDesigner {
                     }
                 }
                 if (actualObject.formFieldAnnotationType === 'Checkbox') {
-                    const minCheckboxWidth: number = 20;
                     const labelContainer: Element = htmlElement.firstElementChild.firstElementChild;
-                    const spanElement: Element = htmlElement.firstElementChild.firstElementChild.lastElementChild.firstElementChild;
                     if (element.actualSize.width > element.actualSize.height) {
                         (htmlElement.firstElementChild as any).style.display = 'inherit';
-                        (labelContainer as any).style.width = (labelContainer as any).style.height = (element.actualSize.height * zoomValue) + 'px';
-                        (spanElement as any).style.width = ((element.actualSize.height / 5) * zoomValue) + 'px';
-                        (spanElement as any).style.height = ((element.actualSize.height / 2.5) * zoomValue) + 'px';
-                        (spanElement as any).style.left = ((element.actualSize.height / 2.5) * zoomValue) + 'px';
-                        (spanElement as any).style.top = ((element.actualSize.height / 5) * zoomValue) + 'px';
+                        (labelContainer as any).style.width = (labelContainer as any).style.height = '100%';
                     } else {
                         (htmlElement.firstElementChild as any).style.display = 'flex';
-                        (labelContainer as any).style.width = (labelContainer as any).style.height = (element.actualSize.width * zoomValue) + 'px';
-                        (spanElement as any).style.width = ((element.actualSize.width / 5) * zoomValue) + 'px';
-                        (spanElement as any).style.height = ((element.actualSize.width / 2.5) * zoomValue) + 'px';
-                        (spanElement as any).style.left = ((element.actualSize.width / 2.5) * zoomValue) + 'px';
-                        (spanElement as any).style.top = ((element.actualSize.width / 5) * zoomValue) + 'px';
-                    }
-                    if (spanElement.className.indexOf('e-pv-cb-checked') !== -1) {
-                        const checkboxWidth: number = parseInt((labelContainer as any).style.width, 10);
-                        if (checkboxWidth > minCheckboxWidth) {
-                            (spanElement as any).style.borderWidth = '3px';
-                        } else if (checkboxWidth <= 15) {
-                            (spanElement as any).style.borderWidth = '1px';
-                        } else {
-                            (spanElement as any).style.borderWidth = '2px';
-                        }
+                        (labelContainer as any).style.width = (labelContainer as any).style.height = '100%';
                     }
                 }
                 if (actualObject.formFieldAnnotationType === 'SignatureField'  || actualObject.formFieldAnnotationType === 'InitialField'){
@@ -1753,7 +1733,6 @@ export class FormDesigner {
         element.style.position = 'absolute';
         element.style.width = '100%';
         element.style.height = '100%';
-        element.style.backgroundColor = drawingObject.backgroundColor;
         element.style.visibility = drawingObject.visibility;
         const select: HTMLSelectElement = document.createElement('select');
         select.addEventListener('change', this.dropdownChange.bind(this));
@@ -1768,6 +1747,12 @@ export class FormDesigner {
         select.style.position = 'absolute';
         this.updateDropDownFieldSettings(this.pdfViewer.DropdownFieldSettings);
         this.updateDropdownFieldSettingsProperties(drawingObject, this.pdfViewer.isFormDesignerToolbarVisible, this.isSetFormFieldMode);
+        if (drawingObject && drawingObject.isReadonly) {
+            element.style.background = 'transparent';
+        }
+        else {
+            element.style.background = drawingObject.backgroundColor;
+        }
         const dropDownChildren: ItemModel[] = drawingObject.options ? drawingObject.options : [];
         this.updateDropdownListProperties(drawingObject, select, isPrint);
         for (let j: number = 0; j < dropDownChildren.length; j++) {
@@ -1805,7 +1790,6 @@ export class FormDesigner {
         element.style.position = 'absolute';
         element.style.width = '100%';
         element.style.height = '100%';
-        element.style.backgroundColor = drawingObject.backgroundColor;
         element.style.visibility = drawingObject.visibility;
         const select: HTMLSelectElement = document.createElement('select');
         select.addEventListener('click', this.listBoxChange.bind(this));
@@ -1821,6 +1805,12 @@ export class FormDesigner {
         select.multiple = true;
         this.updateListBoxFieldSettings(this.pdfViewer.listBoxFieldSettings);
         this.updatelistBoxFieldSettingsProperties(drawingObject, this.pdfViewer.isFormDesignerToolbarVisible, this.isSetFormFieldMode);
+        if (drawingObject && drawingObject.isReadonly) {
+            element.style.background = 'transparent';
+        }
+        else {
+            element.style.background = drawingObject.backgroundColor;
+        }
         const dropDownChildren: ItemModel[] = drawingObject.options ? drawingObject.options : [];
         this.updateListBoxProperties(drawingObject, select, isPrint);
         for (let j: number = 0; j < dropDownChildren.length; j++) {
@@ -1873,16 +1863,17 @@ export class FormDesigner {
         if (formFieldAnnotationType === 'Textbox') {
             if (drawingObject.isMultiline) {
                 textArea = this.createTextAreaElement(inputElement.id);
-                this.updateTextFieldSettingProperties(drawingObject, this.pdfViewer.isFormDesignerToolbarVisible, this.isSetFormFieldMode);
+                this.updateTextFieldSettingProperties(drawingObject, this.pdfViewer.isFormDesignerToolbarVisible,
+                                                      this.isSetFormFieldMode);
                 this.updateTextboxProperties(drawingObject, textArea, isPrint);
             } else {
                 inputElement = this.createTextboxElement(inputElement.id);
-                this.updateTextFieldSettingProperties(drawingObject, this.pdfViewer.isFormDesignerToolbarVisible, this.isSetFormFieldMode);
+                this.updateTextFieldSettingProperties(drawingObject, this.pdfViewer.isFormDesignerToolbarVisible,
+                                                      this.isSetFormFieldMode);
                 this.updateTextboxProperties(drawingObject, inputElement, isPrint);
             }
         } else if (formFieldAnnotationType === 'Checkbox') {
             const zoomLevel: number = isPrint ? this.defaultZoomValue : this.pdfViewerBase.getZoomFactor();
-            const minCheckboxWidth: number = 20;
             element.style.display = 'flex';
             element.style.alignItems = 'center';
             const bounds: any = this.getCheckboxRadioButtonBounds(drawingObject, formFieldBounds, isPrint);
@@ -1902,26 +1893,29 @@ export class FormDesigner {
             }
             (checkboxDiv as HTMLElement).id = drawingObject.id + '_input';
             if (drawingObject.isChecked) {
-                innerSpan = createElement('span', { className: 'e-pv-checkbox-span e-pv-cb-checked' });
+                innerSpan = createElement('span', { className: 'e-pv-checkbox-span e-pv-cb-check' });
             }
             else
-            {innerSpan = createElement('span', { className: 'e-pv-checkbox-span e-pv-cb-unchecked' }); }
+            {innerSpan = createElement('span', { className: 'e-pv-checkbox-span e-pv-cb-uncheck' }); }
             innerSpan.id = drawingObject.id + '_input_span';
+            innerSpan.style.pointerEvents = 'none';
             labelElement.id = drawingObject.id + '_input_label';
-            innerSpan.style.width = (bounds.width / 5) + 'px';
-            innerSpan.style.height = (bounds.height / 2.5) + 'px';
-            innerSpan.style.left = (bounds.width / 2.5) + 'px';
-            innerSpan.style.top = (bounds.height / 5) + 'px';
-            if (innerSpan.className.indexOf('e-pv-cb-checked') !== -1) {
-                const checkboxWidth: number = parseInt(labelElement.style.width, 10);
-                if (checkboxWidth > minCheckboxWidth) {
-                    innerSpan.style.borderWidth = '3px';
-                } else if (checkboxWidth <= 15) {
-                    innerSpan.style.borderWidth = '1px';
-                } else {
-                    innerSpan.style.borderWidth = '2px';
-                }
-            }
+            const svgNs: string = 'http://www.w3.org/2000/svg';
+            const tickSvg: SVGSVGElement = document.createElementNS(svgNs, 'svg') as SVGSVGElement;
+            tickSvg.setAttribute('class', 'e-pv-checkbox-tick-svg');
+            tickSvg.setAttribute('viewBox', '0 0 24 24');
+            tickSvg.setAttribute('fill', 'none');
+            tickSvg.setAttribute('stroke', '#111827');
+            tickSvg.setAttribute('stroke-width', '2.5');
+            tickSvg.setAttribute('stroke-linecap', 'round');
+            tickSvg.setAttribute('stroke-linejoin', 'round');
+            tickSvg.setAttribute('aria-hidden', 'true');
+            tickSvg.style.width = '100%';
+            tickSvg.style.height = '100%';
+            const tickPath: SVGPathElement = document.createElementNS(svgNs, 'path') as SVGPathElement;
+            tickPath.setAttribute('d', 'M4.5 12.5L9.5 17.5L19.5 6.5');
+            tickSvg.appendChild(tickPath);
+            tickSvg.style.display = drawingObject.isChecked ? 'block' : 'none';
             if (isPrint) {
                 checkboxDiv.style.backgroundColor = 'rgb(218, 234, 247)';
                 checkboxDiv.style.border = '1px solid #303030';
@@ -1929,23 +1923,11 @@ export class FormDesigner {
                 checkboxDiv.style.height = '100%';
                 checkboxDiv.style.width = '100%';
                 checkboxDiv.style.position = 'absolute';
-                if (innerSpan.className.indexOf('e-pv-cb-checked') !== -1) {
-                    innerSpan.style.border = 'solid #303030';
-                    innerSpan.style.position = 'absolute';
-                    innerSpan.style.borderLeft = 'transparent';
-                    innerSpan.style.borderTop = 'transparent';
-                    innerSpan.style.transform = 'rotate(45deg)';
-                    const checkboxWidth: number = parseInt(labelElement.style.width, 10);
-                    if (checkboxWidth > minCheckboxWidth) {
-                        innerSpan.style.borderWidth = '3px';
-                    }
-                    else if (checkboxWidth <= 15) {
-                        innerSpan.style.borderWidth = '1px';
-                    }
-                    else {
-                        innerSpan.style.borderWidth = '2px';
-                    }
-                }
+                tickSvg.style.display = drawingObject.isChecked ? 'block' : 'none';
+                inputElement.style.outlineWidth = drawingObject.thickness + 'px';
+                inputElement.style.outlineColor = drawingObject.borderColor;
+                inputElement.style.outlineStyle = 'solid';
+                inputElement.style.background = drawingObject.backgroundColor;
             }
             (inputElement as IElement).type = 'checkbox';
             inputElement.style.margin = '0px';
@@ -1960,12 +1942,7 @@ export class FormDesigner {
             inputElement.appendChild(labelElement);
             labelElement.appendChild(checkboxDiv);
             checkboxDiv.appendChild(innerSpan);
-            if (isPrint) {
-                inputElement.style.outlineWidth = drawingObject.thickness + 'px';
-                inputElement.style.outlineColor = drawingObject.borderColor;
-                inputElement.style.outlineStyle = 'solid';
-                inputElement.style.background = drawingObject.backgroundColor;
-            }
+            innerSpan.appendChild(tickSvg);
         } else if (formFieldAnnotationType === 'PasswordField') {
             (inputElement as IElement).type = 'password';
             inputElement.className = 'e-pv-formfield-input';
@@ -1977,7 +1954,8 @@ export class FormDesigner {
             inputElement.addEventListener('blur', this.blurFormFields.bind(this));
             inputElement.addEventListener('change', this.getTextboxValue.bind(this));
             this.updatePasswordFieldSettings(this.pdfViewer.passwordFieldSettings);
-            this.updatePasswordFieldSettingProperties(drawingObject, this.pdfViewer.isFormDesignerToolbarVisible, this.isSetFormFieldMode);
+            this.updatePasswordFieldSettingProperties(drawingObject, this.pdfViewer.isFormDesignerToolbarVisible,
+                                                      this.isSetFormFieldMode);
             this.updatePasswordFieldProperties(drawingObject, inputElement, isPrint);
         } else {
             /*
@@ -2003,7 +1981,12 @@ export class FormDesigner {
             {labelElement.style.cursor = 'crosshair'; }
             else
             {labelElement.style.cursor = 'pointer'; }
-            labelElement.style.background = drawingObject.backgroundColor;
+            if (drawingObject && drawingObject.isReadonly) {
+                labelElement.style.background = 'transparent';
+            }
+            else {
+                labelElement.style.background = drawingObject.backgroundColor;
+            }
             innerSpan = createElement('span', { className: 'e-pv-radiobtn-span' });
             innerSpan.id = drawingObject.id + '_input_span';
             innerSpan.style.width = Math.floor(bounds.width / 2) + 'px';
@@ -2163,7 +2146,6 @@ export class FormDesigner {
 
     public setCheckBoxState(event: Event): void {
         if ((Browser.isDevice) ? ((event.target as Element).classList.contains('') || (event.target as Element).classList.contains('e-pv-checkbox-outer-div') || (event.target as Element).classList.contains('e-pv-checkbox-div')) && (event.currentTarget as Element).classList.contains('e-pv-checkbox-outer-div') && !this.pdfViewer.designerMode : !this.pdfViewer.designerMode) {
-            const minCheckboxWidth: number = 20;
             let isChecked: boolean = false;
             let checkTarget: Element;
             let targetField: any = null;
@@ -2173,51 +2155,48 @@ export class FormDesigner {
                 checkTarget = (event.target as Element);
             }
             if ((event.target as Element).id !== 'undefined_input' && !(this.pdfViewer.nameTable as any)[(event.target as Element).id.split('_')[0]].isReadonly && !this.pdfViewer.designerMode) {
-                if (checkTarget && checkTarget.firstElementChild && checkTarget.firstElementChild.className === 'e-pv-checkbox-span e-pv-cb-checked') {
-                    checkTarget.firstElementChild.classList.remove('e-pv-cb-checked');
-                    checkTarget.firstElementChild.classList.add('e-pv-checkbox-span', 'e-pv-cb-unchecked');
+                if (checkTarget && checkTarget.firstElementChild && checkTarget.firstElementChild.className === 'e-pv-checkbox-span e-pv-cb-check') {
+                    checkTarget.firstElementChild.classList.remove('e-pv-cb-check');
+                    checkTarget.firstElementChild.classList.add('e-pv-checkbox-span', 'e-pv-cb-uncheck');
+                    (checkTarget.firstElementChild.querySelector('.e-pv-checkbox-tick-svg') as any).style.display = 'none';
                     isChecked = false;
-                } else if (checkTarget.className === 'e-pv-checkbox-span e-pv-cb-checked') {
-                    checkTarget.classList.remove('e-pv-cb-checked');
-                    checkTarget.classList.add('e-pv-checkbox-span', 'e-pv-cb-unchecked');
+                } else if (checkTarget.className === 'e-pv-checkbox-span e-pv-cb-check') {
+                    checkTarget.classList.remove('e-pv-cb-check');
+                    checkTarget.classList.add('e-pv-checkbox-span', 'e-pv-cb-uncheck');
+                    (checkTarget.querySelector('.e-pv-checkbox-tick-svg') as any).style.display = 'none';
                     isChecked = false;
                 } else {
-                    checkTarget.firstElementChild.classList.remove('e-pv-cb-unchecked');
-                    checkTarget.firstElementChild.classList.add('e-pv-checkbox-span', 'e-pv-cb-checked');
+                    checkTarget.firstElementChild.classList.remove('e-pv-cb-uncheck');
+                    checkTarget.firstElementChild.classList.add('e-pv-checkbox-span', 'e-pv-cb-check');
+                    (checkTarget.firstElementChild.querySelector('.e-pv-checkbox-tick-svg') as any).style.display = 'block';
                     isChecked = true;
                 }
                 const data: string = this.pdfViewerBase.getItemFromSessionStorage('_formDesigner');
-                if (isChecked) {
-                    if (checkTarget.firstElementChild.className.indexOf('e-pv-cb-checked') !== -1) {
-                        const checkboxWidth: number = parseInt((event.target as any).parentElement.style.width, 10);
-                        if (checkboxWidth > minCheckboxWidth) {
-                            (checkTarget.firstElementChild as any).style.borderWidth = '3px';
-                        } else if (checkboxWidth <= 15) {
-                            (checkTarget.firstElementChild as any).style.borderWidth = '1px';
-                        } else {
-                            (checkTarget.firstElementChild as any).style.borderWidth = '2px';
-                        }
-                    }
-                }
                 const formFieldsData: any = JSON.parse(data);
                 for (let i: number = 0; i < formFieldsData.length; i++) {
                     if (formFieldsData[parseInt(i.toString(), 10)].Key.split('_')[0] === (event.target as Element).id.split('_')[0] ||
                         (this.pdfViewer.nameTable as any)[(event.target as Element).id.split('_')[0]].name === formFieldsData[parseInt(i.toString(), 10)].FormField.name) {
                         (this.pdfViewer.nameTable as any)[formFieldsData[parseInt(i.toString(), 10)].Key.split('_')[0]].isChecked = isChecked;
+                        (this.pdfViewer.nameTable as any)[formFieldsData[parseInt(i.toString(), 10)].Key.split('_')[0]].isSelected = isChecked;
                         const oldValue: any = this.pdfViewerBase.formFieldCollection[parseInt(i.toString(), 10)].FormField.isChecked;
                         formFieldsData[parseInt(i.toString(), 10)].FormField.isChecked = isChecked;
+                        formFieldsData[parseInt(i.toString(), 10)].FormField.isSelected = isChecked;
                         this.pdfViewerBase.formFieldCollection[parseInt(i.toString(), 10)].FormField.isChecked =
+                         formFieldsData[parseInt(i.toString(), 10)].FormField.isChecked;
+                        this.pdfViewerBase.formFieldCollection[parseInt(i.toString(), 10)].FormField.isSelected =
                          formFieldsData[parseInt(i.toString(), 10)].FormField.isChecked;
                         if (formFieldsData[parseInt(i.toString(), 10)].Key.split('_')[0] !== (event.target as Element).id.split('_')[0]) {
                             const checkboxElement: Element = document.getElementById(formFieldsData[parseInt(i.toString(), 10)].Key.split('_')[0] + '_input').firstElementChild;
                             if (isChecked) {
-                                if (checkboxElement.classList.contains('e-pv-cb-unchecked'))
-                                {checkboxElement.classList.remove('e-pv-cb-unchecked'); }
-                                checkboxElement.classList.add('e-pv-cb-checked');
+                                if (checkboxElement.classList.contains('e-pv-cb-uncheck'))
+                                {checkboxElement.classList.remove('e-pv-cb-uncheck'); }
+                                checkboxElement.classList.add('e-pv-cb-check');
+                                (checkboxElement.querySelector('.e-pv-checkbox-tick-svg') as any).style.display = 'block';
                             } else {
-                                if (checkboxElement.classList.contains('e-pv-cb-checked'))
-                                {checkboxElement.classList.remove('e-pv-cb-checked'); }
-                                checkboxElement.classList.add('e-pv-cb-unchecked');
+                                if (checkboxElement.classList.contains('e-pv-cb-check'))
+                                {checkboxElement.classList.remove('e-pv-cb-check'); }
+                                checkboxElement.classList.add('e-pv-cb-uncheck');
+                                (checkboxElement.querySelector('.e-pv-checkbox-tick-svg') as any).style.display = 'none';
                             }
                         }
                         this.updateFormFieldCollections(this.pdfViewerBase.formFieldCollection[parseInt(i.toString(), 10)].FormField);
@@ -2238,11 +2217,13 @@ export class FormDesigner {
 
     private setCheckedValue(element: Element, isChecked?: boolean): void {
         if (isChecked) {
-            element.firstElementChild.classList.remove('e-pv-cb-unchecked');
-            element.firstElementChild.classList.add('e-pv-checkbox-span', 'e-pv-cb-checked');
+            element.firstElementChild.classList.remove('e-pv-cb-uncheck');
+            element.firstElementChild.classList.add('e-pv-checkbox-span', 'e-pv-cb-check');
+            (element.firstElementChild.querySelector('.e-pv-checkbox-tick-svg') as any).style.display = 'block';
         } else {
-            element.firstElementChild.classList.remove('e-pv-cb-checked');
-            element.firstElementChild.classList.add('e-pv-checkbox-span', 'e-pv-cb-unchecked');
+            element.firstElementChild.classList.remove('e-pv-cb-check');
+            element.firstElementChild.classList.add('e-pv-checkbox-span', 'e-pv-cb-uncheck');
+            (element.firstElementChild.querySelector('.e-pv-checkbox-tick-svg') as any).style.display = 'none';
         }
     }
 
@@ -2405,6 +2386,7 @@ export class FormDesigner {
 
         for (let k: number = 0; k < radioFields.length; k++) {
             if (radioFields[k as number].name === currentItem[0].name) {
+
                 if (radioFields[k as number].value === currentItem[0].value) {
                     radioFields[k as number].isSelected = currentItem[0].isSelected;
                     radioFields[k as number].isUnisonSelected = currentItem[0].isUnisonSelected;
@@ -2416,9 +2398,15 @@ export class FormDesigner {
     }
 
     public radioButtonState(clickedItem: any, value?: boolean, formFields?: any): void {
-        const formFieldsData: any = JSON.parse(
-            this.pdfViewerBase.getItemFromSessionStorage('_formfields') || '[]'
-        );
+        let formFieldsData: any[] = [];
+        const data: any = (this.pdfViewerBase.getItemFromSessionStorage('_formfields') || '[]');
+        if (!data) {
+            formFieldsData = [];
+        } else if (data.trim().startsWith('"[')) {
+            formFieldsData = JSON.parse(JSON.parse(data));
+        } else if (data.trim().startsWith('[')) {
+            formFieldsData = JSON.parse(data);
+        }
         const targetName: any = clickedItem.name;
         const targetValue: any = clickedItem.value;
         if (!targetName) { return; }
@@ -2614,7 +2602,7 @@ export class FormDesigner {
         obj.visibility = !isNullOrUndefined(options.visibility) ? options.visibility : 'visible';
         obj.value = !isNullOrUndefined((options as TextFieldSettings).value) ? (options as TextFieldSettings).value : '';
         obj.isRequired = options.isRequired ? options.isRequired : false;
-        obj.isPrint = options.isPrint ? options.isPrint : true;
+        obj.isPrint = !isNullOrUndefined(options.isPrint) ? options.isPrint : true;
         obj.pageNumber = !isNullOrUndefined(options.pageNumber) ? options.pageNumber : this.pdfViewerBase.currentPageNumber;
         obj.pageIndex = obj.pageNumber - 1;
         obj.font = (options as any).font;
@@ -4203,7 +4191,9 @@ export class FormDesigner {
             this.pdfViewerBase.disableTextSelectionMode();
         } else {
             this.enableDisableFormFieldsInteraction(false);
-            this.pdfViewer.toolbarModule.updateInteractionItems();
+            if (!isNullOrUndefined(this.pdfViewer.toolbarModule)) {
+                this.pdfViewer.toolbarModule.updateInteractionItems();
+            }
         }
     }
 
@@ -4775,10 +4765,13 @@ export class FormDesigner {
                 (inputElement.firstElementChild as HTMLElement).style.borderColor = obj.borderColor ? obj.borderColor : '#303030';
             }
         }
-        inputElement.style.pointerEvents = obj.isReadonly ? 'none' : 'default';
+        if (inputElement.firstElementChild) {
+            (inputElement.firstElementChild as HTMLElement).style.pointerEvents = obj.isReadonly ? 'none' : 'default';
+        }
         if (obj.isReadonly) {
             if (!isNullOrUndefined(inputElement.firstElementChild)){
                 (inputElement.firstElementChild as HTMLInputElement).disabled = true;
+                inputElement.style.backgroundColor = 'transparent';
             }
             inputElement.style.cursor = 'default';
         }
@@ -4875,6 +4868,11 @@ export class FormDesigner {
             for (let i: number = 0; i < formFieldsData.length; i++) {
                 const currentData: any = formFieldsData[parseInt(i.toString(), 10)].FormField;
                 if (!isNullOrUndefined(currentData)) {
+                    if (this.pdfViewer.printModule && this.pdfViewer.printModule.canPrint && currentData.isPrint === false) {
+                        formFieldsData.splice(parseInt(i.toString(), 10), 1);
+                        i--;
+                        continue;
+                    }
                     if ((currentData.formFieldAnnotationType === 'SignatureField' || currentData.formFieldAnnotationType === 'InitialField') && (isNullOrUndefined(currentData.signatureBound))) {
                         let filteredField: FormFieldModel[] = this.pdfViewer.formFieldCollections.filter(function (field: any): any {
                             return field.id === currentData.id.split('_')[0];
@@ -6155,13 +6153,15 @@ export class FormDesigner {
         if (!this.pdfViewer.designerMode || isUndoRedo) {
             const checkboxElement: any = document.getElementById(selectedItem.id + '_input').firstElementChild;
             if (selectedItem.isChecked) {
-                if (checkboxElement.classList.contains('e-pv-cb-unchecked'))
-                {checkboxElement.classList.remove('e-pv-cb-unchecked'); }
-                checkboxElement.classList.add('e-pv-cb-checked');
+                if (checkboxElement.classList.contains('e-pv-cb-uncheck'))
+                {checkboxElement.classList.remove('e-pv-cb-uncheck'); }
+                checkboxElement.classList.add('e-pv-cb-check');
+                (checkboxElement.querySelector('.e-pv-checkbox-tick-svg') as any).style.display = 'block';
             } else {
-                if (checkboxElement.classList.contains('e-pv-cb-checked'))
-                {checkboxElement.classList.remove('e-pv-cb-checked'); }
-                checkboxElement.classList.add('e-pv-cb-unchecked');
+                if (checkboxElement.classList.contains('e-pv-cb-check'))
+                {checkboxElement.classList.remove('e-pv-cb-check'); }
+                checkboxElement.classList.add('e-pv-cb-uncheck');
+                (checkboxElement.querySelector('.e-pv-checkbox-tick-svg') as any).style.display = 'none';
             }
         }
     }
@@ -7420,6 +7420,7 @@ export class FormDesigner {
             this.formFieldListItemName.value = nameText;
             if (this.formFieldExportValueBox) {
                 this.formFieldExportValueBox.value = nameText;
+                this.formFieldExportValueBox.dataBind();
             }
             if (nameText) {
                 if (this.formFieldListItemCollection.length > 0) {
@@ -7428,8 +7429,10 @@ export class FormDesigner {
                         if (this.formFieldListItemCollection[i as number] === nameText) { exists = true; break; }
                     }
                     this.formFieldAddButton.disabled = exists;
+                    this.formFieldAddButton.dataBind();
                 } else {
                     this.formFieldAddButton.disabled = false;
+                    this.formFieldAddButton.dataBind();
                 }
             }
         });
@@ -7519,10 +7522,14 @@ export class FormDesigner {
         this.formFieldAddButton.disabled = true;
         if (createLiElement.previousElementSibling) {
             this.formFieldUpButton.disabled = false;
+            this.formFieldUpButton.dataBind();
         }
         if (!createLiElement.nextElementSibling) {
             this.formFieldDownButton.disabled = true;
+            this.formFieldDownButton.dataBind();
         }
+        this.formFieldAddButton.dataBind();
+        this.formFieldDeleteButton.dataBind();
     }
 
     private listItemOnClick(args: any): void {
@@ -7548,6 +7555,8 @@ export class FormDesigner {
         } else {
             this.formFieldUpButton.disabled = true;
         }
+        this.formFieldDownButton.dataBind();
+        this.formFieldUpButton.dataBind();
     }
 
     private deleteListItem(): void {
@@ -7562,12 +7571,14 @@ export class FormDesigner {
                         element.previousElementSibling.classList.add('e-pv-li-select');
                         if (!element.previousElementSibling.previousElementSibling) {
                             this.formFieldUpButton.disabled = true;
+                            this.formFieldUpButton.dataBind();
                         }
                     }
                     else if (element.nextElementSibling) {
                         element.nextElementSibling.classList.add('e-pv-li-select');
                         if (!element.nextElementSibling.nextElementSibling) {
                             this.formFieldDownButton.disabled = true;
+                            this.formFieldDownButton.dataBind();
                         }
                     }
                     element.remove();
@@ -7584,6 +7595,9 @@ export class FormDesigner {
             this.formFieldUpButton.disabled = true;
             this.formFieldDownButton.disabled = true;
         }
+        this.formFieldDeleteButton.dataBind();
+        this.formFieldUpButton.dataBind();
+        this.formFieldDownButton.dataBind();
     }
 
     private moveUpListItem(): void {
@@ -7600,8 +7614,10 @@ export class FormDesigner {
                     else {
                         this.formFieldUpButton.disabled = true;
                     }
+                    this.formFieldUpButton.dataBind();
                     if (element.nextElementSibling) {
                         this.formFieldDownButton.disabled = false;
+                        this.formFieldDownButton.dataBind();
                     }
                 }
             }
@@ -7627,9 +7643,11 @@ export class FormDesigner {
         }
         if (!element.nextElementSibling) {
             this.formFieldDownButton.disabled = true;
+            this.formFieldDownButton.dataBind();
         }
         if (element.previousElementSibling) {
             this.formFieldUpButton.disabled = false;
+            this.formFieldUpButton.dataBind();
         }
     }
 

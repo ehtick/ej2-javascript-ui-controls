@@ -215,6 +215,11 @@ export class JsonAdaptor extends Adaptor {
                 args.sort.filter((x) => x.fieldName === field)[0] : args.sort[0];
                 result = this.onSortBy(result, sort, args.query, true);
             }
+            let startIndex: number = 0;
+            for (let i: number = 0; i < result.length; i++) {
+                (result[parseInt(i.toString(), 10)] as { startIndex: number }).startIndex = startIndex;
+                startIndex += (result[parseInt(i.toString(), 10)] as { count: number }).count;
+            }
             if (args.page) {
                 result = this.onPage(result, args.page, args.query);
             }

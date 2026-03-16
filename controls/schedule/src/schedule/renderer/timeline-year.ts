@@ -82,7 +82,7 @@ export class TimelineYear extends Year {
         const tbl: Element = this.createTableLayout();
         wrap.appendChild(tbl);
         const trEle: Element = createElement('tr');
-        if (this.parent.activeViewOptions.group.resources.length > 0) {
+        if (this.parent.activeViewOptions.group.resources.length > 0 && !this.parent.uiStateValues.isGroupAdaptive) {
             this.colLevels = this.generateColumnLevels();
         } else {
             const colData: TdData[] = [{ className: [cls.HEADER_CELLS_CLASS], type: 'headerCell' }];

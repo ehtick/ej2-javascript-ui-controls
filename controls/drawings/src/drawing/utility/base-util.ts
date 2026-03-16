@@ -31,6 +31,11 @@ export function randomId(): string {
     return id;
 }
 
+interface expandTabSpace {
+    expandedString: string;
+    width: number;
+}
+
 /** @private */
 export function cornersPointsBeforeRotation(ele: DrawingElement): Rect {
     let bounds: Rect = new Rect();
@@ -162,6 +167,58 @@ export function bBoxText(textContent: string, options: TextAttributes): number {
     window[measureElement].style.visibility = 'hidden';
     return bBox;
 }
+
+export function bBoxTextBlazor(textContent: string, options: TextAttributes): number {
+    let measureElement: string = 'measureElement';
+    // eslint-disable-next-line
+    window[measureElement].style.visibility = 'visible';
+    // eslint-disable-next-line
+    let svg: SVGElement = window[measureElement].children[2];
+    let text: SVGTextElement = getChildNode(svg)[1] as SVGTextElement;
+    text.textContent = textContent;
+    text.style.cssText = `font-size: ${options.fontSize}px; font-family: ${options.fontFamily};
+    font-weight: ${options.bold ? 'bold' : 'normal'}`;
+    const expandedString: expandTabSpace = expandTabsForSvg(text, textContent, { startX: 0, tabSizeSpaces: (7) });
+    text.textContent = expandedString.expandedString;
+    let bBox: number = expandedString.width;
+    // eslint-disable-next-line
+    window[measureElement].style.visibility = 'hidden';
+    return bBox;
+}
+
+export function expandTabsForSvg(textEl: SVGTextElement, input: string, { startX = 0, tabSizeSpaces = (7) } = {}): expandTabSpace {
+  // Measure the width of a single space in the current font.
+  const original: string = textEl.textContent;
+  textEl.textContent = ' ';
+  const spaceW: number = textEl.getBBox().width || 0;
+  textEl.textContent = original;
+
+  const tabW = spaceW * tabSizeSpaces;
+  let x: number = startX;
+  let out: string = '';
+  for (const ch of input) {
+    if (ch === '\t') {
+      // compute next tab stop in pixels
+      const offset: number = x - startX;
+      const nextOffset: number = Math.ceil(offset / tabW) * tabW; 
+      const padPx: number = nextOffset - offset;
+
+      // convert pixel gap to a number of spaces (round up)
+      const padSpaces: number = Math.max(1, Math.ceil(padPx / spaceW));
+      out += ' '.repeat(padSpaces);
+      x += padSpaces * spaceW;
+    } else {
+      // measure this glyph's width to advance cursor
+      textEl.textContent = ch;
+      const w: number = textEl.getBBox().width;
+      out += ch;
+      x += w;
+    }
+  }
+  textEl.textContent = original;
+  return { expandedString: out, width: x };
+}
+
 /** @private */
 export function bBoxTextHeight(textContent: string, options: TextAttributes): number {
     let measureElement: string = 'measureElement';

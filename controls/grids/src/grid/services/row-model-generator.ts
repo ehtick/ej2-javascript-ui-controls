@@ -66,7 +66,9 @@ export class RowModelGenerator implements IModelGenerator<Column> {
     }
 
     protected ensurePinnedColumns(): Cell<Column>[] {
+        //TODO: generate dummy column for group, detail here;
         const cols: Cell<Column>[] = [];
+
         if (this.parent.detailTemplate || this.parent.childGrid) {
             cols.push(this.generateCell({} as Column, null, CellType.HeaderIndent));
         }
@@ -120,7 +122,11 @@ export class RowModelGenerator implements IModelGenerator<Column> {
         options.cssClass = cssClass;
         options.isAltRow = this.parent.enableAltRow ? index % 2 !== 0 : false;
         options.isAltRow = this.parent.enableAltRow ? index % 2 !== 0 : false;
-        options.isSelected = this.parent.getSelectedRowIndexes().indexOf(index) > -1;
+        const primaryKey: string = this.parent.getPrimaryKeyFieldNames()[0];
+        options.isSelected = this.parent.isPersistSelection && this.parent.groupSettings.columns.length &&
+            this.parent.groupSettings.enableLazyLoading ?
+            !isNullOrUndefined(this.parent.selectionModule.selectedRowState[data[`${primaryKey}`]]) :
+            this.parent.getSelectedRowIndexes().indexOf(index) > -1;
         this.refreshForeignKeyRow(options);
         let cells: Cell<Column>[] = this.ensureColumns();
         if (this.parent.pinnedTopRecords.length && index < this.parent.pinnedTopRecords.length) {

@@ -203,7 +203,7 @@ export class BaseToolbar {
                     const shortcuts: string[] = windowKeys[`${(items[num as number] as IToolbarItems).subCommand}`].split(','); // Handle multiple shortcuts
                     shortCutKey = shortcuts.map((shortcut: string) =>
                         isMacDev
-                            ? shortcut.replace('Ctrl+', '⌘').replace('Shift+', '⇧').replace('Alt+', '⌥')
+                            ? shortcut.replace('Ctrl+', '⌘ ').replace('Shift+', '⇧ ').replace('Alt+', '⌥ ')
                             : shortcut
                     ).join(', ');
                 }

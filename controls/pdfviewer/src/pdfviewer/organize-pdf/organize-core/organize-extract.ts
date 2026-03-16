@@ -6,6 +6,7 @@ import { CheckBox } from '@syncfusion/ej2-buttons';
 import { selectTile, clearSelection } from './tile-interaction';
 import { isOrganizeDialogRendered } from './organize-initialization';
 import { enableDisableToolbarItems, enableToolbarItem, updateSelectAllCheckbox } from './organize-toolbar';
+
 /**
  * @private
  * @returns { void }

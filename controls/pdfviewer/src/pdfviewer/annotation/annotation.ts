@@ -396,7 +396,7 @@ export class Annotation {
             this.textMarkupAnnotationModule.isTextMarkupAnnotationMode = false;
         }
         if (this.redactionAnnotationModule) {
-            if (this.pdfViewer.toolbarModule.redactionToolbarModule) {
+            if (this.pdfViewer.toolbarModule && this.pdfViewer.toolbarModule.redactionToolbarModule) {
                 this.pdfViewer.toolbarModule.redactionToolbarModule.clear();
             }
         }
@@ -1654,7 +1654,10 @@ export class Annotation {
                     this.pdfViewer.formDesigner.updateHTMLElement(actionObject.annotation);
                 }
                 this.pdfViewer.clearSelection(this.pdfViewerBase.activeElements.activePageID);
-                this.pdfViewer.select([actionObject.annotation.id]);
+                // eslint-disable-next-line no-case-declarations
+                const annotationSelectorSettings: any = cloneObject(actionObject.annotation.annotationSelectorSettings);
+                this.pdfViewerBase.updateSelector(annotationSelectorSettings, shapeType);
+                this.pdfViewer.select([actionObject.annotation.id], annotationSelectorSettings);
                 if (actionObject.annotation.shapeAnnotationType === 'Line' || actionObject.annotation.shapeAnnotationType === 'Rectangle' || actionObject.annotation.shapeAnnotationType === 'Ellipse' || actionObject.annotation.shapeAnnotationType === 'Polygon' || actionObject.annotation.shapeAnnotationType === 'LineWidthArrowHead' ||
                         actionObject.annotation.shapeAnnotationType === 'Radius' || actionObject.annotation.shapeAnnotationType === 'FreeText' || actionObject.annotation.shapeAnnotationType === 'HandWrittenSignature' || actionObject.annotation.shapeAnnotationType === 'SignatureText' || actionObject.annotation.shapeAnnotationType === 'SignatureImage' || actionObject.annotation.shapeAnnotationType === 'Ink') {
                     this.modifyInCollections(actionObject.annotation, 'bounds');
@@ -1977,12 +1980,17 @@ export class Annotation {
                 this.pdfViewer.renderDrawing();
                 break;
             case 'Rotate':
-                this.pdfViewer.nodePropertyChange(actionObject.annotation.annotations[0],
+                this.pdfViewer.nodePropertyChange(actionObject.annotation,
                                                   {
                                                       bounds: actionObject.undoElement.bounds,
                                                       rotateAngle: actionObject.undoElement.rotateAngle
                                                   });
-                this.modifyInCollections(actionObject.annotation.annotations[0], 'bounds');
+                this.pdfViewer.clearSelection(this.pdfViewerBase.activeElements.activePageID);
+                // eslint-disable-next-line no-case-declarations
+                const stampAnnotationSelectorSettings: any = cloneObject(actionObject.annotation.annotationSelectorSettings);
+                this.pdfViewerBase.updateSelector(stampAnnotationSelectorSettings, shapeType);
+                this.pdfViewer.select([actionObject.annotation.id], stampAnnotationSelectorSettings);
+                this.modifyInCollections(actionObject.annotation, 'bounds');
                 this.pdfViewer.renderDrawing();
                 break;
             case 'FormDesigner Properties Change':
@@ -2091,7 +2099,10 @@ export class Annotation {
                     this.pdfViewer.formDesigner.updateHTMLElement(actionObject.annotation);
                 }
                 this.pdfViewer.clearSelection(this.pdfViewerBase.activeElements.activePageID);
-                this.pdfViewer.select([annotationObject.id]);
+                // eslint-disable-next-line no-case-declarations
+                const annotationSelectorSettings: any = cloneObject(actionObject.annotation.annotationSelectorSettings);
+                this.pdfViewerBase.updateSelector(annotationSelectorSettings, shapeType);
+                this.pdfViewer.select([annotationObject.id], annotationSelectorSettings);
                 if (actionObject.annotation.shapeAnnotationType === 'Line' || actionObject.annotation.shapeAnnotationType === 'Rectangle' || actionObject.annotation.shapeAnnotationType === 'Ellipse' || actionObject.annotation.shapeAnnotationType === 'Polygon' || actionObject.annotation.shapeAnnotationType === 'LineWidthArrowHead'
                         || actionObject.annotation.shapeAnnotationType === 'Radius' || actionObject.annotation.shapeAnnotationType === 'FreeText' || actionObject.annotation.shapeAnnotationType === 'HandWrittenSignature' || actionObject.annotation.shapeAnnotationType === 'SignatureText' || actionObject.annotation.shapeAnnotationType === 'SignatureImage' || actionObject.annotation.shapeAnnotationType === 'Ink') {
                     this.modifyInCollections(annotationObject, 'bounds');
@@ -2128,7 +2139,9 @@ export class Annotation {
                         this.inkAnnotationModule.addInCollection(actionObject.annotation.pageIndex, actionObject.duplicate);
                     }
                     const addedAnnot: PdfAnnotationBaseModel = this.pdfViewer.add(actionObject.annotation);
-                    this.pdfViewer.select([actionObject.annotation.id]);
+                    const annotationSelectorSettings: any = cloneObject(actionObject.annotation.annotationSelectorSettings);
+                    this.pdfViewerBase.updateSelector(annotationSelectorSettings, shapeType);
+                    this.pdfViewer.select([actionObject.annotation.id], annotationSelectorSettings);
                     if ((shapeType === 'FreeText' || addedAnnot.enableShapeLabel) && addedAnnot) {
                         this.pdfViewer.nodePropertyChange(addedAnnot, {});
                     }
@@ -2356,9 +2369,14 @@ export class Annotation {
                 this.pdfViewer.renderDrawing();
                 break;
             case 'Rotate':
-                this.pdfViewer.nodePropertyChange(actionObject.annotation.annotations[0], { bounds: actionObject.redoElement.bounds,
+                this.pdfViewer.nodePropertyChange(actionObject.annotation, { bounds: actionObject.redoElement.bounds,
                     rotateAngle: actionObject.redoElement.rotateAngle });
-                this.modifyInCollections(actionObject.annotation.annotations[0], 'bounds');
+                this.pdfViewer.clearSelection(this.pdfViewerBase.activeElements.activePageID);
+                // eslint-disable-next-line no-case-declarations
+                const stampAnnotationSelectorSettings: any = cloneObject(actionObject.annotation.annotationSelectorSettings);
+                this.pdfViewerBase.updateSelector(stampAnnotationSelectorSettings, shapeType);
+                this.pdfViewer.select([annotationObject.id], stampAnnotationSelectorSettings);
+                this.modifyInCollections(actionObject.annotation, 'bounds');
                 this.pdfViewer.renderDrawing();
                 break;
             case 'FormDesigner Properties Change':
@@ -2467,6 +2485,7 @@ export class Annotation {
     }
 
     private updateFormFieldValueChange(formFieldAnnotationType: any, annotation: any, value: any): void {
+        //undo redo
         if (Array.isArray(annotation)) {
             annotation.forEach((item: any) => {
                 this.updateFormFieldValueChange(formFieldAnnotationType, item, value);
@@ -2488,7 +2507,6 @@ export class Annotation {
                 case 'RadioButton':
                 case 'DropdownList':
                 case 'ListBox': {
-                    //const inputElement: Element = document.getElementById(annotation.id.split('_')[0] + '_content_html_element').firstElementChild.firstElementChild;
                     let inputElement: Element = null;
                     if (document.getElementById(annotation.id.split('_')[0] + '_content_html_element')) {
                         inputElement = document.getElementById(annotation.id.split('_')[0] + '_content_html_element').firstElementChild.firstElementChild;
@@ -3194,7 +3212,17 @@ export class Annotation {
             this.endArrowDropDown.content = this.
                 createContent(this.getArrowString(this.pdfViewer.selectedItems.annotations[0].taregetDecoraterShapes)).outerHTML;
             this.thicknessBox.value = this.pdfViewer.selectedItems.annotations[0].wrapper.children[0].style.strokeWidth;
-            this.fillColorPicker.value = this.pdfViewer.selectedItems.annotations[0].wrapper.children[0].style.fill;
+            if (this.pdfViewer.selectedItems.annotations[0].measureType !== 'Perimeter') {
+                this.fillColorPicker.value = this.pdfViewer.selectedItems.annotations[0].wrapper.children[0].style.fill;
+            }
+            else {
+                if (this.pdfViewer.selectedItems.annotations[0].wrapper.children[2]) {
+                    this.fillColorPicker.value = this.pdfViewer.selectedItems.annotations[0].wrapper.children[2].style.fill;
+                }
+                else {
+                    this.fillColorPicker.value = this.pdfViewer.selectedItems.annotations[0].wrapper.children[0].style.fill;
+                }
+            }
             this.refreshColorPicker(this.fillColorPicker);
             this.strokeColorPicker.value = this.pdfViewer.selectedItems.annotations[0].wrapper.children[0].style.strokeColor;
             this.refreshColorPicker(this.strokeColorPicker);
@@ -3423,9 +3451,6 @@ export class Annotation {
     public isLineAnnotationFillColorEnabled(): boolean {
         const selectedAnnotation: any = this.pdfViewer.selectedItems.annotations[0];
         if (selectedAnnotation) {
-            if (selectedAnnotation.measureType === 'Perimeter') {
-                return false;
-            }
             if (selectedAnnotation.shapeAnnotationType === 'Line' || selectedAnnotation.shapeAnnotationType === 'LineWidthArrowHead' || selectedAnnotation.measureType === 'Distance') {
                 if ((selectedAnnotation.sourceDecoraterShapes === 'None' || selectedAnnotation.sourceDecoraterShapes === 'OpenArrow') && (selectedAnnotation.taregetDecoraterShapes === 'None' || selectedAnnotation.taregetDecoraterShapes === 'OpenArrow')) {
                     return false;
@@ -3534,9 +3559,7 @@ export class Annotation {
         const fillColorButton: HTMLInputElement = document.getElementById(this.pdfViewer.element.id + '_properties_fill_color') as HTMLInputElement;
         const startArrow: DecoratorShapes = this.getArrowTypeFromDropDown(this.startArrowDropDown.content);
         const endArrow: DecoratorShapes = this.getArrowTypeFromDropDown(this.endArrowDropDown.content);
-        if (selectedAnnotation.measureType === 'Perimeter') {
-            fillColorButton.disabled = true;
-        } else if ((startArrow === 'None' || startArrow === 'OpenArrow') && (endArrow === 'None' || endArrow === 'OpenArrow')) {
+        if ((startArrow === 'None' || startArrow === 'OpenArrow') && (endArrow === 'None' || endArrow === 'OpenArrow')) {
             fillColorButton.disabled = true;
         } else if (fillColorButton.disabled){
             fillColorButton.disabled = false;
@@ -3653,7 +3676,9 @@ export class Annotation {
             }
         }
         this.pdfViewer.nodePropertyChange(this.pdfViewer.selectedItems.annotations[0], newNode);
-        this.pdfViewer.selectedItems.annotations[0].wrapper.children[0].style.fill = fillColor;
+        if (this.pdfViewer.selectedItems && this.pdfViewer.selectedItems.annotations && this.pdfViewer.selectedItems.annotations[0].measureType !== 'Perimeter') {
+            this.pdfViewer.selectedItems.annotations[0].wrapper.children[0].style.fill = fillColor;
+        }
         this.triggerAnnotationPropChange(this.pdfViewer.selectedItems.annotations[0], isColorChanged,
                                          isStrokeColorChanged, isThicknessChanged, isOpacityChanged, isLineHeadStartStyleChanged,
                                          isLineHeadEndStyleChanged, isBorderDashArrayChanged);
@@ -3900,7 +3925,7 @@ export class Annotation {
                     } else if (pdfAnnotationBase.measureType === 'Distance' || pdfAnnotationBase.measureType === 'Perimeter' || pdfAnnotationBase.measureType === 'Area' || pdfAnnotationBase.measureType === 'Volume' || pdfAnnotationBase.measureType === 'Radius') {
                         this.pdfViewer.toolbarModule.annotationToolbarModule.clearShapeMode();
                     }
-                    if (this.pdfViewer.selectedItems.annotations.length === 1 &&
+                    if (this.pdfViewer.selectedItems.annotations.length === 1 && this.pdfViewerBase.action !== 'Drag' &&
                          this.pdfViewer.selectedItems.annotations[0].formFieldAnnotationType === null) {
                         this.pdfViewer.toolbarModule.annotationToolbarModule.enableAnnotationPropertiesTools(true);
                     }
@@ -4020,8 +4045,13 @@ export class Annotation {
         }
     }
 
-    private rgbaToHex(str: string): string {
-        if (str.includes('rgba')) {
+    /**
+     * @private
+     * @param {string} str - The RGBA string to be converted to HEX string
+     * @returns {string} The HEX value of given RGBA string
+     */
+    public rgbaToHex(str: string): string {
+        if (!isNullOrUndefined(str) && str.includes('rgba')) {
             // eslint-disable-next-line security/detect-unsafe-regex
             const match: RegExpMatchArray = str.replace(/\s/g, '').match(/^rgba?\((\d+),(\d+),(\d+),?([^,\s)]+)?/i);
             if (!match) {
@@ -4093,9 +4123,9 @@ export class Annotation {
             this.pdfViewer.selectedItems.annotations[0].formFieldAnnotationType === null &&
             this.pdfViewer.selectedItems.annotations[0].shapeAnnotationType !== 'Redaction' &&
             this.pdfViewer.selectedItems.annotations[0] && this.pdfViewer.selectedItems.annotations[0].annotationSettings &&
-            (!(this.pdfViewer.selectedItems.annotations[0].annotationSettings as any).isLock  ||
+            (!(this.pdfViewer.selectedItems.annotations[0].annotationSettings as any).isLock)  ||
                 this.checkAllowedInteractions('Delete', this.pdfViewer.selectedItems.annotations[0]) ||
-                this.checkAllowedInteractions('PropertyChange', this.pdfViewer.selectedItems.annotations[0]))) {
+                this.checkAllowedInteractions('PropertyChange', this.pdfViewer.selectedItems.annotations[0])) {
             if (this.pdfViewer.toolbar && this.pdfViewer.toolbar.annotationToolbarModule) {
                 if (!isBlazor() && Browser.isDevice && !this.pdfViewer.enableDesktopMode) {
                     const commentPanel: HTMLElement = document.getElementById(this.pdfViewer.element.id + '_commantPanel');
@@ -4500,7 +4530,8 @@ export class Annotation {
             const ratio: number = this.pdfViewerBase.getWindowDevicePixelRatio();
             const context: CanvasRenderingContext2D  = (currentcanvas as HTMLCanvasElement).getContext('2d');
             const thickness: number = this.pdfViewer.inkAnnotationSettings.thickness ? this.pdfViewer.inkAnnotationSettings.thickness : 1;
-            const opacity: number = this.pdfViewer.inkAnnotationSettings.opacity ? this.pdfViewer.inkAnnotationSettings.opacity : 1;
+            const opacity: number = !isNullOrUndefined(this.pdfViewer.inkAnnotationSettings.opacity)
+                ? this.pdfViewer.inkAnnotationSettings.opacity : 1;
             const strokeColor: string = this.pdfViewer.inkAnnotationSettings.strokeColor ? this.pdfViewer.inkAnnotationSettings.strokeColor : '#ff0000';
             if (!Browser.isDevice || (Browser.isDevice && zoom <= 0.7)) {
                 context.setTransform(ratio, 0, 0, ratio, 0, 0);
@@ -5990,9 +6021,54 @@ export class Annotation {
              (Math.abs((bounds as IRectBounds).X - (annotBounds as IRectBounds).X) > 2) ||
              (Math.abs((bounds as IRectBounds).Width - (annotBounds as IRectBounds).Width) > 2) ||
               (Math.abs((bounds as IRectBounds).Height - (annotBounds as IRectBounds).Height) > 2)) {
+                // Preserve stamp/image aspect ratio when editing bounds
+                let newWidth: number = (annotBounds as IRectBounds).Width;
+                let newHeight: number = (annotBounds as IRectBounds).Height;
+                try {
+                    const isStamp: boolean = annotation && ((annotation.shapeAnnotationType && annotation.shapeAnnotationType.toLowerCase() === 'stamp') || annotation.stampAnnotationType === 'image' || annotation.stampAnnotationType === 'path');
+                    if (isStamp) {
+                        // Derive default size from templateSize (if present) or from stamp collections
+                        let defaultWidth: number = null;
+                        let defaultHeight: number = null;
+                        if ((!defaultWidth || !defaultHeight) && annotation.icon) {
+                            // Try to retrieve stamp collection info
+                            let stampCollection: any = null;
+                            try {
+                                if (annotation.isDynamicStamp || annotation.IsDynamic) {
+                                    if (this.stampAnnotationModule && this.stampAnnotationModule.retrieveDynamicStampAnnotation) {
+                                        stampCollection = this.stampAnnotationModule.retrieveDynamicStampAnnotation(annotation.icon);
+                                    }
+                                }
+                                if (!stampCollection && this.stampAnnotationModule && this.stampAnnotationModule.retrievestampAnnotation) {
+                                    stampCollection = this.stampAnnotationModule.retrievestampAnnotation(annotation.icon);
+                                }
+                            } catch (e) {
+                                stampCollection = null;
+                            }
+                            if (stampCollection) {
+                                defaultWidth = stampCollection.width;
+                                defaultHeight = stampCollection.height;
+                            }
+                        }
+
+                        // If defaults are available, compute new sizes preserving aspect ratio
+                        if (defaultWidth && defaultHeight) {
+                            const metrics: { width: number, height: number} =
+                            this.stampAnnotationModule.calculateStampWidthAndHeight((annotBounds as IRectBounds).Width,
+                                                                                    (annotBounds as IRectBounds).Height,
+                                                                                    defaultWidth, defaultHeight);
+                            newWidth = metrics.width;
+                            newHeight = metrics.height;
+                        }
+                    }
+                } catch (e) {
+                    // Fail-safe: fallback to provided annot bounds
+                    newWidth = (annotBounds as IRectBounds).Width;
+                    newHeight = (annotBounds as IRectBounds).Height;
+                }
                 const annotationBounds: IRect = { x: (annotBounds as IRectBounds).X + ((annotBounds as IRectBounds).Width / 2),
                     y: (annotBounds as IRectBounds).Y + ((annotBounds as IRectBounds).Height / 2),
-                    width: (annotBounds as IRectBounds).Width, height: (annotBounds as IRectBounds).Height };
+                    width: newWidth, height: newHeight };
                 this.pdfViewer.nodePropertyChange(currentAnnotation, { bounds: annotationBounds });
                 if (currentAnnotation.shapeAnnotationType === 'HandWrittenSignature' || currentAnnotation.shapeAnnotationType === 'SignatureText' || currentAnnotation.shapeAnnotationType === 'SignatureImage') {
                     this.pdfViewer.fireSignaturePropertiesChange(currentAnnotation.pageIndex, currentAnnotation.signatureName,
@@ -6304,6 +6380,11 @@ export class Annotation {
             if ( annotationAuthor !== 'Guest' && this.pdfViewer.enableHtmlSanitizer ){
                 annotationAuthor = SanitizeHtmlHelper.sanitize(annotationAuthor);
             }
+        } else if (annotationType === 'customStamp') {
+            annotationAuthor = (this.pdfViewer.customStampSettings.author !== 'Guest') ? this.pdfViewer.customStampSettings.author : this.pdfViewer.annotationSettings.author ? this.pdfViewer.annotationSettings.author : 'Guest';
+            if ( annotationAuthor !== 'Guest' && this.pdfViewer.enableHtmlSanitizer ){
+                annotationAuthor = SanitizeHtmlHelper.sanitize(annotationAuthor);
+            }
         } else if (annotationType === 'shape') {
             if (annotationSubType === 'Line') {
                 annotationAuthor = (this.pdfViewer.lineSettings.author !== 'Guest') ? this.pdfViewer.lineSettings.author : this.pdfViewer.annotationSettings.author ? this.pdfViewer.annotationSettings.author : 'Guest';
@@ -6484,6 +6565,21 @@ export class Annotation {
     }
 
     /**
+     * Validates and normalizes min/max width and height constraints for common annotation settings.
+     * @private
+     * @param {AnnotationSettingsModel} settings - represents the common annotation settings
+     * @returns {void}
+     */
+    public validateCommonAnnotationSettings(settings?: AnnotationSettingsModel): void {
+        const annotation: AnnotationSettingsModel = !isNullOrUndefined(settings) ?
+            settings : this.pdfViewer.annotationSettings;
+        if (annotation && (annotation.minHeight || annotation.minWidth || annotation.maxHeight || annotation.maxWidth)) {
+            this.pdfViewerBase.normalizeMinMaxPair(annotation, 'minWidth', 'maxWidth');
+            this.pdfViewerBase.normalizeMinMaxPair(annotation, 'minHeight', 'maxHeight');
+        }
+    }
+
+    /**
      * @param {any} annotation - annotation
      * @param {boolean} isSettings - isSettings
      * @private
@@ -6496,12 +6592,14 @@ export class Annotation {
             if (shapeType === 'StickyNotes' && this.pdfViewer.stickyNotesSettings) {
                 annotSettings = this.pdfViewer.stickyNotesSettings;
             } else if (shapeType === 'Stamp' || shapeType === 'Image') {
-                annotSettings = this.pdfViewer.stampSettings;
+                annotSettings = this.pdfViewer.annotationModule.stampAnnotationModule.getStampSettings(annotation);
                 if ((shapeType === 'Image')) {
                     annotSettings = this.pdfViewer.customStampSettings;
                 }
             } else if (shapeType === 'FreeText') {
                 annotSettings = this.pdfViewer.freeTextSettings;
+            } else if (shapeType === 'Redaction') {
+                annotSettings = this.pdfViewer.redactionSettings;
             } else if (annotation.measureType === '') {
                 if (shapeType === 'Line') {
                     annotSettings = this.pdfViewer.lineSettings;
@@ -6555,6 +6653,8 @@ export class Annotation {
             }
         } else if (annotation.AnnotType === 'freeText') {
             annotSettings = this.pdfViewer.freeTextSettings;
+        } else if (annotation.AnnotType === 'redaction') {
+            annotSettings = this.pdfViewer.redactionSettings;
         } else if (annotation.AnnotType === 'ink' || annotation.AnnotationType === 'Ink'){
             annotSettings = this.pdfViewer.inkAnnotationSettings;
         } else if (annotation.AnnotType === 'shape') {

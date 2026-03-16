@@ -6896,7 +6896,6 @@ let businessStartup = [
         "strokeWidth": 2
     }
     ];
-
 interface Employee {
     empId: string;
     parentId: string;
@@ -7658,7 +7657,7 @@ describe('Diagram Control', () => {
 
 });
 
-xdescribe('Flowchart import and export', () => {
+describe('Flowchart import and export', () => {
     let diagram: Diagram;
     let ele: HTMLElement;
     let items: DataManager = new DataManager(businessStartup, new Query().take(7));
@@ -7778,7 +7777,7 @@ xdescribe('Flowchart import and export', () => {
     });
 });
 
-xdescribe('Flowchart orientation and layout settings-Dynamic dataSource change', () => {
+describe('Flowchart orientation and layout settings-Dynamic dataSource change', () => {
     let diagram: Diagram;
     let ele: HTMLElement;
     let items: DataManager = new DataManager(businessStartup, new Query().take(7));
@@ -7841,7 +7840,7 @@ xdescribe('Flowchart orientation and layout settings-Dynamic dataSource change',
 });
 
 
-xdescribe('954960 Error while loading single node data', () => {
+describe('954960 Error while loading single node data', () => {
     let diagram: Diagram;
     let ele: HTMLElement;
     beforeAll(() => {

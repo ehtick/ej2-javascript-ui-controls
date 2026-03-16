@@ -1,4 +1,4 @@
-import { TimelineFormat, ITaskData } from './../base/interface';
+import { TimelineFormat, ITaskData, ISplitterResizedEventArgs } from './../base/interface';
 import { createElement, isNullOrUndefined, getValue, addClass, removeClass, extend, append } from '@syncfusion/ej2-base';
 import { Gantt } from '../base/gantt';
 import { TimelineSettingsModel, TimelineTierSettingsModel } from '../models/timeline-settings-model';
@@ -62,7 +62,8 @@ export class Timeline {
         this.timelineEndDate = null;
         this.totalTimelineWidth = 0;
         this.customTimelineSettings = null;
-        this.parent.isTimelineRoundOff = this.isZoomToFit ? false : isNullOrUndefined(this.parent.projectStartDate) ? true : false;
+        this.parent.isTimelineRoundOff = this.isZoomToFit ? false : (this.parent.timelineSettings.viewEndDate !== 'auto'
+            || this.parent.timelineSettings.viewStartDate !== 'auto' || !isNullOrUndefined(this.parent.projectStartDate)) ? false : true;
         if (this.parent.enablePersistence && this.parent.isLoad) {
             this.parent.timelineSettings = this.parent.currentZoomingLevel;
         }
@@ -93,8 +94,25 @@ export class Timeline {
             this.parent.dataOperation.calculateProjectDates();
         }
         if (!this.parent.isFromOnPropertyChange) {
-            this.parent.updateProjectDates(
-                this.parent.cloneProjectStartDate, this.parent.cloneProjectEndDate, this.parent.isTimelineRoundOff);
+            const viewStartAuto: boolean = this.parent.timelineSettings.viewStartDate === 'auto';
+            const viewEndAuto: boolean = this.parent.timelineSettings.viewEndDate === 'auto';
+            const projectEndUndefined: boolean = isNullOrUndefined(this.parent.projectEndDate);
+            if (!viewStartAuto && (!viewEndAuto || (viewEndAuto && projectEndUndefined)) && !this.isZoomToFit) {
+                this.parent.updateProjectDates(
+                    this.parent.cloneTimelineStartDate, this.parent.cloneTimelineEndDate, this.parent.isTimelineRoundOff);
+            }
+            else if (viewStartAuto && !this.isZoomToFit && projectEndUndefined) {
+                this.parent.updateProjectDates(
+                    this.parent.cloneProjectStartDate, this.parent.cloneTimelineEndDate, this.parent.isTimelineRoundOff);
+            }
+            else if (!viewStartAuto && viewEndAuto && !this.isZoomToFit && !projectEndUndefined) {
+                this.parent.updateProjectDates(
+                    this.parent.cloneTimelineStartDate, this.parent.cloneProjectEndDate, this.parent.isTimelineRoundOff);
+            }
+            else {
+                this.parent.updateProjectDates(
+                    this.parent.cloneProjectStartDate, this.parent.cloneProjectEndDate, this.parent.isTimelineRoundOff);
+            }
         }
         const timelineContainer: number = this.parent.element.getElementsByClassName('e-timeline-header-container')[0]['offsetHeight'];
         this.parent.element.getElementsByClassName('e-gridcontent')[0]['style'].height = 'calc(100% - ' + timelineContainer + 'px)';
@@ -173,6 +191,7 @@ export class Timeline {
             this.changeTimelineSettings(newTimeline);
         }
         this.isZooming = false;
+        this.updateTimelineSettingsAfterZooming();
     }
 
     private updateUndoRedo(isZoomIn: boolean): void {
@@ -249,10 +268,29 @@ export class Timeline {
                 }
             }
         });
-        this.parent.isTimelineRoundOff = this.isZoomToFit ? false : isNullOrUndefined(this.parent.projectStartDate) ? true : false;
+        this.parent.isTimelineRoundOff = this.isZoomToFit ? false : (this.parent.timelineSettings.viewEndDate !== 'auto' ||
+            this.parent.timelineSettings.viewStartDate !== 'auto'
+            || !isNullOrUndefined(this.parent.projectStartDate)) ? false : true;
         this.processTimelineUnit();
-        this.parent.updateProjectDates(
-            this.parent.cloneProjectStartDate, this.parent.cloneProjectEndDate, this.parent.isTimelineRoundOff);
+        const viewStartAuto: boolean = this.parent.timelineSettings.viewStartDate === 'auto';
+        const viewEndAuto: boolean = this.parent.timelineSettings.viewEndDate === 'auto';
+        const projectEndUndefined: boolean = isNullOrUndefined(this.parent.projectEndDate);
+        if (!viewStartAuto && (!viewEndAuto || (viewEndAuto && projectEndUndefined)) && !this.isZoomToFit) {
+            this.parent.updateProjectDates(
+                this.parent.cloneTimelineStartDate, this.parent.cloneTimelineEndDate, this.parent.isTimelineRoundOff);
+        }
+        else if (viewStartAuto && !this.isZoomToFit && projectEndUndefined) {
+            this.parent.updateProjectDates(
+                this.parent.cloneProjectStartDate, this.parent.cloneTimelineEndDate, this.parent.isTimelineRoundOff);
+        }
+        else if (!viewStartAuto && viewEndAuto && !this.isZoomToFit && !projectEndUndefined) {
+            this.parent.updateProjectDates(
+                this.parent.cloneTimelineStartDate, this.parent.cloneProjectEndDate, this.parent.isTimelineRoundOff);
+        }
+        else {
+            this.parent.updateProjectDates(
+                this.parent.cloneProjectStartDate, this.parent.cloneProjectEndDate, this.parent.isTimelineRoundOff);
+        }
         const criticalModule: CriticalPath  = this.parent.criticalPathModule;
         if (this.parent.enableCriticalPath && criticalModule && criticalModule.criticalPathCollection) {
             criticalModule.criticalConnectorLine(criticalModule.criticalPathCollection, criticalModule.detailPredecessorCollection,
@@ -389,6 +427,7 @@ export class Timeline {
             this.parent.isTimelineRoundOff = isNullOrUndefined(this.parent.projectStartDate) ? true : false;
         }
         this.isZoomToFit = false;
+        this.updateTimelineSettingsAfterZooming();
     }
 
 
@@ -843,6 +882,7 @@ export class Timeline {
             !this.parent.pdfExportModule || (this.parent.pdfExportModule && !this.parent.pdfExportModule.isPdfExport) ||
             (this.parent.pdfExportModule && this.parent.pdfExportModule.isPdfExport &&
                 this.parent.pdfExportModule.helper.exportProps &&
+                this.parent.pdfExportModule.helper.exportProps.fitToWidthSettings &&
                 !this.parent.pdfExportModule.helper.exportProps.fitToWidthSettings.isFitToWidth)
         );
         if (this.restrictRender === true) {
@@ -927,7 +967,7 @@ export class Timeline {
             }
             const contentVirtualTable: HTMLElement = this.parent.element.querySelectorAll('.e-chart-scroll-container')[0].querySelector('.e-virtualtable');
             if (!this.parent.undoRedoModule || (this.parent.undoRedoModule && !this.parent.undoRedoModule['isZoomingUndoRedoProgress'])) {
-                contentVirtualTable.style.transform = `translate(${translateXValue}px, ${translateYValue}px)`;
+                contentVirtualTable.style.transform = `translate3d(${translateXValue}px, ${translateYValue}px, 0px) translateZ(0)`;
             }
             const contentVirtualTrack: HTMLElement = this.parent.element.querySelectorAll('.e-chart-scroll-container')[0].querySelector('.e-virtualtrack');
             contentVirtualTrack.style.position = 'relative';
@@ -1503,6 +1543,10 @@ export class Timeline {
             const scrollHeight: number = document.getElementsByClassName('e-chart-rows-container')[0]['offsetHeight'];
             timeDiff = Math.abs(this.timelineStartDate.getTime() - endDate.getTime());
             timeDiff = timeDiff / (1000 * 3600 * 24);
+            if (!this.parent.timelineSettings.showWeekend) {
+                const nonWorking: number = this.calculateNonWorkingDaysBetweenDates(this.timelineStartDate, endDate);
+                timeDiff = timeDiff - nonWorking;
+            }
             if (this.bottomTier === 'None') {
                 perDayWidth = this.getPerDayWidth(this.customTimelineSettings.timelineUnitSize,
                                                   this.customTimelineSettings.topTier.count, this.topTier);
@@ -1518,31 +1562,23 @@ export class Timeline {
             if (contentWidth >= totWidth) {
                 let widthDiff: number = contentWidth - totWidth;
                 if (!this.parent.timelineSettings.showWeekend) {
-                    const milliSecondsPerDay: number = (24 * 60 * 60 * 1000);
-                    const milliSecondsPerPixel: number = milliSecondsPerDay / perDayWidth;
-                    const totalDays: number = Math.floor(contentWidth * milliSecondsPerPixel / milliSecondsPerDay);
-
-                    const nonWorkingDaysPerWeek: number = this.parent.nonWorkingDayIndex.length;
-                    const workingDaysPerWeek: number = 7 - nonWorkingDaysPerWeek;
-
-                    const weeksToCover: number = Math.floor(totalDays / workingDaysPerWeek);
-                    let additionalDays: number = totalDays % workingDaysPerWeek;
-
-                    // Consider starting point and fraction of week
-                    let spanDays: number = (weeksToCover * 7) + additionalDays;
-                    let startIndex: number = endDate.getDay();
-                    while (additionalDays > 0) {
-                        startIndex = (startIndex + 1) % 7;
-                        if (this.parent.nonWorkingDayIndex.indexOf(startIndex) === -1) {
-                            additionalDays--;
+                    // Calculate extra working days needed based on remaining pixel width
+                    const extraPixels: number = widthDiff;
+                    const extraWorkingDays: number = Math.ceil(extraPixels / perDayWidth);
+                    // Add working days to endDate skipping non-working day indices
+                    let daysToAdd: number = 0;
+                    let addedWorkingDays: number = 0;
+                    const nonWorkingIdx: number[] = this.parent.nonWorkingDayIndex;
+                    while (addedWorkingDays < extraWorkingDays) {
+                        daysToAdd++;
+                        const tempDate: Date = new Date(endDate.getTime());
+                        tempDate.setDate(tempDate.getDate() + daysToAdd);
+                        if (nonWorkingIdx.indexOf(tempDate.getDay()) === -1) {
+                            addedWorkingDays++;
                         }
-                        spanDays++;
                     }
-
-                    endDate.setDate(endDate.getDate() + spanDays);
-
-                }
-                else{
+                    endDate.setDate(endDate.getDate() + daysToAdd);
+                } else {
                     widthDiff = Math.round(widthDiff / perDayWidth);
                     endDate.setDate(endDate.getDate() + widthDiff);
                 }
@@ -1565,7 +1601,7 @@ export class Timeline {
                 endDate.setHours(24, 0, 0, 0);
             }
         }
-        if (isNullOrUndefined(this.parent.projectEndDate)) {
+        if (isNullOrUndefined(this.parent.projectEndDate) && this.parent.timelineSettings.viewEndDate === 'auto') {
             this.updateTimelineAfterZooming(endDate, false);
         }
         return endDate;
@@ -2133,8 +2169,11 @@ export class Timeline {
      * @private
      */
     private roundOffDays(): void {
-        let startDate: Date = this.parent.cloneProjectStartDate;
-        let endDate: Date = this.parent.cloneProjectEndDate;
+        let startDate: Date = this.parent.timelineSettings.viewStartDate !== 'auto' && !this.isZoomToFit ? this.parent.cloneTimelineStartDate :
+            this.parent.cloneProjectStartDate;
+        let endDate: Date = (((this.parent.timelineSettings.viewEndDate !== 'auto' || isNullOrUndefined(this.parent.projectEndDate))
+            || (this.parent.timelineSettings.viewStartDate !== 'auto' && this.parent.timelineSettings.viewEndDate === 'auto')) && !this.isZoomToFit) ?
+            this.parent.cloneTimelineEndDate : this.parent.cloneProjectEndDate;
         const tierMode: string = this.topTier === 'None' ? this.bottomTier : this.topTier;
         if (this.parent.isTimelineRoundOff) {
             if (tierMode === 'Year') {
@@ -2315,8 +2354,16 @@ export class Timeline {
                 }
             }
         }
-        this.parent.cloneProjectStartDate = startDate;
-        this.parent.cloneProjectEndDate = endDate;
+        this.parent.cloneProjectStartDate = this.parent.cloneTimelineStartDate = startDate;
+        this.parent.cloneProjectEndDate = this.parent.cloneTimelineEndDate = endDate;
+        if (this.parent.timelineSettings.viewStartDate !== 'auto' || this.parent.timelineSettings.viewEndDate !== 'auto') {
+            this.parent.setProperties({
+                timelineSettings: {
+                    viewStartDate: startDate,
+                    viewEndDate: endDate
+                }
+            }, true);
+        }
     }
     /**
      * To validate project start date and end date.
@@ -2433,7 +2480,7 @@ export class Timeline {
             this.restrictRender = true;
             this.performedTimeSpanAction = true;
             const previousScrollLeft: number = this.parent.ganttChartModule.scrollElement.scrollLeft;
-            this.parent.updateProjectDates(args.projectStartDate, args.ProjectEndDate, args.isTimelineRoundOff, isFrom);
+            this.parent.updateProjectDates(args.projectStartDate, args.projectEndDate, args.isTimelineRoundOff, isFrom);
             if (type === 'prevTimeSpan' && isFrom === 'publicMethod') {
                 this.parent.ganttChartModule.updateScrollLeft(0);
                 this.parent.timelineModule.isZoomToFit = false;
@@ -2457,6 +2504,71 @@ export class Timeline {
         }
     }
 
+    public adjustEndDateToFillChart(spliterResize: boolean ): void {
+        const chartWidth: number = this.parent.ganttChartModule.chartElement.offsetWidth;
+        const perDayWidth: number = this.parent.perDayWidth;
+        let endDate: Date = this.parent.cloneTimelineEndDate;
+        // Timeline end date is less than timeline start date
+        const startDate: Date = this.parent.cloneTimelineStartDate;
+        const setEndDate: (date: Date) => void = (date: Date) => { this.parent.cloneTimelineEndDate = date; };
+        const isAutoEnd: boolean = !this.parent.timelineSettings.viewEndDate ||
+            (typeof this.parent.timelineSettings.viewEndDate === 'string' &&
+            this.parent.timelineSettings.viewEndDate.toLowerCase() === 'auto');
+        if (startDate && setEndDate && chartWidth && perDayWidth && isAutoEnd) {
+            // If endDate is null/undefined, set it to startDate
+            if (!endDate) {
+                endDate = new Date(startDate.getTime());
+            }
+            let currentDays: number = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+            if (!this.parent.timelineSettings.showWeekend) {
+                // subtract non-working days to get actual working days between start and end
+                const nonWorking: number = this.calculateNonWorkingDaysBetweenDates(startDate, endDate);
+                currentDays = currentDays - nonWorking;
+            }
+            const visibleDays: number = Math.ceil(chartWidth / perDayWidth);
+            if (currentDays < visibleDays) {
+                // Need to add visibleDays working/calendar days from startDate depending on showWeekend
+                const newEnd: Date = new Date(startDate.getTime());
+                if (!this.parent.timelineSettings.showWeekend) {
+                    let addedWorking: number = 0;
+                    while (addedWorking < visibleDays) {
+                        newEnd.setDate(newEnd.getDate() + 1);
+                        if (this.parent.nonWorkingDayIndex.indexOf(newEnd.getDay()) === -1) {
+                            addedWorking++;
+                        }
+                    }
+                } else {
+                    newEnd.setDate(newEnd.getDate() + visibleDays);
+                }
+                setEndDate(newEnd);
+                // Only execute this if called from splitter action
+                if (spliterResize) {
+                    this.updateTimelineAfterZooming(endDate, true);
+                }
+            }
+        }
+    }
+    public updateTimelineSettingsAfterZooming(): void {
+        this.parent.setProperties({
+            timelineSettings: {
+                timelineViewMode: this.customTimelineSettings.timelineViewMode,
+                timelineUnitSize: this.customTimelineSettings.timelineUnitSize,
+                bottomTier: {
+                    unit: this.customTimelineSettings.bottomTier.unit,
+                    format: this.customTimelineSettings.bottomTier.format,
+                    count: this.customTimelineSettings.bottomTier.count
+                },
+                topTier: {
+                    unit: this.customTimelineSettings.topTier.unit,
+                    format: this.customTimelineSettings.topTier.format,
+                    count: this.customTimelineSettings.topTier.count
+                },
+                weekStartDay: this.customTimelineSettings.weekStartDay,
+                weekendBackground: this.customTimelineSettings.weekendBackground
+            }
+        }, true);
+    }
+
     /**
      * To validate project start date and end date.
      *
@@ -2469,7 +2581,7 @@ export class Timeline {
     public timeSpanActionEvent(eventType: string, requestType?: string, isFrom?: string): ITimeSpanEventArgs {
         const args: ITimeSpanEventArgs = {} as ITimeSpanEventArgs;
         args.projectStartDate = new Date(this.parent.cloneProjectStartDate.getTime());
-        args.ProjectEndDate = new Date(this.parent.cloneProjectEndDate.getTime());
+        args.projectEndDate = new Date(this.parent.cloneProjectEndDate.getTime());
         args.requestType = isFrom === 'publicMethod' ? requestType : isFrom === 'beforeAdd' ?
             'TimelineRefreshOnAdd' : isFrom === 'TaskbarEditing' ? 'TimelineRefreshOnEdit' : requestType;
         if (eventType === 'actionBegin') {

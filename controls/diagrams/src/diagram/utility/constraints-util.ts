@@ -362,7 +362,8 @@ export function canEnableToolTip(node: ConnectorModel | NodeModel | PointPortMod
             state = node.constraints & AnnotationConstraints.Tooltip;
         }
     }  else {
-        if (node.constraints & NodeConstraints.Tooltip) {
+        //1012619: FixedUserhandle tooltip position open wrongly when node tooltip constraint is enabled.
+        if ((node.constraints & NodeConstraints.Tooltip) && (node.tooltip && node.tooltip.content !== '')) {
             state = node.constraints & NodeConstraints.Tooltip;
         } else if (node.constraints & NodeConstraints.InheritTooltip) {
             state = diagram.constraints & DiagramConstraints.Tooltip;

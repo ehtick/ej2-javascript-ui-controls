@@ -1056,6 +1056,134 @@ describe('Diagram Control', () => {
             done();
         });
     });
+    describe('Add child to uml nodes', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+        beforeAll((): void => {
+            const isDef = (o: any) => o !== undefined && o !== null;
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                this.skip(); //Skips test (in Chai)
+                return;
+            }
+            ele = createElement('div', { id: 'umlchild' });
+            document.body.appendChild(ele);
+
+            let node1: NodeModel = {
+                id: 'node1',
+                offsetX: 100,
+                offsetY: 100, style: {
+                    fill: '#26A0DA',
+                }, borderColor: 'white'
+                ,
+                shape: {
+                    type: 'UmlClassifier',
+                    classShape: {
+                        property: [
+                            { name: 'accepted', type: 'Date', style: {} },
+                            { name: 'sickness', type: 'History' },
+                            { name: 'prescription', type: 'String[*]' },
+                            { name: 'allergies', type: 'String[*]' }
+                        ], methods: [{ name: 'getHistory', style: {}, parameters: [{ name: 'Date', style: {} }], type: 'History' }],
+                        name: 'Patient'
+                    },
+                    classifier: 'Class'
+                } as UmlClassifierShapeModel,
+            };
+
+            let node2: NodeModel = {
+                id: 'node2',
+                offsetX: 300,
+                offsetY: 200, style: {
+                    fill: '#26A0DA',
+                }, borderColor: 'white',
+                shape: {
+                    type: 'UmlClassifier',
+                    enumerationShape: {
+                        name: 'AccountType',
+                        //sets the members of enumeration
+                        members: [
+                            {
+                                name: 'Checking Account', style: {}
+                            },
+                            {
+                                name: 'Savings Account'
+                            },
+                            {
+                                name: 'Credit Account'
+                            }]
+                    },
+                    classifier: 'Enumeration'
+                } as UmlClassifierShapeModel,
+
+            };
+
+            let node3: NodeModel = {
+                id: 'node3',
+                offsetX: 600,
+                offsetY: 300, style: {
+                    fill: '#26A0DA',
+                }, borderColor: 'white',
+                shape: {
+                    type: 'UmlClassifier',
+                    interfaceShape: {
+                        name: "Bank Account",
+                        attributes: [{
+                            name: "owner",
+                            type: "String[*]", style: {}
+                        },
+                        {
+                            name: "balance",
+                            type: "Dollars"
+                        }],
+                        methods: [{
+                            name: "deposit", style: {},
+                            parameters: [{
+                                name: "amount",
+                                type: "Dollars",
+                                style: {}
+                            }],
+                        }]
+                    },
+                    classifier: 'Interface'
+                } as UmlClassifierShapeModel,
+            };
+            diagram = new Diagram({
+                width: 1000, height: 600,
+                nodes: [node1, node2, node3],
+            });
+            diagram.appendTo('#umlchild');
+        });
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+            (diagram as any) = null;
+            (ele as any) = null;
+        });
+        it('Add child at runtime for uml node', (done: Function) => {
+            
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            let mouseEvents: MouseEvents = new MouseEvents();
+            diagram.select([diagram.nodes[0]]);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 206, 126);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 206, 126);
+            mouseEvents.clickEvent(diagramCanvas, 206, 126);
+
+            diagram.select([diagram.nodes[1]]);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 383, 204);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 383, 204);
+            mouseEvents.clickEvent(diagramCanvas, 383, 204);
+
+            diagram.select([diagram.nodes[2]]);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 705, 325);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 705, 325);
+            mouseEvents.clickEvent(diagramCanvas, 705, 325);
+
+            console.log("diagram.nodes.length ", diagram.nodes.length);
+            expect(diagram.nodes.length > 10).toBe(true);
+            done();
+        });
+    });
     describe('UmlSequenceDiagram', () => {
         describe('Sample-1', () => {
             let diagram: Diagram;

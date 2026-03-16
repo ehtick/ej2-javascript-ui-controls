@@ -1491,7 +1491,8 @@ export class ChipList extends Component<HTMLElement> implements INotifyPropertyC
                     const items: NodeListOf<Element> = this.element.querySelectorAll('.' + classNames.chip);
                     const selectedChips: Array<number | string> = Array.isArray(newProp.selectedChips)
                         ? (newProp.selectedChips as Array<number | string>)
-                        : (isNullOrUndefined(newProp.selectedChips) ? []
+                        : (newProp.selectedChips === null || typeof newProp.selectedChips === 'undefined'
+                            ? []
                             : [newProp.selectedChips as number | string]);
                     for (let i: number = 0; i < selectedChips.length; i++) {
                         const value: number | string = selectedChips[i as number];

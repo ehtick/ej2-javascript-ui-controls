@@ -6,7 +6,7 @@ import { Diagram } from '../../../src/diagram/diagram';
 import { NodeModel, PathModel, } from '../../../src/diagram/objects/node-model';
 import { ConnectorModel } from '../../../src/diagram/objects/connector-model';
 import { MouseEvents } from '../interaction/mouseevents.spec';
-import  {profile , inMB, getMemoryProfile} from '../../../spec/common.spec';
+import { profile, inMB, getMemoryProfile } from '../../../spec/common.spec';
 
 describe('Diagram Control', () => {
     describe('Annotation Editing', () => {
@@ -15,11 +15,13 @@ describe('Diagram Control', () => {
         let mouseEvents: MouseEvents = new MouseEvents();
         beforeAll((): void => {
             const isDef = (o: any) => o !== undefined && o !== null;
-                if (!isDef(window.performance)) {
-                    console.log("Unsupported environment, window.performance.memory is unavailable");
-                    this.skip(); //Skips test (in Chai)
-                    return;
-                }
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                this.skip(); //Skips test (in Chai)
+                return;
+            }
+        });
+        beforeEach((): void => {
             ele = createElement('div', { id: 'textediting' });
             document.body.appendChild(ele);
             let node1: NodeModel = {
@@ -32,7 +34,7 @@ describe('Diagram Control', () => {
             };
             let node3: NodeModel = {
                 id: "node3", offsetX: 400, offsetY: 180, minWidth: 90,// height: 40,
-                 annotations: [
+                annotations: [
                     { content: 'Coding', style: { bold: true } },
                     { content: 'label2', offset: { x: 0, y: 0 }, style: { fontSize: 20 } }],
                 shape: { type: 'Flow', shape: 'Process' }
@@ -90,134 +92,148 @@ describe('Diagram Control', () => {
             });
             diagram.appendTo('#textediting');
         });
+        afterEach((): void => {
+            if (diagram) {
+                diagram.doubleClick = undefined;
+                diagram.textEdit = undefined;
+                diagram.selectionChange = undefined;
+                diagram.propertyChange = undefined;
+                diagram.nodeDefaults = undefined;
+                diagram.positionChange = undefined;
+                diagram.sizeChange = undefined;
+                diagram.destroy();
+            }
+            if (ele && ele.parentNode) {
+                ele.parentNode.removeChild(ele);
+            }
 
+        })
         afterAll((): void => {
-            diagram.destroy();
             ele.remove();
             mouseEvents = null;
         });
 
-        it('Checking textediting for node when text box change', (done: Function) => {
+        it('Checking textediting for node when text box change', (done: DoneFn) => {
 
             let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-            mouseEvents.clickEvent(diagramCanvas, 400, 100);
-            //Need to evaluate testcase
-            //expect(diagram.selectedItems.nodes[0].annotations[0].content == 'Process').toBe(true);
-            expect(true).toBe(true);
+            mouseEvents.clickEvent(diagramCanvas, diagram.nodes[1].offsetX, diagram.nodes[1].offsetY);
+            expect(diagram.selectedItems.nodes[0].annotations[0].content == 'Process').toBe(true);
+
             diagram.startTextEdit(diagram.selectedItems.nodes[0], diagram.selectedItems.nodes[0].annotations[0].id);
             let editBox = document.getElementById(diagram.element.id + '_editBox') as HTMLTextAreaElement;
             if (editBox) {
                 editBox.value = 'editText1';
             }
             mouseEvents.clickEvent(diagramCanvas, 10, 10);
-            //Need to evaluate testcase
-            //expect((diagram.nodes[1] as NodeModel).annotations[0].content == 'editText1').toBe(true);
+            expect((diagram.nodes[1] as NodeModel).annotations[0].content == 'editText1').toBe(true);
             editBox = null;
-            expect(true).toBe(true);
             done();
         });
-        it('Checking textediting for connector when text box change', (done: Function) => {
+        it('should edit node5 annotation text via double-click', (done: DoneFn) => {
 
             let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
             let node: NodeModel = (diagram.nodes[6] as NodeModel);
-            let annotationBounds = diagram.getWrapper(node.wrapper, node.annotations[0].id);
-            mouseEvents.clickEvent(diagramCanvas, annotationBounds.bounds.center.x, annotationBounds.bounds.center.y);
-            mouseEvents.dblclickEvent(diagramCanvas, annotationBounds.bounds.center.x + 5, annotationBounds.bounds.center.y);
+            //let annotationBounds = diagram.getWrapper(node.wrapper, node.annotations[0].id);
+            mouseEvents.clickEvent(diagramCanvas, node.offsetX, node.offsetY);
+            mouseEvents.dblclickEvent(diagramCanvas, node.offsetX, node.offsetY);
             let textBox = document.getElementById(diagram.element.id + '_editBox');
-            //Need to evaluate testcase
+
             if (textBox) {
                 mouseEvents.inputEvent(textBox);
                 (textBox as HTMLTextAreaElement).value = 'Label';
             }
             mouseEvents.clickEvent(diagramCanvas, 10, 10);
-            //Need to evaluate testcase
-            //expect((diagram.nodes[6] as NodeModel).annotations[0].content == 'Label').toBe(true);
-            expect(true).toBe(true);
+
+            expect((diagram.nodes[6] as NodeModel).annotations[0].content == 'Label').toBe(true);
             textBox = null;
             done();
         });
-        it('Checking textediting for connector when text box change', (done: Function) => {
+        it('should edit node6 annotation text via direct startTextEdit', (done: DoneFn) => {
 
             let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
             let node: NodeModel = (diagram.nodes[5] as NodeModel);
-            let annotationBounds = diagram.getWrapper(node.wrapper, node.annotations[0].id);
-            mouseEvents.clickEvent(diagramCanvas, annotationBounds.bounds.center.x, annotationBounds.bounds.center.y);
-            mouseEvents.dblclickEvent(diagramCanvas, annotationBounds.bounds.center.x + 5, annotationBounds.bounds.center.y + 5);
+            //let annotationBounds = diagram.getWrapper(node.wrapper, node.annotations[0].id);
+            mouseEvents.clickEvent(diagramCanvas, node.offsetX, node.offsetY);
+            mouseEvents.dblclickEvent(diagramCanvas, node.offsetX, node.offsetY);
             let textBox = document.getElementById(diagram.element.id + '_editBox');
             if (textBox) {
                 mouseEvents.inputEvent(textBox);
                 (textBox as HTMLTextAreaElement).value = 'endddddEdit';
             }
             mouseEvents.clickEvent(diagramCanvas, 10, 10);
-            //Need to evaluate testcase
-            //expect((diagram.nodes[5] as NodeModel).annotations[0].content == 'endddddEdit').toBe(true);
-            expect(true).toBe(true);
+
+            expect((diagram.nodes[5] as NodeModel).annotations[0].content == 'endddddEdit').toBe(true);
             textBox = null;
             done();
         });
-        it('Checking textediting for connector when text box change', (done: Function) => {
+        it('should edit connector6 annotation text via double-click', (done: Function) => {
 
             let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
             let connector: ConnectorModel = (diagram.connectors[6] as ConnectorModel);
-            let annotationBounds = diagram.getWrapper(connector.wrapper, connector.annotations[0].id);
-            mouseEvents.clickEvent(diagramCanvas, annotationBounds.bounds.center.x, annotationBounds.bounds.center.y);
-            //Need to evaluate testcase
-            //expect(diagram.selectedItems.connectors[0].annotations[0].content == 'No').toBe(true);
-            expect(true).toBe(true);
-            //diagram.startTextEdit(diagram.selectedItems.connectors[0], diagram.selectedItems.connectors[0].annotations[0].id);
-            //(document.getElementById(diagram.element.id + '_editBox') as HTMLTextAreaElement).value = 'editLabel';
+            diagram.select([connector]);
+            //let annotationBounds = diagram.getWrapper(connector.wrapper, connector.annotations[0].id);
+            //mouseEvents.clickEvent(diagramCanvas, annotationBounds.bounds.center.x, annotationBounds.bounds.center.y);
+
+            expect(diagram.selectedItems.connectors[0].annotations[0].content == 'No').toBe(true);
+
+            diagram.startTextEdit(diagram.selectedItems.connectors[0], diagram.selectedItems.connectors[0].annotations[0].id);
+            (document.getElementById(diagram.element.id + '_editBox') as HTMLTextAreaElement).value = 'editLabel';
             mouseEvents.clickEvent(diagramCanvas, 10, 10);
-            //Need to evaluate testcase
-            //expect((diagram.connectors[6] as ConnectorModel).annotations[0].content == 'editLabel').toBe(true);
-            expect(true).toBe(true);
+
+            expect((diagram.connectors[6] as ConnectorModel).annotations[0].content == 'editLabel').toBe(true);
+
             done();
         });
 
         it('Checking textediting for bezier connector when text box change', (done: Function) => {
+
             diagram.startTextEdit(diagram.connectors[8], diagram.connectors[8].annotations[0].id);
             (document.getElementById(diagram.element.id + '_editBox') as HTMLTextAreaElement).value = 'editLabel';
             let position = document.getElementById(diagram.element.id + '_editBox');
             let labelPosition: any = position.getBoundingClientRect();
-            console.log('labelPosition.x' , Math.round(labelPosition.x));
-            //Need to evaluate testcase
-            //expect((Math.round(labelPosition.x) === 548 || Math.round(labelPosition.x) === 555 || Math.round(labelPosition.x) === 553 ) && (Math.round(labelPosition.y) === 184 || Math.round(labelPosition.y) === 224 || Math.round(labelPosition.y) === 232)).toBe(true);
-            expect(true).toBe(true);
+            console.log("X ", Math.round(labelPosition.x), "Y ", Math.round(labelPosition.y))
+            expect((Math.round(labelPosition.x) === 548 || Math.round(labelPosition.x) === 555 || Math.round(labelPosition.x) === 569) && (Math.round(labelPosition.y) === 184 || Math.round(labelPosition.y) === 231 || Math.round(labelPosition.y) === 239)).toBe(true);
             done();
         });
-        // it('Checking textediting when text box change using keydown', (done: Function) => {
-        //     let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-        //     mouseEvents.clickEvent(diagramCanvas, 400 + diagram.element.offsetLeft, 180 + diagram.element.offsetTop);
-        //     //Need to evaluate testcase
-        //     //expect(diagram.selectedItems.nodes[0].annotations[0].content == 'Coding').toBe(true);
-        //     diagram.startTextEdit();
-        //     let textBox = document.getElementById(diagram.element.id + '_editBox')
-        //     //Need to evaluate testcase
-        //     if (textBox) {
-        //         mouseEvents.inputEvent(textBox);
-        //         mouseEvents.keyDownEvent(textBox, 'l');
-        //         mouseEvents.keyDownEvent(textBox, 'a');
-        //         mouseEvents.keyDownEvent(textBox, 'b');
-        //         mouseEvents.keyDownEvent(textBox, 'e');
-        //         mouseEvents.keyDownEvent(textBox, 'l');
-        //         (textBox as HTMLTextAreaElement).value = 'labelewidthgreaterthanwidth';
-        //     }
-        //     mouseEvents.clickEvent(diagramCanvas, 10, 10);
-        //     expect((diagram.nodes[2] as NodeModel).annotations[0].content == 'labelewidthgreaterthanwidth').toBe(true);
-        //     textBox = null;
-        //     done();
-        // });
+        it('Checking textediting when text box change using keydown', (done: DoneFn): void => {
+
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            mouseEvents.clickEvent(diagramCanvas, diagram.nodes[2].offsetX, diagram.nodes[2].offsetY);
+
+            expect(diagram.selectedItems.nodes[0].annotations[0].content == 'Coding').toBe(true);
+            diagram.startTextEdit();
+            let textBox = document.getElementById(diagram.element.id + '_editBox')
+
+            if (textBox) {
+                mouseEvents.inputEvent(textBox);
+                mouseEvents.keyDownEvent(textBox, 'l');
+                mouseEvents.keyDownEvent(textBox, 'a');
+                mouseEvents.keyDownEvent(textBox, 'b');
+                mouseEvents.keyDownEvent(textBox, 'e');
+                mouseEvents.keyDownEvent(textBox, 'l');
+                (textBox as HTMLTextAreaElement).value = 'labelewidthgreaterthanwidth';
+            }
+            mouseEvents.clickEvent(diagramCanvas, 10, 10);
+            expect((diagram.nodes[2] as NodeModel).annotations[0].content == 'labelewidthgreaterthanwidth').toBe(true);
+            textBox = null;
+            done();
+        });
         it('Checking textediting for connector when text box change using keydown', (done: Function) => {
 
             let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content')
             let connector: ConnectorModel = (diagram.connectors[7] as ConnectorModel);
+            let canvasBounds: any = diagramCanvas.getBoundingClientRect();
             expect((diagram.connectors[7] as ConnectorModel).annotations[0].content == 'Yes').toBe(true);
-            let annotationBounds = diagram.getWrapper(connector.wrapper, connector.annotations[0].id);
-            //Need to evaluate testcase
-            mouseEvents.clickEvent(diagramCanvas, annotationBounds.bounds.center.x, annotationBounds.bounds.center.y);
-            mouseEvents.dblclickEvent(diagramCanvas, annotationBounds.bounds.center.x, annotationBounds.bounds.center.y);
+            let annotationBounds: any = diagram.getWrapper(connector.wrapper, connector.annotations[0].id);
+            let screenX: number = canvasBounds.left + annotationBounds.bounds.center.x;
+            let screenY: number = canvasBounds.top + annotationBounds.bounds.center.y;
+            mouseEvents.clickEvent(diagramCanvas, screenX, screenY);
+            mouseEvents.dblclickEvent(diagramCanvas, screenX, screenY);
+            //let annotationBounds = diagram.getWrapper(connector.wrapper, connector.annotations[0].id);
+            // mouseEvents.clickEvent(diagramCanvas, annotationBounds.bounds.center.x, annotationBounds.bounds.center.y);
+            // mouseEvents.dblclickEvent(diagramCanvas, annotationBounds.bounds.center.x, annotationBounds.bounds.center.y);
             let textBox = document.getElementById(diagram.element.id + '_editBox');
 
-            //Need to evaluate testcase
             if (textBox) {
                 mouseEvents.inputEvent(textBox);
                 mouseEvents.keyDownEvent(textBox, 'l');
@@ -232,39 +248,41 @@ describe('Diagram Control', () => {
             textBox = null;
             done();
         });
-        it('Checking textediting for node when more than one annotation', (done: Function) => {
-            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-            mouseEvents.clickEvent(diagramCanvas, 400, 180);
-            let diagramBounds = diagramCanvas.getBoundingClientRect();
-            let targetNode = (diagram.nodes[2] as NodeModel);
-            expect((diagram.nodes[2] as NodeModel).annotations[1].content == 'label2').toBe(true);
-            let targetAnnotationContainer = diagram.getWrapper(targetNode.wrapper, targetNode.annotations[1].id);
-            let targetAnnotationBounds = targetAnnotationContainer.bounds.middleLeft;
-            mouseEvents.mouseMoveEvent(diagramCanvas, (targetAnnotationBounds.x + diagramBounds.left + 5), (targetAnnotationBounds.y + diagramBounds.top + 5));
-            diagram.doubleClick = (arg) => {
-                if (arg.count === 2) {
-                    diagram.doubleClick = null;
-                    diagram.textEdit = null;
-                    done();
-                }
-            };
-            diagram.textEdit = (arg) => {
-                expect(arg.newValue !== arg.oldValue).toBe(true);
-            };
+        it('Checking textediting for node when more than one annotation', (done: DoneFn): void => {
+            try {
+                let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+                mouseEvents.clickEvent(diagramCanvas, 400, 180);
+                let diagramBounds = diagramCanvas.getBoundingClientRect();
+                let targetNode = (diagram.nodes[2] as NodeModel);
+                expect((diagram.nodes[2] as NodeModel).annotations[1].content == 'label2').toBe(true);
+                let targetAnnotationContainer = diagram.getWrapper(targetNode.wrapper, targetNode.annotations[1].id);
+                let targetAnnotationBounds = targetAnnotationContainer.bounds.middleLeft;
+                mouseEvents.mouseMoveEvent(diagramCanvas, (targetAnnotationBounds.x + diagramBounds.left + 5), (targetAnnotationBounds.y + diagramBounds.top + 5));
+                diagram.doubleClick = (arg) => {
+                    if (arg.count === 2) {
+                        diagram.textEdit = null;
+                        done();
+                    }
+                };
+                diagram.textEdit = (arg) => {
+                    expect(arg.newValue !== arg.oldValue).toBe(true);
+                };
 
-            mouseEvents.dblclickEvent(diagramCanvas, (targetAnnotationBounds.x + diagramBounds.left + 5), (targetAnnotationBounds.y + diagramBounds.top + 5));
-            let textBox = document.getElementById(diagram.element.id + '_editBox');
-            mouseEvents.inputEvent(textBox);
-            mouseEvents.keyDownEvent(textBox, 'T');
-            mouseEvents.keyDownEvent(textBox, 'e');
-            mouseEvents.keyDownEvent(textBox, 'x');
-            mouseEvents.keyDownEvent(textBox, 't');
-            mouseEvents.keyDownEvent(textBox, 'Enter');
-            (document.getElementById(diagram.element.id + '_editBox') as HTMLTextAreaElement).value = 'Text';
-            mouseEvents.clickEvent(diagramCanvas, 10, 10);
-            expect((diagram.nodes[2] as NodeModel).annotations[1].content == 'Text').toBe(true);
-            done();
-
+                mouseEvents.dblclickEvent(diagramCanvas, (targetAnnotationBounds.x + diagramBounds.left + 5), (targetAnnotationBounds.y + diagramBounds.top + 5));
+                let textBox = document.getElementById(diagram.element.id + '_editBox');
+                mouseEvents.inputEvent(textBox);
+                mouseEvents.keyDownEvent(textBox, 'T');
+                mouseEvents.keyDownEvent(textBox, 'e');
+                mouseEvents.keyDownEvent(textBox, 'x');
+                mouseEvents.keyDownEvent(textBox, 't');
+                mouseEvents.keyDownEvent(textBox, 'Enter');
+                (document.getElementById(diagram.element.id + '_editBox') as HTMLTextAreaElement).value = 'Text';
+                mouseEvents.clickEvent(diagramCanvas, 10, 10);
+                expect((diagram.nodes[2] as NodeModel).annotations[1].content == 'Text').toBe(true);
+                done();
+            } catch (err) {
+                done.fail(err);
+            }
         });
         it('Checking textediting - code coverage', (done: Function) => {
             diagram.clearSelection();
@@ -274,7 +292,7 @@ describe('Diagram Control', () => {
             expect(true).toBe(true);
             done();
         });
-        it('memory leak', () => { 
+        it('memory leak', () => {
             profile.sample();
             let average: any = inMB(profile.averageChange)
             //Check average change in memory samples to not be over 10MB
@@ -290,7 +308,7 @@ describe('Diagram Control', () => {
         let diagram: Diagram;
         let ele: HTMLElement;
         let mouseEvents: MouseEvents = new MouseEvents();
-       
+
         beforeAll((): void => {
             const isDef = (o: any) => o !== undefined && o !== null;
             if (!isDef(window.performance)) {
@@ -298,7 +316,8 @@ describe('Diagram Control', () => {
                 this.skip(); //Skips test (in Chai)
                 return;
             }
-
+        });
+        beforeAll(function () {
             ele = createElement('div', { id: 'diagramorder2' });
             document.body.appendChild(ele);
 
@@ -319,13 +338,20 @@ describe('Diagram Control', () => {
             diagram.appendTo('#diagramorder2');
 
         });
+        afterEach(function (): void {
+            if (diagram) {
+                diagram.destroy();
+            }
+            if (ele && ele.parentNode) {
+                ele.parentNode.removeChild(ele);
+            }
+        });
         afterAll((): void => {
             mouseEvents = null;
-            diagram.destroy();
-            ele.remove();
         });
 
-        it('Edit the annotation and check annotation content', (done: Function) => {
+        it('Edit the annotation and check annotation content', (done: DoneFn) => {
+
             diagram.zoomTo({ type: 'ZoomOut', zoomFactor: 0.2 });
             let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
             diagram.startTextEdit(diagram.nodes[0]);
@@ -335,7 +361,6 @@ describe('Diagram Control', () => {
             }
             mouseEvents.clickEvent(diagramCanvas, 10, 10);
             expect((diagram.nodes[0] as NodeModel).annotations[0].content === 'editText1').toBe(true);
-            mouseEvents = null;
             editBox = null;
             done();
         });

@@ -3379,4 +3379,50 @@ export class TextSearch {
     public getModuleName(): string {
         return 'TextSearch';
     }
+
+    /**
+     * @private
+     * Updates the text search box layout for RTL/LTR dynamically.
+     * @param {boolean} isRtl - Whether RTL mode is enabled.
+     * @returns {void}
+     */
+    public updateRtl(isRtl: boolean): void {
+        if (!this.searchBox) { return; }
+        if (isRtl) {
+            this.searchBox.classList.add('e-rtl');
+            this.searchBox.style.left = '88.3px';
+            this.searchBox.style.removeProperty('right');
+        } else {
+            this.searchBox.classList.remove('e-rtl');
+            this.searchBox.style.right = '88.3px';
+            this.searchBox.style.removeProperty('left');
+        }
+        const swapClasses: (btn: HTMLElement, desired: 'prev' | 'next') => void = (btn: HTMLElement, desired: string) => {
+            if (!btn) { return; }
+            const desiredClass: string = desired === 'prev' ? 'e-pv-prev-search' : 'e-pv-next-search';
+            const oppositeClass: string = desired === 'prev' ? 'e-pv-next-search' : 'e-pv-prev-search';
+            btn.classList.remove(oppositeClass, desiredClass);
+            btn.classList.add(desiredClass);
+            const icon: HTMLElement = btn.querySelector('span');
+            if (icon) {
+                icon.classList.remove('e-pv-prev-search-icon', 'e-pv-next-search-icon');
+                icon.classList.add(desiredClass + '-icon');
+            }
+        };
+        if (isRtl) {
+            swapClasses(this.prevSearchBtn, 'next');
+            swapClasses(this.nextSearchBtn, 'prev');
+        } else {
+            swapClasses(this.prevSearchBtn, 'prev');
+            swapClasses(this.nextSearchBtn, 'next');
+        }
+        if (this.searchAutocompleteObj) {
+            this.searchAutocompleteObj.enableRtl = isRtl;
+            this.searchAutocompleteObj.dataBind();
+        }
+        if (this.matchAnyWordCheckBox) {
+            this.matchAnyWordCheckBox.enableRtl = isRtl;
+            this.matchAnyWordCheckBox.dataBind();
+        }
+    }
 }

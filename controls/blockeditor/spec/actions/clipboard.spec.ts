@@ -40,14 +40,14 @@ describe('Clipboard Actions', () => {
                     id: 'paragraph1',
                     blockType: BlockType.Paragraph,
                     content: [
-                        { id: 'paragraph1-content', contentType: ContentType.Text, content: 'First paragraph' }
+                        { contentType: ContentType.Text, content: 'First paragraph' }
                     ]
                 },
                 {
                     id: 'paragraph2',
                     blockType: BlockType.Paragraph,
                     content: [
-                        { id: 'paragraph2-content', contentType: ContentType.Text, content: 'Second paragraph' }
+                        { contentType: ContentType.Text, content: 'Second paragraph' }
                     ]
                 }
             ];
@@ -140,26 +140,28 @@ describe('Clipboard Actions', () => {
                         id: 'block1',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'bold', contentType: ContentType.Text, content: 'Boldedtext', properties: { styles: { bold: true } } },
-                            { id: 'italic', contentType: ContentType.Text, content: 'Italictext', properties: { styles: { italic: true } } },
-                            { id: 'underline', contentType: ContentType.Text, content: 'Underlinedtext', properties: { styles: { underline: true } } }
+                            { contentType: ContentType.Text, content: 'Boldedtext', properties: { styles: { bold: true } } },
+                            { contentType: ContentType.Text, content: 'Italictext', properties: { styles: { italic: true } } },
+                            { contentType: ContentType.Text, content: 'Underlinedtext', properties: { styles: { underline: true } } }
                         ]
                     },
                     {
                         id: 'block2',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'test', contentType: ContentType.Text, content: 'TestContent', properties: { styles: { bold: true } } }
+                            { contentType: ContentType.Text, content: 'TestContent', properties: { styles: { bold: true } } }
                         ]
                     }
                 ]
             });
             editor.appendTo('#editor');
-            editor.blockManager.setFocusToBlock(editor.element.querySelector('#block1'));
+            const block1 = editor.element.querySelector('#block1') as HTMLElement;
+            const content1 = getBlockContentElement(block1);
+            editor.blockManager.setFocusToBlock(block1);
             //create range
             var range = document.createRange();
-            var startNode = editor.element.querySelector('#italic').firstChild;
-            var endNode = editor.element.querySelector('#underline').firstChild;
+            var startNode = content1.childNodes[1].firstChild;
+            var endNode = content1.childNodes[2].firstChild;
             range.setStart(startNode, 0);
             range.setEnd(endNode, 6);
             var selection = document.getSelection();
@@ -202,6 +204,43 @@ describe('Clipboard Actions', () => {
                 expect((contentElement.childNodes[2] as HTMLElement).tagName).toBe('U');
                 done();
             }, 100);
+        });
+
+        it('getClipboardPayload should return contents in blockeditorData for single block inline selection', (done) => {
+        const blockElement = editorElement.querySelector('#paragraph1') as HTMLElement;
+        const contentElement = getBlockContentElement(blockElement);
+        editor.blockManager.setFocusToBlock(blockElement);
+
+        const range = document.createRange();
+        range.setStart(contentElement.firstChild, 0);
+        range.setEnd(contentElement.firstChild, 5);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        const payload = editor.blockManager.clipboardAction.getClipboardPayload();
+        const parsed = JSON.parse(payload.blockeditorData);
+        expect(Object.keys(parsed)[0]).toBe('contents');
+        expect(Array.isArray(parsed.contents)).toBe(true);
+        expect(parsed.contents[0].content).toBe('First');
+        done();
+        });
+
+        it('getClipboardPayload should return span-wrapped HTML for single block inline selection', (done) => {
+            const blockElement = editorElement.querySelector('#paragraph1') as HTMLElement;
+            const contentElement = getBlockContentElement(blockElement);
+            editor.blockManager.setFocusToBlock(blockElement);
+            const range = document.createRange();
+            range.setStart(contentElement.firstChild, 0);
+            range.setEnd(contentElement.firstChild, 5); 
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+
+            const payload = editor.blockManager.clipboardAction.getClipboardPayload();
+            expect(payload.html).toMatch(/^<span>.*<\/span>$/);
+            expect(payload.html).toContain('First');
+            done();
         });
 
         it('multi block paste when cursor is at middle', (done) => {
@@ -353,7 +392,7 @@ describe('Clipboard Actions', () => {
                     children: [{
                         id: 'callout-child1',
                         blockType: BlockType.Paragraph,
-                        content: [{ id: 'callout-child1-content', contentType: ContentType.Text, content: '' }]
+                        content: [{ contentType: ContentType.Text, content: '' }]
                     }]
                 }
             }, lastBlockElement.id);
@@ -389,14 +428,14 @@ describe('Clipboard Actions', () => {
                         id: 'source-block',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'source-content', contentType: ContentType.Text, content: 'Source text to copy' }
+                            { contentType: ContentType.Text, content: 'Source text to copy' }
                         ]
                     },
                     {
                         id: 'target-block',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'target-content', contentType: ContentType.Text, content: 'This text will be partially selected' }
+                            { contentType: ContentType.Text, content: 'This text will be partially selected' }
                         ]
                     }
                 ]
@@ -407,7 +446,7 @@ describe('Clipboard Actions', () => {
             const sourceBlock = editorElement.querySelector('#source-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(sourceBlock);
             const sourceRange = document.createRange();
-            const sourceContent = sourceBlock.querySelector('#source-content') as HTMLElement;
+            const sourceContent = getBlockContentElement(sourceBlock);
             sourceRange.selectNodeContents(sourceContent);
 
             const selection = window.getSelection();
@@ -434,7 +473,7 @@ describe('Clipboard Actions', () => {
             const targetBlock = editorElement.querySelector('#target-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(targetBlock);
             const targetRange = document.createRange();
-            const targetContent = targetBlock.querySelector('#target-content') as HTMLElement;
+            const targetContent = getBlockContentElement(targetBlock);
             targetRange.setStart(targetContent.firstChild, 5); // 'This '
             targetRange.setEnd(targetContent.firstChild, 18); // 'This text will be'
 
@@ -465,14 +504,14 @@ describe('Clipboard Actions', () => {
                         id: 'source-block',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'source-content', contentType: ContentType.Text, content: 'Source text to copy. This text will be' }
+                            { contentType: ContentType.Text, content: 'Source text to copy. This text will be' }
                         ]
                     },
                     {
                         id: 'target-block',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'target-content', contentType: ContentType.Text, content: 'partially selected' }
+                            { contentType: ContentType.Text, content: 'partially selected' }
                         ]
                     }
                 ]
@@ -483,7 +522,7 @@ describe('Clipboard Actions', () => {
             const sourceBlock = editorElement.querySelector('#source-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(sourceBlock);
             const sourceRange = document.createRange();
-            const sourceContent = sourceBlock.querySelector('#source-content') as HTMLElement;
+            const sourceContent = getBlockContentElement(sourceBlock);
             sourceRange.setStart(sourceContent.firstChild, 0);
             sourceRange.setEnd(sourceContent.firstChild, 20);
 
@@ -511,7 +550,7 @@ describe('Clipboard Actions', () => {
             const targetBlock = editorElement.querySelector('#target-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(targetBlock);
             const targetRange = document.createRange();
-            const targetContent = targetBlock.querySelector('#target-content') as HTMLElement;
+            const targetContent = getBlockContentElement(targetBlock);
             targetRange.setStart(sourceContent.firstChild, 21);
             targetRange.setEnd(targetContent.firstChild, 10);
 
@@ -543,9 +582,9 @@ describe('Clipboard Actions', () => {
                         id: 'block-1',
                         blockType: BlockType.Paragraph,
                         content: [
-                            { id: 'content-1', contentType: ContentType.Text, content: 'Hello ' },
-                            { id: 'content-2', contentType: ContentType.Label, properties: { labelId: 'progress' } },
-                            { id: 'content-3', contentType: ContentType.Text, content: ' World' }
+                            { contentType: ContentType.Text, content: 'Hello ' },
+                            { contentType: ContentType.Label, properties: { labelId: 'progress' } },
+                            { contentType: ContentType.Text, content: ' World' }
                         ]
                     }
                 ]
@@ -556,7 +595,8 @@ describe('Clipboard Actions', () => {
             const sourceBlock = editorElement.querySelector('#block-1') as HTMLElement;
             editor.blockManager.setFocusToBlock(sourceBlock);
             const sourceRange = document.createRange();
-            const sourceContent = sourceBlock.querySelector('#content-1').firstChild as HTMLElement;
+            const blockContentElement = getBlockContentElement(sourceBlock);
+            const sourceContent = blockContentElement.childNodes[0] as HTMLElement;
             sourceRange.selectNodeContents(sourceContent);
 
             const selection = window.getSelection();
@@ -584,17 +624,15 @@ describe('Clipboard Actions', () => {
 
             setTimeout(() => {
                 const updatedContent = editor.blocks[0].content;
-                expect(updatedContent.length).toBe(4); // Along with cursor span
-                expect(updatedContent[0].content).toBe(''); // Empty span
-                expect(updatedContent[1].content).toBe('Hello '); // Selected and pasted text
-                expect(updatedContent[2].contentType).toBe('Label'); // Label
-                expect(updatedContent[3].content).toBe(' World'); // After content
+                expect(updatedContent.length).toBe(3);
+                expect(updatedContent[0].content).toBe('Hello '); // Selected and pasted text
+                expect(updatedContent[1].contentType).toBe('Label'); // Label
+                expect(updatedContent[2].content).toBe(' World'); // After content
 
                 const contentEle = getBlockContentElement(editorElement.querySelector('#block-1'));
-                expect(contentEle.childNodes[0].textContent).toBe(''); // Empty span
-                expect(contentEle.childNodes[1].textContent).toBe('Hello '); // Selected and pasted text
-                expect((contentEle.childNodes[2] as HTMLElement).classList).toContain('e-mention-chip');
-                expect(contentEle.childNodes[3].textContent).toBe(' World'); // After content
+                expect(contentEle.childNodes[0].textContent).toBe('Hello '); // Selected and pasted text
+                expect((contentEle.childNodes[1] as HTMLElement).classList).toContain('e-mention-chip');
+                expect(contentEle.childNodes[2].textContent).toBe(' World'); // After content
                 done();
             }, 100);
         });
@@ -608,7 +646,7 @@ describe('Clipboard Actions', () => {
             editorElement = createElement('div', { id: 'editor' });
             document.body.appendChild(editorElement);
             const blocks: BlockModel[] = [
-                { id: 'paragraph', blockType: BlockType.Paragraph, content: [{ id: 'paragraph-content', contentType: ContentType.Text, content: 'Hello world' }] }
+                { id: 'paragraph', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Hello world' }] }
             ];
             editor = createEditor({
                 blocks: blocks,
@@ -735,7 +773,7 @@ describe('Clipboard Actions', () => {
                 expect(editor.blocks[1].content[0].content).toBe('Item 2');
                 expect(editor.blocks[2].content[0].content).toBe('Item 3');
                 expect(editor.blocks[3].content[0].content).toBe('Hello world');
-                
+
                 const blockElements = editor.blockContainer.querySelectorAll('.e-block');
                 expect(blockElements.length).toBe(4);
                 expect(blockElements[0].textContent).toBe('Item 1');
@@ -775,7 +813,7 @@ describe('Clipboard Actions', () => {
                 expect(editor.blocks[1].content[0].content).toBe('Item 2');
                 expect(editor.blocks[2].content[0].content).toBe('Item 3');
                 expect(editor.blocks[3].content[0].content).toBe('Hello world');
-                
+
                 const blockElements = editor.blockContainer.querySelectorAll('.e-block');
                 expect(blockElements.length).toBe(4);
                 expect(blockElements[0].textContent).toBe('Item 1');
@@ -791,7 +829,7 @@ describe('Clipboard Actions', () => {
         let editor: BlockEditor;
         let editorElement: HTMLElement;
         const blocks: BlockModel[] = [
-            { id: 'paragraph', blockType: BlockType.Paragraph, content: [{ id: 'paragraph-content', contentType: ContentType.Text, content: 'Hello world' }] }
+            { id: 'paragraph', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Hello world' }] }
         ];
 
         beforeEach((done) => {
@@ -975,7 +1013,7 @@ describe('Clipboard Actions', () => {
         let editor: BlockEditor;
         let editorElement: HTMLElement;
         const blocks: BlockModel[] = [
-            { id: 'paragraph', blockType: BlockType.Paragraph, content: [{ id: 'paragraph-content', contentType: ContentType.Text, content: 'Hello world' }] }
+            { id: 'paragraph', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Hello world' }] }
         ];
 
         beforeEach((done) => {
@@ -1056,9 +1094,9 @@ describe('Clipboard Actions', () => {
                 expect(editor.blocks[1].content[0].content).toBe('new');
                 expect(editor.blocks[1].content[2].content).toBe('InlineToolbarItemModel');
                 expect(editor.blocks[1].content[5].content).toBe('{');
-                expect(editor.blocks[1].content[8].content).toBe('&nbsp;&nbsp;&nbsp; ID');
+                expect(editor.blocks[1].content[8].content).toBe('    ID');
                 expect(editor.blocks[1].content[12].content).toBe('"bold"');
-                expect(editor.blocks[1].content[16].content).toBe('&nbsp;&nbsp;&nbsp; Tooltip');
+                expect(editor.blocks[1].content[16].content).toBe('    Tooltip');
 
 
                 const contentElement1 = getBlockContentElement(document.getElementById(editor.blocks[0].id));
@@ -1158,7 +1196,6 @@ describe('Clipboard Actions', () => {
                 blockType: BlockType.Heading,
                 properties: { level: 1 },
                 content: [{
-                    id: 'heading-content',
                     contentType: ContentType.Text,
                     content: 'Welcome to the Block Editor Demo!'
                 }]
@@ -1167,7 +1204,6 @@ describe('Clipboard Actions', () => {
                 id: 'intro-block',
                 blockType: BlockType.Paragraph,
                 content: [{
-                    id: 'intro-content',
                     contentType: ContentType.Text,
                     content: 'Block Editor is a powerful rich text editor',
                 }]
@@ -1177,39 +1213,34 @@ describe('Clipboard Actions', () => {
                 blockType: BlockType.Paragraph,
                 content: [
                     {
-                        id: 'styled-text-1',
                         contentType: ContentType.Text,
                         content: 'Try selecting text to see '
                     },
                     {
-                        id: 'styled-text-2',
                         contentType: ContentType.Text,
                         content: 'formatting options',
                         properties: {
                             styles: {
-                                bold: true,
-                                italic: true
-                            }
-                        }
-                    },
-                    {
-                        id: 'styled-text-3',
-                        contentType: ContentType.Text,
-                        content: ', or type '
-                    },
-                    {
-                        id: 'styled-text-4',
-                        contentType: ContentType.Text,
-                        content: '"/"',
-                        properties: {
-                            styles: {
-                                backgroundColor: '#F0F0F0',
+                                italic: true,
                                 bold: true
                             }
                         }
                     },
                     {
-                        id: 'styled-text-5',
+                        contentType: ContentType.Text,
+                        content: ', or type '
+                    },
+                    {
+                        contentType: ContentType.Text,
+                        content: '"/"',
+                        properties: {
+                            styles: {
+                                bold: true,
+                                backgroundColor: '#F0F0F0'
+                            }
+                        }
+                    },
+                    {
                         contentType: ContentType.Text,
                         content: ' to access the command menu.'
                     }
@@ -1220,7 +1251,6 @@ describe('Clipboard Actions', () => {
                 blockType: BlockType.Heading,
                 properties: { level: 2 },
                 content: [{
-                    id: 'block-types-heading-content',
                     contentType: ContentType.Text,
                     content: 'Block Types'
                 }]
@@ -1228,23 +1258,26 @@ describe('Clipboard Actions', () => {
             {
                 id: 'quote-block',
                 blockType: BlockType.Quote,
-                content: [{
-                    id: 'quote-content',
-                    contentType: ContentType.Text,
-                    content: 'The Block Editor makes document creation a seamless experience with its intuitive block-based approach.',
-                    properties: {
-                        styles: {
-                            italic: true
-                        }
-                    }
-                }]
+                properties: {
+                    children: [{
+                        blockType: BlockType.Paragraph,
+                        content: [{
+                            contentType: ContentType.Text,
+                            content: 'The Block Editor makes document creation a seamless experience with its intuitive block-based approach.',
+                            properties: {
+                                styles: {
+                                    italic: true
+                                }
+                            }
+                        }]
+                    }]
+                }
             },
             {
                 id: 'list-types-heading',
                 blockType: BlockType.Heading,
                 properties: { level: 3 },
                 content: [{
-                    id: 'list-types-heading-content',
                     contentType: ContentType.Text,
                     content: 'List Types'
                 }]
@@ -1253,7 +1286,6 @@ describe('Clipboard Actions', () => {
                 id: 'bullet-list-header',
                 blockType: BlockType.BulletList,
                 content: [{
-                    id: 'bullet-list-header-content',
                     contentType: ContentType.Text,
                     content: 'Text blocks: Paragraph, Heading 1-4, Quote, Callout',
                     properties: {
@@ -1267,7 +1299,6 @@ describe('Clipboard Actions', () => {
                 id: 'numbered-list',
                 blockType: BlockType.NumberedList,
                 content: [{
-                    id: 'numbered-list-content',
                     contentType: ContentType.Text,
                     content: 'Lists: Bullet lists, Numbered lists, Check lists'
                 }]
@@ -1277,7 +1308,6 @@ describe('Clipboard Actions', () => {
                 blockType: BlockType.Checklist,
                 properties: { isChecked: true },
                 content: [{
-                    id: 'check-list-content',
                     contentType: ContentType.Text,
                     content: 'Special blocks: Divider, Toggle, Code block'
                 }]
@@ -1292,7 +1322,6 @@ describe('Clipboard Actions', () => {
                 blockType: BlockType.Heading,
                 properties: { level: 4 },
                 content: [{
-                    id: 'formatting-heading-content',
                     contentType: ContentType.Text,
                     content: 'Text Formatting Examples'
                 }]
@@ -1302,7 +1331,6 @@ describe('Clipboard Actions', () => {
                 blockType: BlockType.Paragraph,
                 content: [
                     {
-                        id: 'format-bold',
                         contentType: ContentType.Text,
                         content: 'Bold ',
                         properties: {
@@ -1312,7 +1340,6 @@ describe('Clipboard Actions', () => {
                         }
                     },
                     {
-                        id: 'format-italic',
                         contentType: ContentType.Text,
                         content: 'Italic ',
                         properties: {
@@ -1322,7 +1349,6 @@ describe('Clipboard Actions', () => {
                         }
                     },
                     {
-                        id: 'format-underline',
                         contentType: ContentType.Text,
                         content: 'Underline ',
                         properties: {
@@ -1332,7 +1358,6 @@ describe('Clipboard Actions', () => {
                         }
                     },
                     {
-                        id: 'format-strikethrough',
                         contentType: ContentType.Text,
                         content: 'Strikethrough ',
                         properties: {
@@ -1342,7 +1367,6 @@ describe('Clipboard Actions', () => {
                         }
                     },
                     {
-                        id: 'format-superscript',
                         contentType: ContentType.Text,
                         content: 'Superscript ',
                         properties: {
@@ -1352,7 +1376,6 @@ describe('Clipboard Actions', () => {
                         }
                     },
                     {
-                        id: 'format-subscript',
                         contentType: ContentType.Text,
                         content: 'Subscript ',
                         properties: {
@@ -1362,7 +1385,6 @@ describe('Clipboard Actions', () => {
                         }
                     },
                     {
-                        id: 'format-uppercase',
                         contentType: ContentType.Text,
                         content: 'uppercase ',
                         properties: {
@@ -1372,7 +1394,6 @@ describe('Clipboard Actions', () => {
                         }
                     },
                     {
-                        id: 'format-lowercase',
                         contentType: ContentType.Text,
                         content: 'LOWERCASE',
                         properties: {
@@ -1388,12 +1409,10 @@ describe('Clipboard Actions', () => {
                 blockType: BlockType.Paragraph,
                 content: [
                     {
-                        id: 'link-text',
                         contentType: ContentType.Text,
                         content: 'Visit '
                     },
                     {
-                        id: 'link-content',
                         contentType: ContentType.Link,
                         content: 'Syncfusion',
                         properties: {
@@ -1401,7 +1420,6 @@ describe('Clipboard Actions', () => {
                         }
                     },
                     {
-                        id: 'link-text-end',
                         contentType: ContentType.Text,
                         content: ' for more information.'
                     }
@@ -1416,29 +1434,24 @@ describe('Clipboard Actions', () => {
                 blockType: BlockType.Paragraph,
                 content: [
                     {
-                        id: 'label-text',
                         contentType: ContentType.Text,
                         content: 'This block contains a '
                     },
                     {
-                        id: 'progress-label',
                         contentType: ContentType.Label,
                         properties: {
                             labelId: 'progress'
                         }
                     },
                     {
-                        id: 'label-text-end',
                         contentType: ContentType.Text,
                         content: ' label.'
                     },
                     {
-                        id: 'code-text',
                         contentType: ContentType.Text,
                         content: 'Add inline code '
                     },
                     {
-                        id: 'inline-code-value',
                         contentType: ContentType.Text,
                         content: 'const x=10',
                         properties: {
@@ -1453,13 +1466,12 @@ describe('Clipboard Actions', () => {
                 id: 'try-it-block',
                 blockType: BlockType.Paragraph,
                 content: [{
-                    id: 'try-it-content',
                     contentType: ContentType.Text,
                     content: 'Try it out! Click anywhere and start typing, or type "/" to see available commands.',
                     properties: {
                         styles: {
-                            bold: true,
-                            backgroundColor: '#F8F9FA'
+                            backgroundColor: '#F8F9FA',
+                            bold: true
                         }
                     }
                 }]
@@ -1490,7 +1502,7 @@ describe('Clipboard Actions', () => {
             expect(html).toContain('<p>Block Editor is a powerful rich text editor</p>');
             expect(html).toContain('<p>Try selecting text to see <em><strong>formatting options</strong></em>, or type <strong><span style="background-color: #F0F0F0;">&quot;/&quot;</span></strong> to access the command menu.</p>');
             expect(html).toContain('<h2>Block Types</h2>');
-            expect(html).toContain('<blockquote><em>The Block Editor makes document creation a seamless experience with its intuitive block-based approach.</em></blockquote>');
+            expect(html).toContain('<blockquote><p><em>The Block Editor makes document creation a seamless experience with its intuitive block-based approach.</em></p></blockquote>');
             expect(html).toContain('<h3>List Types</h3>');
             expect(html).toContain('<ul><li><strong>Text blocks: Paragraph, Heading 1-4, Quote, Callout</strong></li></ul>');
             expect(html).toContain('<ol><li>Lists: Bullet lists, Numbered lists, Check lists</li></ol>');
@@ -1523,7 +1535,6 @@ describe('Clipboard Actions', () => {
                     id: 'code-block',
                     blockType: BlockType.Code,
                     content: [{
-                        id: 'code-content',
                         contentType: ContentType.Text,
                         content: '// JavaScript code\n'
                     }]
@@ -1650,14 +1661,14 @@ describe('Clipboard Actions', () => {
                     id: 'paragraph1',
                     blockType: BlockType.Paragraph,
                     content: [
-                        { id: 'paragraph1-content', contentType: ContentType.Text, content: 'Context menu clipboard test' }
+                        { contentType: ContentType.Text, content: 'Context menu clipboard test' }
                     ]
                 },
                 {
                     id: 'paragraph2',
                     blockType: BlockType.Paragraph,
                     content: [
-                        { id: 'paragraph2-content', contentType: ContentType.Text, content: 'Second paragraph' }
+                        { contentType: ContentType.Text, content: 'Second paragraph' }
                     ]
                 }
             ];
@@ -1707,7 +1718,7 @@ describe('Clipboard Actions', () => {
 
             // Create a selection range
             const range = document.createRange();
-            const contentElement = blockElement.querySelector('#paragraph1-content');
+            const contentElement = getBlockContentElement(blockElement);
             range.selectNodeContents(contentElement);
 
             const selection = window.getSelection();
@@ -1843,8 +1854,8 @@ describe('Clipboard Actions', () => {
             editorElement = createElement('div', { id: 'editor' });
             document.body.appendChild(editorElement);
             const blocks: BlockModel[] = [
-                { id: 'paragraph-1', blockType: BlockType.Paragraph, content: [{ id: 'paragraph-content-1', contentType: ContentType.Text, content: 'Hello world 1' }] },
-                { id: 'paragraph-2', blockType: BlockType.Paragraph, content: [{ id: 'paragraph-content-2', contentType: ContentType.Text, content: 'Hello world 2' }] }
+                { id: 'paragraph-1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Hello world 1' }] },
+                { id: 'paragraph-2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Hello world 2' }] }
             ];
             editor = createEditor({
                 blocks: blocks
@@ -1863,13 +1874,6 @@ describe('Clipboard Actions', () => {
             // Empty block data
             const blocks = (editor.blockManager.clipboardAction as any).createPartialBlockModels(document.createElement('div'), []);
             expect(blocks.length).toBe(0);
-
-            // Invalid content element
-            const container = document.createElement('div');
-            container.innerHTML = '<p id="fakeelement">Test</p>';
-
-            const contents = (editor.blockManager.clipboardAction as any).createPartialContentModels(container, editor.blocks[0]);
-            expect(contents.length).toBe(0);
 
             // Sending null data for parse will be catched by try catch block
             const spyconsole = spyOn(console, 'error').and.callFake(() => { });

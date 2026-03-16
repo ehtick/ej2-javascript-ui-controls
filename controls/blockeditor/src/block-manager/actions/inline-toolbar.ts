@@ -2,12 +2,13 @@ import { detach, updateCSSText } from '@syncfusion/ej2-base';
 import { ClickEventArgs, Toolbar } from '@syncfusion/ej2-navigations';
 import { Popup } from '@syncfusion/ej2-popups';
 import { BlockType, CommandName } from '../../models/enums';
-import { getBlockContentElement, getBlockModelById, getNormalizedKey, getParentBlock, getSelectedRange, normalizeRange } from '../../common/utils/index';
-import { BaseStylesProp, BlockModel, ContentModel, StyleModel, Styles } from '../../models/index';
+import { detectFormatsForTextNode, extractStylesFromElement, getBlockContentElement, getBlockSpecificRange, getNormalizedKey, getParentBlock, getSelectedRange, hasActiveTableSelection } from '../../common/utils/index';
+import { BlockModel, StyleModel, Styles } from '../../models/index';
 import { events } from '../../common/constant';
-import { findClosestParent } from '../../common/utils/dom';
+import { findClosestParent, getNodesInRange } from '../../common/utils/dom';
 import * as constants from '../../common/constant';
 import { BlockManager } from '../base/block-manager';
+import { FormattingHelper } from '../../common/utils/isformatted';
 
 /**
  * InlineToolbarModule class is used to render the inline toolbar for the block editor.
@@ -59,6 +60,7 @@ export class InlineToolbarModule {
             element: this.popupElement,
             content: this.toolbarEle
         });
+        this.popupObj.actionOnScroll = 'none';
     }
 
     private onKeydown(e: KeyboardEvent): void {
@@ -66,13 +68,13 @@ export class InlineToolbarModule {
         if (!normalizedKey) { return; }
 
         const command: string = this.parent.keyCommandMap.get(normalizedKey);
-        const allowedCommands: string[] = ['bold', 'italic', 'underline', 'strikethrough'];
+        const allowedCommands: string[] = ['bold', 'italic', 'underline', 'strikethrough', 'inlineCode'];
         const tableBlk: HTMLElement = this.parent.currentFocusedBlock &&
             this.parent.currentFocusedBlock.closest(`.${constants.TABLE_BLOCK_CLS}`) as HTMLElement;
 
         if (allowedCommands.indexOf(command) !== -1) {
             e.preventDefault();
-            if (window.getSelection().isCollapsed && !(tableBlk && this.parent.tableSelectionManager.hasActiveTableSelection(tableBlk))) {
+            if (window.getSelection().isCollapsed && !(tableBlk && hasActiveTableSelection(tableBlk))) {
                 this.parent.formattingAction.toggleActiveFormats(command as keyof StyleModel);
             }
             else {
@@ -137,11 +139,16 @@ export class InlineToolbarModule {
             // Do not proceed further for color and background color commands. It will be handled by the color picker.
             return;
         }
+        if (selectedItem === 'link') {
+            // Show link popup when link item is clicked in inline toolbar
+            this.parent.linkModule.showLinkPopup(args.originalEvent as KeyboardEvent);
+            return;
+        }
         this.parent.execCommand({ command: 'FormattingAction', state: { command: selectedItem } });
     }
 
     /**
-     * Updates active state of toolbar buttons based on current selection formatting
+     * Updates active state of toolbar buttons based on current selection formatting.
      *
      * @returns {void}
      * @hidden
@@ -154,31 +161,76 @@ export class InlineToolbarModule {
         toolbarItems.forEach((item: HTMLElement) => item.classList.remove('e-active'));
 
         const blockElements: HTMLElement[] = this.getBlocksInRange(range);
-        const selectedContentModels: ContentModel[] = this.getSelectedContentModels(range, blockElements);
-        if (!selectedContentModels || !selectedContentModels.length) { return; }
-        const commonStyles: Styles = this.getCommonStyles(selectedContentModels);
+
+        // Enable/Disable only the 'link' item based on multi-block selection
+        const distinctBlocks: HTMLElement[] = blockElements.filter((b: HTMLElement) => b.hasAttribute('data-block-type'));
+        const enableLink: boolean = distinctBlocks.length <= 1;
+        if (this.parent && this.parent.editorMethods) {
+            this.parent.editorMethods.enableDisableToolbarItems('link', enableLink);
+        }
+
+        const detectedFormats: Styles = this.detectFormatsFromSelection(range);
+        if (!detectedFormats || Object.keys(detectedFormats).length === 0) { return; }
 
         for (const item of Array.from(toolbarItems)) {
             const command: CommandName = item.getAttribute('data-command') as CommandName;
-            this.toggleActiveState(item, command, commonStyles);
+            this.toggleActiveState(item, command, detectedFormats);
         }
     }
 
-    private getSelectedContentModels(range: Range, blockElements: HTMLElement[]): ContentModel[] {
-        const selectedContentModels: ContentModel[] = [];
-        blockElements.forEach((blockElement: HTMLElement) => {
-            const block: BlockModel = getBlockModelById(blockElement.id, this.parent.getEditorBlocks());
-            const contentElement: HTMLElement = getBlockContentElement(blockElement);
-            const selectedNodes: Node[] = this.getNodesInRange(normalizeRange(range), contentElement);
+    /**
+     * Detects active formats from selected text nodes in DOM.
+     *
+     * @param {Range} range - The selection range
+     * @returns {Styles} - Common styles across selection
+     * @hidden
+     */
+    public detectFormatsFromSelection(range: Range): Styles {
+        const nodesInSelection: Node[] = [];
 
-            selectedNodes.forEach((node: Node) => {
-                const model: ContentModel = block.content.find((content: ContentModel) => content.id === (node as HTMLElement).id);
-                if (model) {
-                    selectedContentModels.push(model);
-                }
-            });
+        const selectedBlockModels: BlockModel[] = this.parent.editorMethods.getSelectedBlocks();
+        selectedBlockModels.forEach((block: BlockModel) => {
+            const blockElement: HTMLElement = this.parent.getBlockElementById(block.id);
+            const blockRange: Range = getBlockSpecificRange(range, blockElement);
+            nodesInSelection.push(...getNodesInRange(blockRange));
         });
-        return selectedContentModels;
+
+        if (nodesInSelection.length === 0) { return {}; }
+
+        const formatsByNode: Styles[] = nodesInSelection.map((textNode: Node) => {
+            return detectFormatsForTextNode(textNode);
+        });
+
+        return this.getCommonFormatsAcrossNodes(formatsByNode);
+    }
+
+    /**
+     * Finds common formats across multiple text nodes.
+     * A format is "active" if ALL selected text nodes have it.
+     *
+     * @param {Styles[]} formatsByNode - Format styles for each text node
+     * @returns {Styles} - Only formats that all nodes share
+     */
+    private getCommonFormatsAcrossNodes(formatsByNode: Styles[]): Styles {
+        if (!formatsByNode.length) { return {}; }
+        if (formatsByNode.length === 1) { return formatsByNode[0]; }
+
+        const commonFormats: Styles = {};
+        const firstNodeFormats: Styles = formatsByNode[0];
+
+        for (const format of Object.keys(firstNodeFormats)) {
+            const firstValue: string | boolean = firstNodeFormats[format as keyof StyleModel];
+            const isCommon: boolean = formatsByNode.every((nodeFormats: Styles) => {
+                const value: string | boolean = nodeFormats[format as keyof StyleModel];
+                return value === firstValue;
+            });
+
+            if (isCommon) {
+                commonFormats[format as keyof StyleModel] = firstValue;
+            }
+        }
+
+        return commonFormats;
     }
 
     private getBlocksInRange(range: Range): HTMLElement[] {
@@ -207,32 +259,6 @@ export class InlineToolbarModule {
         return blocks.filter((block: HTMLElement) => block.hasAttribute('data-block-type'));
     }
 
-    private getNodesInRange(range: Range, container: HTMLElement): Node[] {
-        const selectedNodes: Node[] = [];
-        const walker: TreeWalker = document.createTreeWalker(
-            container,
-            NodeFilter.SHOW_ELEMENT,
-            {
-                acceptNode: (node: Node) => {
-                    if (node.nodeType === Node.ELEMENT_NODE) {
-                        const nodeStart: number = range.comparePoint(node, 0);
-                        const nodeEnd: number = range.comparePoint(node, node.childNodes.length);
-
-                        if (nodeStart <= 0 && nodeEnd >= 0) {
-                            return NodeFilter.FILTER_ACCEPT;
-                        }
-                    }
-                    return NodeFilter.FILTER_REJECT;
-                }
-            }
-        );
-        while (walker.nextNode()) {
-            selectedNodes.push(walker.currentNode);
-        }
-
-        return selectedNodes;
-    }
-
     private toggleActiveState(item: HTMLElement, command: CommandName, styles: Styles): void {
         let isActive: boolean = false;
         switch (command) {
@@ -244,36 +270,11 @@ export class InlineToolbarModule {
         case 'Subscript': isActive = styles.subscript === true; break;
         case 'Uppercase': isActive = styles.uppercase === true; break;
         case 'Lowercase': isActive = styles.lowercase === true; break;
+        case 'InlineCode': isActive = styles.inlineCode === true; break;
         case 'Color': this.setColors('color', (styles.color as string)); break;
         case 'BackgroundColor': this.setColors('bgColor', (styles.backgroundColor as string)); break;
         }
         item.classList.toggle('e-active', isActive);
-    }
-
-    private getCommonStyles(contentModels: ContentModel[]): Styles {
-        if (!contentModels.length || !contentModels[0].properties ||
-            !(contentModels[0].properties as BaseStylesProp).styles) {
-            return {};
-        }
-
-        const firstStyles: Styles = (contentModels[0].properties as BaseStylesProp).styles;
-        const styleKeys: (keyof StyleModel)[] = Object.keys(firstStyles) as (keyof StyleModel)[];
-        const result: Styles = {};
-
-        for (const key of styleKeys) {
-            const firstValue: string | boolean = firstStyles[key as keyof StyleModel];
-            const isCommon: boolean = contentModels.every((model: ContentModel, i: number) => {
-                if (i === 0) { return true; }
-                const styles: Styles = (model.properties as BaseStylesProp).styles || {};
-                return (styles as any)[key as any] === firstValue;
-            });
-
-            if (isCommon) {
-                result[key as keyof StyleModel] = firstValue;
-            }
-        }
-
-        return result;
     }
 
     private setColors(type: 'color' | 'bgColor', value?: string ): void {

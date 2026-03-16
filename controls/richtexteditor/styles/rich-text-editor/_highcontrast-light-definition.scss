@@ -461,11 +461,13 @@ $rte-video-url-wrapper-padding-bottom: 5px !default;
 $rte-filemanager-label-padding-bottom: 8px !default;
 
 //margin
-$rte-img-caption-imgleft-margin: 0 !default;
 $rte-table-tablecell-small-margin: 0 !default;
 $rte-dialog-radio-small-margin: 0 !default;
 $rte-video-elem-margin: 0 !default;
 $rte-tbar-btn-small-margin: 0 !default;
+$rte-table-gripper-active-bg: rgba(235, 243, 252, 1) !default;
+$rte-table-gripper-active-color: rgba(15, 108, 189, 1) !default;
+$rte-table-gripper-hover-bg: rgba(235, 243, 252, 1) !default;
 $rte-table-dlg-content-small-margin: 0 !default;
 $rte-content-textarea-margin: 0 !default;
 $rte-quick-toolbar-horizontal-separator-margin: 0 !default;
@@ -492,7 +494,6 @@ $rte-img-video-right-margin: 0 auto !default;
 $rte-drop-text-margin: 0 auto !default;
 $rte-drop-text-mobile-margin: 0 auto !default;
 $rte-img-caption-margin: 5px auto !default;
-$rte-img-caption-inline-margin: 5px auto !default;
 $rte-droparea-browsebtn-margin: 0 auto 10px !default;
 $rte-dlg-modal-browse-btn-margin: 0 auto 10px !default;
 $rte-media-droparea-browsebtn-margin: 0 auto 10px !default;
@@ -501,27 +502,26 @@ $rte-big-quick-toolbar-item-margin: 0 !default;
 $rte-media-elem-margin: auto !default;
 $rte-content-img-caption-inner-margin: auto !default;
 $rte-img-wrap-margin: auto !default;
+$rte-img-leftwrap-margin: 5px 5px 5px 0 !default;
+$rte-img-rightwrap-margin: 5px 0 5px 5px !default;
 
 //margin-left
 $rte-content-blockquote-margin-left: 0 !default;
 $rte-toolbar-multirow-margin-left: 0 !default;
 $rte-toolbar-item-first-child-margin-left: 0 !default;
-$rte-img-caption-left-margin-left: 0 !default;
+$rte-imgleft-margin-left: 0 !default;
 $rte-uploadwrap-file-container-margin-left: 0 !default;
 $rte-toolbar-poup-extended-margin-left: 0 !default;
 $rte-media-inline-elem-margin-left: 5px !default;
 $rte-img-video-right-margin-left: 5px !default;
-$rte-img-caption-inline-margin-left: 5px !default;
 $rte-slash-menu-icon-margin-left: 15px !default;
 $rte-imgcenter-margin-left: auto !default;
 $rte-imgright-margin-left: auto !default;
-$rte-image-imgright-margin-left: auto !default;
 
 //margin-right
-$rte-img-caption-right-margin-right: 0 !default;
+$rte-imgright-margin-right: 0 !default;
 $rte-toolbar-multirow-margin-right: 0 !default;
 $rte-img-caption-imgright-margin-right: 0 !default;
-$rte-img-caption-inline-margin-right: 5px !default;
 $rte-media-inline-elem-margin-right: 5px !default;
 $rte-img-video-left-margin-right: 5px !default;
 $rte-default-character-count-margin-right: 15px !default;
@@ -544,6 +544,7 @@ $rte-big-content-h3-h4-tag-margin-top: .6em !default;
 $rte-big-content-h4-h5-tag-margin-top: .6em !default;
 $rte-big-content-h5-h6-tag-margin-top: .6em !default;
 $rte-content-table-margin-top: 10px !default;
+$rte-imgleft-margin-top: 5px !default;
 
 //margin-bottom
 $rte-tb-bottom-content-margin-bottom: 0 !default;
@@ -554,6 +555,9 @@ $rte-content-p-margin-bottom: 10px !default;
 $rte-content-li-margin-bottom: 10px !default;
 $rte-content-table-margin-bottom: 10px !default;
 $rte-resize-bar-margin-bottom: 20px !default;
+$rte-img-leftwrap-inner-margin-bottom: 5px !default;
+$rte-img-rightwrap-inner-margin-bottom: 5px !default;
+$rte-img-wrap-img-margin-bottom: 0 !default;
 
 //border
 $rte-content-pre-border: 0 !default;

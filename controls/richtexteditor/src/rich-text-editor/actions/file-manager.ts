@@ -6,7 +6,7 @@ import { FileSelectEventArgs, NavigationPane, Toolbar } from '@syncfusion/ej2-fi
 import { RenderType } from '../base/enum';
 import * as events from '../base/constant';
 import * as classes from '../base/classes';
-import { dispatchEvent } from '../base/util';
+import { dispatchEvent, isElementContainsAllowedClass } from '../base/util';
 import { DialogRenderer } from '../renderer/dialog-renderer';
 import { ServiceLocator } from '../services/service-locator';
 import { RendererFactory } from '../services/renderer-factory';
@@ -202,8 +202,17 @@ export class FileManager {
             }
             const regex: RegExp = /[\w-]+.(jpg|png|jpeg|gif)/g;
             const matchUrl: string = (!isNOU(url.match(regex)) && this.parent.editorMode === 'HTML') ? url.match(regex)[0] : '';
+            const isImageEle: boolean = this.selectObj.selectParent && this.selectObj.selectParent[0] && this.selectObj.selectParent[0].nodeName === 'IMG';
+            const captionEle: HTMLElement = isImageEle ? closest(this.selectObj.selectParent[0], '.' + classes.CLS_IMG_CAPTION_CONTAINER) as HTMLElement : null;
+            let classCheckEle: HTMLElement;
+            if (!isNOU(captionEle)) {
+                classCheckEle = captionEle;
+            } else {
+                classCheckEle = isImageEle ? this.selectObj.selectParent[0] as HTMLElement : null;
+            }
             const value: IImageCommandsArgs = {
-                cssClass: (this.parent.insertImageSettings.display === 'inline' ? classes.CLS_IMGINLINE : classes.CLS_IMGBREAK),
+                cssClass: (isNOU(classCheckEle) || (classCheckEle && (isElementContainsAllowedClass(classCheckEle) === '')) ?
+                    this.parent.insertImageSettings.display === 'inline' ? classes.CLS_IMG_INLINE : classes.CLS_IMG_BREAK : ''),
                 url: url, selection: this.selectObj.selection, altText: matchUrl, selectParent: this.selectObj.selectParent,
                 width: {
                     width: this.parent.insertImageSettings.width, minWidth: this.parent.insertImageSettings.minWidth,

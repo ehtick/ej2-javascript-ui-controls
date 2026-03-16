@@ -1900,35 +1900,46 @@ export class DiagramRenderer {
         let sourceWidth: number; let sourceHeight: number;
         const contentWidth: number = element.contentSize.width;
         const contentHeight: number = element.contentSize.height;
-        const widthRatio: number = options.width / contentWidth;
-        const heightRatio: number = options.height / contentHeight;
-        let ratio: number;
-        if (element.stretch === 'Stretch') {
-            // 909174: Image node is not exported properly Issue Fix
-            ratio = Math.min(widthRatio, heightRatio);
-            imageWidth = contentWidth * ratio;
-            imageHeight = contentHeight * ratio;
-        } else {
-            switch (element.stretch) {
-            case 'Meet':
+        //1012009: Exception throws when drawing image node
+        const hasValidContentSize: boolean =
+            Number.isFinite(contentWidth) && contentWidth > 0 &&
+            Number.isFinite(contentHeight) && contentHeight > 0;
+        if (hasValidContentSize) {
+            const widthRatio: number = options.width / contentWidth;
+            const heightRatio: number = options.height / contentHeight;
+            let ratio: number;
+            if (element.stretch === 'Stretch') {
+                // 909174: Image node is not exported properly Issue Fix
                 ratio = Math.min(widthRatio, heightRatio);
                 imageWidth = contentWidth * ratio;
                 imageHeight = contentHeight * ratio;
-                options.x += Math.abs(options.width - imageWidth) / 2;
-                options.y += Math.abs(options.height - imageHeight) / 2;
-                break;
-            case 'Slice':
-                ratio = Math.max(widthRatio, heightRatio);
-                imageWidth = contentWidth * ratio;
-                imageHeight = contentHeight * ratio;
-                sourceWidth = options.width / imageWidth * contentWidth;
-                sourceHeight = options.height / imageHeight * contentHeight;
-                break;
-            case 'None':
-                imageWidth = contentWidth;
-                imageHeight = contentHeight;
-                break;
+            } else {
+                switch (element.stretch) {
+                case 'Meet':
+                    ratio = Math.min(widthRatio, heightRatio);
+                    imageWidth = contentWidth * ratio;
+                    imageHeight = contentHeight * ratio;
+                    options.x += Math.abs(options.width - imageWidth) / 2;
+                    options.y += Math.abs(options.height - imageHeight) / 2;
+                    break;
+                case 'Slice':
+                    ratio = Math.max(widthRatio, heightRatio);
+                    imageWidth = contentWidth * ratio;
+                    imageHeight = contentHeight * ratio;
+                    sourceWidth = options.width / imageWidth * contentWidth;
+                    sourceHeight = options.height / imageHeight * contentHeight;
+                    break;
+                case 'None':
+                    imageWidth = contentWidth;
+                    imageHeight = contentHeight;
+                    break;
+                }
             }
+        }
+        else {
+            // Fallback while image has no measured size yet
+            imageWidth = Number.isFinite(options.width) && options.width > 0 ? options.width : 1;
+            imageHeight = Number.isFinite(options.height) && options.height > 0 ? options.height : 1;
         }
         options.width = imageWidth;
         options.height = imageHeight;

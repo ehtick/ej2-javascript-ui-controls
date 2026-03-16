@@ -6,8 +6,8 @@ import { Series, SeriesBase } from '../series/chart-series';
 import { firstToLowerCase } from '../../common/utils/helper';
 import { Rect } from '@syncfusion/ej2-svg-base';
 import { Chart } from '../chart';
-import { ConnectorModel, AccessibilityModel } from '../../common/model/base-model';
-import { Connector, Accessibility } from '../../common/model/base';
+import { ConnectorModel, AccessibilityModel, LinearGradientModel, RadialGradientModel } from '../../common/model/base-model';
+import { Connector, Accessibility, LinearGradient, RadialGradient } from '../../common/model/base';
 
 /**
  * Defines how to represent the market trend using technical indicators.
@@ -179,6 +179,21 @@ export class TechnicalIndicator extends SeriesBase {
     public accessibility: AccessibilityModel;
 
     /**
+     * Applies a linear gradient fill to the indicator.
+     *
+     * @default null
+     */
+    @Complex<LinearGradientModel>(null, LinearGradient)
+    public linearGradient: LinearGradientModel;
+    /**
+     * Applies a radial gradient fill to the indicator.
+     *
+     * @default null
+     */
+    @Complex<RadialGradientModel>(null, RadialGradient)
+    public radialGradient: RadialGradientModel;
+
+    /**
      * Specifies the name of the series to be used for displaying the indicator data.
      *
      * @default ''
@@ -200,6 +215,10 @@ export class TechnicalIndicator extends SeriesBase {
 
     /** @private */
     public clipRect: Rect = new Rect(0, 0, 0, 0);
+    /**
+     * @private
+     */
+    public gradientId: string;
 
     /**
      * Sets the data source for the series in the chart.

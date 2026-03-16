@@ -83,9 +83,11 @@ export class AccumulationTooltip extends BaseTooltip {
         const tooltipDiv: HTMLDivElement = this.getTooltipElement(isTooltip);
         const isFirst: boolean = !isTooltip;
         this.currentPoints = [];
-        if (data.point && (!this.previousPoints[0] || (this.previousPoints[0].point !== data.point))) {
-            if (this.previousPoints[0] && data.point.index === this.previousPoints[0].point.index
-                && data.series.index === this.previousPoints[0].series.index) {
+        if (data.point && (!this.previousPoints[0] || (this.previousPoints[0].point !== data.point
+            || this.accumulation.tooltip.followPointer))) {
+            if (!this.accumulation.tooltip.followPointer && (this.previousPoints[0]
+                && data.point.index === this.previousPoints[0].point.index
+                && data.series.index === this.previousPoints[0].series.index)) {
                 return null;
             }
             if (this.pushData(data, isFirst, tooltipDiv, false)) {

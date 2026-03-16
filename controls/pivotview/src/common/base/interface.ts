@@ -3,8 +3,9 @@ import { IDrilledItem, IStringIndex, ICalculatedFields, ICalculatedFieldSettings
 import { IFilter } from '../../base/engine';
 import { Mode, SelectionMode, PdfBorderStyle, AggregateTypes, ExportView } from '../base/enum';
 import { L10n } from '@syncfusion/ej2-base';
-import { Grid, ExcelStyle, CellSelectionMode, SelectionType, CheckboxSelectionType, PdfExportProperties, Hyperlink } from '@syncfusion/ej2-grids';
+import { Grid, ExcelStyle, CellSelectionMode, SelectionType, CheckboxSelectionType, PdfExportProperties as GridPdfExportProperties, Hyperlink, Image as GridExcelImage } from '@syncfusion/ej2-grids';
 import { Column, ExcelExportProperties as GridExcelExportProperties } from '@syncfusion/ej2-grids';
+import { ExcelHeaderQueryCellInfoEventArgs as GridExcelHeaderQueryCellInfoEventArgs, ExcelQueryCellInfoEventArgs as GridExcelQueryCellInfoEventArgs } from '@syncfusion/ej2-grids';
 import { CellSelectingEventArgs, ColumnModel, ExcelHAlign, ExcelVAlign } from '@syncfusion/ej2-grids';
 import { PdfStandardFont, PdfTrueTypeFont, PdfGridCell, PdfPageOrientation, PdfGridColumn } from '@syncfusion/ej2-pdf-export';
 import { SeriesModel, ExportType, Axis, IChartEventArgs, FontModel, Alignment } from '@syncfusion/ej2-charts';
@@ -785,6 +786,97 @@ export interface ExcelImage {
      * lastColumn: 5
      */
     lastColumn?: number;
+
+    /**
+     * Specifies the vertical offset (in pixels) from the top edge of the starting row.
+     * This fine-tunes the vertical positioning of the image within the cell.
+     *
+     * @value
+     * @example
+     * firstRowOffset: 5
+     */
+    firstRowOffset?: number;
+
+    /**
+     * Specifies the horizontal offset (in pixels) from the left edge of the starting column.
+     * This fine-tunes the horizontal positioning of the image within the cell.
+     *
+     * @value
+     * @example
+     * firstColumnOffset: 10
+     */
+    firstColumnOffset?: number;
+}
+
+/**
+ * Defines image placement and offset options used when exporting pivot content to Excel.
+ * Extends the base `Image` shape with precise pixel offsets to control the image position
+ * relative to the starting cell when the workbook is generated.
+ *
+ * Example:
+ * const img: PivotImage = { base64: '...', width: 100, height: 50, firstRowOffset: 5, firstColumnOffset: 10 };
+ *
+ */
+export interface Image extends GridExcelImage {
+    /**
+     * Vertical offset in pixels from the top edge of the starting row.
+     * Use this to fine-tune vertical positioning of the image inside the target cell.
+     *
+     * @default 0
+     * @example
+     * // Move the image 5 pixels down from the top of the starting row
+     * firstRowOffset: 5
+     */
+    firstRowOffset?: number;
+
+    /**
+     * Horizontal offset in pixels from the left edge of the starting column.
+     * Use this to fine-tune horizontal positioning of the image inside the target cell.
+     *
+     * @default 0
+     * @example
+     * // Move the image 10 pixels right from the left edge of the starting column
+     * firstColumnOffset: 10
+     */
+    firstColumnOffset?: number;
+}
+
+/**
+ * Extends the Excel header cell query event args to allow attaching an image to a header cell
+ * during Excel export. Handlers for the header cell query event can set the `image` property
+ * to a `Image` to embed an image inside the header cell.
+ *
+ * Example:
+ * pivotObj.excelHeaderQueryCellInfo = (args) => {
+ *   args.image = { base64: '...', width: 80, height: 30, firstRowOffset: 0, firstColumnOffset: 0 };
+ * };
+ *
+ */
+export interface ExcelHeaderQueryCellInfoEventArgs extends GridExcelHeaderQueryCellInfoEventArgs {
+    /**
+     * Optional image metadata describing the image to render inside the header cell
+     * when exporting to Excel.
+     */
+    image?: Image;
+}
+
+/**
+ * Extends the Excel cell query event args to allow attaching an image to a regular cell
+ * during Excel export. Handlers for the cell query event can set the `image` property
+ * to a `Image` to embed an image inside that cell.
+ *
+ * Example:
+ * pivotObj.excelQueryCellInfo = (args) => {
+ *   args.image = { base64: '...', width: 80, height: 30, firstRowOffset: 0, firstColumnOffset: 0 };
+ * };
+ *
+ */
+export interface ExcelQueryCellInfoEventArgs extends GridExcelQueryCellInfoEventArgs {
+    /**
+     * Optional image metadata describing the image to render inside the cell
+     * when exporting to Excel.
+     */
+    image?: Image;
 }
 
 /**
@@ -1544,4 +1636,23 @@ export interface ExcelExportProperties extends GridExcelExportProperties {
      * pivotTableIds: ['PivotView1', 'PivotView2']
      */
     pivotTableIds ?: string[]
+}
+
+/**
+ * The event argument that holds configuration details for exporting Pivot Table data to PDF.
+ *
+ * This interface extends the base `GridPdfExportProperties` and includes additional options
+ * specific to Pivot Table export, such as targeting multiple Pivot Table instances by ID.
+ *
+ */
+export interface PdfExportProperties extends GridPdfExportProperties {
+    /**
+     * Defines the IDs of the Pivot Table instances to be exported to PDF.
+     * Multiple Pivot Tables can be exported by specifying their element IDs in this array.
+     *
+     * @value
+     * @example
+     * pivotTableIds: ['PivotView1', 'PivotView2']
+     */
+    pivotTableIds?: string[]
 }

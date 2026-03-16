@@ -6,8 +6,9 @@ import { Alignment, LegendPosition, LegendTitlePosition } from '../../common/uti
 import { Size, measureText, Rect } from '@syncfusion/ej2-svg-base';
 import { Series } from '../../chart/series/chart-series';
 import { legendClick, legendRender, regSub, regSup } from '../../common/model/constants';
+import { measureLegendTemplateSize } from '../../common/utils/helper';
 import { IStockLegendClickEventArgs, IStockLegendRenderEventArgs, StockChartBorder, StockChartFont, StockMargin } from '../model/base';
-import { Browser } from '@syncfusion/ej2-base';
+import { Browser, isNullOrUndefined } from '@syncfusion/ej2-base';
 import { StockChart } from '../../stock-chart/index';
 import { Axis } from '../../chart/axis/axis';
 import { Property, Complex, ChildProperty} from '@syncfusion/ej2-base';
@@ -275,6 +276,17 @@ export class StockChartLegendSettings extends ChildProperty<StockChartLegendSett
 
     @Property(false)
     public isInversed: boolean;
+
+
+    /**
+     * Specifies the custom template used to render the content of the legend item for the current series.
+     * The template can contain any valid HTML element or layout. When set, the provided template replaces the default legend text for the series.
+     *
+     * @default null.
+     */
+
+    @Property(null)
+    public template: string | Function;
 }
 
 /**
@@ -344,13 +356,29 @@ export class StockLegend extends BaseLegend {
             if (this.legend.mode === 'Series') {
                 if (series.category !== 'Indicator') {
                     seriesType = <ChartSeriesType>series.type;
+                    let seriesColor: string;
+                    if (this.hasGradient(series) === 'linear_gradient') {
+                        seriesColor = `url(#${this.chart.element.id}_stockChart_chart_series_${series.index}_linear_gradient)`;
+                    } else if (this.hasGradient(series) === 'radial_gradient') {
+                        seriesColor = `url(#${this.chart.element.id}_stockChart_chart_series_${series.index}_radial_gradient)`;
+                    } else {
+                        seriesColor = series.interior;
+                    }
                     fillColor = (series.pointColorMapping && series.points.length > 0) ?
-                        (series.points[0].interior ? series.points[0].interior : series.interior) : series.interior;
+                        (series.points[0].interior ? series.points[0].interior : seriesColor) : seriesColor;
                     this.legendCollections.push(new LegendOptions(
                         series.name, fillColor, series.legendShape, (series.category === 'TrendLine' ?
                             (this.chart as StockChart).series[series.sourceIndex].trendlines[series.index].visible : series.visible),
                         seriesType, series.legendImageUrl, series.marker.shape, series.marker.visible
                     ));
+                    if ((this.chart as StockChart).legendSettings.template) {
+                        const sz: Size = measureLegendTemplateSize(this.legendID,
+                                                                   (this.chart as StockChart), this.legendCollections.length - 1);
+                        this.legendCollections[this.legendCollections.length - 1].templateSize = sz;
+                        this.legendCollections[this.legendCollections.length - 1].textSize = sz;
+                        this.legendCollections[this.legendCollections.length - 1].template =
+                            (this.chart as StockChart).legendSettings.template;
+                    }
                 }
             }
         }
@@ -516,6 +544,16 @@ export class StockLegend extends BaseLegend {
         }
     }
 
+    private hasGradient(series: Series): string {
+        if (!isNullOrUndefined(series.linearGradient) && series.linearGradient.gradientColorStop.length > 0) {
+            return 'linear_gradient';
+        } else if (!isNullOrUndefined(series.radialGradient) && series.radialGradient.gradientColorStop.length > 0) {
+            return 'radial_gradient';
+        } else {
+            return '';
+        }
+    }
+
     private refreshLegendToggle(chart: StockChart): void {
         const bounds: Rect = chart.stockLegendModule.legendBounds;
         chart.stockLegendModule.renderLegend(chart, chart.legendSettings, bounds);
@@ -547,8 +585,16 @@ export class StockLegend extends BaseLegend {
         const pageY: number = this.chart.mouseY;
         const pageX: number = this.chart.mouseX;
         const legendItemsId: string[] = [this.legendID + '_text_', this.legendID + '_shape_marker_',
-            this.legendID + '_shape_'];
-        const targetId: string = (<HTMLElement>event.target).id;
+            this.legendID + '_shape_', this.legendID + '_template_'];
+        let targetId: string = (<HTMLElement>event.target).id;
+        if (!targetId || targetId.indexOf(this.legendID + '_template_') === -1) {
+            const tplAncestor: HTMLElement = (event.target as HTMLElement).closest(
+                `[id^="${this.legendID}_template_"]`
+            ) as HTMLElement | null;
+            if (tplAncestor && tplAncestor.id) {
+                targetId = tplAncestor.id;
+            }
+        }
         let seriesIndex: number;
         for (const id of legendItemsId) {
             if (targetId.indexOf(id) > -1) {

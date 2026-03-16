@@ -4,7 +4,7 @@ import { NodeModel, LaneModel, PhaseModel, SwimLaneModel, BpmnShapeModel } from 
 import { Node, Shape, SwimLane } from '../objects/node';
 import { GridPanel, GridCell, GridRow, RowDefinition, ColumnDefinition } from '../core/containers/grid';
 import { Lane, Phase } from '../objects/node';
-import { DiagramAction, NodeConstraints, DiagramConstraints, DiagramEvent, ElementAction } from '../enum/enum';
+import { DiagramAction, NodeConstraints, DiagramConstraints, DiagramEvent, ElementAction, RealAction } from '../enum/enum';
 import { cloneObject, randomId } from './../utility/base-util';
 import { GroupableView } from '../core/containers/container';
 import { DiagramElement } from '../core/elements/diagram-element';
@@ -23,6 +23,7 @@ import { IElement } from '../objects/interface/IElement';
 import { ClipBoardObject } from '../interaction/command-manager';
 import { canSelect } from './constraints-util';
 import { MarginModel } from '../core/appearance-model';
+import { NodeDiff } from '../objects/interface/interfaces';
 
 /**
  * SwimLane modules are used to rendering and interaction.
@@ -1311,12 +1312,20 @@ export function addPhase(diagram: Diagram, parent: NodeModel, newPhase: PhaseMod
         gridRowIndex = (shape.header && (shape as SwimLane).hasHeader) ? 0 : -1;
         if (shape.phases.length > 0) { gridRowIndex += 1; gridColIndex = 0; }
         const laneHeaderSize: number = (orientation) ? shape.lanes[0].header.width : shape.lanes[0].header.height;
-        if (newPhase.offset > laneHeaderSize) {
+        if ((diagram.realActions & RealAction.PreventHistoryEntryForCollaboration)
+            && !(diagram.diagramActions & DiagramAction.UndoRedo)) {
+            newPhase.initialOffset = newPhase.offset;
+        }
+        const newPhaseOffset: number = ((diagram.realActions & RealAction.PreventHistoryEntryForCollaboration)
+            && !(diagram.diagramActions & DiagramAction.UndoRedo))
+            ? newPhase.initialOffset
+            : newPhase.offset;
+        if (newPhaseOffset > laneHeaderSize) {
             for (i = 0; i < phasesCollection.length; i++) {
                 phase = phasesCollection[parseInt(i.toString(), 10)];
                 previousPhase = (i > 0) ? phasesCollection[i - 1] : phase;
-                if (phase.offset > newPhase.offset) {
-                    width = (i > 0) ? newPhase.offset - previousPhase.offset : newPhase.offset;
+                if (phase.offset > newPhaseOffset) {
+                    width = (i > 0) ? newPhaseOffset - previousPhase.offset : newPhaseOffset;
                     if (orientation) {
                         const nextCol: ColumnDefinition = grid.columnDefinitions()[parseInt(i.toString(), 10)];
                         nextCol.width -= width;
@@ -1348,7 +1357,9 @@ export function addPhase(diagram: Diagram, parent: NodeModel, newPhase: PhaseMod
             //897967: Exception throws while perform addPhase with offset higher than existing phases offset
             if (phaseIndex >= 0) {
                 const phaseObj: PhaseModel = new Phase((parent.shape) as Shape, 'phases', newPhase, true);
-                if (!(diagram.diagramActions & DiagramAction.UndoRedo)) { phaseObj.id += randomId(); }
+                if (!(diagram.diagramActions & DiagramAction.UndoRedo) && !diagram.enableCollaborativeEditing) {
+                    phaseObj.id += randomId();
+                }
                 shape.phases.splice(phaseIndex, 0, phaseObj);
                 phaseDefine(grid, diagram, parent, gridRowIndex, orientation, phaseIndex);
                 if (orientation) {
@@ -2375,13 +2386,13 @@ export function considerSwimLanePadding(diagram: Diagram, node: NodeModel, paddi
         const canvas: Canvas = lane.wrapper as Canvas;
         let laneHeader: Canvas; let isConsiderHeader: boolean = false;
         //For Multi-selected nodes
-        (node as any).diffX = (node as any).diffX || 0;
-        (node as any).diffY = (node as any).diffY || 0;
-        if ((node as any).diffX > 0) {
-            node.margin.left += ((node as any).diffX + padding);
+        (node as NodeDiff).diffX = (node as NodeDiff).diffX || 0;
+        (node as NodeDiff).diffY = (node as NodeDiff).diffY || 0;
+        if ((node as NodeDiff).diffX > 0) {
+            node.margin.left += ((node as NodeDiff).diffX + padding);
         }
-        if ((node as any).diffY > 0) {
-            node.margin.top += ((node as any).diffY + padding);
+        if ((node as NodeDiff).diffY > 0) {
+            node.margin.top += ((node as NodeDiff).diffY + padding);
         }
         if (node.margin.left < padding) {
             node.margin.left = padding;
@@ -2411,6 +2422,9 @@ export function considerSwimLanePadding(diagram: Diagram, node: NodeModel, paddi
                 }
             }
         }
+        //959386 - Dragging single node inside the swimlane is not working properly after multi selection drop
+        (node as NodeDiff).diffX = 0;
+        (node as NodeDiff).diffY = 0;
 
         swimLane.wrapper.measure(new Size(swimLane.width, swimLane.height));
         swimLane.wrapper.arrange(swimLane.wrapper.desiredSize);

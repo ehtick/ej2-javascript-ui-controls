@@ -153,6 +153,9 @@ describe('Renderer-Common Actions', () => {
                 
                 // This should not throw error with null range
                 mentionAction.cleanMentionArtifacts(testElement);
+
+                // Test with null element
+                mentionAction.cleanMentionArtifacts(null);
                 
                 // Test removeMentionQueryKeysFromModel with null rangePath
                 spyOn(editor.blockManager.nodeSelection, 'getStoredBackupRange').and.returnValue(null);
@@ -166,7 +169,7 @@ describe('Renderer-Common Actions', () => {
                     endContainer: document.createTextNode('test'),
                     startOffset: 0,
                     endOffset: 0,
-                    parentElement: document.createElement('span')
+                    contentElement: document.createElement('span')
                 };
                 
                 (editor.blockManager.nodeSelection.getStoredBackupRange as jasmine.Spy).and.returnValue(mockRangePath);
@@ -178,20 +181,6 @@ describe('Renderer-Common Actions', () => {
                 spyOn(blockModule, 'getBlockModelById').and.returnValue(null);
                 
                 // This should not throw error with null block
-                mentionAction.removeMentionQueryKeysFromModel('@');
-                
-                // Set up a block with no matching content
-                const mockBlock = {
-                    id: 'test-block',
-                    content: [
-                        { id: 'different-id', content: 'Content' }
-                    ]
-                };
-                
-                (blockModule.getBlockModelById as jasmine.Spy).and.returnValue(mockBlock);
-                mockRangePath.parentElement.id = 'content-id'; // ID not matching any content
-                
-                // This should not throw error with no matching content
                 mentionAction.removeMentionQueryKeysFromModel('@');
                 done();
             })

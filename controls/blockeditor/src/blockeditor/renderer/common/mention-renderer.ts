@@ -28,6 +28,7 @@ export class MentionRenderer {
             dataSource: args.dataSource,
             highlight: args.highlight,
             allowSpaces: true,
+            suffixText: '',
             fields: args.fields,
             itemTemplate: args.itemTemplate,
             displayTemplate: args.displayTemplate,

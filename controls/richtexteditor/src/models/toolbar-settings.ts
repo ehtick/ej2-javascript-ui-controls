@@ -543,9 +543,9 @@ export class QuickToolbarSettings extends ChildProperty<QuickToolbarSettings> {
     /**
      * Specifies the items to render in the quick toolbar when an image is selected.
      *
-     * @default ['AltText', 'Caption', '|', 'Align', 'Display', '|', 'InsertLink', 'OpenImageLink', 'EditImageLink', 'RemoveImageLink', '|', 'Dimension', 'Replace', 'Remove']
+     * @default ['AltText', 'Caption', '|', 'Align', 'Display', 'WrapText', '|', 'InsertLink', 'OpenImageLink', 'EditImageLink', 'RemoveImageLink', '|', 'Dimension', 'Replace', 'Remove']
      */
-    @Property(['AltText', 'Caption', '|', 'Align', 'Display', '|', 'InsertLink', 'OpenImageLink', 'EditImageLink', 'RemoveImageLink', '|', 'Dimension', 'Replace', 'Remove'])
+    @Property(['AltText', 'Caption', '|', 'Align', 'Display', 'WrapText', '|', 'InsertLink', 'OpenImageLink', 'EditImageLink', 'RemoveImageLink', '|', 'Dimension', 'Replace', 'Remove'])
     public image: (string | IToolbarItems)[];
 
     /**
@@ -579,6 +579,16 @@ export class QuickToolbarSettings extends ChildProperty<QuickToolbarSettings> {
      */
     @Property(['Tableheader', 'TableRemove', '|', 'TableRows', 'TableColumns', '|', 'Styles', 'BackgroundColor', 'Alignments', 'TableCellVerticalAlign'])
     public table: (string | IToolbarItems)[];
+
+    /**
+     * Determines whether the quick toolbar should be appended to the document body or inside the editor container.
+     * When true, the toolbar renders in the body, ensuring full visibility of items in constrained widths.
+     * When false, it appends inside the editor, maintaining positioning behavior inside the editor.
+     *
+     * @default false
+     */
+    @Property(false)
+    public enableAppendToBody: boolean;
 }
 
 /**

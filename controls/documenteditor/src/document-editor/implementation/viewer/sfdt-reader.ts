@@ -2973,44 +2973,6 @@ export class SfdtReader {
                 return underline as Underline;
         }
     }
-    private getLigature(ligature: number | Ligature): Ligature {
-        switch (ligature) {
-            case 0:
-                return 'None';
-            case 1:
-                return 'Standard';
-            case 2:
-                return 'Contextual';
-            case 3:
-                return 'StandardContextual';
-            case 4:
-                return 'Historical';
-            case 5:
-                return 'StandardHistorical';
-            case 6:
-                return 'ContextualHistorical';
-            case 7:
-                return 'StandardContextualHistorical';
-            case 8:
-                return 'Discretional';
-            case 9:
-                return 'StandardDiscretional';
-            case 10:
-                return 'ContextualDiscretional';
-            case 11:
-                return 'StandardContextualDiscretional';
-            case 12:
-                return 'HistoricalDiscretional';
-            case 13:
-                return 'StandardHistoricalDiscretional';
-            case 14:
-                return 'ContextualHistoricalDiscretional';
-            case 15:
-                return 'All';
-            default:
-                return ligature as Ligature;
-        }
-    }
     private getFontHintType(fontHintType: number | FontHintType): FontHintType {
         switch (fontHintType) {
             case 0:
@@ -3319,6 +3281,44 @@ export class SfdtReader {
                 return 'TextureDiagonalCross';
             default:
                 return textureStyle as TextureStyle;
+        }
+    }
+    private getLigature(ligature: number | Ligature): Ligature {
+        switch (ligature) {
+            case 0:
+                return 'None';
+            case 1:
+                return 'Standard';
+            case 2:
+                return 'Contextual';
+            case 3:
+                return 'StandardContextual';
+            case 4:
+                return 'Historical';
+            case 5:
+                return 'StandardHistorical';
+            case 6:
+                return 'ContextualHistorical';
+            case 7:
+                return 'StandardContextualHistorical';
+            case 8:
+                return 'Discretional';
+            case 9:
+                return 'StandardDiscretional';
+            case 10:
+                return 'ContextualDiscretional';
+            case 11:
+                return 'StandardContextualDiscretional';
+            case 12:
+                return 'HistoricalDiscretional';
+            case 13:
+                return 'StandardHistoricalDiscretional';
+            case 14:
+                return 'ContextualHistoricalDiscretional';
+            case 15:
+                return 'All';
+            default:
+                return ligature as Ligature;
         }
     }
     private getHeightType(heightType: number | HeightType): HeightType {

@@ -1,6 +1,4 @@
-[![coverage](http://ej2.syncfusion.com/badges/ej2-inplace-editor/coverage.svg)](http://ej2.syncfusion.com/badges/ej2-inplace-editor)
-
-# ej2-inplace-editor
+# JavaScript In-place Editor Control
 
 The [JavaScript In-place Editor](https://www.syncfusion.com/javascript-ui-controls/inplace-editor?utm_source=npm&utm_medium=listing&utm_campaign=javascript-inplace-editor-npm) is a rich and responsive UI component that enables inline editing of text, selection, date, and more without switching to a separate edit view. It supports “Inline” and “Popup” edit modes, integrates with form components like DropDownList and DatePicker, and works seamlessly with forms and data binding to update values efficiently.
 
@@ -17,7 +15,6 @@ Trusted by the world's leading companies
     <img src="https://ej2.syncfusion.com/home/images/trusted_companies.png" alt="Trusted companies">
   </a>
 </p>
-
 
 ## Setup
 

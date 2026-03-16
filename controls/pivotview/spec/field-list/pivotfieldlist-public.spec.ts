@@ -320,7 +320,7 @@ describe('PivotFieldList null or undefinied values testing', () => {
             fieldListObj11.dataBind();
         });
         it('maxNodeLimitInMemberEditor - public property-1', () => {
-            expect(fieldListObj11.maxNodeLimitInMemberEditor).toBe(null);
+            expect(fieldListObj11.maxNodeLimitInMemberEditor).toBe(1);
             // Test with undefined value.
             fieldListObj11.maxNodeLimitInMemberEditor = undefined;
             fieldListObj11.dataBind();

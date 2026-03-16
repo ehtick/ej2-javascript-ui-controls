@@ -10,6 +10,20 @@ import { PathAnnotationModel } from '../../../src/diagram/objects/annotation-mod
 import { MouseEvents } from '../../../spec/diagram/interaction/mouseevents.spec';
 import  {profile , inMB, getMemoryProfile} from '../../../spec/common.spec';
 
+
+const GEOM_EPS: number = 1.0; // Allow ±1 px for rendering variance
+
+function expectIntermediatePointsClose(
+  actualPoints: any[],
+  expectedPoints: Array<{ x: number; y: number }>,
+  tolerance: number = GEOM_EPS
+): void {
+  expect(actualPoints.length).toBe(expectedPoints.length);
+  for (let i: number = 0; i < actualPoints.length; i = i + 1) {
+    expect(Math.abs(actualPoints[i].x - expectedPoints[i].x)).toBeLessThanOrEqual(tolerance);
+    expect(Math.abs(actualPoints[i].y - expectedPoints[i].y)).toBeLessThanOrEqual(tolerance);
+  }
+}
 /**
  * Connector Property Change  spec
  */
@@ -118,19 +132,27 @@ describe('Diagram Control', () => {
             done();
         });
         // it('Checking connector annotation', (done: Function) => {
+        //     let isElement: boolean = false;
+        //     let isElementNot: boolean = true;
         //     let label: PathAnnotationModel = (diagram.connectors[1] as ConnectorModel).annotations[1];
         //     expect(label.visibility == false).toBe(true);
-        //     (diagram.connectors[1] as ConnectorModel).annotations[1].visibility = true,
-        //         diagram.dataBind();
+        //     (diagram.connectors[1] as ConnectorModel).annotations[1].visibility = true;
+        //     diagram.dataBind();
         //     let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
         //     expect(label.visibility == true).toBe(true);
         //     mouseEvents.clickEvent(diagramCanvas, 150, 150);
         //     mouseEvents.dblclickEvent(diagramCanvas, 150, 150);
         //     let element = document.getElementById('diagram_editTextBoxDiv');
-        //     mouseEvents.clickEvent(diagramCanvas, 200, 200);
-        //     mouseEvents.dblclickEvent(diagramCanvas, 200, 200);
+        //     if (element) {
+        //         isElement = true;
+        //     }
+        //     mouseEvents.clickEvent(diagramCanvas, 240, 200);
+        //     mouseEvents.dblclickEvent(diagramCanvas, 240, 200);
         //     let element1 = document.getElementById('diagram_editTextBoxDiv');
-        //     expect(element && !element1).toBe(true);
+        //     if (element1) {
+        //         isElementNot = false;
+        //     }
+        //     expect(isElement && isElementNot).toBe(true);
         //     done();
         // });
         it('Checking connector type change to bezier', (done: Function) => {
@@ -294,13 +316,26 @@ describe('Diagram Control', () => {
             ele.remove();
         });
 
-        // it('Checking connector source node and target node id change and same port does not be changed', (done: Function) => {
-        //     console.log('Checking connector source node and target node id change and same port does not be changed');
-        //     diagram.connectors[0].sourceID = 'node3';
-        //     diagram.connectors[0].targetID = 'node1';
-        //     diagram.dataBind();
-        //     expect((diagram.connectors[0] as Connector).intermediatePoints[0].x ==450&&(diagram.connectors[0] as Connector).intermediatePoints[0].y ==250&&(diagram.connectors[0] as Connector).intermediatePoints[1].x ==30&&(diagram.connectors[0] as Connector).intermediatePoints[1].y ==250&&(diagram.connectors[0] as Connector).intermediatePoints[2].x ==30&&(diagram.connectors[0] as Connector).intermediatePoints[2].y ==100&&(diagram.connectors[0] as Connector).intermediatePoints[3].x ==50&&(diagram.connectors[0] as Connector).intermediatePoints[3].y ==100).toBe(true);
-        //     done();
-        // });
+        // Replace the failing test with:
+        it('Checking connector source node and target node id change and same port does not be changed', (done: DoneFn): void => {
+            diagram.connectors[0].sourceID = 'node3';
+            diagram.connectors[0].targetID = 'node1';
+            diagram.dataBind();
+
+            // Expected intermediate points for Orthogonal routing
+            const expectedPoints: Array<{ x: number; y: number }> = [
+                { x: 450, y: 250 },
+                { x: 30, y: 250 },
+                { x: 30, y: 100 },
+                { x: 50, y: 100 }
+            ];
+
+            expectIntermediatePointsClose(
+                (diagram.connectors[0] as Connector).intermediatePoints,
+                expectedPoints,
+                1.0 // ±1 px tolerance
+            );
+            done();
+        });
     });
 });

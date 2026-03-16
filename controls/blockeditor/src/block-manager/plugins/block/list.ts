@@ -288,11 +288,13 @@ export class ListPlugin {
         const currentElement: HTMLElement = focusedBlock || this.parent.currentFocusedBlock;
         const calloutBlock: HTMLElement = currentElement &&
         currentElement.closest('.' + constants.CALLOUT_BLOCK_CLS) as HTMLElement;
+        const quoteBlock: HTMLElement = currentElement &&
+        currentElement.closest('.' + constants.QUOTE_BLOCK_CLS) as HTMLElement;
         const toggleBlock: HTMLElement = currentElement &&
         currentElement.closest('.' + constants.TOGGLE_BLOCK_CLS) as HTMLElement;
         const tableBlock: HTMLElement = currentElement &&
         currentElement.closest('.' + constants.TABLE_BLOCK_CLS) as HTMLElement;
-        const parentBlock: HTMLElement = calloutBlock || toggleBlock || tableBlock;
+        const parentBlock: HTMLElement = calloutBlock || quoteBlock || toggleBlock || tableBlock;
         const allBlocks: HTMLElement[] = parentBlock
             ? Array.from(parentBlock.querySelectorAll('.' + constants.BLOCK_CLS)) as HTMLElement[]
             : Array.from(this.parent.blockContainer.children) as HTMLElement[];

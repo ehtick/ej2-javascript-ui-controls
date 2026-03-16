@@ -2,7 +2,7 @@ import { Property, ChildProperty, Browser, Complex, Collection } from '@syncfusi
 import { Alignment, EmptyPointMode, PeriodSelectorPosition, RangeIntervalType, TextOverflow, TitlePosition } from '../utils/enum';
 import { FadeOutMode, TooltipPosition } from '../../chart/utils/enum';
 import { AccEmptyPointMode, ConnectorType } from '../../accumulation-chart/model/enum';
-import { BorderModel, FontModel, LocationModel, PeriodsModel, titleBorderModel, MarginModel, AccessibilityModel } from './base-model';
+import { BorderModel, FontModel, LocationModel, PeriodsModel, titleBorderModel, MarginModel, AccessibilityModel, GradientColorStopModel } from './base-model';
 
 /**
  * The `Connector` class configures the appearance and properties of connectors in chart controls.
@@ -471,6 +471,23 @@ export class TooltipSettings extends ChildProperty<TooltipSettings> {
     public shared: boolean;
 
     /**
+     * Specifies whether to enable split tooltip support.
+     * When set to `true`, tooltips will be displayed separately for each point in the series.
+     *
+     * @default false
+     */
+    @Property(false)
+    public split: boolean;
+
+    /**
+     * If true, the chart displays a tooltip for the data point nearest the cursor;
+     *
+     * @default false
+     */
+    @Property(false)
+    public followPointer: boolean;
+
+    /**
      * The fill color of the tooltip, specified as a valid CSS color string in hex or rgba format.
      *
      * @default null
@@ -578,6 +595,22 @@ export class TooltipSettings extends ChildProperty<TooltipSettings> {
 
     @Property(true)
     public showNearestPoint: boolean;
+
+    /**
+     * Specifies the gap (in pixels) between the tooltip and its
+     * pointer or target element. Increasing this value
+     * positions the tooltip farther away, improving clarity
+     * and preventing overlap with chart or UI elements
+     *
+     * > Note: This property is supported only for Chart tooltips.
+     * > It is not applicable to other components/modules.
+     *
+     * > Negative values are ignored.
+     *
+     * @default 0
+     */
+    @Property(0)
+    public distance: number;
 
     /**
      * Options for customizing the tooltip borders, including the color and width of the tooltip's border.
@@ -1329,6 +1362,131 @@ export class StockTooltipSettings extends ChildProperty<StockTooltipSettings> {
     public showHeaderLine: boolean;
 
 }
+
+/**
+ * Represents a color stop in a gradient.
+ */
+export class GradientColorStop extends ChildProperty<GradientColorStop> {
+    /**
+     * The offset position of the color stop.
+     *
+     * @default 0
+     */
+    @Property(0)
+    public offset: number;
+    /**
+     * The color of the stop.
+     *
+     * @default ''
+     */
+    @Property('')
+    public color: string;
+    /**
+     * The opacity of the color stop
+     *
+     * @default 1
+     */
+    @Property(1)
+    public opacity: number;
+    /**
+     * The brightness adjustment for the color.
+     *
+     * @default 0
+     */
+    @Property(0)
+    public brighten: number;
+    /**
+     * The lightness adjustment for the color.
+     *
+     * @default 0
+     */
+    @Property(0)
+    public lighten: number;
+}
+/**
+ * Represents a linear gradient configuration.
+ */
+export class LinearGradient extends ChildProperty<LinearGradient> {
+    /**
+     * The x-coordinate of the gradient start point.
+     *
+     * @default 0
+     */
+    @Property(0)
+    public x1: number;
+    /**
+     * The y-coordinate of the gradient start point.
+     *
+     * @default 0
+     */
+    @Property(0)
+    public y1: number;
+    /**
+     * The x-coordinate of the gradient end point.
+     *
+     * @default 1
+     */
+    @Property(1)
+    public x2: number;
+    /**
+     * The y-coordinate of the gradient end point.
+     *
+     * @default 1
+     */
+    @Property(1)
+    public y2: number;
+    /**
+     * The collection of color stops in the gradient.
+     */
+    @Collection<GradientColorStopModel>([], GradientColorStop)
+    public gradientColorStop: GradientColorStopModel[];
+}
+/**
+ * Represents a radial gradient configuration.
+ */
+export class RadialGradient extends ChildProperty<RadialGradient> {
+    /**
+     * The x-coordinate of the radial gradient center.
+     *
+     * @default 0.5
+     */
+    @Property(0.5)
+    public cx: number;
+    /**
+     * The y-coordinate of the radial gradient center.
+     *
+     * @default 0.5
+     */
+    @Property(0.5)
+    public cy: number;
+    /**
+     * The radius of the radial gradient.
+     *
+     * @default 0.5
+     */
+    @Property(0.5)
+    public r: number;
+    /**
+     * The focal x-coordinate for the radial gradient.
+     *
+     * @default null
+     */
+    @Property(null)
+    public fx: number;
+    /**
+     * The focal y-coordinate for the radial gradient.
+     *
+     * @default null
+     */
+    @Property(null)
+    public fy: number;
+    /**
+     * The collection of color stops in the gradient.
+     */
+    @Collection<GradientColorStopModel>([], GradientColorStop)
+    public gradientColorStop: GradientColorStopModel[];
+}
+
 
 /**
  * @private

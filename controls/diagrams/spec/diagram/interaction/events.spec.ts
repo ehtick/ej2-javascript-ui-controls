@@ -516,6 +516,24 @@ describe('Diagram Control', () => {
 
 
 
+        it('Checking connection change event - set cancel true', (done: Function) => {
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            diagram.connectionChange = (args: IConnectionChangeEventArgs) => {
+                if (args.state === 'Changing') {
+                    args.cancel = true;
+                    done();
+                }
+            };
+            mouseEvents.clickEvent(diagramCanvas, 300, 500);
+            mouseEvents.dragAndDropEvent(diagramCanvas, 200, 500, 500, 600);
+            diagramCanvas = document.getElementById(diagram.element.id + 'content');
+
+            mouseEvents.clickEvent(diagramCanvas, 300, 500);
+            mouseEvents.dragAndDropEvent(diagramCanvas, 200, 500, 500, 600);
+            diagramCanvas = document.getElementById(diagram.element.id + 'content');
+            mouseEvents.clickEvent(diagramCanvas, 0, 0);
+            done();
+        });
         it('Checking connection change event ', (done: Function) => {
             let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
             diagram.connectionChange = (args: IConnectionChangeEventArgs) => {
@@ -525,10 +543,7 @@ describe('Diagram Control', () => {
             mouseEvents.clickEvent(diagramCanvas, 300, 500);
             mouseEvents.dragAndDropEvent(diagramCanvas, 200, 500, 500, 600);
             diagramCanvas = document.getElementById(diagram.element.id + 'content');
-            diagram.connectionChange = (args: IConnectionChangeEventArgs) => {
-                args.cancel = true;
-                done();
-            };
+
             mouseEvents.clickEvent(diagramCanvas, 300, 500);
             mouseEvents.dragAndDropEvent(diagramCanvas, 200, 500, 500, 600);
             diagramCanvas = document.getElementById(diagram.element.id + 'content');

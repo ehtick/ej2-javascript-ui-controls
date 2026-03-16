@@ -591,6 +591,9 @@ export class PivotFieldList extends Component<HTMLElement> implements INotifyPro
             this.engineModule = new PivotEngine();
             this.dataType = 'pivot';
         }
+        if (this.maxNodeLimitInMemberEditor <= 0) {
+            this.maxNodeLimitInMemberEditor = 1;
+        }
         this.isAdaptive = Browser.isDevice;
         this.globalize = new Internationalization(this.locale);
         this.renderModule = new Render(this);
@@ -1285,6 +1288,11 @@ export class PivotFieldList extends Component<HTMLElement> implements INotifyPro
                     this.pivotGridModule.groupingBarModule.alignIcon();
                 }
                 break;
+            case 'maxNodeLimitInMemberEditor':
+                if (this.maxNodeLimitInMemberEditor <= 0) {
+                    this.maxNodeLimitInMemberEditor = 1;
+                }
+                break;
             }
             if (requireRefresh) {
                 this.fieldListRender();
@@ -1454,6 +1462,9 @@ export class PivotFieldList extends Component<HTMLElement> implements INotifyPro
     }
 
     private fieldListRender(): void {
+        if (!this.renderModule) {
+            return;
+        }
         this.element.innerHTML = '';
         let showDialog: boolean;
         if (this.renderMode === 'Popup' && this.dialogRenderer && this.dialogRenderer.fieldListDialog &&

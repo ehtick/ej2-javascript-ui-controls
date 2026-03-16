@@ -1,4 +1,4 @@
-import { Collection, EmitType, Event, Property, ChildProperty } from '@syncfusion/ej2-base';import { BlockActionMenuOpeningEventArgs, BlockActionMenuClosingEventArgs, BlockActionItemSelectEventArgs } from '../eventargs';import { BlockActionItem } from './blockaction-item';import { BlockActionItemModel } from './index';
+import { Collection, EmitType, Event, Property, ChildProperty } from '@syncfusion/ej2-base';import { BlockActionMenuBeforeOpenEventArgs, BlockActionMenuBeforeCloseEventArgs, BlockActionItemSelectEventArgs } from '../eventargs';import { BlockActionItem } from './blockaction-item';import { BlockActionItemModel } from './index';
 
 /**
  * Interface for a class BlockActionMenuSettings
@@ -22,18 +22,18 @@ export interface BlockActionMenuSettingsModel {
     items?: BlockActionItemModel[];
 
     /**
-     * Specifies the event triggered when the block actions menu opens.
+     * Specifies the event triggered before the block actions menu opens.
      *
-     * @event opening
+     * @event beforeOpen
      */
-    opening?: EmitType<BlockActionMenuOpeningEventArgs>;
+    beforeOpen?: EmitType<BlockActionMenuBeforeOpenEventArgs>;
 
     /**
-     * Specifies the event triggered when the block actions menu closes.
+     * Specifies the event triggered before the block actions menu closes.
      *
-     * @event closing
+     * @event beforeClose
      */
-    closing?: EmitType<BlockActionMenuClosingEventArgs>;
+    beforeClose?: EmitType<BlockActionMenuBeforeCloseEventArgs>;
 
     /**
      * Specifies the event triggered when an item is being selected from the menu.

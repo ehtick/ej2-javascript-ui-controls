@@ -305,6 +305,11 @@ export const dragOver: string = 'dragOver';
  * @private
  */
 export const dropEventHandler: string = 'drop';
+
+/**
+ * @private
+ */
+export const ENTER_KEYDOWN_HANLDER: string = 'enterKeyDownHandler';
 /**
  * @hidden
  * @deprecated

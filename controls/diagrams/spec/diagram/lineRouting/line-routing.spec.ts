@@ -8196,4 +8196,277 @@ describe('Diagram Control', () => {
         //     }, 100);
         // });
     });
+    describe('Enable lineRouting multiSelect and move', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+        let mouseEvents: MouseEvents = new MouseEvents();
+        beforeAll((): void => {
+            ele = createElement('div', { id: 'LineRoutingMultiSelect' });
+            document.body.appendChild(ele);
+            let nodes: NodeModel[] = [
+                {
+                    id: 'node1',
+                    offsetX: 250,
+                    offsetY: 250,
+                    width: 90,
+                    height: 60,
+                    annotations: [
+                        {
+                            content: 'Activity1'
+                        }
+                    ],
+
+                    borderWidth: 4,
+                    shape: {
+                        type: 'Bpmn',
+                        shape: 'Activity',
+                        activity: {
+                            activity: 'Task',
+                            task: {
+                                type: 'Service'
+                            }
+                        }
+                    },
+
+                }, {
+                    id: 'node2',
+                    offsetX: 250,
+                    offsetY: 500,
+                    width: 90,
+                    height: 60,
+
+
+                    shape: {
+                        type: 'Flow',
+                        shape: 'Annotation',
+                    },
+                    annotations: [
+                        {
+                            content: `Sample Text`,
+
+
+                        }
+                    ],
+                    style: {
+                        strokeColor: '#778899',
+                        strokeWidth: 3
+                    }
+                }, {
+                    id: 'node3',
+                    offsetX: 480,
+                    offsetY: 218,
+                    width: 90,
+                    height: 60,
+                    annotations: [
+                        {
+
+                            content: 'Activity3',
+
+                        }
+                    ],
+
+                    borderWidth: 4,
+                    shape: {
+                        type: 'Bpmn',
+                        shape: 'Activity',
+                        activity: {
+                            activity: 'Task',
+                            task: {
+                                type: 'Service'
+                            }
+                        }
+                    },
+                }, {
+                    id: 'node4',
+                    offsetX: 650,
+                    offsetY: 150,
+                    width: 90,
+                    height: 60,
+                    annotations: [
+                        {
+                            content: 'Activity1'
+                        }
+                    ],
+                    borderWidth: 4,
+                    shape: {
+                        type: 'Bpmn',
+                        shape: 'Activity',
+                        activity: {
+                            activity: 'Task',
+                            task: {
+                                type: 'Service'
+                            }
+                        }
+                    },
+                },
+                {
+                    id: 'swimlane',
+                    shape: {
+                        orientation: 'Vertical',
+                        type: 'SwimLane',
+                        header: {
+                            annotation: { content: 'ONLI' },
+                            height: 50, style: { fill: 'yellow', fontSize: 11 },
+                        },
+                        lanes: [
+                            {
+                                id: 'stackCanvas1',
+                                header: {
+                                    annotation: { content: 'CUSTOMER' }, height: 50,
+                                    style: { fill: 'yellow', fontSize: 11 }
+                                },
+                                style: { fill: 'pink' },
+                                width: 140,
+
+                            },
+
+                        ],
+                        phases: [
+                            {
+                                id: 'phase1', offset: 200,
+                                style: { strokeWidth: 1, strokeDashArray: '3,3', strokeColor: '#606060' },
+                                header: { annotation: { content: 'Phase' } }
+                            },
+                            {
+                                id: 'phase2', offset: 400,
+                                style: { strokeWidth: 1, strokeDashArray: '3,3', strokeColor: '#606060' },
+                                header: { annotation: { content: 'Phase' } }
+                            },
+                        ],
+                        phaseSize: 20,
+                    },
+                    offsetX: 950, offsetY: 290,
+                    height: 260, width: 450
+                },
+            ]
+            let connectors: ConnectorModel[] = [
+                {
+                    id: 'Connector1',
+                    sourceID: 'node1',
+                    targetID: 'node2'
+                }, {
+                    id: 'Connector2',
+                    sourceID: 'node1',
+                    targetID: 'node3'
+                }, {
+                    id: 'Connector3',
+                    sourceID: 'node1',
+                    targetID: 'node3'
+                }
+            ]
+            diagram = new Diagram({
+                width: '100%', height: 900, nodes: nodes, connectors: connectors,
+                constraints: DiagramConstraints.Default | DiagramConstraints.LineRouting,
+                getConnectorDefaults: function (connector: ConnectorModel) { connector.type = 'Orthogonal'; }
+            });
+            diagram.appendTo('#LineRoutingMultiSelect');
+        });
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+            diagram = null;
+            ele = null;
+        });
+        it('Multiselect the node and connector and drag', (done: Function) => {
+            let diagramCanvas = document.getElementById(diagram.element.id + 'content');
+
+            mouseEvents.clickEvent(diagramCanvas, 475, 225, true);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 377, 215);
+            mouseEvents.clickEvent(diagramCanvas, 377, 215, true);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 260, 250);
+            mouseEvents.clickEvent(diagramCanvas, 260, 250, true);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 270, 250);
+            mouseEvents.mouseDownEvent(diagramCanvas, 270, 250);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 260, 260, true);
+            mouseEvents.mouseUpEvent(diagramCanvas, 260, 260);
+            console.log("Multiselect the node and connector and drag");
+            expect(diagram.nodes.length > 2).toBe(true);
+            done();
+        });
+        it('Drag and drop node inside swimlane', (done: Function) => {
+            let diagramCanvas = document.getElementById(diagram.element.id + 'content');
+            diagram.clearSelection();
+            diagram.select([diagram.nodes[3]]);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 658, 154);
+            mouseEvents.mouseDownEvent(diagramCanvas, 658, 155);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 804, 205);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 944, 242);
+            mouseEvents.mouseUpEvent(diagramCanvas, 944, 242);
+            console.log("Drag and drop node inside swimlane");
+            expect(diagram.nodes.length > 10).toBe(true);
+            done();
+        });
+    });
+    describe('Multi select nodes and drag with line routing enabled', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+        let diagramCanvas: HTMLElement;
+        let mouseEvents: MouseEvents = new MouseEvents();
+        beforeAll((): void => {
+            ele = createElement('div', { id: 'diagrammultiselect' });
+            document.body.appendChild(ele);
+            let nodes: NodeModel[] = [
+                {
+                    id: 'node1',
+                    offsetX: 200,
+                    offsetY: 195,
+                    width: 100,
+                    height: 100,
+                },
+                {
+                    id: 'node2',
+                    offsetX: 378,
+                    offsetY: 302,
+                    width: 100,
+                    height: 100,
+                },
+            ];
+            let connectors: ConnectorModel[] = [
+                {
+                    id: 'Connector1',
+                    sourceID: 'node1',
+                    targetID: 'node2',
+                    type: 'Orthogonal',
+                },
+            ];
+            diagram = new Diagram({
+                width: '1000px', height: '900px', nodes: nodes, connectors: connectors,
+                constraints: DiagramConstraints.Default | DiagramConstraints.LineRouting,
+            });
+            diagram.appendTo('#diagrammultiselect');
+            diagramCanvas = document.getElementById(diagram.element.id + 'content');
+        });
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+            diagram = null;
+            ele = null;
+        });
+        it('Drag multi selected nodes', (done: Function) => {
+            diagram.selectAll();
+            let node1 = document.getElementById('node1_content_groupElement');
+            let bound = node1.getBoundingClientRect();
+            let cx: number = bound.left + bound.width / 2;
+            let cy: number = bound.top + bound.height / 2;
+            mouseEvents.mouseDownEvent(diagramCanvas, cx, cy);
+            mouseEvents.mouseMoveEvent(diagramCanvas, cx + 10, cy + 10);
+            mouseEvents.mouseMoveEvent(diagramCanvas, cx + 50, cy + 30);
+            mouseEvents.mouseUpEvent(diagramCanvas, cx + 60, cy + 60);
+            expect(diagram.nodes[0].offsetX > 200).toBe(true);
+            done();      
+        });
+        it('Drag connector', (done: Function) => {
+            diagram.clearSelection();
+            diagram.select([diagram.connectors[0]]);
+            let connector = document.getElementById('Connector1_path_groupElement');
+            let bound = connector.getBoundingClientRect();
+            let cx: number = bound.left + bound.width / 2;
+            let cy: number = bound.top + bound.height / 2;
+            mouseEvents.mouseDownEvent(diagramCanvas, cx, cy);
+            mouseEvents.mouseMoveEvent(diagramCanvas, cx + 50, cy + 30);
+            mouseEvents.mouseUpEvent(diagramCanvas, cx + 60, cy + 60);
+            expect(diagram.connectors[0].segments.length).toBe(1);
+            done();      
+        });
+    });
 });

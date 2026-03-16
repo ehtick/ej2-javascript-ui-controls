@@ -1,4 +1,4 @@
-import { Property, ChildProperty, Complex, Collection, DateFormatOptions, getValue, animationMode } from '@syncfusion/ej2-base';import { isNullOrUndefined, extend } from '@syncfusion/ej2-base';import { StackValues, RectOption, ControlPoints, PolarArc, appendChildElement, appendClipElement, getElement } from '../../common/utils/helper';import { firstToLowerCase, ChartLocation, CircleOption, IHistogramValues, getColorByValue} from '../../common/utils/helper';import { Rect, SvgRenderer, CanvasRenderer, Size } from '@syncfusion/ej2-svg-base';import { ChartSeriesType, ChartShape, SeriesValueType, SplineType, StepPosition } from '../utils/enum';import { ChartDrawType, DataLabelIntersectAction } from '../utils/enum';import { BorderModel, FontModel, MarginModel, AnimationModel, OffsetModel, DragSettingsModel, EmptyPointSettingsModel, ConnectorModel, CornerRadiusModel, AccessibilityModel, SeriesAccessibilityModel } from '../../common/model/base-model';import { ErrorBarType, ErrorBarDirection, ErrorBarMode, TrendlineTypes } from '../utils/enum';import { Border, Font, Margin, Animation, DragSettings, EmptyPointSettings, Connector, CornerRadius, Accessibility, SeriesAccessibility } from '../../common/model/base';import { DataManager, Query, DataUtil } from '@syncfusion/ej2-data';import { Chart } from '../chart';import { Axis, Column, Row } from '../axis/axis';import { Data } from '../../common/model/data';import { Offset } from '../../common/model/base';import { ISeriesRenderEventArgs } from '../../chart/model/chart-interface';import { seriesRender } from '../../common/model/constants';import { Alignment, EmptyPointMode, LabelPosition, LegendShape, SeriesCategories, ShapeType } from '../../common/utils/enum';import { BoxPlotMode, Segment } from '../utils/enum';import { getVisiblePoints, setRange, findClipRect } from '../../common/utils/helper';import { Browser } from '@syncfusion/ej2-base';import { StockSeries } from '../../stock-chart/index';import { CartesianAxisLayoutPanel } from '../axis/cartesian-panel';
+import { Property, ChildProperty, Complex, Collection, DateFormatOptions, getValue, animationMode } from '@syncfusion/ej2-base';import { isNullOrUndefined, extend } from '@syncfusion/ej2-base';import { StackValues, RectOption, ControlPoints, PolarArc, appendChildElement, appendClipElement, getElement } from '../../common/utils/helper';import { firstToLowerCase, ChartLocation, CircleOption, IHistogramValues, getColorByValue} from '../../common/utils/helper';import { Rect, SvgRenderer, CanvasRenderer, Size } from '@syncfusion/ej2-svg-base';import { ChartSeriesType, ChartShape, SeriesValueType, SplineType, StepPosition } from '../utils/enum';import { ChartDrawType, DataLabelIntersectAction } from '../utils/enum';import { BorderModel, FontModel, MarginModel, AnimationModel, OffsetModel, DragSettingsModel, EmptyPointSettingsModel, ConnectorModel, CornerRadiusModel, AccessibilityModel, SeriesAccessibilityModel, LinearGradientModel, RadialGradientModel } from '../../common/model/base-model';import { ErrorBarType, ErrorBarDirection, ErrorBarMode, TrendlineTypes } from '../utils/enum';import { Border, Font, Margin, Animation, DragSettings, EmptyPointSettings, Connector, CornerRadius, Accessibility, SeriesAccessibility, LinearGradient, RadialGradient } from '../../common/model/base';import { DataManager, Query, DataUtil } from '@syncfusion/ej2-data';import { Chart } from '../chart';import { Axis, Column, Row } from '../axis/axis';import { Data } from '../../common/model/data';import { Offset } from '../../common/model/base';import { ISeriesRenderEventArgs } from '../../chart/model/chart-interface';import { seriesRender } from '../../common/model/constants';import { Alignment, EmptyPointMode, LabelPosition, LegendShape, SeriesCategories, ShapeType } from '../../common/utils/enum';import { BoxPlotMode, Segment } from '../utils/enum';import { getVisiblePoints, setRange, findClipRect, applyGradientsToSeries } from '../../common/utils/helper';import { Browser } from '@syncfusion/ej2-base';import { StockSeries } from '../../stock-chart/index';import { CartesianAxisLayoutPanel } from '../axis/cartesian-panel';
 
 /**
  * Interface for a class LastValueLabelSettings
@@ -65,6 +65,63 @@ export interface LastValueLabelSettingsModel {
      * @default 5
      */
     ry?: number;
+
+}
+
+/**
+ * Interface for a class SeriesLabelSettings
+ */
+export interface SeriesLabelSettingsModel {
+
+    /**
+     * Enables or disables the rendering of series names as inline labels.
+     *
+     * @default false
+     */
+    visible?: boolean;
+
+    /**
+     * Defines the custom text to display as the series label.
+     * If not specified, the series name will be used.
+     *
+     * @default null
+     */
+    text?: string;
+
+    /**
+     * Specifies the background color of the inline series label.
+     *
+     * @default 'transparent'
+     */
+    background?: string;
+
+    /**
+     * Specifies the border properties for the inline label.
+     * Includes color and width.
+     *
+     * @default { color: '', width: 0 }
+     */
+    border?: BorderModel;
+
+    /**
+     * Sets the opacity of the series label.
+     *
+     * @default 1
+     */
+    opacity?: number;
+
+    /**
+     * Specifies the font properties for the series name label.
+     * This includes customization options such as font size, color, style, weight, and family.
+     */
+    font?: FontModel;
+
+    /**
+     * Determines whether to show the label text even when it overlaps with other labels.
+     *
+     * @default false
+     */
+    showOverlapText?: boolean;
 
 }
 
@@ -505,6 +562,20 @@ export interface TrendlineModel {
      * Options to improve accessibility for chart trendline elements.
      */
     accessibility?: AccessibilityModel;
+
+    /**
+     * Applies a linear gradient fill to the trendline.
+     *
+     * @default null
+     */
+    linearGradient?: LinearGradientModel;
+
+    /**
+     * Applies a radial gradient fill to the trendline.
+     *
+     * @default null
+     */
+    radialGradient?: RadialGradientModel;
 
 }
 
@@ -1060,6 +1131,11 @@ export interface SeriesModel extends SeriesBaseModel{
     border?: BorderModel;
 
     /**
+     * Configures the options for displaying series names as inline labels in the chart.
+     */
+    labelSettings?: SeriesLabelSettingsModel;
+
+    /**
      * Options for customizing and displaying the last value in the series.
      */
     lastValueLabel?: LastValueLabelSettingsModel;
@@ -1137,6 +1213,23 @@ export interface SeriesModel extends SeriesBaseModel{
      * Options for customizing the Pareto line series, including its appearance and behavior in the chart.
      */
     paretoOptions?: ParetoOptionsModel;
+
+    /**
+     * Applies a linear gradient fill to the series.
+     * The gradient transitions colors along a straight line.
+     * When both linearGradient and radialGradient are specified, linearGradient takes precedence.
+     *
+     * @default null
+     */
+    linearGradient?: LinearGradientModel;
+
+    /**
+     * Applies a radial gradient fill to the series.
+     * The gradient transitions colors outward from a central point.
+     *
+     * @default null
+     */
+    radialGradient?: RadialGradientModel;
 
     /**
      * Customize the drag settings for the series with this property to configure drag behavior in the chart.

@@ -303,4 +303,5 @@ export interface GroupedData {
     foreignKey?: string;
     count?: number;
     headerText?: string;
+    startIndex?: number;
 }

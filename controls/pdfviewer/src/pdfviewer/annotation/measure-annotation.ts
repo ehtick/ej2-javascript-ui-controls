@@ -13,8 +13,9 @@ import { DropDownButton, MenuEventArgs } from '@syncfusion/ej2-splitbuttons';
 import { PointModel, Point } from '@syncfusion/ej2-drawings';
 import { ICommentsCollection, IReviewCollection } from './sticky-notes-annotation';
 import { LineHeadStyle, CalibrationUnit, AllowedInteraction } from '../base';
-import { AnnotationSelectorSettingsModel, MeasurementSettingsModel } from '../pdfviewer-model';
+import { AnnotationSelectorSettingsModel, MeasurementSettingsModel, RadiusSettingsModel } from '../pdfviewer-model';
 import { ItemModel } from '@syncfusion/ej2-navigations';
+import { cloneObject } from '../drawing/drawing-util';
 
 /**
  * @hidden
@@ -326,6 +327,15 @@ export class MeasureAnnotation {
                             }
                             annotation.AnnotationSettings = annotation.AnnotationSettings ? annotation.AnnotationSettings :
                                 this.pdfViewer.annotationModule.updateAnnotationSettings(annotation);
+                            if (isImportAction) {
+                                annotation.AnnotationSettings = { minHeight: 0, minWidth: 0,
+                                    // eslint-disable-next-line security/detect-object-injection
+                                    maxHeight: this.pdfViewerBase.pageSize[pageNumber].height,
+                                    // eslint-disable-next-line security/detect-object-injection
+                                    maxWidth: this.pdfViewerBase.pageSize[pageNumber].width,
+                                    isPrint: true, isLock: false
+                                };
+                            }
                             if (annotation.IsLocked) {
                                 annotation.AnnotationSettings.isLock = annotation.IsLocked;
                             }
@@ -349,7 +359,8 @@ export class MeasureAnnotation {
                             const height: number = annotation.Bounds.Height ? annotation.Bounds.Height : annotation.Bounds.height;
                             annotationObject = {
                                 id: 'measure' + this.measureShapeCount, shapeAnnotationType: annotation.ShapeAnnotationType, author: annotation.Author, allowedInteractions: annotation.allowedInteractions, modifiedDate: annotation.ModifiedDate, subject: annotation.Subject,
-                                note: annotation.Note, strokeColor: annotation.StrokeColor, fillColor: annotation.FillColor,
+                                note: annotation.Note, strokeColor: this.pdfViewer.annotation.rgbaToHex(annotation.StrokeColor),
+                                fillColor: this.pdfViewer.annotation.rgbaToHex(annotation.FillColor),
                                 opacity: annotation.Opacity, thickness: annotation.Thickness,
                                 rectangleDifference: annotation.RectangleDifference,
                                 borderStyle: annotation.BorderStyle, borderDashArray: annotation.BorderDashArray,
@@ -599,7 +610,7 @@ export class MeasureAnnotation {
     private updateMeasureproperties(): void {
         this.distanceFillColor = this.pdfViewer.distanceSettings.fillColor ? this.pdfViewer.distanceSettings.fillColor : '#ffffff00';
         this.distanceStrokeColor = this.pdfViewer.distanceSettings.strokeColor ? this.pdfViewer.distanceSettings.strokeColor : '#ff0000';
-        this.distanceOpacity = this.pdfViewer.distanceSettings.opacity ? this.pdfViewer.distanceSettings.opacity : 1;
+        this.distanceOpacity = !isNullOrUndefined(this.pdfViewer.distanceSettings.opacity) ? this.pdfViewer.distanceSettings.opacity : 1;
         this.distanceThickness = this.pdfViewer.distanceSettings.thickness ? this.pdfViewer.distanceSettings.thickness : 1;
         this.distanceDashArray = this.pdfViewer.distanceSettings.borderDashArray ? this.pdfViewer.distanceSettings.borderDashArray : 0;
         this.leaderLength = this.pdfViewer.distanceSettings.leaderLength != null ? this.pdfViewer.distanceSettings.leaderLength : 40;
@@ -607,22 +618,22 @@ export class MeasureAnnotation {
         this.distanceEndHead = this.pdfViewer.distanceSettings.lineHeadEndStyle ? this.pdfViewer.distanceSettings.lineHeadEndStyle : 'Closed';
         this.perimeterFillColor = this.pdfViewer.perimeterSettings.fillColor ? this.pdfViewer.perimeterSettings.fillColor : '#ffffff00';
         this.perimeterStrokeColor = this.pdfViewer.perimeterSettings.strokeColor ? this.pdfViewer.perimeterSettings.strokeColor : '#ff0000';
-        this.perimeterOpacity = this.pdfViewer.perimeterSettings.opacity ? this.pdfViewer.perimeterSettings.opacity : 1;
+        this.perimeterOpacity = !isNullOrUndefined(this.pdfViewer.perimeterSettings.opacity) ? this.pdfViewer.perimeterSettings.opacity : 1;
         this.perimeterThickness = this.pdfViewer.perimeterSettings.thickness ? this.pdfViewer.perimeterSettings.thickness : 1;
         this.perimeterDashArray = this.pdfViewer.perimeterSettings.borderDashArray ? this.pdfViewer.perimeterSettings.borderDashArray : 0;
         this.perimeterStartHead = this.pdfViewer.perimeterSettings.lineHeadStartStyle ? this.pdfViewer.perimeterSettings.lineHeadStartStyle : 'Open';
         this.perimeterEndHead = this.pdfViewer.perimeterSettings.lineHeadEndStyle ? this.pdfViewer.perimeterSettings.lineHeadEndStyle : 'Open';
         this.areaFillColor = this.pdfViewer.areaSettings.fillColor ? this.pdfViewer.areaSettings.fillColor : '#ffffff00';
         this.areaStrokeColor = this.pdfViewer.areaSettings.strokeColor ? this.pdfViewer.areaSettings.strokeColor : '#ff0000';
-        this.areaOpacity = this.pdfViewer.areaSettings.opacity ? this.pdfViewer.areaSettings.opacity : 1;
+        this.areaOpacity = !isNullOrUndefined(this.pdfViewer.areaSettings.opacity) ? this.pdfViewer.areaSettings.opacity : 1;
         this.areaThickness = this.pdfViewer.areaSettings.thickness ? this.pdfViewer.areaSettings.thickness : 1;
         this.radiusFillColor = this.pdfViewer.radiusSettings.fillColor ? this.pdfViewer.radiusSettings.fillColor : '#ffffff00';
         this.radiusStrokeColor = this.pdfViewer.radiusSettings.strokeColor ? this.pdfViewer.radiusSettings.strokeColor : '#ff0000';
-        this.radiusOpacity = this.pdfViewer.radiusSettings.opacity ? this.pdfViewer.radiusSettings.opacity : 1;
+        this.radiusOpacity = !isNullOrUndefined(this.pdfViewer.radiusSettings.opacity) ? this.pdfViewer.radiusSettings.opacity : 1;
         this.radiusThickness = this.pdfViewer.radiusSettings.thickness ? this.pdfViewer.radiusSettings.thickness : 1;
         this.volumeFillColor = this.pdfViewer.volumeSettings.fillColor ? this.pdfViewer.volumeSettings.fillColor : '#ffffff00';
         this.volumeStrokeColor = this.pdfViewer.volumeSettings.strokeColor ? this.pdfViewer.volumeSettings.strokeColor : '#ff0000';
-        this.volumeOpacity = this.pdfViewer.volumeSettings.opacity ? this.pdfViewer.volumeSettings.opacity : 1;
+        this.volumeOpacity = !isNullOrUndefined(this.pdfViewer.volumeSettings.opacity) ? this.pdfViewer.volumeSettings.opacity : 1;
         this.volumeThickness = this.pdfViewer.volumeSettings.thickness ? this.pdfViewer.volumeSettings.thickness : 1;
         const scaleRatioObject: any = this.scaleRatioAddCollection[this.scaleRatioAddCollection.length - 1];
         if (this.currentScaleRatio && this.currentScaleRatio.unit !== this.pdfViewer.measurementSettings.conversionUnit.toLowerCase()) {
@@ -720,7 +731,8 @@ export class MeasureAnnotation {
             labelContent: annotationModel.labelContent, enableShapeLabel: annotationModel.enableShapeLabel,
             labelFillColor: annotationModel.labelFillColor,
             labelBorderColor: annotationModel.labelBorderColor, fontColor: annotationModel.fontColor, fontSize: annotationModel.fontSize,
-            labelBounds: labelBound,  annotationSelectorSettings: this.getSelector(annotationModel.subject),
+            labelBounds: labelBound,  annotationSelectorSettings: this.getSelector(annotationModel.shapeAnnotationType,
+                                                                                   annotationModel.measureType),
             labelSettings: labelSettings, annotationSettings: annotationSettings,
             customData: this.pdfViewer.annotation.getMeasureData(annotationModel.subject), isPrint: annotationModel.isPrint,
             isCommentLock: annotationModel.isCommentLock, isAnnotationRotated: false,
@@ -728,19 +740,9 @@ export class MeasureAnnotation {
         };
     }
 
-    private getSelector( type: string) : AnnotationSelectorSettingsModel {
-        let selector: AnnotationSelectorSettingsModel = this.pdfViewer.annotationSelectorSettings;
-        if ((type === 'Distance calculation') && this.pdfViewer.distanceSettings.annotationSelectorSettings) {
-            selector = this.pdfViewer.distanceSettings.annotationSelectorSettings;
-        } else if ((type === 'Perimeter calculation') && this.pdfViewer.perimeterSettings.annotationSelectorSettings) {
-            selector = this.pdfViewer.perimeterSettings.annotationSelectorSettings;
-        } else if ((type === 'Area calculation') && this.pdfViewer.areaSettings.annotationSelectorSettings) {
-            selector = this.pdfViewer.areaSettings.annotationSelectorSettings;
-        } else if ((type === 'Radius calculation') && this.pdfViewer.radiusSettings.annotationSelectorSettings) {
-            selector = this.pdfViewer.radiusSettings.annotationSelectorSettings;
-        } else if ((type === 'Volume calculation') && this.pdfViewer.volumeSettings.annotationSelectorSettings) {
-            selector = this.pdfViewer.volumeSettings.annotationSelectorSettings;
-        }
+    private getSelector( type: string, measureType?: string) : AnnotationSelectorSettingsModel {
+        const selector: AnnotationSelectorSettingsModel = cloneObject(this.pdfViewer.annotationSelectorSettings);
+        this.pdfViewerBase.updateSelector(selector, type, measureType);
         return selector;
     }
 
@@ -868,6 +870,12 @@ export class MeasureAnnotation {
                 const pageAnnotationObject: IPageAnnotations = annotationCollection[parseInt(i.toString(), 10)];
                 if (pageAnnotationObject) {
                     for (let z: number = 0; pageAnnotationObject.annotations.length > z; z++) {
+                        if (this.pdfViewer.printModule && this.pdfViewer.printModule.canPrint &&
+                            pageAnnotationObject.annotations[parseInt(z.toString(), 10)].isPrint === false) {
+                            pageAnnotationObject.annotations.splice(parseInt(z.toString(), 10), 1);
+                            z--;
+                            continue;
+                        }
                         this.pdfViewer.annotationModule.updateModifiedDate(pageAnnotationObject.annotations[parseInt(z.toString(), 10)]);
                         if (this.pdfViewerBase.isJsonExported) {
                             if (pageAnnotationObject.annotations[parseInt(z.toString(), 10)].isAnnotationRotated) {
@@ -1113,6 +1121,15 @@ export class MeasureAnnotation {
         const depthUnitElement: HTMLElement = this.createInputElement('button', 'e-pv-depth-unit', elementID + '_depth_unit', depthContainer);
         this.depthUnit = new DropDownButton({ items: items, cssClass: 'e-pv-depth-unit' }, (depthUnitElement as HTMLButtonElement));
         this.depthUnit.select = this.depthUnitSelect.bind(this);
+        const selectedAnnot: PdfAnnotationBaseModel = this.pdfViewer.selectedItems.annotations[0];
+        if (selectedAnnot && selectedAnnot.measureType !== 'Volume') {
+            if (this.depthTextBox) {
+                this.depthTextBox.enabled = false;
+            }
+            if (this.depthUnit) {
+                this.depthUnit.disabled = true;
+            }
+        }
         return element;
     }
 
@@ -1444,9 +1461,16 @@ export class MeasureAnnotation {
                              this.pdfViewer.annotationModule.inputElementModule.calculateLabelBounds(annotationBase.wrapper.bounds);
                         }
                     } else if (property === 'fill') {
-                        pageAnnotations[parseInt(i.toString(), 10)].fillColor = annotationBase.wrapper.children[0].style.fill;
-                        if (this.pdfViewer.enableShapeLabel) {
-                            pageAnnotations[parseInt(i.toString(), 10)].labelFillColor = annotationBase.wrapper.children[0].style.fill;
+                        if (annotationBase.measureType === 'Perimeter') {
+                            pageAnnotations[i as number].fillColor = annotationBase.fillColor;
+                            if (this.pdfViewer.enableShapeLabel) {
+                                pageAnnotations[i as number].labelFillColor = annotationBase.fillColor;
+                            }
+                        } else {
+                            pageAnnotations[parseInt(i.toString(), 10)].fillColor = annotationBase.wrapper.children[0].style.fill;
+                            if (this.pdfViewer.enableShapeLabel) {
+                                pageAnnotations[parseInt(i.toString(), 10)].labelFillColor = annotationBase.wrapper.children[0].style.fill;
+                            }
                         }
                     } else if (property === 'stroke') {
                         pageAnnotations[parseInt(i.toString(), 10)].strokeColor = annotationBase.wrapper.children[0].style.strokeColor;
@@ -1943,7 +1967,11 @@ export class MeasureAnnotation {
         annotation.AnnotationSelectorSettings ? annotation.AnnotationSelectorSettings :
             this.pdfViewerBase.annotationSelectorSettingLoad(annotation);
         annotation.AnnotationSettings = annotation.AnnotationSettings ?
-            annotation.AnnotationSettings : this.pdfViewer.annotationModule.updateAnnotationSettings(annotation);
+            annotation.AnnotationSettings : { minWidth: 0, minHeight: 0,
+                // eslint-disable-next-line security/detect-object-injection
+                maxHeight: this.pdfViewerBase.pageSize[pageNumber].height,
+                // eslint-disable-next-line security/detect-object-injection
+                maxWidth: this.pdfViewerBase.pageSize[pageNumber].width, isPrint: true, isLock: false };
         if (annotation.IsLocked) {
             annotation.AnnotationSettings.isLock = annotation.IsLocked;
         }
@@ -2286,7 +2314,7 @@ export class MeasureAnnotation {
             LineHeadEnd: annotationObject.lineHeadEndStyle ? annotationObject.lineHeadEndStyle : isArrow ? 'ClosedArrow' : 'None',
             ModifiedDate: '',
             Note: notes,
-            Opacity: annotationObject.opacity ? annotationObject.opacity : 1,
+            Opacity: !isNullOrUndefined(annotationObject.opacity) ? annotationObject.opacity : 1,
             RectangleDifference: [],
             RotateAngle: 'RotateAngle0',
             ShapeAnnotationType: shapeAnnotationType,
@@ -2318,5 +2346,20 @@ export class MeasureAnnotation {
         this.scaleRatioCollection.push(scaleRatio);
         measureShapeAnnotation[0] = shape;
         return {measureShapeAnnotation};
+    }
+
+    /**
+     * Validates and normalizes min/max width and height constraints for Radius settings.
+     * @private
+     * @param {RadiusSettingsModel} settings - represents the radiusSettings
+     * @returns {void}
+     */
+    public validateRadiusSettings(settings?: RadiusSettingsModel): void {
+        const radius: RadiusSettingsModel = !isNullOrUndefined(settings) ?
+            settings : this.pdfViewer.radiusSettings;
+        if (radius && (radius.minHeight || radius.minWidth || radius.maxHeight || radius.maxWidth)) {
+            this.pdfViewerBase.normalizeMinMaxPair(radius, 'minWidth', 'maxWidth');
+            this.pdfViewerBase.normalizeMinMaxPair(radius, 'minHeight', 'maxHeight');
+        }
     }
 }

@@ -10,6 +10,16 @@
   .e-checkmark-checked::after {
     content: '\e727';
   }
+  .e-block-image-icon::before {
+    content: '\e786';
+  }
+
+  .e-be-check::before {
+    content: '\e8b1';
+  }
+  .e-be-close::before {
+    content: '\e7e7';
+  }
 
   /* ======== Inline Toolbar styles ======== */
   .e-blockeditor-inline-toolbar-popup {
@@ -20,10 +30,20 @@
     .e-inline-bgColor-icon::before {
       content: '\e783'; /* Paint bucket icon */
     }
+
+    .e-colorpicker-wrapper .e-split-btn-wrapper {
+      .e-split-colorpicker.e-split-btn.e-be-fontcolor-dropdown::before {
+        content: '\e79f';
+      }
+      .e-split-colorpicker.e-split-btn.e-be-bgcolor-dropdown::before {
+        content: '\e783';
+      }
+    }
   }
 
   /* ======== Slash Command styles ======== */
-  .e-blockeditor-command-menu.e-popup {
+  .e-blockeditor-command-menu.e-popup,
+  .e-blockeditor-command-menu {
     .e-be-paragraph::before {
       content: '\e82e';
     }

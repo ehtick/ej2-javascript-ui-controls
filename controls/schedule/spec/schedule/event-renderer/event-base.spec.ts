@@ -2784,6 +2784,78 @@ describe('Event Base Module', () => {
             expect(dialogElement.firstElementChild.classList.contains('e-popup-open')).toEqual(false);
         });
     });
+    
+    describe('ES-1001759 - Should show correct time details for spanned recurring appointment in Agenda view after navigate', () => {
+        let schObj: Schedule;
+        const eventData: Record<string, any>[] = [{
+            Id: 1,
+            Subject: 'Recursive Event',
+            StartTime: new Date(2026, 0, 26, 10, 0),
+            EndTime: new Date(2026, 0, 28, 11, 0),
+            RecurrenceRule: 'FREQ=WEEKLY;BYDAY=MO;UNTIL=20260326T235959'
+        },
+        {
+            Id: 2,
+            Subject: 'Spanned Event',
+            StartTime: new Date(2026, 0, 26, 10, 0),
+            EndTime: new Date(2026, 0, 28, 11, 0),
+        }];
+        beforeAll((done: DoneFn) => {
+            const model: ScheduleModel = {
+                height: '550px',
+                selectedDate: new Date(2026, 0, 26),
+                views: ['Agenda'],
+            };
+            schObj = util.createSchedule(model, eventData, done);
+        });
+        afterAll(() => {
+            util.destroy(schObj);
+        });
+
+        it('Single clicking recurrence event in Agenda view should check the appointment details in quick popup', (done: DoneFn) => {
+            const nextBtn = schObj.element.querySelector('.e-schedule-toolbar .e-next') as HTMLElement;
+            expect(nextBtn).toBeTruthy();
+            schObj.dataBound = () => {
+                const appList: HTMLElement[] = [].slice.call(schObj.element.querySelectorAll('.e-appointment')) as HTMLElement[];
+                expect(appList.length).toBeGreaterThan(0);
+                util.triggerMouseEvent(appList[1], 'click');
+                let quickPopup = schObj.element.querySelector('.e-quick-popup-wrapper') as HTMLElement;
+                expect(quickPopup).toBeTruthy();
+                expect(quickPopup.classList.contains('e-popup-open')).toBeTruthy();
+                let dateTimeEle = quickPopup.querySelector('.e-date-time-details') as HTMLElement;
+                expect(dateTimeEle).toBeTruthy();
+                let detailsText = (dateTimeEle.innerHTML).trim();
+                expect(detailsText).toEqual('January 26, 2026 (10:00 AM)&nbsp;-&nbsp;January 28, 2026 (11:00 AM)');
+                let closeBtn = quickPopup.querySelector('.e-close') as HTMLElement;
+                expect(closeBtn).toBeTruthy();
+                util.triggerMouseEvent(closeBtn, 'click');
+                util.triggerMouseEvent(appList[2], 'click');
+                quickPopup = schObj.element.querySelector('.e-quick-popup-wrapper') as HTMLElement;
+                expect(quickPopup).toBeTruthy();
+                expect(quickPopup.classList.contains('e-popup-open')).toBeTruthy();
+                dateTimeEle = quickPopup.querySelector('.e-date-time-details') as HTMLElement;
+                expect(dateTimeEle).toBeTruthy();
+                detailsText = (dateTimeEle.innerHTML).trim();
+                expect(detailsText).toEqual('January 26, 2026 (10:00 AM)&nbsp;-&nbsp;January 28, 2026 (11:00 AM)');
+                closeBtn = quickPopup.querySelector('.e-close') as HTMLElement;
+                expect(closeBtn).toBeTruthy();
+                util.triggerMouseEvent(closeBtn, 'click');
+                util.triggerMouseEvent(appList[4], 'click');
+                quickPopup = schObj.element.querySelector('.e-quick-popup-wrapper') as HTMLElement;
+                expect(quickPopup).toBeTruthy();
+                expect(quickPopup.classList.contains('e-popup-open')).toBeTruthy();
+                dateTimeEle = quickPopup.querySelector('.e-date-time-details') as HTMLElement;
+                expect(dateTimeEle).toBeTruthy();
+                detailsText = (dateTimeEle.innerHTML).trim();
+                expect(detailsText).toEqual('February 2, 2026 (10:00 AM)&nbsp;-&nbsp;February 4, 2026 (11:00 AM)');
+                closeBtn = quickPopup.querySelector('.e-close') as HTMLElement;
+                expect(closeBtn).toBeTruthy();
+                util.triggerMouseEvent(closeBtn, 'click');
+                done();
+            };
+            util.triggerMouseEvent(nextBtn, 'click');
+        });
+    });
 
     it('memory leak', () => {
         profile.sample();

@@ -1,6 +1,6 @@
 import { captureSelectionState, decoupleReference, getAbsoluteOffset, getAdjacentBlock, getBlockContentElement,
-    getBlockModelById, getClosestContentElementInDocument, getNormalizedKey, getParentBlock, getParentElement, getSelectedRange,
-    isCursorAtEdge, isListTypeBlock, isNonMergableBlock, sanitizeBlock, sanitizeContents, setCursorPosition } from '../../common/utils/index';
+    getBlockModelById, getContentModelByNode, getParentBlock, getParentElement, getSelectedRange,
+    getTargetBlock, isCursorAtEdge, isListTypeBlock, isNonMergableBlock, setCursorPosition } from '../../common/utils/index';
 import { BlockModel, ICollapsibleBlockSettings, ContentModel } from '../../models/index';
 import { findClosestParent, getElementRect } from '../../common/utils/dom';
 import * as constants from '../../common/constant';
@@ -9,6 +9,7 @@ import { BlockManager } from '../base/block-manager';
 import { BlockType } from '../../models/enums';
 import { DeletionType } from '../../common/enums';
 import { SelectionChangedEventArgs } from '../../models/eventargs';
+import { TableUIManager } from '../plugins/table/ui-manager';
 
 /**
  * Manages all event handlers for the BlockEditor component
@@ -91,6 +92,7 @@ export class EventAction {
             && !this.parent.floatingIconAction.floatingIconContainer.contains(clickEvent.target as HTMLElement))) {
             this.parent.floatingIconAction.hideFloatingIcons();
         }
+        this.parent.selectionOverlay.clearSelectionOverlay();
         this.parent.isEntireEditorSelected = false;
         this.togglePopupsOnDocumentClick(clickEvent);
     }
@@ -119,6 +121,7 @@ export class EventAction {
 
     private handleMouseUpActions(mouseEvent: MouseEvent): void {
         if (this.parent.readOnly || ((mouseEvent.target as HTMLElement).tagName === 'TD')) { return; }
+        this.parent.selectionOverlay.clearSelectionOverlay();
         const range: Range = getSelectedRange();
         const startContainerParent: HTMLElement = range ? getParentElement(range.startContainer) : null;
         const target: HTMLElement = (startContainerParent || mouseEvent.target) as HTMLElement;
@@ -143,6 +146,7 @@ export class EventAction {
 
     private handleMouseDownActions(mouseEvent: MouseEvent): void {
         this.parent.isEntireEditorSelected = false;
+        this.parent.selectionOverlay.clearSelectionOverlay();
         if (this.parent.readOnly) { return; }
         const blockElement: HTMLElement = (mouseEvent.target as HTMLElement).closest('.' + constants.BLOCK_CLS) as HTMLElement;
         if (blockElement && (this.parent.currentFocusedBlock !== blockElement)) {
@@ -153,6 +157,26 @@ export class EventAction {
     }
 
     private handleEditorInputActions(inputEvent: Event): void {
+        if (inputEvent.target && ((inputEvent.target as HTMLElement).closest('.e-uploader') || (inputEvent.target as HTMLElement).closest('.e-embed-url-input'))) {
+            return;
+        }
+
+        this.parent.selectionOverlay.clearSelectionOverlay();
+
+        const focusedBlk: HTMLElement = this.parent.currentFocusedBlock;
+        const tableBlock: HTMLElement = focusedBlk ? findClosestParent(focusedBlk, '.e-table-block') : null;
+        if (tableBlock) {
+            const range: Range = getSelectedRange();
+            const tableEle: HTMLTableElement = tableBlock.querySelector('table');
+            const uiManager: TableUIManager = this.parent.blockRenderer.tableRenderer.getManager(tableBlock.id);
+            const cell: HTMLElement = (findClosestParent(range.startContainer, 'td') || findClosestParent(range.startContainer, 'th'));
+            uiManager.removeRowColSelection(tableEle);
+            uiManager.hideRowGripper();
+            uiManager.hideAllPinnedColBars();
+            this.parent.tableService.removeCellFocus(tableEle);
+            if (cell) { this.parent.tableService.addCellFocus(cell); }
+        }
+
         this.processEntireEditorSelection();
         this.updateUIAfterInput(inputEvent);
         this.filterSlashCommandOnUserInput();
@@ -163,7 +187,7 @@ export class EventAction {
     private processEntireEditorSelection(): void {
         if (this.parent.isEntireEditorSelected) {
             const editorBlocks: BlockModel[] = this.parent.getEditorBlocks();
-            const allBlocks: BlockModel[] = editorBlocks.map((block: BlockModel) => decoupleReference(sanitizeBlock(block)));
+            const allBlocks: BlockModel[] = editorBlocks.map((block: BlockModel) => decoupleReference(block));
 
             this.parent.setFocusToBlock(this.parent.blockContainer.firstElementChild as HTMLElement);
             this.parent.floatingIconAction.showFloatingIcons(this.parent.currentFocusedBlock);
@@ -258,7 +282,7 @@ export class EventAction {
 
     private handleKeydownActions(keyEvent: KeyboardEvent): void {
         this.parent.previousSelection = captureSelectionState();
-        if (!this.parent.currentFocusedBlock || !this.validateKeyEventProcessability(keyEvent)) {
+        if (!this.parent.currentFocusedBlock || !this.validateKeyEventProcessability(keyEvent) || ((keyEvent.target && (keyEvent.target as HTMLElement).closest('.e-embed-url-input')))) {
             return;
         }
 
@@ -338,6 +362,7 @@ export class EventAction {
         const blockModel: BlockModel = getBlockModelById(this.parent.currentFocusedBlock.id, this.parent.getEditorBlocks());
         const actionPopupElement: HTMLElement = this.parent.rootEditorElement.querySelector(`#${this.parent.rootEditorElement.id + constants.BLOCKACTION_POPUP_ID}`);
         const linkDialogElement: HTMLElement = this.parent.rootEditorElement.querySelector(`#${this.parent.rootEditorElement.id + constants.LINKDIALOG_ID}`);
+        const codeLanguagePopup: HTMLElement = document.querySelector(`#${this.parent.rootEditorElement.id}_code-ddl_popup`);
         const notAllowedTypes: string[] = [BlockType.Code];
 
         return this.parent.slashCommandModule.isPopupOpen() || (commandPopupElement && commandPopupElement.classList.contains('e-popup-open')) ||
@@ -345,7 +370,8 @@ export class EventAction {
             (labelMentionPopupElement && labelMentionPopupElement.classList.contains('e-popup-open')) ||
             (blockModel && notAllowedTypes.indexOf(blockModel.blockType) !== -1) ||
             (actionPopupElement && actionPopupElement.classList.contains('e-popup-open')) ||
-            (linkDialogElement && linkDialogElement.classList.contains('e-popup-open'));
+            (linkDialogElement && linkDialogElement.classList.contains('e-popup-open') ||
+            (codeLanguagePopup && codeLanguagePopup.classList.contains('e-popup-open')));
     }
 
     private processListBlockEvents(keyEvent: KeyboardEvent, blockElement: HTMLElement, blockModel: BlockModel): boolean {
@@ -416,11 +442,13 @@ export class EventAction {
     private processSpecialContainerBlocks(): boolean {
         const calloutBlock: HTMLElement = this.parent.currentFocusedBlock.closest('.' + constants.CALLOUT_BLOCK_CLS) as HTMLElement;
         const toggleBlock: HTMLElement = this.parent.currentFocusedBlock.closest('.' + constants.TOGGLE_BLOCK_CLS) as HTMLElement;
-
+        const quoteBlock: HTMLElement = this.parent.currentFocusedBlock.closest('.' + constants.QUOTE_BLOCK_CLS) as HTMLElement;
         if (calloutBlock) {
             return this.handleChildrenBlockExit('.' + constants.CALLOUT_BLOCK_CLS, '.' + constants.CALLOUT_CONTENT_CLS);
         } else if (toggleBlock) {
             return this.processToggleBlock(toggleBlock);
+        } else if (quoteBlock) {
+            return this.handleChildrenBlockExit('.' + constants.QUOTE_BLOCK_CLS, '.' + constants.QUOTE_CONTENT_CLS);
         }
 
         return false;
@@ -466,23 +494,52 @@ export class EventAction {
         blockType: string,
         contentElement: HTMLElement
     ): void {
-        if (!getSelectedRange()) { return; }
         const mergeDirection: 'previous' | 'next' = (event.key === 'Backspace') ? 'previous' : 'next';
 
         this.parent.inlineToolbarModule.hideInlineToolbar();
 
+        // Handle multi-block / entire selection first
         const isDeletionPerformed: boolean = this.parent.blockCommand.handleSelectiveDeletions(event);
+        if (isDeletionPerformed) { return; }
 
+        // Direct deletion of selected Non-mergeable block
         if (isNonMergableBlock(blockElement)) {
             this.parent.execCommand({
                 command: 'DeleteNonMergableBlock',
                 state: { blockElement: blockElement }
             });
             event.preventDefault();
+            return;
         }
 
-        // If no selective deletion was performed, handle normal deletions (Single block deletion)
-        else if (!isDeletionPerformed && isCursorAtEdge(contentElement, event.key === 'Backspace')) {
+        // Two-step delete for adjacent special blocks at boundary
+        if (getSelectedRange() && isCursorAtEdge(contentElement, event.key === 'Backspace')) {
+            const adjacentBlock: HTMLElement = getTargetBlock(blockElement, mergeDirection);
+            if (adjacentBlock) {
+                const adjacentModel: BlockModel = getBlockModelById(adjacentBlock.id, this.parent.getEditorBlocks());
+                const isSpecial: boolean = !!adjacentModel && ([
+                    BlockType.Code,
+                    BlockType.Callout,
+                    BlockType.Table,
+                    BlockType.Image,
+                    BlockType.Quote,
+                    BlockType.CollapsibleHeading,
+                    BlockType.CollapsibleParagraph,
+                    BlockType.Divider
+                ] as string[]).indexOf(adjacentModel.blockType) !== -1;
+
+                if (isSpecial) {
+                    // First press: stage overlay
+                    event.preventDefault();
+                    this.parent.selectionOverlay.selectionOverlayInfo = { element: adjacentBlock, direction: mergeDirection };
+                    this.parent.lastHighlightedBlockId = adjacentBlock.id;
+                    if (this.parent.selectionOverlay) { this.parent.selectionOverlay.show(adjacentBlock.id); }
+                    if (this.parent.nodeSelection) { this.parent.nodeSelection.clearSelection(); }
+                    return;
+                }
+            }
+            // Fallback to normal deletion-at-cursor for block merging
+            event.preventDefault();
             this.parent.execCommand({
                 command: 'DeleteAtCursor',
                 state: {
@@ -491,7 +548,20 @@ export class EventAction {
                 }
             });
             this.parent.isEntireEditorSelected = false;
+            return;
+        }
+
+        // Second press: delete
+        if (this.parent.selectionOverlay.selectionOverlayInfo && this.parent.selectionOverlay.selectionOverlayInfo.element) {
             event.preventDefault();
+            const blockEle: HTMLElement = this.parent.selectionOverlay.selectionOverlayInfo.element;
+            this.parent.selectionOverlay.clearSelectionOverlay();
+            this.parent.execCommand({
+                command: 'DeleteNonMergableBlock',
+                state: { blockElement: blockEle }
+            });
+
+            return;
         }
     }
 
@@ -515,15 +585,13 @@ export class EventAction {
 
     private handleLineBreaksOnBlock(blockElement: HTMLElement): void {
         const blockModel: BlockModel = getBlockModelById(blockElement.id, this.parent.getEditorBlocks());
-        const oldBlock: BlockModel = decoupleReference(sanitizeBlock(blockModel));
+        const oldBlock: BlockModel = decoupleReference(blockModel);
         const contentElement: HTMLElement = getBlockContentElement(blockElement);
         const range: Range = this.parent.nodeSelection.getRange();
         if (!range) { return; }
 
         const absoluteOffset: number = getAbsoluteOffset(contentElement, range.startContainer, range.startOffset);
-        const contentModel: ContentModel = blockModel.content.find((content: ContentModel) => {
-            return content.id === getClosestContentElementInDocument(range.startContainer).id;
-        });
+        const contentModel: ContentModel = getContentModelByNode(range.startContainer, this.parent.getEditorBlocks());
 
         this.parent.blockService.applyLineBreak(range.startOffset, contentModel);
         this.parent.stateManager.updateManagerBlocks();
@@ -536,7 +604,7 @@ export class EventAction {
         this.parent.undoRedoAction.trackLineBreakActionForUndoRedo({
             blockId: blockModel.id,
             oldContent: oldBlock.content,
-            newContent: decoupleReference(sanitizeContents(blockModel.content))
+            newContent: decoupleReference(blockModel.content)
         });
     }
 
@@ -551,11 +619,19 @@ export class EventAction {
                 mergeDirection: deleteDirection
             }});
             this.parent.currentFocusedBlock = parentBlock;
+
+            this.parent.execCommand({ command: 'AddBlock', state: {
+                blockType: BlockType.Paragraph,
+                targetBlock: this.parent.currentFocusedBlock
+            }});
+
+            return true;
         }
         return false;
     }
 
     private handleArrowKeyActions(event: KeyboardEvent, range: Range, blockElement: HTMLElement): void {
+        this.parent.selectionOverlay.clearSelectionOverlay();
         const blockContentLength: number = blockElement.textContent.length;
         const key: string = event.key;
         const isUp: boolean = key === 'ArrowUp';
@@ -620,7 +696,9 @@ export class EventAction {
         const blockActionPopup: HTMLElement = document.querySelector('#' + this.parent.rootEditorElement.id + constants.BLOCKACTION_POPUP_ID);
         const isInlineTbarOpen: boolean = inlineTbarPopup && inlineTbarPopup.classList.contains('e-popup-open');
         const isBlockActionOpen: boolean = blockActionPopup && blockActionPopup.classList.contains('e-popup-open');
-        if (!this.parent.inlineToolbarModule.popupObj.element.contains(event.target as Node) && isInlineTbarOpen) {
+        const isColorPaletteClick: boolean = (event.target as HTMLElement).closest('.e-colorpicker-wrapper') !== null ||
+                                    (event.target as HTMLElement).closest('.e-color-palette') !== null;
+        if (!this.parent.inlineToolbarModule.popupObj.element.contains(event.target as Node) && isInlineTbarOpen && !isColorPaletteClick) {
             this.parent.inlineToolbarModule.hideInlineToolbar(event);
         }
         if (!this.parent.blockActionMenuModule.popupObj.element.contains(event.target as Node) && isBlockActionOpen) {
@@ -629,7 +707,7 @@ export class EventAction {
     }
 
     private clipboardActionHandler(e: KeyboardEvent): void {
-        if (this.parent.linkModule.isPopupOpen()) { return; }
+        if (this.parent.linkModule.isPopupOpen() || (e.target && (e.target as HTMLElement).closest('.e-embed-url-input'))) { return; }
         switch (e.type.toLowerCase()) {
         case 'cut':
             this.parent.observer.notify(events.cut, e);
@@ -649,6 +727,8 @@ export class EventAction {
             const range: Range = this.parent.nodeSelection.getRange();
             this.parent.popupRenderer.adjustPopupPositionRelativeToTarget(range, this.parent.inlineToolbarModule.popupObj);
         }
+        // Reposition overlay on resize
+        if (this.parent.selectionOverlay) { this.parent.selectionOverlay.reposition(); }
     }
 
     private wireUnWireDragEvents(options: { enable: boolean }): void {
@@ -660,7 +740,10 @@ export class EventAction {
         }
     }
 
+    // Reposition handled by SelectionOverlay
+
     public destroy(): void {
+        this.parent.selectionOverlay.clearSelectionOverlay();
         this.unWireGlobalEvents();
     }
 }

@@ -346,7 +346,7 @@ export class TextArea extends Component<HTMLTextAreaElement> implements INotifyP
                 this.handleAdornmentFloatLabel();
                 break;
             case 'placeholder':
-                Input.setPlaceholder(this.placeholder, this.element);
+                Input.setPlaceholder(this.placeholder, this.element, this.getModuleName());
                 Input.calculateWidth(this.element, this.textareaWrapper.container);
                 break;
             case 'cssClass':

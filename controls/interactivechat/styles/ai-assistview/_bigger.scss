@@ -1,5 +1,4 @@
 @use 'ej2-base/styles/common/mixin' as *;
-@use './theme-variables' as *;
 @include export-module('aiassistview-bigger') {
   .e-bigger.e-aiassistview,
   .e-bigger .e-aiassistview {
@@ -121,6 +120,7 @@
           .e-toolbar-item {
             min-height: unset;
             min-width: unset;
+            max-height: $assist-footer-tbar-min-height-bigger;
           }
           .e-toolbar-right .e-toolbar-item:last-child {
             margin-right: 0;

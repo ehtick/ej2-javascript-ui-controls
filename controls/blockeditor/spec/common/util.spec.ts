@@ -43,7 +43,7 @@ export function buildTableBlock(id: string, cols: number, rows: number, enableHe
         cells: columns.map((c, cIdx) => ({
             id: `cell_${r + 1}_${cIdx + 1}`,
             columnId: c.id,
-            blocks: [{ id: `b_${r + 1}_${cIdx + 1}`, blockType: BlockType.Paragraph, content: [{ id: `c_${r + 1}_${cIdx + 1}`, contentType: ContentType.Text, content: `R${r + 1}C${cIdx + 1}` }] }]
+            blocks: [{ id: `b_${r + 1}_${cIdx + 1}`, blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: `R${r + 1}C${cIdx + 1}` }] }]
         } as TableCellModel))
     } as TableRowModel));
     const properties: ITableBlockSettings = { columns, rows: bodyRows, width: '100%', enableHeader, enableRowNumbers } as ITableBlockSettings;
@@ -93,5 +93,28 @@ export function selectHeaderRectangle(editorElement: HTMLElement, startCol: numb
     const end = getHeaderCell(editorElement, endCol);
     start.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
     end.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+    document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+}
+
+export function selectFullColumns(editorElement: HTMLElement, startCol: number, endCol: number): void {
+    const table = getTable(editorElement);
+    const tbody = table.tBodies[0];
+
+    // Header cells if present
+    const startHeader = getHeaderCell(editorElement, startCol);
+
+    // Always use first row body cell for mousedown fallback and bottom-most body cell for mousemove
+    const startBodyCell = tbody.rows[0].querySelectorAll(`td[data-col=\"${startCol}\"]`)[0] as HTMLTableCellElement;
+    const endBodyCell = tbody.rows[tbody.rows.length - 1].querySelectorAll(`td[data-col=\"${endCol}\"]`)[0] as HTMLTableCellElement;
+
+    // If header exists, start mousedown there so header gets selected; otherwise use first body cell
+    const mousedownTarget = startHeader || startBodyCell;
+    mousedownTarget.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+
+    // Move to bottom-most body cell of the end column to ensure full-column selection
+    if (endBodyCell) {
+        endBodyCell.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+    }
+
     document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
 }

@@ -8074,7 +8074,6 @@ export class Editor {
         }
         return layoutWholeDocument;
     }
-
     private isCurrentContentControlInline(): boolean {
         const elementInfo: ElementInfo = this.selection.start.currentWidget.getInline(this.selection.start.offset, 0);
         if (elementInfo.element && ((elementInfo.element as ContentControl).contentControlWidgetType === 'Inline' ||
@@ -8084,7 +8083,6 @@ export class Editor {
         }
         return false;
     }
-    
     private arrangeEndnoteCollection(): void {
         for (let i = 0; i < this.documentHelper.endnoteCollection.length; i++) {
             for (let j = 0; j < this.documentHelper.endnoteCollection.length - 1 - i; j++) {
@@ -15488,7 +15486,6 @@ export class Editor {
      */
     public onDeleteColumn(table: TableWidget, deleteCells: TableCellWidget[]): number {
         let length: number = 0;
-        let insertedCells: TableCellWidget[] = [];
         for (let i: number = 0; i < table.childWidgets.length; i++) {
             let row: TableRowWidget = table.childWidgets[i] as TableRowWidget;
             if (row.childWidgets.length === 1) {
@@ -15511,7 +15508,6 @@ export class Editor {
                         tableCell.destroy();
                         j--;
                     }
-                    this.splitSpannedRows(table, i, tableCell, insertedCells);
                 }
                 if (row.childWidgets.length === 0) {
                     table.childWidgets.splice(table.childWidgets.indexOf(row), 1);
@@ -15520,88 +15516,14 @@ export class Editor {
                     i--;
                 }
             }
-        }   
+        }
         for (let k: number = this.documentHelper.contentControlCollection.length - 1; k >= 0; k--) {
             let content: ContentControl = this.documentHelper.contentControlCollection[k];
             if (isNullOrUndefined(content.contentControlProperties)) {
                 this.documentHelper.contentControlCollection.splice(k);
             }
         }
-        if (insertedCells.length > 0) {
-            this.updateTableCellIndex(table);
-            this.mergeSpannedCells(table, insertedCells);
-        }
         return length;
-    }
-    private splitSpannedRows(table: TableWidget, rowIndex: number, tableCell: TableCellWidget, insertedCells: TableCellWidget[]): TableCellWidget[] {
-        if (!isNullOrUndefined(tableCell) && !isNullOrUndefined(tableCell.cellFormat) && tableCell.cellFormat.rowSpan > 1) {
-            let rowSpanLength: number = tableCell.cellFormat.rowSpan;
-            for (let k: number = 1; k < rowSpanLength; k++) {
-                let nextRowIndex: number = rowIndex + k;
-                if (nextRowIndex < table.childWidgets.length) {
-                    let nextRow: TableRowWidget = table.childWidgets[nextRowIndex] as TableRowWidget;
-                    if (!isNullOrUndefined(nextRow)) {
-                        const paragraph: ParagraphWidget = this.selection.getLastParagraph(tableCell);
-                        const newCellWidget: TableCellWidget = this.createColumn(paragraph);
-                        (newCellWidget.childWidgets[0] as ParagraphWidget).paragraphFormat = paragraph.paragraphFormat;
-                        newCellWidget.cellFormat.copyFormat(tableCell.cellFormat);
-                        newCellWidget.cellFormat.rowSpan = 1;
-                        tableCell.cellFormat.rowSpan -= 1;
-                        newCellWidget.containerWidget = nextRow;
-                        newCellWidget.rowIndex = nextRowIndex;
-                        if (insertedCells.indexOf(tableCell) === -1) {
-                            insertedCells.push(tableCell);
-                        }
-                        insertedCells.push(newCellWidget);
-                        nextRow.childWidgets.splice(tableCell.columnIndex, 0, newCellWidget);
-                    }
-                }
-            }
-        }
-        return insertedCells;
-    }
-    private updateTableCellIndex(table: TableWidget): void {
-        for (let i: number = 0; i < table.childWidgets.length; i++) {
-            const row: TableRowWidget = table.childWidgets[i] as TableRowWidget;
-            row.index = i;
-            let colIndex: number = 0;
-            for (let j: number = 0; j < row.childWidgets.length; j++) {
-                const cell: TableCellWidget = row.childWidgets[j] as TableCellWidget;
-                cell.index = j;
-                cell.columnIndex = colIndex;
-                let span: number = (cell.cellFormat && cell.cellFormat.columnSpan) ? cell.cellFormat.columnSpan : 1;
-                colIndex += span;
-            }
-        }
-    }
-    private mergeSpannedCells(table: TableWidget, insertedCells: TableCellWidget[]): void {
-        for (let i: number = 0; i < table.childWidgets.length; i++) {
-            const row: TableRowWidget = table.childWidgets[i] as TableRowWidget;
-            for (let j: number = 0; j < row.childWidgets.length; j++) {
-                let currentCell: TableCellWidget = row.childWidgets[j] as TableCellWidget;
-                if (insertedCells.indexOf(currentCell) !== -1) {
-                    const coulmIndex: number = currentCell.columnIndex;
-                    let nextRow: TableRowWidget = table.childWidgets[i + 1] as TableRowWidget;
-                    while (nextRow) {
-                        let Spanned: boolean = false;
-                        for (let k: number = 0; k < nextRow.childWidgets.length; k++) {
-                            let cell: TableCellWidget = nextRow.childWidgets[k] as TableCellWidget;
-                            if (insertedCells.indexOf(cell) !== -1 && cell.columnIndex === coulmIndex) {
-                                cell.destroy();
-                                Spanned = true;
-                                currentCell.cellFormat.rowSpan++;
-                                break;
-                            }
-                        }
-                        if (Spanned) {
-                            nextRow = nextRow.nextRenderedWidget as TableRowWidget;
-                        } else {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
     }
     /**
      * Deletes the selected row(s).
@@ -17361,14 +17283,6 @@ export class Editor {
     }
     
     private onConfirmedTableCellsDeletion(table: TableWidget, selection: Selection, start: TextPosition, end: TextPosition, startRowIndex: number, endRowIndex: number, startColumnIndex: number, endColumnIndex: number, isDeleteCells: boolean, editAction: number, isRowSelected: boolean, action: Action, isAcceptOrReject?: boolean): any {
-        let insertedCells: TableCellWidget[] = [];
-        for (let i: number = 0; i < table.childWidgets.length; i++) {
-            const row = table.childWidgets[i] as TableRowWidget;
-            for (let j: number = 0; j < row.childWidgets.length; j++) {
-                let tableCell: TableCellWidget = row.childWidgets[j] as TableCellWidget;
-                this.splitSpannedRows(table, i, tableCell, insertedCells);
-            }
-        }
         for (let i: number = table.childWidgets.length - 1; i >= 0; i--) {
             let row: TableRowWidget = table.childWidgets[i] as TableRowWidget;
             let canRemoveRow: boolean = false;
@@ -17401,10 +17315,6 @@ export class Editor {
                 this.updateNextBlocksIndex(rowToRemove, false);
                 table.childWidgets.splice(i, 1);
             }
-        }
-        if (insertedCells.length > 0) {
-            this.updateTableCellIndex(table);
-            this.mergeSpannedCells(table, insertedCells);
         }
         //Layouts the table after delete cells.
         selection.owner.isLayoutEnabled = true;

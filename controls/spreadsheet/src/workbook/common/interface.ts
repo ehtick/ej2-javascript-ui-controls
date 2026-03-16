@@ -1286,6 +1286,7 @@ export interface ExtendedChartModel extends ChartModel {
     enableCanvas?: boolean;
     skipDateInterpolation?: boolean;
     address?: number[];
+    series?: { range: string, name?: string, category?: string }[];
 }
 
 /** @hidden */

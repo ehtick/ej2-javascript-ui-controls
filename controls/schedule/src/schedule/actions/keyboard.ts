@@ -1098,7 +1098,7 @@ export class KeyboardInteraction {
         let activeEle: Element = document.activeElement;
         if (this.parent.currentView === 'MonthAgenda' || (!isNullOrUndefined(activeEle) && closest(activeEle, '.' + cls.POPUP_WRAPPER_CLASS))) {
             const selectedEle: HTMLElement[] = this.parent.eventBase.getSelectedEvents().element as HTMLElement[];
-            activeEle = <Element>((selectedEle && isNullOrUndefined(selectedEle.length)) ? selectedEle : selectedEle[0]);
+            activeEle = <Element>((selectedEle && selectedEle.length > 0) ? selectedEle[0] : selectedEle);
         }
         if (activeEle && activeEle.classList.contains(cls.APPOINTMENT_CLASS)) {
             addClass([activeEle], cls.APPOINTMENT_BORDER);

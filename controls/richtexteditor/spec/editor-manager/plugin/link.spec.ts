@@ -1325,7 +1325,7 @@ describe('Link testing', ()=>{
             dataTransfer.setData('text/html', clipboardData);
             const pasteEvent: ClipboardEvent = new ClipboardEvent('paste', { clipboardData: dataTransfer } as ClipboardEventInit);
             editorObj.onPaste(pasteEvent);
-            expect(editorObj.inputElement.innerHTML).toContain('<a href="https://example.com/" target="" aria-label=""><img id="image-content" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" alt="Sample Image" class="e-rte-image e-imginline"></a>');
+            expect(editorObj.inputElement.innerHTML).toContain('<a href="https://example.com/" target="" aria-label=""><img id="image-content" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" alt="Sample Image" class="e-rte-image e-img-inline"></a>');
             done();
         });
     });

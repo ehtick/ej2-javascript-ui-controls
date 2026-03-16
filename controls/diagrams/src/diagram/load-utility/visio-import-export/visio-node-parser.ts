@@ -1,359 +1,544 @@
 import { VisioNodeAnnotation } from './visio-annotations';
 import { getCellValue, isConnectorShape } from './visio-connectors';
-import { findAllGeometries, getMasterId, inchToPx, isGroupShape, isValidMasterId, mapCellValues, toCamelCase } from './visio-core';
+import { applyParentTransformToCellMap, ensureArray, getCellMap, getNumberFromCellMap, inchToPx, isGroupShape, mapCellValues, mergeCellMaps, toCamelCase } from './visio-core';
 import { ParsingContext } from './visio-import-export';
-import { getVisioPorts, parseVisioNodeShadow, parseVisioNodeStyle, setDefaultData } from './visio-model-parsers';
-import { VisioLayer, VisioMaster, VisioShape } from './visio-models';
-import { determineShapeType, shapeIndex } from './visio-nodes';
+import { getVisioPorts, parseVisioNodeShadow, parseVisioNodeStyle } from './visio-model-parsers';
+import { VisioLayer, VisioNodeStyle, VisioShape } from './visio-models';
+import { allGeometrySectionsNoFill, allGeometrySectionsNoLine, areAllGeometrySectionsHidden, determineDefaultNodeShape, mergeGeometrySectionsByIndex, resolveMasterSourceForNode, resolveShapeNameForMapping, tryDetermineSemanticGroupShape } from './visio-nodes';
 import {
     CellMapValue,
-    VisioMedia,
     VisioPort,
     VisioShapeNode,
     VisioSection,
     ShapeAttributes,
     VisioCell,
     OneOrMany,
-    VisioRow,
     StyleEntry,
-    DefaultShapeData,
-    GeometryDataObject,
     ApplyCommonNodePropertiesArgs,
-    Attributes,
-    AugmentedGeometry
+    DetermineShapeResult,
+    GroupTransform,
+    DefaultShapeData,
+    VisioMedia,
+    ParsedXmlObject,
+    ForeignDataBlock,
+    XmlStringMap
 } from './visio-types';
 
 /**
- * Main parser function for converting raw Visio shape XML objects into VisioShape instances.
- * This is the entry point for shape parsing and handles multiple shape types:
- * - Master-based shapes (shapes that reference master definitions)
- * - Group shapes (containers with child shapes)
- * - Raw/primitive shapes (without masters)
- * - Foreign/Image shapes (embedded media)
- * - Draw shapes (path-based shapes)
+ * Parses Visio shape elements into EJ2 diagram shapes.
+ * Iterates through shape nodes, delegates parsing to `parserVisioShapeNode`,
+ * and collects the resulting VisioShape objects.
  *
- * The function processes shape hierarchies and establishes parent-child relationships
- * for grouped shapes while handling coordinate system conversions and styling.
- *
- * @param {VisioShapesContainer} obj - The raw parsed XML object containing Shape elements.
- * @param {ParsingContext} context - Parser utilities and state including current page, masters, themes.
- * @returns {VisioShape[]} An array of parsed VisioShape objects ready for diagram rendering.
- *
- * @example
- * const shapes = parserVisioShape(rawXmlObj, context);
- * shapes.forEach(shape => {
- *     console.log(`Shape: ${shape.id} at (${shape.offsetX}, ${shape.offsetY})`);
- * });
- *
- * @private
+ * @param {object} shapeObj - Input object containing shape nodes
+ * @param {OneOrMany<VisioShapeNode>} [shapeObj.Shape] - Shape node(s) to parse
+ * @param {ParsingContext} context - Parsing context with master index
+ * @returns {VisioShape[]} Array of parsed VisioShape objects
  */
 export function parserVisioShape(
-    obj: { Shape?: OneOrMany<VisioShapeNode> },
+    shapeObj: { Shape?: OneOrMany<VisioShapeNode> },
     context: ParsingContext
 ): VisioShape[] {
-    // ==================== Extract Shape Elements ====================
-    // Get the Shape property from the object (may be single or array)
-    const shapeElements: OneOrMany<VisioShapeNode> | undefined = obj.Shape;
+    const shapeElements: OneOrMany<VisioShapeNode> | undefined = shapeObj && shapeObj.Shape ? shapeObj.Shape : undefined;
+    const visioShapes: VisioShapeNode[] = shapeElements
+        ? (Array.isArray(shapeElements) ? shapeElements : [shapeElements])
+        : [];
 
-    // Determine if we have a single raw shape (not an array)
-    const rawShape: boolean = shapeElements && !Array.isArray(shapeElements) && typeof shapeElements === 'object';
+    const result: VisioShape[] = [];
+    for (let i: number = 0; i < visioShapes.length; i++) {
+        const visioShape: VisioShapeNode = visioShapes[parseInt(i.toString(), 10)];
+        if (!visioShape || !(visioShape as VisioShapeNode).$) {
+            continue;
+        }
+        const parsedShapes: VisioShape[] = parserVisioShapeNode(visioShape, context);
+        if (parsedShapes && parsedShapes.length > 0) {
+            for (let k: number = 0; k < parsedShapes.length; k++) {
+                result.push(parsedShapes[parseInt(k.toString(), 10)]);
+            }
+        }
+    }
+    return result;
+}
+
+/**
+ * Routes parsing of a Visio shape node.
+ * Decides whether the node is a connector, group, or vertex shape
+ * and delegates to the appropriate parser.
+ *
+ * @param {VisioShapeNode} pageNode - Shape node to parse
+ * @param {ParsingContext} context - Parsing context with master index
+ * @param {string} [parentMasterId] - Optional parent master ID for nested shapes
+ * @param {GroupTransform} [parentTx] - Optional parent transform for child positioning
+ * @returns {VisioShape[]} Parsed Visio shapes
+ */
+function parserVisioShapeNode(
+    pageNode: VisioShapeNode,
+    context: ParsingContext,
+    parentMasterId?: string,
+    parentTx?: GroupTransform
+): VisioShape[] {
+    if (!pageNode || !(pageNode as VisioShapeNode).$) {
+        return [];
+    }
+    if (isConnectorShape(pageNode, context)) {
+        return [];
+    }
+
+    if (isGroupShape(pageNode)) {
+        return parseGroupShape(pageNode, context, parentMasterId, parentTx);
+    }
+    return parseVertexShape(pageNode, context, parentMasterId, parentTx);
+}
+
+/**
+ * Parses a Visio group shape node.
+ * Builds merged cell maps, resolves master references, applies transforms,
+ * constructs default data, and recursively parses child shapes.
+ * If the group maps to a supported semantic EJ2 type (BPMN/UML/Image),
+ * returns it directly as a single node.
+ *
+ * @param {VisioShapeNode} groupNode - Group shape node to parse
+ * @param {ParsingContext} context - Parsing context with master index
+ * @param {string} [parentMasterId] - Optional parent master ID for nested groups
+ * @param {GroupTransform} [parentTx] - Optional parent transform for child positioning
+ * @returns {VisioShape[]} Parsed group shape(s) including children
+ */
+function parseGroupShape(
+    groupNode: VisioShapeNode,
+    context: ParsingContext,
+    parentMasterId?: string,
+    parentTx?: GroupTransform
+): VisioShape[] {
     const resultShapes: VisioShape[] = [];
 
-    // ==================== Process Raw/Primitive Shapes ====================
-    // Handle shapes defined locally without referencing a master
-    if (rawShape && !Array.isArray(shapeElements)) {
-        const singleShape: VisioShapeNode = shapeElements;
-        // Check if this is a raw shape definition (has NameU/Type but no Master reference)
-        if (singleShape.$ &&
-            (singleShape.$.NameU || singleShape.$.Type) &&
-            !singleShape.$.Master) {
+    // Extract group attributes
+    const groupAttributes: ShapeAttributes | undefined = (groupNode as VisioShapeNode).$ ? (groupNode as VisioShapeNode).$ : undefined;
+    // Keep owning master id for nested groups that only have MasterShape.
+    let groupMasterId: string = '';
+    if (groupAttributes && groupAttributes.Master != null) {
+        groupMasterId = String(groupAttributes.Master);
+    } else if (parentMasterId && parentMasterId.length > 0) {
+        groupMasterId = String(parentMasterId);
+    }
 
-            const shapeData: VisioShapeNode = singleShape;
-            const cells: VisioCell[] = Array.isArray(shapeData.Cell)
-                ? shapeData.Cell
-                : [shapeData.Cell];
+    // Get group's cell map (instance cells)
+    const groupInstanceCellMap: Map<string, CellMapValue> = getCellMap(groupNode);
 
-            // ==================== Extract Cell Properties ====================
-            // Convert cell array to Map for efficient lookup
-            const cellMap: Map<string, CellMapValue> = mapCellValues(cells);
+    // Resolve master and merge cells (master as base, instance overrides)
+    const groupMasterNode: VisioShapeNode | null = resolveMasterSourceForNode(groupNode, context, parentMasterId);
+    let groupMergedCellMap: Map<string, CellMapValue> = groupMasterNode
+        ? mergeCellMaps(getCellMap(groupMasterNode), groupInstanceCellMap)
+        : groupInstanceCellMap;
 
-            // Extract geometry and dimension properties
-            const defaultWidth: number = Number(cellMap.get('Width'));
-            const defaultHeight: number = Number(cellMap.get('Height'));
-            const defaultLocX: number = cellMap.get('LocPinX') as number;
-            const defaultLocY: number = cellMap.get('LocPinY') as number;
-            const defaultBeginX: string = cellMap.get('BeginX') as string;
-            const defaultBeginY: string = cellMap.get('BeginY') as string;
-            const defaultEndX: string = cellMap.get('EndX') as string;
-            const defaultEndY: string = cellMap.get('EndY') as string;
-            const bgColor: string = cellMap.get('FillForegnd') as string;
+    // Build default data for group from merged cells (use buildDefaultDataFromMerged for consistency)
+    const groupDefaultData: DefaultShapeData = buildDefaultDataFromMerged(
+        groupMergedCellMap,
+        groupMasterNode || groupNode,
+        groupNode,
+        context,
+        parentMasterId
+    );
 
-            // Extract text positioning and sizing properties
-            const txtWidth: number = Number(cellMap.get('TxtWidth'));
-            const txtHeight: number = Number(cellMap.get('TxtHeight'));
-            const txtPinX: number = Number(cellMap.get('TxtPinX'));
-            const txtPinY: number = Number(cellMap.get('TxtPinY'));
-            const txtLocalPinX: number = Number(cellMap.get('TxtLocPinX'));
-            const txtLocalPinY: number = Number(cellMap.get('TxtLocPinY'));
+    // If inside a group, convert local PinX/PinY to page PinX/PinY
+    if (parentTx) {
+        groupMergedCellMap = applyParentTransformToCellMap(groupMergedCellMap, parentTx);
+    }
 
-            // ==================== Extract Theme Style Properties ====================
-            // Quick style cells control theme-based coloring and effects
-            const QuickStyleLineColor: number = cellMap.get('QuickStyleLineColor') as number;
-            const QuickStyleFillColor: number = cellMap.get('QuickStyleFillColor') as number;
-            const QuickStyleShadowColor: number = cellMap.get('QuickStyleShadowColor') as number;
-            const QuickStyleFontColor: number = cellMap.get('QuickStyleFontColor') as number;
-            const QuickStyleLineMatrix: number = cellMap.get('QuickStyleLineMatrix') as number;
-            const QuickStyleFillMatrix: number = cellMap.get('QuickStyleFillMatrix') as number;
-            const QuickStyleEffectsMatrix: number = cellMap.get('QuickStyleEffectsMatrix') as number;
-            const QuickStyleFontMatrix: number = cellMap.get('QuickStyleFontMatrix') as number;
+    const parentTransform: GroupTransform = {
+        pinX: getNumberFromCellMap(groupMergedCellMap, 'PinX', 0),
+        pinY: getNumberFromCellMap(groupMergedCellMap, 'PinY', 0),
+        locPinX: getNumberFromCellMap(groupMergedCellMap, 'LocPinX', Number(groupDefaultData.LocPinX)),
+        locPinY: getNumberFromCellMap(groupMergedCellMap, 'LocPinY', Number(groupDefaultData.LocPinY)),
+        angle: getNumberFromCellMap(groupMergedCellMap, 'Angle', 0),
+        flipX: getNumberFromCellMap(groupMergedCellMap, 'FlipX', 0),
+        flipY: getNumberFromCellMap(groupMergedCellMap, 'FlipY', 0),
+        width: getNumberFromCellMap(groupMergedCellMap, 'Width', Number(groupDefaultData.Width)),
+        height: getNumberFromCellMap(groupMergedCellMap, 'Height', Number(groupDefaultData.Height))
+    };
 
-            // ==================== Build Geometry Object ====================
-            // Get master data if available (for fallback values)
-            const master: VisioMaster = context.data.masters[shapeIndex.value];
+    // -------------------- Semantic group shortcut (BPMN/UML/Image master groups) --------------------
+    // Create the group shape early so determineShapeType can set Node flags (e.g., AllowDrop for BPMN subprocess)
+    const groupShape: VisioShape = new VisioShape();
+    const pageHeightPixels: number = inchToPx(context.data.currentPage.pageHeight);
+    const groupSections: VisioSection[] = (groupNode as VisioShapeNode).Section ? ensureArray((groupNode as VisioShapeNode).Section) : [];
+    const groupPinYExists: boolean = groupMergedCellMap.has('PinY');
+    const groupGeometryCellMap: Map<string, CellMapValue> = getGeometryCells(groupSections, mapCellValues);
 
-            // Extract connection points (ports) for this shape
-            const connections: VisioPort[] = getVisioPorts(shapeData, undefined, defaultWidth, defaultHeight);
+    groupShape.id = (groupAttributes && (groupAttributes as ShapeAttributes).ID != null)
+        ? String((groupAttributes as ShapeAttributes).ID)
+        : ('group_' + Math.random().toString(36).slice(2));
 
-            // Build normalized geometry object with all properties
-            const Geometry: any = {
-                N: 'Geometry',
-                Row: undefined,
-                Width: defaultWidth,
-                Height: defaultHeight,
-                LocPinX: defaultLocX,
-                LocPinY: defaultLocY,
-                beginX: defaultBeginX,
-                beginY: defaultBeginY,
-                endX: defaultEndX,
-                endY: defaultEndY,
-                masterID: master ? master.id : undefined,
-                shapeName: master ? master.name : undefined,
-                shapeType: master ? master.shapeType : undefined,
-                ports: connections,
-                fillColor: bgColor,
-                shapeStyle: undefined,
-                txtWidth: txtWidth,
-                txtHeight: txtHeight,
-                txtPinX: txtPinX,
-                txtPinY: txtPinY,
-                txtLocalPinX: txtLocalPinX,
-                txtLocalPinY: txtLocalPinY,
-                QuickStyleLineColor: QuickStyleLineColor,
-                QuickStyleFillColor: QuickStyleFillColor,
-                QuickStyleShadowColor: QuickStyleShadowColor,
-                QuickStyleFontColor: QuickStyleFontColor,
-                QuickStyleLineMatrix: QuickStyleLineMatrix,
-                QuickStyleFillMatrix: QuickStyleFillMatrix,
-                QuickStyleEffectsMatrix: QuickStyleEffectsMatrix,
-                QuickStyleFontMatrix: QuickStyleFontMatrix
-            };
+    applyCommonNodeProperties(groupShape, {
+        cellMap: groupMergedCellMap,
+        attributes: groupAttributes as ShapeAttributes,
+        defaultData: groupDefaultData,
+        pageHeight: pageHeightPixels,
+        pinYExists: groupPinYExists,
+        context: context,
+        getcell: groupGeometryCellMap,
+        shapeData: groupNode,
+        masterSource: groupMasterNode
+    });
 
-            // ==================== Extract Geometry Rows ====================
-            // Find all geometry sections defining the shape's path/outline
-            const geometry: AugmentedGeometry[] = findAllGeometries(shapeData);
-            Geometry.Row = geometry;
+    assignShapeLayer(groupShape, groupMergedCellMap, context);
 
-            // ==================== Extract Default Styles ====================
-            // Find default styling properties for this shape type
-            const defaultStyle: StyleEntry[] | undefined = findAllDefaultStyles(shapeData);
-            if (defaultStyle) {
-                Geometry.shapeStyle = defaultStyle;
-            }
+    // If this master group maps to a supported semantic EJ2 shape, return it as a single node and skip children.
+    const semanticShape: DetermineShapeResult | null = tryDetermineSemanticGroupShape(
+        groupNode,
+        groupMasterNode,
+        groupShape,
+        context,
+        parentMasterId
+    );
 
-            // Store geometry data for later shape instance processing
-            context.data.shapes.push(Geometry);
-            shapeIndex.value++;
+    if (semanticShape) {
+        (groupShape as VisioShape).shape = semanticShape;
+        resultShapes.push(groupShape);
+        return resultShapes;
+    }
+
+    // Parse child shapes and pass down the group's master ID for proper child master resolution
+    const childShapeIds: string[] = [];
+
+    // Detect geometry sections on the group itself (prefer master sections, supplement with instance-only)
+    let groupGeomSections: VisioSection[] = [];
+    if (groupMasterNode) {
+        groupGeomSections = mergeGeometrySectionsByIndex(groupMasterNode, groupNode); // master-preferred merge
+    } else {
+        const secsOnly: VisioSection[] = ensureArray((groupNode as VisioShapeNode).Section);
+        for (const sec of secsOnly) {
+            if (sec && sec.$ && sec.$.N === 'Geometry') { groupGeomSections.push(sec); }
         }
     }
 
-    // ==================== Process Master-Based and Group Shapes ====================
-    // Normalize shapes array (handle single shape vs. array)
-    const rawShapes: VisioShapeNode[] = Array.isArray(shapeElements)
-        ? shapeElements
-        : (shapeElements &&
-           typeof shapeElements === 'object' &&
-           shapeElements.$ &&
-           (shapeElements.$.Master || isGroupShape(shapeElements) || shapeElements.$.Type === 'Foreign')) ||
-           context.data.masters.length === 0
-            ? [shapeElements as VisioShapeNode]
-            : [];
-
-    if (rawShapes) {
-        rawShapes.forEach(async (shapeObj: any) => {
-            // ==================== Process Master Shapes and Groups ====================
-            if (shapeObj.$.Master || isGroupShape(shapeObj)) {
-                const shapeData: VisioShapeNode = shapeObj;
-                const attributes: ShapeAttributes = shapeData.$;
-                const cells: VisioCell[] = Array.isArray(shapeData.Cell)
-                    ? shapeData.Cell
-                    : [shapeData.Cell];
-                const section: VisioSection[] = shapeData.Section
-                    ? (Array.isArray(shapeData.Section) ? shapeData.Section : [shapeData.Section])
-                    : [];
-
-                // ==================== Calculate Page-Related Values ====================
-                // Convert page height from inches to pixels for coordinate transformation
-                const pageHeight: number = inchToPx(context.data.currentPage.pageHeight);
-
-                // Map cells for efficient property lookup
-                const cellMap: Map<string, CellMapValue> = mapCellValues(cells);
-                const pinYExists: boolean = cellMap.has('PinY');
-
-                // Extract geometry-level cells (for properties like NoShow)
-                const getcell: Map<string, CellMapValue> = getGeometryCells(section, mapCellValues);
-
-                // ==================== Handle Group Shapes ====================
-                // Groups are containers with child shapes
-                if (isGroupShape(shapeObj) && !(shapeObj.$.Master != null)) {
-                    processImmediateSubShapes(shapeObj, context, resultShapes);
-                } else {
-                    // ==================== Handle Master-Based Shapes ====================
-                    const masterId: string = getMasterId(shapeObj);
-
-                    // Skip if this is a connector (handled separately)
-                    if (!isConnectorShape(shapeObj, context)) {
-                        const shape: VisioShape = new VisioShape();
-
-                        // ==================== Set Basic Properties ====================
-                        shape.id = attributes.ID;
-                        shape.masterId = attributes.Master;
-                        shape.name = attributes.NameU;
-                        shape.type = attributes.Type != null ? attributes.Type : 'Shape';
-
-                        // ==================== Handle Special Shape Types ====================
-                        // 'Solid' shapes are typically background shapes with simple fill
-                        if (shape.name === 'Solid') {
-                            shape.fillColor = String(cellMap.get('FillForegnd') || 'transParent');
-                        } else {
-                            // Get default properties from the master
-                            const defaultData: DefaultShapeData = setDefaultData(
-                                context.data.shapes as unknown as GeometryDataObject[],
-                                attributes
-                            );
-
-                            // Apply all common shape properties (position, size, style, etc.)
-                            applyCommonNodeProperties(shape, {
-                                cellMap,
-                                attributes,
-                                defaultData,
-                                pageHeight,
-                                pinYExists,
-                                context,
-                                getcell,
-                                shapeData
-                            });
-
-                            // Assign shape to its layer
-                            assignShapeLayer(shape, cellMap, context);
-                        }
-
-                        resultShapes.push(shape);
-                    }
-                }
-            }
-            // ==================== Process Raw/Path/Image Shapes ====================
-            else if (shapeObj.$ && (shapeObj.$.Type !== 'Guide' || (shapeObj as any).$.Type === 'Foreign')) {
-                const drawshapeData: VisioShapeNode = shapeObj;
-                const attributes: ShapeAttributes = drawshapeData.$ || {} as ShapeAttributes;
-                const cells: VisioCell[] = Array.isArray(drawshapeData.Cell)
-                    ? drawshapeData.Cell
-                    : [drawshapeData.Cell];
-                const section: VisioSection[] = drawshapeData.Section
-                    ? (Array.isArray(drawshapeData.Section) ? drawshapeData.Section : [drawshapeData.Section])
-                    : [];
-
-                // ==================== Extract Position and Dimensions ====================
-                const pageHeight: number = inchToPx(context.data.currentPage.pageHeight);
-                const cellMap: Map<string, CellMapValue> = mapCellValues(cells);
-
-                const drawshape: VisioShape = new VisioShape();
-
-                // ==================== Calculate Y Position ====================
-                // Visio uses bottom-left origin; we invert Y coordinate based on page height
-                const drawpinY: number = cellMap.get('PinY') != null ? Number(cellMap.get('PinY')) : 0;
-                const pinYValue: number = inchToPx(drawpinY);
-                drawshape.offsetY = drawpinY ? pageHeight - pinYValue : 0;
-
-                // ==================== Set Position and Dimensions ====================
-                drawshape.id = attributes.ID;
-                drawshape.offsetX = cellMap.get('PinX') != null ? Number(cellMap.get('PinX')) : 0;
-                drawshape.width = cellMap.get('Width') != null ? Number(cellMap.get('Width')) : 1;
-                drawshape.height = cellMap.get('Height') != null ? Number(cellMap.get('Height')) : 1;
-
-                // ==================== Set Pivot Points (rotation center) ====================
-                drawshape.pivotX = cellMap.get('LocPinX') != null ? cellMap.get('LocPinX') as number : 0.5;
-                drawshape.pivotY = cellMap.get('LocPinY') != null ? cellMap.get('LocPinY') as number : 0.5;
-
-                // ==================== Set Transformations ====================
-                drawshape.flipX = cellMap.get('FlipX') != null ? Number(cellMap.get('FlipX')) : 0;
-                drawshape.flipY = cellMap.get('FlipY') != null ? Number(cellMap.get('FlipY')) : 0;
-                drawshape.rotateAngle = cellMap.get('Angle') != null ? cellMap.get('Angle') as number : 0;
-                drawshape.cornerRadius = cellMap.get('Rounding') != null ? cellMap.get('Rounding') as number : 0;
-
-                // ==================== Determine Shape Type and Extract Geometry ====================
-                attributes.Name = attributes.Type === 'Foreign' ? 'Image' : 'Path';
-                const attributeName: string = attributes.Name;
-
-                // Extract connection points for this shape
-                const shapePorts: VisioPort[] = getVisioPorts(drawshape as any, undefined, drawshape.width, drawshape.height);
-
-                // Find geometry section containing path/shape definition
-                const geometrySection: VisioSection[] = section.filter((sec: any) => sec && sec.$ && sec.$.N === 'Geometry');
-                attributes.Row = geometrySection ? geometrySection[0].Row : undefined;
-
-                // ==================== Build Default Data ====================
-                const defaultData: any = {
-                    Width: drawshape.width,
-                    Height: drawshape.height,
-                    Name: attributeName,
-                    pinY: drawpinY,
-                    pinX: drawshape.offsetX
-                };
-                defaultData.Ports = mergePorts(undefined, shapePorts);
-
-                const merged: Attributes = {
-                    ...defaultData,
-                    ...attributes
-                };
-
-                // ==================== Handle Image/Foreign Shapes ====================
-                if (attributeName === 'Image') {
-                    const ForeignData: any = drawshapeData.ForeignData;
-                    drawshape.type = ForeignData.$.CompressionType;
-                    drawshape.foreignType = ForeignData.$.ForeignType;
-                    drawshape.imageId = ForeignData.Rel.$['r:id'];
-                }
-
-                // ==================== Extract Visibility from Geometry ====================
-                if (geometrySection && geometrySection[0].Cell) {
-                    const geometryCellMap: Map<string, CellMapValue> = mapCellValues(geometrySection[0].Cell);
-                    drawshape.visibility = geometryCellMap.get('NoShow') ? geometryCellMap.get('NoShow') === '1' : false;
-                }
-
-                // ==================== Set Final Properties ====================
-                drawshape.pinY = drawpinY;
-                drawshape.shape = determineShapeType(merged, undefined, undefined, undefined, context);
-                drawshape.style = parseVisioNodeStyle(drawshapeData, context, undefined, attributeName);
-                drawshape.annotation = VisioNodeAnnotation.fromJs(drawshapeData, defaultData);
-                drawshape.constraints = applyConstraints(drawshape, cellMap);
-                drawshape.shadow = parseVisioNodeShadow(cellMap, context);
-                drawshape.ports = defaultData.Ports || [];
-
-                // ==================== Attach Media Data for Images ====================
-                if (drawshape.shape && drawshape.shape.type === 'Image' && drawshape.imageId) {
-                    const media: VisioMedia = context.data.medias[drawshape.imageId];
-                    if (media && media.dataUrl) {
-                        drawshape.shape.source = media.dataUrl;
-                    }
-                }
-
-                assignShapeLayer(drawshape, cellMap, context);
-                resultShapes.push(drawshape);
-            }
-        });
+    // Build a visual child node representing this group's own Geometry section (if available)
+    const groupGeometryNode: VisioShape | null = createGroupGeometryStandaloneNodeIfAny(
+        groupNode,
+        groupMasterNode,
+        groupShape,
+        groupAttributes,
+        groupSections,
+        groupMergedCellMap,
+        groupDefaultData,
+        groupPinYExists,
+        groupGeomSections,
+        context,
+        parentMasterId
+    );
+    if (groupGeometryNode) {
+        resultShapes.push(groupGeometryNode);
+        childShapeIds.push(groupGeometryNode.id);
     }
 
+    const childShapesContainer: VisioShapeNode['Shapes'] = (groupNode as VisioShapeNode).Shapes;
+    if (childShapesContainer && (childShapesContainer as  VisioShapeNode['Shapes']).Shape) {
+        const childShapeNodeArray: VisioShapeNode[] = ensureArray((childShapesContainer as  VisioShapeNode['Shapes']).Shape);
+
+        for (let childIndex: number = 0; childIndex < childShapeNodeArray.length; childIndex++) {
+            const childShapeNode: VisioShapeNode = childShapeNodeArray[parseInt(childIndex.toString(), 10)];
+
+            // Record connector child IDs so EJ2 group 'children' includes them
+            if (isConnectorShape(childShapeNode, context)) {
+                let connectorChildId: string = '';
+                if (childShapeNode && childShapeNode.$ && childShapeNode.$.ID != null) {
+                    connectorChildId = String(childShapeNode.$.ID);
+                }
+                if (connectorChildId && connectorChildId.length > 0) {
+                    childShapeIds.push(connectorChildId);
+                }
+                // Connectors themselves are parsed in the connector pass; so do not parse here
+            }
+
+            // IMPORTANT: Pass groupMasterId so child can resolve MasterShape references within parent master
+            const parsedChildShapes: VisioShape[] = parserVisioShapeNode(
+                childShapeNode,
+                context,
+                groupMasterId,  // Pass parent master ID for child shape resolution
+                parentTransform
+            );
+            const currentGroupId: string = (groupAttributes && groupAttributes.ID != null) ? String(groupAttributes.ID) : 'group';
+            let childIsGroup: boolean = false;
+            if (childShapeNode && childShapeNode.$ && childShapeNode.$.Type != null) {
+                childIsGroup = String(childShapeNode.$.Type).toLowerCase() === 'group';
+            }
+            const childRootId: string = (childShapeNode && childShapeNode.$ && childShapeNode.$.ID != null) ? String(childShapeNode.$.ID) : '';
+
+            // Collect all child shapes and track their IDs
+            for (let shapeIndex: number = 0; shapeIndex < parsedChildShapes.length; shapeIndex++) {
+                const childShape: VisioShape = parsedChildShapes[parseInt(shapeIndex.toString(), 10)];
+                resultShapes.push(childShape);
+
+                if (childShape && childShape.id) {
+                    // Only set parent on the immediate child wrapper; keep grandchildren under their own group.
+                    if (!childIsGroup) {
+                        childShape.parentId = currentGroupId;
+                    } else if (childRootId && String(childShape.id) === childRootId) {
+                        childShape.parentId = currentGroupId;
+                    }
+                }
+            }
+
+            // Only attach immediate child id to this group to avoid double-grouping.
+            if (!childIsGroup) {
+                if (parsedChildShapes.length > 0 && parsedChildShapes[0] && parsedChildShapes[0].id) {
+                    childShapeIds.push(String(parsedChildShapes[0].id));
+                }
+            } else {
+                if (childRootId) {
+                    childShapeIds.push(childRootId);
+                }
+            }
+        }
+    }
+
+    // Set group ID and apply properties
+    groupShape.id = (groupAttributes && (groupAttributes as ShapeAttributes).ID != null)
+        ? String((groupAttributes as ShapeAttributes).ID)
+        : ('group_' + Math.random().toString(36).slice(2));
+
+    // Link child shapes to group
+    (groupShape as VisioShape).children = childShapeIds;
+    resultShapes.push(groupShape);
+
     return resultShapes;
+}
+
+/**
+ * Parses a Visio vertex (non-group, non-connector) shape node.
+ * Merges master and instance cell maps, applies parent transforms,
+ * builds default data, applies common properties, and determines
+ * the final EJ2 shape representation.
+ *
+ * - Resolves master source for the node (root or child).
+ * - Applies parent transform if inside a group.
+ * - Builds default shape data from merged cells.
+ * - Applies common node properties and assigns layer.
+ * - Merges geometry sections (master-preferred).
+ * - Determines final shape type (semantic or path).
+ * - Attaches image source if applicable.
+ *
+ * @param {VisioShapeNode} pageNode - Shape node to parse
+ * @param {ParsingContext} context - Parsing context with master index and page data
+ * @param {string} [parentMasterId] - Optional parent master ID for nested shapes
+ * @param {GroupTransform} [parentTx] - Optional parent transform for child positioning
+ * @returns {VisioShape[]} Parsed Visio shape(s) for the vertex node
+ */
+function parseVertexShape(
+    pageNode: VisioShapeNode,
+    context: ParsingContext,
+    parentMasterId?: string,
+    parentTx?: GroupTransform
+): VisioShape[] {
+    const out: VisioShape[] = [];
+
+    // Get master source (root or child) if referenced
+    // Use parentMasterId to properly resolve child shapes within parent master definition
+    const masterSource: VisioShapeNode | null = resolveMasterSourceForNode(pageNode, context, parentMasterId);
+    const instMap: Map<string, CellMapValue> = getCellMap(pageNode);
+    let mergedMap: Map<string, CellMapValue> = masterSource
+        ? mergeCellMaps(getCellMap(masterSource), instMap)
+        : instMap;
+
+    // If inside a group, convert local PinX/PinY to page PinX/PinY
+    if (parentTx) {
+        mergedMap = applyParentTransformToCellMap(mergedMap, parentTx);
+    }
+
+    // Build defaultData (master defaults)
+    const nodeDefaultData: DefaultShapeData = buildDefaultDataFromMerged(
+        mergedMap,
+        masterSource ? masterSource : pageNode,
+        pageNode,
+        context,
+        parentMasterId
+    );
+
+    // Shape envelope
+    const attributes: ShapeAttributes | undefined = (pageNode as VisioShapeNode).$ || undefined;
+    const shapeId: string = (attributes && (attributes as ShapeAttributes).ID != null) ? String((attributes as ShapeAttributes).ID) : ('s_' + Math.random().toString(36).slice(2));
+
+    // Build ShapeAttributes
+    const shapeAttributes: ShapeAttributes = {
+        ID: shapeId,
+        Master: attributes.Master,
+        MasterID: attributes.MasterID,
+        MasterId: attributes.MasterId,
+        NameU: attributes.NameU,
+        Name: attributes.Name,
+        Type: attributes.Type
+    };
+    const pageHeightPx: number = inchToPx(context.data.currentPage.pageHeight);
+    const pinYExists: boolean = mergedMap.has('PinY');
+
+    // Geometry cells map
+    const pageSecs: VisioSection[] = ensureArray((pageNode as VisioShapeNode).Section);
+    let geoCellMap: Map<string, CellMapValue> = getGeometryCells(pageSecs, mapCellValues);
+    if (geoCellMap.size === 0 && masterSource) {
+        const masterSecs: VisioSection[] = ensureArray((masterSource as VisioShapeNode).Section);
+        geoCellMap = getGeometryCells(masterSecs, mapCellValues);
+    }
+
+    const node: VisioShape = new VisioShape();
+    node.id = shapeId;
+
+    // ==================== Handle Special Shape Type: Solid ====================
+    // Solid shapes are background/fill-only shapes with minimal properties
+    if (shapeAttributes.Name === 'Solid') {
+        node.name = shapeAttributes.Name;
+        node.fillColor = mergedMap.get('FillForegnd') ? String(mergedMap.get('FillForegnd')) : 'transparent';
+    } else {
+        // ==================== Apply Common Properties for Regular Shapes ====================
+        applyCommonNodeProperties(node, {
+            cellMap: mergedMap,
+            attributes: shapeAttributes,
+            defaultData: nodeDefaultData,
+            pageHeight: pageHeightPx,
+            pinYExists: pinYExists,
+            context: context,
+            getcell: geoCellMap,
+            shapeData: pageNode,
+            masterSource: masterSource
+        });
+
+        assignShapeLayer(node, mergedMap, context);
+    }
+
+    // Geometry for THIS node
+    let geomSections: VisioSection[] = [];
+    if (masterSource) {
+        const mergedSections: VisioSection[] = mergeGeometrySectionsByIndex(masterSource, pageNode);
+        geomSections = mergedSections;
+    } else {
+        const secsOnly: VisioSection[] = ensureArray((pageNode as VisioShapeNode).Section);
+        for (const section of secsOnly) {
+            if (section && section.$ && section.$.N === 'Geometry') {
+                geomSections.push(section);
+            }
+        }
+    }
+
+    // Hide node only if all geometry sections are marked NoShow=1
+    const hideAllSections: boolean = areAllGeometrySectionsHidden(geomSections);
+    if (hideAllSections) {
+        node.visibility = true; // internal flag meaning "invisible" in your pipeline
+    } else {
+        node.visibility = false;
+    }
+
+    // Determine final node shape
+    const finalShape: DetermineShapeResult = determineDefaultNodeShape(
+        pageNode,
+        masterSource,
+        geomSections,
+        node,
+        context,
+        parentMasterId
+    );
+    node.shape = finalShape;
+
+    const isStrokeOnlyNode: boolean = allGeometrySectionsNoFill(geomSections) && !allGeometrySectionsNoLine(geomSections);
+
+    // ---- Enforce geometry-driven fill/line semantics (stroke-only paths) ----
+    if (isStrokeOnlyNode && node && (node as VisioShape).shape && ((node as VisioShape).shape).type === 'Path') {
+        node.style.fillColor = 'transparent';
+        (node.style as VisioNodeStyle).opacity = 0;
+    }
+    // If geometry says no line, also honor it robustly (avoid accidental strokes)
+    if (allGeometrySectionsNoLine(geomSections)) {
+        (node.style as VisioNodeStyle).strokeColor = 'transparent';
+        (node.style as VisioNodeStyle).strokeWidth = 0;
+    }
+
+    // Attach Image source of image nodes
+    if (node.shape && node.shape.type === 'Image' && node.imageId) {
+        const mediaObj: VisioMedia | undefined = context.data.medias[node.imageId];
+        if (mediaObj && mediaObj.dataUrl) {
+            node.shape.source = mediaObj.dataUrl;
+        }
+    }
+
+    out.push(node);
+    return out;
+}
+
+/**
+ * Creates a standalone visual child node from the group's own Geometry section.
+ * Used when the group shape itself has Geometry rows that must render as a
+ * separate child node. Returns the generated VisioShape or null if the group
+ * has no Geometry sections.
+ *
+ * This helper reuses common property application, resolves geometry-level
+ * cells, assigns layer membership, determines the final node shape, and
+ * attaches the new node as a visual child of the main group shape.
+ *
+ * @param {VisioShapeNode} groupNode - The XML node representing the group.
+ * @param {VisioShapeNode|null} groupMasterNode - The resolved master node, if any.
+ * @param {VisioShape} groupShape - The main VisioShape instance for the group.
+ * @param {Attributes} groupAttributes - Raw attributes from the group's XML.
+ * @param {VisioSection[]} groupSections - Sections on the group instance.
+ * @param {Map<string, CellMapValue>} groupMergedCellMap - Merged master+instance cell map.
+ * @param {DefaultShapeData} groupDefaultData - Default values extracted from merged cells.
+ * @param {boolean} groupPinYExists - Indicates if PinY is explicitly present on the group.
+ * @param {VisioSection[]} groupGeomSections - Geometry sections belonging to the group.
+ * @param {ParsingContext} context - Global parsing context with master/page metadata.
+ * @param {string} [parentMasterId] - Optional parent master ID for nested groups.
+ * @returns {VisioShape|null} A standalone geometry node or null if no geometry exists.
+ * @private
+ */
+function createGroupGeometryStandaloneNodeIfAny(
+    groupNode: VisioShapeNode,
+    groupMasterNode: VisioShapeNode | null,
+    groupShape: VisioShape,
+    groupAttributes: ShapeAttributes,
+    groupSections: VisioSection[],
+    groupMergedCellMap: Map<string, CellMapValue>,
+    groupDefaultData: DefaultShapeData,
+    groupPinYExists: boolean,
+    groupGeomSections: VisioSection[],
+    context: ParsingContext,
+    parentMasterId?: string
+): VisioShape | null {
+    if (!groupGeomSections || groupGeomSections.length === 0) {
+        return null;
+    }
+
+    // Build a standalone visual node from the group's own geometry; parent it to the group
+    const groupGeometryNode: VisioShape = new VisioShape();
+    groupGeometryNode.id = String(groupShape.id) + '_g'; // derive child id from group id (stable and unique enough)
+
+    // Reuse common property application so offsets/dimensions/layer exactly match the group box
+    const pageHeightPixels: number = inchToPx(context.data.currentPage.pageHeight);
+    const groupGeomCellMap: Map<string, CellMapValue> = getGeometryCells(groupSections, mapCellValues);
+
+    // NOTE: attributes.ID overridden so the child has its own id
+    const geometryAttributes: ShapeAttributes = { ...(groupAttributes as ShapeAttributes), ID: groupGeometryNode.id };
+
+    applyCommonNodeProperties(groupGeometryNode, {
+        cellMap: groupMergedCellMap,           // use group's merged cells (has Width/Height/PinX/PinY)
+        attributes: geometryAttributes,          // child attributes (with new id)
+        defaultData: groupDefaultData,         // same defaults as group
+        pageHeight: pageHeightPixels,
+        pinYExists: groupPinYExists,
+        context: context,
+        getcell: groupGeomCellMap,             // geometry-level flags (NoShow, etc.)
+        shapeData: groupNode,                 // the group's XML (source of geometry rows)
+        masterSource: groupMasterNode
+    });
+    assignShapeLayer(groupGeometryNode, groupMergedCellMap, context); // inherit group's layer
+
+    // Determine final visual for the geometry (usually Path); semantic shortcut already exited above
+    const geomShape: DetermineShapeResult = determineDefaultNodeShape(
+        groupNode,           // page node
+        groupMasterNode,     // master node (if any)
+        groupGeomSections,   // geometry sections collected above
+        groupGeometryNode,            // target VisioShape to populate
+        context,
+        parentMasterId
+    );
+    (groupGeometryNode as VisioShape).shape = geomShape;
+
+    // Parent/children linkage and z-order: geometry first so it renders beneath other children
+    groupGeometryNode.parentId = String(groupShape.id);
+    return groupGeometryNode;
 }
 
 /**
@@ -392,96 +577,182 @@ export function parserVisioShape(
  *
  * @private
  */
-export function applyCommonNodeProperties(
-    shape: any,
+function applyCommonNodeProperties(
+    shape: VisioShape,
     args: ApplyCommonNodePropertiesArgs
 ): void {
     const { cellMap, attributes, defaultData, pageHeight, pinYExists, context, getcell, shapeData } = args;
 
     // ==================== Set Name/Label ====================
-    // Use provided name, fall back to master name, or Image or use generic 'Shape'
-    attributes.Name = (attributes.Type === 'Foreign') ? 'Image' : attributes.Name ? attributes.Name : defaultData.Name ? defaultData.Name : 'Shape';
+    // Use provided name, fall back to master name, or 'Image' for foreign shapes, or generic 'Shape'
+    attributes.Name = (attributes.Type === 'Foreign')
+        ? 'Image'
+        : attributes.Name
+            ? attributes.Name
+            : defaultData.Name
+                ? defaultData.Name
+                : 'Shape';
 
     // ==================== Handle Image/Foreign Shapes ====================
-    if (attributes.Name === 'Image') {
-        const ForeignData: any = args.shapeData.ForeignData;
-        shape.type = ForeignData.$.CompressionType;
-        shape.foreignType = ForeignData.$.ForeignType;
-        shape.imageId = ForeignData.Rel.$['r:id'];
+    // Foreign (image) shapes may store <ForeignData> on the instance or on the master.
+    if (attributes) {
+        let isForeignShape: boolean = false;
+
+        // Detect as Foreign by Type first
+        if (typeof attributes.Type === 'string') {
+            if (attributes.Type === 'Foreign') {
+                isForeignShape = true;
+            }
+        }
+
+        // Also accept normalized name "Image" (some flows rename Foreign -> Image)
+        if (!isForeignShape && typeof attributes.Name === 'string') {
+            if (attributes.Name === 'Image') {
+                isForeignShape = true;
+            }
+        }
+
+        if (isForeignShape) {
+            // Pick the node that actually owns <ForeignData> (instance preferred, then master)
+            let ownerWithForeignData: VisioShapeNode | null = null;
+            if (args && args.shapeData) {
+                const instNode: VisioShapeNode = args.shapeData as VisioShapeNode;
+                if (getForeignDataBlock(instNode)) {
+                    ownerWithForeignData = instNode;
+                }
+            }
+            if (!ownerWithForeignData && args && args.masterSource) {
+                const masterNode: VisioShapeNode = args.masterSource as VisioShapeNode;
+                if (getForeignDataBlock(masterNode)) {
+                    ownerWithForeignData = masterNode;
+                }
+            }
+
+            // Safely extract type metadata and relation id when ForeignData exists
+            if (ownerWithForeignData) {
+                const foreignData: ForeignDataBlock | undefined = getForeignDataBlock(ownerWithForeignData);
+                if (foreignData && foreignData.$ && typeof foreignData.$ === 'object') {
+                    const foreignDataAttrs: XmlStringMap = foreignData.$ as XmlStringMap;
+
+                    // CompressionType -> shape.type (backward compatibility with pipeline)
+                    if (Object.prototype.hasOwnProperty.call(foreignDataAttrs, 'CompressionType')) {
+                        const compressionVal: unknown = foreignDataAttrs['CompressionType'];
+                        if (typeof compressionVal === 'string') {
+                            shape.type = compressionVal;
+                        }
+                    }
+
+                    // ForeignType -> shape.foreignType
+                    if (Object.prototype.hasOwnProperty.call(foreignDataAttrs, 'ForeignType')) {
+                        const foreignType: unknown = foreignDataAttrs['ForeignType'];
+                        if (typeof foreignType === 'string') {
+                            shape.foreignType = foreignType;
+                        }
+                    }
+                }
+
+                // Rel/@r:id (or rId) -> shape.imageId (sanitized)
+                const relId: string = extractRelIdFromForeignData(foreignData);
+                if (relId && relId.length > 0) {
+                    shape.imageId = relId;
+                }
+            }
+        }
     }
 
     // ==================== Extract Default Styling ====================
     // Convert style array to object for easier property access
     const defaultShapeStyle: Record<string, CellMapValue> = shapeStyleToObject(defaultData.shapeStyle);
 
-    // ==================== Extract Height and Connection Points ====================
-    const shapeHeight: number = cellMap.get('Height') ? Number(cellMap.get('Height')) : defaultData.Height;
-
-
     // ==================== Set Position ====================
-    // X position from PinX cell
-    shape.offsetX = cellMap.get('PinX') != null ? Number(cellMap.get('PinX')) : 0;
+    // X position from PinX cell (in inches - converted to pixels in convertVisioShapeToNode)
+    const pinXInches: number = cellMap.get('PinX') != null ? Number(cellMap.get('PinX')) : 0;
+    shape.offsetX = pinXInches;
 
-    // Y position with coordinate system conversion (Visio: bottom-left origin)
-    const pinYValue: number = pinYExists
-        ? inchToPx(Number(cellMap.get('PinY')))
-        : Number(cellMap.get('PinY'));
-    shape.offsetY = pinYExists ? pageHeight - pinYValue : 0;
+    // Y position with coordinate system conversion (Visio: bottom-left origin → EJ2: top-left origin)
+    const pinYInches: number = cellMap.get('PinY') != null ? Number(cellMap.get('PinY')) : 0;
+    const pinYPixels: number = pinYExists ? inchToPx(pinYInches) : pinYInches;
+    shape.offsetY = pinYExists ? pageHeight - pinYPixels : 0;
 
     // ==================== Set Dimensions ====================
+    // Always extract Width and Height directly from THIS shape's cellMap first
     shape.width = cellMap.get('Width') != null
         ? Number(cellMap.get('Width'))
         : (defaultData && defaultData.Width) !== undefined
             ? defaultData.Width
-            : 1;
-
+            : 1;  // Default to 1 inch if not specified
     shape.height = cellMap.get('Height') != null
         ? Number(cellMap.get('Height'))
         : (defaultData && defaultData.Height) !== undefined
             ? defaultData.Height
-            : 1;
+            : 1;  // Default to 1 inch if not specified
+
+    // Extract port coordinates using merged width/height (includes master fallback)
     const shapePorts: VisioPort[] = getVisioPorts(args.shapeData, args.defaultData, shape.width, shape.height);
 
     // Merge ports from both shape instance and master
     defaultData.Ports = mergePorts(defaultData.Ports, shapePorts);
 
     // ==================== Set Pivot Points (Rotation Center) ====================
-    shape.pivotX = cellMap.get('LocPinX') != null ? cellMap.get('LocPinX') : 0.5;
-    shape.pivotY = cellMap.get('LocPinY') != null ? cellMap.get('LocPinY') : 0.5;
+    const locPinXInches: number = cellMap.get('LocPinX') != null ? Number(cellMap.get('LocPinX')) : 0;
+    const locPinYInches: number = cellMap.get('LocPinY') != null ? Number(cellMap.get('LocPinY')) : 0;
+
+    // Pivot points stay in inches - normalized during shape conversion
+    shape.pivotX = locPinXInches;
+    shape.pivotY = locPinYInches;
 
     // ==================== Set Rotation and Corner Radius ====================
-    shape.rotateAngle = cellMap.get('Angle') != null ? cellMap.get('Angle') : 0;
-    shape.cornerRadius = cellMap.get('Rounding') != null ? cellMap.get('Rounding') : defaultShapeStyle.cornerRadius;
+    const rotationAngleDegrees: number = cellMap.get('Angle') != null ? Number(cellMap.get('Angle')) : 0;
+    const cornerRadiusInches: number = cellMap.get('Rounding') != null
+        ? Number(cellMap.get('Rounding'))
+        : (defaultShapeStyle.cornerRadius ? Number(defaultShapeStyle.cornerRadius) : 0);
+
+    shape.rotateAngle = rotationAngleDegrees;
+    shape.cornerRadius = cornerRadiusInches;
 
     // ==================== Store PinY for Reference ====================
-    shape.pinY = pinYValue;
+    shape.pinY = pinYPixels;
 
     // ==================== Set Text Annotation ====================
-    shape.annotation = VisioNodeAnnotation.fromJs(shapeData, (defaultData as any));
+    shape.annotation = VisioNodeAnnotation.fromJs(shapeData, (defaultData as ParsedXmlObject));
 
-    // ==================== Set Quick Style Line Color ====================
-    shape.QuickLineColor = cellMap.get('QuickStyleLineColor') != null ? Number(cellMap.get('QuickStyleLineColor')) :
-        (defaultData && defaultData.QuickStyleLineColor) !== undefined ? Number(defaultData.QuickStyleLineColor) : undefined;
+    // ==================== Set Quick Style Colors ====================
+    shape.QuickLineColor = cellMap.get('QuickStyleLineColor') != null
+        ? Number(cellMap.get('QuickStyleLineColor'))
+        : (defaultData && defaultData.QuickStyleLineColor) !== undefined
+            ? Number(defaultData.QuickStyleLineColor)
+            : undefined;
 
-    // ==================== Set Quick Style Fill Color ====================
-    shape.QuickFillColor = cellMap.get('QuickStyleFillColor') != null ? Number(cellMap.get('QuickStyleFillColor')) :
-        (defaultData && defaultData.QuickStyleFillColor) !== undefined ? Number(defaultData.QuickStyleFillColor) : undefined;
+    shape.QuickFillColor = cellMap.get('QuickStyleFillColor') != null
+        ? Number(cellMap.get('QuickStyleFillColor'))
+        : (defaultData && defaultData.QuickStyleFillColor) !== undefined
+            ? Number(defaultData.QuickStyleFillColor)
+            : undefined;
 
-    // ==================== Set Quick Style Shadow Color ====================
-    shape.QuickShadowColor = cellMap.get('QuickStyleShadowColor') != null ? Number(cellMap.get('QuickStyleShadowColor')) :
-        (defaultData && defaultData.QuickStyleShadowColor) !== undefined ? Number(defaultData.QuickStyleShadowColor) : undefined;
+    shape.QuickShadowColor = cellMap.get('QuickStyleShadowColor') != null
+        ? Number(cellMap.get('QuickStyleShadowColor'))
+        : (defaultData && defaultData.QuickStyleShadowColor) !== undefined
+            ? Number(defaultData.QuickStyleShadowColor)
+            : undefined;
 
-    // ==================== Set Quick Style Line Matrix ====================
-    shape.QuickLineMatrix = cellMap.get('QuickStyleLineMatrix') != null ? Number(cellMap.get('QuickStyleLineMatrix')) :
-        (defaultData && defaultData.QuickStyleLineMatrix) !== undefined ? Number(defaultData.QuickStyleLineMatrix) : undefined;
+    // ==================== Set Quick Style Matrices ====================
+    shape.QuickLineMatrix = cellMap.get('QuickStyleLineMatrix') != null
+        ? Number(cellMap.get('QuickStyleLineMatrix'))
+        : (defaultData && defaultData.QuickStyleLineMatrix) !== undefined
+            ? Number(defaultData.QuickStyleLineMatrix)
+            : undefined;
 
-    // ==================== Set Quick Style Fill Matrix ====================
-    shape.QuickFillMatrix = cellMap.get('QuickStyleFillMatrix') != null ? Number(cellMap.get('QuickStyleFillMatrix')) :
-        (defaultData && defaultData.QuickStyleFillMatrix) !== undefined ? Number(defaultData.QuickStyleFillMatrix) : undefined;
+    shape.QuickFillMatrix = cellMap.get('QuickStyleFillMatrix') != null
+        ? Number(cellMap.get('QuickStyleFillMatrix'))
+        : (defaultData && defaultData.QuickStyleFillMatrix) !== undefined
+            ? Number(defaultData.QuickStyleFillMatrix)
+            : undefined;
 
-    // ==================== Set Quick Style Effects Matrix ====================
-    shape.QuickShadowMatrix = cellMap.get('QuickStyleEffectsMatrix') != null ? Number(cellMap.get('QuickStyleEffectsMatrix')) :
-        (defaultData && defaultData.QuickStyleEffectsMatrix) !== undefined ? Number(defaultData.QuickStyleEffectsMatrix) : undefined;
+    shape.QuickShadowMatrix = cellMap.get('QuickStyleEffectsMatrix') != null
+        ? Number(cellMap.get('QuickStyleEffectsMatrix'))
+        : (defaultData && defaultData.QuickStyleEffectsMatrix) !== undefined
+            ? Number(defaultData.QuickStyleEffectsMatrix)
+            : undefined;
 
     // ==================== Set Theme and Color Scheme Indices ====================
     shape.ThemeIndex = cellMap.get('ThemeIndex') != null ? Number(cellMap.get('ThemeIndex')) : undefined;
@@ -492,28 +763,18 @@ export function applyCommonNodeProperties(
     shape.flipY = cellMap.get('FlipY') != null ? Number(cellMap.get('FlipY')) : 0;
 
     // ==================== Set Display and Interaction Properties ====================
-    // Extract visibility from geometry cells (NoShow flag)
+    // Extract visibility from geometry cells (NoShow flag indicates hidden shapes)
     shape.visibility = getcell.has('NoShow') ? getcell.get('NoShow') === '1' : false;
 
-    // Extract comment/tooltip
-    shape.tooltip = cellMap.get('Comment') != null ? cellMap.get('Comment') : '';
+    // Extract comment/tooltip text
+    const tooltipText: string = cellMap.get('Comment') != null ? String(cellMap.get('Comment')) : '';
+    shape.tooltip = tooltipText;
 
     // Extract glue type (determines connector attachment behavior)
-    shape.glueValue = cellMap.get('GlueType') != null ? cellMap.get('GlueType') : undefined;
+    shape.glueValue = cellMap.get('GlueType') != null ? Number(cellMap.get('GlueType')) : undefined;
 
     // ==================== Set Visual Styling ====================
-    shape.style = parseVisioNodeStyle(shapeData, context, defaultShapeStyle, undefined);
-
-    // ==================== Determine Shape Type and Geometry ====================
-    shape.shape = determineShapeType(attributes, (defaultData as any), shapeData, shape, context);
-
-    // ==================== Attach Media Data for Images ====================
-    if (shape.shape && shape.shape.type === 'Image' && shape.imageId) {
-        const media: VisioMedia = context.data.medias[shape.imageId];
-        if (media && media.dataUrl) {
-            shape.shape.source = media.dataUrl;
-        }
-    }
+    shape.style = parseVisioNodeStyle(shapeData, context, defaultShapeStyle, shape, undefined);
 
     // ==================== Apply Edit Constraints ====================
     shape.constraints = applyConstraints(shape, cellMap);
@@ -524,26 +785,116 @@ export function applyCommonNodeProperties(
     // ==================== Set Connection Points ====================
     shape.ports = defaultData.Ports;
 
-    // ==================== Deep Annotation Merge for Line Callouts ====================
-    if (shape.shape && attributes && attributes.Name === 'Line Callout') {
-        // then chek if it has shape.annotation, then set the
-        if (shape.annotation.content === '') {
-            // Gather all texts from children and merge
-            const deepTexts: string[] = collectDeepAnnotationText(shapeData); // 'shape' is the XML group node
-            if (deepTexts.length > 0) {
-                const merged: string = deepTexts.join('\n');
+    // Need to retrieve shape data for export
+    shape.addInfo = {
+        data: args.shapeData,
+        isModified: false,
+        masterId: shape.masterId
+    };
 
-                // Replace the group’s auto-generated single annotation
-                shape.annotation = {
-                    content: merged
-                } as VisioNodeAnnotation;
-            }
+    // ==================== Master Placeholder Text Fallback ====================
+    if (shape.annotation && args && args.shapeData) {
+        // Validate instance node carrier
+        const instanceNodeCarrier: { [k: string]: unknown } = args.shapeData as unknown as { [k: string]: unknown };
+
+        // Check for a local <Text> element on the page instance for any text override
+        let instanceHasLocalText: boolean = false;
+        if (Object.prototype.hasOwnProperty.call(instanceNodeCarrier, 'Text')) {
+            instanceHasLocalText = true;
         }
-        // also avoid the flip and rotation for line callouts
-        shape.flipX = 0;
-        shape.flipY = 0;
-        shape.rotateAngle = 0;
+
+        // Prepare master node reference
+        let masterNodeForFallback: VisioShapeNode | null = null;
+        if (args.masterSource) {
+            masterNodeForFallback = args.masterSource as VisioShapeNode;
+        }
+
+        // Only perform fallback when the instance truly lacks <Text>
+        if (!instanceHasLocalText) {
+            VisioNodeAnnotation.applyMasterTextFallback(
+                shape.annotation as VisioNodeAnnotation,
+                args.shapeData as VisioShapeNode,
+                masterNodeForFallback
+            );
+        }
     }
+}
+
+/**
+ * Builds default shape data from a merged cell map.
+ * Extracts dimensions, pins, connector points, text properties,
+ * quick style attributes, semantic name, ports, and style information.
+ *
+ * @param {Map<string, CellMapValue>} mergedMap - Combined cell map from master and instance
+ * @param {VisioShapeNode} masterSource - Master shape node providing defaults
+ * @param {VisioShapeNode} [pageNode] - Optional page shape node for overrides
+ * @param {ParsingContext} [context] - Parsing context with master index
+ * @param {string} [parentMasterId] - Optional parent master ID for nested shapes
+ * @returns {DefaultShapeData} Object containing extracted default data for the shape
+ */
+function buildDefaultDataFromMerged(
+    mergedMap: Map<string, CellMapValue>,
+    masterSource: VisioShapeNode,
+    pageNode?: VisioShapeNode,
+    context?: ParsingContext,
+    parentMasterId?: string
+): DefaultShapeData {
+    const out: DefaultShapeData = {};
+
+    // ==================== Basic Dimensions ====================
+    out.Width = getNumberFromCellMap(mergedMap, 'Width', undefined) as number;
+    out.Height = getNumberFromCellMap(mergedMap, 'Height', undefined) as number;
+
+    // ==================== Pin/Pivot Points ====================
+    out.LocPinX = getNumberFromCellMap(mergedMap, 'LocPinX', 0) as number;
+    out.LocPinY = getNumberFromCellMap(mergedMap, 'LocPinY', 0) as number;
+
+    // ==================== Connector Begin/End Points ====================
+    out.BeginX = getNumberFromCellMap(mergedMap, 'BeginX', undefined) as number;
+    out.BeginY = getNumberFromCellMap(mergedMap, 'BeginY', undefined) as number;
+    out.EndX = getNumberFromCellMap(mergedMap, 'EndX', undefined) as number;
+    out.EndY = getNumberFromCellMap(mergedMap, 'EndY', undefined) as number;
+
+    // ==================== Text/Annotation Properties ====================
+    out.TxtWidth = getNumberFromCellMap(mergedMap, 'TxtWidth', undefined) as number;
+    out.TxtHeight = getNumberFromCellMap(mergedMap, 'TxtHeight', undefined) as number;
+    out.TxtPinX = getNumberFromCellMap(mergedMap, 'TxtPinX', undefined) as number;
+    out.TxtPinY = getNumberFromCellMap(mergedMap, 'TxtPinY', undefined) as number;
+    out.TxtLocPinX = getNumberFromCellMap(mergedMap, 'TxtLocPinX', undefined) as number;
+    out.TxtLocPinY = getNumberFromCellMap(mergedMap, 'TxtLocPinY', undefined) as number;
+
+    // ==================== Quick Style Colors ====================
+    out.QuickStyleLineColor = getNumberFromCellMap(mergedMap, 'QuickStyleLineColor', undefined) as number;
+    out.QuickStyleFillColor = getNumberFromCellMap(mergedMap, 'QuickStyleFillColor', undefined) as number;
+    out.QuickStyleShadowColor = getNumberFromCellMap(mergedMap, 'QuickStyleShadowColor', undefined) as number;
+    out.QuickStyleFontColor = getNumberFromCellMap(mergedMap, 'QuickStyleFontColor', undefined) as number;
+
+    // ==================== Quick Style Matrices ====================
+    out.QuickStyleLineMatrix = getNumberFromCellMap(mergedMap, 'QuickStyleLineMatrix', undefined) as number;
+    out.QuickStyleFillMatrix = getNumberFromCellMap(mergedMap, 'QuickStyleFillMatrix', undefined) as number;
+    out.QuickStyleEffectsMatrix = getNumberFromCellMap(mergedMap, 'QuickStyleEffectsMatrix', undefined) as number;
+    out.QuickStyleFontMatrix = getNumberFromCellMap(mergedMap, 'QuickStyleFontMatrix', undefined) as number;
+
+    // ==================== Shape Name ====================
+    const nameFromCells: CellMapValue = mergedMap.get('Name');
+    out.Name = nameFromCells != null ? String(nameFromCells) : undefined;
+    // If cell "Name" is missing, resolve semantic name using instance/master/masters.xml index.
+    if ((!out.Name || String(out.Name).trim() === '') && pageNode && context) {
+        const resolved: string = resolveShapeNameForMapping(pageNode, masterSource, context, parentMasterId);
+        if (resolved && resolved.trim().length > 0) {
+            out.Name = resolved;
+        }
+    }
+
+    // ==================== Extract Ports from Master ====================
+    out.Ports = masterSource
+        ? getVisioPorts(masterSource, undefined, out.Width, out.Height)
+        : [];
+
+    // ==================== Extract Style Properties ====================
+    out.shapeStyle = findAllDefaultStyles(masterSource ? masterSource : (pageNode ? pageNode : null));
+
+    return out;
 }
 
 /**
@@ -600,6 +951,91 @@ function shapeStyleToObject(
     // ==================== Handle Invalid/Undefined ====================
     // Return empty object for null, undefined, or other types
     return {};
+}
+
+/**
+ * Safely returns the <ForeignData> block if present on the given shape node.
+ * @param {VisioShapeNode | null | undefined} node - Shape node that may contain ForeignData
+ * @returns {ForeignDataBlock | undefined} The ForeignData block or undefined if absent
+ */
+function getForeignDataBlock(node: VisioShapeNode | null | undefined): ForeignDataBlock | undefined {
+    // Validate carrier
+    if (!node) {
+        return undefined;
+    }
+    const carrier: { [k: string]: unknown } = node as unknown as { [k: string]: unknown };
+
+    // Confirm property exists
+    if (!Object.prototype.hasOwnProperty.call(carrier, 'ForeignData')) {
+        return undefined;
+    }
+
+    // Narrow and validate structure
+    const raw: unknown = carrier['ForeignData'];
+    if (!raw || typeof raw !== 'object') {
+        return undefined;
+    }
+    return raw as ForeignDataBlock;
+}
+
+/**
+ * Extracts a sanitized relation id from ForeignData.Rel (supports single or array; r:id or rId).
+ * @param {ForeignDataBlock | undefined} foreignData - The normalized ForeignData block
+ * @returns {string} Sanitized relation id or empty string when missing
+ */
+function extractRelIdFromForeignData(foreignData: ForeignDataBlock | undefined): string {
+    // Guard when ForeignData is absent
+    if (!foreignData) {
+        return '';
+    }
+
+    // Normalize Rel into a single candidate having a '$' bag
+    let relCandidate: { $?: XmlStringMap } | undefined = undefined;
+
+    if (foreignData.Rel) {
+        if (Array.isArray(foreignData.Rel)) {
+            for (let i: number = 0; i < foreignData.Rel.length; i += 1) {
+                const item: { $?: XmlStringMap } = foreignData.Rel[parseInt(i.toString(), 10)];
+                if (item && item.$ && typeof item.$ === 'object') {
+                    relCandidate = item;
+                    break;
+                }
+            }
+        } else {
+            if (foreignData.Rel.$ && typeof foreignData.Rel.$ === 'object') {
+                relCandidate = foreignData.Rel;
+            }
+        }
+    }
+
+    if (!relCandidate || !relCandidate.$) {
+        return '';
+    }
+
+    // Support r:id and rId
+    const attributes: XmlStringMap = relCandidate.$ as XmlStringMap;
+    let relationId: string = '';
+    if (Object.prototype.hasOwnProperty.call(attributes, 'r:id')) {
+        const value: unknown = attributes['r:id'];
+        if (typeof value === 'string') {
+            relationId = value;
+        }
+    } else if (Object.prototype.hasOwnProperty.call(attributes, 'rId')) {
+        const value2: unknown = attributes['rId'];
+        if (typeof value2 === 'string') {
+            relationId = value2;
+        }
+    }
+
+    // Sanitize (trim + clamp to 64 chars)
+    if (relationId) {
+        const trimmed: string = relationId.trim();
+        if (trimmed.length > 64) {
+            return trimmed.slice(0, 64);
+        }
+        return trimmed;
+    }
+    return '';
 }
 
 /**
@@ -726,234 +1162,16 @@ function mergePorts(basePorts: VisioPort[], updatePorts: VisioPort[]): VisioPort
 
     // ==================== Add Base Ports ====================
     // Add all ports from base array (or empty if base is undefined)
-    (basePorts ? basePorts : []).forEach((port: any) => portMap.set(port.id, port));
+    (basePorts ? basePorts : []).forEach((port: VisioPort) => portMap.set(port.id, port));
 
     // ==================== Add/Update Ports ====================
     // Add ports from update array, overwriting duplicates by ID
-    (updatePorts ? updatePorts : []).forEach((port: any) => portMap.set(port.id, port));
+    (updatePorts ? updatePorts : []).forEach((port: VisioPort) => portMap.set(port.id, port));
 
     // ==================== Return Merged Array ====================
-    // Convert map values back to array format
-    return Array.from((portMap as any).values());
-}
-
-/**
- * Processes immediate child shapes of a group/container shape.
- * This function recursively builds the shape tree, creating VisioShape instances
- * for all children and establishing parent-child relationships.
- *
- * Processing steps:
- * 1. Extract child shapes from the group's Shapes.Shape property
- * 2. Recursively process each child (may be a nested group or regular shape)
- * 3. Collect child IDs and establish parentId references
- * 4. Create the parent group node with children list
- * 5. Add group node after all children (maintains proper z-order)
- *
- * This ensures that when shapes are rendered, children appear before their
- * parent group, allowing proper rendering of nested structures.
- *
- * @param {VisioShapeNode} shape - The group shape XML object containing Shapes.Shape elements.
- * @param {ParsingContext} context - Parser context with page, themes, and master data.
- * @param {VisioShape[]} resultShapes - Output array to accumulate parsed shapes (modified in place).
- * @returns {void} - Modifies resultShapes array by adding child and group shapes.
- *
- * @example
- * // Input: Group shape with 3 children
- * // Output: resultShapes gets 4 new entries (3 children + 1 group)
- * processImmediateSubShapes(groupXml, context, resultShapes);
- *
- * @private
- */
-function processImmediateSubShapes(
-    shape: VisioShapeNode,
-    context: ParsingContext,
-    resultShapes: VisioShape[]
-): void {
-    // ==================== Validate Input ====================
-    if (!shape || !shape.$) { return; }
-
-    // ==================== Extract Group Information ====================
-    const groupId: string = shape.$.ID;
-    const children: OneOrMany<VisioShapeNode> | undefined = shape.Shapes.Shape;
-
-    // No child shapes
-    if (!children) { return; }
-
-    // ==================== Create Parent Group Node ====================
-    const attributes: ShapeAttributes = shape.$;
-    const cells: VisioCell[] = Array.isArray(shape.Cell)
-        ? shape.Cell
-        : shape.Cell ? [shape.Cell] : [];
-    const section: VisioSection[] = shape.Section
-        ? (Array.isArray(shape.Section) ? shape.Section : [shape.Section])
-        : [];
-    // Find Geometry section which contains visibility properties
-    const userSection: VisioSection = section.find((s: VisioSection) => s && s.$ && s.$.N === 'User');
-    let excludeFromProcessing: boolean  = false;
-    if (userSection && !Array.isArray(userSection.Row) && userSection.Row.$.N === 'visNavOrder') {
-        excludeFromProcessing = true;
-    }
-    // ==================== Process Child Shapes ====================
-    // Normalize to array (handle single child vs. multiple)
-    const subShapes: VisioShapeNode[] = Array.isArray(children) ? children : [children];
-    const childIds: string[] = [];
-
-    for (const sub of subShapes) {
-        // Validate that child references a valid master
-        const masterId: string = getMasterId(sub);
-        if (!isValidMasterId(masterId) && !(sub.Text && sub.Text.value) && !excludeFromProcessing) {
-            return null;
-        }
-
-        // Recursively build node for this sub-shape
-        const child: VisioShape | null = createNodeForShape(sub, context, resultShapes);
-
-        // If successfully created, record parent relationship
-        if (child && child.id) {
-            (child as VisioShape & { parentId: string }).parentId = groupId;
-            childIds.push(child.id);
-        }
-    }
-    // ==================== Extract Coordinate System Data ====================
-    const pageHeight: number = inchToPx(context.data.currentPage.pageHeight);
-    const cellMap: Map<string, CellMapValue> = mapCellValues(cells);
-    const pinYExists: boolean = cellMap.has('PinY');
-
-    // Extract geometry-level cells (for properties like NoShow)
-    const getcell: Map<string, CellMapValue> = getGeometryCells(section, mapCellValues);
-
-    // ==================== Get Default Group Properties ====================
-    // For groups, setDefaultData returns {} (no master reference)
-    const defaultData: DefaultShapeData = setDefaultData(
-        context.data.shapes as unknown as GeometryDataObject[],
-        attributes
-    );
-
-    // ==================== Build Group Node ====================
-    const groupNode: VisioShape = new VisioShape();
-    groupNode.id = groupId;
-    groupNode.masterId = attributes.Master;
-    groupNode.name = attributes.NameU;
-    groupNode.type = attributes.Type != null ? attributes.Type : 'Shape';
-
-    // ==================== Apply Common Properties ====================
-    // Populate position, size, style, etc. for the group
-    applyCommonNodeProperties(groupNode, {
-        cellMap,
-        attributes,
-        defaultData,
-        pageHeight,
-        pinYExists,
-        context,
-        getcell,
-        shapeData: shape
-    });
-
-    // ==================== Set Children Relationship ====================
-    (groupNode as VisioShape & { children: string[] }).children = childIds;
-
-    // ==================== Assign Layer ====================
-    assignShapeLayer(groupNode, cellMap, context);
-
-    // ==================== Add Group After Children ====================
-    // This ordering ensures children render before parent in z-order
-    resultShapes.push(groupNode);
-}
-
-/**
- * Creates a VisioShape node for a single shape object and adds it to the result array.
- * This is a helper function used when recursively processing grouped shapes.
- *
- * The function:
- * 1. Validates the shape object
- * 2. Skips connectors (handled separately)
- * 3. Extracts all cell properties and styling
- * 4. Creates and populates a VisioShape instance
- * 5. Adds the shape to the result array
- *
- * This function is called during recursive processing of groups to build
- * individual nodes for each child shape.
- *
- * @param {VisioShapeNode} shapeObj - The raw shape XML object to convert.
- * @param {ParsingContext} context - Parser context with page, themes, and master data.
- * @param {VisioShape[]} resultShapes - Output array to accumulate parsed shapes (modified in place).
- * @returns {VisioShape | null} The created VisioShape instance, or null if shape is invalid/skip (e.g., connector).
- *
- * @example
- * const childShape = createNodeForShape(childShapeXml, context, resultShapes);
- * if (childShape) {
- *     console.log(`Created shape: ${childShape.id}`);
- * }
- *
- * @private
- */
-function createNodeForShape(
-    shapeObj: VisioShapeNode,
-    context: ParsingContext,
-    resultShapes: VisioShape[]
-): VisioShape | null {
-    // ==================== Validate Input ====================
-    if (!shapeObj || !shapeObj.$) { return null; }
-
-    // ==================== Extract Properties ====================
-    const attributes: ShapeAttributes = shapeObj.$;
-    const cells: VisioCell[] = Array.isArray(shapeObj.Cell)
-        ? shapeObj.Cell
-        : shapeObj.Cell ? [shapeObj.Cell] : [];
-    const section: VisioSection[] = shapeObj.Section
-        ? (Array.isArray(shapeObj.Section) ? shapeObj.Section : [shapeObj.Section])
-        : [];
-
-    // ==================== Skip Connectors ====================
-    // Connectors are handled separately and not included as regular shapes
-    if (isConnectorShape(shapeObj, context)) { return null; }
-
-    // ==================== Extract Coordinate System Data ====================
-    const pageHeight: number = inchToPx(context.data.currentPage.pageHeight);
-    const cellMap: Map<string, CellMapValue> = mapCellValues(cells);
-    const pinYExists: boolean = cellMap.has('PinY');
-
-    // Extract geometry-level cells (for NoShow property)
-    const getcell: Map<string, CellMapValue> = getGeometryCells(section, mapCellValues);
-
-    // ==================== Initialize Shape ====================
-    const shape: any = new VisioShape();
-    shape.id = attributes.ID;
-    shape.masterId = attributes.Master;
-    shape.name = attributes.NameU;
-    shape.type = attributes.Type != null ? attributes.Type : 'Shape';
-
-    // ==================== Handle Special Shape Type ====================
-    // 'Solid' shapes are background/fill shapes with no complex styling
-    if (shape.name === 'Solid') {
-        shape.fillColor = cellMap.get('FillForegnd') || 'transParent';
-    } else {
-        // ==================== Get Master Default Data ====================
-        const defaultData: DefaultShapeData = setDefaultData(
-            context.data.shapes as unknown as GeometryDataObject[],
-            attributes
-        );
-
-        // ==================== Apply All Common Properties ====================
-        applyCommonNodeProperties(shape, {
-            cellMap,
-            attributes,
-            defaultData,
-            pageHeight,
-            pinYExists,
-            context,
-            getcell,
-            shapeData: shapeObj
-        });
-
-        // ==================== Assign to Layer ====================
-        assignShapeLayer(shape, cellMap, context);
-    }
-
-    // ==================== Add to Result Collection ====================
-    resultShapes.push(shape);
-
-    return shape;
+    const mergedPorts: VisioPort[] = [];
+    portMap.forEach((port: VisioPort) => mergedPorts.push(port));
+    return mergedPorts;
 }
 
 /**
@@ -1085,41 +1303,4 @@ function applyConstraints(shape: VisioShape, cellMap: Map<string, CellMapValue>)
         // Convert to camelCase property and evaluate as boolean (non-'0' = true)
         (shape as any)[toCamelCase(key)] = value != null && value !== '0';
     }
-}
-
-/**
- * Recursively collects all text content from a Visio shape node and its children.
- * This function traverses the shape hierarchy, extracting text from the
- * Text property of each shape node and aggregating it into a single array.
- * It is useful for gathering annotations from grouped shapes or complex structures.
- * @param {any} shapeNode - The Visio shape node to extract text from.
- * @returns {string[]} An array of text strings collected from the shape and its descendants.
- * @example
- * const texts = collectDeepText(shapeNode);
- * console.log(texts); // Outputs all text content from the shape and its children
- * @private
- */
-function collectDeepAnnotationText(shapeNode: any): string[] {
-    if (!shapeNode) { return []; }
-
-    const results: string[] = [];
-
-    // 1) Text on this node
-    if (shapeNode.Text && typeof shapeNode.Text.value === 'string') {
-        const text: string = (shapeNode.Text.value as string).trim();
-        if (text.length > 0) { results.push(text); }
-    }
-
-    // 2) Descend into children
-    if (shapeNode.Shapes && shapeNode.Shapes.Shape) {
-        const children: any[] = Array.isArray(shapeNode.Shapes.Shape)
-            ? shapeNode.Shapes.Shape
-            : [shapeNode.Shapes.Shape];
-
-        for (const c of children) {
-            results.push(...collectDeepAnnotationText(c));
-        }
-    }
-
-    return results;
 }

@@ -74,6 +74,7 @@ export const htmlKeyConfig: { [key: string]: string } = {
     'unordered-list': 'ctrl+alt+o',
     'space': 'space',
     'enter': 'enter',
+    'shift-enter': 'shift+enter',
     'tab': 'tab',
     'shift-tab': 'shift+tab',
     'delete': 'delete',
@@ -84,7 +85,8 @@ export const htmlKeyConfig: { [key: string]: string } = {
     'ai-query': 'alt+enter',
     'checklist': 'ctrl+shift+9',
     'print': 'ctrl+p',
-    'checklist-toggle': 'ctrl+enter'
+    'checklist-toggle': 'ctrl+enter',
+    'select-all': 'ctrl+a'
 };
 /**
  * Default  markdown key config for adapter
@@ -109,7 +111,8 @@ export const markdownKeyConfig: { [key: string]: string } = {
     'subscript': 'ctrl+=',
     'full-screen': 'ctrl+shift+f',
     'ordered-list': 'ctrl+shift+o',
-    'unordered-list': 'ctrl+alt+o'
+    'unordered-list': 'ctrl+alt+o',
+    'select-all': 'ctrl+a'
 };
 /**
  * PasteCleanup Grouping of similar functionality tags

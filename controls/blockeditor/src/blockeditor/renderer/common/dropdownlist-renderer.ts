@@ -1,6 +1,7 @@
 import { DropDownList } from '@syncfusion/ej2-dropdowns';
 import { BlockEditor } from '../../base/index';
 import { IDropDownListRenderOptions } from '../../../common/interface';
+import { createElement } from '@syncfusion/ej2-base';
 
 /**
  * `DropDownList renderer` module is used to render DropDownList in BlockEditor.
@@ -22,6 +23,11 @@ export class DropDownListRenderer {
      * @hidden
      */
     public renderDropDownList(args?: IDropDownListRenderOptions): DropDownList {
+        const languageSelector: HTMLElement = createElement('input', {
+            id: (this.editor.element.id + '_' + 'code-ddl'),
+            className: 'e-code-block-languages'
+        });
+        args.targetElement.appendChild(languageSelector);
         return new DropDownList({
             dataSource: args.dataSource,
             fields: args.fields,
@@ -31,6 +37,6 @@ export class DropDownListRenderer {
             cssClass: this.editor.cssClass,
             enableRtl: this.editor.enableRtl,
             enablePersistence: this.editor.enablePersistence
-        }, args.targetElement);
+        }, languageSelector);
     }
 }

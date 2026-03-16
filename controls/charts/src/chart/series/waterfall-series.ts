@@ -193,10 +193,12 @@ export class WaterfallSeries extends ColumnBase {
         let color: string;
         const isSum: boolean = this.isIntermediateSum(series, point.index);
         const totalSum: boolean = this.isSumIndex(series, point.index);
+        const hasGradient: boolean = (!isNullOrUndefined(series.linearGradient) && series.linearGradient.gradientColorStop.length > 0) ||
+                                     (!isNullOrUndefined(series.radialGradient) && series.radialGradient.gradientColorStop.length > 0);
         if (isSum || totalSum) {
-            color = series.summaryFillColor;
+            color = hasGradient ? series.interior : series.summaryFillColor;
         } else if (point.y < 0) {
-            color = series.negativeFillColor;
+            color = hasGradient ? series.interior : series.negativeFillColor;
         } else {
             color = series.interior;
         }

@@ -1,7 +1,7 @@
 import { createElement, remove } from '@syncfusion/ej2-base';
 import { BaseChildrenProp, BaseStylesProp, BlockChange, BlockChangedEventArgs, BlockModel, ICollapsibleBlockSettings } from '../../src/models/index';
 import { createEditor } from '../common/util.spec';
-import { setCursorPosition, getBlockContentElement, getSelectedRange } from '../../src/common/utils/index';
+import { setCursorPosition, getBlockContentElement, getSelectedRange, setSelectionRange, getDeepestTextNode } from '../../src/common/utils/index';
 import { BlockType, ContentType, CommandName } from '../../src/models/enums';
 import { BlockEditor } from '../../src/index';
 
@@ -28,8 +28,8 @@ describe('Event Manager - keyboard, mouse, selection, and block change behaviors
             editorElement = createElement('div', { id: 'editor' });
             document.body.appendChild(editorElement);
              const blocks: BlockModel[] = [
-                { id: 'paragraph1', blockType: BlockType.Paragraph, content: [{ id: 'paragraph1-content', contentType: ContentType.Text, content: 'Hello world' }] },
-                { id: 'paragraph2', blockType: BlockType.Paragraph, content: [{ id: 'paragraph2-content', contentType: ContentType.Text, content: 'Hello world 2' }] },
+                { id: 'paragraph1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Hello world' }] },
+                { id: 'paragraph2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Hello world 2' }] },
                 {
                     id: 'calloutblock',
                     blockType: BlockType.Callout,
@@ -38,12 +38,12 @@ describe('Event Manager - keyboard, mouse, selection, and block change behaviors
                         {
                             id: 'calloutchild1',
                             blockType: BlockType.Paragraph,
-                            content: [{ id: 'callout-child1-content', contentType: ContentType.Text, content: 'Callout child 1' }]
+                            content: [{ contentType: ContentType.Text, content: 'Callout child 1' }]
                         },
                         {
                             id: 'calloutchild2',
                             blockType: BlockType.Paragraph,
-                            content: [{ id: 'callout-child2-content', contentType: ContentType.Text, content: 'Callout child 2' }]
+                            content: [{ contentType: ContentType.Text, content: 'Callout child 2' }]
                         }
                     ]
                     }
@@ -51,7 +51,7 @@ describe('Event Manager - keyboard, mouse, selection, and block change behaviors
                 {
                     id: 'toggleblock',
                     blockType: BlockType.CollapsibleParagraph,
-                    content: [{ id: 'toggle-content-1', contentType: ContentType.Text, content: 'Click here to expand' }],
+                    content: [{ contentType: ContentType.Text, content: 'Click here to expand' }],
                     properties: {
                         children: [
                         {
@@ -155,36 +155,6 @@ describe('Event Manager - keyboard, mouse, selection, and block change behaviors
             expect((blockElement1.nextElementSibling as HTMLElement).id).toBe('paragraph2');
         });
 
-        it('should exit callout on enter press in empty block', () => {
-            const blockElement1 = editorElement.querySelector('#calloutchild2') as HTMLElement;
-            const contentElement1 = blockElement1.querySelector('.e-block-content') as HTMLElement;
-            editor.blockManager.setFocusToBlock(blockElement1);
-            setCursorPosition(contentElement1, contentElement1.textContent.length);
-
-            // check childlength before enter action
-            expect((editor.blocks[2].properties as BaseChildrenProp).children.length).toBe(2);
-            // On first enter, a new child block should be created
-            editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter' }));
-            expect((editor.blocks[2].properties as BaseChildrenProp).children.length).toBe(3);
-            expect((editor.blocks[2].properties as BaseChildrenProp).children[0].id).toBe("calloutchild1");
-            expect((editor.blocks[2].properties as BaseChildrenProp).children[1].id).toBe("calloutchild2");
-            // DOM: new child exists as last child under callout
-            const calloutEl = editorElement.querySelector('#calloutblock') as HTMLElement;
-            const childEls = calloutEl.querySelectorAll('.e-block');
-            expect(childEls.length).toBe(3);
-            expect(childEls[0].id).toBe("calloutchild1");
-            expect(childEls[1].id).toBe("calloutchild2");
-
-            // On second enter, the callout should be exited since the block is empty
-            editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter' }));
-            expect((editor.blocks[2].properties as BaseChildrenProp).children.length).toBe(2);
-            expect((editor.blocks[2].properties as BaseChildrenProp).children[0].id).toBe("calloutchild1");
-            expect((editor.blocks[2].properties as BaseChildrenProp).children[1].id).toBe("calloutchild2");
-            expect(editor.blockManager.currentFocusedBlock.id).toBe(editor.blocks[3].id);
-            // DOM neighbors after exit: callout next is toggleblock
-            // expect((calloutEl.nextElementSibling as HTMLElement).id).toBe('toggleblock');
-        });
-
         it('should expand the collapsible block on enter press when content is empty', () => {
             const blockElement1 = editorElement.querySelector('#paragraph1') as HTMLElement;
             const contentElement1 = blockElement1.querySelector('.e-block-content') as HTMLElement;
@@ -271,11 +241,11 @@ describe('Event Manager - keyboard, mouse, selection, and block change behaviors
             editorElement = createElement('div', { id: 'editor' });
             document.body.appendChild(editorElement);
              const blocks: BlockModel[] = [
-                { id: 'paragraph1', blockType: BlockType.Paragraph, content: [{ id: 'paragraph1-content', contentType: ContentType.Text, content: 'Hello world 1' }] },
-                { id: 'paragraph2', blockType: BlockType.Paragraph, content: [{ id: 'paragraph2-content', contentType: ContentType.Text, content: 'Hello world 2' }] },
-                { id: 'paragraph3', blockType: BlockType.Paragraph, content: [{ id: 'paragraph3-content', contentType: ContentType.Text, content: 'Hello world 3' }] },
-                { id: 'paragraph4', blockType: BlockType.Paragraph, content: [{ id: 'paragraph4-content', contentType: ContentType.Text, content: 'Hello world 4' }] },
-                { id: 'paragraph5', blockType: BlockType.Paragraph, content: [{ id: 'paragraph5-content', contentType: ContentType.Text, content: 'Hello world 5' }] },
+                { id: 'paragraph1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Hello world 1' }] },
+                { id: 'paragraph2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Hello world 2' }] },
+                { id: 'paragraph3', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Hello world 3' }] },
+                { id: 'paragraph4', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Hello world 4' }] },
+                { id: 'paragraph5', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Hello world 5' }] },
             ];
             editor = createEditor({
                 blocks: blocks,
@@ -315,7 +285,9 @@ describe('Event Manager - keyboard, mouse, selection, and block change behaviors
         });
 
         it('Should trigger Update action for formatting', () => {
-            editor.setSelection('paragraph1-content', 2, 3);
+            const blockElement = editorElement.querySelector('#paragraph1') as HTMLElement;
+            const contentElement = getBlockContentElement(blockElement) as HTMLElement;
+            setSelectionRange(getDeepestTextNode(contentElement), 2, 3);
             editor.executeToolbarAction(CommandName.Bold);
 
             expect(blockChanges.length).toBe(1);
@@ -325,13 +297,12 @@ describe('Event Manager - keyboard, mouse, selection, and block change behaviors
             expect(blockChanges[0].data.block.content.length).toBe(3);
             expect((blockChanges[0].data.block.content[1].properties as BaseStylesProp).styles.bold).toBe(true);
             // DOM contains strong
-            const strong = (editorElement.querySelector('#paragraph1') as HTMLElement).querySelector('strong');
-            expect(strong).not.toBeNull();
-            const spanEles = (editorElement.querySelector('#paragraph1') as HTMLElement).querySelectorAll('span');
-            expect(spanEles.length).toBe(2);
-            expect(spanEles[0].textContent).toBe("He");
-            expect(strong.textContent).toBe("l");
-            expect(spanEles[1].textContent).toBe("lo world 1");
+            const nodes = contentElement.childNodes;
+            expect(nodes.length).toBe(3);
+            expect(nodes[0].textContent).toBe("He");
+            expect((nodes[1] as HTMLElement).tagName).toBe("STRONG");
+            expect(nodes[1].textContent).toBe("l");
+            expect(nodes[2].textContent).toBe("lo world 1");
         });
 
         it('Should trigger Update action when indent single block', (done) => {
@@ -533,10 +504,10 @@ describe('Event Manager - keyboard, mouse, selection, and block change behaviors
                 editor.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', code: 'Backspace', bubbles: true }));
 
                 expect(blockChanges.length).toBe(5);
-                expect(blockChanges[0].action).toBe('Update');
+                expect(blockChanges[0].action).toBe('Deletion');
                 expect(blockChanges[1].action).toBe('Deletion');
                 expect(blockChanges[2].action).toBe('Deletion');
-                expect(blockChanges[3].action).toBe('Deletion');
+                expect(blockChanges[3].action).toBe('Update');
                 expect(blockChanges[4].action).toBe('Deletion');
                 expect(editor.blocks.length).toBe(1);
                 expect(editor.blocks[0].id).toBe("paragraph1");
@@ -595,18 +566,18 @@ describe('Event Manager - keyboard, mouse, selection, and block change behaviors
             editorElement = createElement('div', { id: 'editor' });
             document.body.appendChild(editorElement);
              const blocks: BlockModel[] = [
-                { id: 'paragraph1', blockType: BlockType.BulletList, content: [{ id: 'paragraph1-content', contentType: ContentType.Text, content: 'Hello world' }] },
-                { id: 'paragraph2', blockType: BlockType.BulletList, content: [{ id: 'paragraph2-content', contentType: ContentType.Text, content: 'Paragraph 2' }] },
+                { id: 'paragraph1', blockType: BlockType.BulletList, content: [{ contentType: ContentType.Text, content: 'Hello world' }] },
+                { id: 'paragraph2', blockType: BlockType.BulletList, content: [{ contentType: ContentType.Text, content: 'Paragraph 2' }] },
                 { id: 'paragraph3', blockType: BlockType.Paragraph,
                     content: [
-                        { id: 'bold', contentType: ContentType.Text, content: 'Bold', properties: { styles: { bold: true } } },
-                        { id: 'italic', contentType: ContentType.Text, content: 'Italic', properties: { styles: { italic: true } } },
+                        { contentType: ContentType.Text, content: 'Bold', properties: { styles: { bold: true } } },
+                        { contentType: ContentType.Text, content: 'Italic', properties: { styles: { italic: true } } },
                     ]
                 },
                 { id: 'paragraph4', blockType: BlockType.Paragraph,
                     content: [
-                        { id: 'underline', contentType: ContentType.Text, content: 'Underline', properties: { styles: { underline: true } } },
-                        { id: 'strikethrough', contentType: ContentType.Text, content: 'Strikethrough', properties: { styles: { strikethrough: true } } },
+                        { contentType: ContentType.Text, content: 'Underline', properties: { styles: { underline: true } } },
+                        { contentType: ContentType.Text, content: 'Strikethrough', properties: { styles: { strikethrough: true } } },
                     ]
                 },
             ];

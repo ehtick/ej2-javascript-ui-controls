@@ -430,6 +430,7 @@ export class Scroll {
                 ddbObj.destroy();
             }
         }
+        this.clientX = null; this.leftIndex = null; this.topIndex = null;
         this.parent = null;
     }
 

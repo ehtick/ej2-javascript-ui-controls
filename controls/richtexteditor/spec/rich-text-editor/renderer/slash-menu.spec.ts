@@ -1,5 +1,5 @@
 import { RichTextEditor, SlashMenuItemSelectArgs } from "../../../src/rich-text-editor/index";
-import { ENTERKEY_EVENT_INIT, SLASH_KEY_EVENT_INIT } from "../../constant.spec";
+import { SLASH_KEY_EVENT_INIT, ENTERKEY_EVENT_INIT } from "../../constant.spec";
 import { destroy, renderRTE } from "../render.spec";
 
 describe('Slash Menu ', () => {

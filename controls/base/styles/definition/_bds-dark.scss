@@ -769,6 +769,7 @@ $overlay-bg-color: rgba(0, 0, 0, .7) !default;
 $table-bg-color-hover: $gray-800 !default;
 $table-bg-color-pressed: $gray-700 !default;
 $table-bg-color-selected: $gray-700 !default;
+$table-bg-color-selected-hover: color-mix(in srgb, rgba($gray-700, 1), rgba($gray-800, .2)) !default;
 
 //text-color
 $content-text-color: $text-primary !default;

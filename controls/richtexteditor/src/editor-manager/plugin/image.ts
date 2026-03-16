@@ -82,6 +82,12 @@ export class ImageCommand {
         case 'justifyright':
             this.imageJustifyRight(e);
             break;
+        case 'leftwrap':
+            this.imageLeftWrap(e);
+            break;
+        case 'rightwrap':
+            this.imageRightWrap(e);
+            break;
         case 'inline':
             this.imageInline(e);
             break;
@@ -165,8 +171,23 @@ export class ImageCommand {
                 }
             }
         }
-        imgElement.setAttribute('class', 'e-rte-image' + (isNOU(e.item.cssClass) ? '' :  ' ' + e.item.cssClass)
-        + (isNOU(alignClassName) ? '' : ' ' + alignClassName));
+        if (!this.parent.isBlazor) {
+            if (imgReplace) {
+                if (!isNOU(e.item.cssClass) && e.item.cssClass !== '') {
+                    const captionEle: HTMLElement = closest(imgElement, '.e-img-caption-container') as HTMLElement;
+                    if (!isNOU(captionEle)) {
+                        addClass([captionEle], e.item.cssClass);
+                    } else {
+                        addClass([imgElement], e.item.cssClass);
+                    }
+                }
+            } else {
+                imgElement.setAttribute('class', 'e-rte-image' + ' ' + e.item.cssClass);
+            }
+        } else {
+            imgElement.setAttribute('class', 'e-rte-image' + (isNOU(e.item.cssClass) ? '' :  ' ' + e.item.cssClass)
+                + (isNOU(alignClassName) ? '' : ' ' + alignClassName));
+        }
         if (!isNOU(e.item.altText)) {
             imgElement.setAttribute('alt', e.item.altText.replace(/\.[a-zA-Z0-9]+$/, ''));
         }
@@ -228,9 +249,17 @@ export class ImageCommand {
     }
     private removeImageLink(e: IHtmlItem): void {
         const selectParent: HTMLElement = e.item.selectParent[0] as HTMLElement;
-        if (selectParent.classList.contains('e-img-caption')) {
-            const capImgWrap: Element = select('.e-img-wrap', selectParent);
-            const textEle: Element = select('.e-img-inner', selectParent);
+        if (selectParent.classList.contains('e-img-caption') ||
+            selectParent.classList.contains('e-img-caption-container')) {
+            let capImgWrap: Element;
+            let textEle: Element;
+            if (!this.parent.isBlazor) {
+                capImgWrap = select('.e-img-wrap', selectParent);
+                textEle = select('.e-img-caption-text', selectParent);
+            } else {
+                capImgWrap = select('.e-img-wrap', selectParent);
+                textEle = select('.e-img-inner', selectParent);
+            }
             const newTextEle: Node = textEle.cloneNode(true);
             detach(select('a', selectParent));
             detach(textEle);
@@ -257,23 +286,45 @@ export class ImageCommand {
         this.callBack(e);
     }
     private removeImage(e: IHtmlItem): void {
-        if (closest(e.item.selectNode[0], 'a')) {
-            if (e.item.selectNode[0].parentElement.nodeName === 'A' && !isNOU(e.item.selectNode[0].parentElement.innerText)) {
-                if (!isNOU(closest(e.item.selectNode[0], '.' + classes.CLASS_CAPTION))) {
-                    detach(closest(e.item.selectNode[0], '.' + classes.CLASS_CAPTION));
+        if (!this.parent.isBlazor) {
+            if (closest(e.item.selectNode[0], 'a')) {
+                if (e.item.selectNode[0].parentElement.nodeName === 'A' && !isNOU(e.item.selectNode[0].parentElement.innerText)) {
+                    if (!isNOU(closest(e.item.selectNode[0], '.e-img-caption-container'))) {
+                        detach(closest(e.item.selectNode[0], '.e-img-caption-container'));
+                    } else {
+                        detach(e.item.selectNode[0]);
+                    }
                 } else {
-                    detach(e.item.selectNode[0]);
+                    detach(closest(e.item.selectNode[0], 'a'));
                 }
+            } else if (!isNOU(closest(e.item.selectNode[0], '.e-img-caption-container'))) {
+                detach(closest(e.item.selectNode[0], '.e-img-caption-container'));
             } else {
-                detach(closest(e.item.selectNode[0], 'a'));
+                const imgParentElem: HTMLElement = e.item.selectNode[0].parentElement;
+                detach(e.item.selectNode[0]);
+                if (imgParentElem.childNodes.length === 0) {
+                    imgParentElem.appendChild(document.createElement('br'));
+                }
             }
-        } else if (!isNOU(closest(e.item.selectNode[0], '.' + classes.CLASS_CAPTION))) {
-            detach(closest(e.item.selectNode[0], '.' + classes.CLASS_CAPTION));
         } else {
-            const imgParentElem: HTMLElement = e.item.selectNode[0].parentElement;
-            detach(e.item.selectNode[0]);
-            if (imgParentElem.childNodes.length === 0) {
-                imgParentElem.appendChild(document.createElement('br'));
+            if (closest(e.item.selectNode[0], 'a')) {
+                if (e.item.selectNode[0].parentElement.nodeName === 'A' && !isNOU(e.item.selectNode[0].parentElement.innerText)) {
+                    if (!isNOU(closest(e.item.selectNode[0], '.' + classes.CLASS_CAPTION))) {
+                        detach(closest(e.item.selectNode[0], '.' + classes.CLASS_CAPTION));
+                    } else {
+                        detach(e.item.selectNode[0]);
+                    }
+                } else {
+                    detach(closest(e.item.selectNode[0], 'a'));
+                }
+            } else if (!isNOU(closest(e.item.selectNode[0], '.' + classes.CLASS_CAPTION))) {
+                detach(closest(e.item.selectNode[0], '.' + classes.CLASS_CAPTION));
+            } else {
+                const imgParentElem: HTMLElement = e.item.selectNode[0].parentElement;
+                detach(e.item.selectNode[0]);
+                if (imgParentElem.childNodes.length === 0) {
+                    imgParentElem.appendChild(document.createElement('br'));
+                }
             }
         }
         this.callBack(e);
@@ -284,19 +335,54 @@ export class ImageCommand {
     }
     private imageDimension(e: IHtmlItem): void {
         const selectNode: HTMLImageElement = e.item.selectNode[0] as HTMLImageElement;
-        selectNode.style.height = '';
-        selectNode.style.width = '';
-        if (e.item.width !== 'auto') {
-            selectNode.style.width =  formatUnit(e.item.width as number);
+        if (!this.parent.isBlazor) {
+            const captionEle: HTMLElement = closest(selectNode, '.e-img-caption-container') as HTMLElement;
+            selectNode.style.height = '';
+            selectNode.style.width = '';
+            let widthValue: string | number;
+            if ((e.item.width as string) !== 'auto') {
+                widthValue =  formatUnit(e.item.width as number);
+            } else {
+                if (!isNOU(captionEle)) {
+                    captionEle.style.width = '';
+                    captionEle.removeAttribute('width');
+                }
+                selectNode.removeAttribute('width');
+            }
+            if ((e.item.height as string) !== 'auto') {
+                selectNode.style.height = formatUnit(e.item.height as number);
+            } else {
+                selectNode.removeAttribute('height');
+            }
+            if (!isNOU(captionEle) && !isNOU(widthValue)) {
+                if (((widthValue as string).indexOf('%') !== -1)) {
+                    captionEle.style.width = selectNode.style.width = this.percToPix(widthValue as number, selectNode) + 'px';
+                } else {
+                    captionEle.style.width = selectNode.style.width = widthValue as string;
+                }
+            } else {
+                selectNode.style.width = widthValue as string;
+            }
         } else {
-            selectNode.removeAttribute('width');
-        }
-        if (e.item.height !== 'auto') {
-            selectNode.style.height = formatUnit(e.item.height as number);
-        } else {
-            selectNode.removeAttribute('height');
+            selectNode.style.height = '';
+            selectNode.style.width = '';
+            if ((e.item.width as string) !== 'auto') {
+                selectNode.style.width =  formatUnit(e.item.width as number);
+            } else {
+                selectNode.removeAttribute('width');
+            }
+            if ((e.item.height as string) !== 'auto') {
+                selectNode.style.height = formatUnit(e.item.height as number);
+            } else {
+                selectNode.removeAttribute('height');
+            }
         }
         this.callBack(e);
+    }
+    private percToPix(value: string | number, targetEle: HTMLElement): number {
+        const percent: number = parseFloat((value as string).replace('%', '').trim());
+        const refEle: HTMLElement = this.parent.domTree.getParentBlockNode(targetEle) as HTMLElement;
+        return Math.round(percent / 100 * refEle.getBoundingClientRect().width);
     }
     private imageCaption(e: IHtmlItem): void {
         InsertHtml.Insert(this.parent.currentDocument, e.item.insertElement, this.parent.editableElement);
@@ -305,21 +391,38 @@ export class ImageCommand {
     private imageJustifyLeft(e: IHtmlItem): void {
         const selectNode: HTMLElement = e.item.selectNode[0] as HTMLElement;
         if (!isNOU(selectNode)) {
-            selectNode.removeAttribute('class');
-            addClass([selectNode], 'e-rte-image');
-            if (!isNOU(closest(selectNode, '.' + classes.CLASS_CAPTION))) {
-                removeClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_RIGHT);
-                addClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_LEFT);
-            }
-            if (selectNode.parentElement.nodeName === 'A') {
-                removeClass([selectNode.parentElement], classes.CLASS_IMAGE_RIGHT);
-                addClass([selectNode.parentElement], classes.CLASS_IMAGE_LEFT);
-                addClass([selectNode], classes.CLASS_IMAGE_LEFT);
-            } else if (selectNode.parentElement.nextElementSibling != null) {
-                addClass([selectNode], classes.CLASS_IMAGE_LEFT);
-                (selectNode.parentElement.nextElementSibling as HTMLElement).style.clear = 'left';
+            if (!this.parent.isBlazor) {
+                if (selectNode.classList.contains('e-img-left')) { return; }
+                this.removeImageOrCaptionEleClass([selectNode]);
+                if (selectNode.parentElement.nodeName === 'A') {
+                    this.removeImageOrCaptionEleClass([selectNode.parentElement]);
+                    addClass([selectNode.parentElement], 'e-img-left');
+                }
+                if (!isNOU(closest(selectNode, '.e-img-caption-container'))) {
+                    this.removeImageOrCaptionEleClass([closest(selectNode, '.e-img-caption-container')]);
+                    addClass([closest(selectNode, '.e-img-caption-container')], 'e-img-left');
+                } else {
+                    addClass([selectNode], 'e-img-left');
+                }
             } else {
-                addClass([selectNode], classes.CLASS_IMAGE_LEFT);
+                selectNode.removeAttribute('class');
+                addClass([selectNode], 'e-rte-image');
+                if (!isNOU(closest(selectNode, '.' + classes.CLASS_CAPTION))) {
+                    this.removeImageOrCaptionEleClass([closest(selectNode, '.' + classes.CLASS_CAPTION)]);
+                    addClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_LEFT);
+                }
+                if (selectNode.parentElement.nodeName === 'A') {
+                    this.removeImageOrCaptionEleClass([selectNode.parentElement]);
+                    addClass([selectNode.parentElement], classes.CLASS_IMAGE_LEFT);
+                    addClass([selectNode], classes.CLASS_IMAGE_LEFT);
+                } else if (selectNode.parentElement.nextElementSibling != null) {
+                    addClass([selectNode], classes.CLASS_IMAGE_LEFT);
+                    if (this.parent.isBlazor) {
+                        (selectNode.parentElement.nextElementSibling as HTMLElement).style.clear = 'left';
+                    }
+                } else {
+                    addClass([selectNode], classes.CLASS_IMAGE_LEFT);
+                }
             }
             this.callBack(e);
         }
@@ -327,20 +430,33 @@ export class ImageCommand {
     private imageJustifyCenter(e: IHtmlItem): void {
         const selectNode: HTMLElement = e.item.selectNode[0] as HTMLElement;
         if (!isNOU(selectNode)) {
-            selectNode.removeAttribute('class');
-            addClass([selectNode], 'e-rte-image');
-            if (!isNOU(closest(selectNode, '.' + classes.CLASS_CAPTION))) {
-                removeClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_LEFT);
-                removeClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_RIGHT);
-                addClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_CENTER);
-            }
-            if (selectNode.parentElement.nodeName === 'A') {
-                removeClass([selectNode.parentElement], classes.CLASS_IMAGE_LEFT);
-                removeClass([selectNode.parentElement], classes.CLASS_IMAGE_RIGHT);
-                addClass([selectNode.parentElement], classes.CLASS_IMAGE_CENTER);
-                addClass([selectNode], classes.CLASS_IMAGE_CENTER);
+            if (!this.parent.isBlazor) {
+                if (selectNode.classList.contains('e-img-center')) { return; }
+                this.removeImageOrCaptionEleClass([selectNode]);
+                if (selectNode.parentElement.nodeName === 'A') {
+                    this.removeImageOrCaptionEleClass([selectNode.parentElement]);
+                    addClass([selectNode.parentElement], 'e-img-center');
+                }
+                if (!isNOU(closest(selectNode, '.e-img-caption-container'))) {
+                    this.removeImageOrCaptionEleClass([closest(selectNode, '.e-img-caption-container')]);
+                    addClass([closest(selectNode, '.e-img-caption-container')], 'e-img-center');
+                } else {
+                    addClass([selectNode], 'e-img-center');
+                }
             } else {
-                addClass([selectNode], classes.CLASS_IMAGE_CENTER);
+                selectNode.removeAttribute('class');
+                addClass([selectNode], 'e-rte-image');
+                if (!isNOU(closest(selectNode, '.' + classes.CLASS_CAPTION))) {
+                    this.removeImageOrCaptionEleClass([closest(selectNode, '.' + classes.CLASS_CAPTION)]);
+                    addClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_CENTER);
+                }
+                if (selectNode.parentElement.nodeName === 'A') {
+                    this.removeImageOrCaptionEleClass([selectNode.parentElement]);
+                    addClass([selectNode.parentElement], classes.CLASS_IMAGE_CENTER);
+                    addClass([selectNode], classes.CLASS_IMAGE_CENTER);
+                } else {
+                    addClass([selectNode], classes.CLASS_IMAGE_CENTER);
+                }
             }
             this.callBack(e);
         }
@@ -348,50 +464,154 @@ export class ImageCommand {
     private imageJustifyRight(e: IHtmlItem): void {
         const selectNode: HTMLElement = e.item.selectNode[0] as HTMLElement;
         if (!isNOU(selectNode)) {
-            selectNode.removeAttribute('class');
-            addClass([selectNode], 'e-rte-image');
-            if (!isNOU(closest(selectNode, '.' + classes.CLASS_CAPTION))) {
-                removeClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_LEFT);
-                addClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_RIGHT);
-            }
-            if (selectNode.parentElement.nodeName === 'A') {
-                removeClass([selectNode.parentElement], classes.CLASS_IMAGE_LEFT);
-                addClass([selectNode.parentElement], classes.CLASS_IMAGE_RIGHT);
-                addClass([selectNode], classes.CLASS_IMAGE_RIGHT);
-            } else if (selectNode.parentElement.nextElementSibling != null) {
-                addClass([selectNode], classes.CLASS_IMAGE_RIGHT);
-                (selectNode.parentElement.nextElementSibling as HTMLElement).style.clear = 'right';
+            if (!this.parent.isBlazor) {
+                if (selectNode.classList.contains('e-img-right')) { return; }
+                this.removeImageOrCaptionEleClass([selectNode]);
+                if (selectNode.parentElement.nodeName === 'A') {
+                    this.removeImageOrCaptionEleClass([selectNode.parentElement]);
+                    addClass([selectNode.parentElement], 'e-img-right');
+                }
+                if (!isNOU(closest(selectNode, '.e-img-caption-container'))) {
+                    this.removeImageOrCaptionEleClass([closest(selectNode, '.e-img-caption-container')]);
+                    addClass([closest(selectNode, '.e-img-caption-container')], 'e-img-right');
+                } else {
+                    addClass([selectNode], 'e-img-right');
+                }
             } else {
-                addClass([selectNode], classes.CLASS_IMAGE_RIGHT);
+                selectNode.removeAttribute('class');
+                addClass([selectNode], 'e-rte-image');
+                if (!isNOU(closest(selectNode, '.' + classes.CLASS_CAPTION))) {
+                    this.removeImageOrCaptionEleClass([closest(selectNode, '.' + classes.CLASS_CAPTION)]);
+                    addClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_RIGHT);
+                }
+                if (selectNode.parentElement.nodeName === 'A') {
+                    this.removeImageOrCaptionEleClass([selectNode.parentElement]);
+                    addClass([selectNode.parentElement], classes.CLASS_IMAGE_RIGHT);
+                    addClass([selectNode], classes.CLASS_IMAGE_RIGHT);
+                } else if (selectNode.parentElement.nextElementSibling != null) {
+                    addClass([selectNode], classes.CLASS_IMAGE_RIGHT);
+                    if (this.parent.isBlazor) {
+                        (selectNode.parentElement.nextElementSibling as HTMLElement).style.clear = 'right';
+                    }
+                } else {
+                    addClass([selectNode], classes.CLASS_IMAGE_RIGHT);
+                }
             }
             this.callBack(e);
         }
     }
+    private imageLeftWrap(e: IHtmlItem): void {
+        const selectNode: HTMLElement = e.item.selectNode[0] as HTMLElement;
+        if (!isNOU(selectNode)) {
+            if (selectNode.classList.contains('e-img-left-wrap')) { return; }
+            this.removeImageOrCaptionEleClass([selectNode]);
+            if (selectNode.parentElement.nodeName === 'A') {
+                this.removeImageOrCaptionEleClass([selectNode.parentElement]);
+                addClass([selectNode.parentElement], classes.CLASS_IMAGE_LEFT_WRAP);
+            }
+            if (!isNOU(closest(selectNode, '.e-img-caption-container'))) {
+                this.removeImageOrCaptionEleClass([closest(selectNode, '.e-img-caption-container')]);
+                addClass([closest(selectNode, '.e-img-caption-container')], classes.CLASS_IMAGE_LEFT_WRAP);
+            } else {
+                addClass([selectNode], classes.CLASS_IMAGE_LEFT_WRAP);
+            }
+            this.callBack(e);
+        }
+    }
+    private imageRightWrap(e: IHtmlItem): void {
+        const selectNode: HTMLElement = e.item.selectNode[0] as HTMLElement;
+        if (!isNOU(selectNode)) {
+            if (selectNode.classList.contains('e-img-right-wrap')) { return; }
+            this.removeImageOrCaptionEleClass([selectNode]);
+            if (selectNode.parentElement.nodeName === 'A') {
+                this.removeImageOrCaptionEleClass([selectNode.parentElement]);
+                addClass([selectNode.parentElement], classes.CLASS_IMAGE_RIGHT_WRAP);
+            }
+            if (!isNOU(closest(selectNode, '.e-img-caption-container'))) {
+                this.removeImageOrCaptionEleClass([closest(selectNode, '.e-img-caption-container')]);
+                addClass([closest(selectNode, '.e-img-caption-container')], classes.CLASS_IMAGE_RIGHT_WRAP);
+            } else {
+                addClass([selectNode], classes.CLASS_IMAGE_RIGHT_WRAP);
+            }
+            this.callBack(e);
+        }
+    }
+    private removeImageOrCaptionEleClass(targetEle: Element[]): void {
+        if (!this.parent.isBlazor) {
+            removeClass(targetEle, 'e-img-inline');
+            removeClass(targetEle, 'e-img-break');
+            removeClass(targetEle, 'e-img-center');
+            removeClass(targetEle, 'e-img-left');
+            removeClass(targetEle, 'e-img-right');
+            removeClass(targetEle, classes.CLASS_IMAGE_LEFT_WRAP);
+            removeClass(targetEle, classes.CLASS_IMAGE_RIGHT_WRAP);
+        } else {
+            removeClass(targetEle, classes.CLASS_IMAGE_INLINE);
+            removeClass(targetEle, classes.CLASS_IMAGE_BREAK);
+            removeClass(targetEle, classes.CLASS_IMAGE_CENTER);
+            removeClass(targetEle, classes.CLASS_IMAGE_LEFT);
+            removeClass(targetEle, classes.CLASS_IMAGE_RIGHT);
+        }
+    }
     private imageInline(e: IHtmlItem): void {
         const selectNode: HTMLElement = e.item.selectNode[0] as HTMLElement;
-        selectNode.removeAttribute('class');
-        addClass([selectNode], 'e-rte-image');
-        addClass([selectNode], classes.CLASS_IMAGE_INLINE);
-        if (!isNOU(closest(selectNode, '.' + classes.CLASS_CAPTION))) {
-            removeClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_BREAK);
-            removeClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_CENTER);
-            removeClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_LEFT);
-            removeClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_RIGHT);
-            addClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_CAPTION_INLINE);
+        if (!isNOU(selectNode)) {
+            if (!this.parent.isBlazor) {
+                if (selectNode.classList.contains('e-img-inline')) { return; }
+                this.removeImageOrCaptionEleClass([selectNode]);
+                if (selectNode.parentElement.nodeName === 'A') {
+                    this.removeImageOrCaptionEleClass([selectNode.parentElement]);
+                    addClass([selectNode.parentElement], 'e-img-inline');
+                }
+                if (!isNOU(closest(selectNode, '.e-img-caption-container'))) {
+                    this.removeImageOrCaptionEleClass([closest(selectNode, '.e-img-caption-container')]);
+                    addClass([closest(selectNode, '.e-img-caption-container')], 'e-img-inline');
+                } else {
+                    addClass([selectNode], 'e-img-inline');
+                }
+            } else {
+                selectNode.removeAttribute('class');
+                addClass([selectNode], 'e-rte-image');
+                addClass([selectNode], classes.CLASS_IMAGE_INLINE);
+                if (!isNOU(closest(selectNode, '.' + classes.CLASS_CAPTION))) {
+                    removeClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_BREAK);
+                    removeClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_CENTER);
+                    removeClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_LEFT);
+                    removeClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_RIGHT);
+                    addClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_CAPTION_INLINE);
+                }
+            }
         }
         this.callBack(e);
     }
     private imageBreak(e: IHtmlItem): void {
         const selectNode: HTMLElement = e.item.selectNode[0] as HTMLElement;
-        selectNode.removeAttribute('class');
-        addClass([selectNode], classes.CLASS_IMAGE_BREAK);
-        addClass([selectNode], 'e-rte-image');
-        if (!isNOU(closest(selectNode, '.' + classes.CLASS_CAPTION))) {
-            removeClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_CAPTION_INLINE);
-            removeClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_CENTER);
-            removeClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_LEFT);
-            removeClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_RIGHT);
-            addClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_BREAK);
+        if (!isNOU(selectNode)) {
+            if (!this.parent.isBlazor) {
+                if (selectNode.classList.contains('e-img-break')) { return; }
+                this.removeImageOrCaptionEleClass([selectNode]);
+                if (selectNode.parentElement.nodeName === 'A') {
+                    this.removeImageOrCaptionEleClass([selectNode.parentElement]);
+                    addClass([selectNode.parentElement], 'e-img-break');
+                }
+                if (!isNOU(closest(selectNode, '.e-img-caption-container'))) {
+                    this.removeImageOrCaptionEleClass([closest(selectNode, '.e-img-caption-container')]);
+                    addClass([closest(selectNode, '.e-img-caption-container')], 'e-img-break');
+                } else {
+                    addClass([selectNode], 'e-img-break');
+                }
+            } else {
+                selectNode.removeAttribute('class');
+                addClass([selectNode], 'e-rte-image');
+                addClass([selectNode], classes.CLASS_IMAGE_BREAK);
+                if (!isNOU(closest(selectNode, '.' + classes.CLASS_CAPTION))) {
+                    removeClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_CAPTION_INLINE);
+                    removeClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_CENTER);
+                    removeClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_LEFT);
+                    removeClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_RIGHT);
+                    addClass([closest(selectNode, '.' + classes.CLASS_CAPTION)], classes.CLASS_IMAGE_BREAK);
+                }
+            }
         }
         this.callBack(e);
     }

@@ -1,19 +1,19 @@
 import { mapCellValues, toCamelCase } from './visio-core';
 import { isValidColor } from './visio-theme';
-import { CellMapValue, ParsedXmlObject, Point, ShapeData, SyncfusionTextBinding, VisioCell, VisioRow, VisioSection, VisioShapeTransform, VisioTextTransform } from './visio-types';
+import { CellMapValue, ParsedXmlObject, Point, ShapeData, SyncfusionTextBinding, VisioCell, VisioRow, VisioSection, VisioShapeNode, VisioShapeTransform, VisioTextTransform } from './visio-types';
 
 /**
  * Retrieves a specific Visio Section from a shape by name.
  * Useful for accessing rich text-related sections like 'Character' or 'Paragraph'.
  *
- * @param {any} shape - The Visio shape object that may contain Section elements
+ * @param {VisioShapeNode} shape - The Visio shape object that may contain Section elements
  * @param {string} name - The Section name to find (e.g., 'Character', 'Paragraph')
- * @returns {any | null} The matched Section object if found; otherwise null
+ * @returns {VisioSection | null} The matched Section object if found; otherwise null
  */
-function getSection(shape: any, name: string): any | null {
+function getSection(shape: VisioShapeNode, name: string): VisioSection | null {
     if (!shape || !shape.Section) { return null; }
-    const sections: any[] = Array.isArray(shape.Section) ? shape.Section : [shape.Section];
-    return sections.find((s: any) => s && s.$ && s.$.N === name) || null;
+    const sections: VisioSection[] = Array.isArray(shape.Section) ? shape.Section : [shape.Section];
+    return sections.find((section: VisioSection) => section && section.$ && section.$.N === name) || null;
 }
 
 /**
@@ -32,24 +32,58 @@ function ensureArray<T>(v: any): T[] { return Array.isArray(v) ? v : (v != null 
  * and multiple word tokens or multiple paragraph rows�indicating rich text that a single EJ2
  * annotation style cannot faithfully reproduce.
  *
- * @param {any} shape - Visio shape object with potential 'Character' and 'Paragraph' sections
+ * @param {VisioShapeNode} shape - Visio shape object with potential 'Character' and 'Paragraph' sections
  * @returns {boolean} True if mixed character formatting is detected; otherwise false
  */
 
-function hasMixedCharacterFormatting(shape: any): boolean {
-    const charSec: any = getSection(shape, 'Character');
-    if (!charSec || !charSec.Row) { return false; }
+function hasMixedCharacterFormatting(shape: VisioShapeNode): boolean {
+    const characterSection: VisioSection = getSection(shape, 'Character');
+    if (!characterSection || !characterSection.Row) { return false; }
+
+    // Sets to collect distinct Font/Size/Color values (size kept as string per requirement)
+    const distinctFonts: Set<string> = new Set<string>();
+    const distinctSizes: Set<string> = new Set<string>();
+    const distinctColors: Set<string> = new Set<string>();
 
     // Unique style signatures across character rows
-    const rows: any[] = ensureArray<any>(charSec.Row);
-    const styleSignatures: Set<string> = new Set<string>();
-    for (const r of rows) {
-        const cells: any[] = ensureArray<any>(r.Cell);
-        const map: Map<string, string> = new Map<string, string>();
-        for (const c of cells) { if (c && c.$ && c.$.N) { map.set(c.$.N, c.$.V); } }
-        const sig: string = [map.get('Font') || '', map.get('Size') || '', map.get('Style') || '', map.get('Color') || ''].join('|');
-        styleSignatures.add(sig);
+    const characterRows: VisioRow[] = ensureArray(characterSection.Row);
+
+    for (const row of characterRows) {
+        const cells: VisioCell[] = ensureArray(row.Cell);
+
+        let isFontValueFound: boolean;
+        let isSizeValueFound: boolean;
+        let isColorValueFound: boolean;
+
+        for (const cell of cells) {
+            if (!cell || !cell.$ || !cell.$.N) {
+                continue;
+            }
+            const cellName: string = cell.$.N;
+            const cellValue: string | undefined = cell.$.V as string | undefined;
+            if (cellName === 'Font' && cellValue) {
+                distinctFonts.add(cellValue);
+                isFontValueFound = true;
+            }
+            if (cellName === 'Size' && cellValue) {
+                const size: number = Number(cellValue);
+                // Normalize numeric precision to avoid tiny float differences
+                distinctSizes.add(String(Math.round(size * 1000) / 1000));
+                isSizeValueFound = true;
+            }
+            if (cellName === 'Color' && cellValue) {
+                distinctColors.add(cellValue);
+                isColorValueFound = true;
+            }
+
+            // Stop early when all three values discovered for this row
+            if (isFontValueFound && isSizeValueFound && isColorValueFound) {
+                break;
+            }
+        }
     }
+    // Only consider mixed when font OR size OR color actually vary across rows
+    const mixedStyleDetected: boolean = (distinctFonts.size > 1) || (distinctSizes.size > 1) || (distinctColors.size > 1);
 
     const raw: string = shape && shape.Text && shape.Text.value ? String(shape.Text.value) : '';
     // Remove tags but keep whitespace to assess words
@@ -60,8 +94,8 @@ function hasMixedCharacterFormatting(shape: any): boolean {
     const paraSec: any = getSection(shape, 'Paragraph');
     const paraRows: number = paraSec && paraSec.Row ? ensureArray<any>(paraSec.Row).length : 0;
 
-    // Mixed only when: multiple style signatures AND (multiple words OR multiple paragraphs)
-    return styleSignatures.size > 1 && (hasMultiWord || paraRows > 1);
+    // Mixed only mixed style detected AND (multiple words OR multiple paragraphs)
+    return mixedStyleDetected && (hasMultiWord || paraRows > 1);
 }
 
 /**
@@ -155,7 +189,9 @@ export class VisioMarginModel {
          * @returns {string | undefined} The cell value, or undefined if not found
          */
         const getCell: (name: string) => string | undefined = (name: string) => {
-            const cell: VisioCell = shape.Cell.find((c: VisioCell) => c.$.N === name);
+            // Ensure shape.Cell is always an array
+            const cells: VisioCell[] = ensureArray(shape.Cell);
+            const cell: VisioCell = cells.find((c: VisioCell) => c.$.N === name);
             return cell ? (cell.$.V as string) : undefined;
         };
 
@@ -378,7 +414,9 @@ export class VisioTextStyleModel {
          * @returns {string | undefined} The cell value
          */
         const getCells: (name: string) => string | undefined = (name: string) => {
-            const cell: VisioCell = shape.Cell.find((c: VisioCell) => c.$.N === name);
+            // Ensure shape.Cell is always an array
+            const cells: VisioCell[] = ensureArray(shape.Cell);
+            const cell: VisioCell = cells.find((c: VisioCell) => c.$.N === name);
             return cell ? (cell.$.V as string) : undefined;
         };
 
@@ -787,7 +825,9 @@ export class VisioConnectorAnnotation extends VisioAnnotation {
          * @returns {string | undefined} The cell value
          */
         const getCell: (name: string) => string | undefined = (name: string): string | undefined => {
-            const cell: VisioCell = shape.Cell.find((c: VisioCell) => c.$.N === name);
+            // Ensure shape.Cell is always an array
+            const cells: VisioCell[] = ensureArray(shape.Cell);
+            const cell: VisioCell | undefined = cells.find((c: VisioCell) => c.$.N === name);
             return cell ? (cell.$.V as string) : undefined;
         };
 
@@ -877,7 +917,9 @@ export class VisioNodeAnnotation extends VisioAnnotation {
          * @returns {string | undefined} The cell value
          */
         const getCell: (name: string) => string | undefined = (name: string): string | undefined => {
-            const cell: VisioCell = shape.Cell.find((c: VisioCell) => c.$.N === name);
+            // Ensure shape.Cell is always an array
+            const cells: VisioCell[] = ensureArray(shape.Cell);
+            const cell: VisioCell = cells.find((c: VisioCell) => c.$.N === name);
             return cell ? (cell.$.V as string) : undefined;
         };
 
@@ -962,6 +1004,58 @@ export class VisioNodeAnnotation extends VisioAnnotation {
 
         return annotation;
     }
+
+    /**
+     * Applies a master-text fallback to a node annotation when page text is empty.
+     * Keeps page text if present; otherwise fills from master and forces visibility true.
+     * @static
+     * @param {VisioNodeAnnotation} annotation - The already-parsed page annotation object
+     * @param {VisioShapeNode} pageShape - The page-level shape XML (source for page text)
+     * @param {VisioShapeNode | null} masterShape - The master-level shape XML (source for placeholder text)
+     * @returns {void}
+     */
+    static applyMasterTextFallback(
+        annotation: VisioNodeAnnotation,
+        pageShape: VisioShapeNode,
+        masterShape: VisioShapeNode | null
+    ): void {
+        // Guard: invalid annotation or page shape
+        if (!annotation) { return; }
+        if (!pageShape) { return; }
+
+        // -- Check if page text has any visible content --
+        let pageText: string = '';
+        if (pageShape.Text && (pageShape.Text as any).value) {
+            pageText = String((pageShape.Text as any).value);
+        }
+        let hasPageText: boolean = false;
+        if (pageText && pageText.trim().length > 0) {
+            hasPageText = true;
+        }
+
+        // -- If page has text, keep it and return --
+        if (hasPageText) {
+            return;
+        }
+
+        // -- Otherwise, try to use master placeholder text --
+        if (!masterShape) { return; }
+
+        let masterTextRaw: string = '';
+        if (masterShape.Text && (masterShape.Text as any).value) {
+            masterTextRaw = String((masterShape.Text as any).value);
+        }
+        if (!masterTextRaw || masterTextRaw.trim().length === 0) {
+            return;
+        }
+
+        // -- Normalize master text using the same paragraph rules as page text --
+        const normalized: string = normalizeParagraphBreaks(masterShape, masterTextRaw);
+
+        // -- Apply content and ensure visibility --
+        annotation.content = normalized;
+        annotation.visible = true;
+    }
 }
 
 /**
@@ -973,7 +1067,8 @@ export class VisioNodeAnnotation extends VisioAnnotation {
  */
 function getHorizontalAlignment(shape: any): 'Left' | 'Center' | 'Right' {
     // Find VerticalAlign cell
-    const cell: VisioCell = shape.Cell.find((c: VisioCell) => c.$.N === 'VerticalAlign');
+    const cells: VisioCell[] = ensureArray(shape.Cell);
+    const cell: VisioCell = cells.find((c: VisioCell) => c.$.N === 'VerticalAlign');
     if (cell) {
         // Map alignment codes: 0 = left, 2 = right, default = center
         switch (cell.$.V) {
@@ -1024,7 +1119,8 @@ function getAnnotationConstraints(shape: any, cells: VisioCell[]): void {
  */
 function getVerticalAlignment(shape: any): 'Top' | 'Center' | 'Bottom' {
     // Find VerticalAlign cell
-    const cell: VisioCell = shape.Cell.find((c: VisioCell) => c.$.N === 'VerticalAlign');
+    const cells: VisioCell[] = ensureArray(shape.Cell);
+    const cell: VisioCell = cells.find((c: VisioCell) => c.$.N === 'VerticalAlign');
     if (cell) {
         // Map alignment codes: 0 = bottom, 2 = top, default = center
         switch (cell.$.V) {

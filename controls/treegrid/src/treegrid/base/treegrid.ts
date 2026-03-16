@@ -2,7 +2,7 @@ import { Component, addClass, createElement, EventHandler, isNullOrUndefined, Mo
 import { removeClass, EmitType, Complex, Collection, KeyboardEventArgs, getValue, NumberFormatOptions, DateFormatOptions } from '@syncfusion/ej2-base';
 import {Event, Property, NotifyPropertyChanges, INotifyPropertyChanged, setValue, KeyboardEvents, L10n } from '@syncfusion/ej2-base';
 import { Column, ColumnModel } from '../models/column';
-import { BeforeBatchSaveArgs, BeforeBatchAddArgs, BatchDeleteArgs, BeforeBatchDeleteArgs, Row, getNumberFormat, RowSelectable } from '@syncfusion/ej2-grids';
+import { BeforeBatchSaveArgs, BeforeBatchAddArgs, BatchDeleteArgs, BeforeBatchDeleteArgs, Row, getNumberFormat, RowSelectable, LoadEventArgs, setEnableSeamlessScrolling } from '@syncfusion/ej2-grids';
 import { GridModel, ColumnQueryModeType, HeaderCellInfoEventArgs, EditSettingsModel as GridEditModel, Freeze as FreezeColumn } from '@syncfusion/ej2-grids';
 import { RowDragEventArgs, RowDropEventArgs, RowDropSettingsModel, RowDropSettings, getUid, parentsUntil } from '@syncfusion/ej2-grids';
 import { LoadingIndicator } from '../models/loading-indicator';
@@ -44,7 +44,7 @@ import { PdfExportCompleteArgs, PdfHeaderQueryCellInfoEventArgs, PdfQueryCellInf
 import { ExcelExportProperties, PdfExportProperties, CellSelectingEventArgs, PrintEventArgs } from '@syncfusion/ej2-grids';
 import { ColumnMenuOpenEventArgs } from '@syncfusion/ej2-grids';
 import {BeforeDataBoundArgs} from '@syncfusion/ej2-grids';
-import { DataManager, ReturnOption, RemoteSaveAdaptor, Query, JsonAdaptor, Deferred, UrlAdaptor, Middlewares } from '@syncfusion/ej2-data';
+import { DataManager, ReturnOption, RemoteSaveAdaptor, Query, JsonAdaptor, Deferred, UrlAdaptor, Middlewares, QueryOptions, Predicate } from '@syncfusion/ej2-data';
 import { createSpinner, hideSpinner, showSpinner, Dialog } from '@syncfusion/ej2-popups';
 import { isRemoteData, isOffline, extendArray, isCountRequired, findChildrenRecords } from '../utils';
 import { Grid, QueryCellInfoEventArgs, Logger } from '@syncfusion/ej2-grids';
@@ -183,6 +183,8 @@ export class TreeGrid extends Component<HTMLElement> implements INotifyPropertyC
     public isLocalData: boolean;
     /** @hidden */
     public parentData: Object[];
+    /** @hidden */
+    public enableSeamlessScrolling: boolean = false;
     // module Declarations
     /**
      * @hidden
@@ -2196,7 +2198,14 @@ export class TreeGrid extends Component<HTMLElement> implements INotifyPropertyC
         this.renderModule = new Render(this);
         this.dataModule = new DataManipulation(this);
         this.printModule = new Print(this);
-        this.trigger(events.load);
+        if (this.enableVirtualization || this.enableColumnVirtualization) {
+            const args: LoadEventArgs = { enableSeamlessScrolling: this.enableSeamlessScrolling };
+            this.trigger(events.load, args);
+            this.enableSeamlessScrolling = args.enableSeamlessScrolling;
+            setEnableSeamlessScrolling(this.enableSeamlessScrolling);
+        } else {
+            this.trigger(events.load);
+        }
         this.autoGenerateColumns();
         this.initialRender = true;
         if (!isNullOrUndefined(this.dataSource)) {
@@ -2464,6 +2473,7 @@ export class TreeGrid extends Component<HTMLElement> implements INotifyPropertyC
         this.grid.clipMode = getActualProperties(this.clipMode);
         this.grid.enableColumnSpan = this.enableColumnSpan;
         this.grid.enableRowSpan = this.enableRowSpan;
+        this.grid.enableSeamlessScrolling = this.enableSeamlessScrolling;
         const templateInstance: string = 'templateDotnetInstance';
         this.grid[`${templateInstance}`] = this[`${templateInstance}`];
         const isJsComponent: string = 'isJsComponent';
@@ -2950,7 +2960,7 @@ export class TreeGrid extends Component<HTMLElement> implements INotifyPropertyC
             }
             this.notify('updateGridActions', args);
             this.isVirtualExpandCollapse = false;
-            if (args.requestType === 'save' && this.aggregates.map((ag: AggregateRow) => ag.showChildSummary === true).length) {
+            if (args.requestType === 'save' && this.aggregates.some((ag: AggregateRow) => ag.showChildSummary === true)) {
                 this.grid.refresh();
             }
             if ((args.action === 'clearFilter' || args.action === 'clear-filter' || args.requestType === 'sorting') && this.enableInfiniteScrolling) {
@@ -3643,6 +3653,116 @@ export class TreeGrid extends Component<HTMLElement> implements INotifyPropertyC
                 }
             }
         }
+    }
+
+    /**
+     * Retrieves all records that match the current search criteria and are sorted according to the active sort settings.
+     *
+     * This method processes the data source by applying search filters and sort operations,
+     * returning the searched and sorted records excluding summary rows.
+     *
+     * @param {Object} args - Optional arguments object to control query execution behavior.
+     * @param {Query} args.query - Optional custom Query object to override the default generated query.
+     * @param {boolean} args.isFilter - Optional flag to include only filtered records without sorting (default: false).
+     * @param {boolean} args.isSort - Optional flag to apply only sorting without filtering (default: false).
+     *
+     * @returns {ITreeData[]} - Array of searched and sorted TreeGrid records with summary rows excluded.
+     * @hidden
+     */
+    public getData(args?: { query?: Query, isFilter?: boolean, isSort?: boolean }): ITreeData[] {
+        const dataObj: Object = isCountRequired(this) ? getValue('result', this.grid.dataSource)
+            : this.grid.dataSource;
+        let results: any = dataObj instanceof DataManager ? (<DataManager>dataObj).dataSource.json : <ITreeData[]>dataObj;
+        const gridQuery: Query = (!isNullOrUndefined(args) && args.query) ? args.query : this.getDataModule().baseModule.generateQuery();
+        let filterQuery: QueryOptions[]; let searchQuery: QueryOptions[];
+        if (!isNullOrUndefined(gridQuery)) {
+            filterQuery = gridQuery.queries.filter((q: QueryOptions) => q.fn === 'onWhere');
+            searchQuery = gridQuery.queries.filter((q: QueryOptions) => q.fn === 'onSearch');
+        }
+        const skipFilterSearch: boolean = (!isNullOrUndefined(args) && args.isSort);
+        if (!skipFilterSearch && (this.grid.allowFiltering && this.grid.filterSettings.columns.length) ||
+            (this.grid.searchSettings.key.length > 0) && (!isNullOrUndefined(gridQuery))
+            || ((filterQuery && filterQuery.length > 0) || (searchQuery && searchQuery.length > 0))) {
+            const filterQuery: QueryOptions[] = gridQuery.queries.filter((q: QueryOptions) => q.fn === 'onWhere');
+            const searchQuery: QueryOptions[] = gridQuery.queries.filter((q: QueryOptions) => q.fn === 'onSearch');
+            const query: Query = new Query();
+            query.queries = filterQuery.concat(searchQuery);
+            const filteredData: ITreeData[] = new DataManager(results).executeLocal(query);
+            this.notify('updateFilterRecs', { data: filteredData });
+            results = isRemoteData(this) ? this.dataResults : this.filterModule.filteredResult;
+            if (!isNullOrUndefined(args) && args.isFilter) {
+                return isRemoteData(this) ? (results as any).result.filter((item: ITreeData) => !item.isSummaryRow)
+                    : results.filter((item: ITreeData) => !item.isSummaryRow);
+            }
+        }
+        const sortQuery: QueryOptions[] = gridQuery.queries.filter((q: QueryOptions) => q.fn === 'onSortBy');
+        if (this.grid.sortSettings.columns.length > 0 || sortQuery.length) {
+            const parentData: Object = this.parentData;
+            const query: Query = new Query();
+            query.queries = sortQuery;
+            const modifiedData: Object = new DataManager(parentData).executeLocal(query);
+            if (this.allowRowDragAndDrop && !isNullOrUndefined(this.rowDragAndDropModule['draggedRecord']) &&
+                this.rowDragAndDropModule['droppedRecord'].hasChildRecords && this.rowDragAndDropModule['dropPosition'] !== 'middleSegment') {
+                const dragdIndex: number = (modifiedData as ITreeData[]).indexOf(this.rowDragAndDropModule['draggedRecord']);
+                (modifiedData as ITreeData[]).splice(dragdIndex, 1);
+                const dropdIndex: number = (modifiedData as ITreeData[]).indexOf(this.rowDragAndDropModule['droppedRecord']);
+                if (this.rowDragAndDropModule['droppedRecord'].hasChildRecords && this.rowDragAndDropModule['dropPosition'] === 'topSegment') {
+                    (modifiedData as ITreeData[]).splice(dropdIndex, 0, this.rowDragAndDropModule['draggedRecord']);
+                }
+                else if (this.rowDragAndDropModule['dropPosition'] === 'bottomSegment') {
+                    (modifiedData as ITreeData[]).splice(dropdIndex + 1, 0, this.rowDragAndDropModule['draggedRecord']);
+                }
+            }
+            const sortArgs: { modifiedData: ITreeData[], filteredData: ITreeData[], srtQry: Query }
+                = { modifiedData: <Object[]>modifiedData, filteredData: results, srtQry: query };
+            this.notify('createSort', sortArgs);
+            results = isRemoteData(this) ? this.dataResults : sortArgs.modifiedData;
+        }
+        return isRemoteData(this) ? (this.dataResults as any).result.filter((item: ITreeData) => !item.isSummaryRow)
+            : results.filter((item: ITreeData) => !item.isSummaryRow);
+    }
+
+    /**
+     * Retrieves the processed Tree Grid data based on current operations such as
+     * sorting, filtering, and searching. Maintains hierarchy and current structure.
+     *
+     * For local data: when skipPage is true (the default), it returns all available records;
+     * when skipPage is false, it returns only the records for the current page.
+     * For remote data: it always returns only the records for the current page.
+     *
+     * @param {boolean} skipPage - if set to false, returns only the records for the current page.
+     * @returns {ITreeData[]} - Array of tree records (summary rows excluded).
+     * @hidden
+     */
+    public getProcessedRecords(skipPage?: boolean): ITreeData[] {
+        let result: ITreeData[];
+        if (skipPage !== true || isRemoteData(this)) {
+            result = this.getData();
+            const dm: DataManager = new DataManager(result);
+            const expanded: Predicate = new Predicate('expanded', 'notequal', null).or('expanded', 'notequal', undefined);
+            const parents: ITreeData[] = dm.executeLocal(new Query().where(expanded));
+            const visualData: ITreeData[] = parents.filter((e: ITreeData) => {
+                return getExpandStatus(this, e, parents);
+            });
+            let query: Query = new Query();
+            if (this.allowPaging || this.enableVirtualization || this.enableInfiniteScrolling) {
+                const pageSize: number = this.grid.pageSettings.pageSize;
+                let currentPage: number = this.grid.pageSettings.currentPage;
+                if (visualData.length < (currentPage * pageSize)) {
+                    currentPage = (Math.floor(visualData.length / pageSize)) + ((visualData.length % pageSize) ? 1 : 0);
+                    currentPage = currentPage ? currentPage : 1;
+                    this.grid.setProperties({ pageSettings: { currentPage: currentPage } }, true);
+                }
+                const skip: number = pageSize * (currentPage - 1);
+                query = query.skip(skip).take(pageSize);
+            }
+            dm.dataSource.json = visualData;
+            result = dm.executeLocal(query);
+        }
+        else {
+            result = this.getData();
+        }
+        return result;
     }
 
     /**

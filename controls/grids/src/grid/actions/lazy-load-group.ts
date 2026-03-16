@@ -60,11 +60,13 @@ export class LazyLoadGroup implements IAction {
             this.parent.height = this.parent.pageSettings.pageSize * this.parent.getRowHeight();
         }
         const renderer: RendererFactory = this.serviceLocator.getService<RendererFactory>('rendererFactory');
+        let lazyLoadRender: GroupLazyLoadRenderer = null;
         if (this.parent.groupSettings.enableLazyLoading) {
-            renderer.addRenderer(RenderType.Content, new GroupLazyLoadRenderer(this.parent, this.serviceLocator));
+            lazyLoadRender = new GroupLazyLoadRenderer(this.parent, this.serviceLocator);
+            renderer.addRenderer(RenderType.Content, lazyLoadRender);
         }
         if (this.parent.enableVirtualization) {
-            this.parent.lazyLoadRender = new GroupLazyLoadRenderer(this.parent, this.serviceLocator);
+            this.parent.lazyLoadRender = lazyLoadRender;
         }
     }
 

@@ -496,7 +496,7 @@ export class FormDesignerToolbar {
         this.listboxItem.setAttribute('data-tabindex', '0');
         //this.signatureItem = this.primaryToolbar.addClassToolbarItem('_formdesigner_signature', 'e-pv-formdesigner-signature', this.pdfViewer.localeObj.getConstant('Signature'));
         this.deleteItem = this.primaryToolbar.addClassToolbarItem('_formdesigner_delete', 'e-pv-formdesigner-delete', this.pdfViewer.localeObj.getConstant('Delete FormField'));
-        this.closeItem = this.primaryToolbar.addClassToolbarItem('_formdesigner_close', 'e-pv-annotation-tools-close', null);
+        this.closeItem = this.primaryToolbar.addClassToolbarItem('_formdesigner_close', 'e-pv-annotation-tools-close', this.pdfViewer.localeObj.getConstant('Close'));
         this.closeItem.setAttribute('tabindex', '0');
         this.closeItem.setAttribute('data-tabindex', '0');
         this.showHideDeleteIcon(false);
@@ -632,6 +632,23 @@ export class FormDesignerToolbar {
             for (let i: number = component.ej2_instances.length - 1; i >= 0; i--) {
                 component.ej2_instances[parseInt(i.toString(), 10)].destroy();
             }
+        }
+    }
+
+    /**
+     * @private
+     * Updates the annotation Toolbar layout for RTL/LTR dynamically.
+     * @returns {void}
+     */
+    public updateRtlForFormDesignerToolbar(): void {
+        this.toolbar.enableRtl = this.pdfViewer.enableRtl;
+        const fieldSignContainer: HTMLElement = document.getElementById(this.pdfViewer.element.id + '_formfield_signature');
+        const fieldSign: any = (((fieldSignContainer as any).ej2_instances || []) as any[])
+            .find((i: any) => i && i.getModuleName() === 'dropdown-btn');
+        if (fieldSign) {
+            fieldSign.enableRtl = this.pdfViewer.enableRtl ? true : false;
+            fieldSign.dataBind();
+            fieldSign.refresh();
         }
     }
 }

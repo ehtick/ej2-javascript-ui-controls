@@ -19,7 +19,7 @@ export class VirtualContentRenderer {
      * @hidden
      */
     public renderWrapper(): void {
-        this.wrapper = createElement('div', { className: 'e-virtualtable', styles: 'position: absolute; transform: translate(0px, 0px);' });
+        this.wrapper = createElement('div', { className: 'e-virtualtable', styles: 'position: absolute; transform: translate3d(0px, 0px, 0px) translateZ(0);' });
         this.parent.ganttChartModule.scrollElement.appendChild(this.wrapper);
         this.virtualTrack = createElement('div', { className: 'e-virtualtrack', styles: 'position: relative; pointer-events: none; width: 100%;' });
         this.parent.ganttChartModule.scrollElement.appendChild(this.virtualTrack);
@@ -49,15 +49,20 @@ export class VirtualContentRenderer {
             const virtualTable: string = (document.getElementsByClassName('e-virtualtable')[1] as HTMLElement).style.transform;
             const treegridVirtualHeight: string = (this.parent.treeGrid.element.getElementsByClassName('e-virtualtable')[0] as HTMLElement).style.transform;
             let translateXValue: string;
+            // eslint-disable-next-line no-useless-escape
+            const transformRegex: RegExp = /translate(?:3d)?\(([^\)]+)\)/;
             if (virtualTable !== '') {
                 translateXValue = virtualTable.match(/translate.*\((.+)\)/)[1].split(', ')[0];
             }
             else {
                 const chartTransform: string = (this.parent.ganttChartModule.scrollElement.getElementsByClassName('e-virtualtable')[0] as HTMLElement).style.transform;
-                translateXValue = chartTransform.match(/translate.*\((.+)\)/)[1].split(', ')[0];
+                const match: RegExpMatchArray = chartTransform.match(transformRegex);
+                translateXValue = match[1].split(',')[0].trim();
             }
-            const translateYValue: string = treegridVirtualHeight.match(/translate.*\((.+)\)/)[1].split(', ')[1];
-            this.parent.ganttChartModule.virtualRender.wrapper.style.transform = `translate(${translateXValue}, ${translateYValue})`;
+            const match: RegExpMatchArray = treegridVirtualHeight.match(transformRegex);
+            const parts: string[] = match[1].split(',');
+            const translateYValue: string = this.parent['getTranslateY'](parts);
+            this.parent.ganttChartModule.virtualRender.wrapper.style.transform = `translate3d(${translateXValue}, ${translateYValue}, 0px) translateZ(0)`;
         }
         else {
             this.parent.ganttChartModule.virtualRender.wrapper.style.transform = content.style.transform;

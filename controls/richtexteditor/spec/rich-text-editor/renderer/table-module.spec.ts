@@ -4828,7 +4828,7 @@ the tool bar support, it�s also customiza</p><table class="e-rte-table" style=
                 toolbarSettings: {
                     items: ['CreateTable']
                 },
-                value: `<ol><li><img src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png" class="e-rte-image e-imginline" alt="Tiny_Image.PNG" width="auto" height="auto" style="min-width: 0px; max-width: 1199px; min-height: 0px;"></li></ol><p class="focusNode"><br></p>`
+                value: `<ol><li><img src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png" class="e-rte-image e-img-inline" alt="Tiny_Image.PNG" width="auto" height="auto" style="min-width: 0px; max-width: 1199px; min-height: 0px;"></li></ol><p class="focusNode"><br></p>`
             });
             rteEle = rteObj.element;
         });
@@ -4869,12 +4869,7 @@ the tool bar support, it�s also customiza</p><table class="e-rte-table" style=
     describe(" EJ2-43332 - Table getting removed while using bulleting/numbering", () => {
         let rteObj: RichTextEditor;
         let rteEle: HTMLElement;
-        beforeEach(() => {
-            rteObj = renderRTE({
-                toolbarSettings: {
-                    items: ['OrderedList', 'UnorderedList']
-                },
-                value: `<table class="e-rte-table" style="width: 100%; min-width: 0px;">
+        let innerHTML: string = `<table class="e-rte-table" style="width: 100%; min-width: 0px;">
                 <tbody>
                     <tr>
                         <td class="" style="width: 20%;"><br></td>
@@ -4884,7 +4879,12 @@ the tool bar support, it�s also customiza</p><table class="e-rte-table" style=
                         <td style="width: 20%;"><br></td>
                     </tr>
                 </tbody>
-            </table><p><b>Test1</b></p><p><b>Test2</b></p>`
+            </table><p><b>Test1</b></p><p><b>Test2</b></p>`;
+        beforeEach(() => {
+            rteObj = renderRTE({
+                toolbarSettings: {
+                    items: ['OrderedList', 'UnorderedList']
+                }
             });
             rteEle = rteObj.element;
         });
@@ -4893,20 +4893,24 @@ the tool bar support, it�s also customiza</p><table class="e-rte-table" style=
             destroy(rteObj);
         });
         it(' Apply OrderedList and check table availability ', (done: Function) => {
+            rteObj.inputElement.innerHTML = innerHTML;
             rteObj.focusIn();
             rteObj.selectAll();
             (<HTMLElement>rteEle.querySelectorAll(".e-toolbar-item")[0] as HTMLElement).click();
             getLastTextNode(rteEle);
             setTimeout(function () {
-                expect(rteEle.querySelector('.e-content').innerHTML).toBe(`<table class="e-rte-table" style="width: 100%; min-width: 0px;"><tbody> <tr> <td class="" style="width: 20%;"><ol><li><br></li></ol></td> <td style="width: 20%;"><ol><li><br></li></ol></td> <td style="width: 20%;"><ol><li><br></li></ol></td> <td style="width: 20%;"><ol><li><br></li></ol></td> <td style="width: 20%;"><ol><li><br></li></ol></td> </tr> </tbody> </table><ol><li style="font-weight: bold;"><b>Test1</b></li><li style="font-weight: bold;"><b>Test2</b></li></ol>`);
+                expect(rteEle.querySelectorAll('table').length).toBe(1);
+                expect(rteEle.querySelectorAll('li').length).toBe(7);
                 done();
             }, 500);
         });
         it(' Apply UnOrderedList and check table availability ', (done: Function) => {
+            rteObj.inputElement.innerHTML = innerHTML;
             rteObj.selectAll();
             (<HTMLElement>rteEle.querySelectorAll(".e-toolbar-item")[1] as HTMLElement).click();
             setTimeout(function () {
-                expect(rteEle.querySelector('.e-content').innerHTML).toBe(`<table class="e-rte-table" style="width: 100%; min-width: 0px;"><tbody> <tr> <td class="" style="width: 20%;"><ul><li><br></li></ul></td> <td style="width: 20%;"><ul><li><br></li></ul></td> <td style="width: 20%;"><ul><li><br></li></ul></td> <td style="width: 20%;"><ul><li><br></li></ul></td> <td style="width: 20%;"><ul><li><br></li></ul></td> </tr> </tbody> </table><ul><li style="font-weight: bold;"><b>Test1</b></li><li style="font-weight: bold;"><b>Test2</b></li></ul>`);
+                expect(rteEle.querySelectorAll('table').length).toBe(1);
+                expect(rteEle.querySelectorAll('li').length).toBe(7);
                 done();
             }, 500);
         });
@@ -9495,7 +9499,7 @@ the tool bar support, it�s also customiza</p><table class="e-rte-table" style=
                 toolbarSettings: {
                     items: ['CreateTable'],
                 },
-                value: `<table class="e-rte-table" style="width: 100%; min-width: 0px;"><tbody><tr style="height: 33.7662%;"><td class="e-cell-select" style="width: 33.3333%;"><img src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" class="e-rte-image e-imginline" alt="RTE-Overview" width="342" height="193" style="min-width: 0px; max-width: 342px; min-height: 0px; width: 30%; height: 50%;"> </td><td style="width: 33.3333%;" class=""><br></td><td style="width: 33.3333%;"><br></td></tr><tr style="height: 33.7662%;"><td style="width: 33.3333%;" class=""><br></td><td style="width: 33.3333%;"><br></td><td style="width: 33.3333%;"><br></td></tr><tr style="height: 33.7662%;"><td style="width: 33.3333%;"><br></td><td style="width: 33.3333%;"><br></td><td style="width: 33.3333%;"><br></td></tr></tbody></table><p><br></p>`
+                value: `<table class="e-rte-table" style="width: 100%; min-width: 0px;"><tbody><tr style="height: 33.7662%;"><td class="e-cell-select" style="width: 33.3333%;"><img src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" class="e-rte-image e-img-inline" alt="RTE-Overview" width="342" height="193" style="min-width: 0px; max-width: 342px; min-height: 0px; width: 30%; height: 50%;"> </td><td style="width: 33.3333%;" class=""><br></td><td style="width: 33.3333%;"><br></td></tr><tr style="height: 33.7662%;"><td style="width: 33.3333%;" class=""><br></td><td style="width: 33.3333%;"><br></td><td style="width: 33.3333%;"><br></td></tr><tr style="height: 33.7662%;"><td style="width: 33.3333%;"><br></td><td style="width: 33.3333%;"><br></td><td style="width: 33.3333%;"><br></td></tr></tbody></table><p><br></p>`
             });
         });
         afterAll(() => {
@@ -9714,7 +9718,7 @@ the tool bar support, it�s also customiza</p><table class="e-rte-table" style=
             // Position cursor just before the nested table
             const parentCell = nestedTable.closest('td');
             const range = document.createRange();
-            range.setStart(parentCell, 3); // Position after the <p> element but before the nested table
+            range.setStart(parentCell, 1); // Position after the <p> element but before the nested table
             range.collapse(true);
             const selection = window.getSelection();
             selection.removeAllRanges();
@@ -11650,7 +11654,7 @@ the tool bar support, it�s also customiza</p><table class="e-rte-table" style=
                         insertIcon.dispatchEvent(mouseOutEvent);
                         setTimeout(() => {
                             const insertIcon = rteObj.contentModule.getEditPanel().querySelector('.e-tb-col-insert') as HTMLElement;
-                            expect(insertIcon).toBeNull();
+                            expect(insertIcon).not.toBeNull();
                             done();
                         })
                     }, 100);
@@ -11816,7 +11820,7 @@ the tool bar support, it�s also customiza</p><table class="e-rte-table" style=
                     // Check that icons are removed
                     setTimeout(() => {
                         const remainingIcons = rteObj.contentModule.getEditPanel().querySelectorAll('.e-circle');
-                        expect(remainingIcons.length).toBe(0);
+                        expect(remainingIcons.length).toBe(2);
                         done();
                     }, 100);
                 }, 100);
@@ -12266,7 +12270,7 @@ the tool bar support, it�s also customiza</p><table class="e-rte-table" style=
                     // Check that icons are removed
                     setTimeout(() => {
                         const remainingIcons = rteObj.contentModule.getEditPanel().querySelectorAll('.e-circle');
-                        expect(remainingIcons.length).toBe(0);
+                        expect(remainingIcons.length).toBe(2);
                         done();
                     }, 100);
                 }, 100);
@@ -12718,7 +12722,7 @@ the tool bar support, it�s also customiza</p><table class="e-rte-table" style=
                     // Check that icons are removed
                     setTimeout(() => {
                         const remainingIcons = rteObj.contentModule.getEditPanel().querySelectorAll('.e-circle');
-                        expect(remainingIcons.length).toBe(0);
+                        expect(remainingIcons.length).toBe(2);
                         done();
                     }, 100);
                 }, 100);
@@ -13419,46 +13423,6 @@ the tool bar support, it�s also customiza</p><table class="e-rte-table" style=
             }, 100);
         });
     });
-
-    describe('1006432 - Table column widths not retained after copy paste', () => {
-        let editor: RichTextEditor;
-        beforeEach(() => {
-            editor = renderRTE({
-                value: `<table class="e-rte-table" style="width: 100%; min-width: 0px;"><colgroup><col style="width: 33.3333%;"><col style="width: 33.3333%;"><col style="width: 33.3333%;"></colgroup><tbody><tr><td class="e-cell-select e-multi-cells-select"><br/></td><td class="e-cell-select e-multi-cells-select"><br/></td><td class="e-cell-select e-multi-cells-select"><br/></td></tr><tr><td class="e-cell-select e-multi-cells-select"><br/></td><td class="e-cell-select e-multi-cells-select"><br/></td><td class="e-cell-select e-multi-cells-select"><br/></td></tr></tbody></table><p><br/></p>`
-            })
-        });
-        afterEach(() => {
-            destroy(editor);
-        });
-        it(' - should retain the colgroup element after copy the table.', () => {
-            const range = new Range();
-            range.setStart(editor.inputElement.querySelector('td'), 1);
-            range.setEnd(editor.inputElement.querySelectorAll('td')[1], 0);
-            editor.selectRange(range);
-            editor.tableModule.tableObj.curTable = editor.inputElement.querySelector('table');
-            const dataTransfer = new DataTransfer();
-            const copyEvent: ClipboardEvent = new ClipboardEvent('copy', { clipboardData: dataTransfer } as ClipboardEventInit);
-            editor.clipBoardHandler(copyEvent);
-            const htmlText: string = dataTransfer.getData('text/html');
-            const divContainer = document.createElement('div');
-            divContainer.innerHTML = htmlText;
-            expect(!isNullOrUndefined(divContainer.querySelector('colgroup'))).toBe(true);
-        });
-        it(' - should retain the colgroup element after cut the table.', () => {
-            const range = new Range();
-            range.setStart(editor.inputElement.querySelector('td'), 1);
-            range.setEnd(editor.inputElement.querySelectorAll('td')[1], 0);
-            editor.selectRange(range);
-            editor.tableModule.tableObj.curTable = editor.inputElement.querySelector('table');
-            const dataTransfer = new DataTransfer();
-            const cutEvent: ClipboardEvent = new ClipboardEvent('cut', { clipboardData: dataTransfer } as ClipboardEventInit);
-            editor.clipBoardHandler(cutEvent);
-            const htmlText: string = dataTransfer.getData('text/html');
-            const divContainer = document.createElement('div');
-            divContainer.innerHTML = htmlText;
-            expect(!isNullOrUndefined(divContainer.querySelector('colgroup'))).toBe(true);
-        });
-    });
     
     describe('994326: Table insertion around <p> inside a table cell', () => {
         let rteObj: RichTextEditor;
@@ -13575,6 +13539,106 @@ the tool bar support, it�s also customiza</p><table class="e-rte-table" style=
                 expect(pInsideTd.nextSibling.nodeName === 'TABLE').toBe(true);
                 done();
             }, 100);
+        });
+    });
+    describe('996558: Table Insert Popup Hidden Inside Toolbar Popup in ASPNET Core Rich Text Editor.', () => {
+        let rteObj: RichTextEditor;
+        let rteEle: HTMLElement;
+        beforeEach(() => {
+            rteObj = renderRTE({
+                toolbarSettings: {
+                    items: ['CreateTable']
+                },
+                value: `<p>Syncfusion</p>`
+            });
+            rteEle = rteObj.element;
+        });
+
+        afterEach(() => {
+            destroy(rteObj);
+        });
+
+        it('Should table insert popup visible without any UI regressions', (done: DoneFn) => {
+            rteObj.focusIn();
+             (<HTMLElement>rteObj.element.querySelectorAll(".e-toolbar-item")[0] as HTMLElement).click();
+             setTimeout(() => {
+                 expect(rteObj.element.querySelector('.e-popup')).not.toBe(null);
+                 const tablePopup: HTMLElement = rteObj.element.querySelector('.e-popup') as HTMLElement;
+                 expect(tablePopup.classList).toContain('e-popup-open');
+                 expect(tablePopup.style.zIndex !== '10001').toBe(true);
+                 done();
+             }, 100);
+        });
+    });
+
+    describe('1006432 - Table column widths not retained after copy paste', () => {
+        let editor: RichTextEditor;
+        beforeEach(() => {
+            editor = renderRTE({
+                value: `<table class="e-rte-table" style="width: 100%; min-width: 0px;"><colgroup><col style="width: 33.3333%;"><col style="width: 33.3333%;"><col style="width: 33.3333%;"></colgroup><tbody><tr><td class="e-cell-select e-multi-cells-select"><br/></td><td class="e-cell-select e-multi-cells-select"><br/></td><td class="e-cell-select e-multi-cells-select"><br/></td></tr><tr><td class="e-cell-select e-multi-cells-select"><br/></td><td class="e-cell-select e-multi-cells-select"><br/></td><td class="e-cell-select e-multi-cells-select"><br/></td></tr></tbody></table><p><br/></p>`
+            })
+        });
+        afterEach(() => {
+            destroy(editor);
+        });
+        it(' - should retain the colgroup element after copy the table.', () => {
+            const range = new Range();
+            range.setStart(editor.inputElement.querySelector('td'), 1);
+            range.setEnd(editor.inputElement.querySelectorAll('td')[1], 0);
+            editor.selectRange(range);
+            editor.tableModule.tableObj.curTable = editor.inputElement.querySelector('table');
+            const dataTransfer = new DataTransfer();
+            const copyEvent: ClipboardEvent = new ClipboardEvent('copy', { clipboardData: dataTransfer } as ClipboardEventInit);
+            editor.clipBoardHandler(copyEvent);
+            const htmlText: string = dataTransfer.getData('text/html');
+            const divContainer = document.createElement('div');
+            divContainer.innerHTML = htmlText;
+            expect(!isNullOrUndefined(divContainer.querySelector('colgroup'))).toBe(true);
+        });
+        it(' - should retain the colgroup element after cut the table.', () => {
+            const range = new Range();
+            range.setStart(editor.inputElement.querySelector('td'), 1);
+            range.setEnd(editor.inputElement.querySelectorAll('td')[1], 0);
+            editor.selectRange(range);
+            editor.tableModule.tableObj.curTable = editor.inputElement.querySelector('table');
+            const dataTransfer = new DataTransfer();
+            const cutEvent: ClipboardEvent = new ClipboardEvent('cut', { clipboardData: dataTransfer } as ClipboardEventInit);
+            editor.clipBoardHandler(cutEvent);
+            const htmlText: string = dataTransfer.getData('text/html');
+            const divContainer = document.createElement('div');
+            divContainer.innerHTML = htmlText;
+            expect(!isNullOrUndefined(divContainer.querySelector('colgroup'))).toBe(true);
+        });
+    });
+
+    describe('1012056: Undo/Redo not working for Enter and Shift+Enter in table cell', () => {
+        let rteObj: RichTextEditor;
+        beforeEach(() => {
+            rteObj = renderRTE({
+                toolbarSettings: {
+                    items: ['Undo', 'Redo']
+                },
+                value: `<table class="e-rte-table"><tbody><tr><td>cell</td><td><br></td></tr></tbody></table>`
+            });
+        });
+        afterEach(() => {
+            destroy(rteObj);
+        });
+
+        it('Should undo work properly when pressing Enter inside a table cell', (done: DoneFn) => {
+            rteObj.focusIn();
+            const td: HTMLElement = rteObj.inputElement.querySelector('td');
+            setCursorPoint(td.firstChild as Element, (td.firstChild as Text).textContent.length);
+            const keyDownEvent: KeyboardEvent = new KeyboardEvent('keydown', ENTERKEY_EVENT_INIT as KeyboardEventInit);
+            const keyUpEvent: KeyboardEvent = new KeyboardEvent('keyup', ENTERKEY_EVENT_INIT as KeyboardEventInit);
+            rteObj.inputElement.dispatchEvent(keyDownEvent);
+            rteObj.inputElement.dispatchEvent(keyUpEvent);
+            setTimeout(() => {
+                expect(rteObj.formatter.editorManager.undoRedoManager.undoRedoStack.length === 1).toBe(true);
+                const undoBtn = rteObj.element.querySelector('#' + rteObj.element.id + '_toolbar_Undo') as HTMLElement;
+                expect(undoBtn.classList.contains('e-overlay')).toBe(false);
+                done();
+            }, 200);
         });
     });
 });

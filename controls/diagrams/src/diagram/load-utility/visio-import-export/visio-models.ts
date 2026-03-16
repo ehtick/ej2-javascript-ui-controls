@@ -1,8 +1,8 @@
 import { VisioAnnotation } from './visio-annotations';
 import { VisioConnector } from './visio-connectors';
 import { shapeIndex } from './visio-nodes';
-import { ConnectorType, DecoratorShapes, DetermineShapeResult, FontProps, FormattedColors, GradientStop, GradientVector, LineStyleList, OrderEntry, RadialGradientConfig, VarStyle, VisioMedia, VisioPort, VisioRow } from './visio-types';
-
+import { ConnectorType, DecoratorShapes, DetermineShapeResult, FontProps, FormattedColors, GradientStop, GradientVector, LineStyleList, NormalizedVisioData, OrderEntry, RadialGradientConfig, ShapeAddInfo, VarientStyle, VisioMedia, VisioPort, VisioRow } from './visio-types';
+import { ColorReferenceArray, ProcessedColor, LineStyleRef, TransformedColorRef, LineStyleEntry, SchemeLineStyle, ConnectorLineStyle } from './visio-types';
 /**
  * Represents the styling properties of a Visio shape (colors, gradients, strokes).
  * This class encapsulates all visual styling applied to a shape including fill, stroke,
@@ -720,7 +720,7 @@ export class VisioShape {
      *
      * @type {string | undefined}
      */
-    glueValue?: string;
+    glueValue?: number;
 
     /**
      * Array of connection points (ports) on this shape where connectors can attach.
@@ -745,6 +745,13 @@ export class VisioShape {
      * @type {string}
      */
     foreignType: string;
+
+    /**
+     * Retrieved node shape data from import
+     *
+     * @type {string}
+     */
+    addInfo: ShapeAddInfo;
 }
 
 /**
@@ -1451,6 +1458,12 @@ export class VisioTheme {
     fontColor?: FormattedColors;
 
     /**
+     * Mapping of standard theme color object.
+     * @type {ColorReferenceArray | undefined}
+     */
+    fontColorsArray?: ColorReferenceArray;
+
+    /**
      * Ordered array of fill/background style definitions from the theme.
      * Each entry has a name and the style value/definition.
      *
@@ -1494,9 +1507,9 @@ export class VisioTheme {
      * Array of style variation definitions for theme variants.
      * Each entry defines a complete style set for one theme variation.
      *
-     * @type {ReadonlyArray<VarStyle> | undefined}
+     * @type {ReadonlyArray<VarientStyle> | undefined}
      */
-    variant?: ReadonlyArray<VarStyle>;
+    variant?: ReadonlyArray<VarientStyle>;
 
     /**
      * Array of hex color values (#RRGGBB format) from the variation color scheme.
@@ -1506,6 +1519,114 @@ export class VisioTheme {
      * @type {string[] | undefined}
      */
     hexColors?: Array<string>;
+
+    /**
+     * Processed fill style definitions (transformed from fmtSchemeFill).
+     * Each entry contains color information and style properties.
+     *
+     * @type {ColorReferenceArray | undefined}
+     */
+    fillStyles?: ColorReferenceArray;
+
+    /**
+     * Processed line style definitions (transformed from fmtSchemeStroke).
+     * Each entry contains line properties, width, dash pattern, and color.
+     *
+     * @type {LineStyleRef | undefined}
+     */
+    lineStyles?: LineStyleRef[];
+
+    /**
+     * Connector-specific fill style definitions from vt:fmtConnectorScheme.
+     * Used for styling fill/background of connectors.
+     *
+     * @type {TransformedColorRef[] | undefined}
+     */
+    connFillStyles?: TransformedColorRef[];
+
+    /**
+     * Connector-specific line style definitions from vt:fmtConnectorScheme.
+     * Used for styling strokes/borders of connectors.
+     *
+     * @type {Array<{ name: string; value: LineStyleEntry }> | undefined}
+     */
+    connLineStyles?: Array<{ name: string; value: LineStyleEntry }>;
+
+    /**
+     * Extended line style definitions for scheme styles.
+     * Additional line styles beyond the basic fmtSchemeStroke.
+     *
+     * @type {Array<{name: string; value: SchemeLineStyle}> | undefined}
+     */
+    lineStylesExt?: Array<{name: string; value: SchemeLineStyle}>;
+
+    /**
+     * Extended line style definitions for connector styles.
+     * Additional connector line styles beyond the basic connector line styles.
+     *
+     * @type {Array<{name: string; value: ConnectorLineStyle}> | undefined}
+     */
+    connLineStylesExt?: Array<{name: string; value: ConnectorLineStyle}>;
+
+    /**
+     * Connector font color nodes array.
+     * Each entry is a color node (srgbClr or schemeClr) for connector text.
+     *
+     * @type {ColorReferenceArray | undefined}
+     */
+    connFontColors?: ColorReferenceArray;
+
+    /**
+     * 2D array of fill style indices for each theme variation.
+     * Structure: variantFillIdx[variationIndex][styleIndex] = fillStyleIndex.
+     *
+     * @type {Array<Array<number>> | undefined}
+     */
+    variantFillIdx?: Array<Array<number>>;
+
+    /**
+     * 2D array of hex color strings for all theme variations.
+     * Structure: variantsColors[variationIndex] = [hex1, hex2, ..., hex7].
+     *
+     * @type {ProcessedColor[][]}
+     */
+    variantsColors?: ProcessedColor[][];
+
+    /**
+     * Mapping of base color names to hex values from the color scheme.
+     * Used as reference for resolving scheme color references.
+     * Example: { accent1: '#0563C1', dk1: '#000000' }.
+     *
+     * @type {Record<string, string | undefined> | undefined}
+     */
+    baseColors?: Record<string, string | undefined>;
+
+    /**
+     * Array of monotone flags for each theme variation.
+     * monochrome[i] = true if variation i uses monotone colors.
+     * Array is initialized to [false, false, false, false] (4 variations max).
+     *
+     * @type {Array<boolean> | undefined}
+     */
+    isMonotoneVariant?: Array<boolean>;
+
+    /**
+     * The selected theme variant color index (0-based).
+     * Indicates which color variation is currently active.
+     * Default is 0 (first variation).
+     *
+     * @type {number | undefined}
+     */
+    themeVariantClr?: number;
+
+    /**
+     * The selected theme variant style index (0-based).
+     * Indicates which style variation is currently active.
+     * Default is 0 (first variation).
+     *
+     * @type {number | undefined}
+     */
+    themeVariantStl?: number;
 
     /**
      * Extensible property map for storing additional theme metadata.
@@ -1857,6 +1978,15 @@ export class VisioDiagramData {
      * @type {Record<string, VisioMedia> | undefined}
      */
     medias?: Record<string, VisioMedia> = {};
+
+    /**
+     * Normalized bundle of Visio document data exposed to the parsing pipeline.
+     * Provides a structured representation of document parts and metadata
+     * required for further processing and export.
+     *
+     * @type {NormalizedVisioData | undefined}
+     */
+    normalized?: NormalizedVisioData;
 
     /**
      * Resets all data in this instance to empty/default values.

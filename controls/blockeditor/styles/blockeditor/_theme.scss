@@ -109,10 +109,6 @@
     }
     .e-code-block-toolbar {
       background: $be-code-block-container-bg-color;
-      .e-input-group.e-ddl,
-      .e-input-group.e-ddl .e-ddl-icon {
-        background: $be-code-block-container-bg-color;
-      }
     }
 
     .e-code-block-languages {
@@ -237,6 +233,22 @@
       }
     }
 
+    /* ======== Image placeholder Styles ======== */
+    .e-image-placeholder {
+      border: $be-image-placeholder-border-width solid $be-image-placeholder-border-color;
+      background-color: $be-image-placeholder-bg-color;
+
+      .e-placeholder-icon-container {
+        .e-icons {
+          color: $be-image-placeholder-icon-color;
+        }
+      }
+
+      .e-placeholder-text {
+        color: $be-image-placeholder-text-color;
+      }
+    }
+
     /* ======== Audio Block Styles ======== */
     .e-audio-block {
       &:hover {
@@ -250,6 +262,12 @@
       &:hover {
         outline: $be-video-block-outline solid $be-table-cell-focus-color;
       }
+    }
+
+    /* ======== Selection Overlay ======== */
+    .e-be-selection-overlay {
+      border: $be-selection-overlay-border-width solid $be-selection-overlay-border-color;
+      background: $be-selection-overlay-bg-color;
     }
   }
 
@@ -281,6 +299,10 @@
       background: $be-floating-icon-hover-bg-color;
       color: $be-floating-icon-color-hover;
     }
+    &.e-drag-icon-selected {
+      background: $be-drag-icon-selected-bg-color;
+      color: $be-drag-icon-selected-color;
+    }
   }
 
   /* ======== Inline Toolbar styles ======== */
@@ -311,6 +333,195 @@
         &:hover .e-be-color-icon-wrapper {
           @if ($skin-name == 'bootstrap5.3' or $skin-name == 'bootstrap5') {
             color: rgba(255, 255, 255, 1);
+          }
+        }
+      }
+    }
+    .e-blockeditor-inline-toolbar .e-toolbar-items .e-toolbar-item {
+      .e-split-btn-wrapper {
+        .e-dropdown {
+          &:hover{
+            background: $be-quick-tb-btn-hover;
+            color: var(--color-sf-toolbar-icon-color);
+          }
+          &:focus {
+            background: $be-quick-pop-item-focus-bg;
+            color: var(--color-sf-toolbar-icon-color);
+          }
+          &:active {
+            background: $be-quick-item-active-bg;
+            color: var(--color-sf-toolbar-icon-color);
+          }
+        }
+      }
+    }
+    .e-blockeditor-inline-toolbar .e-toolbar-items .e-toolbar-item {
+      .e-split-btn-wrapper {
+        border-radius: $be-split-btn-border-radius;
+        .e-dropdown {
+          @if $theme-name == 'bootstrap5' {
+            background: $content-bg-color;
+          }
+          @else if $theme-name == 'bootstrap5-dark' {
+            background: $content-bg-color-alt2;
+          }
+          @else {
+            background: $be-quick-popup-bg-color;
+          }
+          border: $be-split-btn-border;
+        }
+      }
+    }
+    
+    .e-blockeditor-inline-toolbar .e-toolbar-items .e-toolbar-item {
+      .e-split-btn-wrapper {
+        &:hover {
+          background: $be-split-btn-hover-bg;
+          .e-dropdown {
+            border: $be-hover-split-btn-border;
+            @if $theme-name == 'Material3' or $theme-name == 'Material3-dark' {
+              border-image: none;
+            }
+          }
+          .e-split-btn:hover,
+          .e-dropdown-btn:hover {
+            @if $theme-name != 'fluent2-highcontrast' {
+              background: $be-split-btn-span-hover-bg;
+            }
+            @if $theme-name == 'fluent2-highcontrast' {
+              background: $be-split-btn-hover-bg;
+            }
+          }
+          .e-split-btn,
+          .e-dropdown-btn {
+            &:not(:hover) {
+              background: transparent;
+            }
+          }
+          .e-icons {
+            @if $theme-name != 'bootstrap5.3' {
+              color: $be-hover-icons-color;
+            }
+            @if $theme-name == 'bootstrap5.3' {
+              color: $be-hover-icons-color;
+            }
+          }
+        }
+        &:active {
+          .e-dropdown {
+            border: $be-hover-split-btn-border;
+            &:active {
+              @if $theme-name == 'Material3' or $theme-name == 'Material3-dark' {
+                border-image: none;
+              }
+            }
+          }
+          .e-icons {
+            color: $be-active-btn-icons-color;
+          }
+        }
+        &:focus {
+          background: $be-split-btn-span-hover-bg;
+          .e-dropdown {
+            border: $be-hover-split-btn-border;
+            &:focus {
+              @if $theme-name == 'Material3' or $theme-name== 'Material3-dark' {
+                border-image: none;
+              }
+            }
+          }
+          .e-split-btn:focus,
+          .e-dropdown-btn:focus {
+            background: $be-split-btn-span-hover-bg;
+          }
+          .e-split-btn,
+          .e-dropdown-btn {
+            &:not(:focus) {
+              background: transparent;
+            }
+          }
+          .e-icons {
+            color: $be-icon-color;
+            @if ($theme-name == 'fluent2' or $theme-name == 'tailwind3') {
+              color: $be-default-icon-color;
+            }
+          }
+        }
+      }
+      .e-split-btn-wrapper:has(.e-dropdown-btn.e-active) {
+        .e-split-btn,
+        .e-dropdown-btn {
+          @if $theme-name == 'bootstrap-dark' or $theme-name == 'tailwind' or $theme-name == 'tailwind-dark' {
+            border: $be-hover-split-btn-border;
+          }
+          @if $theme-name != 'bootstrap5.3' {
+            color: $be-hover-icons-color;
+          }
+          @if $theme-name == 'bootstrap5.3' {
+            color: $be-hover-icons-color;
+          }
+        }
+      }
+      .e-split-btn-wrapper .e-split-btn + .e-dropdown-btn.e-active {
+        background: $be-drop-btn-active-bg;
+      }
+      .e-split-btn-wrapper:has(.e-dropdown-btn.e-active) .e-split-btn {
+        background: $be-split-btn-hover-bg;
+      }
+      .e-colorpicker-wrapper:focus-visible,
+      .e-split-btn-wrapper:focus-visible {
+        @if $theme-name == 'bootstrap-dark' or $theme-name == 'tailwind' or $theme-name == 'tailwind-dark' {
+          border: $be-hover-split-btn-border;
+        }
+        @if $theme-name != 'fluent2-highcontrast' {
+          background: $be-split-btn-focus-bg;
+        }
+        @if $theme-name == 'fluent2-highcontrast' {
+          background: $be-split-btn-hover-bg;
+        }
+        box-shadow: $be-button-focus-box-shadow;
+        .e-split-btn,
+        .e-dropdown-btn {
+          &:not(:focus-visible) {
+            background: transparent;
+            @if $theme-name != 'bootstrap5.3' {
+              color: $be-icon-color;
+            }
+            @if $theme-name == 'bootstrap5.3' {
+              color: $be-hover-icons-color;
+            }
+          }
+        }
+      }
+      .e-split-btn-wrapper:not(:focus-visible):has(.e-dropdown-btn:focus-visible),
+      .e-split-btn-wrapper:not(:focus-visible):has(.e-split-btn:focus-visible) {
+        @if $theme-name == 'bootstrap-dark' or $theme-name == 'tailwind' or $theme-name == 'tailwind-dark' {
+          border: $be-hover-split-btn-border;
+        }
+        @if $theme-name != 'fluent2-highcontrast' {
+          background: $be-split-btn-focus-bg;
+        }
+        @if $theme-name == 'fluent2-highcontrast' {
+          background: $be-split-btn-hover-bg;
+        }
+        box-shadow: $be-button-focus-box-shadow;
+        .e-split-btn,
+        .e-dropdown-btn {
+          background: transparent;
+          @if $theme-name != 'bootstrap5.3' {
+            color: $be-icon-color;
+          }
+          @if $theme-name == 'bootstrap5.3' {
+            color: $be-hover-icons-color;
+          }
+        }
+      }
+      .e-split-btn-wrapper {
+        .e-split-btn,
+        .e-dropdown-btn {
+          background: transparent;
+          @if $theme-name != 'bootstrap5.3' {
+            color: $be-icon-color;
           }
         }
       }
@@ -390,5 +601,21 @@
     border: $be-mention-popup-border-width solid $be-mention-popup-border-color;
     background: $be-mention-popup-bg-color;
     box-shadow: $be-mention-popup-shadow;
+  }
+
+  /* Image upload popup styles */
+  .e-image-upload-popup {
+    border: $be-image-upload-popup-boder-width solid $be-image-upload-popup-boder-color;
+    background-color: $be-image-upload-popup-bg-color;
+    box-shadow: $be-image-upload-popup-box-shadow;
+
+    .e-tab .e-content {
+      border-top: 1px solid $be-upload-popup-tab-content-border-top-color;
+    }
+
+    .e-uploader-container.e-upload-drag-hover .e-upload{
+      border-color: $be-upload-popup-drag-boder-color;
+      background-color: $be-upload-popup-drag-hover-color;
+    }
   }
 }

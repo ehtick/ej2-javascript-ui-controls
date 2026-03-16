@@ -865,6 +865,53 @@ describe('Schedule year view', () => {
         });
     });
 
+    describe('Timeline Year view with resource grouping in mobile mode', () => {
+        let schObj: Schedule;
+        beforeAll((done: DoneFn) => {
+            const model: ScheduleModel = {
+                width: '100%', height: '555px',
+                selectedDate: new Date(2020, 0, 1),
+                enableAdaptiveUI: true,
+                views: [
+                    { option: 'TimelineYear', displayName: 'Horizontal Year' },
+                    { option: 'TimelineYear', displayName: 'Vertical Year', orientation: 'Vertical' }
+                ],
+                group: {
+                    enableCompactView: true,
+                    resources: ['Projects', 'Categories']
+                },
+                resources: [
+                    {
+                        field: 'ProjectId', title: 'Choose Project', name: 'Projects',
+                        dataSource: [
+                            { text: 'PROJECT 1', id: 1 },
+                            { text: 'PROJECT 2', id: 2 },
+                            { text: 'PROJECT 3', id: 3 }
+                        ],
+                        textField: 'text', idField: 'id'
+                    }, {
+                        field: 'TaskId', title: 'Category',
+                        name: 'Categories', allowMultiple: true,
+                        dataSource: [
+                            { text: 'Nancy', id: 1, groupId: 1 },
+                            { text: 'Smith', id: 4, groupId: 1 }
+                        ],
+                        textField: 'text', idField: 'id', groupIDField: 'groupId'
+                    }
+                ]
+            };
+            schObj = util.createSchedule(model, [], done);
+        });
+        afterAll(() => {
+            util.destroy(schObj);
+        });
+
+        it('Header cells present in vertical timeline year with resources', () => {
+            const headerCell: HTMLElement = schObj.element.querySelector('.e-left-indent .e-header-cells');
+            expect(headerCell).not.toBeNull();
+        });
+    });
+
     describe('ES-907744 - FirstDayOfWeek property is not working in scheduler year view', () => {
         let schObj: Schedule;
         beforeAll(() => {

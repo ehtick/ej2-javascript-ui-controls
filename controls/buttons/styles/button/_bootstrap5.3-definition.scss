@@ -321,7 +321,7 @@ $btn-flat-danger-disabled-color: $btn-danger-disabled-color !default;
 
 //outlineprimary
 $btn-outline-primary-disabled-color: $primary-bg-color-disabled !default;
-$btn-outline-primary-disabled-border-color: rgba($primary, .65) !default;
+$btn-outline-primary-disabled-border-color: $primary-border-color-disabled;
 $btn-outline-primary-hover-border-color: $primary !default;
 $btn-outline-primary-hover-bgcolor: $btn-primary-bgcolor !default;
 $btn-outline-primary-focus-border-color: $primary !default;

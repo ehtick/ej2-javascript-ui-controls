@@ -57,7 +57,7 @@ $copy-indicator-l-r: 'data:image/gif;base64,R0lGODlhBAAGAJECAP///zF6uf///wAAACH/
 //Tab
 $sheets-btn-height: 34px !default;
 $msheets-btn-height: 46px !default;
-$sheet-tab-panel-bg-color: $content-bg-color-alt2 !default;
+$sheet-tab-panel-bg-color: $content-bg-color-alt1 !default;
 $sheet-tab-bg-color: $content-bg-color-alt2 !default;
 $sheet-tab-active-bg-color: $content-bg-color-alt1 !default;
 $sheet-tab-color: $content-text-color-alt2 !default;
@@ -493,6 +493,7 @@ $border-width-collection: thin medium thick thin thin medium;
 $spreadsheet-border-radius-50p: 50%;
 $spreadsheet-numformat-text-width: 100% !default;
 $spreadsheet-padding-5: 5px !default;
+$spreadsheet-colorpicker-max-width: 401px !default;
 
 // Threaded Comment
 $spread-comment-indicator-color: $primary !default;

@@ -275,6 +275,7 @@ export class UndoRedoManager {
                     event: e.event
                 });
             }
+            this.parent.observer.notify(EVENTS.CODEBLOCK_DISABLETOOLBAR, {});
         }
     }
     /**
@@ -308,6 +309,7 @@ export class UndoRedoManager {
                     event: e.event
                 });
             }
+            this.parent.observer.notify(EVENTS.CODEBLOCK_DISABLETOOLBAR, {});
         }
     }
 

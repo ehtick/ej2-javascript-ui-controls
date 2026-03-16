@@ -31,7 +31,7 @@ export type ToolbarItems = 'alignments' | 'justifyLeft' | 'justifyCenter' | 'jus
 | 'minimize' | 'lowerCase' | 'upperCase' | 'print' | 'formats'
 | 'sourceCode' | 'preview' | 'viewSide' | 'insertCode' | 'blockquote' | 'tableHeader'
 | 'tableRemove' | 'tableRows' | 'tableColumns' | 'tableCellBackground'
-| 'tableCellHorizontalAlign' | 'tableCellVerticalAlign' | 'tableEditProperties'
+| 'tableCellHorizontalAlign' | 'tableCellVerticalAlign' | 'tableEditProperties' |'tableCellProperties'
 | 'styles' | 'removeLink' | 'merge' | 'inlineCode' | 'horizontalLine' | 'aiquery' | 'aicommands' | 'lineHeight';
 
 /**
@@ -45,7 +45,7 @@ export type ToolbarConfigItems = 'Alignments' | 'JustifyLeft' | 'JustifyCenter' 
 | 'CreateLink' | 'Image' | 'CreateTable' | 'InsertLink' | 'FullScreen' | 'LowerCase'
 | 'UpperCase' | 'Print' | 'Formats' | 'FormatPainter' | 'EmojiPicker' | 'UnderLine' | 'ZoomOut' | 'ZoomIn'
 | 'SourceCode' | 'Preview' | 'ViewSide' | 'InsertCode' | 'Blockquote' | 'Audio' | 'Video' | 'NumberFormatList'
-| 'BulletFormatList' | 'FileManager' | '|' | '-' | 'InlineCode' | 'HorizontalLine' | 'AIQuery' | 'AICommands' ;
+| 'BulletFormatList' | 'FileManager' | '|' | '-' | 'InlineCode' | 'HorizontalLine' | 'AIQuery' | 'AICommands' | 'TableCellProperties' ;
 
 /**
  * Defines types to be used as colorMode for color selection in the RichTextEditor.

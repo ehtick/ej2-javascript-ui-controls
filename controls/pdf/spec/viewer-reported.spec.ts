@@ -1,13 +1,17 @@
 import { PdfAnnotationBorder, PdfPolyLineAnnotation, PdfPopupAnnotation, PdfRubberStampAnnotation, PdfTextMarkupAnnotation, PdfSquareAnnotation, PdfFreeTextAnnotation, PdfRadioButtonListItem } from "../src/pdf/core/annotations/annotation";
 import { _ContentParser, _PdfRecord } from "../src/pdf/core/content-parser";
 import { DataFormat, PdfAnnotationFlag, PdfRotationAngle, PdfRubberStampAnnotationIcon, PdfTextMarkupAnnotationType, PdfAnnotationIntent, PdfLineEndingStyle, PdfTextAlignment } from "../src/pdf/core/enumerator";
-import { PdfFontFamily, PdfFontStyle, PdfStandardFont } from "../src/pdf/core/fonts/pdf-standard-font";
+import { PdfFontFamily, PdfFontStyle, PdfStandardFont, PdfTrueTypeFont } from "../src/pdf/core/fonts/pdf-standard-font";
+import { PdfStringFormat, PdfVerticalAlignment } from "../src/pdf/core/fonts/pdf-string-format";
 import { PdfRadioButtonListField } from "../src/pdf/core/form/field";
-import { PdfBrush } from "../src/pdf/core/graphics/pdf-graphics";
+import { PdfBrush, PdfPen } from "../src/pdf/core/graphics/pdf-graphics";
+import { PdfPath } from "../src/pdf/core/graphics/pdf-path";
+import { PdfTemplate } from "../src/pdf/core/graphics/pdf-template";
 import { PdfAnnotationExportSettings, PdfDocument } from "../src/pdf/core/pdf-document";
 import { PdfPage } from "../src/pdf/core/pdf-page";
 import { _PdfDictionary, _PdfName } from "../src/pdf/core/pdf-primitives";
 import { _bytesToString, _decodeText, _decodeUtf16Bytes, _trimTailIfMatches, _updateBounds } from "../src/pdf/core/utils";
+import { ttfArialBase64 } from "./font-input.spec";
 import { crossReferenceTable, passwordInput } from "./inputs.spec";
 import { _makeLocalDate, createNumberFormat, setMeasureDictionary } from "./test-utility.spec";
 describe('Viewer Reported Issues', () => {
@@ -1793,7 +1797,7 @@ describe('Viewer Reported Issues', () => {
 		page.annotations.add(annot);
         let updatedData = document.save();
         let expectedRect = annot._dictionary.get('Rect');
-        expect(expectedRect).toEqual([80, 742, 160, 722]);
+        expect(expectedRect).toEqual([80, 722, 160, 742]);
         document.destroy();
         document = new PdfDocument(updatedData);
         page = document.getPage(0);
@@ -2038,6 +2042,298 @@ describe('Viewer Reported Issues', () => {
             expect(result[17]._operands).toEqual(['(anbuganes)']);
             expect(result[18]._operator).toEqual('ET');
             expect(result[18]._operands).toEqual([]);
+        });
+        document.destroy();
+    });
+	it('1012189 - Stamp Appearance Issue Coverage', () => {
+        let document: PdfDocument = new PdfDocument();
+        let page = document.addPage() as PdfPage;
+        let annotation: PdfRubberStampAnnotation = new PdfRubberStampAnnotation({
+            x: 100,
+            y: 100,
+            width: 200,
+            height: 75,
+        });
+        let rectangle = {
+            x: 100,
+            y: 100,
+            width: 200,
+            height: 75,
+        };
+        let icon = 'Revised';
+        let colors = { r: 25, g: 39, b: 96 };
+        let textBrush = new PdfBrush(colors);
+        let stampcolors = { r: 220, g: 227, b: 239 };
+        let pens = new PdfPen(colors, 1);
+        let stampBrush = new PdfBrush(stampcolors);
+        annotation.author = 'مقبول';
+        annotation.subject = 'Subject';
+        annotation.flags = PdfAnnotationFlag.print;
+        annotation.setValues('iconName', icon.toString());
+        annotation.opacity = 1;
+        page.annotations.add(annotation);
+        let appearance: PdfTemplate = annotation.appearance.normal;
+        let state = appearance.graphics.save();
+        appearance.graphics.setTransparency(1);
+        appearance.graphics.drawRoundedRectangle(
+            {
+                x: 0.5,
+                y: 0.5,
+                width: rectangle.width - 1,
+                height: rectangle.height - 1,
+            },
+            10,
+            pens,
+            stampBrush
+        );
+        let text = 'By مقبول at 2/25/2026 4:36:34 PM';
+        let stringFormat = new PdfStringFormat();
+        stringFormat.alignment = PdfTextAlignment.left;
+        stringFormat.lineAlignment = PdfVerticalAlignment.middle;
+        let stampFont = null;
+        let detailsFont = null;
+        let hasUniCode = false;
+        let regex = /[\u0600-\u06FF]/;
+        let flag = regex.test(text);
+        if (flag) {
+            hasUniCode = true;
+        }
+        if (hasUniCode) {
+            stampFont = new PdfTrueTypeFont(
+                ttfArialBase64,
+                24,
+                PdfFontStyle.bold | PdfFontStyle.italic
+            );
+            detailsFont = new PdfTrueTypeFont(
+                ttfArialBase64,
+                12,
+                PdfFontStyle.bold | PdfFontStyle.italic
+            );
+        } else {
+            stampFont = new PdfStandardFont(
+                PdfFontFamily.helvetica,
+                24,
+                PdfFontStyle.bold | PdfFontStyle.italic
+            );
+            detailsFont = new PdfStandardFont(
+                PdfFontFamily.helvetica,
+                12,
+                PdfFontStyle.bold | PdfFontStyle.italic
+            );
+        }
+        let point1 = [0, 0];
+        let point2 = [0, 0];
+        let drawingPath = new PdfPath();
+        point1 = [5, rectangle.height / 3];
+        point2 = [5, rectangle.height - detailsFont.size * 3];
+        drawingPath.addLine(
+            { x: point1[0], y: point1[1] },
+            { x: point2[0], y: point2[1] }
+        );
+        let stampTypeBounds = [
+            drawingPath._points[0].x,
+            drawingPath._points[0].y,
+            0,
+            0,
+        ];
+        let stampTypeBoundsVal = {
+            x: stampTypeBounds[0],
+            y: stampTypeBounds[1],
+            width: stampTypeBounds[2],
+            height: stampTypeBounds[3],
+        };
+        let stampTimeStampbounds = [
+            drawingPath._points[1].x,
+            drawingPath._points[1].y,
+            rectangle.width + drawingPath._points[1].x,
+            rectangle.height - drawingPath._points[1].y,
+        ];
+        let stampTimeStampboundsVal = {
+            x: stampTimeStampbounds[0],
+            y: stampTimeStampbounds[1],
+            width: stampTimeStampbounds[2],
+            height: stampTimeStampbounds[3],
+        };
+        appearance.graphics.drawString(
+            icon.toUpperCase(),
+            stampFont,
+            stampTypeBoundsVal,
+            null as any,
+            textBrush,
+            stringFormat
+        );
+        appearance.graphics.drawString(
+            text,
+            detailsFont,
+            stampTimeStampboundsVal,
+            null as any,
+            textBrush,
+            stringFormat
+        );
+        annotation._dictionary.set(
+            'Name',
+            _PdfName.get('#23D' + icon.split(' ').join(''))
+        );
+        appearance.graphics.restore(state);
+        let updatedData = document.save();
+        let updatedData1 = document.save();
+        document.destroy();
+        document = new PdfDocument(updatedData1);
+        page = document.getPage(0) as PdfPage;
+        let stampAnnotation = page.annotations.at(0) as PdfRubberStampAnnotation;
+        let normalAppearance = stampAnnotation._dictionary.get('AP').get('N');
+        let fontDictionary = normalAppearance.dictionary.get('Resources').get('Font');
+        fontDictionary.forEach((key: string, value: any) => {
+            let fontValue: any = fontDictionary.get(key);
+            expect(fontValue).not.toBeNull();
+        });
+        document.destroy();
+    });
+	it('1012189 - Stamp Appearance Issue Coverage Flatten', () => {
+        let document: PdfDocument = new PdfDocument();
+        let page = document.addPage() as PdfPage;
+        let annotation: PdfRubberStampAnnotation = new PdfRubberStampAnnotation({
+            x: 100,
+            y: 100,
+            width: 200,
+            height: 75,
+        });
+        let rectangle = {
+            x: 100,
+            y: 100,
+            width: 200,
+            height: 75,
+        };
+        let icon = 'Revised';
+        let colors = { r: 25, g: 39, b: 96 };
+        let textBrush = new PdfBrush(colors);
+        let stampcolors = { r: 220, g: 227, b: 239 };
+        let pens = new PdfPen(colors, 1);
+        let stampBrush = new PdfBrush(stampcolors);
+        annotation.author = 'مقبول';
+        annotation.subject = 'Subject';
+        annotation.flags = PdfAnnotationFlag.print;
+        annotation.setValues('iconName', icon.toString());
+        annotation.opacity = 1;
+        page.annotations.add(annotation);
+        let appearance: PdfTemplate = annotation.appearance.normal;
+        let state = appearance.graphics.save();
+        appearance.graphics.setTransparency(1);
+        appearance.graphics.drawRoundedRectangle(
+            {
+                x: 0.5,
+                y: 0.5,
+                width: rectangle.width - 1,
+                height: rectangle.height - 1,
+            },
+            10,
+            pens,
+            stampBrush
+        );
+        let text = 'By مقبول at 2/25/2026 4:36:34 PM';
+        let stringFormat = new PdfStringFormat();
+        stringFormat.alignment = PdfTextAlignment.left;
+        stringFormat.lineAlignment = PdfVerticalAlignment.middle;
+        let stampFont = null;
+        let detailsFont = null;
+        let hasUniCode = false;
+        let regex = /[\u0600-\u06FF]/;
+        let flag = regex.test(text);
+        if (flag) {
+            hasUniCode = true;
+        }
+        if (hasUniCode) {
+            stampFont = new PdfTrueTypeFont(
+                ttfArialBase64,
+                24,
+                PdfFontStyle.bold | PdfFontStyle.italic
+            );
+            detailsFont = new PdfTrueTypeFont(
+                ttfArialBase64,
+                12,
+                PdfFontStyle.bold | PdfFontStyle.italic
+            );
+        } else {
+            stampFont = new PdfStandardFont(
+                PdfFontFamily.helvetica,
+                24,
+                PdfFontStyle.bold | PdfFontStyle.italic
+            );
+            detailsFont = new PdfStandardFont(
+                PdfFontFamily.helvetica,
+                12,
+                PdfFontStyle.bold | PdfFontStyle.italic
+            );
+        }
+        let point1 = [0, 0];
+        let point2 = [0, 0];
+        let drawingPath = new PdfPath();
+        point1 = [5, rectangle.height / 3];
+        point2 = [5, rectangle.height - detailsFont.size * 3];
+        drawingPath.addLine(
+            { x: point1[0], y: point1[1] },
+            { x: point2[0], y: point2[1] }
+        );
+        let stampTypeBounds = [
+            drawingPath._points[0].x,
+            drawingPath._points[0].y,
+            0,
+            0,
+        ];
+        let stampTypeBoundsVal = {
+            x: stampTypeBounds[0],
+            y: stampTypeBounds[1],
+            width: stampTypeBounds[2],
+            height: stampTypeBounds[3],
+        };
+        let stampTimeStampbounds = [
+            drawingPath._points[1].x,
+            drawingPath._points[1].y,
+            rectangle.width + drawingPath._points[1].x,
+            rectangle.height - drawingPath._points[1].y,
+        ];
+        let stampTimeStampboundsVal = {
+            x: stampTimeStampbounds[0],
+            y: stampTimeStampbounds[1],
+            width: stampTimeStampbounds[2],
+            height: stampTimeStampbounds[3],
+        };
+        appearance.graphics.drawString(
+            icon.toUpperCase(),
+            stampFont,
+            stampTypeBoundsVal,
+            null as any,
+            textBrush,
+            stringFormat
+        );
+        appearance.graphics.drawString(
+            text,
+            detailsFont,
+            stampTimeStampboundsVal,
+            null as any,
+            textBrush,
+            stringFormat
+        );
+        annotation._dictionary.set(
+            'Name',
+            _PdfName.get('#23D' + icon.split(' ').join(''))
+        );
+        appearance.graphics.restore(state);
+        document.flatten = true;
+        let updatedData = document.save();
+        let updatedData1 = document.save();
+        document.destroy();
+        document = new PdfDocument(updatedData1);
+        page = document.getPage(0) as PdfPage;
+        let resources = page._pageDictionary.get('Resources');
+        let xObject = resources.get('XObject');
+        xObject.forEach((key: string, value: any) => {
+            let stream: any = xObject.get(key);
+            let fontDictionary = stream.dictionary.get('Resources').get('Font');
+            fontDictionary.forEach((key: string, value: any) => {
+                let fontValue: any = fontDictionary.get(key);
+                expect(fontValue).not.toBeNull();
+            });
         });
         document.destroy();
     });

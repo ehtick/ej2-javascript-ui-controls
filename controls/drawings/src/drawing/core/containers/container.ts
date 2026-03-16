@@ -23,6 +23,9 @@ export class Container extends DrawingElement {
     /** @private */
     public thickness?: number = undefined;
 
+    /** @private */
+    public isSharpEdge?: boolean = undefined;
+
     /**
      * returns whether the container has child elements or not
      */

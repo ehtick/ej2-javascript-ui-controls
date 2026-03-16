@@ -5476,6 +5476,7 @@ describe('Change Event testing', () => {
             setModelNumeric.dataBind();
             expect(setModelNumeric.inputWrapper.clearButton == null).toBe(true);
         });
+
         it('click clear icon updates DOM value text to empty and value to null', () => {
             const inputEl: HTMLInputElement = document.getElementById('clrNumeric') as HTMLInputElement;
             const domValueEl: HTMLElement = document.createElement('span');

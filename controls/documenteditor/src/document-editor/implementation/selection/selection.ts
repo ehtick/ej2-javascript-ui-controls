@@ -1265,7 +1265,6 @@ export class Selection {
             this.highlightCommentMarkIcon();
         }
     }
-
     private addCommentMarkhighlight(comment: CommentElementBox): void {
         if (!isNullOrUndefined(comment.commentStart.commentMark) && !isNullOrUndefined(comment.commentStart.commentMark.classList)) {
             comment.commentStart.commentMark.classList.add('e-de-cmt-mark-hover');
@@ -1277,7 +1276,6 @@ export class Selection {
             comment.commentStart.commentMark.classList.remove('e-de-cmt-mark-hover');
         }
     }
-
     private highlightCommentMarkIcon(): void {
         let selectionStartPosition;
         let selectionEndPosition;
@@ -2478,7 +2476,7 @@ export class Selection {
         const widget: LineWidget = this.documentHelper.getLineWidgetInternal(cursorPoint, true);
         const startIndex: string = this.start.getHierarchicalIndexInternal();
         const endIndex: string = this.end.getHierarchicalIndexInternal();
-        const isForward: boolean = TextPosition.isForwardSelection(startIndex, endIndex)
+        const isForward: boolean = TextPosition.isForwardSelection(startIndex, endIndex);
         if (!isNullOrUndefined(widget)) {
             this.updateTextPositionWidget(widget, cursorPoint, textPosition, isForward);
         }
@@ -2854,9 +2852,9 @@ export class Selection {
     }
 
     /**
-    *  @private 
-    * @returns {number}
-    */
+     *  @private 
+     * @returns {number}
+     */
     public getSelectedFieldWidth(start: TextPosition): number {
         let fieldResultWidth: number = 0;
         if (this.isInField || (!start.paragraph.isEmpty() && start.currentWidget.children[0] instanceof ContentControl)) {
@@ -2877,8 +2875,8 @@ export class Selection {
             }
         }
         return fieldResultWidth;
-    }
-    
+    } 
+
     /**
      * Handles tab key.
      *

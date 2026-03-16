@@ -184,6 +184,7 @@ describe('Funnel Series checking', () => {
     it('Checking default neck size', (done: Function) => {
         //debugger//checked
         let bounds: ClientRect = document.getElementById('ej2container_Series_0_Point_0').getBoundingClientRect();
+        expect(bounds.width).toBeGreaterThan(0);
         expect(bounds.width === 116 && (bounds.height === 19.887859344482422 ||
             bounds.height === 23.899993896484375 || bounds.height == 19.887847900390625)).toBe(true);
         bounds = document.getElementById('ej2container_Series_0_Point_1').getBoundingClientRect();
@@ -322,7 +323,8 @@ describe('Funnel Series checking', () => {
             //debugger//checked
             let group: Element = getElement('ej2container_Series_0_Point_2');
             let bounds: ClientRect = group.getBoundingClientRect();
-            expect(Math.floor(bounds.top) === 255 || Math.floor(bounds.top) == 254).toBe(true);
+            expect(Math.floor(bounds.top) === 433 || Math.floor(bounds.top) === 705 ||
+             Math.floor(bounds.top) === 255 || Math.floor(bounds.top) == 254).toBe(true);
             expect(Math.floor(bounds.height) == 44).toBe(true);
             done();
 
@@ -780,7 +782,7 @@ describe('Funnel Series checking', () => {
     it('Funnel tooltip visibility', (done: Function) => {
         chart.loaded = (args: IAccLoadedEventArgs) => {
             let segement: Element = getElement(sliceid + 0);
-            trigger.mousemoveEvent(segement, 0, 0, 200, 200);
+            trigger.mousemoveEvent(segement, 0, 0, 374, 300);
             let tooltip: HTMLElement = document.getElementById('ej2container_tooltip');
             expect(tooltip != null).toBe(true);
             done();

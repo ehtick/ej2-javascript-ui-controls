@@ -3,7 +3,6 @@ import { IAddBlockOptions, IRemoveBlockOptions, IDuplicateBlockOptions,
     IIndentBlockOptions, IMoveBlockOptions, IFromBlockData, LinkData} from '../../common/interface';
 import { getBlockModelById, getBlockIndexById, getParentBlocksArray } from '../../common/utils/block';
 import { generateUniqueId, decoupleReference, getInverseStyle } from '../../common/utils/common';
-import { sanitizeBlock } from '../../common/utils/transform';
 import * as constants from '../../common/constant';
 import { BlockFactory } from './block-factory';
 
@@ -56,6 +55,7 @@ export class BlockService {
      *
      * @param {string} blockId - The ID of the block to update
      * @param {Partial<BlockModel>} properties - The properties to update
+     * @param {boolean} isUndoRedoAction Whether the action is an undo/redo action
      * @returns {BlockModel} Updated block and blocks array
      * @hidden
      */
@@ -84,7 +84,7 @@ export class BlockService {
         const containerArray: BlockModel[] = getParentBlocksArray(blockId, this.blocks);
         const blockIndex: number = getBlockIndexById(blockId, containerArray);
         const blockToClone: BlockModel = containerArray[blockIndex as number];
-        const clonedBlock: BlockModel = decoupleReference(sanitizeBlock(blockToClone));
+        const clonedBlock: BlockModel = decoupleReference(blockToClone);
         const duplicatedBlockModel: BlockModel = this.generateNewIdsForBlock(clonedBlock);
         return duplicatedBlockModel;
     }
@@ -195,7 +195,7 @@ export class BlockService {
         value?: string
     ): ContentModel {
         const updatedContent: ContentModel = {...content};
-        const booleanStyles: string[] = ['bold', 'italic', 'underline', 'strikethrough', 'superscript', 'subscript', 'uppercase', 'lowercase'];
+        const booleanStyles: string[] = ['bold', 'italic', 'underline', 'strikethrough', 'superscript', 'subscript', 'uppercase', 'lowercase', 'inlineCode'];
         const togglePairs: string[] = ['superscript', 'subscript', 'uppercase', 'lowercase'];
 
         const isBooleanStyle: boolean = booleanStyles.indexOf(format) !== -1;
@@ -384,8 +384,6 @@ export class BlockService {
 
         const insertToArray: BlockModel[] = getParentBlocksArray(originalBlockId, this.blocks);
         const indexToReplace: number = getBlockIndexById(originalBlock.id, insertToArray);
-        // const parentBlock: BlockModel = getBlockModelById(originalBlock.parentId, this.blocks);
-        // const insertToArray: BlockModel[] = parentBlock ? (parentBlock.properties as BaseChildrenProp).children : this.blocks;
 
         insertToArray.splice(indexToReplace, 1, newBlock);
     }
@@ -409,12 +407,6 @@ export class BlockService {
             return this.generateNewIdsForTableBlock(block);
         }
 
-        if (block.content) {
-            block.content = block.content.map((content: ContentModel) => {
-                content.id = generateUniqueId(constants.CONTENT_ID_PREFIX);
-                return content;
-            });
-        }
         let children: BlockModel[] = (block.properties && (block.properties as BaseChildrenProp).children)
             ? (block.properties as BaseChildrenProp).children
             : [];
@@ -479,17 +471,20 @@ export class BlockService {
      *
      * @param {BlockModel} block - Original block model
      * @param {Partial<BlockModel>} properties - Partial properties to merge
+     * @param {boolean} isUndoRedoAction Whether the action is an undo/redo action
      * @returns {BlockModel} Merged block model
      * @hidden
      */
     private mergeBlockProperties(block: BlockModel, properties: Partial<BlockModel>): BlockModel {
-        const clonedBlock: BlockModel = decoupleReference(sanitizeBlock(block));
+        const clonedBlock: BlockModel = decoupleReference(block);
         const mergedBlock: BlockModel = { ...clonedBlock };
 
         // Merge block-level properties
         Object.keys(properties).forEach((key: keyof BlockModel) => {
             if (key === 'content' && properties.content) {
-                mergedBlock.content = this.mergeContentArray(clonedBlock.content, properties.content);
+                mergedBlock.content = properties.content.map((newContent: ContentModel) => {
+                    return BlockFactory.createContentFromPartial(newContent);
+                });
             }
             else if ((key === 'properties' && properties.properties)) {
                 (mergedBlock as any)[key as any] = this.mergePrimitiveTypes(
@@ -502,90 +497,6 @@ export class BlockService {
         });
 
         return mergedBlock;
-    }
-
-    /**
-     * Merges content array updates
-     *
-     * @param {ContentModel[]} existingContent - Current content array
-     * @param {Partial<ContentModel>[]} newContent - New content updates
-     * @returns {ContentModel[]} Merged content array
-     * @hidden
-     */
-    private mergeContentArray(existingContent: ContentModel[], newContent: Partial<ContentModel>[]): ContentModel[] {
-        if (newContent.length === 0) { return []; }
-        const mergedContent: ContentModel[] = [...existingContent];
-
-        for (let i: number = 0; i < newContent.length; i++) {
-            const newItem: ContentModel = newContent[i as number];
-            // Check if the new item has an ID. If not, replace the whole content array.
-            if (!newItem.id) {
-                return [BlockFactory.createContentFromPartial(newItem)];
-            }
-            const index: number = mergedContent.findIndex((item: ContentModel) => item.id === newItem.id);
-            if (index === -1) {
-                throw new Error(`Content with ID ${newItem.id} not found`);
-            }
-            mergedContent[index as number] = this.mergeContentModel(mergedContent[index as number], newItem);
-        }
-
-        return mergedContent;
-    }
-
-    /**
-     * Merges a single content model with partial updates
-     *
-     * @param {ContentModel} existing - Existing content model
-     * @param {Partial<ContentModel>} updates - Partial updates
-     * @returns {ContentModel} Merged content model
-     * @hidden
-     */
-    private mergeContentModel(existing: ContentModel, updates: Partial<ContentModel>): ContentModel {
-        const merged: ContentModel = { ...existing };
-        Object.keys(updates).forEach((key: keyof ContentModel) => {
-            if (key === 'properties' && updates.properties) {
-                if (!merged.properties) { merged.properties = {}; }
-                Object.keys(updates.properties).forEach((prop: any) => {
-                    if (prop === 'styles' && (updates.properties as BaseStylesProp).styles) {
-                        if (!(merged.properties as BaseStylesProp).styles) {
-                            (merged.properties as BaseStylesProp).styles = {};
-                        }
-                        (merged.properties as BaseStylesProp).styles = this.mergeStyleModel(
-                            (merged.properties as BaseStylesProp).styles,
-                            (updates.properties as BaseStylesProp).styles
-                        );
-                    }
-                    else {
-                        (merged as any)[key as keyof ContentModel] = (updates as any)[key as keyof ContentModel];
-                    }
-                });
-            }
-            else {
-                (merged as any)[key as keyof ContentModel] = (updates as any)[key as keyof ContentModel];
-            }
-        });
-        return merged;
-    }
-
-    /**
-     * Merges styles with partial updates
-     *
-     * @param {Styles} existing - Existing style model
-     * @param {Styles} updates - Partial updates
-     * @returns {Styles} Merged style model
-     * @hidden
-     */
-    private mergeStyleModel(existing: Styles, updates: Styles): Styles {
-        const merged: Styles = { ...existing };
-        Object.keys(updates).forEach((style: keyof StyleModel) => {
-            if (!(updates as any)[style as any]) {
-                delete (merged as any)[style as any];
-            }
-            else {
-                (merged as any)[style as any] = (updates as any)[style as any];
-            }
-        });
-        return merged;
     }
 
     /**

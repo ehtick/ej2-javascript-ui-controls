@@ -427,7 +427,7 @@ export class PdfRenderer {
                     // Initialize a new instance of the `PdfRedactor` class
                     const redactor: PdfRedactor = new PdfRedactor(this.loadedDocument);
                     // Apply redactions on the PDF document
-                    redactor.redact();
+                    redactor.redactSync();
                 }
             }
             if (Object.prototype.hasOwnProperty.call(jsonObject, 'canPrint') && (!Browser.isDevice && this.pdfViewerBase.clientSideRendering)) {

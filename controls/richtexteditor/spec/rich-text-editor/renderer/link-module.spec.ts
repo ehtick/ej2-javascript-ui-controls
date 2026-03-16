@@ -1017,7 +1017,7 @@ describe('Link Module', () => {
             let link: HTMLElement = rteObj.element.querySelector("#link");
             let item: HTMLElement = rteObj.element.querySelector('#' + controlId + '_toolbar_Italic');
             item.click();
-            rteObj.formatter.editorManager.nodeSelection.setSelectionText(document, link.childNodes[0].childNodes[2], link.childNodes[0].childNodes[2], 0, 3);
+            rteObj.formatter.editorManager.nodeSelection.setSelectionText(document, link.childNodes[0].childNodes[1], link.childNodes[0].childNodes[1], 0, 3);
             link.dispatchEvent(MOUSEUP_EVENT)
             setTimeout(() => {
                 let linkBtn: HTMLElement = document.getElementById(controlId + "_quick_EditLink");
@@ -1724,7 +1724,7 @@ describe('Link Module', () => {
             }, 500);
         });
         it('For single element with bold and image', function (done: DoneFn) {
-            rteObj.inputElement.innerHTML = '<p style="cursor: auto;">Sync<strong>fusion</strong><img class="e-rte-image e-imginline e-resize" width="109" height="42" alt="undefined"' +
+            rteObj.inputElement.innerHTML = '<p style="cursor: auto;">Sync<strong>fusion</strong><img class="e-rte-image e-img-inline e-resize" width="109" height="42" alt="undefined"' +
                 'src="https://js.syncfusion.com/demos/web/content/images/accordion/baked-chicken-and-cheese.png" style="min-width: 0px; min-height: 0px;"> RichTextEditor</p>';
             const INIT_MOUSEDOWN_EVENT: MouseEvent = new MouseEvent('mousedown', BASIC_MOUSE_EVENT_INIT);
             rteObj.focusIn();
@@ -1736,7 +1736,7 @@ describe('Link Module', () => {
             rteObj.linkModule.dialogObj.primaryButtonEle.click({ target: target, preventDefault: function () { } });
             setTimeout(() => {
                 (rteEle.querySelectorAll(".e-toolbar-item")[0] as HTMLElement).click();
-                let firstChild: string = '<a class="e-rte-anchor" href="https://www.syncfusion.com" title="https://www.syncfusion.com" target="_blank" aria-label="Open in new window">Sync<strong>fusion</strong></a><img class="e-rte-image e-imginline" width="109" height="42" alt="undefined" src="https://js.syncfusion.com/demos/web/content/images/accordion/baked-chicken-and-cheese.png" style="min-width: 0px; min-height: 0px;"> RichTextEditor';
+                let firstChild: string = '<a class="e-rte-anchor" href="https://www.syncfusion.com" title="https://www.syncfusion.com" target="_blank" aria-label="Open in new window">Sync<strong>fusion</strong></a><img class="e-rte-image e-img-inline" width="109" height="42" alt="undefined" src="https://js.syncfusion.com/demos/web/content/images/accordion/baked-chicken-and-cheese.png" style="min-width: 0px; min-height: 0px;"> RichTextEditor';
                 expect(rteObj.inputElement.childNodes[0].innerHTML === firstChild).toBe(true);
                 done();
             }, 500);
@@ -1781,7 +1781,7 @@ describe('Link Module', () => {
             }, 500);
         });
         it('For single element with bold and image-Iframe', function (done: DoneFn) {
-            rteObj.value = '<p style="cursor: auto;">Sync<strong>fusion</strong><img class="e-rte-image e-imginline e-resize" width="109" height="42" alt="undefined"' +
+            rteObj.value = '<p style="cursor: auto;">Sync<strong>fusion</strong><img class="e-rte-image e-img-inline e-resize" width="109" height="42" alt="undefined"' +
                 'src="https://js.syncfusion.com/demos/web/content/images/accordion/baked-chicken-and-cheese.png" style="min-width: 0px; min-height: 0px;"> RichTextEditor</p>';
             rteObj.dataBind();
             const INIT_MOUSEDOWN_EVENT: MouseEvent = new MouseEvent('mousedown', BASIC_MOUSE_EVENT_INIT);
@@ -1794,7 +1794,7 @@ describe('Link Module', () => {
             rteObj.linkModule.dialogObj.primaryButtonEle.click({ target: target, preventDefault: function () { } });
             setTimeout(() => {
                 (rteEle.querySelectorAll(".e-toolbar-item")[0] as HTMLElement).click();
-                let firstChild: string = '<a class="e-rte-anchor" href="https://www.syncfusion.com" title="https://www.syncfusion.com" target="_blank" aria-label="Open in new window">Sync<strong>fusion</strong></a><img class="e-rte-image e-imginline e-resize" width="109" height="42" alt="undefined" src="https://js.syncfusion.com/demos/web/content/images/accordion/baked-chicken-and-cheese.png" style="min-width: 0px; min-height: 0px;"> RichTextEditor';
+                let firstChild: string = '<a class="e-rte-anchor" href="https://www.syncfusion.com" title="https://www.syncfusion.com" target="_blank" aria-label="Open in new window">Sync<strong>fusion</strong></a><img class="e-rte-image e-img-inline e-resize" width="109" height="42" alt="undefined" src="https://js.syncfusion.com/demos/web/content/images/accordion/baked-chicken-and-cheese.png" style="min-width: 0px; min-height: 0px;"> RichTextEditor';
                 expect(rteObj.inputElement.childNodes[0].innerHTML === firstChild).toBe(true);
                 done();
             }, 500);

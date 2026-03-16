@@ -141,7 +141,10 @@ export class PdfViewerBase {
      * @private
      */
     public currentPageNumber: number = 0;
-    private previousZoomValue: number;
+    /**
+     * @private
+     */
+    public previousZoomValue: number;
     private initialZoomValue: any = {};
     /**
      * @private
@@ -820,6 +823,9 @@ export class PdfViewerBase {
      */
     public previousScrollbarWidth: number = 0;
     private pageNumberCanvas: number;
+    private defaultSelectionborderThickness: number = 1;
+    private minSelectionborderThickness: number = 1;
+    private maxSelectionborderThickness: number = 10;
 
     /**
      * @private
@@ -858,6 +864,7 @@ export class PdfViewerBase {
             if (Browser.isDevice && !this.pdfViewer.enableDesktopMode) {
                 this.createMobilePageNumberContainer();
             }
+
             (this.viewerContainer as HTMLElement).tabIndex = 0;
             if (this.pdfViewer.enableRtl) {
                 this.viewerContainer.style.direction = 'rtl';
@@ -1475,7 +1482,7 @@ export class PdfViewerBase {
             this.updateViewerContainerHeight();
             if (this.navigationPane.sideBarToolbar) {
                 this.navigationPane.sideBarToolbar.style.height =
-                    this.updatePageHeight(this.pdfViewer.element.getBoundingClientRect().height, 0);
+                this.updatePageHeight(this.pdfViewer.element.getBoundingClientRect().height, 0);
             }
         }
         if (toolbarModule) {
@@ -2634,6 +2641,65 @@ export class PdfViewerBase {
      * @private
      * @returns {void}
      */
+    public validateAllAnnotationSettings(): void {
+        if (this.pdfViewer.annotation) {
+            this.pdfViewer.annotation.validateCommonAnnotationSettings();
+            if (this.pdfViewer.annotation.shapeAnnotationModule) {
+                this.pdfViewer.annotation.shapeAnnotationModule.validateRectangleSettings();
+                this.pdfViewer.annotation.shapeAnnotationModule.validateCircleSettings();
+            }
+            if (this.pdfViewer.annotation.redactionAnnotationModule) {
+                this.pdfViewer.annotation.redactionAnnotationModule.validateRedactionSettings();
+            }
+            if (this.pdfViewer.annotation.measureAnnotationModule) {
+                this.pdfViewer.annotation.measureAnnotationModule.validateRadiusSettings();
+            }
+            if (this.pdfViewer.annotation.freeTextAnnotationModule) {
+                this.pdfViewer.annotation.freeTextAnnotationModule.validateFreeTextSettings();
+            }
+            if (this.pdfViewer.annotation.stampAnnotationModule) {
+                this.pdfViewer.annotation.stampAnnotationModule.validateStampSettings();
+            }
+        }
+    }
+
+    /**
+     * Ensures a given min/max pair satisfies constraints:
+     * @param {any} settings - represents the annotation settings
+     * @param {string} minKey - represent the API - minHeight or minWidth
+     * @param {string} maxKey - represents the API - maxHeight or maxWidth
+     * @private
+     * @returns {void}
+     */
+    public normalizeMinMaxPair(settings: any, minKey: string, maxKey: string): void {
+        if (isNullOrUndefined(settings)) {
+            return;
+        }
+        // eslint-disable-next-line security/detect-object-injection
+        let minVal: number = settings[minKey];
+        // eslint-disable-next-line security/detect-object-injection
+        let maxVal: number = settings[maxKey];
+        if (minVal && minVal < 0) {
+            minVal = 0;
+        }
+        if (minVal && maxVal && (minVal > maxVal)) {
+            const temp: number = minVal;
+            minVal = maxVal;
+            maxVal = temp;
+        }
+        if (minVal && minVal < 0) {
+            minVal = 0;
+        }
+        // eslint-disable-next-line security/detect-object-injection
+        settings[minKey] = minVal;
+        // eslint-disable-next-line security/detect-object-injection
+        settings[maxKey] = maxVal;
+    }
+
+    /**
+     * @private
+     * @returns {void}
+     */
     public setNavigationSettings(): void {
         if (this.pdfViewer.enableThumbnail && this.pdfViewer.isThumbnailViewOpen &&
             !(Browser.isDevice && !this.pdfViewer.enableDesktopMode)) {
@@ -3153,6 +3219,7 @@ export class PdfViewerBase {
         if (annotationModule) {
             annotationModule.clear();
             annotationModule.initializeCollection();
+            annotationModule.isFormFieldShape = false;
         }
         if (formFieldsModule) {
             formFieldsModule.readOnlyCollection = [];
@@ -4190,6 +4257,7 @@ export class PdfViewerBase {
         }
         this.sessionStorageManager.clear();
     };
+
     private updateViewerContainerHeight = (): void => {
         let proxy: PdfViewerBase = null;
         // eslint-disable-next-line
@@ -5416,8 +5484,12 @@ export class PdfViewerBase {
                     }
                     break;
                 case 70: // f key
-                    if (this.pdfViewer.textSearchModule && this.pdfViewer.enableTextSearch) {
-                        event.preventDefault();
+                    event.preventDefault();
+                    if (this.pdfViewer.textSearchModule &&
+                        this.pdfViewer.enableTextSearch &&
+                        this.pdfViewer.toolbarSettings &&
+                        this.pdfViewer.toolbarSettings.toolbarItems &&
+                        this.pdfViewer.toolbarSettings.toolbarItems.indexOf('SearchOption') !== -1) {
                         this.pdfViewer.toolbarModule.textSearchButtonHandler();
                     }
                     break;
@@ -8442,8 +8514,10 @@ export class PdfViewerBase {
             const pageDiv: HTMLElement = document.getElementById(this.pdfViewer.element.id + '_pageDiv_' + pageIndex);
             if (pageDiv) {
                 if (!this.pdfViewer.enableRtl) {
+                    pageDiv.style.right = '';
                     pageDiv.style.left = leftPosition + 'px';
                 } else {
+                    pageDiv.style.left = '';
                     pageDiv.style.right = leftPosition + 'px';
                 }
             }
@@ -11438,8 +11512,8 @@ export class PdfViewerBase {
                         const bounds: any = this.pdfViewer.formDesignerModule.
                             updateFormFieldInitialSize(obj as unknown as DrawingElement, (obj as PdfFormFieldBaseModel).
                                 formFieldAnnotationType);
-                        const pageWidth: number = this.pageContainer.firstElementChild.clientWidth - bounds.width;
-                        const pageHeight: number = this.pageContainer.firstElementChild.clientHeight - bounds.height;
+                        const pageWidth: number = this.pageContainer.firstElementChild.clientWidth;
+                        const pageHeight: number = this.pageContainer.firstElementChild.clientHeight;
                         if (this.pdfViewer.formDesignerModule && (obj as PdfFormFieldBaseModel).formFieldAnnotationType
                             && this.currentPosition.x < pageWidth && this.currentPosition.y < pageHeight) {
                             const formFieldElement: any = document.getElementById('FormField_helper_html_element');
@@ -11453,6 +11527,8 @@ export class PdfViewerBase {
                                     formFieldElement.remove('FormField_helper_html_element');
                                 } else {
                                     const point: PointModel = this.getMousePosition(evt as any);
+                                    const left: number = Math.max(0, Math.min(point.x, pageWidth - bounds.width));
+                                    const top: number = Math.max(0, Math.min(point.y, pageHeight - bounds.height));
                                     if (obj.formFieldAnnotationType === 'Checkbox' && formFieldElement.firstElementChild.firstElementChild.lastElementChild as HTMLElement) {
                                         (formFieldElement.firstElementChild.firstElementChild.lastElementChild as HTMLElement).style.visibility = 'visible';
                                     } else if (obj.formFieldAnnotationType === 'SignatureField' || obj.formFieldAnnotationType === 'InitialField') {
@@ -11462,10 +11538,11 @@ export class PdfViewerBase {
                                         (formFieldElement.firstElementChild.firstElementChild as HTMLElement).style.visibility = 'visible';
                                     }
                                     formFieldElement.style.cssText = `height: ${bounds.height}px;width: ${bounds.width}px;
-                                    left: ${point.x}px;top: ${point.y}px;position: absolute;opacity: 0.5;`;
+                                    left: ${left}px;top: ${top}px;position: absolute;opacity: 0.5;`;
                                 }
                             }
-                        } else if (this.currentPosition.x > pageWidth || this.currentPosition.y > pageHeight) {
+                        }
+                        else if (this.currentPosition.x > pageWidth || this.currentPosition.y > pageHeight) {
                             const formFieldElement: any = document.getElementById('FormField_helper_html_element');
                             if (!formFieldElement) {
                                 this.pdfViewer.formDesignerModule.drawHelper((obj as PdfFormFieldBaseModel).formFieldAnnotationType,
@@ -12201,13 +12278,13 @@ export class PdfViewerBase {
                 }
                 if (stampObj) {
                     this.isViewerMouseDown = false;
-                    stampObj.opacity = this.pdfViewer.stampSettings.opacity ? this.pdfViewer.stampSettings.opacity : 1;
+                    stampObj.opacity = !isNullOrUndefined(this.pdfViewer.stampSettings.opacity) ? this.pdfViewer.stampSettings.opacity : 1;
                     this.isNewStamp = true;
                     let opacity: number;
                     if (stampObj.shapeAnnotationType === 'Image') {
                         opacity = this.pdfViewer.customStampSettings.opacity;
                     } else {
-                        opacity = this.pdfViewer.stampSettings.opacity ? this.pdfViewer.stampSettings.opacity : 1;
+                        opacity = !isNullOrUndefined(this.pdfViewer.stampSettings.opacity) ? this.pdfViewer.stampSettings.opacity : 1;
                     }
                     this.pdfViewer.nodePropertyChange(stampObj, { opacity: opacity });
                     this.pdfViewer.annotation.stampAnnotationModule.isStampAddMode = false;
@@ -13145,7 +13222,7 @@ export class PdfViewerBase {
                             for (let i: number = 0; i < annotations.length; i++) {
                                 const pageAnnotations: any = annotations[parseInt(i.toString(), 10)];
                                 pageAnnotations.annotations = pageAnnotations.annotations.filter((annotation: any) =>
-                                    renderedKeys.includes(annotation.id));
+                                    renderedKeys.includes(annotation.id || annotation.randomId));
                             }
                             if (annotations.length === 0) {
                                 this.pdfViewer.annotationsCollection.delete(key);
@@ -15310,6 +15387,222 @@ export class PdfViewerBase {
         console.warn(`[WARNING] :: Module '${moduleName}' is not available in PDF Viewer component! You either misspelled the module name or forgot to load it.`);
     }
 
+    private getSourceSelectorSettings(shapeType: string, measureType: string, subject: string): any {
+        switch (shapeType) {
+        case 'Line':
+            if (measureType === 'Perimeter') {
+                return (this.pdfViewer.perimeterSettings &&
+                    this.pdfViewer.perimeterSettings.annotationSelectorSettings)
+                    ? this.pdfViewer.perimeterSettings.annotationSelectorSettings
+                    : undefined;
+            }
+            else if (shapeType === 'Line' && subject === 'Polygon') {
+                return (this.pdfViewer.polygonSettings &&
+                    this.pdfViewer.polygonSettings.annotationSelectorSettings)
+                    ? this.pdfViewer.polygonSettings.annotationSelectorSettings
+                    : undefined;
+            }
+            else if (shapeType === 'Line' && subject === 'Perimeter calculation') {
+                return (this.pdfViewer.perimeterSettings &&
+                    this.pdfViewer.perimeterSettings.annotationSelectorSettings)
+                    ? this.pdfViewer.perimeterSettings.annotationSelectorSettings
+                    : undefined;
+            }
+            else if (shapeType === 'Line' && subject === 'Area calculation') {
+                return (this.pdfViewer.areaSettings &&
+                    this.pdfViewer.areaSettings.annotationSelectorSettings)
+                    ? this.pdfViewer.areaSettings.annotationSelectorSettings
+                    : undefined;
+            }
+            else if (shapeType === 'Line' && subject === 'Volume calculation') {
+                return (this.pdfViewer.volumeSettings &&
+                    this.pdfViewer.volumeSettings.annotationSelectorSettings)
+                    ? this.pdfViewer.volumeSettings.annotationSelectorSettings
+                    : undefined;
+            }
+            else {
+                return (this.pdfViewer.lineSettings &&
+                    this.pdfViewer.lineSettings.annotationSelectorSettings)
+                    ? this.pdfViewer.lineSettings.annotationSelectorSettings
+                    : undefined;
+            }
+        case 'LineWidthArrowHead':
+            return (this.pdfViewer.arrowSettings &&
+                    this.pdfViewer.arrowSettings.annotationSelectorSettings)
+                ? this.pdfViewer.arrowSettings.annotationSelectorSettings
+                : undefined;
+        case 'Rectangle':
+            return (this.pdfViewer.rectangleSettings &&
+                    this.pdfViewer.rectangleSettings.annotationSelectorSettings)
+                ? this.pdfViewer.rectangleSettings.annotationSelectorSettings
+                : undefined;
+        case 'Ellipse':
+            return (this.pdfViewer.circleSettings &&
+                    this.pdfViewer.circleSettings.annotationSelectorSettings)
+                ? this.pdfViewer.circleSettings.annotationSelectorSettings
+                : undefined;
+        case 'Polygon':
+            if (measureType === 'Area') {
+                return this.pdfViewer.areaSettings && this.pdfViewer.areaSettings.annotationSelectorSettings;
+            }
+            else if (measureType === 'Volume') {
+                return this.pdfViewer.volumeSettings && this.pdfViewer.volumeSettings.annotationSelectorSettings;
+            }
+            else if (measureType !== '') {
+                return this.pdfViewer.polygonSettings && this.pdfViewer.polygonSettings.annotationSelectorSettings;
+            }
+            return undefined;
+        case 'Distance':
+            return (this.pdfViewer.distanceSettings &&
+                    this.pdfViewer.distanceSettings.annotationSelectorSettings)
+                ? this.pdfViewer.distanceSettings.annotationSelectorSettings
+                : undefined;
+        case 'Radius':
+        case 'Radius calculation':
+            return (this.pdfViewer.radiusSettings &&
+                    this.pdfViewer.radiusSettings.annotationSelectorSettings)
+                ? this.pdfViewer.radiusSettings.annotationSelectorSettings
+                : undefined;
+        case 'FreeText':
+            return (this.pdfViewer.freeTextSettings &&
+                    this.pdfViewer.freeTextSettings.annotationSelectorSettings)
+                ? this.pdfViewer.freeTextSettings.annotationSelectorSettings
+                : undefined;
+        case 'Ink':
+            return (this.pdfViewer.inkAnnotationSettings &&
+                    this.pdfViewer.inkAnnotationSettings.annotationSelectorSettings)
+                ? this.pdfViewer.inkAnnotationSettings.annotationSelectorSettings
+                : undefined;
+        case 'Stamp':
+        case 'Image':
+            return (this.pdfViewer.stampSettings &&
+                    this.pdfViewer.stampSettings.annotationSelectorSettings)
+                ? this.pdfViewer.stampSettings.annotationSelectorSettings
+                : undefined;
+        case 'HandWrittenSignature':
+        case 'SignatureText':
+        case 'SignatureImage':
+            return (this.pdfViewer.handWrittenSignatureSettings &&
+                this.pdfViewer.handWrittenSignatureSettings.annotationSelectorSettings)
+                ? this.pdfViewer.handWrittenSignatureSettings.annotationSelectorSettings
+                : undefined;
+        default:
+            return undefined;
+        }
+    }
+    private applyFromSource(srcSettings: any, target: any): void {
+        if (srcSettings && srcSettings.resizerFillColor !== '#FF4081') {
+            target.resizerFillColor = srcSettings.resizerFillColor;
+        } else {
+            target.resizerFillColor = !isNullOrUndefined(target.resizerFillColor)
+                ? target.resizerFillColor : '#FF4081';
+        }
+        if (srcSettings && srcSettings.resizerBorderColor !== 'black') {
+            target.resizerBorderColor = srcSettings.resizerBorderColor;
+        } else {
+            target.resizerBorderColor = !isNullOrUndefined(target.resizerBorderColor)
+                ? target.resizerBorderColor : 'black';
+        }
+        if (srcSettings && srcSettings.selectionBorderColor !== '') {
+            target.selectionBorderColor = srcSettings.selectionBorderColor;
+        } else {
+            target.selectionBorderColor = !isNullOrUndefined(target.selectionBorderColor)
+                ? target.selectionBorderColor : '';
+        }
+        if (srcSettings && srcSettings.resizerSize !== 8) {
+            target.resizerSize = srcSettings.resizerSize;
+        } else {
+            target.resizerSize = !isNullOrUndefined(target.resizerSize) ? target.resizerSize : 8;
+        }
+        if (srcSettings && srcSettings.resizerShape !== 'Square') {
+            target.resizerShape = srcSettings.resizerShape;
+        } else {
+            target.resizerShape = !isNullOrUndefined(target.resizerShape) ? target.resizerShape : 'Square';
+        }
+        if (srcSettings && srcSettings.resizerCursorType !== null) {
+            target.resizerCursorType = srcSettings.resizerCursorType;
+        } else {
+            target.resizerCursorType = !isNullOrUndefined(target.resizerCursorType)
+                ? target.resizerCursorType : null;
+        }
+        if (srcSettings && srcSettings.selectionBorderThickness !== this.defaultSelectionborderThickness) {
+            target.selectionBorderThickness = this.normalizeSelectionBorderThickness(srcSettings.selectionBorderThickness);
+        } else {
+            target.selectionBorderThickness = this.normalizeSelectionBorderThickness(
+                !isNullOrUndefined(target.selectionBorderThickness)
+                    ? target.selectionBorderThickness
+                    : this.defaultSelectionborderThickness
+            );
+        }
+        if (srcSettings && srcSettings.selectorLineDashArray && srcSettings.selectorLineDashArray.length !== 0) {
+            target.selectorLineDashArray = srcSettings.selectorLineDashArray;
+        } else {
+            target.selectorLineDashArray = !isNullOrUndefined(target.selectorLineDashArray)
+                ? target.selectorLineDashArray : [];
+        }
+        if (srcSettings && srcSettings.resizerLocation !== 3) {
+            target.resizerLocation = srcSettings.resizerLocation;
+        } else {
+            target.resizerLocation = !isNullOrUndefined(target.resizerLocation)
+                ? target.resizerLocation : 3;
+        }
+    }
+    /**
+     * @param {any} annotationSelectorSettings - Gets annotationSelectorSettings
+     * @param {any} shapeType - Gets shapeType
+     * @param {any} measureType - Gets measureType
+     * @param {any} subject - Gets subject
+     * @private
+     * @returns {void}
+     */
+    public updateSelector(annotationSelectorSettings: any, shapeType: any, measureType?: any, subject?: any): void {
+        const src: any = this.getSourceSelectorSettings(shapeType, measureType, subject);
+        this.applyFromSource(src, annotationSelectorSettings);
+    }
+    /**
+     * @param {any} val - Gets value
+     * @private
+     * @returns {void}
+     */
+    public normalizeSelectionBorderThickness(val: any): number {
+        if (typeof val === 'number' && isFinite(val) &&
+            val >= this.minSelectionborderThickness && val <= this.maxSelectionborderThickness) {
+            return val;
+        }
+        return this.defaultSelectionborderThickness;
+    }
+    /**
+     * @param {any} corner - Gets corner
+     * @private
+     * @returns {void}
+     */
+    public isEdgeHandle(corner: any): boolean {
+        return corner === 'ResizeNorth' || corner === 'ResizeSouth' ||
+            corner === 'ResizeEast'  || corner === 'ResizeWest';
+    }
+    /**
+     * @param {any} corner - Gets corner
+     * @private
+     * @returns {void}
+     */
+    public isCornerHandle(corner: any): boolean {
+        return corner === 'ResizeNorthEast' || corner === 'ResizeNorthWest' ||
+            corner === 'ResizeSouthEast' || corner === 'ResizeSouthWest';
+    }
+    /**
+     * @param {any} source - Gets source
+     * @private
+     * @returns {void}
+     */
+    public getResizerLocationFrom(source: any): any {
+        let loc: any;
+        if (source && source.annotationSelectorSettings && typeof source.annotationSelectorSettings.resizerLocation !== 'undefined') {
+            loc = source.annotationSelectorSettings.resizerLocation;
+        } else if (this && this.pdfViewer && this.pdfViewer.annotationSelectorSettings && typeof this.pdfViewer.annotationSelectorSettings.resizerLocation !== 'undefined') {
+            loc = this.pdfViewer.annotationSelectorSettings.resizerLocation;
+        }
+        return loc;
+    }
     /**
      * @param {any} annotationSelectorSettings - Gets annotationSelectorSettings
      * @private

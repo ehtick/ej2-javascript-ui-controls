@@ -156,13 +156,13 @@ describe('Diagram Control', () => {
 
         });
 
-        // it('Checking user handle events eith out action', (done: Function) => {
-        //     let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-        //     mouseEvents.clickEvent(diagramCanvas, 100, 90);
-        //     mouseEvents.clickEvent(diagramCanvas, 75, 50);
-        //     expect(diagram.selectedItems.nodes.length === 1).toBe(true);
-        //     done();
-        // });
+        it('Checking user handle events eith out action', (done: Function) => {
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            mouseEvents.clickEvent(diagramCanvas, 100, 90);
+            mouseEvents.clickEvent(diagramCanvas, 75, 50);
+            expect(diagram.selectedItems.nodes.length === 1).toBe(true);
+            done();
+        });
 
         it('Checking the side of user handle: top', (done: Function) => {
             let i: number = 0
@@ -292,15 +292,15 @@ describe('Diagram Control', () => {
             diagram.select(selArray);
         });
 
-        // it('Checking user handle events while handle is visible', (done: Function) => {
-        //     let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-        //     mouseEvents.clickEvent(diagramCanvas, 100, 100);
-        //     mouseEvents.mouseMoveEvent(diagramCanvas, 75, 50);
-        //     let eventhandler: any = diagram['eventHandler'];
-        //     let action: any = eventhandler['action'];
-        //     expect(action === 'handle2').toBe(true);
-        //     done();
-        // });
+        it('Checking user handle events while handle is visible', (done: Function) => {
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            mouseEvents.clickEvent(diagramCanvas, 100, 100);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 75, 50);
+            let eventhandler: any = diagram['eventHandler'];
+            let action: any = eventhandler['action'];
+            expect(action === 'handle2').toBe(true);
+            done();
+        });
 
         it('Checking user handle events while handle is not visible', (done: Function) => {
             let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
@@ -372,15 +372,15 @@ describe('Diagram Control', () => {
             done();
         });
 
-        // it('Checking Template Rendering User Handle', (done: Function) => {
-        //     let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-        //     mouseEvents.clickEvent(diagramCanvas, 100, 100);
-        //     mouseEvents.mouseMoveEvent(diagramCanvas, 75, 50);
-        //     let eventhandler: any = diagram['eventHandler'];
-        //     let action: any = eventhandler['action'];
-        //     expect(action === 'handle2').toBe(true);
-        //     done();
-        // });
+        it('Checking Template Rendering User Handle', (done: Function) => {
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            mouseEvents.clickEvent(diagramCanvas, 100, 100);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 75, 50);
+            let eventhandler: any = diagram['eventHandler'];
+            let action: any = eventhandler['action'];
+            expect(action === 'handle2').toBe(true);
+            done();
+        });
 
 
         it('Checking user handle events while handle is not visible', (done: Function) => {
@@ -461,15 +461,15 @@ describe('Diagram Control', () => {
             done();
         });
 
-        // it('Checking Template Rendering User Handle', (done: Function) => {
-        //     let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-        //     mouseEvents.clickEvent(diagramCanvas, 100, 100);
-        //     mouseEvents.mouseMoveEvent(diagramCanvas, 75, 50);
-        //     let eventhandler: any = diagram['eventHandler'];
-        //     let action: any = eventhandler['action'];
-        //     expect(action === 'handle2').toBe(true);
-        //     done();
-        // });
+        it('Checking Template Rendering User Handle', (done: Function) => {
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            mouseEvents.clickEvent(diagramCanvas, 100, 100);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 75, 50);
+            let eventhandler: any = diagram['eventHandler'];
+            let action: any = eventhandler['action'];
+            expect(action === 'handle2').toBe(true);
+            done();
+        });
 
 
         it('Checking user handle events while handle is not visible', (done: Function) => {
@@ -555,13 +555,13 @@ describe('Diagram Control', () => {
 
         });
 
-        // it('Checking user handle events with out action', (done: Function) => {
-        //     let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-        //     mouseEvents.clickEvent(diagramCanvas, 100, 90);
-        //     diagram.getTool('handle1').mouseLeave({ currentPosition: { x: 100, y: 200 }, prevPosition: { x: 100, y: 200 } } as MouseEventArgs)
-        //     expect(diagram.selectedItems.nodes.length === 1).toBe(true);
-        //     done();
-        // });
+        it('Checking user handle events with out action', (done: Function) => {
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            mouseEvents.clickEvent(diagramCanvas, 100, 90);
+            diagram.getTool('handle1').mouseLeave({ currentPosition: { x: 100, y: 200 }, prevPosition: { x: 100, y: 200 } } as MouseEventArgs)
+            expect(diagram.selectedItems.nodes.length === 1).toBe(true);
+            done();
+        });
 
         it('Checking custom cursor', (done: Function) => {
             let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
@@ -966,14 +966,14 @@ describe('rendering user handle template', () => {
         expect(action !== 'handle1').toBe(true)
         done();
     })
-    // it('Checking position of userhandle', (done: Function) => {
-    //     let pathElement: HTMLElement = document.getElementById('handle1_shape_html_element');
-    //     let rect: any = pathElement.getBoundingClientRect();
-    //     console.log(rect.bottom  ,rect.height,   rect.left  , rect.right, rect.top, rect.width, rect.x,rect.y );
-    //     expect(rect.bottom === 83 && rect.height === 25 && rect.left === 108 && rect.right === 133 && rect.top === 58 && rect.width === 25 && rect.x === 108 && rect.y === 58).toBe(true)
-    //     done();
+    it('Checking position of userhandle', (done: Function) => {
+        let pathElement: HTMLElement = document.getElementById('handle1_shape_html_element');
+        let rect: any = pathElement.getBoundingClientRect();
+        console.log(rect.bottom  ,rect.height,   rect.left  , rect.right, rect.top, rect.width, rect.x,rect.y );
+        expect(rect.bottom === 83 && rect.height === 25 && rect.left === 108 && rect.right === 133 && rect.top === 58 && rect.width === 25 && rect.x === 108 && rect.y === 58).toBe(true)
+        done();
 
-    // });
+    });
     it('Checking visibility of userhandle', (done: Function) => {
         diagram.selectedItems.userHandles[0].visible = false;
         let pathElement: HTMLElement = document.getElementById('handle1_shape_html_element');
@@ -982,17 +982,17 @@ describe('rendering user handle template', () => {
         done();
 
     });
-    // it('Checking user handle position while zooming', function (done) {
-    //     let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-    //     mouseEvents.clickEvent(diagramCanvas, 100, 90);
-    //     diagram.zoom(1.2);
-    //     let ele: HTMLElement = document.getElementById('handle1_shape_html_element');
-    //     console.log( ele.offsetTop, ele.offsetLeft);
-    //     expect((ele.offsetTop === 63 || ele.offsetTop === 65) &&ele.offsetLeft=== 120).toBe(true)
-    //     done();
+    it('Checking user handle position while zooming', function (done) {
+        let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+        mouseEvents.clickEvent(diagramCanvas, 100, 90);
+        diagram.zoom(1.2);
+        let ele: HTMLElement = document.getElementById('handle1_shape_html_element');
+        console.log( ele.offsetTop, ele.offsetLeft);
+        expect((ele.offsetTop === 63 || ele.offsetTop === 65) &&ele.offsetLeft=== 120).toBe(true)
+        done();
 
 
-    // });
+    });
 });
 
 describe('user handle ToolTip', () => {

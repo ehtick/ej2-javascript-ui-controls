@@ -6,6 +6,7 @@ import { PdfAnnotationBase } from '../drawing/pdf-annotation';
 import { AnnotationSelectorSettingsModel } from '../pdfviewer-model';
 import { splitArrayCollection, processPathData, getPathString } from '@syncfusion/ej2-drawings';
 import { Browser, isNullOrUndefined } from '@syncfusion/ej2-base';
+import { cloneObject } from '../drawing/drawing-util';
 
 /**
  * @hidden
@@ -160,7 +161,8 @@ export class InkAnnotation {
         const canvas: any = this.pdfViewerBase.getAnnotationCanvas('_annotationCanvas_', pageIndex);
         const context: any = canvas.getContext('2d');
         const thickness: number = this.pdfViewer.inkAnnotationSettings.thickness ? this.pdfViewer.inkAnnotationSettings.thickness : 1;
-        const opacity: number = this.pdfViewer.inkAnnotationSettings.opacity ? this.pdfViewer.inkAnnotationSettings.opacity : 1;
+        const opacity: number = !isNullOrUndefined(this.pdfViewer.inkAnnotationSettings.opacity) ?
+            this.pdfViewer.inkAnnotationSettings.opacity : 1;
         const strokeColor: string = this.pdfViewer.inkAnnotationSettings.strokeColor ? this.pdfViewer.inkAnnotationSettings.strokeColor : '#ff0000';
         if (!Browser.isDevice || (Browser.isDevice && zoom <= 0.7)) {
             context.setTransform(ratio, 0, 0, ratio, 0, 0);
@@ -218,7 +220,8 @@ export class InkAnnotation {
             const modifiedDate: string = this.pdfViewer.annotation.stickyNotesAnnotationModule.getDateAndTime();
             const pageIndex: number = !isNaN(pageNumber) ? pageNumber : this.pdfViewerBase.currentPageNumber - 1;
             const thickness: number = this.pdfViewer.inkAnnotationSettings.thickness ? this.pdfViewer.inkAnnotationSettings.thickness : 1;
-            const opacity: number = this.pdfViewer.inkAnnotationSettings.opacity ? this.pdfViewer.inkAnnotationSettings.opacity : 1;
+            const opacity: number = !isNullOrUndefined(this.pdfViewer.inkAnnotationSettings.opacity) ?
+                this.pdfViewer.inkAnnotationSettings.opacity : 1;
             const strokeColor: string = this.pdfViewer.inkAnnotationSettings.strokeColor ? this.pdfViewer.inkAnnotationSettings.strokeColor : '#ff0000';
             const isLock: boolean = this.pdfViewer.inkAnnotationSettings.isLock ?
                 this.pdfViewer.inkAnnotationSettings.isLock : this.pdfViewer.annotationSettings.isLock;
@@ -302,6 +305,12 @@ export class InkAnnotation {
                 const pageAnnotationObject: IPageAnnotations = annotationCollection[parseInt(i.toString(), 10)];
                 if (pageAnnotationObject) {
                     for (let z: number = 0; pageAnnotationObject.annotations.length > z; z++) {
+                        if (this.pdfViewer.printModule && this.pdfViewer.printModule.canPrint &&
+                            pageAnnotationObject.annotations[parseInt(z.toString(), 10)].isPrint === false) {
+                            pageAnnotationObject.annotations.splice(parseInt(z.toString(), 10), 1);
+                            z--;
+                            continue;
+                        }
                         this.pdfViewer.annotationModule.updateModifiedDate(pageAnnotationObject.annotations[parseInt(z.toString(), 10)]);
                         const strokeColorString: string = pageAnnotationObject.annotations[parseInt(z.toString(), 10)].strokeColor;
                         pageAnnotationObject.annotations[parseInt(z.toString(), 10)].strokeColor =
@@ -630,8 +639,8 @@ export class InkAnnotation {
     public getSelector(type: string, subject: string): AnnotationSelectorSettingsModel {
         let selector: AnnotationSelectorSettingsModel = this.pdfViewer.annotationSelectorSettings;
         if ((type === 'Ink' || subject === 'Ink' ) && this.pdfViewer.inkAnnotationSettings.annotationSelectorSettings) {
-            selector = this.pdfViewer.inkAnnotationSettings.annotationSelectorSettings;
-            this.pdfViewerBase.updateSelectorSettings(selector);
+            selector = cloneObject(this.pdfViewer.annotationSelectorSettings);
+            this.pdfViewerBase.updateSelector(selector, type);
         }
         return selector;
     }
@@ -849,7 +858,7 @@ export class InkAnnotation {
             IsPrint: !isNullOrUndefined(annotationObject.isPrint) ? annotationObject.isPrint : true,
             ModifiedDate: '',
             Note: '',
-            Opacity: annotationObject.opacity ? annotationObject.opacity : 1,
+            Opacity: !isNullOrUndefined(annotationObject.opacity) ? annotationObject.opacity : 1,
             PathData: annotationObject.path,
             PageNumber: pageNumber,
             State: '',

@@ -558,7 +558,11 @@
     }
 
     .e-frozenrow-border {
-      @include grid-height-position-index($frozen-border-color, absolute);
+      @include grid-height-position-index($frozen-border-color, relative);
+    }
+
+    &.e-lib.e-top-shadow .e-frozenrow-border {
+      box-shadow: 0 4px 8px $grid-frozen-row-shadow-background-color, inset 0 2px 4px $grid-frozen-row-shadow-inset-color;
     }
 
     .e-frozenrow-border.e-frozenrow-empty {
@@ -567,8 +571,6 @@
 
     /* stylelint-disable */
     &.e-top-shadow .e-frozenrow-border {
-      height: 4px;
-      margin-top: -4px;
       background-color: transparent !important;
       @include frozen-shadow-styles(inset(0 0 -15px 0), 0 4px 8px $grid-frozen-row-shadow-background-color);
     }
@@ -1655,6 +1657,11 @@
     @if $grid-skin == 'fluent2' {
       .e-rowcell .e-checkbox-wrapper .e-frame {
         margin: 0;
+      }
+      td.e-active.e-rowcell .e-checkbox-wrapper .e-frame {
+        @if $theme-name =='fluent2-highcontrast' {
+          border-color: rgb(0, 0, 0);
+        }
       }
       .e-normaledit .e-rowcell .e-checkbox-wrapper.e-focus {
         box-shadow: none;
@@ -2998,6 +3005,29 @@
 
     .e-virtual-content.e-content {
       overflow-x: hidden;
+    }
+
+    .e-gridcontent .e-virtual-horizontal-scrollbar {
+      overflow-x: scroll;
+      width: 100%;
+      position: absolute;
+      bottom: 0;
+      z-index: 2;
+    }
+
+    .e-gridcontent .e-virtual-vertical-scrollbar {
+      overflow-y: scroll;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      right: 0;
+      left: auto;
+      z-index: 2;
+    }
+
+    &.e-rtl .e-gridcontent .e-virtual-vertical-scrollbar {
+      right: auto;
+      left: 0;
     }
 
     &.e-lib.e-default .e-headercell.e-leftfreeze.e-freezeleftborder,

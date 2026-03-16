@@ -925,7 +925,6 @@ describe('Chart Control', () => {
                 {
                     primaryXAxis: { title: 'PrimaryXAxis', labelFormat: 'n1' },
                     primaryYAxis: { title: 'PrimaryYAxis', labelFormat: 'n1', rangePadding: 'None' },
-
                     series: [{
                         type: 'Bubble',
                         dataSource: data, xName: 'x', yName: 'y', size: 'size', animation: { enable: false },

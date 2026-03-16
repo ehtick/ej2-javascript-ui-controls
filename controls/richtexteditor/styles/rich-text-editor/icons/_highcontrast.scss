@@ -47,6 +47,14 @@
       content: '\e334';
     }
 
+    .e-left-wrap::before {
+      content: '\e1cd';
+    }
+
+    .e-right-wrap::before {
+      content: '\e1ce';
+    }
+
     .e-font-name::before {
       content: '\e35f';
     }
@@ -267,6 +275,10 @@
 
     .e-table-edit-properties::before {
       content: '\e1c6';
+    }
+
+    .e-table-editCell-properties::before {
+      content: '\e1d1';
     }
 
     .e-create-table::before {

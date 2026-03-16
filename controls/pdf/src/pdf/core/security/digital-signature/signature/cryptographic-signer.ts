@@ -9,6 +9,7 @@ import { _PdfMessageDigestAlgorithms } from './pdf-digest-algorithms';
 import { _ICipherParam } from './pdf-interfaces';
 import { _PdfDigitalIdentifiers } from './pdf-object-identifiers';
 import { _PdfSignedCertificate } from '../x509/x509-signed-certificate';
+import { PdfSignature } from './pdf-signature';
 export class _PdfCryptographicMessageSyntaxSigner {
     private _digestAlgorithm: _PdfMessageDigestAlgorithms = new _PdfMessageDigestAlgorithms();
     private _version: number;
@@ -23,17 +24,23 @@ export class _PdfCryptographicMessageSyntaxSigner {
     private _signedData: Uint8Array;
     private _signedRsaData: Uint8Array;
     private _digest: Uint8Array;
-    constructor(bytes: Uint8Array)
+    _hasTimeStamp: boolean = false;
+    _timeStampTokenBytes: Uint8Array;
+    _isTimestampOnly: boolean = false;
+    constructor(bytes: Uint8Array, subFilter: string)
     constructor(privateKey: _ICipherParam,
         certChain: _PdfX509Certificate[],
         hashAlgorithm: string,
         hasRsaData: boolean)
     constructor(privateKey: _ICipherParam | Uint8Array,
-                certChain?: _PdfX509Certificate[],
+                certChain?: _PdfX509Certificate[] | string,
                 hashAlgorithm?: string,
                 hasRsaData?: boolean) {
-        if (privateKey instanceof Uint8Array) {
-            this._initializeCmsSigner(privateKey);
+        if (privateKey instanceof Uint8Array && privateKey.length === 0 || typeof certChain === 'undefined' || certChain === null) {
+            return;
+        }
+        if (privateKey instanceof Uint8Array && typeof certChain === 'string') {
+            this._initializeCmsSigner(privateKey, certChain);
         } else {
             this._digestAlgorithm = new _PdfMessageDigestAlgorithms();
             this._digestAlgorithmObjectIdentifier = this._digestAlgorithm._getAllowedDigests(hashAlgorithm);
@@ -44,15 +51,15 @@ export class _PdfCryptographicMessageSyntaxSigner {
             this._signerVersion = 1;
             this._digestObjectIdentifier = new Map<string, any>(); // eslint-disable-line
             this._digestObjectIdentifier.set(this._digestAlgorithmObjectIdentifier, null);
-            if (certChain) {
-                this._certificates = [...certChain];
+            if (Array.isArray(certChain) && certChain.every((item: _PdfX509Certificate) => item instanceof _PdfX509Certificate)) {
+                this._certificates = [...certChain as _PdfX509Certificate[]];
                 this._signatureCertificate = this._certificates[0];
             } else {
                 this._certificates = [];
                 this._signatureCertificate = null;
             }
             if (privateKey) {
-                if (this._isRsaKey(privateKey)) {
+                if (this._isRsaKey(privateKey as _ICipherParam)) {
                     const identifier: _PdfDigitalIdentifiers = new _PdfDigitalIdentifiers();
                     this._encryptionAlgorithmObjectIdentifier = identifier._rsaEncryption;
                 } else {
@@ -64,7 +71,7 @@ export class _PdfCryptographicMessageSyntaxSigner {
             }
         }
     }
-    _initializeCmsSigner(bytes: Uint8Array): void {
+    _initializeCmsSigner(bytes: Uint8Array, subFilter: string): void {
         const stream: _PdfBasicEncodingElement = new _PdfBasicEncodingElement();
         stream._fromBytes(bytes);
         const sequence: _PdfAbstractSyntaxElement[] = stream._getSequence();
@@ -79,7 +86,63 @@ export class _PdfCryptographicMessageSyntaxSigner {
             const digestAlgorithmOidBytes: Uint8Array = digestAlgorithmSeq[0]._getValue();
             const identifier: _PdfObjectIdentifier = new _PdfObjectIdentifier()._fromBytes(digestAlgorithmOidBytes);
             this._digestAlgorithmObjectIdentifier = identifier.toString();
+            if (subFilter !== 'ETSI.RFC3161') {
+                const { hasTimeStamp, tokenBytes }: any = this._getSignatureTimeStampToken(signerInformationSeq); // eslint-disable-line
+                this._hasTimeStamp = hasTimeStamp;
+                if (hasTimeStamp && tokenBytes) {
+                    this._timeStampTokenBytes = tokenBytes;
+                }
+            } else {
+                const outerTokenBytes: Uint8Array = stream._toBytes();
+                this._isTimestampOnly = true;
+                this._hasTimeStamp = outerTokenBytes.length > 0;
+                this._timeStampTokenBytes = outerTokenBytes;
+            }
         }
+    }
+    _getSignatureTimeStampToken(
+        signerInfoSeq: _PdfAbstractSyntaxElement[]
+    ): { hasTimeStamp: boolean; tokenBytes?: Uint8Array } {
+        const index: number = 6;
+        if (!signerInfoSeq || signerInfoSeq.length <= index) {
+            return { hasTimeStamp: false };
+        }
+        const unsignedAttrs: _PdfAbstractSyntaxElement = signerInfoSeq[<number>index];
+        if (!unsignedAttrs._isTagged() || unsignedAttrs._getTagNumber() !== 1 || !unsignedAttrs._isConstructed()) {
+            return { hasTimeStamp: false };
+        }
+        const attributes: _PdfAbstractSyntaxElement[] = this._getChildElement(unsignedAttrs);
+        for (const attr of attributes) {
+            const attrSeq: _PdfAbstractSyntaxElement[] = attr._getSequence();
+            if (!attrSeq || attrSeq.length < 2) {
+                continue;
+            }
+            const oid: string = attrSeq[0]._getObjectIdentifier()._getDotDelimitedNotation();
+            if (oid !== '1.2.840.113549.1.9.16.2.14') {
+                continue;
+            }
+            const attrValues: _PdfAbstractSyntaxElement[] = this._getChildElement(attrSeq[1]);
+            if (!attrValues || attrValues.length === 0) {
+                continue;
+            }
+            const tokenContentInfo: _PdfAbstractSyntaxElement = attrValues[0];
+            const tokenBytes: Uint8Array = tokenContentInfo._toBytes();
+            return { hasTimeStamp: tokenBytes.length > 0, tokenBytes };
+        }
+        return { hasTimeStamp: false };
+    }
+    _getChildElement(element: _PdfAbstractSyntaxElement): _PdfAbstractSyntaxElement[] {
+        let children: _PdfAbstractSyntaxElement[] = [];
+        if (element._getAbstractSetOf) {
+            children = element._getAbstractSetOf();
+        }
+        if ((!children || children.length === 0) && element._getSequence) {
+            children = element._getSequence();
+        }
+        if (!children || children.length === 0) {
+            children = this._decodeChildrenFromContentOctets(element);
+        }
+        return children;
     }
     _isRsaKey(key: _ICipherParam): boolean {
         return 'modulus' in key && 'exponent' in key;
@@ -445,7 +508,7 @@ export class _PdfCryptographicMessageSyntaxSigner {
         signerInfoElements.push(digestAlgSeq);
         if (secondDigest) {
             const authenticatedAttrs: Uint8Array = this._getSequenceDataSet(secondDigest, revocation, bytes, sigtype);
-            signerInfoElements.push(this._createContextConstructed(0, authenticatedAttrs));
+            signerInfoElements.push(this._createContextImplicitFromTimestampValue(0, authenticatedAttrs));
         }
         const sigAlgSeq: _PdfUniqueEncodingElement = this._createAsn1Constructed(_UniversalType.sequence, [
             this._createPrimitive(_UniversalType.objectIdentifier,
@@ -554,5 +617,234 @@ export class _PdfCryptographicMessageSyntaxSigner {
         timestampSet._setTagNumber(_UniversalType.abstractSyntaxSet);
         timestampSet._setValue(this._encodeToUniqueElement(timestampSeq));
         return this._encodeToUniqueElement(timestampSet);
+    }
+    async _signAsync(
+        secondDigest: Uint8Array,
+        signature: PdfSignature,
+        timeStampResponse?: Uint8Array,
+        revocation?: Uint8Array,
+        bytes?: Uint8Array[],
+        sigtype?: CryptographicStandard
+    ): Promise<Uint8Array> {
+        if (this._signedData) {
+            this._digest = this._signedData;
+            if (this._rsaData) {
+                this._rsaData = this._signedRsaData;
+            }
+        }
+        const digestAlgorithms: _PdfUniqueEncodingElement[] = [];
+        (this._digestObjectIdentifier as Map<string, any>).forEach((value: any, oid: string) => { // eslint-disable-line
+            const oidElement: _PdfUniqueEncodingElement = this._createPrimitive(_UniversalType.objectIdentifier,
+                                                                                this._encodeObjectIdentifier(oid));
+            const nullElement: _PdfUniqueEncodingElement = this._createPrimitive(_UniversalType.nullValue, new Uint8Array(0));
+            digestAlgorithms.push(this._createAsn1Constructed(_UniversalType.sequence, [oidElement, nullElement]));
+        });
+        const contentInfoElements: _PdfUniqueEncodingElement[] = [
+            this._createPrimitive(_UniversalType.objectIdentifier,
+                                  this._encodeObjectIdentifier(new _PdfDigitalIdentifiers()._cryptographicData))
+        ];
+        if (this._rsaData && this._rsaData.length > 0) {
+            const octet: _PdfUniqueEncodingElement = this._createPrimitive(_UniversalType.octetString, this._rsaData);
+            contentInfoElements.push(this._createContextConstructed(0, [octet]));
+        }
+        const contentInfoSeq: _PdfUniqueEncodingElement = this._createAsn1Constructed(_UniversalType.sequence, contentInfoElements);
+        const certificateElements: _PdfUniqueEncodingElement[] = this._certificates
+            .filter((cert: _PdfX509Certificate) => cert)
+            .map((cert: _PdfX509Certificate) => {
+                const el: _PdfUniqueEncodingElement = new _PdfUniqueEncodingElement();
+                el._fromBytes(cert._getEncodedString());
+                return el;
+            });
+        const signerInfoElements: _PdfUniqueEncodingElement[] = [
+            this._createPrimitive(_UniversalType.integer, new Uint8Array([this._signerVersion]))
+        ];
+        if (this._signatureCertificate) {
+            const issuerAndSerialElements: _PdfUniqueEncodingElement[] = [];
+            const tbsCertBytes: Uint8Array = this._signatureCertificate._getTobeSignedCertificate();
+            const issuerElement: _PdfUniqueEncodingElement = this._getIssuer(tbsCertBytes);
+            if (issuerElement) {
+                issuerAndSerialElements.push(issuerElement);
+            }
+            const signedCert: _PdfSignedCertificate = this._signatureCertificate._structure._getSignedCertificate();
+            let serialValue: Uint8Array;
+            if (signedCert && signedCert._serialNumber) {
+                serialValue = signedCert._serialNumber;
+            } else {
+                serialValue = new Uint8Array([1]);
+            }
+            issuerAndSerialElements.push(this._createPrimitive(_UniversalType.integer, serialValue));
+            signerInfoElements.push(this._createAsn1Constructed(_UniversalType.sequence, issuerAndSerialElements));
+        }
+        const digestAlgSeq: _PdfUniqueEncodingElement = this._createAsn1Constructed(_UniversalType.sequence, [
+            this._createPrimitive(_UniversalType.objectIdentifier, this._encodeObjectIdentifier(this._digestAlgorithmObjectIdentifier)),
+            this._createPrimitive(_UniversalType.nullValue, new Uint8Array(0))
+        ]);
+        signerInfoElements.push(digestAlgSeq);
+        if (secondDigest) {
+            const authenticatedAttrs: Uint8Array = this._getSequenceDataSet(secondDigest, revocation, bytes, sigtype);
+            const element: _PdfUniqueEncodingElement = this._createContextImplicitFromTimestampValue(0, authenticatedAttrs);
+            signerInfoElements.push(element);
+        }
+        const sigAlgSeq: _PdfUniqueEncodingElement = this._createAsn1Constructed(_UniversalType.sequence, [
+            this._createPrimitive(_UniversalType.objectIdentifier, this._encodeObjectIdentifier(this._encryptionAlgorithmObjectIdentifier)),
+            this._createPrimitive(_UniversalType.nullValue, new Uint8Array(0))
+        ]);
+        signerInfoElements.push(sigAlgSeq);
+        signerInfoElements.push(this._createPrimitive(_UniversalType.octetString, this._digest || new Uint8Array(0)));
+        if ((!timeStampResponse || timeStampResponse.length === 0) && signature) {
+            if (signature._timestampCallback) {
+                const { oid }: any = this._getObjectIdentifierName('SHA256'); // eslint-disable-line
+                const tsaHash: Uint8Array = this._digestAlgorithm._digest(this._digest, 'SHA256');
+                const tsaReq: Uint8Array = this._createTimestampRequestWithAlgorithm(tsaHash, oid);
+                const tsResult: {data: Uint8Array} = await signature._timestampCallback(tsaReq);
+                if (tsResult && tsResult.data.length > 0) {
+                    timeStampResponse = this._reEncodeTimestampResponse(tsResult.data);
+                } else {
+                    timeStampResponse = undefined;
+                }
+            } else {
+                timeStampResponse = undefined;
+            }
+        }
+        if (timeStampResponse && timeStampResponse.length > 0) {
+            const tsUnsignedAttr: _PdfUniqueEncodingElement = this._buildTimestampUnsignedAttribute(timeStampResponse);
+            const unsignedAttrSet: _PdfUniqueEncodingElement =
+                this._createAsn1Constructed(_UniversalType.abstractSyntaxSet, [tsUnsignedAttr]);
+            signerInfoElements.push(this._createContextImplicitFromTimestampValue(1, unsignedAttrSet._toBytes()));
+            this._hasTimeStamp = true;
+        }
+        const signerInfoSeq: _PdfUniqueEncodingElement = this._createAsn1Constructed(_UniversalType.sequence, signerInfoElements);
+        const bodyElements: _PdfUniqueEncodingElement[] = this._buildSignedDataBodyElements(this._version, digestAlgorithms,
+                                                                                            contentInfoSeq, certificateElements,
+                                                                                            signerInfoSeq);
+        const signedDataBytes: Uint8Array = this._concatAbstractSyntaxSequence(bodyElements);
+        const encodedIdentifier: Uint8Array = this._encodeObjectIdentifier(new _PdfDigitalIdentifiers()._cryptographicSignedData);
+        const pkcs7Oid: _PdfUniqueEncodingElement = this._createPrimitive(_UniversalType.objectIdentifier, encodedIdentifier);
+        const signedDataContext: _PdfUniqueEncodingElement = this._createContextConstructed(0, signedDataBytes);
+        const pkcs7TopSeq: _PdfUniqueEncodingElement = this._createAsn1Constructed(_UniversalType.sequence, [pkcs7Oid, signedDataContext]);
+        return pkcs7TopSeq._toBytes();
+    }
+    _getObjectIdentifierName(requested?: string): { oid: string; name: string } {
+        const alg: string = (requested || 'SHA256').toUpperCase();
+        switch (alg) {
+        case 'SHA1':
+            return { oid: '1.3.14.3.2.26', name: 'SHA1' };
+        case 'SHA256':
+            return { oid: '2.16.840.1.101.3.4.2.1', name: 'SHA256' };
+        case 'SHA384':
+            return { oid: '2.16.840.1.101.3.4.2.2', name: 'SHA384' };
+        case 'SHA512':
+            return { oid: '2.16.840.1.101.3.4.2.3', name: 'SHA512' };
+        default:
+            return { oid: '2.16.840.1.101.3.4.2.1', name: 'SHA256' };
+        }
+    }
+    _createTimestampRequestWithAlgorithm(hash: Uint8Array, algorithmIdentifier: string): Uint8Array {
+        const version: _PdfUniqueEncodingElement = this._createPrimitive(_UniversalType.integer, new Uint8Array([1]));
+        const oidEl: _PdfUniqueEncodingElement = this._createPrimitive(_UniversalType.objectIdentifier,
+                                                                       this._encodeObjectIdentifier(algorithmIdentifier));
+        const nullEl: _PdfUniqueEncodingElement = this._createPrimitive(_UniversalType.nullValue, new Uint8Array(0));
+        const algSeq: _PdfUniqueEncodingElement = this._createAsn1Constructed(_UniversalType.sequence, [oidEl, nullEl]);
+        const hashedMessage: _PdfUniqueEncodingElement = this._createPrimitive(_UniversalType.octetString, hash);
+        const messageImprint: _PdfUniqueEncodingElement = this._createAsn1Constructed(_UniversalType.sequence, [algSeq, hashedMessage]);
+        const nonce: _PdfUniqueEncodingElement = this._createPrimitive(_UniversalType.integer, new Uint8Array([100]));
+        const certReq: _PdfUniqueEncodingElement = this._createPrimitive(_UniversalType.abstractSyntaxBoolean, new Uint8Array([0xff]));
+        const tsReqSeq: _PdfUniqueEncodingElement = this._createAsn1Constructed(_UniversalType.sequence,
+                                                                                [version, messageImprint, nonce, certReq]);
+        return tsReqSeq._toBytes();
+    }
+    _reEncodeTimestampResponse(timestampResponse: Uint8Array): Uint8Array {
+        try {
+            const root: _PdfUniqueEncodingElement = new _PdfUniqueEncodingElement();
+            root._fromBytes(timestampResponse);
+            const topSeq: _PdfAbstractSyntaxElement[] = root._getSequence();
+            if (!topSeq || topSeq.length < 2) {
+                return timestampResponse;
+            }
+            const tokenNode: _PdfAbstractSyntaxElement = topSeq[1];
+            if (!tokenNode) {
+                return timestampResponse;
+            }
+            const innerElements: _PdfAbstractSyntaxElement[] = tokenNode._getSequence();
+            if (!innerElements || innerElements.length === 0) {
+                return timestampResponse;
+            }
+            return this._encodeTimeStampSequence(innerElements);
+        } catch {
+            return timestampResponse;
+        }
+    }
+    _encodeTimeStampSequence(elements: _PdfAbstractSyntaxElement[]): Uint8Array {
+        const encodedParts: Uint8Array[] = elements.map((el: _PdfAbstractSyntaxElement) => el._toBytes());
+        const totalLength: number = encodedParts.reduce((sum: number, part: Uint8Array) => sum + part.length, 0);
+        const sequenceTag: _UniversalType = _UniversalType.sequence | 0x20;
+        const lengthBytes: Uint8Array = this._encodeSequenceLength(totalLength);
+        const result: Uint8Array = new Uint8Array(1 + lengthBytes.length + totalLength);
+        let offset: number = 0;
+        result[offset++] = sequenceTag;
+        result.set(lengthBytes, offset);
+        offset += lengthBytes.length;
+        for (const part of encodedParts) {
+            result.set(part, offset);
+            offset += part.length;
+        }
+        return result;
+    }
+    _encodeSequenceLength(length: number): Uint8Array {
+        if (length < 128) {
+            return new Uint8Array([length]);
+        }
+        const bytes: number[] = [];
+        while (length > 0) {
+            bytes.unshift(length & 0xff);
+            length >>= 8;
+        }
+        return new Uint8Array([0x80 | bytes.length, ...bytes]);
+    }
+    _buildTimestampUnsignedAttribute(tsTokenBytes: Uint8Array): _PdfUniqueEncodingElement {
+        const timestampToken: string = '1.2.840.113549.1.9.16.2.14';
+        const typeOid: _PdfUniqueEncodingElement = this._createPrimitive(
+            _UniversalType.objectIdentifier,
+            this._encodeObjectIdentifier(timestampToken)
+        );
+        const tokenEl: _PdfUniqueEncodingElement = new _PdfUniqueEncodingElement();
+        tokenEl._fromBytes(tsTokenBytes);
+        const valuesSet: _PdfUniqueEncodingElement = this._createAsn1Constructed(_UniversalType.abstractSyntaxSet, [tokenEl]);
+        return this._createAsn1Constructed(_UniversalType.sequence, [typeOid, valuesSet]);
+    }
+    async _getEncodedTimestamp(
+        secondDigest: Uint8Array,
+        signature: PdfSignature,
+        hashAlgorithm: string
+    ): Promise<Uint8Array> {
+        const { oid }: any = this._getObjectIdentifierName(hashAlgorithm); // eslint-disable-line
+        const tsaReq: Uint8Array = this._createTimestampRequestWithAlgorithm(secondDigest, oid);
+        const resp: {data: Uint8Array} = await signature._timestampCallback(tsaReq);
+        if (!resp || resp.data.length === 0) {
+            throw new Error('Timestamp server returned empty response');
+        }
+        return this._reEncodeTimestampResponse(resp.data);
+    }
+    _createContextImplicitFromTimestampValue(tagNumber: number, value: Uint8Array): _PdfUniqueEncodingElement {
+        const el: _PdfUniqueEncodingElement = new _PdfUniqueEncodingElement();
+        el._fromBytes(value);
+        el._tagClass = _TagClassType.context;
+        el._setTagNumber(tagNumber);
+        return el;
+    }
+    _decodeChildrenFromContentOctets(csImplicit: _PdfAbstractSyntaxElement): _PdfAbstractSyntaxElement[] {
+        const value: Uint8Array = csImplicit._getValue();
+        const children: _PdfAbstractSyntaxElement[] = [];
+        let cursor: number = 0;
+        while (cursor < value.length) {
+            const child: _PdfBasicEncodingElement = new _PdfBasicEncodingElement();
+            const consumed: number = child._fromBytes(value.subarray(cursor));
+            if (consumed <= 0) {
+                break;
+            }
+            children.push(child);
+            cursor += consumed;
+        }
+        return children;
     }
 }

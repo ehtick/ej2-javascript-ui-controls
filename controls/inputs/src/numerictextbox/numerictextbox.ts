@@ -409,6 +409,7 @@ export class NumericTextBox extends Component<HTMLInputElement> implements INoti
             this.element.appendChild(input);
             this.element = <HTMLInputElement>input;
             setValue('ej2_instances', ejInstance, this.element);
+
         }
         attributes(this.element, { 'role': 'spinbutton', 'tabindex': '0', 'autocomplete': 'off'});
         const localeText: object = {
@@ -1722,7 +1723,7 @@ export class NumericTextBox extends Component<HTMLInputElement> implements INoti
                 Input.validateInputType(this.container, this.element);
                 break;
             case 'placeholder':
-                Input.setPlaceholder(newProp.placeholder, this.element);
+                Input.setPlaceholder(newProp.placeholder, this.element, this.getModuleName());
                 Input.calculateWidth(this.element, this.container);
                 break;
             case 'step':

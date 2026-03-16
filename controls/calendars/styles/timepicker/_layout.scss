@@ -32,6 +32,12 @@
     }
   }
 
+  #{&}.e-timepicker {
+    @if $skin-name == 'material' or $skin-name == 'material-dark' or $skin-name == 'Material3' {
+      --dummy-style: true;
+    }
+  }
+
   #{&}.e-timepicker.e-time-modal {
     @if $timepicker-skin-name != 'Material3' {
       background-color: $timepicker-default-overlay;

@@ -1866,7 +1866,7 @@ export class Ribbon {
                 if (cell && cell.notes) {
                     this.notesDdb.items = [
                         { id: 'nt_edit', text: l10n.getConstant('EditNote'), iconCss: 'e-icons e-edit-notes' },
-                        { id: 'nt_delte', text: l10n.getConstant('DeleteNote'), iconCss: 'e-icons e-delete-notes' },
+                        { id: 'nt_delete', text: l10n.getConstant('DeleteNote'), iconCss: 'e-icons e-delete-notes' },
                         { id: 'nt_show', text: l10n.getConstant('ShowHideNote'), iconCss: 'e-icons e-notes' },
                         { id: 'nt_prev', text: l10n.getConstant('PreviousNote'), iconCss: 'e-icons e-previous-note' },
                         { id: 'nt_next', text: l10n.getConstant('NextNote'), iconCss: 'e-icons e-next-note' },
@@ -1887,6 +1887,12 @@ export class Ribbon {
                     ];
                 }
                 this.notesDdb.dataBind();
+            },
+            beforeItemRender: (args: MenuEventArgs): void => {
+                if (this.parent.getActiveSheet().isProtected && (args.item.id === 'nt_add' || args.item.id === 'nt_edit'
+                    || args.item.id === 'nt_delete')) {
+                    args.element.classList.add('e-disabled');
+                }
             },
             select: (args: MenuEventArgs): void => {
                 this.pendingNoteFocus = false;
@@ -2627,7 +2633,7 @@ export class Ribbon {
         if (!isNullOrUndefined(cell.value) || cell.value !== '') {
             const format: string = getFormatFromType(args.item.id.split(this.parent.element.id + '_')[1] as NumberFormatType);
             const eventArgs: NumberFormatArgs = { type: args.item.text, formattedText: '', value: cell.value, format: format,
-                cell: { value: cell.value, format: format, formula: cell.formula }, skipFormatCheck: isImported(this.parent) };
+                cell: { value: cell.value, format: format }, skipFormatCheck: isImported(this.parent) };
             this.parent.notify(getFormattedCellObject, eventArgs);
             const previewElem: HTMLElement = this.parent.createElement(
                 'span', { className: 'e-numformat-preview-text', styles: `float:${this.parent.enableRtl ? 'left' : 'right'};` });
@@ -3626,6 +3632,13 @@ export class Ribbon {
         if (this.sortingDdb) { this.sortingDdb.destroy(); } this.sortingDdb = null;
         if (this.clearDdb) { this.clearDdb.destroy(); } this.clearDdb = null;
         if (this.colorPicker) { this.colorPicker.destroy(); } this.colorPicker = null;
+        if (this.calcTypeOptions) {
+            this.calcTypeOptions.destroy();
+            if (this.calcTypeOptions.element) {
+                detach(this.calcTypeOptions.element);
+            }
+        }
+        this.calcTypeOptions = null;
         this.destroyComponent(`${id}_borders_menu`, 'menu');
         if (this.bordersDdb) { this.bordersDdb.destroy(); } this.bordersDdb = null;
         if (this.findDdb) { this.findDdb.destroy(); } this.findDdb = null;

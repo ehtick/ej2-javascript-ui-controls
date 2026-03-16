@@ -1,3 +1,5 @@
+import { XmlWriter } from './xml-write';
+
 /**
  * Represents a file entry within a ZIP archive.
  * Contains metadata about a single file stored in the ZIP container.
@@ -1502,18 +1504,18 @@ export function xmlToJsObject(
     // Extract and store element attributes
     // Attributes are stored in the special $ property
     if (element.attributes && element.attributes.length > 0) {
-        const attrs: Record<string, string> = {};
+        const attributes: Record<string, string> = {};
 
         // Iterate through each attribute of the element
         for (let i: number = 0; i < element.attributes.length; i++) {
             const attr: Attr | null = element.attributes.item(i);
 
             if (attr) {
-                attrs[attr.name] = attr.value;
+                attributes[attr.name] = attr.value;
             }
         }
         const dollar: string = '$';
-        obj[`${dollar}`] = attrs;
+        obj[`${dollar}`] = attributes;
     }
 
     // Array to track child element order (if requested)
@@ -1588,6 +1590,146 @@ export function xmlToJsObject(
     }
 
     return obj as ParsedXmlObject;
+}
+
+/**
+ * Converts a JavaScript object to an XML DOM Element with proper attribute and child element handling.
+ *
+ * This function recursively transforms a parsed XML object structure back into a DOM Element,
+ * preserving attributes (via the `$` property), text content, and nested child elements.
+ * It handles both simple values and complex nested structures, making it suitable for
+ * serializing Visio shape data, master definitions, and other XML-based diagram components.
+ *
+ * The function expects objects to follow the xml2js parsing convention:
+ * - Attributes are stored in a `$` property
+ * - Text content is stored in a `_` property
+ * - Child elements are stored as properties with their tag names as keys
+ *
+ * @param {ParsedXmlObject | string} jsonObject - The JavaScript object or string to convert to XML.
+ *                                         If a string is provided, it becomes the text content of the element.
+ * @param {string} tagName - The XML tag name for the root element being created.
+ * @param {Document} [doc=document] - The DOM Document object to use for creating elements.
+ *                                    Defaults to the browser's global document object.
+ *
+ * @returns {Element} A DOM Element representing the XML structure with all attributes,
+ *                    text content, and child elements properly set.
+ * @private
+ */
+export function jsObjectToXml(
+    jsonObject: ParsedXmlObject | string,
+    tagName: string,
+    doc: Document = document
+): Element {
+    const element: Element = doc.createElement(tagName);
+
+    // If this node is pure text, create <tag>text</tag>
+    if (typeof jsonObject === 'string') {
+        if (jsonObject.length > 0) { element.appendChild(doc.createTextNode(jsonObject)); }
+        return element;
+    }
+
+    // Attributes
+    const attributes: Record<string, string> = jsonObject.$ as Record<string, string> | undefined;
+    if (attributes) {
+        const attrsKeys: string[] = Object.keys(attributes);
+        // Avoid Object.entries to support older TS lib targets
+        for (const name of attrsKeys) {
+            const value: string = attributes[`${name}`];
+            element.setAttribute(name, value);
+        }
+    }
+
+    // Helper to append child(ren)
+    function appendChild(name: string, value: unknown): void {
+        if (value == null) { return; }
+
+        if (Array.isArray(value)) {
+            for (const item of value) {
+                element.appendChild(jsObjectToXml(item as ParsedXmlObject | string, name, doc));
+            }
+            return;
+        }
+
+        if (typeof value === 'string') {
+            const child: HTMLElement = doc.createElement(name);
+            if (value.length > 0) { child.appendChild(doc.createTextNode(value)); }
+            element.appendChild(child);
+            return;
+        }
+
+        element.appendChild(jsObjectToXml(value as ParsedXmlObject, name, doc));
+    }
+
+    // Prefer explicit order if provided (mixed content support)
+    const ordered: OrderedElement[] = jsonObject.__order__ as OrderedElement[] | undefined;
+    if (ordered && ordered.length) {
+        for (const entry of ordered) {
+            if (entry.name === '#text') {
+                if (typeof entry.value === 'string' && entry.value.length > 0) {
+                    element.appendChild(doc.createTextNode(entry.value));
+                }
+            } else {
+                // Use the value directly from the ordered entry to avoid duplicates
+                // The __order__ array already contains the correct single value for each entry
+                appendChild(entry.name, entry.value);
+            }
+        }
+    } else {
+        // No explicit order; serialize attributes/value last and other props by key
+        const special: Set<string> = new Set(['$', 'value', '__order__']);
+        const specialKeys: string[] = Object.keys(jsonObject);
+        for (const key of specialKeys) {
+            if (special.has(key)) { continue; }
+            appendChild(key, jsonObject[`${key}`]);
+        }
+
+        // Text content (elements own text)
+        if (typeof jsonObject.value === 'string' && jsonObject.value.length > 0) {
+            element.appendChild(doc.createTextNode(jsonObject.value));
+        }
+    }
+
+    return element;
+}
+
+/**
+ * Serializes a JavaScript object to an XML string with optional namespace support.
+ *
+ * This function converts a parsed XML JavaScript object back into a well-formed XML string,
+ * including XML declaration, proper namespacing, and formatted output. It's primarily used
+ * for exporting Visio diagram data back to XML format during the save/export process.
+ *
+ * The function leverages the DOM API to ensure proper XML syntax and escaping, then
+ * serializes the resulting DOM tree to a string representation. It handles:
+ * - XML declaration (<?xml version="1.0" encoding="UTF-8"?>)
+ * - Namespace declarations when provided
+ * - Recursive conversion of nested objects and arrays
+ * - Proper attribute and element formatting
+ *
+ * @param {ParsedXmlObject | string} jsonObject - The JavaScript object or string to serialize.
+ *                                         Should follow xml2js parsing conventions with
+ *                                         `$` for attributes and nested elements as properties.
+ * @param {string} rootTag - The root XML element tag name for the serialized output.
+ * @param {string} [namespaceUri] - Optional XML namespace URI to apply to the root element.
+ *                                   When provided, the root element will be created with this namespace.
+ *
+ * @returns {string} A complete XML string with declaration, properly formatted and escaped,
+ *                   ready for file output or transmission.
+ * @private
+ */
+export function serializeJsToXmlString(
+    jsonObject: ParsedXmlObject | string,
+    rootTag: string,
+    namespaceUri?: string
+): string {
+    const doc: Document = document.implementation.createDocument(
+        namespaceUri || null,
+        null,
+        null
+    );
+    const root: Element = jsObjectToXml(jsonObject, rootTag, doc);
+    doc.appendChild(root);
+    return new XMLSerializer().serializeToString(doc);
 }
 
 /**
@@ -1700,24 +1842,24 @@ function normalizeWhitespace(input: string): string {
  * providing better compatibility across different DOM implementations and XML namespaces.
  * The resulting tag name is converted to lowercase for consistent, case-insensitive comparisons.
  *
- * @param {Element} el - The DOM element whose tag name is to be retrieved
+ * @param {Element} element - The DOM element whose tag name is to be retrieved
  * @returns {string} The lowercase tag name of the element (without namespace prefix if available)
  *
  * @example
  * getLowerTagName(xmlElement) // Returns: "div", "svg", "rect", etc.
  * // For namespaced elements like <svg:rect>, returns "rect" (not "svg:rect")
  */
-function getLowerTagName(el: Element): string {
+function getLowerTagName(element: Element): string {
     let name: string = '';
 
     // Prefer localName if available; it excludes namespace prefixes (e.g., "svg:rect" → "rect")
     // localName is the standard property in XML/SVG contexts
-    if (typeof el.localName === 'string' && el.localName.length > 0) {
-        name = el.localName;
+    if (typeof element.localName === 'string' && element.localName.length > 0) {
+        name = element.localName;
     } else {
         // Fallback to tagName for broader compatibility
         // tagName may include namespace prefix depending on the DOM implementation
-        name = el.tagName;
+        name = element.tagName;
     }
 
     // Convert to lowercase for consistent, case-insensitive tag name comparison

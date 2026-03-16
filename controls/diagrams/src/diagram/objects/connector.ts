@@ -1620,6 +1620,10 @@ export class Connector extends NodeBase implements IElement {
     public initPortWrapper(ports: Port, points: PointModel[], bounds: Rect,
                            portContent: PathElement | DiagramElement | DiagramHtmlElement,
                            Connector?: ConnectorModel | PathElement): DiagramElement {
+        // Bug 1005648: Prevent runtime errors by clamping annotation and port offset values greater than 1.
+        if (ports && (ports as PathPort).offset > 1) {
+            (ports as PathPort).offset = 1;
+        }
         ports.id = ports.id || randomId();
         // Creates port element
         const pivotPoint: PointModel = { x: 0, y: 0 };
@@ -1952,6 +1956,10 @@ export class Connector extends NodeBase implements IElement {
         //let getPointloop: SegmentInfo;
         //let align: Alignment; let hAlign: string;
         const pivotPoint: PointModel = { x: 0, y: 0 };
+        // Bug 1005648: Prevent runtime errors by clamping annotation and port offset values greater than 1.
+        if (annotation && annotation.offset > 1) {
+            annotation.offset = 1;
+        }
         //Bug 881512: Wrapping of the connector annotation at run time not working properly.
         //To refresh the annotation at run time while moving connector end points or while moving nodes connected with connector.
         if ((textElement instanceof TextElement) && (!canRefresh)) {
@@ -1961,8 +1969,19 @@ export class Connector extends NodeBase implements IElement {
         const getPointloop: SegmentInfo = getAnnotationPosition(points, annotation, bounds);
         const newPoint: PointModel = getPointloop.point;
         if (annotation instanceof PathAnnotation && annotation.segmentAngle) {
-            textElement.rotateAngle = annotation.rotateAngle + getPointloop.angle;
-            textElement.rotateAngle = (textElement.rotateAngle + 360) % 360;
+            //1004519 - sum manual rotation and segment tangent, normalize to [0,360);
+            let summed: number = annotation.rotateAngle + getPointloop.angle;
+            summed = ((summed % 360) + 360) % 360;
+
+            let signed: number = (summed > 180) ? (summed - 360) : summed;
+
+            //1004519 - keep text upright: if angle falls outside [-90, 90], flip by 180°
+            if (signed > 90) {
+                signed -= 180;
+            } else if (signed <= -90) {
+                signed += 180;
+            }
+            textElement.rotateAngle = ((signed % 360) + 360) % 360;
         }
         if (bounds.width === 0) { bounds.width = this.style.strokeWidth; }
         if (bounds.height === 0) { bounds.height = this.style.strokeWidth; }

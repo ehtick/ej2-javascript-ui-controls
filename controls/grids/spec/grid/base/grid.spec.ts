@@ -5662,3 +5662,458 @@ describe('EJ2-1008898: Grid calculatePageSizeByParentHeight returns incorrect va
         gridObj = pageSize = null;
     });
 });
+
+describe('TASK(1010842) : Improvement setPersistColumns and getPersistColumns method', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                allowPaging: true,
+                showColumnChooser: true,
+                toolbar: ['ColumnChooser'],
+                columns: [
+                    { headerText: 'OrderID', field: 'OrderID', width: 150 },
+                    { headerText: 'CustomerID', field: 'CustomerID', width: 150 },
+                    { headerText: 'EmployeeID', field: 'EmployeeID', width: 150 },
+                    { headerText: 'ShipCountry', field: 'ShipCountry', width: 150 },
+                    { headerText: 'ShipCity', field: 'ShipCity', width: 150 },
+                ],
+            }, done);
+    });
+
+    it('Coverage for getPersistColumns and setPersistColumns method', () => {
+        gridObj.getPersistColumns();
+        const columnsData: any = [
+            { headerText: 'OrderID', field: 'OrderID', width: 150 },
+            { headerText: 'CustomerID', field: 'CustomerID', width: 150 },
+            { headerText: 'EmployeeID', field: 'EmployeeID', width: 150 },
+        ];
+        gridObj.setColumns(columnsData);
+        expect(gridObj.columns.length).toBe(3);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('EJ2-1010889: Create async methods for data action', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                allowSorting: true,
+                allowFiltering: true,
+                allowGrouping: true,
+                editSettings: {allowAdding: true, allowEditing: true, allowDeleting: true},
+                columns: [
+                    { headerText: 'OrderID', field: 'OrderID', width: 150, isPrimaryKey: true },
+                    { headerText: 'CustomerID', field: 'CustomerID', width: 150 },
+                    { headerText: 'Freight', field: 'Freight', width: 150 },
+                    { headerText: 'ShipCountry', field: 'ShipCountry', width: 150 },
+                    { headerText: 'ShipCity', field: 'ShipCity', width: 150 },
+                ],
+            }, done);
+    });
+
+    it('data action using async', async (done: Function) => {
+        await (gridObj as any).filterByColumnAsync('CustomerID', 'equal', 'VINET');
+        await (gridObj as any).sortColumnAsync('Freight', 'Descending');
+        await (gridObj as any).groupColumnAsync('ShipCountry');
+        done();
+    });
+
+    it('clear data action using async', async (done: Function) => {
+        await (gridObj as any).clearFilteringAsync();
+        await (gridObj as any).clearGroupingAsync();
+        await (gridObj as any).clearSortingAsync();
+        done();
+    });
+
+    it('ungroup column using async', async (done: Function) => {
+        await (gridObj as any).searchAsync('VINET');
+        await (gridObj as any).searchAsync('');
+        await (gridObj as any).groupColumnAsync('ShipCountry');
+        await (gridObj as any).ungroupColumnAsync('ShipCountry');
+        done();
+    });
+
+    it('CRUD action using async', async (done: Function) => {
+        await (gridObj as any).addRecordAsync({OrderID: 1232, CustomerID: 'James',Freight: 100, OrderDate: new Date(), ShipCountry: 'UK'});
+        await (gridObj as any).deleteRecordAsync('CustomerID', { OrderID: 10248, CustomerID: 'VINET', ShipCountry: 'France' })
+        await (gridObj as any).deleteRowAsync((gridObj as any).getRowByIndex(5) as HTMLTableRowElement);
+        done();
+    });
+
+    it('endEditAsync with await', async (done: Function) => {
+        gridObj.selectRow(2);
+        gridObj.startEdit();
+        (select('#' + gridObj.element.id + 'OrderID', gridObj.element) as any).value = 10247;
+            (select('#' + gridObj.element.id + 'CustomerID', gridObj.element) as any).value = 'updated';
+        await gridObj.endEditAsync();
+        done();
+    });
+
+    it('updateRowAsync with await', async (done: Function) => {
+        const updateData = { OrderID: 10250, CustomerID: 'UPDATETEST', Freight: 175 };
+        await gridObj.updateRowAsync(2, updateData);
+        done();
+    });
+
+    it('coverage for setCellValueAsync', async (done: Function) => {
+        await gridObj.setCellValueAsync((gridObj as any).currentViewData[0].OrderID, 'Freight', 153, 2000)
+        done();
+    });
+
+    it('setRowDataAsync with await and delay', async (done: Function) => {
+        const newData = { OrderID: 10248, CustomerID: 'ASYNCTEST', Freight: 150 };
+        await gridObj.setRowDataAsync(10248, newData, 500);
+        done();
+    });
+
+    it('setRowDataAsync without delay', async (done: Function) => {
+        const newData = { OrderID: 10249, CustomerID: 'NODELAYTEST', Freight: 200 };
+        await gridObj.setRowDataAsync(10249, newData);
+        done();
+    });
+
+    it('goToPageAsync with await', async (done: Function) => {
+        await gridObj.goToPageAsync(2);
+        done();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('EJ2-1010889: Create async methods for data action in actionBegin cancel is true', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                allowSorting: true,
+                allowFiltering: true,
+                allowGrouping: true,
+                allowPaging: true,
+                editSettings: {allowAdding: true, allowEditing: true, allowDeleting: true},
+                columns: [
+                    { headerText: 'OrderID', field: 'OrderID', width: 150, isPrimaryKey: true },
+                    { headerText: 'CustomerID', field: 'CustomerID', width: 150 },
+                    { headerText: 'Freight', field: 'Freight', width: 150 },
+                    { headerText: 'ShipCountry', field: 'ShipCountry', width: 150 },
+                    { headerText: 'ShipCity', field: 'ShipCity', width: 150 },
+                ],
+            }, done);
+    });
+
+    it('filterByColumn actionBegin using async', async (done: Function) => {
+        let actionBegin = (args: any) => {
+            args.cancel = true;
+            gridObj.actionBegin = null;
+            done();
+        };
+        gridObj.actionBegin = actionBegin;
+        await (gridObj as any).filterByColumnAsync('CustomerID', 'equal', 'VINET');
+    });
+
+    it('sortColumn actionBegin using async', async (done: Function) => {
+        let actionBegin = (args: any) => {
+            args.cancel = true;
+            gridObj.actionBegin = null;
+            done();
+        };
+        gridObj.actionBegin = actionBegin;
+        await (gridObj as any).sortColumnAsync('Freight', 'Descending');
+    });
+
+    it('groupColumn actionBegin using async', async (done: Function) => {
+        let actionBegin = (args: any) => {
+            args.cancel = true;
+            gridObj.actionBegin = null;
+            done();
+        };
+        gridObj.actionBegin = actionBegin;
+        await (gridObj as any).groupColumnAsync('ShipCountry');
+    });
+
+    it('filterByColumn actionBegin using async with failure handler coverage', async (done: Function) => {
+        let actionBegin = (args: any) => {
+            gridObj.trigger('actionFailure', args);
+            args.cancel = true;
+            gridObj.actionBegin = null;
+            done();
+        };
+        gridObj.actionBegin = actionBegin;
+        await (gridObj as any).filterByColumnAsync('CustomerID', 'equal', 'VINET');
+    });
+
+    it('filterByColumn using async', async (done: Function) => {
+        await (gridObj as any).filterByColumnAsync('CustomerID', 'equal', 'VINET');
+        await (gridObj as any).sortColumnAsync('Freight', 'Descending');
+        await (gridObj as any).groupColumnAsync('ShipCountry');
+        done();
+    });
+
+    it('clearfiltering using async', async (done: Function) => {
+        let actionBegin = (args: any) => {
+            args.cancel = true;
+            gridObj.actionBegin = null;
+            done();
+        };
+        gridObj.actionBegin = actionBegin;
+        await (gridObj as any).clearFilteringAsync();
+    });
+
+    it('clearsorting using async', async (done: Function) => {
+        let actionBegin = (args: any) => {
+            args.cancel = true;
+            gridObj.actionBegin = null;
+            done();
+        };
+        gridObj.actionBegin = actionBegin;
+        await (gridObj as any).clearSortingAsync();
+    });
+
+    it('cleargrouping using async', async (done: Function) => {
+        let actionBegin = (args: any) => {
+            args.cancel = true;
+            gridObj.actionBegin = null;
+            done();
+        };
+        gridObj.actionBegin = actionBegin;
+        await (gridObj as any).clearGroupingAsync();
+    });
+
+    it('search using async', async (done: Function) => {
+        let actionBegin = (args: any) => {
+            args.cancel = true;
+            gridObj.actionBegin = null;
+            done();
+        };
+        gridObj.actionBegin = actionBegin;
+        await (gridObj as any).searchAsync('VINET');
+    });
+
+    it('addRecord using async', async (done: Function) => {
+        let actionBegin = (args: any) => {
+            args.cancel = true;
+            gridObj.actionBegin = null;
+            done();
+        };
+        gridObj.actionBegin = actionBegin;
+        await (gridObj as any).addRecordAsync({OrderID: 1232, CustomerID: 'James',Freight: 100, OrderDate: new Date(), ShipCountry: 'UK'});;
+    });
+
+    it('addRecord using async with failure handler coverage', async (done: Function) => {
+        let actionBegin = (args: any) => {
+            gridObj.trigger('actionFailure', args);
+            args.cancel = true;
+            gridObj.actionBegin = null;
+            done();
+        };
+        gridObj.actionBegin = actionBegin;
+        await (gridObj as any).addRecordAsync({OrderID: 1232, CustomerID: 'James',Freight: 100, OrderDate: new Date(), ShipCountry: 'UK'});;
+    });
+
+    it('deleteRecord using async', async (done: Function) => {
+        let actionBegin = (args: any) => {
+            args.cancel = true;
+            gridObj.actionBegin = null;
+            done();
+        };
+        gridObj.actionBegin = actionBegin;
+        await (gridObj as any).deleteRecordAsync('CustomerID', { OrderID: 10248, CustomerID: 'VINET', ShipCountry: 'France' })
+    });
+
+    it('deleteRecord using async with failure handler coverage', async (done: Function) => {
+        let actionBegin = (args: any) => {
+            gridObj.trigger('actionFailure', args);
+            args.cancel = true;
+            gridObj.actionBegin = null;
+            done();
+        };
+        gridObj.actionBegin = actionBegin;
+        await (gridObj as any).deleteRecordAsync('CustomerID', { OrderID: 10248, CustomerID: 'VINET', ShipCountry: 'France' })
+    });
+
+    it('deleteRow using async', async (done: Function) => {
+        let actionBegin = (args: any) => {
+            args.cancel = true;
+            gridObj.actionBegin = null;
+            done();
+        };
+        gridObj.actionBegin = actionBegin;
+        await (gridObj as any).deleteRowAsync((gridObj as any).getRowByIndex(0) as HTMLTableRowElement);
+    });
+
+    // it('endEditAsync actionBegin with await with failure handler coverage', async (done: Function) => {
+    //     let actionBegin = (args: any) => {
+    //         if (args.requestType === 'save' && args.action === 'edit') {
+    //             gridObj.trigger('actionFailure', args);
+    //             args.cancel = true;
+    //             gridObj.actionBegin = null;
+    //             done();
+    //         }
+    //     };
+    //     gridObj.actionBegin = actionBegin;
+    //     gridObj.selectRow(2);
+    //     gridObj.startEdit();
+    //     (select('#' + gridObj.element.id + 'OrderID', gridObj.element) as any).value = 10248;
+    //     (select('#' + gridObj.element.id + 'CustomerID', gridObj.element) as any).value = 'updated1';
+    //     await gridObj.endEditAsync();
+    // });
+
+    // it('updateRowAsync actionBegin with await', async (done: Function) => {
+    //     let actionBegin = (args: any) => {
+    //         args.cancel = true;
+    //         gridObj.actionBegin = null;
+    //         done();
+    //     };
+    //     const updateData = { OrderID: 10249, CustomerID: 'UPDATEASYNC' };
+    //     gridObj.actionBegin = actionBegin;
+    //     await gridObj.updateRowAsync(1, updateData);
+    // });
+
+    // it('goToPageAsync actionBegin with await', async () => {
+    //     let actionBegin = (args: any) => {
+    //         args.cancel = true;
+    //         gridObj.actionBegin = null;
+    //     };
+    //     gridObj.actionBegin = actionBegin;
+    //     await gridObj.goToPageAsync(2);
+    //     expect(gridObj.pageSettings.currentPage).toBe(1);
+    // });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('EJ2-1010889: Create async methods for data action is false', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                columns: [
+                    { headerText: 'OrderID', field: 'OrderID', width: 150, isPrimaryKey: true },
+                    { headerText: 'CustomerID', field: 'CustomerID', width: 150 },
+                    { headerText: 'Freight', field: 'Freight', width: 150 },
+                    { headerText: 'ShipCountry', field: 'ShipCountry', width: 150 },
+                    { headerText: 'ShipCity', field: 'ShipCity', width: 150 },
+                ],
+            }, done);
+    });
+
+    it('filterByColumn using async', async () => {
+        await (gridObj as any).filterByColumnAsync('CustomerID', 'equal', 'VINET');
+        await (gridObj as any).sortColumnAsync('Freight', 'Descending');
+        await (gridObj as any).groupColumnAsync('ShipCountry');
+    });
+
+    it('clear data action using async', async () => {
+        await (gridObj as any).clearFilteringAsync();
+        await (gridObj as any).clearGroupingAsync();
+        await (gridObj as any).clearSortingAsync();
+    });
+
+    it('ungroup column using async', async () => {
+        await (gridObj as any).searchAsync('VINET');
+        await (gridObj as any).searchAsync('');
+        await (gridObj as any).groupColumnAsync('ShipCountry');
+        await (gridObj as any).ungroupColumnAsync('ShipCountry');
+    });
+
+    it('CRUD action using async', async () => {
+        await (gridObj as any).addRecordAsync({OrderID: 1232, CustomerID: 'James',Freight: 100, OrderDate: new Date(), ShipCountry: 'UK'});
+        await (gridObj as any).deleteRecordAsync('CustomerID', { OrderID: 10248, CustomerID: 'VINET', ShipCountry: 'France' })
+        await (gridObj as any).deleteRowAsync((gridObj as any).getRowByIndex(5) as HTMLTableRowElement);
+    });
+
+    it('coverage for setCellValueAsync', async () => {
+        await gridObj.setCellValueAsync((gridObj as any).currentViewData[0].OrderID, 'Freight', 153, -1)
+    });
+
+    it('endEditAsync without edit module resolves', async () => {
+        await gridObj.endEditAsync();
+    });
+
+    it('updateRowAsync without edit module resolves', async () => {
+        const updateData = { OrderID: 10249, CustomerID: 'NOMODULE' };
+        await gridObj.updateRowAsync(0, updateData);
+    });
+
+    it('goToPageAsync without pager module resolves', async () => {
+        await gridObj.goToPageAsync(2);
+    });
+    
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('EJ2-1010889: Coverage for batchUpdate method', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                editSettings: {allowAdding: true, allowEditing: true, allowDeleting: true, mode: 'Batch'},
+                columns: [
+                    { headerText: 'OrderID', field: 'OrderID', width: 150, isPrimaryKey: true },
+                    { headerText: 'CustomerID', field: 'CustomerID', width: 150 },
+                    { headerText: 'Freight', field: 'Freight', width: 150 },
+                    { headerText: 'ShipCountry', field: 'ShipCountry', width: 150 },
+                    { headerText: 'ShipCity', field: 'ShipCity', width: 150 },
+                ],
+            }, done);
+    });
+
+    it('batchUpdate method', (done: Function) => {
+        (gridObj as any).batchUpdate({});
+        done();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('EJ2-1010889: Coverage for setProperties method', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                allowGrouping: true,
+                allowSorting: true,
+                sortSettings: { columns: [{ field: 'OrderID', direction: 'Ascending' }] },
+                columns: [
+                    { headerText: 'OrderID', field: 'OrderID', width: 150, isPrimaryKey: true },
+                    { headerText: 'CustomerID', field: 'CustomerID', width: 150 },
+                    { headerText: 'Freight', field: 'Freight', width: 150 },
+                    { headerText: 'ShipCountry', field: 'ShipCountry', width: 150 },
+                    { headerText: 'ShipCity', field: 'ShipCity', width: 150 },
+                ],
+            }, done);
+    });
+
+    it('setProperties method', (done: Function) => {
+        (gridObj as any).setProperties({groupSettings: { columns: ['OrderID'] }}, true);
+        done();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});

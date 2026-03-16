@@ -2624,7 +2624,7 @@ describe('MultiSelect', () => {
            * allowCustomValue.
           */
         it('allowCustomValue.-remote data', (done) => {
-            listObj = new MultiSelect({ hideSelectedItem: false, dataSource: remoteData, query: new Query().take(9).requiresCount().requiresCount(), mode: 'Box', fields: { value: 'EmployeeID', text: 'FirstName' }, allowCustomValue: true });
+            listObj = new MultiSelect({ hideSelectedItem: false, dataSource: remoteData, query: new Query().take(9).requiresCount(), mode: 'Box', fields: { value: 'EmployeeID', text: 'FirstName' }, allowCustomValue: true });
             listObj.appendTo(element);
             listObj.showPopup();
             (<any>listObj).inputFocus = true;
@@ -12092,7 +12092,7 @@ describe('MultiSelect', () => {
                 expect((<any>listObj).isPopupOpen()).toBe(false);
                 done();
             }, 100);
-        });
+        })
     });
     describe('preselect Custom value object binding', () => {
         let listObj: any;
@@ -12264,8 +12264,8 @@ describe('MultiSelect', () => {
                 (<any>listObj).onMouseClick(mouseEventArgs);
             }
 
-            // Popup should close when all items are selected (CORE FIX)
-            expect((<any>listObj).isPopupOpen()).toBe(false);
+            // When all items are selected and closePopupOnSelect is false, the popup should open.
+            expect((<any>listObj).isPopupOpen()).toBe(true);
             expect(listObj.value.length).toBe(5);
             listObj.destroy();
             element.remove();

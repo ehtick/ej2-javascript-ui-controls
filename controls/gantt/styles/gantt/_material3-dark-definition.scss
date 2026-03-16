@@ -95,6 +95,7 @@ $error-elem-color: rgba($danger) !default;
 $gantt-active-container-border: rgba($border) !default;
 $rangecontainer-border-color: rgba($border-warning) !default;
 $gantt-chartrow-hover-bg-color: rgba($secondary-container) !default;
+$gantt-chartrow-selection-hover-bg-color: color-mix(in srgb, rgba($primary-container, 1), rgba($on-surface, .2)) !default;
 $gantt-timelinecell-hover-bg-color: $content-bg-color-hover !default;
 $gantt-headercell-hover-bg-color: $content-bg-color-hover !default;
 $gantt-weekendcell-hover-bg-color: $table-bg-color-hover !default;

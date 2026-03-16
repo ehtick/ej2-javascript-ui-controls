@@ -454,7 +454,7 @@ describe('Last row border after sorting', () => {
     });
   });
 
-describe('sortedResult Testcase', () => {
+describe('getProcessedRecords method Testcase', () => {
   let gridObj: TreeGrid;
   let actionComplete: () => void;
   beforeAll((done: Function) => {
@@ -481,6 +481,48 @@ describe('sortedResult Testcase', () => {
     }
     gridObj.grid.actionComplete = actionComplete;
     gridObj.sortByColumn("taskName", "Ascending", true);
+  });
+  it('getProcessedRecords testing', (done: Function) => {
+    actionComplete = (args?: Object): void => {
+      expect((gridObj.getProcessedRecords()[0] as any).taskID).toBe(6);
+      done();
+    }
+    gridObj.grid.actionComplete = actionComplete;
+    gridObj.sortByColumn("taskName", "Ascending", true);
+  });
+  afterAll(() => {
+    destroy(gridObj);
+  });
+});
+
+describe('getProcessedRecords Coverage Issue fix', () => {
+  let gridObj: TreeGrid;
+  let actionComplete: () => void;
+  beforeAll((done: Function) => {
+    gridObj = createGrid(
+      {
+        dataSource: sampleData,
+        allowPaging: true,
+        childMapping: 'subtasks',
+        allowSorting: true,
+        treeColumnIndex: 1,
+        height:400,
+        columns: [
+          { field: 'taskID', headerText: 'Task ID', isPrimaryKey: true },
+          { field: 'taskName', headerText: 'Task Name' },
+          { field: 'progress', headerText: 'Progress' }
+        ]
+      }, done);
+  });
+
+  it('getProcessedRecords testing infinite scroll - Coverage', (done: Function) => {
+    actionComplete = (args?: Object) => {
+      expect((gridObj.getProcessedRecords()[0] as any).taskID).toBe(1);
+      done();
+    };
+    gridObj.grid.actionComplete = actionComplete;
+    gridObj.enableInfiniteScrolling =true;
+      
   });
   afterAll(() => {
     destroy(gridObj);

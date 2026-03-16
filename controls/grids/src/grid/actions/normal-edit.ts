@@ -794,10 +794,6 @@ export class NormalEdit {
             }
         }
         this.parent.notify(events.modelChanged, args);
-        if (gObj.editSettings.showAddNewRow) {
-            gObj.editModule.destroyWidgets();
-            gObj.editModule.destroyForm();
-        }
     }
 
     private stopEditStatus(): void {

@@ -1,16 +1,16 @@
-import { isNullOrUndefined as isNOU, detach, isNullOrUndefined } from '@syncfusion/ej2-base';
+import { isNullOrUndefined as isNOU, detach } from '@syncfusion/ej2-base';
 import { BaseChildrenProp, BlockModel, BlockProperties, ContentModel } from '../../../models/index';
 import { IAddBlockInteraction, IAddBulkBlocksInteraction, IDeleteBlockInteraction, IToBlockData, IFromBlockData, IIndentOperation, IMoveBlocksInteraction, ISplitContentData, ITransformBlockInteraction, RangePath } from '../../../common/interface';
-import { getBlockModelById, getBlockIndexById, getBlockContentElement, isListTypeBlock, isDividerBlock, getClosestContentElementInDocument, getContentElementBasedOnId, cleanCheckmarkElement, isNonMergableBlock, getAdjacentBlock, getContainerInfo } from '../../../common/utils/block';
-import { generateUniqueId, decoupleReference, sanitizeBlock, sanitizeContent, setCursorPosition, sanitizeContents, getSelectedRange, getAbsoluteOffset, captureSelectionState, extractBlockTypeFromElement } from '../../../common/utils/index';
+import { generateUniqueId, decoupleReference, setCursorPosition, getSelectedRange, getAbsoluteOffset, captureSelectionState, convertInlineElementsToContentModels } from '../../../common/utils/index';
+import { getBlockModelById, getBlockIndexById, getBlockContentElement, isListTypeBlock, cleanCheckmarkElement, isNonMergableBlock, getAdjacentBlock, getContainerInfo } from '../../../common/utils/block';
 import * as constants from '../../../common/constant';
 import { actionType, events } from '../../../common/constant';
 import { BlockType } from '../../../models/enums';
 import { DeletionType } from '../../../common/enums';
-import { BlockFactory } from '../../services/index';
+import { BlockFactory } from '../../services/block-factory';
 import { BlockManager } from '../../base/block-manager';
-import { clearBreakTags, findClosestParent } from '../../../common/utils/dom';
-import { NodeCutter } from '../common/node';
+import { TableContext } from '../../base/interface';
+import { removeNodesAfterSplit } from '../../../common/utils/dom';
 
 /**
  * Manages all block-related commands in the BlockEditor
@@ -59,16 +59,8 @@ export class BlockCommand {
      * @hidden
      */
     public addBlock(args: IAddBlockInteraction): BlockModel {
-        const { block, contentElement, contentModel, isAfter = true }: IAddBlockInteraction = args;
-        if (!args.targetBlockId && args.targetBlock) {
-            args.targetBlockId = args.targetBlock.id;
-        }
-        if (!args.targetBlock && args.targetBlockId) {
-            args.targetBlock = this.parent.getBlockElementById(args.targetBlockId);
-        }
-        args.targetBlockModel = args.targetBlockId
-            ? getBlockModelById(args.targetBlockId, this.parent.getEditorBlocks())
-            : null;
+        const { isAfter = true } = args;
+        this.populateTargetModelAndId(args);
 
         /* Process Model */
         const addedBlock: BlockModel = this.parent.blockService.addBlock({
@@ -79,17 +71,13 @@ export class BlockCommand {
 
         this.parent.stateManager.updateManagerBlocks();
 
-        if (!block && (!contentModel || contentModel.length === 0)) {
-            this.parent.stateManager.updateContentModelBasedOnDOM(contentElement, addedBlock);
-        }
-
         this.parent.undoRedoAction.trackBlockAdditionForUndoRedo(args, addedBlock);
 
         this.parent.observer.notify('modelChanged', {
             type: 'AddBlock',
             state: {
                 ...args,
-                isAfter,
+                isAfter: isAfter,
                 addedBlock
             }
         });
@@ -123,7 +111,9 @@ export class BlockCommand {
                 blockIndex
             }
         });
-        this.parent.blockCommand.createDefaultEmptyBlock(true);
+        if (!args.preventMinimumOne) {
+            this.parent.blockCommand.createDefaultEmptyBlock(true);
+        }
     }
 
     /**
@@ -134,58 +124,50 @@ export class BlockCommand {
      * @hidden
      */
     public splitBlock(args?: IAddBlockInteraction): void {
+        let newBlockContents: ContentModel[] = [];
         const blockElement: HTMLElement = this.parent.currentFocusedBlock;
         const range: Range = this.parent.nodeSelection.getRange();
         const blockModel: BlockModel = getBlockModelById(blockElement.id, this.parent.getEditorBlocks());
-        const blockBeforeSplit: BlockModel = decoupleReference(sanitizeBlock(blockModel));
+        const blockBeforeSplit: BlockModel = decoupleReference(blockModel);
         const currBlockType: BlockType | string = blockModel.blockType;
-        const currBlkProps: BlockProperties = blockModel.properties;
         const contentElement: HTMLElement = getBlockContentElement(blockElement);
-        const splitContent: ISplitContentData = NodeCutter.splitContent(
-            getBlockContentElement(blockElement), range.startContainer, range.startOffset
-        );
-        const isTextNode: boolean = isNOU(splitContent.beforeFragment.lastChild) ||
-            (splitContent.beforeFragment.lastChild.nodeType === Node.TEXT_NODE);
-        const lastChild: HTMLElement = isTextNode ? contentElement : splitContent.beforeFragment.lastChild as HTMLElement;
-        const isIgnoredTypes: string[] = [BlockType.Callout, BlockType.CollapsibleHeading, BlockType.CollapsibleParagraph];
-        const isIgnored: boolean = isIgnoredTypes.indexOf(currBlockType) !== -1;
+        const firstNode: Node = contentElement.childNodes[0];
+        const isCursorAtStartNode: boolean = firstNode
+            ? (firstNode.contains(range.startContainer) || firstNode === range.startContainer)
+            : (contentElement === range.startContainer);
+        const splitOffset: number = range.startOffset;
+        const isSplitAtStart: boolean = splitOffset === 0 && isCursorAtStartNode;
 
-        const afterBlockContents: ContentModel[] = this.getContentModelForFragment(splitContent.afterFragment, blockModel, lastChild);
-        let currBlockContents: ContentModel[] = [];
+        if (!isSplitAtStart) {
+            /* Get split fragment for new block */
+            const { afterFragment }: ISplitContentData = this.parent.nodeCutter.splitContent(
+                getBlockContentElement(blockElement), range.startContainer, range.startOffset
+            );
+            /* Split node at cursor and remove everything after the split point */
+            this.parent.nodeCutter.getSpliceNode(range, range.startContainer);
+            removeNodesAfterSplit(range.startContainer, contentElement);
 
-        if (splitContent.beforeFragment.textContent !== '') {
-            currBlockContents = this.getContentModelForFragment(splitContent.beforeFragment, blockModel, null);
-            if (splitContent.beforeFragment.childNodes && splitContent.beforeFragment.childNodes[0].nodeType === Node.TEXT_NODE) {
-                currBlockContents[0].id = contentElement.id;
-            }
-        }
-        else {
-            currBlockContents.push(BlockFactory.createTextContent());
-        }
-
-        if (!isIgnored) {
-            this.parent.blockService.updateContent(blockModel.id, currBlockContents);
-        }
-
-        if (!isIgnored && splitContent.splitOffset === 0) {
-            this.transformBlock({
-                block: blockModel,
-                blockElement: blockElement,
-                newBlockType: BlockType.Paragraph,
-                shouldPreventUpdates: true,
-                preventEventTrigger: true
-            });
+            const currBlockContents: ContentModel[] = convertInlineElementsToContentModels(contentElement, true);
+            newBlockContents = this.getContentModelForFragment(afterFragment);
+            this.parent.blockService.updateContent(
+                blockModel.id,
+                currBlockContents.length > 0 ? currBlockContents : [BlockFactory.createTextContent()]
+            );
+            // Trigger content change for event tracking alone, no dom renders
+            this.parent.observer.notify('modelChanged', { type: 'ReRenderBlockContent', state: {
+                data: [ { block: blockModel, oldBlock: blockBeforeSplit } ],
+                preventEventTrigger: true,
+                excludeDomUpdate: true
+            }});
         }
 
         this.addBlock({
-            blockType: (isListTypeBlock(currBlockType) || (!isIgnored && splitContent.splitOffset === 0))
-                ? currBlockType : BlockType.Paragraph,
-            properties: (!isIgnored && splitContent.splitOffset === 0) ? currBlkProps : {},
+            blockType: isListTypeBlock(currBlockType) ? currBlockType : BlockType.Paragraph,
+            isAfter: isSplitAtStart ? false : true,
             targetBlock: this.parent.getBlockElementById(blockElement.id),
-            contentElement: splitContent.afterFragment,
-            contentModel: afterBlockContents,
-            splitOffset: splitContent.splitOffset,
-            isSplitting: true,
+            contentModel: newBlockContents,
+            splitOffset: splitOffset,
+            isSplitting: !isSplitAtStart,
             blockBeforeSplit,
             preventEventTrigger: args ? args.preventEventTrigger : false
         });
@@ -207,6 +189,7 @@ export class BlockCommand {
 
         if (blockElement.getAttribute('data-block-type').startsWith('Collapsible')) {
             this.transformToggleBlocksAsRegular(blockElement);
+            return;
         }
 
         const getAdjacentBlock: (element: HTMLElement, direction: 'previous' | 'next') => HTMLElement | null =
@@ -216,64 +199,70 @@ export class BlockCommand {
 
         const adjacentBlock: HTMLElement | null = getAdjacentBlock(blockElement, mergeDirection);
         if (!adjacentBlock) { return; }
-        const adjacentBlockModel: BlockModel = getBlockModelById(adjacentBlock.id, editorBlocks);
+
         /*
         sourceBlock - the block that will be deleted after merging its content with the targetBlock
         targetBlock - the block that will remain after merging
         */
         const sourceBlock: HTMLElement = mergeDirection === 'previous' ? blockElement : adjacentBlock;
-        let targetBlock: HTMLElement = mergeDirection === 'previous' ? adjacentBlock : blockElement;
+        const targetBlock: HTMLElement = mergeDirection === 'previous' ? adjacentBlock : blockElement;
         const sourceBlockModel: BlockModel = getBlockModelById(sourceBlock.id, editorBlocks);
         const targetBlockModel: BlockModel = getBlockModelById(targetBlock.id, editorBlocks);
         const sourceContent: HTMLElement = getBlockContentElement(sourceBlock) as HTMLElement;
-        let targetContent: HTMLElement = getBlockContentElement(targetBlock) as HTMLElement;
-        const blocksBeforeDelete: BlockModel[] = [
-            decoupleReference(sanitizeBlock(targetBlockModel)),
-            decoupleReference(sanitizeBlock(sourceBlockModel))
-        ];
-        const specialTypes: string[] = [BlockType.Divider, BlockType.CollapsibleParagraph, BlockType.CollapsibleHeading,
-            BlockType.Callout, BlockType.Table, BlockType.Code, BlockType.Image];
-
-        if (!sourceContent || !targetContent || specialTypes.indexOf(adjacentBlockModel.blockType) !== -1) { return; }
+        const targetContent: HTMLElement = getBlockContentElement(targetBlock) as HTMLElement;
         const newCursorPos: number = targetContent.textContent.length;
-        const lastChildId: string = targetContent.childNodes.length > 0 ?
-            (targetContent.lastChild.nodeType === Node.ELEMENT_NODE
-                ? (targetContent.lastChild as HTMLElement).id : targetContent.id) : '';
-        const lastChild: HTMLElement = (lastChildId !== '') ? targetBlock.querySelector('#' + lastChildId) : null;
+        const blocksBeforeDelete: BlockModel[] = [decoupleReference(targetBlockModel), decoupleReference(sourceBlockModel)];
 
-        this.updateContentModelsForDeletion(sourceContent, targetContent, targetBlockModel, sourceBlockModel);
+        // Source block is trying to merge into an empty block
+        if (targetContent.textContent.trim().length === 0) {
+            /* At this point, do not merge Source into Target.
+            Instead, simply delete the Empty Target. This approach requires Zero Re-rendering */
+            this.deleteBlock({
+                ...args,
+                blockElement: targetBlock,
+                isSplitting: false,
+                isTargetDeletion: true
+            });
 
-        if (newCursorPos === 0) {
-            this.parent.blockService.replaceBlock(targetBlockModel.id, sourceBlockModel);
-            this.parent.stateManager.updateManagerBlocks();
-            targetBlock = this.parent.blockRenderer.createAndReplaceBlockElement(
-                targetBlockModel.id, sourceBlockModel.id
-            );
-            targetContent = getBlockContentElement(targetBlock);
+            // Update the source model
+            const newContents: ContentModel[] = convertInlineElementsToContentModels(sourceContent, true);
+            this.parent.blockService.updateContent(sourceBlockModel.id, newContents);
+
+            this.parent.setFocusAndUIForNewBlock(sourceBlock);
+            return;
         }
-        else {
-            this.parent.observer.notify('modelChanged', { type: 'ReRenderBlockContent', state: {
-                data: [ { block: targetBlockModel, oldBlock: blocksBeforeDelete[0] } ],
-                preventEventTrigger: true,
-                preventChangesTracking: args.preventChangesTracking
-            }});
+
+        /* (Fallback to your standard merge logic for non-empty blocks) */
+        const targetFragment: DocumentFragment = document.createDocumentFragment();
+        while (sourceContent.firstChild) {
+            targetFragment.appendChild(sourceContent.firstChild);
         }
+        targetContent.appendChild(targetFragment);
+        targetContent.normalize();
+
+        const newContents: ContentModel[] = convertInlineElementsToContentModels(targetContent, true);
+        this.parent.blockService.updateContent(targetBlockModel.id, newContents);
+
+        this.parent.observer.notify('modelChanged', { type: 'ReRenderBlockContent', state: {
+            data: [ { block: targetBlockModel, oldBlock: blocksBeforeDelete[0] } ],
+            preventEventTrigger: true,
+            preventChangesTracking: args.preventChangesTracking,
+            excludeDomUpdate: true
+        }});
 
         this.parent.setFocusToBlock(targetBlock);
         setCursorPosition(targetContent, newCursorPos);
         this.parent.togglePlaceholder(targetBlock, true);
         this.parent.floatingIconAction.showFloatingIcons(targetBlock);
 
+        /* Delete source block */
         this.deleteBlock({
             ...args,
             blockElement: sourceBlock,
             isSplitting: true,
-            splitOffset: lastChild ? lastChild.textContent.length : 0,
-            contentElement: sourceContent,
             blocksAfterSplit: blocksBeforeDelete,
             blockBeforeSplit: targetBlockModel,
-            targetBlockModel: targetBlockModel,
-            newCursorPos: newCursorPos
+            targetBlockModel: targetBlockModel
         });
 
         if (isListTypeBlock(sourceBlockModel.blockType) || isListTypeBlock(targetBlockModel.blockType)) {
@@ -289,7 +278,6 @@ export class BlockCommand {
      * @hidden
      */
     public deleteNonMergableBlock(args: IDeleteBlockInteraction): void {
-        if (!args.blockElement) { return; }
         const { array, containerType } = getContainerInfo(args.blockElement.id, this.parent.getEditorBlocks());
         if ((containerType === 'cell' || containerType === 'children') && (array && array.length === 1)) {
             this.transformBlock({
@@ -349,6 +337,8 @@ export class BlockCommand {
      * Duplicates a block and inserts it above or below the original
      *
      * @param {Object} args The options to duplicate
+     * @param {HTMLElement} args.blockElement The block element to duplicate
+     * @param {'below'|'above'} args.direction Direction to insert the duplicated block
      * @returns {void}
      * @hidden
      */
@@ -379,7 +369,7 @@ export class BlockCommand {
         const { blockIDs, shouldDecrease }: IIndentOperation = args;
 
         blockIDs.forEach((blockId: string) => {
-            const oldBlock: BlockModel = decoupleReference(sanitizeBlock(getBlockModelById(blockId, this.parent.getEditorBlocks())));
+            const oldBlock: BlockModel = decoupleReference(getBlockModelById(blockId, this.parent.getEditorBlocks()));
             const updatedBlock: BlockModel = this.parent.blockService.applyIndentation({
                 blockId: blockId,
                 shouldDecrease: shouldDecrease
@@ -428,8 +418,6 @@ export class BlockCommand {
             .filter((el: Element | null): el is HTMLElement => el instanceof HTMLElement);
 
         const destination: IToBlockData = this.getDestinationBlockDataForMove(toBlockId);
-        if (!destination) { return; }
-
         const toBlockDOM: HTMLElement = (destination.toParentBlockModel
             ? allBlocks[destination.toParentBlockIndex as number].querySelectorAll('.' + constants.BLOCK_CLS)[destination.toBlockIndex as number]
             : allBlocks[destination.toBlockIndex as number]) as HTMLElement;
@@ -503,7 +491,7 @@ export class BlockCommand {
     public handleEntireBlockDeletion(): void {
         const prevFocusedBlockid: string = this.parent.currentFocusedBlock.id;
         const allBlocks: BlockModel[] = this.parent.getEditorBlocks().map((block: BlockModel) => {
-            const decoupledBlock: BlockModel = decoupleReference(sanitizeBlock(block));
+            const decoupledBlock: BlockModel = decoupleReference(block);
             this.parent.eventService.addChange({
                 action: 'Deletion',
                 data: { block: decoupledBlock }
@@ -540,7 +528,7 @@ export class BlockCommand {
         isUndoRedoAction?: boolean
     ): boolean {
         const prevFocusedBlockid: string = this.parent.currentFocusedBlock ? this.parent.currentFocusedBlock.id : '';
-        const selectedClones: BlockModel[] = selectedBlocks.map((block: BlockModel) => decoupleReference(sanitizeBlock(block)));
+        const selectedClones: BlockModel[] = selectedBlocks.map((block: BlockModel) => decoupleReference(block));
         const firstBlock: BlockModel = selectedBlocks[0];
         const firstBlockIndex: number = getBlockIndexById(firstBlock.id, this.parent.getEditorBlocks());
         const lastBlock: BlockModel = selectedBlocks[selectedBlocks.length - 1];
@@ -549,17 +537,6 @@ export class BlockCommand {
         const range: Range = getSelectedRange();
 
         if (!range || !firstBlockElement || !lastBlockElement) { return false; }
-
-        /* First Block */
-        const firstBlockContent: HTMLElement = getBlockContentElement(firstBlockElement);
-        const firstSplit: ISplitContentData = NodeCutter.splitContent(
-            firstBlockContent, range.startContainer, range.startOffset
-        );
-        this.updateAndCleanContentModels(firstBlock, firstSplit, 'keepBefore');
-        this.parent.observer.notify('modelChanged', { type: 'ReRenderBlockContent', state: {
-            data: [ { block: firstBlock, oldBlock: selectedClones[0] } ],
-            preventEventTrigger: true
-        }});
 
         /* Middle blocks */
         for (let i: number = 1; i < selectedBlocks.length - 1; i++) {
@@ -570,23 +547,24 @@ export class BlockCommand {
             }});
         }
 
-        /* Last Block */
-        const lastBlockContent: HTMLElement = getBlockContentElement(lastBlockElement);
-        const lastSplit: ISplitContentData = NodeCutter.splitContent(lastBlockContent, range.endContainer, range.endOffset);
-        this.updateAndCleanContentModels(lastBlock, lastSplit, 'keepAfter');
-        this.parent.observer.notify('modelChanged', { type: 'ReRenderBlockContent', state: {
-            data: [ { block: lastBlock, oldBlock: selectedClones[selectedClones.length - 1] } ],
-            preventEventTrigger: true,
-            preventChangesTracking: true
-        }});
+        // Trim suffix of first block
+        const startRange: Range = document.createRange();
+        startRange.setStart(range.startContainer, range.startOffset);
+        startRange.setEndAfter(getBlockContentElement(firstBlockElement).lastChild);
+        startRange.deleteContents(); // Native DOM removal. Identity preserved!
 
-        /* Merge Last with First */
+        // Trim prefix of last block
+        const endRange: Range = document.createRange();
+        endRange.setStartBefore(getBlockContentElement(lastBlockElement).firstChild);
+        endRange.setEnd(range.endContainer, range.endOffset);
+        endRange.deleteContents();
+
+        /* Merge Last into First */
         this.deleteBlockAtCursor({
             blockElement: direction === 'previous' ? lastBlockElement : firstBlockElement,
             mergeDirection: direction,
             isUndoRedoAction: true,
-            preventEventTrigger: true,
-            preventChangesTracking: true
+            preventEventTrigger: true
         });
 
         this.parent.observer.notify('triggerBlockChange', this.parent.eventService.getChanges());
@@ -607,74 +585,122 @@ export class BlockCommand {
         return true;
     }
 
-    private updateAndCleanContentModels(
-        block: BlockModel,
-        splitContent: ISplitContentData,
-        mode: 'keepBefore' | 'keepAfter'
-    ): void {
-        const newContentModels: ContentModel[] = [];
-        const beforeFragmentNodes: ChildNode[] = Array.from(splitContent.beforeFragment.childNodes);
-        const afterFragmentNodes: ChildNode[] = Array.from(splitContent.afterFragment.childNodes);
-        const blockElement: HTMLElement = this.parent.getBlockElementById(block.id);
-
-        const range: Range = getSelectedRange();
-        const splitNode: Node = mode === 'keepBefore' ? range.startContainer : range.endContainer;
-        const splitOffset: number = mode === 'keepBefore' ? range.startOffset : range.endOffset;
-        const contentElementOfSplitNode: HTMLElement = getClosestContentElementInDocument(splitNode);
-        const isContentFoundInCollection: (element: Node, collection: ChildNode[]) => boolean =
-            (element: Node, collection: ChildNode[]) => {
-                return collection.some((node: Node) => {
-                    return (node.contains(element) || node === element || (node as HTMLElement).id === (element as HTMLElement).id);
-                });
-            };
-
-        block.content.forEach((content: ContentModel) => {
-            let isSplitted: boolean = false;
-            const contentEl: HTMLElement = getContentElementBasedOnId(content.id, blockElement);
-
-            const isCurrentContentIntersectsNode: boolean = range.intersectsNode(contentEl);
-            const isCurrentContentFoundInAfterNodes: boolean = isContentFoundInCollection(contentEl, afterFragmentNodes);
-            if (mode === 'keepBefore' && isCurrentContentFoundInAfterNodes && isCurrentContentIntersectsNode) {
-                return;
-            }
-            if (contentEl === contentElementOfSplitNode) {
-                content.content = mode === 'keepBefore'
-                    ? splitNode.textContent.substring(0, splitOffset)
-                    : (splitNode.textContent.substring(splitOffset) || '');
-                if (mode === 'keepAfter') {
-                    content.id = afterFragmentNodes.length && (afterFragmentNodes[0].nodeType === Node.ELEMENT_NODE
-                        ? (afterFragmentNodes[0] as HTMLElement).id : content.id);
-                }
-                isSplitted = true;
-            }
-            const isCurrentContentFoundInBeforeNodes: boolean = isContentFoundInCollection(contentEl, beforeFragmentNodes);
-            if (!isSplitted && mode === 'keepAfter' && isCurrentContentFoundInBeforeNodes && isCurrentContentIntersectsNode) {
-                return;
-            }
-            if (content.content.trim()) {
-                newContentModels.push(content);
-            }
-        });
-
-        this.parent.blockService.updateContent(block.id, newContentModels);
+    private populateTargetModelAndId(args: IAddBlockInteraction): void {
+        if (!args.targetBlockId && args.targetBlock) {
+            args.targetBlockId = args.targetBlock.id;
+        }
+        if (!args.targetBlock && args.targetBlockId) {
+            args.targetBlock = this.parent.getBlockElementById(args.targetBlockId);
+        }
+        args.targetBlockModel = args.targetBlockId
+            ? getBlockModelById(args.targetBlockId, this.parent.getEditorBlocks())
+            : null;
     }
 
     /**
      * Handles block transformation, converting one block type to another
      *
-     * @param {ITransformBlockInteraction} args - Arguments for block transformation
+     * @param {string} newBlockType - The new block type to transform to
+     * @param {BlockProperties} props - Optional properties for the new block type
      * @returns {void}
      * @hidden
      */
+    public transformBlocksForSelection(newBlockType: string, props?: BlockProperties): void {
+        const range: Range = getSelectedRange();
+        const currentRangeLength: number = range.toString().length;
+        const blocksToTransform: BlockModel[] = this.resolveBlocksToTransform();
+        const ignoredTypes: string[] = [BlockType.Callout, BlockType.Image, BlockType.Divider, BlockType.Code];
+        if (currentRangeLength > 0){
+            this.parent.nodeSelection.saveSelection();
+        }
+
+        // Begin batch mode for multiple block transformations
+        if (blocksToTransform.length > 1) {
+            this.parent.undoRedoAction.beginBatchTransform();
+        }
+
+        for (const block of blocksToTransform) {
+            const isIgnored: boolean = ignoredTypes.indexOf(block.blockType) !== -1;
+            const blockEl: HTMLElement = this.parent.getBlockElementById(block.id);
+            if (isIgnored) { continue; }
+
+            const model: BlockModel = getBlockModelById(block.id, this.parent.getEditorBlocks());
+            this.handleBlockTransformation({
+                block: model,
+                blockElement: blockEl,
+                newBlockType: newBlockType,
+                props
+            });
+        }
+
+        // End batch mode for multiple block transformations
+        if (blocksToTransform.length > 1) {
+            this.parent.undoRedoAction.endBatchTransform();
+        }
+        if (currentRangeLength > 0){
+            this.parent.nodeSelection.restoreSelection();
+        }
+    }
+
+    private resolveBlocksToTransform(): BlockModel[] {
+        const selectedBlocks: BlockModel[] = this.parent.editorMethods.getSelectedBlocks();
+        const range: Range = getSelectedRange();
+
+        if (selectedBlocks && selectedBlocks.length > 0) {
+            return this.expandSelectedBlocks(selectedBlocks);
+        }
+
+        if ((!range) && (!selectedBlocks || selectedBlocks.length === 0)) {
+            const cellBlocks: BlockModel[] = this.getSelectedCellBlocksFromTable();
+            if (cellBlocks && cellBlocks.length > 0) {
+                return cellBlocks;
+            }
+        }
+
+        // Fallback: if no selection or range, use the currently focused block
+        if (this.parent.currentFocusedBlock) {
+            const focusedBlockModel: BlockModel = getBlockModelById(
+                this.parent.currentFocusedBlock.id,
+                this.parent.getEditorBlocks()
+            );
+            if (focusedBlockModel) {
+                return [focusedBlockModel];
+            }
+        }
+
+        return [];
+    }
+
+    private expandSelectedBlocks(selectedBlocks: BlockModel[]): BlockModel[] {
+        const result: BlockModel[] = [];
+        for (const block of selectedBlocks) {
+            if (block.blockType === BlockType.Table) {
+                const tableEl: HTMLElement = this.parent.getBlockElementById(block.id);
+                result.push(...this.parent.tableSelectionManager.getAllCellBlocks(tableEl));
+            } else {
+                result.push(block);
+            }
+        }
+        return result;
+    }
+
+    private getSelectedCellBlocksFromTable(): BlockModel[] {
+        const tableCtx: TableContext = this.parent.blockRenderer.tableRenderer.resolveTableContext();
+        if (tableCtx && tableCtx.tableBlockEl) {
+            return this.parent.tableSelectionManager.getSelectedCellBlocks(tableCtx.tableBlockEl);
+        }
+        return [];
+    }
+
     public handleBlockTransformation(args: ITransformBlockInteraction): void {
         const { block, blockElement, newBlockType, isUndoRedoAction } = args;
         const rangePath: RangePath = this.parent.nodeSelection.getStoredBackupRange();
         this.parent.mentionAction.cleanMentionArtifacts(blockElement, true);
         this.parent.mentionAction.removeMentionQueryKeysFromModel('/', args.isUndoRedoAction);
         const nestedTypes: Set<string> = new Set<string>([BlockType.CollapsibleParagraph, BlockType.CollapsibleHeading,
-            BlockType.Callout, BlockType.Table]);
+            BlockType.Callout, BlockType.Quote, BlockType.Table]);
         const specialTypes: Set<string> = new Set<string>([BlockType.Divider , BlockType.Code, BlockType.Image]);
-        const nestedSelectors: string = `.${constants.CALLOUT_BLOCK_CLS}, .${constants.TOGGLE_BLOCK_CLS}`;
+        const nestedSelectors: string = `.${constants.CALLOUT_BLOCK_CLS}, .${constants.TOGGLE_BLOCK_CLS}, .${constants.QUOTE_BLOCK_CLS}`;
         const closestParentEle: HTMLElement = blockElement.closest(nestedSelectors) as HTMLElement;
         let transformedElement: HTMLElement = blockElement;
         const doesBlockHasContent: boolean = blockElement.textContent.length > 0;
@@ -683,7 +709,7 @@ export class BlockCommand {
         const isNestedType: boolean = nestedTypes.has(newBlockType) || nestedTypes.has(block.blockType);
 
         // Proceed to add new block rather than transforming current block for below conditions
-        if ((isSpecialType || isNestedType) && (doesBlockHasContent || (isNestedType &&  closestParentEle))) {
+        if ((isSpecialType || isNestedType) && (doesBlockHasContent || (isNestedType && closestParentEle))) {
             const addedBlock: BlockModel = this.parent.blockCommand.addBlock({
                 blockID: isUndoRedoAction ? block.id : '',
                 targetBlock: isNestedType ? closestParentEle || blockElement : blockElement,
@@ -706,7 +732,8 @@ export class BlockCommand {
                 newBlockType: newBlockType,
                 isUndoRedoAction: isUndoRedoAction,
                 props: args.props,
-                preventEventTrigger: true
+                preventEventTrigger: true,
+                oldBlockModel: args.oldBlockModel
             });
         }
 
@@ -725,7 +752,8 @@ export class BlockCommand {
 
         this.parent.togglePlaceholder(transformedElement, true);
 
-        if (transformedElement.getAttribute('data-block-type') === BlockType.Callout) {
+        if (transformedElement.getAttribute('data-block-type') === BlockType.Callout ||
+            transformedElement.getAttribute('data-block-type') === BlockType.Quote) {
             this.parent.setFocusToBlock(transformedElement.querySelector('.' + constants.BLOCK_CLS));
         }
         else {
@@ -761,16 +789,24 @@ export class BlockCommand {
         this.parent.previousSelection = captureSelectionState();
         const { newBlockType, isUndoRedoAction, props, shouldPreventUpdates, preventEventTrigger } = args;
         let { block } = args;
-        const oldBlockClone: BlockModel = decoupleReference(sanitizeBlock(block));
+        const oldBlockClone: BlockModel = decoupleReference(block);
 
+        let blockModel: BlockModel = oldBlockClone;
+        if (isUndoRedoAction) {
+            const isOldBlockTypeNonMergable: boolean = isNonMergableBlock(args.blockElement);
+            blockModel = isOldBlockTypeNonMergable ? args.oldBlockModel : oldBlockClone;
+        }
         block.blockType = newBlockType;
         block.properties = props || {};
 
-        block = this.parent.blockService.updateBlock(block.id, BlockFactory.createBlockFromPartial({
-            ...oldBlockClone,
-            blockType: newBlockType,
-            properties: props || {}
-        }));
+        block = this.parent.blockService.updateBlock(
+            block.id,
+            BlockFactory.createBlockFromPartial({
+                ...blockModel,
+                blockType: newBlockType,
+                properties: props || {}
+            })
+        );
         this.parent.stateManager.updateManagerBlocks();
 
         this.parent.observer.notify('modelChanged', { type: 'TransformBlock', state: {
@@ -840,41 +876,19 @@ export class BlockCommand {
      * Creates content models from a document fragment
      *
      * @param {DocumentFragment} fragment The document fragment
-     * @param {BlockModel} blockModel The block model
-     * @param {Node} referenceNode Reference node
      * @returns {ContentModel[]} Array of content models
      * @hidden
      */
     public getContentModelForFragment(
-        fragment: DocumentFragment,
-        blockModel: BlockModel,
-        referenceNode: Node
+        fragment: DocumentFragment
     ): ContentModel[] {
-        const newContents: ContentModel[] = [];
+        const tempContainer: HTMLElement = document.createElement('div');
 
-        fragment.childNodes.forEach((node: Node) => {
-            if (node.nodeType === Node.ELEMENT_NODE && (node instanceof HTMLElement)) {
-                const content: ContentModel = blockModel.content.find((content: ContentModel) => content.id === node.id);
-                if (content) {
-                    content.content = node.textContent;
-                    newContents.push(content);
-                } else {
-                    /*
-                    On Enter in middle of a formatted element, we clone the previous model,
-                    and reuse it to preserve formatting (e.g., split '<strong>Hello</strong>' into 'He' and 'llo').
-                    */
-                    const previousContent: ContentModel = blockModel.content.find((content: ContentModel) => {
-                        return content.id === (referenceNode as HTMLElement).id;
-                    });
-                    const newContent: ContentModel = decoupleReference(sanitizeContent(previousContent)) as ContentModel;
-                    newContent.id = node.id;
-                    newContent.content = node.textContent;
-                    newContents.push(newContent);
-                }
-            } else if (node.nodeType === Node.TEXT_NODE) {
-                newContents.push(BlockFactory.createTextContent({ content: node.textContent }));
-            }
+        Array.from(fragment.childNodes).forEach((node: Node) => {
+            tempContainer.appendChild(node.cloneNode(true));
         });
+
+        const newContents: ContentModel[] = convertInlineElementsToContentModels(tempContainer, true);
 
         return newContents;
     }
@@ -890,71 +904,10 @@ export class BlockCommand {
         const editorBlocks: BlockModel[] = this.parent.getEditorBlocks();
         const toBlockModel: BlockModel = getBlockModelById(destinationBlockId, editorBlocks);
         const toBlockIndex: number = getBlockIndexById(destinationBlockId, editorBlocks);
-
-        if (toBlockIndex < 0) { return null; }
-
         const toParentBlockModel: BlockModel = getBlockModelById(toBlockModel.parentId, editorBlocks);
         const toParentBlockIndex: number = toParentBlockModel ? getBlockIndexById(toParentBlockModel.id, editorBlocks) : -1;
 
         return { toBlockModel, toParentBlockModel, toBlockIndex, toParentBlockIndex };
-    }
-
-    private updateContentModelsForDeletion(
-        sourceContent: HTMLElement,
-        targetContent: HTMLElement,
-        targetBlockModel: BlockModel,
-        sourceBlockModel: BlockModel
-    ): void {
-        const mergedContent: ContentModel[] = [];
-
-        const targetHasSingleTextNode: boolean = targetContent.textContent.length === 0 || (targetContent.childNodes.length === 1 &&
-            targetContent.firstChild.nodeType === Node.TEXT_NODE);
-        const sourceHasSingleTextNode: boolean = sourceContent.textContent.length === 0 || (sourceContent.childNodes.length === 1 &&
-            sourceContent.firstChild.nodeType === Node.TEXT_NODE);
-        const clonedTargetContent: ContentModel[] = decoupleReference(sanitizeContents(targetBlockModel.content));
-        const clonedSourceContent: ContentModel[] = decoupleReference(sanitizeContents(sourceBlockModel.content));
-
-        if (targetHasSingleTextNode && sourceHasSingleTextNode) {
-            // Case: Both blocks had plain text nodes → merge source content's text and target content's text
-            if (sourceBlockModel.content.length === 0) {
-                mergedContent.push(...clonedTargetContent);
-            } else if (targetBlockModel.content.length === 0) {
-                mergedContent.push(...clonedSourceContent);
-            } else if (targetBlockModel.content.length > 0 && sourceBlockModel.content.length > 0) {
-                const t: ContentModel = targetBlockModel.content[0];
-                const s: ContentModel = sourceBlockModel.content[0];
-                mergedContent.push(BlockFactory.createTextContent({
-                    id: t.id,
-                    content: (t.content) + (s.content)
-                }));
-            }
-        } else if ((!targetHasSingleTextNode && sourceHasSingleTextNode)) {
-            // Case: Target has formatted, source has plain text → just append the target content
-            mergedContent.push(...clonedTargetContent);
-            const source: ContentModel = sourceBlockModel.content[0];
-            if (source && source.content !== '') {
-                mergedContent.push(BlockFactory.createTextContent({
-                    id: source.id,
-                    content: source.content
-                }));
-            }
-        } else if ((targetHasSingleTextNode && !sourceHasSingleTextNode)) {
-            const target: ContentModel = targetBlockModel.content[0];
-            if (target && target.content !== '') {
-                mergedContent.push(BlockFactory.createTextContent({
-                    id: target.id,
-                    content: target.content
-                }));
-            }
-            // Case: Source has formatted, Target has plain text → just append the source content
-            mergedContent.push(...clonedSourceContent);
-        }
-        else {
-            // Case: All other cases → merge both content arrays
-            mergedContent.push(...clonedTargetContent, ...clonedSourceContent);
-        }
-        this.parent.blockService.updateContent(targetBlockModel.id, mergedContent);
-        this.parent.stateManager.updateManagerBlocks();
     }
 
     /**
@@ -972,7 +925,7 @@ export class BlockCommand {
                 id: blockID || generateUniqueId(constants.BLOCK_ID_PREFIX),
                 parentId: targetBlockModel ? targetBlockModel.parentId : '',
                 blockType: (blockType || BlockType.Paragraph) as BlockType,
-                content: contentModel || [],
+                content: (contentModel && contentModel.length > 0) ? contentModel : [BlockFactory.createTextContent()],
                 indent: targetBlockModel ? targetBlockModel.indent : 0,
                 properties: properties || {}
             });

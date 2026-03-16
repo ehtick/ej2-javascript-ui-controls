@@ -80,6 +80,7 @@ $overlay-bg-color: rgba($black, .4) !default;
 $table-bg-color-hover: color.adjust($content-bg-color, $lightness: 7%) !default;
 $table-bg-color-pressed: $gray-700 !default;
 $table-bg-color-selected: color.adjust($content-bg-color, $lightness: 12%) !default;
+$table-bg-color-selected-hover: color-mix(in srgb, rgba($table-bg-color-selected, 1), rgba($table-bg-color-hover, .2)) !default;
 
 $colorpicker-gradient-1: #f00 !default;
 $colorpicker-gradient-2: #ff0 !default;

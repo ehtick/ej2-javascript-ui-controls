@@ -20,7 +20,7 @@ import { InsertHtmlExec } from './../plugin/inserthtml-exec';
 import { ClearFormatExec } from './../plugin/clearformat-exec';
 import { UndoRedoManager } from './../plugin/undo';
 import { MsWordPaste } from '../plugin/ms-word-clean-up';
-import { NotifyArgs } from '../../common/interface';
+import { IHTMLEnterKeyCallBack, NotifyArgs } from '../../common/interface';
 import * as EVENTS from './../../common/constant';
 import { InsertTextExec } from '../plugin/insert-text';
 import { NodeCutter } from '../plugin/nodecutter';
@@ -29,6 +29,8 @@ import { TableSelection } from '../plugin/table-selection';
 import { DOMMethods } from '../plugin/dom-tree';
 import { CustomUserAgentData } from '../../common/user-agent';
 import { CodeBlockPlugin } from '../plugin/code-block';
+import { EnterKeyAction } from '../plugin/enter-key';
+import { EnterKey, ShiftEnterKey } from '../../common';
 import { AutoFormatPlugin } from '../plugin/autoformat';
 
 /**
@@ -70,17 +72,20 @@ export class EditorManager {
     private lastClickTime: number = 0;
     public domTree: DOMMethods;
     public userAgentData: CustomUserAgentData;
-
+    public enterKey: EnterKeyAction;
+    public isBlazor: boolean = false;
     /**
      * Constructor for creating the component
      *
      * @hidden
      * @private
      * @param {ICommandModel} options - specifies the command Model
+     * @param {boolean} isBlazor - Determines whether Blazor-specific logic should be applied.
      */
-    public constructor(options: ICommandModel) {
+    public constructor(options: ICommandModel, isBlazor?: boolean) {
         this.currentDocument = options.document;
         this.editableElement = options.editableElement;
+        this.isBlazor = isBlazor;
         this.nodeSelection = new NodeSelection(this.editableElement as HTMLElement);
         this.nodeCutter = new NodeCutter();
         this.domNode = new DOMNode(this.editableElement, this.currentDocument);
@@ -99,6 +104,7 @@ export class EditorManager {
         this.msWordPaste = new MsWordPaste(this);
         this.tableCellSelection = new TableSelection(this.editableElement as HTMLElement, this.currentDocument);
         this.userAgentData = new CustomUserAgentData(Browser.userAgent, false);
+        this.enterKey = new EnterKeyAction(this);
         this.wireEvents();
         this.isDestroyed = false;
     }
@@ -134,8 +140,19 @@ export class EditorManager {
     private onPropertyChanged(props: { [key: string]: Object }): void {
         this.observer.notify(EVENTS.MODEL_CHANGED_PLUGIN, props);
     }
-    private editorKeyDown(e: IHtmlKeyboardEvent): void {
-        this.observer.notify(EVENTS.KEY_DOWN_HANDLER, e);
+    private editorKeyDown(args: IHtmlKeyboardEvent): void {
+        if (this.enterKey.isEnterActionAllowed(args.event)) {
+            args.callBack({
+                requestType: 'EnterKey',
+                enterAction: args.enterAction,
+                shiftEnterAction: args.shiftEnterKey,
+                isEnterAction: true,
+                isShiftEnterAction: args.event.shiftKey,
+                event: args.event
+            } as IHTMLEnterKeyCallBack);
+        } else {
+            this.observer.notify(EVENTS.KEY_DOWN_HANDLER, args);
+        }
     }
     private editorKeyUp(e: IHtmlKeyboardEvent): void {
         this.observer.notify(EVENTS.KEY_UP_HANDLER, e);
@@ -408,6 +425,7 @@ export class EditorManager {
         if (this.tableCellSelection) { this.tableCellSelection = null; }
         if (this.domTree) { this.domTree = null; }
         this.userAgentData = null;
+        this.enterKey = null;
         this.isDestroyed = true;
     }
 
@@ -429,6 +447,43 @@ export class EditorManager {
         if (previouNode) {
             this.nodeSelection.setCursorPoint(document, previouNode as Element, previouNode.textContent.length);
         }
+    }
+
+    /**
+     * Utility to check if all then contents are selected within RTE
+     *
+     * @private
+     * @hidden
+     * @returns {boolean} `true` if the selection is within the RTE; otherwise, `false`.
+     */
+    public isEntireRTEContentSelected(): boolean {
+        const range: Range = this.currentDocument.getSelection().getRangeAt(0);
+        const div: HTMLElement = document.createElement('div');
+        div.appendChild(range.cloneContents());
+        const selectedHTML: string = div.innerHTML;
+        return (selectedHTML === this.editableElement.innerHTML || (range.commonAncestorContainer === this.editableElement &&
+            selectedHTML === this.editableElement.textContent.trim())
+            || (this.editableElement.childNodes.length === 1
+                 && this.isStartEntireContentSelected(range)));
+    }
+    public isStartEntireContentSelected(range: Range): boolean {
+        // const textContent: string = range.startContainer.textContent;
+        // let currentElement: HTMLElement = range.startContainer as HTMLElement;
+        // let sameContent: boolean = true;
+        // while (currentElement && currentElement !== this.editableElement) {
+        //     if (currentElement.textContent !== textContent) {
+        //         sameContent = false;
+        //         break;
+        //     }
+        //     currentElement = currentElement.parentElement as HTMLElement;
+        // }
+        // return sameContent;
+        let textContent: string = range.commonAncestorContainer.textContent;
+        const entireTextContent: string = this.editableElement.textContent;
+        if (range.commonAncestorContainer === range.startContainer && range.commonAncestorContainer === range.endContainer) {
+            textContent = textContent.slice(range.startOffset, range.endOffset);
+        }
+        return textContent === entireTextContent;
     }
 }
 

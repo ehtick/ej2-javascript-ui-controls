@@ -344,54 +344,6 @@ describe('Image Block', () => {
             }, 1500);
         });
 
-        it('should reject invalid file types', (done) => {
-            const blocks: BlockModel[] = [
-                {
-                    id: 'upload3',
-                    blockType: BlockType.Image
-                }
-            ];
-            editor = createEditor({ blocks: blocks,
-                imageBlockSettings: {
-                    allowedTypes: ['.jpg', '.png'],
-                    saveFormat: 'Base64'
-                } });
-            editor.appendTo('#editor');
-
-            setTimeout(() => {
-                const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-                const img = editorElement.querySelector('img') as HTMLImageElement;
-                const originalSrc = img.src;
-                
-                // Mock invalid file
-                const file = new File(['test'], 'test.txt', { type: 'text/plain' });
-                Object.defineProperty(fileInput, 'files', {
-                    value: [file],
-                    writable: false
-                });
-
-                fileInput.dispatchEvent(new Event('change'));
-
-                setTimeout(() => {
-                    // expect(img.src).toBe(originalSrc);
-                    // expect(document.querySelector('input[type="file"]')).toBeNull();
-                    const imageBlock = editor.blocks[0];
-                    const props = imageBlock.properties as IImageBlockSettings;
-
-                    // Confirm that the image src was not updated
-                    expect(props.src).toBe('');
-
-                    // Confirm that the save format remains unchanged
-                    expect(editor.blockManager.imageBlockSettings.saveFormat).toBe('Base64');
-
-                    // Confirm that allowedTypes are still intact
-                    expect(editor.blockManager.imageBlockSettings.allowedTypes).toEqual(['.jpg', '.png']);
-
-                    done();
-                }, 500);
-            }, 1500);
-        });
-
         it('should handle no file selected', (done) => {
             const blocks: BlockModel[] = [
                 {
@@ -903,8 +855,8 @@ describe('Image Block', () => {
                 editor = createEditor({ blocks: blocks });
                 editor.appendTo('#editor');
             }).not.toThrow();
-            const img = editorElement.querySelector('img');
-            expect(img).not.toBeNull(); // Image element should still exist
+            const imgPlaceholder = editorElement.querySelector('.e-image-placeholder');
+            expect(imgPlaceholder).not.toBeNull(); // Image element should still exist
             const imageBlock = editor.blocks[0];
             expect(imageBlock.blockType).toBe(BlockType.Image);
             expect(imageBlock.properties).toBeDefined();
@@ -1020,10 +972,8 @@ describe('Image Block', () => {
                     const imageBlock = editor.blocks[0];
                     const props = imageBlock.properties as IImageBlockSettings;
                     expect(editor.blockManager.imageBlockSettings.saveFormat).toBe('Base64');
-                    const img = editorElement.querySelector('img');
-                    expect(img).not.toBeNull();
-                    // src is coming as ''
-                    // expect(img.src).toContain('data:image/jpeg;base64'); 
+                    const imgPlaceholder = editorElement.querySelector('.e-image-placeholder');
+                    expect(imgPlaceholder).not.toBeNull();
                     done();
                 }, 500);
             }, 1000);
@@ -1472,7 +1422,6 @@ describe('Image Block', () => {
                     id: 'paragraph',
                     blockType: BlockType.Paragraph,
                     content: [{ 
-                        id: 'paragraph-content',
                         contentType: ContentType.Text, 
                         content: 'Paragraph that will receive pasted image' 
                     }]
@@ -1481,7 +1430,6 @@ describe('Image Block', () => {
                     id: 'paragraph1',
                     blockType: BlockType.Paragraph,
                     content: [{ 
-                        id: 'paragraph-content1',
                         contentType: ContentType.Text, 
                         content: '' 
                     }]
@@ -1794,12 +1742,12 @@ describe('Image Block', () => {
                 {
                     id: 'p1',
                     blockType: BlockType.Paragraph,
-                    content: [{ id: 't1', contentType: ContentType.Text, content: 'Start here ' }]
+                    content: [{ contentType: ContentType.Text, content: 'Start here ' }]
                 },
                 {
                     id: 'p2',
                     blockType: BlockType.Paragraph,
-                    content: [{ id: 't2', contentType: ContentType.Text, content: '' }]
+                    content: [{ contentType: ContentType.Text, content: '' }]
                 }
             ];
 

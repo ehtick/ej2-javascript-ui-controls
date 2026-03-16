@@ -3,13 +3,13 @@ import { _PdfCrossReference } from '../../../pdf-cross-reference';
 import { PdfDocument } from '../../../pdf-document';
 import { _PdfDictionary, _PdfName, _PdfReference } from '../../../pdf-primitives';
 import { _PdfCertificate } from '../pdf-certificate';
-import { _PdfKeyEntry } from '../pdf-cryptography-certificate';
+import { _PdfKeyEntry, _PdfPublicKeyCryptographyCertificate } from '../pdf-cryptography-certificate';
 import { _PdfX509Certificate, _PdfX509Certificates } from '../x509/x509-certificate';
 import { _PdfX509CertificateParser } from '../x509/x509-certificate-parser';
 import { PdfSignature } from './pdf-signature';
 import { _PdfSignaturePrivateKey } from './signature-privatekey';
 import { _PdfCryptographicMessageSyntaxSigner } from './cryptographic-signer';
-import { _bytesToHex, _padStart } from '../../../utils';
+import { _bytesToHex, _padStart} from '../../../utils';
 export class _PdfSignatureDictionary {
     _dictionary: _PdfDictionary = new _PdfDictionary();
     private _document: PdfDocument;
@@ -25,6 +25,7 @@ export class _PdfSignatureDictionary {
     private _estimatedSize: number = 8192;
     _certificate: _PdfCertificate;
     private _crossReference: _PdfCrossReference;
+    _cmsSigner: _PdfCryptographicMessageSyntaxSigner;
     constructor(dictionary: _PdfDictionary, signature: PdfSignature)
     constructor(document: PdfDocument, signature: PdfSignature)
     constructor(arg1?: PdfDocument | _PdfDictionary, arg2?: PdfSignature) {
@@ -71,7 +72,6 @@ export class _PdfSignatureDictionary {
     }
     _parseDigestAlgorithm(): DigestAlgorithm {
         let digest: DigestAlgorithm;
-        let cmsSigner: _PdfCryptographicMessageSyntaxSigner;
         if (this._dictionary.has('Contents')) {
             const contents: string = this._dictionary.get('Contents');
             const bytes: Uint8Array = this._parsePdfContents(contents);
@@ -81,11 +81,18 @@ export class _PdfSignatureDictionary {
                 const certificateChain: _PdfX509Certificate = parser._readCertificate(bytes, true);
                 const certificate: _PdfCertificate = new _PdfCertificate(certificateChain);
                 this._certificate = certificate;
-                cmsSigner = new _PdfCryptographicMessageSyntaxSigner(bytes);
+                this._cmsSigner = new _PdfCryptographicMessageSyntaxSigner(bytes, this._dictionary.get('SubFilter').name);
+                if (this._cmsSigner && this._cmsSigner._hasTimeStamp &&
+                    this._cmsSigner._timeStampTokenBytes &&
+                    this._cmsSigner._timeStampTokenBytes.length > 0) {
+                    this._signature._hasTimeStamp = this._cmsSigner._hasTimeStamp;
+                    this._signature._timeStampTokenBytes = this._cmsSigner._timeStampTokenBytes;
+                    this._signature._isTimestampOnly = this._cmsSigner._isTimestampOnly;
+                }
             }
         }
-        if (cmsSigner) {
-            const messageDigest: string = cmsSigner._getHashAlgorithm();
+        if (this._cmsSigner) {
+            const messageDigest: string = this._cmsSigner._getHashAlgorithm();
             switch (messageDigest) {
             case 'SHA512':
                 digest = DigestAlgorithm.sha512;
@@ -251,7 +258,9 @@ export class _PdfSignatureDictionary {
         this._dictionary.update('Reference', array);
     }
     _addType(): void {
-        if (this._certificate) {
+        if (this._signature && this._signature._isTimestampOnly && this._signature._externalChain.length === 0) {
+            this._dictionary.update('Type', new _PdfName('DocTimeStamp'));
+        } else {
             this._dictionary.update('Type', new _PdfName('Sig'));
         }
     }
@@ -276,7 +285,9 @@ export class _PdfSignatureDictionary {
         this._dictionary.update('Filter', new _PdfName('Adobe.PPKLite'));
     }
     _addSubFilter(): void {
-        if (this._signature && this._signature._cryptographicStandard === CryptographicStandard.cades) {
+        if (this._signature && this._signature._isTimestampOnly) {
+            this._dictionary.update('SubFilter', new _PdfName(this._requestForCommentsFilterType));
+        } else if (this._signature && this._signature._cryptographicStandard === CryptographicStandard.cades) {
             this._dictionary.update('SubFilter', new _PdfName(this._advanceFilterType));
         } else {
             this._dictionary.update('SubFilter', new _PdfName(this._cryptographicFilterType));
@@ -300,6 +311,9 @@ export class _PdfSignatureDictionary {
         let length: number = this._estimatedSize * 2;
         if (this._signature && this._certificate) {
             length = this._estimatedSize;
+            if (this._signature && this._signature) {
+                length = this._estimatedSize + 4192;
+            }
         }
         writer._writeString('<' + ' '.repeat(length * 2) + '>', buffer);
         this._secondRangeIndex = buffer.length + chunksLength + this._crossReference._currentLength;
@@ -433,5 +447,128 @@ export class _PdfSignatureDictionary {
         }
         buffer.set(utf8Bytes, startPosition);
         return startPosition + str.length;
+    }
+    async _documentSavedAsync(buffer: Uint8Array): Promise<void> {
+        const secondRangeLength: number = buffer.length - this._secondRangeIndex;
+        const byteRangeStrings: string[] = [
+            '0 ',
+            `${this._firstRangeLength} `,
+            `${this._secondRangeIndex} `,
+            secondRangeLength.toString()
+        ];
+        let currentPosition: number = this._saveRangeItem(buffer, byteRangeStrings[0], this._startPositionByteRange);
+        currentPosition = this._saveRangeItem(buffer, byteRangeStrings[1], currentPosition);
+        currentPosition = this._saveRangeItem(buffer, byteRangeStrings[2], currentPosition);
+        this._saveRangeItem(buffer, byteRangeStrings[3], currentPosition);
+        const buf1: Uint8Array = buffer.subarray(0, this._firstRangeLength);
+        const buf2: Uint8Array = buffer.subarray(this._secondRangeIndex);
+        const combined: Uint8Array = new Uint8Array(buf1.length + buf2.length);
+        combined.set(buf1, 0);
+        combined.set(buf2, buf1.length);
+        let pkcs7Content: Uint8Array;
+        if (this._signature && this._signature._isTimestampOnly) {
+            pkcs7Content = await this._getCryptographicStandardTimestampContentAsync(combined);
+        } else {
+            pkcs7Content = await this._getCryptographicStandardContentAsync(combined);
+        }
+        const hexEncodedSignature: string = _bytesToHex(pkcs7Content);
+        const signatureStartPos: number = this._firstRangeLength;
+        buffer[<number>signatureStartPos] = '<'.charCodeAt(0) & 0xff;
+        for (let i: number = 0; i < hexEncodedSignature.length; i++) {
+            buffer[signatureStartPos + 1 + i] = hexEncodedSignature.charCodeAt(i) & 0xff;
+        }
+        const signatureEndPos: number = signatureStartPos + 1 + hexEncodedSignature.length;
+        const paddingLength: number = this._secondRangeIndex - signatureEndPos - 1;
+        if (paddingLength > 0) {
+            buffer.fill('0'.charCodeAt(0) & 0xff, signatureEndPos, signatureEndPos + paddingLength);
+        }
+        buffer[this._secondRangeIndex - 1] = '>'.charCodeAt(0) & 0xff;
+    }
+    async _getCryptographicStandardContentAsync(data: Uint8Array): Promise<Uint8Array> {
+        let timeStampResponse: Uint8Array;
+        try {
+            let hashAlgorithm: string = '';
+            let externalSignature: _PdfSignaturePrivateKey;
+            let crlBytes: Uint8Array[];
+            let ocspByte: Uint8Array;
+            const chain: _PdfX509Certificate[] = [];
+            if (this._signature._externalSignatureCallback) {
+                if (this._signature._externalChain && this._signature._externalChain.length > 0) {
+                    hashAlgorithm = DigestAlgorithm[this._signature._digestAlgorithm];
+                    const pks: _PdfSignaturePrivateKey = new _PdfSignaturePrivateKey(hashAlgorithm);
+                    externalSignature = pks;
+                    chain.push(...this._signature._externalChain);
+                } else {
+                    const value: {signedData: Uint8Array, timestampData?: Uint8Array} = this._signature._externalSignatureCallback(
+                        data, {
+                            algorithm: this._signature._digestAlgorithm,
+                            cryptographicStandard: CryptographicStandard.cms}) as {signedData: Uint8Array, timestampData?: Uint8Array};
+                    return value.signedData;
+                }
+            } else {
+                let certificateAlias: string = '';
+                let pk: _PdfKeyEntry;
+                const keys: Map<string, any> = this._certificate._publicKeyCryptographyCertificate._keys; // eslint-disable-line
+                keys.forEach((keyEntry: _PdfKeyEntry, alias: string) => {
+                    if (keyEntry.privateKey) {
+                        certificateAlias = alias;
+                        pk = keyEntry;
+                    }
+                });
+                const cryptographicCertificate: _PdfPublicKeyCryptographyCertificate = this._certificate._publicKeyCryptographyCertificate;
+                const certificates: _PdfX509Certificates[] = cryptographicCertificate._getCertificateChain(certificateAlias);
+                certificates.forEach((c: _PdfX509Certificates) => chain.push(c._certificate));
+                const digest: string = DigestAlgorithm[this._signature._digestAlgorithm];
+                externalSignature = new _PdfSignaturePrivateKey(digest, pk.privateKey);
+                hashAlgorithm = digest;
+            }
+            const pkcs7 : _PdfCryptographicMessageSyntaxSigner = new _PdfCryptographicMessageSyntaxSigner(null,
+                                                                                                          chain, hashAlgorithm, false);
+            const hash: Uint8Array = pkcs7._getDigestAlgorithm()._digest(data, hashAlgorithm);
+            const sequenceDataSet: Uint8Array = pkcs7._getSequenceDataSet(hash, ocspByte, crlBytes, this._signature._cryptographicStandard);
+            let extSignature: Uint8Array;
+            if (this._signature._externalChain && this._signature._externalChain.length > 0) {
+                const value: any = await this._signature._externalSignatureCallback(sequenceDataSet, { // eslint-disable-line
+                    algorithm: this._signature._digestAlgorithm,
+                    cryptographicStandard: this._signature._cryptographicStandard
+                }) as { signedData: Uint8Array; timestampData?: Uint8Array };
+                if (value.timestampData) {
+                    timeStampResponse = value.timestampData;
+                }
+                if (value.signedData) {
+                    extSignature = value.signedData;
+                } else {
+                    return new Uint8Array(this._estimatedSize).fill(0);
+                }
+            } else {
+                extSignature = await Promise.resolve(externalSignature._sign(sequenceDataSet));
+            }
+            pkcs7._setSignedData(extSignature, null, externalSignature._getEncryptionAlgorithm());
+            const cryptographicStandard: CryptographicStandard = this._signature._cryptographicStandard ?
+                this._signature._cryptographicStandard : CryptographicStandard.cms;
+            return await pkcs7._signAsync(hash, this._signature, timeStampResponse,
+                                          ocspByte, crlBytes, cryptographicStandard);
+        } catch (error) {
+            return new Uint8Array(this._estimatedSize).fill(0);
+        }
+    }
+    async _getCryptographicStandardTimestampContentAsync(data: Uint8Array): Promise<Uint8Array> {
+        try {
+            const hashAlgorithm: string = DigestAlgorithm[this._signature._digestAlgorithm] || 'SHA256';
+            const pkcs7: _PdfCryptographicMessageSyntaxSigner = new _PdfCryptographicMessageSyntaxSigner(null, [], hashAlgorithm, false);
+            const hash: Uint8Array = pkcs7._getDigestAlgorithm()._digest(data, hashAlgorithm);
+            const externalSignature: _PdfSignaturePrivateKey = new _PdfSignaturePrivateKey(hashAlgorithm);
+            pkcs7._setSignedData(hash, null, externalSignature._getEncryptionAlgorithm());
+            let encodedBytes: Uint8Array;
+            if (this._signature) {
+                encodedBytes = await pkcs7._getEncodedTimestamp(hash, this._signature,
+                                                                hashAlgorithm);
+            }
+            const padded: Uint8Array = new Uint8Array(encodedBytes.length);
+            padded.set(encodedBytes);
+            return padded;
+        } catch (e) {
+            throw new Error(e.message);
+        }
     }
 }

@@ -1,4 +1,3 @@
-
 import { Gantt, Selection, Toolbar } from '../../src/index';
 import { projectData1, resourceResources, resourcesDatas, MT897135, splitTasksData } from '../base/data-source.spec';
 import { createGantt, destroyGantt, triggerMouseEvent } from '../base/gantt-util.spec';
@@ -1104,6 +1103,152 @@ describe('Gantt Selection support', () => {
             expect(ganttObj.selectedRowIndex).toBe(3);
             // CurrentViewData length after row delete action
             expect(ganttObj.currentViewData.length).toBe(10);
+        });
+    });
+    describe('Target in row selected event - enabling context menu', () => {
+        let ganttObj: Gantt;
+        beforeAll((done: Function) => {
+            ganttObj = createGantt(
+            {
+                dataSource: splitTasksData,
+                allowSorting: true,
+                sortSettings: { columns: [{ field: 'TaskID', direction: 'Descending' }] },
+                enableContextMenu: true,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    duration: 'Duration',
+                    progress: 'Progress',
+                    dependency: 'Predecessor',
+                    child: 'subtasks',
+                    segments: 'Segments'
+                },
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true
+                },
+                columns: [
+                    { field: 'TaskID', width: 100 },
+                    { field: 'TaskName', headerText: 'Job Name', width: '250', clipMode: 'EllipsisWithTooltip' },
+                    { field: 'StartDate' },
+                    { field: 'EndDate' },
+                    { field: 'Duration' },
+                    { field: 'Progress' },
+                    { field: 'Predecessor' }
+                ],
+                toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll', 'Search', 'ZoomIn', 'ZoomOut', 'ZoomToFit',
+                    'PrevTimeSpan', 'NextTimeSpan'],
+                allowSelection: true,
+                splitterSettings: {
+                    position: "50%",
+                },
+                allowFiltering: true,
+                showColumnMenu: true,
+                highlightWeekends: true,
+                timelineSettings: {
+                    showTooltip: true,
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                        count: 1
+                    }
+                },
+                height: '550px',
+                projectStartDate: new Date('01/30/2019'),
+                projectEndDate: new Date('03/04/2019')
+            }, done);
+        });
+        afterAll(() => {
+            if (ganttObj) {
+                destroyGantt(ganttObj);
+            }
+        });
+        it('checking for target in event - enable context menu', () => {
+            let $tr: HTMLElement = ganttObj.element.querySelector('#treeGrid' + ganttObj.element.id + '_gridcontrol_content_table > tbody > tr:nth-child(1) > td:nth-child(3)') as HTMLElement;
+            triggerMouseEvent($tr, 'contextmenu', 0, 0, false, false, 2);
+            ganttObj.rowSelected = (args: any): void => {
+                expect(args.target).toBe(undefined);
+            }
+        });
+    });
+    describe('Target in row selected event - disabling context menu', () => {
+        let ganttObj: Gantt;
+        beforeAll((done: Function) => {
+            ganttObj = createGantt(
+            {
+                dataSource: splitTasksData,
+                allowSorting: true,
+                sortSettings: { columns: [{ field: 'TaskID', direction: 'Descending' }] },
+                enableContextMenu: false,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    duration: 'Duration',
+                    progress: 'Progress',
+                    dependency: 'Predecessor',
+                    child: 'subtasks',
+                    segments: 'Segments'
+                },
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true
+                },
+                columns: [
+                    { field: 'TaskID', width: 100 },
+                    { field: 'TaskName', headerText: 'Job Name', width: '250', clipMode: 'EllipsisWithTooltip' },
+                    { field: 'StartDate' },
+                    { field: 'EndDate' },
+                    { field: 'Duration' },
+                    { field: 'Progress' },
+                    { field: 'Predecessor' }
+                ],
+                toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll', 'Search', 'ZoomIn', 'ZoomOut', 'ZoomToFit',
+                    'PrevTimeSpan', 'NextTimeSpan'],
+                allowSelection: true,
+                splitterSettings: {
+                    position: "50%",
+                },
+                allowFiltering: true,
+                showColumnMenu: true,
+                highlightWeekends: true,
+                timelineSettings: {
+                    showTooltip: true,
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                        count: 1
+                    }
+                },
+                height: '550px',
+                projectStartDate: new Date('01/30/2019'),
+                projectEndDate: new Date('03/04/2019')
+            }, done);
+        });
+        afterAll(() => {
+            if (ganttObj) {
+                destroyGantt(ganttObj);
+            }
+        });
+        it('checking for target in event - disable context menu', () => {
+            let $tr: HTMLElement = ganttObj.element.querySelector('#treeGrid' + ganttObj.element.id + '_gridcontrol_content_table > tbody > tr:nth-child(1) > td:nth-child(3)') as HTMLElement;
+            triggerMouseEvent($tr, 'click');
+            ganttObj.rowSelected = (args: any): void => {
+                expect(args.target !== undefined).toBe(true);
+            }
         });
     });
 });

@@ -4,8 +4,10 @@ import { NodeModel } from '../../../src/diagram/objects/node-model';
 import { ConnectorModel } from '../../../src/diagram/objects/connector-model';
 import { Point } from '../../../src/diagram/primitives/point';
 import { PointModel } from '../../../src/diagram/primitives/point-model';
-import { Connector } from '../../../src/diagram/index';
+import { Connector, ConnectorConstraints, ConnectorEditing } from '../../../src/diagram/index';
 import { profile, inMB, getMemoryProfile } from '../../../spec/common.spec';
+import { MouseEvents } from '../interaction/mouseevents.spec';
+Diagram.Inject(ConnectorEditing);
 /**
  * Node to port docking
  */
@@ -347,6 +349,83 @@ describe('Diagram Control', () => {
             expect(point.length == 4 && point[0].x == 100 && point[0].y == 500 &&
                 point[1].x == 100 && point[1].y == 520 && point[2].x == 350 && point[2].y == 520 &&
                 point[3].x == 350 && point[3].y == 300).toBe(true);
+            done();
+        });
+    });
+
+    describe('Drag control points of bezier connectors', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+        let mouseEvents: MouseEvents = new MouseEvents();
+        beforeAll((): void => {
+            ele = createElement('div', { id: 'diagramBezierConnector' });
+            document.body.appendChild(ele);
+            let nodes: NodeModel[] = [{
+                id: 'node1',
+                width: 100,
+                height: 100,
+                offsetX: 150,
+                offsetY: 150,
+            },
+            {
+                id: 'node2',
+                width: 100,
+                height: 100,
+                offsetX: 450,
+                offsetY: 450,
+                ports: [
+                    {
+                        id: 'port1',
+                        offset: { x: 0, y: 0.5 },
+
+                    }
+                ]
+            }];
+            let connectors: ConnectorModel[] = [
+                {
+                    id: 'connector1',
+                    type: 'Bezier',
+                    sourceID: 'node1',
+                    targetID: 'node2',
+                    annotations: [{ content: 'bezier' }],
+                    segments: [
+                        { point: { x: 300, y: 200 }, type: 'Bezier' },
+                        { point: { x: 350, y: 300 }, type: 'Bezier' },
+                        { point: { x: 500, y: 500 }, type: 'Bezier' },
+                        { point: { x: 600, y: 600 }, type: 'Bezier' }
+                    ],
+                    segmentThumbShape: 'Diamond',
+                    constraints: ConnectorConstraints.Default | ConnectorConstraints.DragSegmentThumb,
+                    bezierSettings: { segmentEditOrientation: 'BiDirectional' }
+                },
+            ];
+            diagram = new Diagram({
+                width: '1000px', height: '600px', nodes: nodes, connectors: connectors,
+            });
+            diagram.appendTo('#diagramBezierConnector');
+        });
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+            diagram = null;
+            ele = null;
+        });
+        it('Checking the bezier control points dragging', function (done) {
+            let diagramCanvas = document.getElementById(diagram.element.id + 'content');
+            diagram.select([diagram.connectors[0]]);
+
+            let segmentThumbId = "segementThumb_2";
+            let connectorThumb = document.getElementById(segmentThumbId);
+            if (connectorThumb) {
+                let bound = connectorThumb.getBoundingClientRect();
+                let cx = bound.left + bound.width / 2;
+                let cy = bound.top + bound.height / 2;
+                mouseEvents.mouseDownEvent(diagramCanvas, cx, cy);
+                mouseEvents.mouseMoveEvent(diagramCanvas, cx + 25, cy + 25);
+                mouseEvents.mouseMoveEvent(diagramCanvas, cx + 50, cy + 50);
+                mouseEvents.mouseUpEvent(diagramCanvas, cx + 50, cy + 50);
+            }
+            expect((diagram.selectedItems.connectors[0].segments[0] as any).length > 0);
             done();
         });
     });

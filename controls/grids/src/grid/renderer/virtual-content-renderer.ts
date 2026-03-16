@@ -4,7 +4,7 @@ import { DataManager, Query } from '@syncfusion/ej2-data';
 import { IGrid, IRenderer, NotifyArgs, VirtualInfo, IModelGenerator, InterSection, RowSelectEventArgs } from '../base/interface';
 import { Column } from '../models/column';
 import { Row } from '../models/row';
-import { dataReady, modelChanged, refreshVirtualBlock, contentReady } from '../base/constant';
+import { dataReady, modelChanged, refreshVirtualBlock, contentReady, destroy } from '../base/constant';
 import * as events from '../base/constant';
 import { SentinelType, Offsets } from '../base/type';
 import { RenderType } from '../base/enum';
@@ -14,7 +14,7 @@ import { ServiceLocator } from '../services/service-locator';
 import { InterSectionObserver, ScrollDirection } from '../services/intersection-observer';
 import { RendererFactory } from '../services/renderer-factory';
 import { VirtualRowModelGenerator } from '../services/virtual-row-model-generator';
-import { isGroupAdaptive, ensureLastRow, ensureFirstRow, getEditedDataIndex, getTransformValues, checkIsVirtual, getVisiblePage, parentsUntil } from '../base/util';
+import { isGroupAdaptive, ensureLastRow, ensureFirstRow, getEditedDataIndex, getTransformValues, checkIsVirtual, getVisiblePage, parentsUntil, getScrollBarWidth, isEnableSeamlessScrolling } from '../base/util';
 import { setStyleAttribute } from '@syncfusion/ej2-base';
 import { ColumnWidthService } from '../services/width-controller';
 import { Grid } from '../base/grid';
@@ -112,16 +112,27 @@ export class VirtualContentRenderer extends ContentRender implements IRenderer {
         this.header = <VirtualHeaderRenderer>this.locator.getService<RendererFactory>('rendererFactory').getRenderer(RenderType.Header);
         super.renderTable();
         this.virtualEle.table = <HTMLElement>this.getTable();
+        this.virtualEle.gridContent = this.parent.element.querySelector( '.' + literals.gridContent);
         this.virtualEle.content = this.content = <HTMLElement>this.getPanel().querySelector('.' + literals.content);
         this.virtualEle.renderWrapper(<number>this.parent.height);
         this.virtualEle.renderPlaceHolder();
+        if (this.parent.enableSeamlessScrolling) {
+            if (this.parent.enableVirtualization) {
+                this.virtualEle.renderVerticalScrollbar();
+            }
+            if (this.parent.enableColumnVirtualization &&
+                Number((this.widthServices.getTableWidth(this.parent.getColumns()))) > this.content.clientWidth) {
+                this.virtualEle.renderHorizontalScrollbar();
+            }
+        }
         if (!(!this.parent.enableVirtualization && this.parent.enableColumnVirtualization)) {
             this.virtualEle.wrapper.style.position = 'absolute';
         }
         const debounceEvent: boolean = (this.parent.dataSource instanceof DataManager && !this.parent.dataSource.dataSource.offline);
         const opt: InterSection = {
             container: this.content, pageHeight: this.getBlockHeight() * 2, debounceEvent: debounceEvent,
-            axes: this.parent.enableColumnVirtualization ? ['X', 'Y'] : ['Y']
+            axes: this.parent.enableColumnVirtualization ? ['X', 'Y'] : ['Y'],
+            verticalScrollbar: this.virtualEle.verticalScrollbar, horizontalScrollbar: this.virtualEle.horizontalScrollbar
         };
         this.observer = new InterSectionObserver(this.virtualEle.wrapper, opt);
     }
@@ -628,6 +639,38 @@ export class VirtualContentRenderer extends ContentRender implements IRenderer {
         this.resetScrollPosition(e.requestType);
     }
 
+    private updateScrollbarOnResize(): void {
+        if (this.parent.enableVirtualization && !isNullOrUndefined(this.virtualEle.verticalScrollbar) &&
+            !isNullOrUndefined(this.content)) {
+            this.virtualEle.verticalScrollbar.style.width = getScrollBarWidth(true) + 1 + 'px';
+        }
+        if (this.parent.enableColumnVirtualization && !isNullOrUndefined(this.virtualEle.horizontalScrollbar) &&
+            !isNullOrUndefined(this.content)) {
+            this.virtualEle.horizontalScrollbar.style.height = getScrollBarWidth(true) + 1 + 'px';
+        }
+    }
+
+    private updateVirtualScrollbar(virtualHeight: number, width: string): void {
+        if (this.parent.enableVirtualization && !isNullOrUndefined(this.virtualEle.verticalScrollbar) &&
+            !isNullOrUndefined(this.virtualEle.verticalScrollerContainer) && !isNullOrUndefined(this.content)) {
+            this.virtualEle.verticalScrollbar.style.overflowX = this.parent.enableVirtualization &&
+                parseInt(width, 10) > this.virtualEle.wrapper.clientWidth ? 'scroll' : 'hidden';
+            this.virtualEle.gridContent.style.position = 'relative';
+            this.virtualEle.verticalScrollerContainer.style.height = !isNullOrUndefined(virtualHeight) ? virtualHeight + 'px' : '0px';
+            this.virtualEle.verticalScrollbar.style.width = getScrollBarWidth() + 1 + 'px';
+        }
+        if (this.parent.enableColumnVirtualization && !isNullOrUndefined(this.virtualEle.horizontalScrollbar) &&
+            !isNullOrUndefined(this.virtualEle.horizontalScrollerContainer) && !isNullOrUndefined(this.content)) {
+            this.virtualEle.horizontalScrollbar.style.overflowY = this.parent.enableColumnVirtualization &&
+            virtualHeight > this.virtualEle.wrapper.clientHeight ? 'scroll' : 'hidden';
+            if (width && width.indexOf('%') === -1 && !(this.content.getBoundingClientRect().width < parseInt(width, 10))) {
+                width = '100%';
+            }
+            this.virtualEle.horizontalScrollerContainer.style.width = width;
+            this.virtualEle.horizontalScrollbar.style.height = getScrollBarWidth() + 1 + 'px';
+        }
+    }
+
     /**
      * @param {number} height - specifies the height
      * @returns {void}
@@ -670,6 +713,9 @@ export class VirtualContentRenderer extends ContentRender implements IRenderer {
         }
         if (this.parent.enableColumnVirtualization && this.header.virtualEle) {
             this.header.virtualEle.setVirtualHeight(1, width);
+        }
+        if (this.parent.enableSeamlessScrolling) {
+            this.updateVirtualScrollbar(virtualHeight, width);
         }
     }
 
@@ -784,8 +830,21 @@ export class VirtualContentRenderer extends ContentRender implements IRenderer {
             if (!this.parent.enableVirtualization && this.parent.enableColumnVirtualization) {
                 this.virtualEle.adjustTable(x, 0);
             } else {
-                const y: number = this.getTranslateY(e.top, height, xAxis && top === e.top ? this.prevInfo : undefined, true);
-                this.virtualEle.adjustTable(x, Math.min(y, this.offsets[this.maxBlock]));
+                const isRowScrollAction: boolean = this.prevInfo && this.prevInfo.page === 1 &&
+                    (direction !== this.prevInfo.direction || direction !== this.prevInfo.direction);
+                const translateY: number = this.getTranslateY(e.top, height, xAxis && top === e.top ? this.prevInfo : undefined,
+                                                              isRowScrollAction ? false : true);
+                this.virtualEle.adjustTable(x, Math.min(translateY, this.offsets[this.maxBlock]));
+                const wrapperBottom: number = this.virtualEle.wrapper.getBoundingClientRect().bottom;
+                const contentBottom: number = this.virtualEle.content.getBoundingClientRect().bottom;
+                if (direction === 'up' && this.prevInfo.page === Math.ceil(this.getTotalBlocks() / 2) &&
+                    Math.round(wrapperBottom) < Math.round(contentBottom)) {
+                    const bottomGap: number = Math.round(contentBottom) - Math.round(wrapperBottom);
+                    const adjustedTranslateY: number = Math.min(translateY + bottomGap, this.offsets[this.maxBlock]);
+                    if (adjustedTranslateY !== translateY) {
+                        this.virtualEle.adjustTable(x, adjustedTranslateY);
+                    }
+                }
             }
             if (this.parent.enableColumnVirtualization) {
                 this.header.virtualEle.adjustTable(x, 0);
@@ -936,6 +995,7 @@ export class VirtualContentRenderer extends ContentRender implements IRenderer {
     }
 
     public eventListener(action: string): void {
+        if (this.parent.isDestroyed) { return; }
         this.parent[`${action}`](dataReady, this.onDataReady, this);
         this.parent.addEventListener(events.dataBound, this.dataBound.bind(this));
         this.parent.addEventListener(events.actionBegin, this.actionBegin.bind(this));
@@ -959,11 +1019,13 @@ export class VirtualContentRenderer extends ContentRender implements IRenderer {
         this.parent[`${action}`](events.resetVirtualFocus, this.resetVirtualFocus, this);
         this.parent[`${action}`](events.refreshVirtualEditFormCells, this.refreshCells, this);
         this.parent[`${action}`](events.scrollToEdit, this.scrollToEdit, this);
+        this.parent.on(destroy, this.destroy, this);
         const event: string[] = this.actions;
         for (let i: number = 0; i < event.length; i++) {
             this.parent[`${action}`](`${event[parseInt(i.toString(), 10)]}-begin`, this.onActionBegin, this);
         }
         const fn: Function = () => {
+            window.addEventListener('resize', this.updateScrollbarOnResize.bind(this));
             this.observer.observe((scrollArgs: ScrollArg) => this.scrollListener(scrollArgs), this.onEntered());
             const gObj: IGrid = this.parent;
             if (gObj.enablePersistence && gObj.scrollPosition) {
@@ -980,6 +1042,16 @@ export class VirtualContentRenderer extends ContentRender implements IRenderer {
             this.parent.off(contentReady, fn);
         };
         this.parent.on(contentReady, fn, this);
+    }
+
+    public destroy(): void {
+        this.removeEventListener();
+    }
+
+    public removeEventListener(): void {
+        if (this.parent.isDestroyed) { return; }
+        window.removeEventListener('resize', this.updateScrollbarOnResize);
+        this.parent.off(destroy, this.destroy);
     }
 
     private refreshVirtualLazyLoadCache(e: { rows: Row<Column>[], uid?: string, count?: number }): void {
@@ -1725,6 +1797,11 @@ export class VirtualElementHandler {
     public placeholder: HTMLElement;
     public content: HTMLElement;
     public table: HTMLElement;
+    public verticalScrollbar: HTMLElement;
+    public horizontalScrollbar: HTMLElement;
+    public verticalScrollerContainer: HTMLElement;
+    public horizontalScrollerContainer: HTMLElement;
+    public gridContent: HTMLElement;
 
     public renderWrapper(height?: number): void {
         this.wrapper = createElement('div', { className: 'e-virtualtable' });
@@ -1739,6 +1816,20 @@ export class VirtualElementHandler {
         this.content.appendChild(this.placeholder);
     }
 
+    public renderVerticalScrollbar(): void {
+        this.verticalScrollbar = createElement('div', { className: 'e-virtual-vertical-scrollbar' });
+        this.gridContent.appendChild(this.verticalScrollbar);
+        this.verticalScrollerContainer = createElement('div', { className: 'e-virtual-vertical-track'});
+        this.verticalScrollbar.appendChild(this.verticalScrollerContainer);
+    }
+
+    public renderHorizontalScrollbar(): void {
+        this.horizontalScrollbar = createElement('div', { className: 'e-virtual-horizontal-scrollbar' });
+        this.gridContent.appendChild(this.horizontalScrollbar);
+        this.horizontalScrollerContainer = createElement('div', { className: 'e-virtual-horizontal-track'});
+        this.horizontalScrollbar.appendChild(this.horizontalScrollerContainer);
+    }
+
     public renderFrozenWrapper(height?: number): void {
         this.wrapper = createElement('div', { className: 'e-virtualtable' });
         this.wrapper.style.cssText = `min-height:${formatUnit(height)}; display: flex;`;
@@ -1751,7 +1842,11 @@ export class VirtualElementHandler {
     }
 
     public adjustTable(xValue: number, yValue: number): void {
-        this.wrapper.style.transform = `translate(${xValue}px, ${yValue}px)`;
+        if (isEnableSeamlessScrolling()) {
+            this.wrapper.style.transform = `translate3d(${xValue}px, ${yValue}px, 0px) translateZ(0)`;
+        } else {
+            this.wrapper.style.transform = `translate(${xValue}px, ${yValue}px)`;
+        }
     }
 
     public setWrapperWidth(width: string, full?: boolean): void {

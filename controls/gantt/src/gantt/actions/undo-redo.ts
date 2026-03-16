@@ -20,7 +20,6 @@ export class UndoRedo {
     private searchString: string = '';
     private isFromUndoRedo: boolean = false;
     private undoActionDetails: Object = {};
-    private canUpdateIndex: boolean = true;
     private sortedColumnsLength: number = 0;
     private isZoomingUndoRedoProgress: boolean = false;
     private isPreventRowDeselectOnUndoRedo: boolean = false;
@@ -192,9 +191,6 @@ export class UndoRedo {
                 this.parent.timelineSettings.weekStartDay = updateAction['previousZoomingLevel'].weekStartDay;
                 this.parent.timelineSettings.weekendBackground = updateAction['previousZoomingLevel'].weekendBackground;
                 this.isZoomingUndoRedoProgress = true;
-                if (updateAction['action'] === 'ZoomToFit') {
-                    this.parent.timelineModule.refreshTimeline();
-                }
                 this.isUndoRedoPerformed = false;
             }
             else if (updateAction['action'] === 'NextTimeSpan' || updateAction['action'] === 'PreviousTimeSpan') {

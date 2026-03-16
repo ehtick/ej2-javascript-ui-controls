@@ -448,7 +448,7 @@ export class FocusStrategy {
         this.currentInfo.outline = true;
         const swapInfo: SwapInfo = this.getContent().jump(e.action, bValue);
         this.swap = swapInfo;
-        if (swapInfo.swap && !(this.parent.editSettings.mode === 'Batch'
+        if (swapInfo.swap && !(this.parent.editSettings.mode === 'Batch' && !(closest((e.target as Element), '.e-headercell'))
             && (e.action === 'tab' || e.action === 'shiftTab'))) {
             this.setActive(!swapInfo.toHeader);
             this.getContent().matrix.current = this.getContent().getNextCurrent(bValue, swapInfo, this.active, e.action);
@@ -948,6 +948,11 @@ export class FocusStrategy {
                 .cellIndex) as HTMLElement;
             this.currentInfo.element = cellElem ? cellElem : this.currentInfo.element;
         }
+        const currentInfoElement: HTMLElement = this.currentInfo.elementToFocus;
+        if (currentInfoElement && currentInfoElement.matches('.e-focus.e-checkbox') && (currentInfoElement.closest('.e-headerchkcelldiv') ||
+            currentInfoElement.closest('.e-gridchkbox'))) {
+            removeClass([currentInfoElement], ['e-checkbox']);
+        }
         removeClass([this.currentInfo.element, this.currentInfo.elementToFocus], ['e-focused', 'e-focus']);
         this.currentInfo.element.tabIndex = -1;
     }
@@ -994,6 +999,11 @@ export class FocusStrategy {
             addClass([info.element], ['e-focused']);
         }
         addClass([info.elementToFocus], ['e-focus']);
+        if (info.elementToFocus && info.elementToFocus.classList.contains('e-focus') &&
+            info.elementToFocus.parentElement && !info.elementToFocus.parentElement.classList.contains('e-checkbox-disabled') &&
+            (info.elementToFocus.classList.contains('e-checkselect') || info.elementToFocus.classList.contains('e-checkselectall'))) {
+            info.elementToFocus.classList.add('e-checkbox');
+        }
         info.element.tabIndex = 0;
         if (!isFocused) {
             this.setFocusedElement(info.elementToFocus, e as KeyboardEventArgs);
@@ -1401,7 +1411,9 @@ export class Matrix {
         if (isNullOrUndefined(this.matrix[parseInt(rowIndex.toString(), 10)])) { return null; }
         columnIndex = Math.max(0, Math.min(columnIndex + navigator[1], this.matrix[parseInt(rowIndex.toString(), 10)].length - 1));
         if (tmp + navigator[1] > this.matrix[parseInt(rowIndex.toString(), 10)].length - 1
-            && validator(rowIndex, columnIndex, action)) { return [rowIndex, tmp]; }
+            && validator(rowIndex, columnIndex, action)) {
+            return [rowIndex, ['downArrow', 'upArrow'].indexOf(action) !== -1 ?
+                this.matrix[parseInt(rowIndex.toString(), 10)].lastIndexOf(1) : tmp]; }
         const first: number = this.first(this.matrix[parseInt(rowIndex.toString(), 10)], columnIndex, navigator, true, action);
         columnIndex = first === null ? tmp : first;
         const val: number = getValue(`${rowIndex}.${columnIndex}`, this.matrix);
@@ -1707,7 +1719,8 @@ export class ContentFocus implements IFocus {
         const [rowIndex, cellIndex]: number[] = [rowIdx, target.cellIndex];
         const [oRowIndex, oCellIndex]: number[] = this.matrix.current;
         const val: number = getValue(`${rowIndex}.${cellIndex}`, this.matrix.matrix);
-        if (this.matrix.inValid(val) || (!force && oRowIndex === rowIndex && oCellIndex === cellIndex && this.checkRowCellFocus(target)) ||
+        if (this.matrix.inValid(val) || (!force && oRowIndex === rowIndex && oCellIndex === cellIndex &&
+            this.checkRowCellFocus(target) && !target.querySelector('.e-focus.e-checkbox')) ||
             (!parentsUntil(e.target as Element, literals.rowCell) && !parentsUntil(e.target as Element, 'e-groupcaption')
             && !parentsUntil(e.target as Element, 'e-recordpluscollapse') && !parentsUntil(e.target as Element, 'e-recordplusexpand')
             && !parentsUntil(e.target as Element, 'e-detailrowcollapse') && !parentsUntil(e.target as Element, 'e-detailrowexpand')

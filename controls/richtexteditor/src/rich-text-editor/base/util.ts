@@ -1,7 +1,7 @@
 /**
  * Defines util methods used by Rich Text Editor.
  */
-import { isNullOrUndefined as isNOU, addClass, removeClass, L10n, selectAll, createElement, isNullOrUndefined } from '@syncfusion/ej2-base';
+import { isNullOrUndefined as isNOU, addClass, removeClass, L10n, selectAll, createElement, isNullOrUndefined, closest } from '@syncfusion/ej2-base';
 import { detach, SanitizeHtmlHelper, extend } from '@syncfusion/ej2-base';
 import * as classes from '../base/classes';
 import * as CONSTANT from '../base/constant';
@@ -14,6 +14,7 @@ import { toolsLocale, fontNameLocale, formatsLocale, numberFormatListLocale, bul
 import { IRichTextEditor } from '../base/interface';
 import { ISetToolbarStatusArgs } from './interface';
 import { IToolbarItems, IDropDownItemModel, IToolbarItemModel, BeforeSanitizeHtmlArgs, IToolsItemConfigs } from '../../common/interface';
+import { swapCaptionClassName, swapImageClassName, layoutMap } from './../../common/util';
 
 const undoRedoItems: string[] = ['Undo', 'Redo'];
 const inlineNode: string[] = ['a', 'abbr', 'acronym', 'audio', 'b', 'bdi', 'bdo', 'big', 'br', 'button',
@@ -406,18 +407,6 @@ export function toObjectLowerCase(obj: { [key: string]: IToolsItemConfigs }): { 
     return convertedValue;
 }
 /**
- * Re-escapes HTML5 raw-text element tags that appear as text content after decoding.
- * Prevents the browser parser from consuming them as special tokens and truncating content.
- *
- * @param {string} value - The decoded HTML string.
- * @returns {string} - The string with raw-text element tags re-escaped as HTML entities.
- * @hidden
- */
-export function reEscapeRawTextTags(value: string): string {
-    const rawTextTagPattern: RegExp = /<(\/?)(head|title|script|style|textarea|xmp|plaintext|noframes|noscript)([\s>/])/gi;
-    return value.replace(rawTextTagPattern, '&lt;$1$2$3');
-}
-/**
  * @param {string} value - specifies the string value
  * @param {IRichTextEditor} rteObj - specifies the rte object
  * @returns {string} - returns the string
@@ -513,16 +502,15 @@ export function formatRTEContent(value: string, rteObj?: IRichTextEditor): strin
         }
         const imageElm: NodeListOf<HTMLElement> = resultElm.querySelectorAll('img');
         for (let i: number = 0; i < imageElm.length; i++) {
-            if ((imageElm[i as number] as HTMLImageElement).classList.contains('e-rte-image-unsupported')) {
-                continue; // Should not add the class if the image is Broken.
-            }
-            if (!imageElm[i as number].classList.contains(classes.CLS_RTE_IMAGE)) {
-                imageElm[i as number].classList.add(classes.CLS_RTE_IMAGE);
-            }
-            if (!(imageElm[i as number].classList.contains(classes.CLS_IMGINLINE) ||
-                imageElm[i as number].classList.contains(classes.CLS_IMGBREAK)) &&
-                !(imageElm[i as number].classList.contains('e-imgleft') || imageElm[i as number].classList.contains('e-imgright') || imageElm[i as number].classList.contains('e-imgcenter'))) {
-                imageElm[i as number].classList.add(classes.CLS_IMGINLINE);
+            const img: HTMLElement = imageElm[i as number] as HTMLElement;
+            if (img.classList.contains('e-rte-image-unsupported')) { continue; }
+            if (!img.classList.contains(classes.CLS_RTE_IMAGE)) { img.classList.add(classes.CLS_RTE_IMAGE); }
+            const wrap: HTMLElement = (closest(img, '.e-img-caption') as HTMLElement) || (closest(img, '.e-rte-img-caption') as HTMLElement) ||
+                (closest(img, '.e-caption-inline') as HTMLElement);
+            if (wrap) {
+                swapCaptionClassName(wrap, img, layoutMap);
+            } else {
+                swapImageClassName(img, layoutMap);
             }
         }
     }
@@ -564,10 +552,12 @@ export function isEditableValueEmpty(value: string): boolean {
  * @hidden
  */
 export function decode(value: string): string {
+    const rawTextTagPattern: RegExp = /<(\/?)(head|title|script|style|textarea|xmp|plaintext|noframes|noscript)([\s>/])/gi;
     return value.replace(/&amp;/g, '&').replace(/&amp;lt;/g, '<')
         .replace(/&lt;/g, '<').replace(/&amp;gt;/g, '>')
         .replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ')
-        .replace(/&amp;nbsp;/g, ' ').replace(/&quot;/g, '');
+        .replace(/&amp;nbsp;/g, ' ').replace(/&quot;/g, '')
+        .replace(rawTextTagPattern, '&lt;$1$2$3');
 }
 
 /**
@@ -684,4 +674,16 @@ export function updateDropDownFontFormatLocale(self: IRichTextEditor): void {
         commonModel.bulletFormatList[i as number].text = getLocaleFontFormat(
             self, bulletFormatListLocale, commonModel.bulletFormatList[i as number]);
     });
+}
+
+/**
+ * @param {HTMLElement} imgElem - target image element
+ * @returns {boolean} - returns matched class or returns empty string
+ * @hidden
+ */
+export function isElementContainsAllowedClass(imgElem: HTMLElement): string {
+    const matchedClass: string = ['e-img-inline', 'e-img-break', 'e-img-left',
+        'e-img-right', 'e-img-center', 'e-img-left-wrap', 'e-img-right-wrap']
+        .find((c: string) => imgElem.classList.contains(c));
+    return matchedClass || '';
 }

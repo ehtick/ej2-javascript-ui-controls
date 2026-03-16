@@ -123,7 +123,7 @@ describe('Undo redo ->', () => {
             helper.click('#spreadsheet_undo');
             expect(helper.getInstance().sheets[0].rows[4].cells[2].style.textDecoration).toBe('underline line-through');
             helper.click('#spreadsheet_redo');
-            expect(helper.getInstance().sheets[0].rows[4].cells[2].style.textDecoration).toBe('underline');
+            expect(helper.getInstance().sheets[0].rows[4].cells[2].style.textDecoration).toBe('line-through');
             done();
         });
 
@@ -138,8 +138,8 @@ describe('Undo redo ->', () => {
             expect(helper.getInstance().sheets[0].rows[5].cells[2].style.textDecoration).toBe('underline line-through');
             expect(helper.getInstance().sheets[0].rows[6].cells[3].style.textDecoration).toBe('underline line-through');
             helper.click('#spreadsheet_redo');
-            expect(helper.getInstance().sheets[0].rows[5].cells[2].style.textDecoration).toBe('underline');
-            expect(helper.getInstance().sheets[0].rows[6].cells[3].style.textDecoration).toBe('underline');
+            expect(helper.getInstance().sheets[0].rows[5].cells[2].style.textDecoration).toBe('line-through');
+            expect(helper.getInstance().sheets[0].rows[6].cells[3].style.textDecoration).toBe('line-through');
             done();
         });
 
@@ -704,6 +704,34 @@ describe('Undo redo ->', () => {
             helper.click('#spreadsheet_redo');
             expect(image.style.top).toEqual('139px');
             expect(image.style.left).toEqual('391px');
+            done();
+        });
+    });
+
+    describe('EJ2-1002806- Underline style fails to reapply the stored value in redo operation', () => {
+        beforeAll((done: Function) => {
+            helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] }, done);
+        });
+        afterAll(() => {
+            helper.invoke('destroy');
+        });
+        
+        it('Apply cell style by ribbon toggle & perform undo redo operation', (done: Function) => {
+            helper.invoke('selectRange', ['E5']);
+            helper.getElement('#' + helper.id + '_underline').click();
+            helper.getElement('#' + helper.id + '_line-through').click();
+            helper.getElement('#' + helper.id + '_underline').click();
+            helper.getElement('#' + helper.id + '_underline').click();
+            helper.click('#spreadsheet_undo');
+            helper.click('#spreadsheet_undo');
+            helper.click('#spreadsheet_undo');
+            helper.click('#spreadsheet_undo');
+            helper.click('#spreadsheet_redo');
+            helper.click('#spreadsheet_redo');
+            helper.click('#spreadsheet_redo');
+            expect(helper.getInstance().sheets[0].rows[4].cells[4].style.textDecoration).toBe('line-through');
+            helper.click('#spreadsheet_redo');
+            expect(helper.getInstance().sheets[0].rows[4].cells[4].style.textDecoration).toBe('underline line-through');
             done();
         });
     });

@@ -315,6 +315,11 @@ export class WrapText {
     public destroy(): void {
         this.removeEventListener();
         if (this.wrapCell) { this.wrapCell.remove(); this.wrapCell = null; }
+        if (this.parent && this.parent.element) {
+            this.parent.element.querySelectorAll('.e-wrap-content').forEach((wrap: Element) => {
+                wrap.remove();
+            });
+        }
         this.parent = null;
     }
 }

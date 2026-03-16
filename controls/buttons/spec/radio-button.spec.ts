@@ -390,7 +390,6 @@ describe('RadioButton', () => {
             radio.destroy();
             inputEl.remove();
         });
-
     });
 
     describe('RadioButton in HTML5 forms', () => {

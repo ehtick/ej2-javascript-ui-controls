@@ -55,6 +55,12 @@
     }
   }
 
+  #{&}.e-datetimepicker {
+    @if $skin-name == 'material' or $skin-name == 'material-dark' or $skin-name == 'Material3' {
+      --dummy-style: true;
+    }
+  }
+
   .e-datetime-wrapper:not(.e-outline) {
     #{if(&, '&', '*')}.e-rtl .e-input-group-icon.e-time-icon {
       margin: $datetime-time-rtl-icon-margin;

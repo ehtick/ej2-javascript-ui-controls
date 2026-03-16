@@ -122,7 +122,11 @@ export class RowRenderer<T> implements IRowRenderer<T> {
         }
         const selIndex: number[] = this.parent.getSelectedRowIndexes();
         if (row.isDataRow) {
-            row.isSelected = selIndex.indexOf(row.index) > -1 || value;
+            const primaryKey: string = this.parent.getPrimaryKeyFieldNames()[0];
+            row.isSelected = this.parent.isPersistSelection && this.parent.groupSettings.columns.length &&
+                this.parent.groupSettings.enableLazyLoading ?
+                !isNullOrUndefined(this.parent.selectionModule.selectedRowState[row.data[`${primaryKey}`]]) :
+                selIndex.indexOf(row.index) > -1 || value;
         }
         let currentViewData: Object[] = this.parent.currentViewData;
         if (row.isDataRow && this.parent.isCheckBoxSelection

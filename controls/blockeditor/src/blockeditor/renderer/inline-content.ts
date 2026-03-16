@@ -98,8 +98,8 @@ export class InlineContentInsertionModule {
     }
 
     private handleInlineContentInsertion(args: MentionChangeEventArgs): void {
-        args.e.preventDefault();
-        args.e.stopPropagation();
+        // args.e.preventDefault();
+        // args.e.stopPropagation();
         this.editor.blockManager.observer.notify('inlineContentInsertion', args);
     }
 

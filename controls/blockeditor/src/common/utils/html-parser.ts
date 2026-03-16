@@ -1,14 +1,15 @@
 import { isNullOrUndefined } from '@syncfusion/ej2-base';
 import { BaseChildrenProp, BaseStylesProp, BlockModel, ContentModel, IHeadingBlockSettings, IImageBlockSettings,
     ILinkContentSettings, StyleModel, Styles, TableCellModel, TableColumnModel, ITableBlockSettings, TableRowModel} from '../../models/index';
-import { escapeHTML } from './security';
+import { escapeHTML, sanitizeHelper } from './security';
 import * as constants from '../../common/constant';
 import { FormattingHelper } from './isformatted';
-import { BlockFactory } from '../../block-manager/services/index';
+import { BlockFactory } from '../../block-manager/services/block-factory';
 import { BlockType, ContentType } from '../../models/enums';
 import { TableClipboardPayload } from '../../block-manager/base/interface';
 import { buildTableClipboardPayload, extractPlainTextMatrixFromPayload, htmlTableFromMatrix } from './clipboard-utils';
 import { focusAllCellsInTable, removeFocusFromAllCells } from './table-utils';
+import { LinkData } from '../interface';
 
 type ListStack = { type: 'ul' | 'ol'; items: string[]; indent: number }
 
@@ -31,24 +32,31 @@ export function convertHtmlElementToBlocks(container: HTMLElement, keepFormat: b
             if (tag === 'UL' || tag === 'OL') {
                 const isOrdered: boolean = tag === 'OL';
                 const children: HTMLElement[] = Array.from(element.children) as HTMLElement[];
-                for (const li of children) {
-                    if (li.tagName !== 'LI') { continue; }
+                for (const child of children) {
+                    if (child.tagName === 'LI') {
+                        // Create list item block from <li> content
+                        blocks.push(
+                            BlockFactory.createBlockFromPartial({
+                                blockType: isOrdered ? BlockType.NumberedList : BlockType.BulletList,
+                                content: convertInlineElementsToContentModels(child, keepFormat),
+                                indent: indentLevel
+                            })
+                        );
 
-                    blocks.push(
-                        BlockFactory.createBlockFromPartial({
-                            blockType: isOrdered ? BlockType.NumberedList : BlockType.BulletList,
-                            content: convertInlineElementsToContentModels(li as HTMLElement, keepFormat),
-                            indent: indentLevel
-                        })
-                    );
+                        // Recurse into **nested lists** inside this <li>
+                        Array.from(child.children).forEach((nested: HTMLElement) => {
+                            if (nested.tagName === 'UL' || nested.tagName === 'OL') {
+                                processNode(nested, indentLevel + 1);
+                            }
+                        });
+                    }
+
+                    if (child.tagName === 'UL' || child.tagName === 'OL') {
+                        // Recurse into **nested lists** if any, inside this <ul>
+                        processNode(child, indentLevel + 1);
+                    }
+
                     isBlockProcessed = true;
-
-                    // Handle nested lists within <li>
-                    Array.from(li.children).forEach((child: HTMLElement) => {
-                        if (child.tagName === 'UL' || child.tagName === 'OL') {
-                            processNode(child, indentLevel + 1);
-                        }
-                    });
                 }
             }
             else if (tag.match(/^H[1-4]$/)) {
@@ -75,16 +83,21 @@ export function convertHtmlElementToBlocks(container: HTMLElement, keepFormat: b
                 isBlockProcessed = true;
             }
             else if (tag === 'IMG') {
-                const img: HTMLImageElement = element as HTMLImageElement;
-                blocks.push(
-                    BlockFactory.createImageBlock(
-                        {},
-                        {
-                            src: img.src,
-                            altText: img.alt
-                        }
-                    )
-                );
+                const sanitizedHtml: string = sanitizeHelper(element.outerHTML, true);
+                const temp: HTMLElement = document.createElement('div');
+                temp.innerHTML = sanitizedHtml;
+                const img: HTMLImageElement = temp.firstChild as HTMLImageElement;
+                if (img) {
+                    blocks.push(
+                        BlockFactory.createImageBlock(
+                            {},
+                            {
+                                src: img.src,
+                                altText: img.alt
+                            }
+                        )
+                    );
+                }
                 isBlockProcessed = true;
             }
             else if (tag === 'PRE' && element.querySelector('code')) {
@@ -136,9 +149,8 @@ export function convertHtmlElementToBlocks(container: HTMLElement, keepFormat: b
         if (!isBlockProcessed && element.nodeType === Node.ELEMENT_NODE) {
             const tagName: string = (element as HTMLElement).tagName;
             // Skip traversing children for elements that are processed as whole units
-            const validBlockElements: boolean = ['UL', 'OL', 'LI', 'BLOCKQUOTE', 'PRE', 'HR', 'IMG', 'TABLE'].indexOf(tagName) !== -1 ||
-                                       !isNullOrUndefined(tagName.match(/^H[1-4]$/));
-            if (!validBlockElements) {
+            const ignorableNestedChildren: boolean = ['PRE', 'HR', 'IMG', 'TABLE'].indexOf(tagName) !== -1;
+            if (!ignorableNestedChildren) {
                 Array.from(element.childNodes).forEach(traverseDOM);
             }
         }
@@ -173,6 +185,26 @@ export function convertInlineElementsToContentModels(element: HTMLElement, keepF
         }
 
         const el: HTMLElement = node as HTMLElement;
+
+        if (el.classList.contains('e-mention-chip')) {
+            let chipModel: ContentModel;
+            if (el.classList.contains('e-user-chip')) {
+                const userId: string = el.getAttribute('data-user-id');
+                chipModel = BlockFactory.createMentionContent(
+                    { content: el.textContent },
+                    { userId }
+                );
+            } else {
+                const labelId: string = el.getAttribute('data-label-id');
+                chipModel = BlockFactory.createLabelContent(
+                    { content: el.textContent },
+                    { labelId }
+                );
+            }
+
+            content.push(chipModel);
+            return;
+        }
 
         if (el.tagName === 'UL' || el.tagName === 'OL') {
             return;
@@ -236,9 +268,9 @@ export function convertInlineElementsToContentModels(element: HTMLElement, keepF
 
 export function extractStylesFromElement(
     element: HTMLElement,
-    styles: Styles = {} as any
+    styles: (Styles | LinkData) = {} as any
 ): Styles {
-    const newStyles: Styles = { ...styles };
+    const newStyles: Styles = { ...styles } as any;
 
     const isBold: boolean = FormattingHelper.isBold(element);
     if (isBold) {
@@ -274,8 +306,47 @@ export function extractStylesFromElement(
     if (isInlineCode) {
         newStyles.inlineCode = isInlineCode;
     }
+    const isUppercase: boolean = element.style.textTransform === 'uppercase';
+    if (isUppercase) {
+        newStyles.uppercase = isUppercase;
+    }
+    const isLowercase: boolean = element.style.textTransform === 'lowercase';
+    if (isLowercase) {
+        newStyles.lowercase = isLowercase;
+    }
+    const isLink: boolean = FormattingHelper.isLink(element);
+    if (isLink) {
+        (newStyles as LinkData).url = FormattingHelper.getLinkUrl(element);
+    }
 
     return newStyles;
+}
+
+/**
+ * Detects all active formats for a specific text node.
+ * Traverses upward through DOM to find format-containing ancestors.
+ *
+ * @param {Text} node - The text node to analyze
+ * @returns {Styles} - All detected formats on this node
+ * @hidden
+ */
+export function detectFormatsForTextNode(node: Node): Styles {
+    const merged: Styles = {};
+    let currentElement: HTMLElement = node.parentElement;
+
+    while (currentElement) {
+        // Stop at block boundary (element with id)
+        if (currentElement.id) {
+            break;
+        }
+
+        const newStyles: Styles = extractStylesFromElement(currentElement, merged);
+        Object.assign(merged, newStyles);
+
+        currentElement = currentElement.parentElement;
+    }
+
+    return merged;
 }
 
 export function parseHtmlTableToMatrix(root: HTMLElement): { matrix: HTMLElement[][]; hasHeader: boolean } {
@@ -458,8 +529,11 @@ export function renderBlockAsHTML(block: BlockModel, editorId?: string): string 
     }
     case 'paragraph':
         return renderElementWithWrapper('p', contentHTML);
-    case 'quote':
-        return renderElementWithWrapper('blockquote', contentHTML);
+    case 'quote': {
+        const children: BlockModel[] = (block.properties as BaseChildrenProp).children;
+        const childrenHTML: string = children && children.map((child: BlockModel) => renderBlockAsHTML(child)).join('') || '';
+        return renderElementWithWrapper('blockquote', childrenHTML);
+    }
     case 'callout': {
         const children: BlockModel[] = (block.properties as BaseChildrenProp).children;
         const childrenHTML: string = children && children.map((child: BlockModel) => renderBlockAsHTML(child)).join('') || '';
@@ -497,7 +571,7 @@ export function renderBlockAsHTML(block: BlockModel, editorId?: string): string 
     }
 }
 
-function renderElementWithWrapper(tagName: string, content: string, className?: string): string {
+export function renderElementWithWrapper(tagName: string, content: string, className?: string): string {
     const classAttr: string = className ? ` class="${className}"` : '';
     return `<${tagName}${classAttr}>${content}</${tagName}>`;
 }

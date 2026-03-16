@@ -87,6 +87,7 @@ export class DiagramEventHandler {
     public touchArgs: TouchArgs = undefined;
     /**   @private  */
     public focus: boolean = false;
+
     /** Flag indicating whether Shift/ctrl is currently pressed */
     /** @private */
     public isShiftOrCtrlKeyPressed: boolean = false;
@@ -97,6 +98,8 @@ export class DiagramEventHandler {
 
     private set action(action: Actions) {
         if (action !== this.currentAction) {
+            // 1000270: random exception while drawing connector from port draw
+            // restrict resetting the tool while a connector draw operation is still in progress
             if (this.currentAction === 'PortDraw' && !this.inAction) {
                 this.diagram.tool &= ~DiagramTools.DrawOnce;
                 //EJ2-70550 - Connector disconnected from source and target while dragging mutliple selected element
@@ -529,8 +532,8 @@ export class DiagramEventHandler {
                 }
             }, 500);
         }
-        const ctrlKey: boolean = this.isMetaKey(evt);
-        if (ctrlKey || evt.shiftKey) {
+        const isCtrlKey: boolean = this.isMetaKey(evt);
+        if (isCtrlKey || evt.shiftKey) {
             this.isShiftOrCtrlKeyPressed = true;
         }
         // EJ2-57541 - Added the below code to check whether diagram tool is instance of node drawing tool or connector drawing tool.
@@ -1005,7 +1008,7 @@ export class DiagramEventHandler {
                         this.tool instanceof PolyLineDrawingTool ||
                         this.tool instanceof PolygonDrawingTool) {
                         this.tool.mouseMove(this.eventArgs);
-                    } else if (touches && this.tool instanceof ZoomPanTool) {
+                    } else if (touches && this.tool && this.tool instanceof ZoomPanTool) {
                         this.tool.mouseDown(this.eventArgs);
                     }
                     this.updateCursor();
@@ -1120,6 +1123,7 @@ export class DiagramEventHandler {
             clearInterval(this.timeOutValue as number);
         } else if (autoScrollPosition) {
             if ((this.tool instanceof NodeDrawingTool || this.tool instanceof ConnectorDrawingTool
+                || this.tool instanceof PolyLineDrawingTool || this.tool instanceof FreeHandTool || this.tool instanceof PolygonDrawingTool
                 || this.tool instanceof MoveTool || this.tool instanceof ResizeTool
                 || this.tool instanceof SelectTool || this.tool instanceof ConnectTool) && this.inAction) {
                 // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -1296,7 +1300,7 @@ export class DiagramEventHandler {
                         // 948882: Improper Selection Behavior When Node Drag Constraint is Disabled
                         if (this.tool && this.tool instanceof SelectTool) {
                             this.tool.mouseUp(this.eventArgs, evt.button);
-                        } else if(this.tool) {
+                        } else if (this.tool) {
                             this.tool.mouseUp(this.eventArgs);
                         }
                         if (this.diagram.constraints & DiagramConstraints.AutomaticPortCreation && evt.ctrlKey) {
@@ -1533,7 +1537,7 @@ export class DiagramEventHandler {
                     offset = this.currentPosition.y - (swimlaneNode.wrapper.bounds.y +
                              ((shape as SwimLane).hasHeader ? shape.header.height : 0));
                 }
-                const phases: PhaseModel = { id: randomId(), offset: offset, header: { annotation: {
+                const phases: PhaseModel = { id: randomId(), initialOffset: offset, offset: offset, header: { annotation: {
                     content: actualShape.phases[0].header  === undefined ? 'Phase' : actualShape.phases[0].header.annotation.content,
                     style: actualShape.phases[0].header === undefined ? {} : actualShape.phases[0].header.annotation.style
                 } },
@@ -1735,7 +1739,7 @@ export class DiagramEventHandler {
                 const verticalOffset: number = this.diagram.scroller.verticalOffset;
                 let change: number = up ? 10 : -10;
                 //1010829: Different scroll speed between Chrome and Firefox in Diagram
-                // Normalize Firefox wheel delta (DOMMouseWheel / detail) so scroll speed matches other browsers. Map Firefox "detail" to a uniform step
+                //Normalize Firefox wheel delta (DOMMouseWheel / detail) so scroll speed matches other browsers. Map Firefox "detail" to a uniform step
                 if (Browser && Browser.info && Browser.info.name === 'mozilla') {
                     // prefer legacy detail
                     const detail: number = (evt as any).detail || 0;
@@ -2070,7 +2074,7 @@ export class DiagramEventHandler {
         const rulerSize: Size = getRulerSize(this.diagram);
         let movingPosition: string;
         const autoScrollBorder: MarginModel = this.diagram.scrollSettings.autoScrollBorder;
-        if (Browser.info.name === 'mozilla') {
+        if (Browser && Browser.info && Browser.info.name === 'mozilla') {
             if (this.diagram.scroller.viewPortWidth === 0) {
                 const bounds: ClientRect | DOMRect = document.getElementById(this.diagram.element.id).getBoundingClientRect();
                 if (bounds.width !== this.diagram.scroller.viewPortWidth) {
@@ -2098,6 +2102,7 @@ export class DiagramEventHandler {
         const position: string = option;
         const canAutoScroll: boolean = true;
         if ((this.tool instanceof NodeDrawingTool || this.tool instanceof ConnectorDrawingTool
+            || this.tool instanceof PolyLineDrawingTool || this.tool instanceof FreeHandTool || this.tool instanceof PolygonDrawingTool
             || this.tool instanceof MoveTool || this.tool instanceof ResizeTool
             || this.tool instanceof SelectTool || this.tool instanceof ConnectTool) && this.inAction) {
             // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -2755,7 +2760,7 @@ export class DiagramEventHandler {
                     if (!parentNode || (parentNode && parentNode.shape.type !== 'SwimLane')) {
                         this.diagram.updateDiagramObject(node);
                     }
-                    isGroupAction = updateCanvasBounds(this.diagram, node, this.currentPosition, boundsUpdate);
+                    isGroupAction = updateCanvasBounds(this.diagram, node, this.currentPosition, boundsUpdate, isGroupAction);
                     this.diagram.updateSelector();
                     if (node.isLane || node.isPhase) {
                         this.diagram.clearSelection();

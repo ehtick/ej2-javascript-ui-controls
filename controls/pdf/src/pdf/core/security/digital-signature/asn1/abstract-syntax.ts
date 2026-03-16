@@ -76,12 +76,12 @@ export abstract class _PdfAbstractSyntaxElement {
             return 1;
         }
         let n: number = tagNumber;
-        let i: number = 0;
+        let digits: number = 0;
         while (n !== 0) {
             n >>>= 7;
-            i++;
+            digits++;
         }
-        return i;
+        return 1 + digits;
     }
     _toBytes(): Uint8Array {
         const buffers: Uint8Array[] = this._toBuffers();
@@ -91,13 +91,6 @@ export abstract class _PdfAbstractSyntaxElement {
         for (const buffer of buffers) {
             result.set(buffer, offset);
             offset += buffer.length;
-        }
-        if (result.length >= 4 && result[0] === 48 && result[1] === 130) {
-            const actualContentLength: number = result.length - 4;
-            const lengthHigh: number = (actualContentLength >> 8) & 0xFF;
-            const lengthLow: number = actualContentLength & 0xFF;
-            result[2] = lengthHigh;
-            result[3] = lengthLow;
         }
         return result;
     }
@@ -337,21 +330,16 @@ export abstract class _PdfAbstractSyntaxElement {
         return undefined;
     }
     _sortCanonically(elements: _PdfAbstractSyntaxElement[]): _PdfAbstractSyntaxElement[] {
-        return elements.sort((a: _PdfAbstractSyntaxElement, b: _PdfAbstractSyntaxElement): number => {
-            const aClassOrder: number = a._tagClass as number;
-            const bClassOrder: number = b._tagClass as number;
-            if (aClassOrder !== bClassOrder) {
-                return aClassOrder - bClassOrder;
-            }
-            const aBytes: Uint8Array = a._toBytes();
-            const bBytes: Uint8Array = b._toBytes();
-            const minLength: number = Math.min(aBytes.length, bBytes.length);
-            for (let i: number = 0; i < minLength; i++) {
-                if (aBytes[<number>i] !== bBytes[<number>i]) {
-                    return aBytes[<number>i] - bBytes[<number>i];
+        return elements.sort((value1: _PdfAbstractSyntaxElement, value2: _PdfAbstractSyntaxElement) => {
+            const element1: Uint8Array = value1._toBytes();
+            const element2: Uint8Array = value2._toBytes();
+            const n: number = Math.min(element1.length, element2.length);
+            for (let i: number = 0; i < n; i++) {
+                if (element1[<number>i] !== element2[<number>i]) {
+                    return element1[<number>i] - element2[<number>i];
                 }
             }
-            return aBytes.length - bBytes.length;
+            return element1.length - element2.length;
         });
     }
     _isUniquelyTagged(elements: _PdfAbstractSyntaxElement[]): boolean {
@@ -702,5 +690,11 @@ export abstract class _PdfAbstractSyntaxElement {
     }
     _toEncodedBytes(): Uint8Array {
         return this._toBytes();
+    }
+    _isTagged(): boolean {
+        return this._tagClass === _TagClassType.context;
+    }
+    _isConstructed(): boolean {
+        return this._construction === _ConstructionType.constructed;
     }
 }

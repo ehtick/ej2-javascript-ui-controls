@@ -26,87 +26,92 @@ import { CalendarContext } from './calendar-context';
  */
 
 export interface IGanttData {
-    /** Defines the child records of task. */
+    /** Represents the child records of the task, which include its subtasks or hierarchical breakdown within the Gantt chart structure. */
     childRecords?: IGanttData[];
-    /** Defines the expanded state of task. */
+    /** Indicates whether the task is expanded in the Gantt chart view. */
     expanded?: boolean;
-    /** Defines the properties which used in internal calculations. */
+    /** Contains internal properties used for Gantt chart calculations and rendering. */
     ganttProperties?: ITaskData;
-    /** Defines gantt data has child records or not. */
+    /** Indicates whether the task has child records (subtasks) within its hierarchy. */
     hasChildRecords?: boolean;
-    /** Defines the index of task. */
+    /** Specifies the index position of the task in the data collection. */
     index?: number;
-    /** Defines the level of task. */
+    /** Specifies the hierarchical level of the task within the Gantt chart structure (e.g., 0 for root tasks, 1 for subtasks). */
     level?: number;
-    /** Defines the direct parent item of task. */
+    /** Represents the direct parent item of the task. */
     parentItem?: IParent;
-    /** Defines the parent unique id of task. */
+    /** Specifies the unique identifier of the parent task, used to maintain hierarchy. */
     parentUniqueID?: string;
-    /** Defines the data which specified in data source.
+    /** Represents the original data provided in the data source.
      *
      * @isGenericType true
      */
     taskData?: Object;
-    /** Defines the unique id of task. */
+    /** Specifies the unique identifier of the task. */
     uniqueID?: string;
-    /** Defines the indicators value of task. */
+    /** Represents the indicator values associated with the task (e.g., milestones, custom markers). */
     indicators?: IIndicator[];
-    /** Defines the delete . */
+    /** Indicates whether the task is marked for deletion. */
     isDelete?: boolean;
-    /** Defines the critical path of task. */
+    /** Indicates whether the task lies on the critical path. */
     isCritical?: boolean;
-    /** Defines the slack value of critical path task. */
+    /** Specifies the slack value for a critical path task, representing the amount of time the task can be delayed without affecting the overall project completion date. */
     slack?: string | number;
 }
+
+
 export interface IGanttTaskInfo {
-    /** The baseline width of the task. */
+    /** Specifies the baseline width of the task. */
     baselineWidth?: number;
-    /** The baseline left position of the task. */
+    /** Specifies the baseline left position of the task. */
     baselineLeft?: number;
-    /** Indicates whether the task is on the critical path. */
+    /** Specifies whether the task is on the critical path. */
     isCritical?: boolean;
-    /** The slack value for a critical path task. */
+    /** Specifies the slack value for a critical path task. */
     slack?: string | number;
-    /** The width of the task's progress bar. */
+    /** Specifies the width of the task's progress bar. */
     progressWidth?: number;
-    /** The left position of an auto-scheduled task. */
+    /** Specifies the left position of an auto-scheduled task. */
     autoTaskLeft?: number;
-    /** The width of an auto-scheduled task. */
+    /** Specifies the width of an auto-scheduled task. */
     autoTaskWidth?: number;
-    /** The left position of a manually scheduled task. */
+    /** Specifies the left position of a manually scheduled task. */
     manualTaskLeft?: number;
-    /** The width of a manually scheduled task. */
+    /** Specifies the width of a manually scheduled task. */
     manualTaskWidth?: number;
-    /** The segments of the task. */
+    /** Specifies the segments of the task. */
     segments?: ITaskSegment[];
-    /** The Work Breakdown Structure (WBS) code for the task. */
+    /**
+     * Specifies the Work Breakdown Structure (WBS) code for the task.
+     * The WBS code represents the hierarchical position of the task in the project structure.
+     * Automatically generated if `enableWBS` is true and no custom value is provided.
+     */
     wbsCode?: string;
-    /** The WBS predecessor code for the task. */
+    /** Specifies the WBS predecessor code for the task, which identifies the preceding task in the Work Breakdown Structure. This helps define task dependencies and maintain proper sequencing in project planning. */
     wbsPredecessor?: string;
-    /** Indicates whether the task is auto-scheduleable. */
+    /** Specifies whether the task is auto-schedulable. */
     isAutoSchedule?: boolean;
-    /** The left position of an auto-scheduled taskbar within a manually scheduled parent task. */
+    /** Specifies the left position of an auto-scheduled taskbar within a manually scheduled parent task. */
     manualTaskAutoLeft?: number;
-    /** The width of an auto-scheduled taskbar within a manually scheduled parent task. */
+    /** Specifies the width of an auto-scheduled taskbar within a manually scheduled parent task. */
     manualTaskAutoWidth?: number;
-    /** The start date of an auto-scheduled taskbar within a manually scheduled parent task. */
+    /** Specifies the start date of an auto-scheduled taskbar within a manually scheduled parent task. */
     manualTaskAutoStartDate?: Date;
-    /** The end date of an auto-scheduled taskbar within a manually scheduled parent task. */
+    /** Specifies the end date of an auto-scheduled taskbar within a manually scheduled parent task. */
     manualTaskAutoEndDate?: Date;
 }
 export interface IParent {
-    /** Defines the unique id of task. */
+    /** Represents the unique identifier of the parent task. */
     uniqueID?: string;
-    /** Defines the expanded state of task. */
+    /** Indicates whether the parent task is expanded in the Gantt chart view. */
     expanded?: boolean;
-    /** Defines the level of task. */
+    /** Specifies the hierarchical level of the parent task within the Gantt chart structure. */
     level?: number;
-    /** Defines the id of task. */
+    /** Represents the task ID of the parent task. */
     taskId?: string;
-    /** Defines the index of task. */
+    /** Specifies the index position of the parent task in the data collection. */
     index?: number;
 }
-
 export interface ITaskData {
     /** Defines the baselineleft of task. */
     baselineLeft?: number;
@@ -134,7 +139,7 @@ export interface ITaskData {
     left?: number;
     /** Defines the critical path of task. */
     isCritical?: boolean;
-    /** Defines the slack value of critical path task. */
+    /** Defines the slack value for a critical path task, representing the amount of time the task can be delayed without impacting the overall project schedule. */
     slack?: string | number;
     /** Defines the progress of task. */
     progress?: number;
@@ -192,15 +197,15 @@ export interface ITaskData {
     eOverlapIndex?: number;
     /** Defines whether overlapped with other taskbar or not. */
     eOverlapped?: boolean;
-    /** Defines task segments. */
+    /** Defines task segments, which represent portions of a task split into smaller, manageable intervals for better scheduling and tracking. */
     segments?: ITaskSegment[];
     /**
      * Defines shared task unique ids.
      */
     sharedTaskUniqueIds?: string[];
-    /** Defines the wbs value for each task */
+    /** Defines the WBS (Work Breakdown Structure) code for each task, providing a unique identifier that organizes tasks hierarchically for better project visibility and management. */
     wbsCode?: string;
-    /** Defines the wbs predecessor value for each task */
+    /** Defines the WBS predecessor code for each task, indicating its preceding task in the hierarchy to establish dependencies and maintain proper sequencing in project planning. */
     wbsPredecessor?: string;
     /** Defines the constraint date of the task. */
     constraintDate?: Date;
@@ -212,588 +217,682 @@ export interface ITaskData {
     calendarId?: string
 }
 
+
 export interface ITaskSegment {
-    /** Defines start date of the segment */
+    /** Specifies the start date of the segment. */
     startDate?: Date;
-    /** Defines end date of the segment */
+    /** Specifies the end date of the segment. */
     endDate?: Date;
-    /** Defines the duration of the segment. */
+    /** Represents the duration of the segment in days or hours. */
     duration?: number;
-    /** Defines the width of a segment. */
+    /** Defines the visual width of the segment in the Gantt chart. */
     width?: number;
-    /** Defines the progress width of a segment. */
+    /** Defines the width representing progress within the segment. */
     progressWidth?: number;
-    /** Defines the left position of a segment. */
+    /** Specifies the left position of the segment in the Gantt chart timeline. */
     left?: number;
-    /** Defines the segment index */
+    /** Indicates the index of the segment within the task. */
     segmentIndex?: number;
-    /** Defines the duration between 2 segments */
+    /** Represents the gap or offset duration between two segments. */
     offsetDuration?: number;
-    /** Set for displaying progress in split taskbar */
+    /** Indicates whether progress should be displayed in the split taskbar. */
     showProgress?: boolean;
 }
-export interface IWorkTimelineRanges {
-    /** Defines start date of task */
-    startDate?: Date;
-    /** Defines end date of task */
-    endDate?: Date;
-    /** Defines left value of resource usage/resource histogram. */
-    left?: number;
-    /** Defines width of the resource usage/resource histogram. */
-    width?: number;
-    /** Defines height of the resource usage/resource histogram. */
-    height?: number;
-    /** Defines per day work. */
-    workPerDay?: number;
-    /** Defines whether resource is over allocate or not. */
-    isOverAllocated?: boolean;
-    /** Defines the task. */
-    task?: IGanttData;
 
-    /** Defines start date of task */
+export interface IWorkTimelineRanges {
+    /** Specifies the start date of the task. */
+    startDate?: Date;
+    /** Specifies the end date of the task. */
+    endDate?: Date;
+    /** Represents the left position value of the resource usage or resource histogram in the Gantt chart. */
+    left?: number;
+    /** Defines the width of the resource usage or resource histogram. */
+    width?: number;
+    /** Defines the height of the resource usage or resource histogram. */
+    height?: number;
+    /** Indicates the amount of work allocated per day for the resource. */
+    workPerDay?: number;
+    /** Indicates whether the resource is over-allocated. */
+    isOverAllocated?: boolean;
+    /** References the associated task details in the Gantt chart. */
+    task?: IGanttData;
+    /** Specifies the range start date for resource usage. */
     from?: Date;
-    /** Defines start date of task */
+    /** Specifies the range end date for resource usage. */
     to?: Date;
 }
 
 export interface IGanttColumn {
-    /** Defines column name */
+    /** Defines the field name associated with the column. */
     field?: string;
-    /** Defines header text of column */
+    /** Defines the header text displayed for the column. */
     headerText?: string;
-    /** Defines edit type of column */
+    /** Defines the edit type for the column (e.g., string, number, date). */
     editType?: string;
-    /** Defines mapping name of column */
+    /** Defines the mapping name used for data binding in the column. */
     mappingName?: string;
-    /** Defines whether editing is enabled or not */
+    /** Indicates whether editing is enabled for the column. */
     allowEditing: boolean;
-    /** Defines width of column */
+    /** Defines the width of the column in pixels. */
     width: number;
-    /** Defines format of column */
+    /** Defines the display format for the column content. */
     format: string;
-    /** Defines whether column is visible or not */
+    /** Indicates whether the column is visible in the Gantt chart. */
     visible: boolean;
 }
 
 export interface IIndicator {
-    /** Defines the date of indicator. */
+    /** Specifies the date associated with the indicator. */
     date?: Date | string;
-    /** Defines the icon class of indicator. */
+    /** Defines the CSS class for the indicator icon. */
     iconClass?: string;
-    /** Defines the pdf image of indicator. */
+    /** Contains the Base64-encoded image used for the indicator in PDF export. */
     base64?: string;
-    /** Defines the name of indicator. */
+    /** Represents the name or label of the indicator. */
     name?: string;
-    /** Defines the tooltip of indicator. */
+    /** Specifies the tooltip text displayed for the indicator. */
     tooltip?: string;
 }
 
 export interface IWorkingTimeRange {
-    /** Defines the from date. */
+    /** Specifies the start time of the working range. */
     from?: number;
-    /** Defines the to date. */
+    /** Specifies the end time of the working range. */
     to?: number;
-    /** Defines whether it is working day or not. */
+    /** Indicates whether the specified range is a working period. */
     isWorking?: boolean;
-    /** Defines the color to render. */
+    /** Defines the color used to render the working range in the Gantt chart. */
     color?: string;
-    /** Defines the interval between from and to dates. */
+    /** Represents the interval duration between the start and end times. */
     interval?: number;
 }
 
 export interface IQueryTaskbarInfoEventArgs {
-    /** Defines the data. */
+    /** Represents the Gantt task data associated with the taskbar. */
     data: IGanttData;
-    /** Defines the row element. */
+    /** References the row element in which the taskbar is rendered. */
     rowElement: Element;
-    /** Defines the taskbar element. */
+    /** References the taskbar element in the Gantt chart. */
     taskbarElement: Element;
-    /** Defines the taskbar background color. */
+    /** Specifies the background color of the taskbar. */
     taskbarBgColor?: string;
-    /** Defines the taskbar border color. */
+    /** Specifies the border color of the taskbar. */
     taskbarBorderColor?: string;
-    /** Defines the progressbar background color. */
+    /** Specifies the background color of the progress bar within the taskbar. */
     progressBarBgColor?: string;
-    /** Defines the milestone color. */
-    //progressBarBorderColor?: string;
+    /** Specifies the color used for milestones. */
     milestoneColor?: string;
-    /** Defines the right label color. */
+    /** Specifies the color of the right-side label. */
     rightLabelColor?: string;
-    /** Defines the left label color. */
+    /** Specifies the color of the left-side label. */
     leftLabelColor?: string;
-    /** Defines the task label color. */
+    /** Specifies the color of the task label displayed on the taskbar. */
     taskLabelColor?: string;
-    /** Defines the baseline color. */
+    /** Specifies the color used for the baseline representation. */
     baselineColor?: string;
-    /** Defines the taskbar type. */
+    /** Indicates the type of the taskbar (e.g., task, milestone, baseline). */
     taskbarType: string;
 }
 
 export interface IGanttCellFormatter {
-    /** Method to format the cell value of date columns. */
+    /** Method used to format the cell value for date columns in the Gantt chart. */
     getValue(column: Column, data: Object): Object;
 }
 
+
 export interface ITaskbarEditedEventArgs {
-    /** Defines the editingFields. */
+    /** Represents the fields being edited in the taskbar. */
     editingFields?: ITaskData;
-    /** Defines the data. */
+    /** Contains the Gantt task data associated with the edit action. */
     data?: IGanttData;
-    /** Defines the index of edited task. */
+    /** Specifies the index of the edited task in the data collection. */
     recordIndex?: number;
-    /** Defines the previous value of editing task. */
+    /** Represents the previous values of the task before editing. */
     previousData?: ITaskData;
-    /** Defines the type of taskbar edit action. */
+    /** Indicates the type of taskbar edit action performed (e.g., progress change, resize). */
     taskBarEditAction?: string;
-    /** Defines the duration roundoff. */
+    /** Indicates whether the task duration should be rounded off after editing. */
     roundOffDuration?: boolean;
-    /** Defines the event is cancel-able or not. */
+    /** Specifies whether the event can be canceled. */
     cancel?: boolean;
-    /** Defines the action. */
+    /** Represents the action type associated with the edit operation. */
     action?: string;
-    /** Defines the target element. */
+    /** References the target HTML element involved in the edit action. */
     target?: Element;
-    /** Defines the segment index. */
+    /** Specifies the index of the segment being edited (for split tasks). */
     segmentIndex?: number;
 }
+
 export interface IKeyPressedEventArgs {
-    /** Defines the request type. */
+    /** Specifies the type of request triggered by the key press (e.g., edit, delete, navigate). */
     requestType?: string;
-    /** Defines the key action. */
+    /** Represents the key action performed (e.g., Enter, Escape, Arrow keys). */
     action?: string;
-    /** Defines the event. */
+    /** References the original keyboard event object. */
     keyEvent?: Event;
 }
 
 export interface ITaskDeletedEventArgs {
-    /** Defines the deleted records */
+    /** Represents the collection of tasks that were deleted. */
     deletedRecordCollection?: IGanttData[];
-    /** Defines the updated records */
+    /** Represents the collection of tasks that were updated after deletion. */
     updatedRecordCollection?: IGanttData[];
-    /** Defines the event is cancel-able or not. */
+    /** Indicates whether the event can be canceled. */
     cancel?: boolean;
-    /** Defines the event action. */
+    /** Specifies the action type associated with the deletion event. */
     action?: string;
 }
 
 export interface IDependencyEditData {
+    /** Represents the unique identifier of the dependency. */
     id?: string;
+    /** Specifies the display text or label for the dependency. */
     text?: string;
+    /** Defines the value associated with the dependency. */
     value?: string;
 }
 
 export interface IPredecessor {
-    /** Defines the from value of predecessor. */
+    /** Represents the starting task ID or reference for the predecessor. */
     from?: string;
-    /** Defines the to value of predecessor. */
+    /** Represents the ending task ID or reference for the predecessor. */
     to?: string;
-    /** Defines the type of predecessor. */
+    /** Specifies the type of dependency (e.g., Finish-to-Start, Start-to-Start). */
     type?: string;
-    /** Defines the offset value of predecessor. */
+    /** Defines the offset value applied to the dependency. */
     offset?: number;
-    /** Defines the offset unit of predecessor. */
+    /** Indicates the unit of the offset (e.g., days, hours). */
     offsetUnit?: string;
-    /** Defines the predecessor is drawn-able or not. */
+    /** Determines whether the predecessor link is drawable in the UI. */
     isDrawn?: boolean;
 }
 
 export interface IValidateArgs {
-    /** Defines the gantt data. */
+    /** Represents the Gantt task data being validated. */
     data?: IGanttData;
-    /** Defines the record index. */
+    /** Specifies the index of the record in the data collection. */
     recordIndex?: number;
-    /** Defines the request type */
+    /** Indicates the type of request triggering the validation (e.g., 'save', 'delete'). */
     requestType?: string;
-    /** Defines whether to cancel the action or not */
+    /** Determines whether the action should be canceled. */
     cancel?: boolean;
-    /** Defines the validation mode. */
+    /** Defines the validation mode applied during the process. */
     validateMode?: IValidateMode;
-    /** Defines the edited arguments. */
+    /** Contains the arguments related to the edit operation. */
     editEventArgs?: object;
-    /** Defines the type of constraint violation. */
+    /** Specifies the type of constraint violation, if any. */
     violationType?: ViolationType;
 }
 
 export interface ITimeSpanEventArgs {
-    /** Defines the project start date. */
+    /** Represents the start date of the project. */
     projectStartDate?: Date;
-    /** Defines the project end date. */
-    ProjectEndDate?: Date;
-    /** Defines the timeline roundoff state. */
+    /** Represents the end date of the project. */
+    projectEndDate?: Date;
+    /** Indicates whether the timeline should be rounded off. */
     isTimelineRoundOff?: boolean;
-    /** Defines the request type. */
+    /** Specifies the type of request triggering the event. */
     requestType?: string;
-    /** Defines the event is cancel-able or not. */
+    /** Determines whether the event can be canceled. */
     cancel?: boolean;
-    /** Defines the action. */
+    /** Defines the action associated with the event. */
     action?: string;
 }
 
+
 export interface IValidateMode {
+    /** Indicates whether task links should be respected during validation. */
     respectLink?: boolean;
+    /** Determines whether task links should be removed during validation. */
     removeLink?: boolean;
+    /** Specifies whether links should be preserved when editing tasks. */
     preserveLinkWithEditing?: boolean;
     /**
-     * If false, reverts edits violating Must Start On (MSO)
-     * and shows dialog with violationType: "MustStartOn".
+     * Indicates whether edits violating "Must Start On" (MSO) should be respected.
+     * If false, the edit is reverted and a dialog is shown with violationType: "MustStartOn".
      */
     respectMustStartOn?: boolean;
-
     /**
-     * If false, reverts edits violating Must Finish On (MFO)
-     * and shows dialog with violationType: "MustFinishOn".
+     * Indicates whether edits violating "Must Finish On" (MFO) should be respected.
+     * If false, the edit is reverted and a dialog is shown with violationType: "MustFinishOn".
      */
     respectMustFinishOn?: boolean;
-
     /**
-     * If false, reverts edits violating Start No Later Than (SNLT)
-     * and shows dialog with violationType: "StartNoLaterThan".
+     * Indicates whether edits violating "Start No Later Than" (SNLT) should be respected.
+     * If false, the edit is reverted and a dialog is shown with violationType: "StartNoLaterThan".
      */
     respectStartNoLaterThan?: boolean;
-
     /**
-     * If false, reverts edits violating Finish No Later Than (FNLT)
-     * and shows dialog with violationType: "FinishNoLaterThan".
+     * Indicates whether edits violating "Finish No Later Than" (FNLT) should be respected.
+     * If false, the edit is reverted and a dialog is shown with violationType: "FinishNoLaterThan".
      */
     respectFinishNoLaterThan?: boolean;
 }
+
+
 export interface IActionBeginEventArgs {
-    /** Defines the action type. */
+    /** Specifies the type of request triggering the action (e.g., 'save', 'delete'). */
     requestType?: string;
-    /** Defines the gantt record. */
+    /** Represents the Gantt record or collection of records involved in the action. */
     data?: IGanttData | IGanttData[];
-    /** Defines the modified records. */
+    /** Contains the collection of records that were modified. */
     modifiedRecords?: IGanttData[];
-    /** Defines the modified task data. */
+    /** Holds the modified task data, either as a single object or an array of objects. */
     modifiedTaskData?: object[] | object;
-    /** Defines the event is cancel-able or not. */
+    /** Determines whether the event can be canceled. */
     cancel?: boolean;
-    /** Defines the taskbar edit action. */
+    /** Specifies the type of taskbar edit action performed (e.g., 'resize', 'drag'). */
     taskBarEditAction?: string;
-    /** Defines the event action. */
+    /** Defines the action associated with the event (e.g., 'beginEdit', 'deleteTask'). */
     action?: string;
-    /** Defines the target element. */
+    /** Represents the target DOM element related to the action. */
     target?: Element;
 }
 
+
 export interface IValidateLinkedTaskArgs {
+    /** Specifies the edit mode applied to the linked task (e.g., 'manual', 'auto'). */
     editMode?: string;
+    /** Represents the Gantt task data being validated. */
     data?: IGanttData;
+    /** Indicates the type of request triggering the validation (e.g., 'update', 'delete'). */
     requestType?: string;
+    /** Defines the validation mode settings for the linked task. */
     validateMode?: IValidateMode;
+    /** Determines whether the validation process should be canceled. */
     cancel?: boolean;
 }
 
+
 export interface IConnectorLineObject {
+    /** Represents the left position of the parent task element. */
     parentLeft?: number;
+    /** Represents the left position of the child task element. */
     childLeft?: number;
+    /** Specifies the width of the parent task element. */
     parentWidth?: number;
+    /** Specifies the width of the child task element. */
     childWidth?: number;
+    /** Indicates the index of the parent task in the data collection. */
     parentIndex?: number;
+    /** Indicates the index of the child task in the data collection. */
     childIndex?: number;
+    /** Defines the height of the row in which the connector line is drawn. */
     rowHeight?: number;
+    /** Specifies the type of connector (e.g., 'Finish-to-Start', 'Start-to-Start'). */
     type?: string;
+    /** Represents the unique identifier for the connector line. */
     connectorLineId?: string;
+    /** Indicates whether the parent task is a milestone. */
     milestoneParent?: boolean;
+    /** Indicates whether the child task is a milestone. */
     milestoneChild?: boolean;
+    /** Represents the index of the parent task in the current view. */
     parentIndexInCurrentView?: number;
+    /** Represents the index of the child task in the current view. */
     childIndexInCurrentView?: number;
+    /** Determines whether the connector line is part of the critical path. */
     isCritical?: boolean;
+    /** Specifies the end point position of the parent task for the connector line. */
     parentEndPoint?: number;
+    /** Specifies the end point position of the child task for the connector line. */
     childEndPoint?: number;
 }
 
 export interface ISplitterResizedEventArgs {
-    /** Defines the element. */
+    /** Represents the main element associated with the splitter resize event. */
     element?: HTMLElement;
-    /** Defines the event. */
+    /** Contains the original event object triggered during resizing. */
     event?: Event;
-    /** Defines the size of resized pane. */
+    /** Specifies the size of each pane after resizing, in pixels. */
     paneSize?: number[];
-    /** Defines the pane. */
+    /** Represents the collection of pane elements involved in the resize action. */
     pane?: HTMLElement[];
-    /** Defines the index of resizing pane. */
+    /** Indicates the index of the pane(s) being resized. */
     index?: number[];
-    /** Defines the separator. */
+    /** Represents the separator element between the panes. */
     separator?: HTMLElement;
-    /** Defines the event is cancel-able or not. */
+    /** Determines whether the resize event can be canceled. */
     cancel?: boolean;
 }
 
 export interface PredecessorTooltip {
-    /** Defines the from id of predecessor. */
+    /** Represents the ID of the predecessor's source task. */
     fromId?: string;
-    /** Defines the to id of predecessor. */
+    /** Represents the ID of the predecessor's target task. */
     toId?: string;
-    /** Defines the from name of predecessor. */
+    /** Specifies the name of the predecessor's source task. */
     fromName?: string;
-    /** Defines the to name of predecessor. */
+    /** Specifies the name of the predecessor's target task. */
     toName?: string;
-    /** Defines the link type of predecessor. */
+    /** Indicates the type of link between tasks (e.g., 'Finish-to-Start', 'Start-to-Start'). */
     linkType?: string;
-    /** Defines the link text of predecessor. */
+    /** Defines the display text for the link type. */
     linkText?: string;
-    /** Defines the offset value of predecessor. */
+    /** Represents the offset value applied to the predecessor link. */
     offset?: number;
-    /** Defines the offset unit of predecessor. */
+    /** Specifies the unit of the offset (e.g., days, hours). */
     offsetUnit?: string;
-    /** Defines the offset string value of predecessor. */
+    /** Contains the formatted offset value as a string. */
     offsetString?: string;
 }
 
 export interface BeforeTooltipRenderEventArgs {
-    /** Defines the data. */
+    /** Represents the data associated with the tooltip rendering event. */
     data?: BeforeTooltipRenderEventArgsData;
-    /** Defines the original event arguments of tooltip control. */
+    /** Contains the original event arguments from the tooltip control. */
     args?: TooltipEventArgs;
-    /** Defines the content. */
+    /** Specifies the content to be displayed inside the tooltip. Can be a string, an HTML element, or a function returning content. */
     content?: string | Element | Function;
-    /** Cancel the tooltip */
+    /** Determines whether the tooltip rendering should be canceled. */
     cancel?: boolean;
 }
 
 export interface QueryCellInfoEventArgs {
-    /** Defines the row data associated with this cell. */
+    /** Represents the row data associated with the current cell. */
     data?: IGanttData;
-    /** Defines the cell element. */
+    /** Specifies the cell element in the DOM. */
     cell?: Element;
-    /** Defines the column object associated with this cell. */
+    /** Contains the column object associated with this cell. */
     column?: Column;
-    /** Defines the no. of columns to be spanned */
+    /** Indicates the number of columns to be spanned by this cell. */
     colSpan?: number;
-    /** Defines the no. of rows to be spanned */
+    /** Indicates the number of rows to be spanned by this cell. */
     rowSpan?: number;
-    /** Defines the current action. */
+    /** Specifies the current action or request type (e.g., 'render', 'refresh'). */
     requestType?: string;
-    /** Define the foreignKey row data associated with this column */
+    /** Represents the foreign key row data associated with this column, if applicable. */
     foreignKeyData?: Object;
 }
 
 /**
- * Extending IGanttData and PredecessorTooltip interfaces for data used in BeforeTooltipRenderEventArgs interface.
+ * Extends IGanttData and PredecessorTooltip to provide data for the BeforeTooltipRenderEventArgs interface.
  */
 export interface BeforeTooltipRenderEventArgsData extends IGanttData, PredecessorTooltip {
-
 }
 
 export interface IDependencyEventArgs {
-    /** Specifies the predecessor task of dependency. */
+    /** Represents the predecessor task involved in the dependency. */
     fromItem?: IGanttData;
-    /** Specifies the successor task of dependency. */
+    /** Represents the successor task involved in the dependency. */
     toItem?: IGanttData;
-    /** Defines the new predecessor string. */
+    /** Specifies the updated predecessor string after modification. */
     newPredecessorString?: string;
-    /** Defines the dependency link is valid or not */
+    /** Indicates whether the dependency link is valid. */
     isValidLink?: boolean;
-    /** Defines the request type. */
+    /** Specifies the type of request triggering the event (e.g., 'add', 'remove'). */
     requestType?: string;
-    /** Defines predecessor object */
+    /** Contains the predecessor object with detailed link information. */
     predecessor?: IPredecessor;
 }
 
+
 export interface ITaskAddedEventArgs {
-    /** Specifies the newly added task data with Gantt properties. */
+    /** Represents the newly added task data including Gantt-specific properties. */
     data?: IGanttData[] | IGanttData;
-    /** Specifies the newly added task data without custom Gantt properties. */
+    /** Represents the newly added task data without custom Gantt properties. */
     newTaskData?: object[] | object;
-    /** Defines the modified records. */
+    /** Contains the collection of records that were modified during the operation. */
     modifiedRecords?: IGanttData[];
-    /** Defines the modified task data. */
+    /** Holds the modified task data, either as a single object or an array of objects. */
     modifiedTaskData?: object[] | object;
-    /** Defines the record index. */
+    /** Specifies the index or indices of the newly added record(s). */
     recordIndex?: number | number[];
-    /** Defines the event is cancel-able or not. */
+    /** Determines whether the event can be canceled. */
     cancel?: boolean;
-    /** Defines the action. */
+    /** Defines the action associated with the event (e.g., 'add', 'insert'). */
     action?: string;
-    /** Defines the request type. */
+    /** Specifies the type of request triggering the event (e.g., 'addTask'). */
     requestType?: string;
-    /** Defines the row position. */
+    /** Indicates the row position where the new task is added (e.g., 'Above', 'Below'). */
     rowPosition?: string;
 }
-export interface ICollapsingEventArgs {
-    /** Defines the TreeGrid row element */
-    gridRow: Node;
-    /** Defines the Gantt chart row element */
-    chartRow: Node;
-    /** Defines the name of the action. */
-    name?: string;
-    /** Defines the parent row data. */
-    data?: IGanttData;
-    /** Cancel the row expanding action */
-    cancel?: boolean;
 
+export interface ICollapsingEventArgs {
+    /** Represents the TreeGrid row element being collapsed. */
+    gridRow: Node;
+    /** Represents the Gantt chart row element being collapsed. */
+    chartRow: Node;
+    /** Specifies the name of the action (e.g., 'collapse', 'expand'). */
+    name?: string;
+    /** Contains the parent row data associated with the collapsing action. */
+    data?: IGanttData;
+    /** Determines whether the collapsing action should be canceled. */
+    cancel?: boolean;
 }
+
 export interface ContextMenuOpenEventArgs extends GridContextMenuOpenEventArgs {
-    /** Defines the TreeGrid row element */
+    /** Represents the TreeGrid row element where the context menu is opened. */
     gridRow?: Element;
-    /** Defines the chart row element */
+    /** Represents the Gantt chart row element where the context menu is opened. */
     chartRow?: Element;
-    /** Defines the selected row record */
+    /** Contains the selected row data associated with the context menu action. */
     rowData?: IGanttData;
-    /** Defines the context menu type */
+    /** Specifies the type of context menu (e.g., 'Header', 'Row', 'Chart'). */
     type?: ContextMenuType;
-    /** Defines the hidden items collection */
+    /** Defines the collection of menu items to be hidden. */
     hideItems?: string[];
-    /** Defines the sub menu hidden items collection */
+    /** Defines the collection of submenu items to be hidden. */
     hideChildItems?: string[];
-    /** Defines the disabled items collection */
+    /** Defines the collection of menu items to be disabled. */
     disableItems?: string[];
-    /** Defines the target element. */
+    /** Represents the target DOM element that triggered the context menu. */
     target?: Element;
+    /** Specifies the top position (in pixels) where the context menu should appear. */
     top?: number;
+    /** Specifies the left position (in pixels) where the context menu should appear. */
     left?: number;
 }
 
 export interface ContextMenuClickEventArgs extends GridContextMenuClickEventArgs {
-    /** Defines the selected row record */
+    /** Represents the selected row data associated with the context menu action. */
     rowData?: IGanttData;
-    /** Defines the context menu type */
+
+    /** Specifies the type of context menu (e.g., 'Header', 'Row', 'Chart'). */
     type?: ContextMenuType;
 }
 
-export type ITimelineFormatter = (date?: Date, format?: string, tier?: string, mode?: string) => string;
+/**
+ * Represents a function that formats a given date into a timeline string.
+ *
+ * @param date - The date to be formatted.
+ * @param format - The format string (e.g., 'MM/dd/yyyy', 'dd-MMM').
+ * @param tier - The timeline tier (e.g., 'top', 'bottom').
+ * @param mode - The display mode (e.g., 'week', 'month').
+ * @returns A formatted string representing the timeline.
+ */
+export type ITimelineFormatter = (
+    date?: Date,
+    format?: string,
+    tier?: string,
+    mode?: string
+) => string;
 
 export interface ZoomEventArgs {
-    /** Defines the request type. */
+    /** Specifies the type of request triggering the zoom event (e.g., 'zoomIn', 'zoomOut'). */
     requestType?: string;
-    /** Defines the zoom action. */
+    /** Defines the zoom action performed (e.g., 'increase', 'decrease'). */
     action?: string;
-    /** Defines Zoom timeline settings.  */
+    /** Represents the timeline settings applied during the zoom operation. */
     timeline?: ZoomTimelineSettings;
-    /** Defines the cancel option value. */
+    /** Determines whether the zoom event should be canceled. */
     cancel?: boolean;
 }
 
 export interface ZoomTimelineSettings {
-    /** Defines the timeline view mode. */
+    /** Specifies the timeline view mode (e.g., 'Day', 'Week', 'Month'). */
     timelineViewMode?: TimelineViewMode;
-    /** Defines top tier values. */
+    /** Represents the configuration settings for the top tier of the timeline. */
     topTier?: TimelineTierSettingsModel;
-    /** Defines bottom tier values. */
+    /** Represents the configuration settings for the bottom tier of the timeline. */
     bottomTier?: TimelineTierSettingsModel;
-    /** Defines timeline unit size. */
+    /** Defines the unit size of the timeline in pixels. */
     timelineUnitSize?: number;
-    /** Defines the week start day. */
+    /** Specifies the starting day of the week (0 for Sunday, 1 for Monday, etc.). */
     weekStartDay?: number;
-    /** Defines weekend background color. */
+    /** Defines the background color for weekends in the timeline. */
     weekendBackground?: string;
-    /** Defines showTooltip whether the tooltip will rendered or not. */
+    /** Indicates whether tooltips should be displayed on the timeline. */
     showTooltip?: boolean;
-    /** Defines perDay width. */
+    /** Specifies the width allocated per day in the timeline view. */
     perDayWidth?: number;
-    /** Defines zooming level. */
+    /** Represents the current zoom level of the timeline. */
     level?: number;
-    /** Defines the updateTimescaleView. */
+    /** Determines whether the timescale view should be updated after zooming. */
     updateTimescaleView?: boolean;
 }
+
+
 /** @private */
 export interface MousePoint {
+    /** Specifies the horizontal position of the mouse pointer relative to the page. */
     pageX?: number;
+
+    /** Specifies the vertical position of the mouse pointer relative to the page. */
     pageY?: number;
 }
 
 /** @private */
 export interface ITemplateData {
+    /** Indicates whether the task is expanded in the hierarchy. */
     expanded?: boolean;
+    /** Specifies whether the task has child records. */
     hasChildRecords?: boolean;
+    /** Represents the index of the task in the data collection. */
     index?: number;
+    /** Defines the hierarchical level of the task. */
     level?: number;
+    /** Specifies the left position of the baseline bar in pixels. */
     baselineLeft?: number;
+    /** Specifies the width of the baseline bar in pixels. */
     baselineWidth?: number;
+    /** Represents the start date of the task. */
     taskStartDate?: Date;
+    /** Represents the end date of the task. */
     taskEndDate?: Date;
+    /** Defines the duration of the task. */
     taskDuration?: number;
+    /** Specifies the unit of the task duration (e.g., 'days', 'hours'). */
     taskDurationUnit?: string;
+    /** Contains the names of predecessor tasks as a formatted string. */
     taskPredecessorsName?: string;
+    /** Contains the names of resources assigned to the task. */
     taskResourceNames?: string;
+    /** Indicates whether the task is scheduled automatically. */
     isAutoSchedule?: boolean;
+    /** Indicates whether the task is a milestone. */
     isMilestone?: boolean;
+    /** Specifies the left position of the task bar in pixels. */
     left?: number;
+    /** Defines the width of the progress bar in pixels. */
     progressWidth?: number;
+    /** Specifies the total width of the task bar in pixels. */
     width?: number;
 }
 
 export interface RowSelectingEventArgs extends GridRowSelectingEventArgs {
-    /** Defines the data collections. */
+    /** Represents the Gantt row data associated with the selection event. */
     data: IGanttData;
 }
 
 export interface RowSelectEventArgs extends GridRowSelectEventArgs {
-    /** Defines the data collections. */
+    /** Represents the Gantt row data associated with the selection event. */
     data: IGanttData;
 }
 
 export interface RowDataBoundEventArgs extends GridRowDataBoundEventArgs {
-    /** Defines the data collections. */
+    /** Represents the Gantt row data associated with the row binding event. */
     data: IGanttData;
-    /** Defines the row element. */
+    /** Specifies the row element in the DOM. */
     row?: Element;
 }
 
 export interface RowDeselectEventArgs extends GridRowDeselectEventArgs {
-    /** Defines the selected/deselected row index. */
+    /** Specifies the index of the row that was selected or deselected. */
     rowIndex?: number;
-    /** Defines the data collections. */
+    /** Represents the collection of Gantt row data associated with the deselection event. */
     data?: IGanttData[];
-    /** Defines the selected/deselected row. */
+    /** Specifies the DOM element of the row that was selected or deselected. */
     row?: Element;
 }
 
-export interface IEventMarkerInfo{
+export interface IEventMarkerInfo {
+    /** Specifies the unique identifier for the event marker. */
     id?: number;
+    /** Defines the horizontal position of the marker. */
     left?: number;
+    /** Represents the display label for the event marker. */
     label?: string;
+    /** Indicates the date associated with the event marker. */
     date?: Date;
-    top? : string;
+    /** Specifies the vertical position of the marker. */
+    top?: string;
 }
+
 export interface ActionCompleteArgs extends ZoomEventArgs, IKeyPressedEventArgs {
+    /** Represents the HTML element associated with the action. */
     element?: HTMLElement;
+    /** Specifies the type of request that triggered the action. */
     requestType?: string;
+    /** Represents the collection of Gantt row data related to the action. */
     data?: IGanttData[];
+    /** Contains the modified Gantt records after the action. */
     modifiedRecords?: IGanttData[];
+    /** Holds the modified task data objects. */
     modifiedTaskData?: Object[];
+    /** Indicates whether the action should be canceled. */
     cancel?: boolean;
-    /** Specifies the newly added task data without custom Gantt properties.
+    /**
+     * Specifies the newly added task data without custom Gantt properties.
      *
      * @isGenericType true
      */
     newTaskData?: object;
-    /** Defines the record index. */
+    /** Defines the record index associated with the action. */
     recordIndex?: number;
-    /** Defines the action. */
+    /** Defines the specific action performed (e.g., add, delete, update). */
     action?: string;
-    /** Defines the type of event. */
+    /** Defines the type of event triggered. */
     type?: string;
 }
 
+
 export interface ActionBeginArgs extends IDependencyEventArgs {
+    /** Represents the Gantt row data associated with the action. */
     rowData?: IGanttData;
+    /** Specifies the name of the event. */
     name?: string;
+    /** Defines the type of request that triggered the action. */
     requestType?: string;
+    /** Indicates whether the action should be canceled. */
     cancel?: boolean;
-    data?:  IGanttData[];
+    /** Represents the collection of Gantt row data related to the action. */
+    data?: IGanttData[];
+    /** Contains the modified Gantt records before the action completes. */
     modifiedRecords?: IGanttData[];
     /**
+     * Holds the modified task data objects.
+     *
      * @isGenericType true
      */
     modifiedTaskData?: object[];
-    /** Specifies the newly added task data without custom Gantt properties.
+    /**
+     * Specifies the newly added task data without custom Gantt properties.
      *
      * @isGenericType true
      */
     newTaskData?: object;
-    /** Defines the split date on context click action */
+    /** Defines the split date for context menu click actions. */
     splitDate?: Date;
-    /** Defines the array of merge items indexes on context click action */
-    mergeSegmentIndexes?: {firstSegmentIndex: number, secondSegmentIndex: number}[];
-    /** Defines the record index. */
+    /** Defines the array of merge segment indexes for context menu click actions. */
+    mergeSegmentIndexes?: { firstSegmentIndex: number; secondSegmentIndex: number }[];
+    /** Defines the record index associated with the action. */
     recordIndex?: number;
-    /** Defines the action. */
+    /** Defines the specific action performed (e.g., add, delete, update). */
     action?: string;
-    /** Defines the type of event. */
+    /** Defines the type of event triggered. */
     type?: string;
-    /** Defines the target element. */
+    /** Represents the target DOM element for the action. */
     target?: Element;
 }
 
@@ -894,7 +993,7 @@ export interface RowDropEventArgs {
     dropPosition?: string;
     /** Defines the request type. */
     requestType?: string;
-    /** Defines the modified records. */
+    /** Represents the modified Gantt records after the drop action. */
     modifiedRecords?: IGanttData[];
     /** Defines the modified records. */
     dropRecord?: IGanttData;
@@ -976,34 +1075,61 @@ export interface Hyperlink {
     /** Defines the display text for hyperlink */
     displayText?: string;
 }
+
 export interface TimelineDetails {
+    /** Specifies the starting point of the timeline. */
     startPoint?: number;
+    /** Specifies the ending point of the timeline. */
     endPoint?: number;
+    /** Represents the start date of the timeline. */
     startDate?: Date;
+    /** Represents the end date of the timeline. */
     endDate?: Date;
+    /** Defines the start date of the day within the timeline. */
     dayStartDate?: Date;
+    /** Specifies the total width of the timeline. */
     totalWidth?: number;
+    /** Represents the starting index of the timeline segment. */
     startIndex?: number;
+    /** Represents the ending index of the timeline segment. */
     endIndex?: number;
+    /** Defines the starting point of the page in the timeline as a PointF object. */
     pageStartPoint?: PointF;
 }
+
 export interface PageDetail {
+    /** Specifies the starting point of the page as a PointF object. */
     startPoint?: PointF;
+    /** Defines the width of the page. */
     width?: number;
+    /** Defines the height of the page. */
     height?: number;
+    /** Represents the X-coordinate of the page's starting position. */
     pageStartX?: number;
 }
+
+
 export interface TimelineFormat {
+    /** Specifies the width of the timeline cell. */
     width?: number;
+    /** Specifies the height of the timeline cell. */
     height?: number;
+    /** Represents the display value of the timeline cell. */
     value?: string;
+    /** Indicates whether the timeline cell falls on a weekend. */
     isWeekend?: boolean;
+    /** Defines the style applied to the timeline cell. */
     style?: PdfGanttCellStyle;
+    /** Indicates whether the timeline cell is fully completed. */
     isFinished?: boolean;
+    /** Specifies the width of the completed portion within the timeline cell. */
     completedWidth?: number;
+    /** Represents the start date of the timeline cell. */
     startDate?: Date;
+    /** Represents the end date of the timeline cell. */
     endDate?: Date;
 }
+
 
 export interface PdfGanttFontStyle {
     /** Defines the font size */
@@ -1144,7 +1270,7 @@ export interface PdfQueryTaskbarInfoEventArgs {
     taskbar?: ITaskbarStyle;
     /** Specify the value of the task data */
     data?: IGanttData;
-    /** Defines the Indicator */
+    /** Represents the collection of indicators displayed on the taskbar. */
     indicators?: IIndicator[];
     /**
      *  Defines the customized string content or image for the left, right and task label
@@ -1186,7 +1312,7 @@ export interface ILabel {
 export interface ITemplateDetails {
     /** Defines the value of template content. */
     value?: string;
-    /** Defines the image of a template content. */
+    /** Specifies the images used in the template content. */
     image?: Image[];
     /** Defines the appearance customization details of the template content */
     fontStyle?: PdfGanttFontStyle;
@@ -1209,10 +1335,15 @@ export interface PdfColumnHeaderQueryCellInfoEventArgs {
 }
 
 /** @private */
+
 export interface TaskLabel {
+    /** Specifies the text value of the task label. */
     value?: string;
+    /** Defines the left position of the label (in pixels). */
     left?: number;
+    /** Indicates whether the task is completed. */
     isCompleted?: boolean;
+    /** Indicates whether the left position of the label has been calculated. */
     isLeftCalculated?: boolean;
 }
 
@@ -1240,7 +1371,7 @@ export interface PdfHeader {
     fromTop?: number;
     /** Defines the height of header content. */
     height?: number;
-    /** Defines the header contents. */
+    /** Represents the collection of header contents to be displayed. */
     contents?: PdfHeaderFooterContent[];
 }
 
@@ -1249,7 +1380,7 @@ export interface PdfFooter {
     fromBottom?: number;
     /** Defines the height of footer content. */
     height?: number;
-    /** Defines the footer contents */
+    /** Represents the collection of footer contents to be displayed. */
     contents?: PdfHeaderFooterContent[];
 }
 

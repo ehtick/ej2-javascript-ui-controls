@@ -725,9 +725,14 @@ export class Mention extends DropDownBase {
             return;
         }
         this.isTyped = e.code !== 'Enter' && e.code !== 'Space' && e.code !== 'ArrowDown' && e.code !== 'ArrowUp' ? true : false;
-        const isRteImage: boolean = document.activeElement.parentElement && document.activeElement.parentElement.querySelector('.e-rte-image') ? true : false;
-        if (document.activeElement !== this.inputElement && !isRteImage) {
-            this.inputElement.focus(); }
+        const activeParent: HTMLElement = document.activeElement && document.activeElement.parentElement;
+        const isRteImage: boolean = activeParent && !!activeParent.querySelector('.e-rte-image');
+        const isBECodeDropdownFocused: boolean = activeParent && !!activeParent.querySelector(
+            '.e-blockeditor .e-code-block-container .e-input-group.e-input-focus'
+        );
+        if (document.activeElement !== this.inputElement && !isRteImage && !isBECodeDropdownFocused) {
+            this.inputElement.focus();
+        }
         if (this.isContentEditable(this.inputElement)) {
             this.range = this.getCurrentRange();
             if (this.range) {
@@ -750,7 +755,7 @@ export class Mention extends DropDownBase {
             if (!this.requireLeadingSpace && lastWordRange && (lastWordRange as any).includes(this.mentionChar)) {
                 lastWordRange = this.mentionChar + lastWordRange.split(this.mentionChar).pop();
             }
-            if ((lastWordRange as any).includes(' ')) {
+            if (/\s|\u00A0/.test(lastWordRange as any)) {
                 return;
             }
         }
@@ -1269,7 +1274,9 @@ export class Mention extends DropDownBase {
 
     private setHeight(popupEle: HTMLElement): void {
         if (this.popupHeight !== 'auto' && this.list) {
-            this.list.style.maxHeight = (parseInt(this.listHeight, 10) - 2).toString() + 'px'; // due to box-sizing property
+            const parentStyle: CSSStyleDeclaration = getComputedStyle(this.list.parentElement as Element);
+            const paddingY: number = parseInt(parentStyle.paddingTop || '0', 10) + parseInt(parentStyle.paddingBottom || '0', 10);
+            this.list.style.maxHeight = (parseInt(this.listHeight, 10) - 2 - paddingY).toString() + 'px'; // due to box-sizing property
             popupEle.style.maxHeight = formatUnit(this.popupHeight);
         } else {
             popupEle.style.height = 'auto';

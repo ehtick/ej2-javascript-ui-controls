@@ -71,6 +71,11 @@ export class ToolbarAction {
         this.parent.notify(events.markdownToolbarClick, args);
     }
     private dropDownSelect(e: IDropDownClickArgs): void {
+        const istableEditDialog: boolean = this.parent.tableModule && this.parent.tableModule.editdlgObj &&
+         !isNOU(this.parent.tableModule.editdlgObj.element) && !isNOU(this.parent.tableModule.editdlgObj.element.querySelector('.e-rte-edit-tablecell-dialog,.e-rte-edit-table-content'));
+        if (istableEditDialog) {
+            return;
+        }
         this.parent.notify(events.selectionRestore, {});
         if (!(document.body.contains(document.body.querySelector('.e-rte-quick-toolbar'))
             && e.item && (e.item.command === 'Images' || e.item.command === 'Audios' || e.item.command === 'Videos' ||
@@ -96,6 +101,11 @@ export class ToolbarAction {
     }
 
     private renderSelection(args: IColorPickerEventArgs): void {
+        const istableEditDialog: boolean = this.parent.tableModule && this.parent.tableModule.editdlgObj &&
+         !isNOU(this.parent.tableModule.editdlgObj.element) && !isNOU(this.parent.tableModule.editdlgObj.element.querySelector('.e-rte-edit-tablecell-dialog,.e-rte-edit-table-content'));
+        if (istableEditDialog) {
+            return;
+        }
         this.parent.notify(events.selectionRestore, {});
         this.parent.formatter.process(this.parent, args, args.originalEvent, null);
         this.parent.notify(events.selectionSave, {});

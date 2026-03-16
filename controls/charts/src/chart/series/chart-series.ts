@@ -2,14 +2,14 @@ import { Property, ChildProperty, Complex, Collection, DateFormatOptions, getVal
 import { isNullOrUndefined, extend } from '@syncfusion/ej2-base';
 import { DataLabelSettingsModel, MarkerSettingsModel, TrendlineModel, ChartSegmentModel, ParetoOptionsModel } from '../series/chart-series-model';
 import { StackValues, RectOption, ControlPoints, PolarArc, appendChildElement, appendClipElement, getElement } from '../../common/utils/helper';
-import { ErrorBarSettingsModel, ErrorBarCapSettingsModel, LastValueLabelSettingsModel} from '../series/chart-series-model';
+import { ErrorBarSettingsModel, ErrorBarCapSettingsModel, LastValueLabelSettingsModel, SeriesLabelSettingsModel } from '../series/chart-series-model';
 import { firstToLowerCase, ChartLocation, CircleOption, IHistogramValues, getColorByValue} from '../../common/utils/helper';
 import { Rect, SvgRenderer, CanvasRenderer, Size } from '@syncfusion/ej2-svg-base';
 import { ChartSeriesType, ChartShape, SeriesValueType, SplineType, StepPosition } from '../utils/enum';
 import { ChartDrawType, DataLabelIntersectAction } from '../utils/enum';
-import { BorderModel, FontModel, MarginModel, AnimationModel, OffsetModel, DragSettingsModel, EmptyPointSettingsModel, ConnectorModel, CornerRadiusModel, AccessibilityModel, SeriesAccessibilityModel } from '../../common/model/base-model';
+import { BorderModel, FontModel, MarginModel, AnimationModel, OffsetModel, DragSettingsModel, EmptyPointSettingsModel, ConnectorModel, CornerRadiusModel, AccessibilityModel, SeriesAccessibilityModel, LinearGradientModel, RadialGradientModel } from '../../common/model/base-model';
 import { ErrorBarType, ErrorBarDirection, ErrorBarMode, TrendlineTypes } from '../utils/enum';
-import { Border, Font, Margin, Animation, DragSettings, EmptyPointSettings, Connector, CornerRadius, Accessibility, SeriesAccessibility } from '../../common/model/base';
+import { Border, Font, Margin, Animation, DragSettings, EmptyPointSettings, Connector, CornerRadius, Accessibility, SeriesAccessibility, LinearGradient, RadialGradient } from '../../common/model/base';
 import { DataManager, Query, DataUtil } from '@syncfusion/ej2-data';
 import { Chart } from '../chart';
 import { Axis, Column, Row } from '../axis/axis';
@@ -19,7 +19,7 @@ import { ISeriesRenderEventArgs } from '../../chart/model/chart-interface';
 import { seriesRender } from '../../common/model/constants';
 import { Alignment, EmptyPointMode, LabelPosition, LegendShape, SeriesCategories, ShapeType } from '../../common/utils/enum';
 import { BoxPlotMode, Segment } from '../utils/enum';
-import { getVisiblePoints, setRange, findClipRect } from '../../common/utils/helper';
+import { getVisiblePoints, setRange, findClipRect, applyGradientsToSeries } from '../../common/utils/helper';
 import { Browser } from '@syncfusion/ej2-base';
 import { StockSeries } from '../../stock-chart/index';
 import { CartesianAxisLayoutPanel } from '../axis/cartesian-panel';
@@ -101,6 +101,88 @@ export class LastValueLabelSettings extends ChildProperty<LastValueLabelSettings
     @Property(5)
     public ry: number;
 
+}
+
+/**
+ * Configures options for displaying series names as inline labels in the chart. *
+ * Code Example
+ * const chart = new Chart({
+ *   series: [{
+ *     type: 'Line',
+ *     name: 'Revenue',
+ *     dataSource: data,
+ *     xName: 'x',
+ *     yName: 'y',
+ *     labelSettings: {
+ *       visible: true,
+ *       text: 'Total Revenue',
+ *       background: '#E8F5E9',
+ *       border: { width: 1, color: '#2E7D32' },
+ *       opacity: 0.9,
+ *       font: { size: '12px', fontWeight: '600', color: '#2E7D32' },
+ *       showOverlapText: false
+ *     }
+ *   }]
+ * })
+ */
+export class SeriesLabelSettings extends ChildProperty<SeriesLabelSettings> {
+
+    /**
+     * Enables or disables the rendering of series names as inline labels.
+     *
+     * @default false
+     */
+    @Property(false)
+    public visible: boolean;
+
+    /**
+     * Defines the custom text to display as the series label.
+     * If not specified, the series name will be used.
+     *
+     * @default null
+     */
+    @Property(null)
+    public text: string;
+
+    /**
+     * Specifies the background color of the inline series label.
+     *
+     * @default 'transparent'
+     */
+    @Property('transparent')
+    public background: string;
+
+    /**
+     * Specifies the border properties for the inline label.
+     * Includes color and width.
+     *
+     * @default { color: '', width: 0 }
+     */
+    @Complex<BorderModel>({ color: '', width: 0 }, Border)
+    public border: BorderModel;
+
+    /**
+     * Sets the opacity of the series label.
+     *
+     * @default 1
+     */
+    @Property(1)
+    public opacity: number;
+
+    /**
+     * Specifies the font properties for the series name label.
+     * This includes customization options such as font size, color, style, weight, and family.
+     */
+    @Complex<FontModel>({ size: null, color: null, fontStyle: null, fontWeight: null, fontFamily: null }, Font)
+    public font: FontModel;
+
+    /**
+     * Determines whether to show the label text even when it overlaps with other labels.
+     *
+     * @default false
+     */
+    @Property(false)
+    public showOverlapText: boolean;
 }
 
 /**
@@ -686,6 +768,27 @@ export class Trendline extends ChildProperty<Trendline> {
      */
     @Complex<AccessibilityModel>({}, Accessibility)
     public accessibility: AccessibilityModel;
+
+    /**
+     * Applies a linear gradient fill to the trendline.
+     *
+     * @default null
+     */
+    @Complex<LinearGradientModel>(null, LinearGradient)
+    public linearGradient: LinearGradientModel;
+    /**
+     * Applies a radial gradient fill to the trendline.
+     *
+     * @default null
+     */
+    @Complex<RadialGradientModel>(null, RadialGradient)
+    public radialGradient: RadialGradientModel;
+    /**
+     * Internal property: stores the unique ID of the generated SVG gradient element for the trendline.
+     *
+     * @private
+     */
+    public gradientId: string;
 
 
     /** @private */
@@ -1775,6 +1878,7 @@ export class SeriesBase extends ChildProperty<SeriesBase> {
         if (this instanceof Series) {
             chart.visibleSeriesCount += isRemoteData ? 1 : 0;
         }
+        applyGradientsToSeries(chart.svgObject, chart.enableCanvas, chart.visibleSeries, chart.element);
         chart.refreshTechnicalIndicator(this);
         if (this instanceof Series && this.category !== 'TrendLine') {
             for (const trendline of this.trendlines) {
@@ -1965,6 +2069,11 @@ export class Series extends SeriesBase {
     @Complex<BorderModel>({ color: null, width: 0 }, Border)
     public border: BorderModel;
 
+    /**
+     * Configures the options for displaying series names as inline labels in the chart.
+     */
+    @Complex<SeriesLabelSettingsModel>({}, SeriesLabelSettings)
+    public labelSettings: SeriesLabelSettingsModel;
 
     /**
      * Options for customizing and displaying the last value in the series.
@@ -2053,6 +2162,24 @@ export class Series extends SeriesBase {
      */
     @Complex<ParetoOptionsModel>(null, ParetoOptions)
     public paretoOptions: ParetoOptionsModel;
+
+    /**
+     * Applies a linear gradient fill to the series.
+     * The gradient transitions colors along a straight line.
+     * When both linearGradient and radialGradient are specified, linearGradient takes precedence.
+     *
+     * @default null
+     */
+    @Complex<LinearGradientModel>(null, LinearGradient)
+    public linearGradient: LinearGradientModel;
+    /**
+     * Applies a radial gradient fill to the series.
+     * The gradient transitions colors outward from a central point.
+     *
+     * @default null
+     */
+    @Complex<RadialGradientModel>(null, RadialGradient)
+    public radialGradient: RadialGradientModel;
 
     /**
      * Customize the drag settings for the series with this property to configure drag behavior in the chart.
@@ -2381,6 +2508,8 @@ export class Series extends SeriesBase {
     /** @private */
     public lastValueLabelElement: Element;
     /** @private */
+    public seriesLabelTextElement: Element;
+    /** @private */
     public pathElement: Element;
     /** @private */
     public sourceIndex: number;
@@ -2402,6 +2531,8 @@ export class Series extends SeriesBase {
     public lowDrawPoints: ControlPoints[] = [];
     /** @private */
     public delayedAnimation: boolean = false;
+    /** @private */
+    public gradientId: string;
     /** @private */
     public rangeColorName: string = this.colorName.length > 0 ? this.colorName : this.yName;
     constructor(parent: any, propName: string, defaultValue: Object, isArray?: boolean) {
@@ -2804,6 +2935,7 @@ export class Series extends SeriesBase {
     public appendSeriesElement(element: Element, chart: Chart): void {
         const marker: MarkerSettingsModel = this.marker;
         const dataLabel: DataLabelSettingsModel = marker.dataLabel;
+        const seriesLabel: SeriesLabelSettingsModel = this.labelSettings;
         const lastValueLabel: LastValueLabelSettingsModel = this.lastValueLabel;
         const redraw: boolean = chart.redraw;
         if (this.category !== 'TrendLine') {
@@ -2828,8 +2960,14 @@ export class Series extends SeriesBase {
             appendChildElement(chart.enableCanvas, chart.dataLabelElements, this.shapeElement, redraw);
             appendChildElement(chart.enableCanvas, chart.dataLabelElements, this.textElement, redraw);
         }
+        if (seriesLabel.visible && this.seriesLabelTextElement) {
+            appendChildElement(chart.enableCanvas, chart.seriesLabelElements, this.seriesLabelTextElement, redraw);
+        }
         if (!chart.enableCanvas && chart.dataLabelElements.hasChildNodes()) {
             chart.seriesElements.appendChild(chart.dataLabelElements);
+        }
+        if (!chart.enableCanvas && seriesLabel.visible) {
+            chart.seriesElements.appendChild(chart.seriesLabelElements);
         }
         if (lastValueLabel.enable && this.lastValueLabelElement) {
             appendChildElement(chart.enableCanvas, chart.lastValueLabelElements, this.lastValueLabelElement, redraw);

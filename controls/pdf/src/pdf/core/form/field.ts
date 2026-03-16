@@ -14,7 +14,7 @@ import { PdfFontFamily, PdfStandardFont, PdfFont, PdfFontStyle, PdfTrueTypeFont 
 import { PdfAppearance } from './../annotations/pdf-appearance';
 import { PdfPath } from './../graphics/pdf-path';
 import { PdfAnnotationCollection } from '../annotations/annotation-collection';
-import { PdfFieldActions } from '../pdf-action';
+import { PdfFieldActions, PdfJavaScriptAction } from '../pdf-action';
 import { PdfSignature } from '../security/digital-signature/signature/pdf-signature';
 import { Point, Size, Rectangle, PdfColor } from './../pdf-type';
 /**
@@ -2140,6 +2140,7 @@ export class PdfTextBoxField extends PdfField {
     _scrollable: boolean;
     _autoResizeText: boolean = false;
     _isTextChanged: boolean = false;
+    _actions: PdfFieldActions;
     /**
      * Represents a text box field of the PDF document.
      *
@@ -2283,6 +2284,30 @@ export class PdfTextBoxField extends PdfField {
         field._defaultIndex = 0;
         field._parsedItems = new Map<number, PdfWidgetAnnotation>();
         return field;
+    }
+    /**
+     * Gets the actions of the field. [Read-Only]
+     *
+     * @returns {PdfFieldActions} The actions.
+     *
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data);
+     * // Access the text box field
+     * let field: PdfTextBoxField = document.form.fieldAt(0) as PdfTextBoxField;
+     * // Get the action value from the text box field.
+     *  const PdfFieldActions: PdfFieldActions = field.actions;
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    get actions(): PdfFieldActions {
+        if (!this._actions) {
+            this._actions = new PdfFieldActions(this);
+        }
+        return this._actions;
     }
     /**
      * Gets the value of the text box field.
@@ -3072,6 +3097,17 @@ export class PdfTextBoxField extends PdfField {
         let pdfFont: PdfFont;
         let stringFormat: PdfStringFormat;
         let enableGrouping: boolean = false;
+        const action: PdfFieldActions = this.actions;
+        if (action) {
+            const format: PdfJavaScriptAction = action.format;
+            if (format) {
+                const script: string = format.script;
+                const pattern: string = this._tryParseAcrobatFormFormat(script);
+                if (pattern) {
+                    text = this._normalizeDateValue(this.text, pattern);
+                }
+            }
+        }
         if (text === null || typeof text === 'undefined') {
             text = '';
         }
@@ -3126,6 +3162,117 @@ export class PdfTextBoxField extends PdfField {
             graphics._sw._endMarkupSequence();
         }
         return template;
+    }
+    _normalizeDateValue(textValue: string, afFormat: string): string {
+        const date: Date = this._parseUnknownDate(textValue);
+        if (date) {
+            return this._formatDateUsingAcrobatFormat(date, afFormat);
+        } else {
+            return textValue;
+        }
+    }
+    _parseUnknownDate(text: string): Date {
+        let result: Date;
+        if (text) {
+            const normalized: string = text.trim().replace(/[.-]/g, '/');
+            const native: Date = new Date(normalized);
+            if (isNaN(native.getTime()) === false) {
+                result = native;
+            } else {
+                // Extracts year, month, day, and optional time (hours, minutes, optional seconds) from a date string formatted as YYYY/MM/DD or similar.
+                const dateRegEx: RegExp = /^(\d{1,4})\/(\d{1,2})\/(\d{1,4})$/;
+                const parts: string[] = normalized.trim().split(/\s+/);
+                const datePart: string =  parts[0];
+                let dateMatch: RegExpMatchArray;
+                if (datePart) {
+                    dateMatch = datePart.match(dateRegEx);
+                }
+                const timePart: string = parts [1];
+                if (dateMatch) {
+                    const toNumberOrZero: (value: string) => number = (value: string): number => isNaN(Number(value)) ? 0 : Number(value);
+                    const firstPart: number  = toNumberOrZero(dateMatch[1]);
+                    const secondPart: number = toNumberOrZero(dateMatch[2]);
+                    const thirdPart: number = toNumberOrZero(dateMatch[3]);
+                    let year: number;
+                    let monthIndex: number;
+                    let dayOfMonth: number;
+                    if (thirdPart > 31) {
+                        year = thirdPart;
+                        if (firstPart > 12) {
+                            dayOfMonth = firstPart;
+                            monthIndex = secondPart - 1;
+                        }
+                        let hours: number = 0;
+                        let minutes: number = 0;
+                        let seconds: number = 0;
+                        if (timePart) {
+                            const timeSegments: string[] = timePart.split(':');
+                            if (timeSegments.length >= 2 && timeSegments.length <= 3) {
+                                const h: number = toNumberOrZero(timeSegments[0]);
+                                const m: number = toNumberOrZero(timeSegments[1]);
+                                const s: number = timeSegments[2] ? toNumberOrZero(timeSegments[2]) : 0;
+                                if (
+                                    h >= 0 && h <= 99 &&
+                                    m >= 0 && m <= 59 &&
+                                    s >= 0 && s <= 59
+                                ) {
+                                    hours = h;
+                                    minutes = m;
+                                    seconds = s;
+                                }
+                            }
+                        }
+                        result = new Date(year, monthIndex, dayOfMonth, hours, minutes, seconds);
+                    }
+                }
+            }
+        }
+        return result;
+    }
+    _formatDateUsingAcrobatFormat(date: Date, format: string): string {
+        const monthsShort: string[] = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const monthsLong: string[] = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const pad: (input: number) => string = (input: number) => ('0' + input).slice(-2);
+        const hours24: number = date.getHours();
+        const hours12: number = hours24 % 12 || 12;
+        const map: Map<string, string> = new Map([
+            ['yyyy' , date.getFullYear().toString()],
+            ['yy', date.getFullYear().toString().slice(-2)],
+            ['mmmm', monthsLong[date.getMonth()]],
+            ['mmm', monthsShort[date.getMonth()]],
+            ['mm' , pad(date.getMonth() + 1)],
+            ['m', (date.getMonth() + 1).toString()],
+            ['dd', pad(date.getDate())],
+            ['d', date.getDate().toString()],
+            ['HH', pad(hours24)],
+            ['H', hours24.toString()],
+            ['hh', pad(hours12)],
+            ['h', hours12.toString()],
+            ['MM', pad(date.getMinutes())],
+            ['M', date.getMinutes().toString()],
+            ['ss', pad(date.getSeconds())],
+            ['s', date.getSeconds().toString()],
+            ['tt', hours24 < 12 ? 'AM' : 'PM']
+        ]);
+        return format.replace(
+            /yyyy|mmmm|mmm|mm|dd|HH|hh|MM|ss|yy|H|h|m|d|M|s|tt/g,
+            (token: string): string => {
+                const value: string = map.get(token);
+                return value;
+            }
+        );
+    }
+    _tryParseAcrobatFormFormat(js: string): string {
+        let result: string;
+        if (typeof js === 'string') {
+            const source: string = js.replace(/\s+/g, ' ').trim();
+            const regex: RegExp = /[a-zA-Z0-9_]*_FormatEx\s*\(\s*(['"])(.*?)\1\s*\)/i;
+            const match: RegExpMatchArray = source.match(regex);
+            if (Array.isArray(match) && match.length > 2 && typeof match[2] === 'string') {
+                result = match[2];
+            }
+        }
+        return result;
     }
     _drawTextBox(g: PdfGraphics,
                  parameter: _PaintParameter,

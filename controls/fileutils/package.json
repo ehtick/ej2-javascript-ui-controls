@@ -5,7 +5,7 @@
 	"author": "Syncfusion Inc.",
 	"license": "SEE LICENSE IN license",
 	"devDependencies": {
-		"@syncfusion/ej2-staging": "^1.0.1",
+		"@syncfusion/ej2-staging": "^1.0.2",
 		"@types/chai": "^3.4.28",
 		"@types/jasmine": "2.8.9",
 		"@types/jasmine-ajax": "^3.1.27",

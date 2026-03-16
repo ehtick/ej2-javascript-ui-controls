@@ -6,7 +6,7 @@ import { _PdfCatalog } from './pdf-catalog';
 import { _PdfDictionary, _PdfReference, _isName, _PdfName, _clearPrimitiveCaches } from './pdf-primitives';
 import { PdfDestination, PdfPage } from './pdf-page';
 import { Save } from '@syncfusion/ej2-file-utils';
-import { DataFormat, PdfPermissionFlag, PdfTextAlignment, PdfPageOrientation, PdfRotationAngle } from './enumerator';
+import { DataFormat, PdfPermissionFlag, PdfTextAlignment, PdfPageOrientation, PdfRotationAngle, _PdfWordWrapType } from './enumerator';
 import { PdfForm } from './form/form';
 import { PdfField } from './form/field';
 import { PdfBrush, PdfGraphics } from './graphics/pdf-graphics';
@@ -27,7 +27,10 @@ import { _PdfFontMetrics } from './fonts/pdf-font-metrics';
 import { _UnicodeTrueTypeFont } from './fonts/unicode-true-type-font';
 import { _MD5 } from './security/encryptors/messageDigest5';
 import { PdfSignature } from './security/digital-signature/signature/pdf-signature';
-import { Size } from './pdf-type';
+import { Rectangle, Size } from './pdf-type';
+import { validateLicense } from '@syncfusion/ej2-base';
+import { PdfUriAnnotation } from './annotations/annotation';
+import { _LineInfo, _PdfStringLayouter, _PdfStringLayoutResult } from './fonts/string-layouter';
 /**
  * Represents a PDF document and can be used to parse an existing PDF document.
  * ```typescript
@@ -691,7 +694,9 @@ export class PdfDocument {
             if (options && options.shouldStrikeout) {
                 style = PdfFontStyle.strikeout;
             }
-            return new PdfTrueTypeFont(fontData, size, style, primitive);
+            const trueTypeFont: PdfTrueTypeFont = new PdfTrueTypeFont(fontData, size, style, primitive);
+            trueTypeFont._document = this;
+            return trueTypeFont;
         }
         const fontFamily: any = arg1; // eslint-disable-line
         const style: PdfFontStyle = arg3 as PdfFontStyle;
@@ -772,6 +777,7 @@ export class PdfDocument {
             throw new Error(`Unsupported font subtype: ${subtype}`);
         }
         font.style = style;
+        font._document = this;
         return font;
     }
     _computeFontHash(fontData: Uint8Array): string {
@@ -1551,7 +1557,11 @@ export class PdfDocument {
         }
     }
     /**
-     * Saves the modified document.
+     * Saves the modified document synchronously.
+     *
+     * @remarks
+     * This method does **not** support embedding a timestamped digital signature.
+     * To embed a timestamp from a trusted timestamp authority (TSA), use the asynchronous saveAsync() method.
      *
      * @returns {Uint8Array} Saved PDF data as byte array.
      *
@@ -1568,7 +1578,12 @@ export class PdfDocument {
     /**
      * Saves the modified document to the specified filename.
      *
+     * @remarks
+     * This method does **not** support embedding a timestamped digital signature.
+     * To embed a timestamp from a trusted timestamp authority (TSA), use the asynchronous saveAsync(filename) method.
+     *
      * @param {string} filename Specifies the filename to save the output pdf document.
+     * @returns {void}
      *
      * ```typescript
      * // Load an existing PDF document
@@ -1584,11 +1599,95 @@ export class PdfDocument {
         if (!this._isLoaded && this.pageCount === 0) {
             this.addSection().addPage();
         }
+        if (!validateLicense('pdf')) {
+            this._addWatermarkText();
+        }
         this._doPostProcess(this._flatten);
         if (typeof filename === 'string') {
             Save.save(filename, new Blob([this._crossReference._save()], { type: 'application/pdf' }));
         } else {
             return this._crossReference._save();
+        }
+    }
+    /**
+     * Saves the PDF document asynchronously and returns the resulting bytes.
+     *
+     * @returns {Promise<Uint8Array>} The saved PDF data as a byte array.
+     *
+     * @example
+     * ```typescript
+     * // Load the document
+     * let document: PdfDocument = new PdfDocument(data);
+     * // Gets the first page of the document
+     * let page: PdfPage = document.getPage(0);
+     * // Access the PDF form
+     * let form: PdfForm = document.form;
+     * // Create a new signature field
+     * let field: PdfSignatureField = new PdfSignatureField(page, 'Signature', {x: 10, y: 10, width: 100, height: 50});
+     * // Create a timestamp callback
+     * async function timestampCallback(request: Uint8Array): Promise<{ response: Uint8Array }> {
+     *     // Implement timestamp response logic here
+     *     return new Uint8Array(); // Placeholder return
+     * }
+     * // Create a new signature using PFX data, private key and call back function for timestamp
+     * const sign: PdfSignature = PdfSignature.create(certData, password, { cryptographicStandard: CryptographicStandard.cms, digestAlgorithm: DigestAlgorithm.sha256 }, timestampCallback);
+     * // Sets the signature to the field
+     * field.setSignature(sign);
+     * // Add the field into PDF form
+     * form.add(field);
+     * // Save the document
+     * const data = await document.saveAsync();
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    async saveAsync(): Promise<Uint8Array>
+    /**
+     * Saves the PDF document asynchronously to the specified filename.
+     *
+     * @param {string} filename The target filename to write the output PDF.
+     * @returns {Promise<void>} Resolves when the file has been saved.
+     *
+     * @example
+     * ```typescript
+     * // Load the document
+     * let document: PdfDocument = new PdfDocument(data);
+     * // Gets the first page of the document
+     * let page: PdfPage = document.getPage(0);
+     * // Access the PDF form
+     * let form: PdfForm = document.form;
+     * // Create a new signature field
+     * let field: PdfSignatureField = new PdfSignatureField(page, 'Signature', {x: 10, y: 10, width: 100, height: 50});
+     * // Create a timestamp callback
+     * async function timestampCallback(request: Uint8Array): Promise<{ response: Uint8Array }> {
+     *     // Implement timestamp response logic here
+     *     return new Uint8Array(); // Placeholder return
+     * }
+     * // Create a new signature using PFX data, private key and call back function for timestamp
+     * const sign: PdfSignature = PdfSignature.create(certData, password, { cryptographicStandard: CryptographicStandard.cms, digestAlgorithm: DigestAlgorithm.sha256 }, timestampCallback);
+     * // Sets the signature to the field
+     * field.setSignature(sign);
+     * // Add the field into PDF form
+     * form.add(field);
+     * // Save the document
+     * await document.saveAsync('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    async saveAsync(filename: string): Promise<void>
+    async saveAsync(filename?: string): Promise<void | Uint8Array> {
+        if (!this._isLoaded && this.pageCount === 0) {
+            this.addSection().addPage();
+        }
+        await Promise.resolve(this._doPostProcess(this._flatten));
+        if (typeof filename === 'string') {
+            const pdfBytes: Uint8Array = await this._crossReference._saveAsync();
+            await Promise.resolve(
+                Save.save(filename, new Blob([pdfBytes], { type: 'application/pdf' }))
+            );
+        } else {
+            return await this._crossReference._saveAsync();
         }
     }
     /**
@@ -2125,30 +2224,265 @@ export class PdfDocument {
         }
     }
     _addWatermarkText(): void {
-        if (this.pageCount > 0) {
-            for (let index: number = 0; index < this._pageCount; index++) {
-                const page: PdfPage = this.getPage(index);
-                if (page) {
-                    try {
-                        const graphics: PdfGraphics = page.graphics;
-                        graphics.save();
-                        graphics.setTransparency(0.20);
-                        graphics.drawRectangle({x: 0, y: 0, width: page.size.width, height: 33.75}, new PdfBrush({r: 255, g: 255, b: 255}));
-                        graphics.restore();
-                        graphics.save();
-                        graphics.setTransparency(0.50);
-                        const font: PdfStandardFont = new PdfStandardFont(PdfFontFamily.helvetica, 12, PdfFontStyle.regular);
-                        const format: PdfStringFormat = new PdfStringFormat(PdfTextAlignment.center, PdfVerticalAlignment.middle);
-                        graphics.drawString('Created with a trial version of Syncfusion Essential PDF',
-                                            font,
-                                            {x: 0, y: 0, width: page.size.width, height: 33.75},
-                                            null,
-                                            new PdfBrush({r: 0, g: 0, b: 0}),
-                                            format);
-                        graphics.restore();
-                    } catch (e) { } // eslint-disable-line
+        for (let i: number = 0; i < this.pageCount; i++) {
+            this._addLincenseWaterMark(this.getPage(i), i === 0, i === this.pageCount - 1);
+        }
+    }
+    /**
+     * Add license watermark on the page.
+     *
+     * @private
+     * @param { PdfPage } page PDF-page.
+     * @param { boolean } isFirstPage It denotes it is a first page or not.
+     * @param { boolean } isLastPage It denotes it is a last page or not.
+     * @returns { void } Returns void
+     */
+    private _addLincenseWaterMark(page: PdfPage, isFirstPage: boolean, isLastPage: boolean): void {
+        const diagonalText: string = 'Created with a trial version of Syncfusion PDF library.';
+        const formatCenter: PdfStringFormat = new PdfStringFormat(PdfTextAlignment.center, PdfVerticalAlignment.middle);
+        let fontSize: number = 14;
+        const graphics: PdfGraphics = page.graphics;
+        const clientSize: Size = graphics.clientSize;
+        if (page.size.width < 400) {
+            fontSize = page.size.width * 0.035;
+        }
+        const font: PdfStandardFont = new PdfStandardFont(PdfFontFamily.helvetica, fontSize, PdfFontStyle.regular);
+        if (isFirstPage) {
+            this._drawWatermarkOnPage(page, font, graphics, false);
+        } else if (isLastPage) {
+            this._drawWatermarkOnPage(page, font, graphics, true);
+        }
+        const textSize: Size = font.measureString(diagonalText, clientSize.width);
+        const centerX: number = clientSize.width / 2;
+        const centerY: number = clientSize.height / 2;
+        graphics.save();
+        if (!page._isNew && (page.rotation === PdfRotationAngle.angle90)) {
+            graphics.translateTransform({ x: centerY, y: centerX });
+        } else {
+            graphics.translateTransform({ x: centerX, y: centerY });
+        }
+        graphics.setTransparency(0.5);
+        if (page._isNew) {
+            switch (page.rotation) {
+            case PdfRotationAngle.angle90:
+                graphics.rotateTransform(-135);
+                break;
+            case PdfRotationAngle.angle180:
+                graphics.rotateTransform(-225);
+                break;
+            case PdfRotationAngle.angle270:
+                graphics.rotateTransform(-315);
+                break;
+            default:
+                graphics.rotateTransform(-45);
+                break;
+            }
+        } else {
+            graphics.rotateTransform(-45);
+        }
+        const x: number = textSize.width / 2;
+        const y: number = textSize.height / 2;
+        const x1: number = centerX - x;
+        graphics.drawString(
+            diagonalText,
+            font,
+            { x: -x, y: -(y / 2), width: clientSize.width - (x1 + x1), height: textSize.height },
+            new PdfBrush({ r: 255, g: 0, b: 0 }),
+            formatCenter
+        );
+        graphics.restore();
+        graphics.restore();
+    }
+    /**
+     * Draw the watermark in the header and footer of the page.
+     *
+     * @private
+     * @param { PdfPage } page PDF-page.
+     * @param { PdfStandardFont } font It denotes the font for the text added.
+     * @param { PdfGraphics } graphics It denotes the graphis of the page.
+     * @param { boolean } isLastPage It denotes it is a last page or not.
+     * @returns { void } Returns voidgulp
+     */
+    private _drawWatermarkOnPage(page: PdfPage, font: PdfStandardFont, graphics: PdfGraphics, isLastPage: boolean): void {
+        const watermarkHeaderText: string = 'Created with a trial version of Syncfusion PDF library or registered the wrong key in your application. To obtain the valid key, Click';
+        const watermarkLinkText: string = 'here';
+        const xPosition: number = 40;
+        const yPostion: number = 10;
+        const rotation: PdfRotationAngle = page.rotation;
+        let size: Size =  page._isNew && (rotation === PdfRotationAngle.angle270 || rotation === PdfRotationAngle.angle90)
+            ? {width: graphics.clientSize.width, height: graphics.clientSize.height - 70}
+            : {width: graphics.clientSize.width - 70, height: graphics.clientSize.height};
+        if (!page._isNew && (rotation === PdfRotationAngle.angle270 || rotation === PdfRotationAngle.angle90)) {
+            size = { width: page.size.height - 70, height: page.size.width };
+        }
+        const textFormat: PdfStringFormat = new PdfStringFormat();
+        textFormat._wordWrap = _PdfWordWrapType.word;
+        const redBrush: PdfBrush = new PdfBrush({ r: 255, g: 0, b: 0 });
+        const blueBrush: PdfBrush = new PdfBrush({ r: 0, g: 0, b: 255 });
+        const headerSize: Size = font.measureString(watermarkHeaderText);
+        const linkSize: Size = font.measureString(watermarkLinkText);
+        const lineHeight: number = headerSize.height;
+        const availableWidth: number = (page._isNew && (rotation === PdfRotationAngle.angle270 || rotation === PdfRotationAngle.angle90))
+            ? size.height : size.width;
+        let currentX: number = rotation === PdfRotationAngle.angle90 && page._isNew ? xPosition - 70 : xPosition ;
+        let currentY: number = isLastPage
+            ? (page._isNew && (rotation === PdfRotationAngle.angle270 || rotation === PdfRotationAngle.angle90)
+                ? size.width : size.height) - (page.orientation === PdfPageOrientation.landscape &&
+                page.size.width === 420 || page.size.height === 420 ? lineHeight * 4 : lineHeight * 3) - yPostion : yPostion;
+        if (page._isNew) {
+            if (page.rotation !== PdfRotationAngle.angle0) {
+                graphics.save();
+                if (rotation === PdfRotationAngle.angle90) {
+                    graphics.rotateTransform(-90);
+                } else if (rotation === PdfRotationAngle.angle180) {
+                    graphics.rotateTransform(-180);
+                } else if (rotation === PdfRotationAngle.angle270) {
+                    graphics.rotateTransform(-270);
                 }
             }
+        }
+        const adjustBoundsForRotation: (rect: Rectangle) => Rectangle = (rect: Rectangle): Rectangle => {
+            if (page._isNew) {
+                if (rotation === PdfRotationAngle.angle90) {
+                    return {
+                        x: -(size.height - rect.x),
+                        y: rect.y,
+                        width: rect.height - xPosition,
+                        height: rect.width
+                    };
+                }
+                if (rotation === PdfRotationAngle.angle180) {
+                    return {
+                        x: -(graphics.clientSize.width - rect.x),
+                        y: -(size.height - rect.y),
+                        width: rect.width - xPosition,
+                        height: rect.height
+                    };
+                }
+                if (rotation === PdfRotationAngle.angle270) {
+                    return {
+                        x: rect.x,
+                        y: -(size.width - rect.y),
+                        width: rect.height - xPosition,
+                        height: rect.width
+                    };
+                }
+            }
+            return rect;
+        };
+        const headerBounds: Rectangle = adjustBoundsForRotation({
+            x: currentX,
+            y: currentY,
+            width: size.width,
+            height: size.height
+        });
+        graphics.drawString(
+            watermarkHeaderText,
+            font,
+            headerBounds,
+            redBrush,
+            textFormat
+        );
+        const layouter: _PdfStringLayouter = new _PdfStringLayouter();
+        const headerLayoutResult: _PdfStringLayoutResult =
+            layouter._layout(watermarkHeaderText, font, textFormat, [headerBounds.width, headerBounds.height]);
+        const headerLines: _LineInfo[] = headerLayoutResult._layoutLines;
+        const lastLine: _LineInfo = headerLines[headerLines.length - 1];
+        currentX += lastLine._width + 5;
+        if (headerLayoutResult._lineCount >= 2 ) {
+            currentY += headerLayoutResult._lineHeight * (headerLayoutResult._lineCount - 1);
+        }
+        if (currentX + linkSize.width > availableWidth) {
+            currentX = xPosition;
+            currentY += headerLayoutResult._lineHeight;
+        }
+        const linkRect: Rectangle = {
+            x: currentX,
+            y: currentY,
+            width: linkSize.width,
+            height: linkSize.height
+        };
+        const rotatedLinkRect: Rectangle = adjustBoundsForRotation(linkRect);
+        rotatedLinkRect.width += 70;
+        graphics.drawString(
+            watermarkLinkText,
+            font,
+            rotatedLinkRect,
+            blueBrush,
+            textFormat
+        );
+        rotatedLinkRect.width -= 70;
+        let annotationRect: Rectangle;
+        if (page._isNew) {
+            switch (rotation) {
+            case PdfRotationAngle.angle0:
+                annotationRect = { ...linkRect };
+                break;
+            case PdfRotationAngle.angle90:
+                annotationRect = {
+                    x: linkRect.y,
+                    y: size.height - linkRect.x - linkRect.width,
+                    width: linkRect.height,
+                    height: linkRect.width
+                };
+                break;
+            case PdfRotationAngle.angle180:
+                annotationRect = {
+                    x: size.width - linkRect.x + 40,
+                    y: size.height - linkRect.y - linkRect.height,
+                    width: linkRect.width,
+                    height: linkRect.height
+                };
+                break;
+            case PdfRotationAngle.angle270:
+                annotationRect = {
+                    x: size.width - linkRect.y - linkRect.height,
+                    y: linkRect.x,
+                    width: linkRect.height,
+                    height: linkRect.width
+                };
+                break;
+            }
+        } else {
+            switch (rotation) {
+            case PdfRotationAngle.angle0:
+                annotationRect = { ...linkRect };
+                break;
+            case PdfRotationAngle.angle90:
+                annotationRect = {
+                    x: linkRect.y,
+                    y: page.size.height - linkRect.x - linkRect.width,
+                    width: linkRect.height,
+                    height: linkRect.width
+                };
+                break;
+            case PdfRotationAngle.angle180:
+                annotationRect = {
+                    x: page.size.width - linkRect.x - linkRect.width,
+                    y: page.size.height - linkRect.y - linkRect.height,
+                    width: linkRect.width,
+                    height: linkRect.height
+                };
+                break;
+            case PdfRotationAngle.angle270:
+                annotationRect = {
+                    x: page.size.width - linkRect.y - linkRect.height,
+                    y: linkRect.x,
+                    width: linkRect.height,
+                    height: linkRect.width
+                };
+                break;
+            }
+        }
+        const linkAnnotation: PdfUriAnnotation = new PdfUriAnnotation(annotationRect, 'http://www.syncfusion.com');
+        linkAnnotation.border.width = 0;
+        linkAnnotation.border.hRadius = 0;
+        linkAnnotation.border.vRadius = 0;
+        page.annotations.add(linkAnnotation);
+        if (page.rotation !== PdfRotationAngle.angle0 && page._isNew) {
+            graphics.restore();
+        } else {
+            graphics.save();
         }
     }
     /**

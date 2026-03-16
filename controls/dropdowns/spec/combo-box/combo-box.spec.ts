@@ -276,6 +276,16 @@ describe('ComboBox', () => {
             expect(comboBoxObj.value).toBe(null);
             expect(comboBoxObj.index).toBe(null);
         });
+        it(' placeholder property - onPropertyChange ', () => {
+            comboBoxObj = new ComboBox({
+                dataSource: languageData,
+                placeholder: 'Select a language'
+            });
+            comboBoxObj.appendTo(element);
+            comboBoxObj.placeholder = 'Select a program language';
+            comboBoxObj.dataBind();
+            expect(comboBoxObj.placeholder).toBe('Select a program language');
+        });
     });
 
     describe('Custom object value with preselect', () => {
@@ -4212,6 +4222,50 @@ describe('EJ2MVC-335 - Value updated incorrectly for autofill true case', () => 
             let keyEventArgs: any = { preventDefault: (): void => { /** NO Code */ } };
             listObj.listData = null;
             listObj.incrementalSearch(keyEventArgs as KeyboardEventArgs);
+        });
+    });
+    describe('AutoFill with AllowObjectBinding', () => {
+        let comboBoxObj: any;
+        let e: any = { preventDefault: function () { }, target: null, type: null };
+        let element: HTMLInputElement = <HTMLInputElement>createElement('input', { id: 'ComboBox1' });
+        beforeAll(() => {
+            document.body.appendChild(element);
+            comboBoxObj = new ComboBox({
+                dataSource: languageData,
+                fields: { value: 'id', text: 'text' },
+                autofill: true,
+                allowObjectBinding: true
+            });
+            comboBoxObj.appendTo(element);
+        });
+        afterAll(() => {
+            comboBoxObj.destroy();
+            element.remove();
+        });
+
+        it('fill a first value in text box', (done) => {
+            comboBoxObj.inputElement.value = 'h';
+            comboBoxObj.showPopup();
+            setTimeout(() => {
+                e.key = 'H';
+                e.keyCode = 72;
+                comboBoxObj.onInput(e);
+                comboBoxObj.onFilterUp(e);
+                expect(comboBoxObj.inputElement.value).toBe('hTML');
+                let item: Element = comboBoxObj.list.querySelector('.e-active')
+                expect(item.textContent === 'HTML').toBe(true);
+                done();
+            }, 450)
+        });
+
+        it('select a first value in text box', (done) => {
+            e.keyCode = 13;
+            e.action = 'enter';
+            comboBoxObj.keyActionHandler(e);
+            setTimeout(() => {
+                expect(comboBoxObj.inputElement.value).toBe('HTML');
+                done();
+            }, 450)
         });
     });
 });

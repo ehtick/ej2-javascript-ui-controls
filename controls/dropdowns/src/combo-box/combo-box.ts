@@ -1078,6 +1078,9 @@ export class ComboBox extends DropDownList {
                 break;
             case 'allowCustom':
                 break;
+            case 'placeholder':
+                Input.setPlaceholder(newProp.placeholder, this.inputElement as HTMLInputElement, this.getModuleName());
+                break;
             default: {
                 // eslint-disable-next-line max-len
                 const comboProps: { [key: string]: Object } = this.getPropObject(prop, <{ [key: string]: string }>newProp, <{ [key: string]: string }>oldProp);

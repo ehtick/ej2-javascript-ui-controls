@@ -2148,7 +2148,7 @@ export class DateRangePicker extends CalendarBase {
                     const isDisabledCell: boolean = (!ele.classList.contains(DISABLED) || ele.classList.contains(DATEDISABLED));
                     if (!ele.classList.contains(WEEKNUMBER) && isDisabledCell) {
                         const eleDate: Date = this.getIdValue(null, ele);
-                        const startDateValue: Date = this.currentView() === 'Month' ? new Date(+this.startValue) : this.getStartEndDate(new Date(+this.startValue), false);
+                        const startDateValue: Date = this.currentView() === 'Month' || currentDate != null ? new Date(+this.startValue) : this.getStartEndDate(new Date(+this.startValue), false);
                         const eleDateValue: Date = new Date(+eleDate);
                         if (eleDateValue.setHours(0, 0, 0, 0) >= startDateValue.setHours(0, 0, 0, 0) && +eleDate <= +currentDate) {
                             addClass([ele], RANGEHOVER);
@@ -4599,9 +4599,12 @@ export class DateRangePicker extends CalendarBase {
             width += icons[index as number].offsetWidth;
         }
         if (label) {
-            const labelWidth: number = (this.element.parentElement.offsetWidth) - width;
-            if (labelWidth && !(this.cssClass && this.cssClass.split(' ').indexOf('e-outline') !== -1)) {
-                label.style.width = `${labelWidth}px`;
+            const isMaterial: string = window.getComputedStyle(this.element).getPropertyValue('--dummy-style').trim();
+            if (isMaterial === '') {
+                const labelWidth: number = (this.element.parentElement.offsetWidth) - width;
+                if (labelWidth) {
+                    label.style.width = `${labelWidth}px`;
+                }
             }
         }
     }
@@ -4947,7 +4950,7 @@ export class DateRangePicker extends CalendarBase {
                 this.changeTrigger();
                 break;
             case 'placeholder':
-                Input.setPlaceholder(newProp.placeholder, this.inputElement);
+                Input.setPlaceholder(newProp.placeholder, this.inputElement, this.getModuleName());
                 this.setProperties({ placeholder: newProp.placeholder }, true);
                 break;
             case 'readonly':

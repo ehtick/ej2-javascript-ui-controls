@@ -466,6 +466,68 @@ describe('Chart', () => {
             chartObj.refresh();
         });
     });
+
+    describe('Linear Trendlines with gradient', () => {
+        let chartObj: Chart;
+        let loaded: EmitType<ILoadedEventArgs>;
+        let trigger: MouseEvents = new MouseEvents();
+        element = createElement('div', { id: 'container' });
+        beforeAll(() => {
+            document.body.appendChild(element);
+            chartObj = new Chart(
+                {
+                    primaryXAxis: {
+                        title: 'Months',
+                        valueType: 'Category'
+                    },
+                    primaryYAxis: {
+                        title: 'Rupees against Dollars',
+                        interval: 5
+                    },
+                    height: '600px',
+                    width: '850px',
+                    series: [{
+                        type: 'Line',
+                        name: 'trend',
+                        fill: '#0066FF',
+                        xName: 'x',
+                        yName: 'y',
+                        dataSource: categoyData[0].dataSource,
+                        animation: { enable: false },
+                        trendlines: [{
+                            type: 'Linear',
+                            name: 'Linear_trend', enableTooltip: true, marker: { visible: true },
+                            linearGradient: {
+                                x1: 0, y1: 0,
+                                x2: 0, y2: 1,
+                                gradientColorStop: [
+                                    { color: 'red', offset: 0, opacity: 1 },
+                                    { color: 'blue', offset: 100, opacity: 1 },
+                                ]
+                            }
+                        }],
+                    }],
+                    title: 'Online trading'
+                });
+            chartObj.appendTo('#container');
+        });
+
+        afterAll((): void => {
+            chartObj.destroy();
+            document.getElementById('container').remove();
+        });
+
+        it('Linear Trendlines with gradient fill', (done: Function) => {
+            loaded = (args: Object): void => {
+                let svgGradient: Element = document.getElementById('container_Series_0_TrendLine_0');
+                expect(svgGradient.getAttribute('stroke') == 'url(#container_series_0_linear_gradient)').toBe(true);
+                done();
+            };
+            chartObj.loaded = loaded;
+            chartObj.refresh();
+        });
+    });
+
     it('memory leak', () => {
         profile.sample();
         let average: any = inMB(profile.averageChange)

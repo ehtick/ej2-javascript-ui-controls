@@ -75,6 +75,9 @@ export class ChartScroll {
             this.parent.timelineModule.isZoomingAction = false;
             this.deleteTableElements();
             this.parent.timelineModule.createTimelineSeries();
+            if (!this.parent.isLoad && this.parent.isReact && !isNullOrUndefined(this.parent.timelineTemplate)) {
+                this.parent.renderTemplates();
+            }
             if (this.parent.gridLines === 'Vertical' || this.parent.gridLines === 'Both') {
                 this.parent['renderChartVerticalLines']();
             }
@@ -219,7 +222,7 @@ export class ChartScroll {
     /**
      * Scroll event handler
      *
-     * @returns {void} .
+     * @returns {void}
      */
     private onScroll(): void {
         const scrollArgs: ScrollArgs = {};

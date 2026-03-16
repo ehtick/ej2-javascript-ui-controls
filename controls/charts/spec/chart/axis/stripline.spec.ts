@@ -271,6 +271,28 @@ describe('Chart control checking', () => {
             chart.loaded = loaded;
             chart.refresh();
         });
+        it('XAxis Stripline with image opacity', (done: Function) => {
+            loaded = () => {
+                stripLineElement  = document.getElementById(stripLineId + '_Over_rect_' + 'primaryXAxis' + '_0');
+                expect(stripLineElement.getAttribute('opacity')).toBe('0.3');
+                stripLineElement = document.getElementById(stripLineId + '_Behind_rect_' + 'primaryXAxis' + '_0');
+                expect(stripLineElement.getAttribute('opacity')).toBe('0.5');
+                done();
+            };
+            chart.primaryXAxis.stripLines = [
+                {
+                    startFromAxis: false, start: 1, size: 4, imageUrl: 'base/spec/img/img1.jpg',
+                    verticalAlignment: 'End', opacity: 0.5,
+                    color: 'red', zIndex: 'Behind', text: 'Behind'
+                },
+                {
+                    start: 6, end: 8, opacity: 0.3,
+                    color: 'blue', text: 'Over', zIndex: 'Over'
+                }
+            ];
+            chart.loaded = loaded;
+            chart.refresh();
+        });
     });
     describe('Stripline Size Type checking', () => {
         beforeAll((): void => {
@@ -358,6 +380,25 @@ describe('Chart control checking', () => {
 
 
                 ]
+            };
+            chart.loaded = loaded;
+            chart.refresh();
+        });
+
+        it('Pixel Type without size value', (done: Function) => {
+            loaded = () => {
+                stripLineElement = document.getElementById(stripLineId + '_Behind_path_2');
+                expect(stripLineElement === null).toBe(true);
+                done();
+            };
+            chart.primaryXAxis = {
+                intervalType: 'Years',
+                stripLines: [{
+                    start: new Date(2011, 0, 1), size: 1,
+                    visible: true, sizeType: 'Pixel',
+                    isRepeat: true, repeatEvery: 2,
+                    color: 'black', text: 'text',
+                }]
             };
             chart.loaded = loaded;
             chart.refresh();

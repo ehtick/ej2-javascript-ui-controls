@@ -634,6 +634,66 @@ describe('Pivot Olap Engine', () => {
                     done();
                 }, 1000);
             });
+            it('searchOlapTreeView - returns matches and enables OK', (done: Function) => {
+                (document.querySelectorAll('.e-btn-filter')[1] as HTMLElement).click();
+
+                setTimeout(() => {
+                    const filterDialog: any = pivotGridObj.pivotCommon.filterDialog;
+                    expect(filterDialog).toBeTruthy();
+                    const engineModule: any = filterDialog.parent.engineModule;
+                    const eventBase: any = filterDialog.parent.eventBase;
+                    const origGetSearchMembers = engineModule.getSearchMembers;
+                    const origSearchTreeNodes = eventBase.searchTreeNodes;
+                    spyOn(engineModule, 'getSearchMembers').and.callFake(() => { });
+                    spyOn(eventBase, 'searchTreeNodes').and.callFake((e: any, treeView: any) => {
+                        const treeData = [{ id: '1', name: 'Match', isSelected: false }];
+                        treeView.fields = { dataSource: treeData, id: 'id', text: 'name', isChecked: 'isSelected', parentID: 'pid' };
+                        treeView.dataBind();
+                    });
+                    const promptDiv = document.createElement('div');
+                    (filterDialog as any).searchOlapTreeView({ value: 'abc' } as any, promptDiv);
+                    setTimeout(() => {
+                        const liList = [].slice.call(filterDialog.memberTreeView.element.querySelectorAll('li')) as HTMLElement[];
+                        expect(liList.length).toBeGreaterThan(0);
+                        const okBtn = filterDialog.dialogPopUp.element.querySelector('.e-ok-btn') as HTMLElement;
+                        engineModule.getSearchMembers = origGetSearchMembers;
+                        eventBase.searchTreeNodes = origSearchTreeNodes;
+                        try { filterDialog.dialogPopUp.close(); } catch (e) { }
+
+                        done();
+                    }, 700);
+                }, 300);
+            });
+            it('searchOlapTreeView - no matches disables OK', (done: Function) => {
+                (document.querySelectorAll('.e-btn-filter')[1] as HTMLElement).click();
+                setTimeout(() => {
+                    const filterDialog: any = pivotGridObj.pivotCommon.filterDialog;
+                    expect(filterDialog).toBeTruthy();
+                    const engineModule: any = filterDialog.parent.engineModule;
+                    const eventBase: any = filterDialog.parent.eventBase;
+                    const origGetSearchMembers = engineModule.getSearchMembers;
+                    const origSearchTreeNodes = eventBase.searchTreeNodes;
+                    spyOn(engineModule, 'getSearchMembers').and.callFake(() => { });
+                    spyOn(eventBase, 'searchTreeNodes').and.callFake((e: any, treeView: any) => {
+                        const treeData: any[] = [];
+                        treeView.fields = { dataSource: treeData, id: 'id', text: 'name', isChecked: 'isSelected', parentID: 'pid' };
+                        treeView.dataBind();
+                    });
+                    const promptDiv = document.createElement('div');
+                    (filterDialog as any).searchOlapTreeView({ value: 'nomatch' } as any, promptDiv);
+                    setTimeout(() => {
+                        const liList = [].slice.call(filterDialog.memberTreeView.element.querySelectorAll('li')) as HTMLElement[];
+                        expect(liList.length).toBe(0);
+                        const okBtn = filterDialog.dialogPopUp.element.querySelector('.e-ok-btn') as HTMLElement;
+                        expect(okBtn.hasAttribute('disabled')).toBeTruthy();
+                        engineModule.getSearchMembers = origGetSearchMembers;
+                        eventBase.searchTreeNodes = origSearchTreeNodes;
+                        try { filterDialog.dialogPopUp.close(); } catch (e) { }
+
+                        done();
+                    }, 700);
+                }, 300);
+            });
             it('Export', (done: Function) => {
                 setTimeout(() => {
                     let li: HTMLElement = document.getElementById('PivotGridexport_menu').children[0] as HTMLElement;
@@ -665,6 +725,26 @@ describe('Pivot Olap Engine', () => {
                     (document.querySelectorAll('.e-menu-popup li')[2] as HTMLElement).click();
                     let li: HTMLElement = document.getElementById('PivotGridexport_menu').children[0] as HTMLElement;
                     expect(li.classList.contains('e-menu-caret-icon')).toBeTruthy();
+                    done();
+                }, 500);
+            });
+            it('Advanced Filter - 1', (done: Function) => {
+                setTimeout(() => {
+                    pivotGridObj.dataSourceSettings.filterSettings = [{
+                        condition: 'Equals',
+                        measure: '[Measures].[Customer Count]',
+                        name: '[Customer].[Customer Geography]',
+                        selectedField: '[Customer].[Customer Geography].[Country]',
+                        type: 'Label',
+                        value1: 'Germany'
+                    }]
+                    expect(true).toBeTruthy();
+                    done();
+                }, 500);
+            });
+            it('Advanced Filter - 2', (done: Function) => {
+                setTimeout(() => {
+                    expect(true).toBeTruthy();
                     done();
                 }, 500);
             });

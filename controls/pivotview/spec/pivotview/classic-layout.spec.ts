@@ -13,6 +13,7 @@ import { Grouping } from '../../src/common/popups/grouping';
 import { VirtualScroll } from '../../src/pivotview/actions';
 import { PDFExport } from '../../src/pivotview/actions/pdf-export';
 import { ExcelExport } from '../../src/pivotview/actions/excel-export';
+import { EventHandler } from '@syncfusion/ej2-base';
 
 describe('Classic layout spec', () => {
     let pivotDatas: IDataSet[] = [
@@ -724,8 +725,8 @@ describe('Classic layout spec', () => {
             args = new MouseEvent("mouseup", { view: window, bubbles: true, cancelable: true });
             document.querySelectorAll('.e-content-virtualtable')[0].dispatchEvent(args);
             expect(Math.round(document.querySelectorAll('.e-content-virtualtable')[0].scrollTop) === 0).toBeTruthy();
-            expect(document.querySelectorAll('.e-content-virtualtable td')[0].querySelector('td .e-cellvalue').textContent).toBe('Flight');
-            expect(document.querySelectorAll('.e-content-virtualtable td')[1].querySelector('td .e-cellvalue').textContent).toBe('New Jercy');
+            expect(document.querySelectorAll('.e-content-virtualtable td')[0].querySelector('.e-cellvalue').textContent).toBe('Flight');
+            expect(document.querySelectorAll('.e-content-virtualtable td')[1].querySelector('.e-cellvalue').textContent).toBe('New Jercy');
         });
 
         it('scroll right', () => {
@@ -735,8 +736,8 @@ describe('Classic layout spec', () => {
             document.querySelector('.e-headercontent').dispatchEvent(args);
             args = new MouseEvent("mouseup", { view: window, bubbles: true, cancelable: true });
             document.querySelector('.e-headercontent').dispatchEvent(args);
-            expect(document.querySelectorAll('.e-content-virtualtable td')[0].querySelector('td .e-cellvalue').textContent).toBe('Flight');
-            expect(document.querySelectorAll('.e-content-virtualtable td')[1].querySelector('td .e-cellvalue').textContent).toBe('New Jercy');
+            expect(document.querySelectorAll('.e-content-virtualtable td')[0].querySelector('.e-cellvalue').textContent).toBe('Flight');
+            expect(document.querySelectorAll('.e-content-virtualtable td')[1].querySelector('.e-cellvalue').textContent).toBe('New Jercy');
         });
 
         it('scroll right false', () => {
@@ -746,7 +747,7 @@ describe('Classic layout spec', () => {
             document.querySelector('.e-headercontent').dispatchEvent(args);
             args = new MouseEvent("mouseup", { view: window, bubbles: true, cancelable: true });
             document.querySelector('.e-headercontent').dispatchEvent(args);
-            expect(document.querySelectorAll('.e-content-virtualtable td')[0].querySelector('td .e-cellvalue').textContent).toBe('Flight');
+            expect(document.querySelectorAll('.e-content-virtualtable td')[0].querySelector('.e-cellvalue').textContent).toBe('Flight');
             expect(document.querySelectorAll('.e-content-virtualtable tr')[0].querySelector('td:not(.e-freezeleftborder) .e-cellvalue').textContent).toBe('$2,430.87');
         });
 
@@ -1181,10 +1182,24 @@ describe('Classic layout spec', () => {
             pivotGridObj.appendTo('#PivotGrid');
         });
         it('values testing', (done: Function) => {
-            setTimeout(() => {
-                expect((pivotGridObj.engineModule.pivotValues[12][7] as IDataSet).formattedText).toBe("$1,663.84");
-                done();
-            }, 500);
+            let waited = 0;
+            const maxWait = 8000;
+            const poll = 100;
+            const interval = setInterval(() => {
+                if (pivotGridObj && pivotGridObj.engineModule && pivotGridObj.engineModule.pivotValues &&
+                    pivotGridObj.engineModule.pivotValues[12] && pivotGridObj.engineModule.pivotValues[12][7]) {
+                    clearInterval(interval);
+                    expect((pivotGridObj.engineModule.pivotValues[12][7] as IDataSet).formattedText).toBe("$1,663.84");
+                    done();
+                    return;
+                }
+                waited += poll;
+                if (waited >= maxWait) {
+                    clearInterval(interval);
+                    expect(false).toBe(true, 'pivot value not available within timeout');
+                    done();
+                }
+            }, poll);
         });
         it('set sub-total position as bottom', (done: Function) => {
             setTimeout(() => {
@@ -1193,13 +1208,26 @@ describe('Classic layout spec', () => {
             }, 500);
         });
         it('values testing - row axis', (done: Function) => {
-            setTimeout(() => {
-                expect((pivotGridObj.engineModule.pivotValues[12][7] as IDataSet).formattedText).toBe("$1,663.84");
-                done();
-            }, 500);
+            let waited = 0;
+            const maxWait = 8000;
+            const poll = 100;
+            const interval = setInterval(() => {
+                if (pivotGridObj && pivotGridObj.engineModule && pivotGridObj.engineModule.pivotValues &&
+                    pivotGridObj.engineModule.pivotValues[12] && pivotGridObj.engineModule.pivotValues[12][7]) {
+                    clearInterval(interval);
+                    expect((pivotGridObj.engineModule.pivotValues[12][7] as IDataSet).formattedText).toBe("$1,663.84");
+                    done();
+                    return;
+                }
+                waited += poll;
+                if (waited >= maxWait) {
+                    clearInterval(interval);
+                    expect(false).toBe(true, 'pivot value (row axis) not available within timeout');
+                    done();
+                }
+            }, poll);
         });
     });
-
     describe('CSV data source', () => {
         let pivotGridObj: PivotView;
         let elem: HTMLElement = createElement('div', { id: 'PivotGrid', styles: 'height:200px; width:1000px' });
@@ -1253,6 +1281,123 @@ describe('Classic layout spec', () => {
         });
         
     });
+
+    describe('Drag and Drop with classic layout Grouping bar', () => {
+        let pivotGridObj: PivotView;
+        let elem: HTMLElement = createElement('div', { id: 'PivotGrid', styles: 'height:200px; width:1000px' });
+        afterAll(() => {
+            if (pivotGridObj) {
+                pivotGridObj.destroy();
+            }
+            remove(elem);
+        });
+        beforeAll((done: Function) => {
+            if (!document.getElementById(elem.id)) {
+                document.body.appendChild(elem);
+            }
+            let dataBound: EmitType<Object> = () => { done(); };
+            PivotView.Inject(GroupingBar);
+            pivotGridObj = new PivotView({
+                dataSourceSettings: {
+                    dataSource: pivotDatas as IDataSet[],
+                    valueSortSettings: { "headerDelimiter": "##", "sortOrder": "Ascending" },
+                    sortSettings: [{ name: 'company', order: 'Descending' }, { name: 'product', order: 'Descending', membersOrder: ['Jet', 'Flight', 'Van'] }],
+                    rows: [{ name: 'product' }, { name: 'state' }, { name: 'company' }],
+                    formatSettings: [{ name: 'balance', format: 'C' }, { name: 'date', format: 'dd/MM/yyyy', type: 'date' }],
+                    columns: [{ name: 'gender' }, { name: 'advance' }],
+                    values: [{ name: 'balance' }, { name: 'quantity' }],
+                    expandAll: true,
+                    enableSorting: true,
+                    allowValueFilter: true,
+                    allowLabelFilter: true,
+                    filterSettings: [
+                        { name: 'date', type: 'Date', condition: 'Between', value1: new Date('02/16/2000'), value2: new Date('02/16/2002') },
+                    ],
+                    fieldMapping: [{ name: 'product', dataType: 'string' },
+                    { name: 'company', caption: 'Company' },
+                    { name: 'pno', caption: 'Phone No' },
+                    { name: 'email', caption: 'Email' },
+                    { name: 'age', caption: 'Age' },
+                    { name: 'guid', caption: 'Guid' }],
+                    valueAxis: 'row'
+                },
+                height: 800,
+                width: 800,
+                showGroupingBar: true,
+                showValuesButton: true,
+                gridSettings: {
+                    layout: 'Tabular',
+                },
+                dataBound: dataBound
+            });
+            pivotGridObj.appendTo('#PivotGrid');
+        });
+        it('values testing', (done: Function) => {
+            setTimeout(() => {
+                expect((pivotGridObj.engineModule.pivotValues[3][3] as IDataSet).formattedText).toBe("quantity");
+                done();
+            }, 1000);
+        });
+        it('Drag row field (state) and drop on another row field (company) position in tabular layout', (done: Function) => {
+            let rowAxisContent: HTMLElement = pivotGridObj.element.querySelector('.e-group-rows');
+            expect(rowAxisContent).toBeTruthy();
+            const allRowGroupingBars: NodeListOf<Element> = pivotGridObj.element.querySelectorAll('.e-group-rows');
+            const allRowButtons: HTMLElement[] = [];
+            allRowGroupingBars.forEach((groupingBar: Element) => {
+                const buttons: HTMLElement[] = [].slice.call(groupingBar.querySelectorAll('.e-pivot-button'));
+                allRowButtons.push(...buttons);
+            });
+            let draggedButton: HTMLElement = allRowButtons[1];
+            expect(draggedButton.getAttribute('data-uid')).toBe('state');
+            let targetButton: HTMLElement = allRowButtons[2];
+            expect(targetButton.getAttribute('data-uid')).toBe('company');
+            let dragElement: HTMLElement = draggedButton.querySelector('.e-draggable');
+            let mousedown: any = util.getEventObject('MouseEvents', 'mousedown', dragElement, dragElement, 15, 10);
+            EventHandler.trigger(dragElement, 'mousedown', mousedown);
+            let mousemove: any = util.getEventObject('MouseEvents', 'mousemove', dragElement, targetButton, 15, 70);
+            mousemove.srcElement = mousemove.target = mousemove.toElement = targetButton;
+            EventHandler.trigger(<any>(document), 'mousemove', mousemove);
+            mousemove = util.setMouseCordinates(mousemove, 15, 75);
+            EventHandler.trigger(<any>(document), 'mousemove', mousemove);
+            let mouseup: any = util.getEventObject('MouseEvents', 'mouseup', dragElement, targetButton);
+            mouseup.type = 'mouseup';
+            mouseup.srcElement = mouseup.target = mouseup.toElement = targetButton;
+            EventHandler.trigger(<any>(document), 'mouseup', mouseup);
+
+            setTimeout(() => {
+                done();
+            }, 1000);
+        });
+        it('Drag  and drop values button', (done: Function) => {
+            const allRowGroupingBars: NodeListOf<Element> = pivotGridObj.element.querySelectorAll('.e-group-rows');
+            const allRowButtons: HTMLElement[] = [];
+            allRowGroupingBars.forEach((groupingBar: Element) => {
+                const buttons: HTMLElement[] = [].slice.call(groupingBar.querySelectorAll('.e-pivot-button'));
+                allRowButtons.push(...buttons);
+            });
+            let draggedButton: HTMLElement = allRowButtons[3];
+            expect(draggedButton.getAttribute('data-uid')).toBe('[Measures]');
+            let targetButton: HTMLElement = allRowButtons[2];
+            expect(targetButton.getAttribute('data-uid')).toBe('state');
+            let dragElement: HTMLElement = draggedButton.querySelector('.e-draggable');
+            let mousedown: any = util.getEventObject('MouseEvents', 'mousedown', dragElement, dragElement, 15, 10);
+            EventHandler.trigger(dragElement, 'mousedown', mousedown);
+            let mousemove: any = util.getEventObject('MouseEvents', 'mousemove', dragElement, targetButton, 15, 70);
+            mousemove.srcElement = mousemove.target = mousemove.toElement = targetButton;
+            EventHandler.trigger(<any>(document), 'mousemove', mousemove);
+            mousemove = util.setMouseCordinates(mousemove, 15, 75);
+            EventHandler.trigger(<any>(document), 'mousemove', mousemove);
+            let mouseup: any = util.getEventObject('MouseEvents', 'mouseup', dragElement, targetButton);
+            mouseup.type = 'mouseup';
+            mouseup.srcElement = mouseup.target = mouseup.toElement = targetButton;
+            EventHandler.trigger(<any>(document), 'mouseup', mouseup);
+
+            setTimeout(() => {
+                done();
+            }, 1000);
+        });
+    });
+    
     it('memory leak', () => {
         profile.sample();
         let average: any = inMB(profile.averageChange);

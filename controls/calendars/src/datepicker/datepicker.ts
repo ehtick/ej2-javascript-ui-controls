@@ -2286,9 +2286,12 @@ export class DatePicker extends Calendar implements IInput {
             width += icons[index as number].offsetWidth;
         }
         if (label) {
-            const labelWidth: number = (this.element.parentElement.offsetWidth) - width;
-            if (labelWidth && !(this.cssClass && this.cssClass.split(' ').indexOf('e-outline') !== -1)) {
-                label.style.width = `${labelWidth}px`;
+            const isMaterial: string = window.getComputedStyle(this.element).getPropertyValue('--dummy-style').trim();
+            if (isMaterial === '') {
+                const labelWidth: number = (this.element.parentElement.offsetWidth) - width;
+                if (labelWidth) {
+                    label.style.width = `${labelWidth}px`;
+                }
             }
         }
     }
@@ -2458,7 +2461,7 @@ export class DatePicker extends Calendar implements IInput {
                 this.setAllowEdit();
                 break;
             case 'placeholder':
-                Input.setPlaceholder(this.placeholder, this.inputElement);
+                Input.setPlaceholder(this.placeholder, this.inputElement, this.getModuleName());
                 break;
             case 'readonly':
                 Input.setReadonly(this.readonly, this.inputElement);

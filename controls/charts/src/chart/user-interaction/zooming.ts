@@ -220,6 +220,7 @@ export class Zoom {
             else {
                 this.performDefferedZoom(chart);
                 this.redrawOnZooming(chart, false);
+                this.refreshSeriesLabels(chart);
             }
         });
     }
@@ -305,6 +306,7 @@ export class Zoom {
                 // chart.enableCanvas ? chart.createChartSvg() : chart.removeSvg();
                 chart.refreshAxis();
                 chart.refreshBound();
+                this.refreshSeriesLabels(chart);
                 if (chart.highlightModule && (chart.legendSettings.enableHighlight || chart.highlightMode !== 'None') && highlightDataIndexes) {
                     chart.highlightModule.highlightDataIndexes = highlightDataIndexes;
                 }
@@ -404,6 +406,7 @@ export class Zoom {
             this.zoomCompleteEvtCollection;
         if (isRedraw) {
             this.performZoomRedraw(chart);
+            this.refreshSeriesLabels(chart);
         }
         let argsData: IZoomCompleteEventArgs;
         for (let i: number = 0; i < zoomCompleteCollection.length; i++) {
@@ -1092,6 +1095,26 @@ export class Zoom {
         }
         return touchList;
     }
+
+    /**
+     * Re-render series labels after zoom operation.
+     *
+     * @param {Chart} chart - The chart instance.
+     * @returns {void}
+     * @private
+     */
+    private refreshSeriesLabels(chart: Chart): void {
+        if (chart.seriesLabelCollections) { chart.seriesLabelCollections = []; }
+        if (chart.seriesLabelModule) { chart.seriesLabelModule.clearLabels(); }
+        for (const series of chart.visibleSeries) {
+            if (series.visible && series.labelSettings && series.labelSettings.visible) {
+                if (chart.seriesLabelModule) {
+                    chart.seriesLabelModule.render(series, chart, series.labelSettings);
+                }
+            }
+        }
+    }
+
     /**
      * Get module name.
      *

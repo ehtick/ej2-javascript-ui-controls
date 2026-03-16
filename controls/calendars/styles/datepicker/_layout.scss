@@ -15,6 +15,9 @@
   }
 
   #{&}.e-datepicker {
+    @if $skin-name == 'material' or $skin-name == 'material-dark' or $skin-name == 'Material3' {
+      --dummy-style: true;
+    }
     #{if(&, '&', '*')} .e-calendar {
 
       #{if(&, '&', '*')} .e-content table tbody tr.e-month-hide:last-child {

@@ -3,7 +3,7 @@
  */
 import { Gantt, Edit, CriticalPath, ContextMenu, ContextMenuClickEventArgs, RowDD, Selection, Toolbar, DayMarkers, Filter, Reorder, Resize, ColumnMenu, VirtualScroll, Sort, ExcelExport, PdfExport, ITaskbarEditedEventArgs } from '../../src/index';
 import * as cls from '../../src/gantt/base/css-constants';
-import { multiTaskbarData, projectData1, resources, normalResourceData, resourceCollection, criticalPathData, taskModeData1, taskModeData2, criticalPathData1, criticalPathData2, bwData1, bwData2, bwData3, bwData4, criticalData2, unscheduleCriticalTask,cr918186, CR933826, CR977218, CR979664 } from '../base/data-source.spec';
+import { multiTaskbarData, projectData1, resources, normalResourceData, resourceCollection, criticalPathData, taskModeData1, taskModeData2, criticalPathData1, criticalPathData2, bwData1, bwData2, bwData3, bwData4, criticalData2, unscheduleCriticalTask,cr918186, CR933826, CR977218, CR979664, splitTasksDataSource } from '../base/data-source.spec';
 import { createGantt, destroyGantt, triggerMouseEvent } from '../base/gantt-util.spec';
 import { isNullOrUndefined } from '@syncfusion/ej2-base';
 Gantt.Inject(Edit, CriticalPath, ContextMenu, RowDD, Selection, Toolbar, DayMarkers, Filter, Reorder, Resize, ColumnMenu, VirtualScroll, Sort, ExcelExport, PdfExport);
@@ -3440,6 +3440,132 @@ describe('CR:797272-Critical path-2', () => {
     it('Checking for Critical Path', () => {
         expect(ganttObj.flatData[6].isCritical).toBe(true);
         expect(ganttObj.flatData[7].isCritical).toBe(true);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('critical path rendering after split', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: splitTasksDataSource,
+            enableCriticalPath: true,
+            allowReordering: true,
+            enableContextMenu: true,
+            enableVirtualization: false,
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                endDate: 'EndDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor',
+                child: 'subtasks',
+                segments: 'Segments'
+            },
+            editSettings: {
+                allowAdding: true,
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            columns: [
+                { field: 'TaskID', width: 60 },
+                { field: 'TaskName', headerText: 'Job Name', width: '250', clipMode: 'EllipsisWithTooltip' },
+                { field: 'StartDate' },
+                { field: 'EndDate' },
+                { field: 'Duration' },
+                { field: 'Progress' },
+                { field: 'Predecessor' }
+            ],
+            sortSettings: {
+                columns: [{ field: 'TaskID', direction: 'Ascending' },
+                { field: 'TaskName', direction: 'Ascending' }]
+            },
+            toolbar: ['Add', 'CriticalPath', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll', 'Search', 'ZoomIn', 'ZoomOut', 'ZoomToFit',
+                'PrevTimeSpan', 'NextTimeSpan', 'ExcelExport', 'CsvExport', 'PdfExport'],
+            allowExcelExport: true,
+            allowPdfExport: true,
+            allowSelection: true,
+            allowRowDragAndDrop: true,
+            selectedRowIndex: 1,
+            splitterSettings: {
+                position: "50%"
+            },
+            selectionSettings: {
+                mode: 'Row',
+                type: 'Single',
+                enableToggle: false
+            },
+            tooltipSettings: {
+                showTooltip: true
+            },
+            filterSettings: {
+                type: 'Menu'
+            },
+            allowFiltering: true,
+            gridLines: "Both",
+            showColumnMenu: true,
+            highlightWeekends: true,
+            timelineSettings: {
+                showTooltip: true,
+                topTier: {
+                    unit: 'Week',
+                    format: 'dd/MM/yyyy'
+                },
+                bottomTier: {
+                    unit: 'Day',
+                    count: 1
+                }
+            },
+            eventMarkers: [
+                {
+                    day: '04/10/2019',
+                    cssClass: 'e-custom-event-marker',
+                    label: 'Project approval and kick-off'
+                }
+            ],
+            holidays: [{
+                from: "04/04/2019",
+                to: "04/05/2019",
+                label: " Public holidays",
+                cssClass: "e-custom-holiday"
+
+            },
+            {
+                from: "04/12/2019",
+                to: "04/12/2019",
+                label: " Public holiday",
+                cssClass: "e-custom-holiday"
+
+            }],
+            searchSettings:
+            {
+                fields: ['TaskName', 'Duration']
+            },
+            labelSettings: {
+                leftLabel: 'TaskID',
+                rightLabel: 'Task Name: ${taskData.TaskName}',
+                taskLabel: '${Progress}%'
+            },
+            allowResizing: true,
+            readOnly: false,
+            taskbarHeight: 20,
+            rowHeight: 40,
+            height: '550px',
+            projectStartDate: new Date('02/04/2019'),
+            projectEndDate: new Date('03/05/2019')
+        },done);
+    });
+    it('Critical path rendered after split', () => {
+        ganttObj.splitTask(3,new Date('02/05/2019'));
+        let segment: HTMLElement = document.querySelector('#' + ganttObj.element.id + 'GanttTaskTableBody > tr:nth-child(3) > td > div.e-taskbar-main-container > div.e-gantt-child-taskbar-inner-div.e-segment-first') as HTMLElement;
+        expect(segment.classList.contains('e-gantt-child-critical-taskbar-inner-div')).toBe(true);
     });
     afterAll(() => {
         if (ganttObj) {

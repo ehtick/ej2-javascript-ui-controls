@@ -1658,6 +1658,21 @@ describe('Cell Format ->', () => {
         afterEach(() => {
             helper.invoke('destroy');
         });
+        it('Text alignment should not break after applying filter by cell value on 3px border cells', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            helper.invoke('cellFormat', [{ border: '3px solid #000000' }, 'F2:F5']);
+            const td: HTMLElement = helper.invoke('getCell', [1, 5]);
+            expect(td.style.lineHeight).toBe('');
+            spreadsheet.applyFilter(
+                [{ field: 'F', predicate: 'or', operator: 'equal', value: spreadsheet.sheets[0].rows[1].cells[5].value as string }],
+                'A1:H1'
+            );
+            setTimeout(() => {
+                expect(spreadsheet.sheets[0].rows[2].hidden).toBeTruthy();
+                expect(td.style.lineHeight).toBe('');
+                done();
+            });
+        });
         it('Apply cell format border to the hidden row ', (done: Function) => {
             let spreadsheet: Spreadsheet = helper.getInstance();
             spreadsheet.applyFilter([{ field: 'E', predicate: 'or', operator: 'notequal', value: '15' }], 'A1:H1')
@@ -2319,7 +2334,7 @@ describe('Cell Format ->', () => {
             });
         });
     });
-    describe('EJ2-972438, EJ2-999080 ->', () => {
+    describe('EJ2-972438,EJ2-999080 ->', () => {
         beforeAll((done: Function) => {
             helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] }, done);
         });

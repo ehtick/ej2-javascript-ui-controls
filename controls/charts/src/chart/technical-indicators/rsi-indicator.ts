@@ -44,7 +44,7 @@ export class RsiIndicator extends TechnicalAnalysis {
         //prepare data
         const validData: Points[] = indicator.points;
 
-        if (validData.length && validData.length >= indicator.period) {
+        if (validData.length && validData.length > indicator.period) {
 
             //Find upper band and lower band values
             if (indicator.showZones) {

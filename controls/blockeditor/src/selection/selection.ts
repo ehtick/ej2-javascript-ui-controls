@@ -1,5 +1,5 @@
 import { RangePath, IBlockSelectionState } from '../common/interface';
-import { getBlockContentElement, getClosestContentElementInDocument, getSelectedRange, isChildrenTypeBlock } from '../common/utils/index';
+import { getBlockContentElement, getSelectedRange } from '../common/utils/index';
 import * as constants from '../common/constant';
 import { findClosestParent } from '../common/utils/dom';
 
@@ -59,9 +59,7 @@ export class NodeSelection {
             getBlockContentElement(endBlockElement), this.savedSelectionState.endOffset
         );
 
-        if (startInfo && endInfo) {
-            this.createRangeWithOffsets(startInfo.node, endInfo.node, startInfo.offset, endInfo.offset);
-        }
+        this.createRangeWithOffsets(startInfo.node, endInfo.node, startInfo.offset, endInfo.offset);
     }
 
     /**
@@ -90,9 +88,7 @@ export class NodeSelection {
      * @returns {object|null} Object with node and offset, or null if not found
      */
     private findNodeAndOffsetFromTextPosition(container: HTMLElement, targetOffset: number): { node: Node, offset: number } {
-        if (targetOffset > (container.textContent.length)) {
-            targetOffset = container.textContent.length;
-        }
+        if (!container) { return null; }
 
         const treeWalker: TreeWalker = document.createTreeWalker(
             container,
@@ -116,14 +112,6 @@ export class NodeSelection {
             currentNode = treeWalker.nextNode();
         }
 
-        const lastNode: Node = container.lastChild;
-        if (lastNode && lastNode.nodeType === Node.TEXT_NODE) {
-            return {
-                node: lastNode,
-                offset: lastNode.textContent.length || 0
-            };
-        }
-
         return { node: container, offset: 0 };
     }
 
@@ -145,7 +133,7 @@ export class NodeSelection {
      */
     public clearSelection(): void {
         const sel: Selection = this.getSelection();
-        if (sel) { sel.removeAllRanges(); }
+        sel.removeAllRanges();
     }
 
     /**
@@ -181,7 +169,7 @@ export class NodeSelection {
             startOffset: this.currentRange.startOffset,
             endContainer: this.currentRange.endContainer,
             endOffset: this.currentRange.endOffset,
-            parentElement: getClosestContentElementInDocument(this.currentRange.startContainer)
+            contentElement: findClosestParent(this.currentRange.startContainer, '.' + constants.CONTENT_CLS)
         };
     }
 

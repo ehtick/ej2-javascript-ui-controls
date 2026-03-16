@@ -771,7 +771,7 @@ export class Signature {
             const pageDiv: HTMLElement = document.getElementById(this.pdfViewer.element.id + '_pageDiv_' + pageIndex);
             const thickness: number = this.pdfViewer.handWrittenSignatureSettings.thickness ?
                 this.pdfViewer.handWrittenSignatureSettings.thickness : 1;
-            const opacity: number = this.pdfViewer.handWrittenSignatureSettings.opacity ?
+            const opacity: number = !isNullOrUndefined(this.pdfViewer.handWrittenSignatureSettings.opacity) ?
                 this.pdfViewer.handWrittenSignatureSettings.opacity : 1;
             const strokeColor: string = this.pdfViewer.handWrittenSignatureSettings.strokeColor ? this.pdfViewer.handWrittenSignatureSettings.strokeColor : '#000000';
             const fontSize:  number =  16;
@@ -1805,7 +1805,7 @@ export class Signature {
                 this.pdfViewer.handWrittenSignatureSettings.height : 100;
             const thickness: number = this.pdfViewer.handWrittenSignatureSettings.thickness ?
                 this.pdfViewer.handWrittenSignatureSettings.thickness : 1;
-            const opacity: number = this.pdfViewer.handWrittenSignatureSettings.opacity ?
+            const opacity: number = !isNullOrUndefined(this.pdfViewer.handWrittenSignatureSettings.opacity) ?
                 this.pdfViewer.handWrittenSignatureSettings.opacity : 1;
             const strokeColor: string = this.pdfViewer.handWrittenSignatureSettings.strokeColor ? this.pdfViewer.handWrittenSignatureSettings.strokeColor : '#000000';
             currentLeft = ((parseFloat(pageDiv.style.width) / 2) - (currentWidth / 2)) / zoomvalue;

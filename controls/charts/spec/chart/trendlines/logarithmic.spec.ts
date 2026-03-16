@@ -271,6 +271,19 @@ describe('Chart', () => {
             chartObj.series[0].trendlines[0].backwardForecast = 4;
             chartObj.refresh();
         });
+        
+        it('Logarithmic Trendlines with backward forecast positive values which match Zero', (done: Function) => {
+            loaded = (args: object): void => {
+                let path: string = document.getElementById('container_Series_0_TrendLine_0').getAttribute('d');
+                expect(path !== null).toBe(true);
+                expect(chartObj.visibleSeries[1].points[0].x).toBe(1973);
+                expect(Math.round(<number>chartObj.visibleSeries[1].points[0].y)).toBe(1);
+                done();
+            };
+            chartObj.loaded = loaded;
+            chartObj.series[0].trendlines[0].backwardForecast = 1973;
+            chartObj.refresh();
+        });
         it('Logarithmic Trendlines with backward forecast negative values', (done: Function) => {
             loaded = (args: Object): void => {
                 let path: string = document.getElementById('container_Series_0_TrendLine_0').getAttribute('d');

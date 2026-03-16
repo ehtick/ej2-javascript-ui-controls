@@ -393,6 +393,9 @@
       .e-clear-filter-button {
         float: left;
         margin: $pivotgrid-margin-0 !important;
+        max-width: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
 
         @if ($skin-name =='FluentUI') {
           margin-left: $pivotgrid-margin-0 !important;
@@ -539,7 +542,9 @@
       }
 
       @if ($skin-name =='Material3') {
-        white-space: nowrap;
+        &:not(.e-group-field-settings) {
+          white-space: nowrap;
+        }
       }
 
       .e-dlg-content {

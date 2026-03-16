@@ -17,6 +17,7 @@ import { ILoadedEventArgs, IAnimationCompleteEventArgs } from '../../../src/char
 import { Category } from '../../../src/chart/axis/category-axis';
 import { Zoom } from '../../../src/chart/user-interaction/zooming';
 import  {profile , inMB, getMemoryProfile} from '../../common.spec';
+import { chartData } from '../../stock-chart/indicatordata.spec';
 Chart.Inject(Zoom, Legend, LineSeries, CandleSeries, Category, AtrIndicator, Tooltip, Crosshair);
 
 
@@ -577,6 +578,68 @@ describe('Chart', () => {
             chartObj.rows = [{ height: '30%' }, { height: '70%' }];
             chartObj.indicators[0].yAxisName = 'secondary';
             chartObj.primaryYAxis.rowIndex = 1;
+            chartObj.loaded = loaded;
+            chartObj.refresh();
+
+        });
+    });
+
+    describe('ATR Technical Indicators with gradient colors', () => {
+        let chartObj: Chart;
+        let loaded: EmitType<ILoadedEventArgs>;
+        let trigger: MouseEvents = new MouseEvents();
+        element = createElement('div', { id: 'container' });
+        beforeAll(() => {
+            document.body.appendChild(element);
+            chartObj = new Chart(
+                {
+                    primaryXAxis: {
+                        title: 'Months',
+                        valueType: 'DateTime',
+                        intervalType: 'Months'
+                    },
+                    primaryYAxis: {
+                        title: 'Price (Million Dollars)',
+                        minimum: 80, maximum: 180,
+                        majorGridLines: { width: 0 }
+                    },
+                    axes: [{ name: 'secondary', minimum: 0, maximum: 15, interval: 2, opposedPosition: true }],
+                    series: [{
+                        dataSource: chartData, width: 2,
+                        xName: 'x', yName: 'y', low: 'low', high: 'high', close: 'close', volume: 'volume', open: 'open',
+                        name: 'Apple Inc',
+                        type: 'Candle', animation: { enable: true }
+                    }],
+                    indicators: [{
+                        type: 'Atr', field: 'Low', seriesName: 'Apple Inc', yAxisName: 'secondary', fill: 'blue',
+                        period: 3, animation: { enable: true },
+                        linearGradient: {
+                            x1: 0, y1: 0,
+                            x2: 0, y2: 1,
+                            gradientColorStop: [
+                                { color: 'red', offset: 0, opacity: 1 },
+                                { color: 'blue', offset: 100, opacity: 1 },
+                            ]
+                        }
+                    }],
+                    title: 'Chart TS Title'
+
+                });
+            chartObj.appendTo('#container');
+
+        });
+
+        afterAll((): void => {
+            chartObj.destroy();
+            document.getElementById('container').remove();
+        });
+
+        it('ATR Technical Indicators with linear gradient', (done: Function) => {
+            loaded = (args: Object): void => {
+                let gradient: Element = document.getElementById('container_Indicator_0_ATR');
+                expect(gradient.getAttribute('stroke') == 'url(#container_series_0_linear_gradient)');
+                done();
+            };
             chartObj.loaded = loaded;
             chartObj.refresh();
 

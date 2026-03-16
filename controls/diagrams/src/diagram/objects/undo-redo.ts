@@ -8,21 +8,22 @@ import { SwimLane, Selector } from '../objects/node';
 import { Node, BpmnAnnotation } from './node';
 import { Connector } from './connector';
 import { ConnectorModel } from '../objects/connector-model';
-import { DiagramAction, HistoryEntryType } from '../enum/enum';
+import { DiagramAction, DiagramHistoryAction, EntryChangeType, HistoryEntryType } from '../enum/enum';
 import { removeItem, getObjectType } from '../utility/diagram-util';
 import { cloneObject, getFunction } from '../utility/base-util';
 import { IElement, StackEntryObject, IBlazorCustomHistoryChangeArgs, HistoryChangeEventObject } from '../objects/interface/IElement';
 import { ShapeAnnotationModel, PathAnnotationModel } from '../objects/annotation-model';
-import { PointPortModel, PortModel } from '../objects/port-model';
+import { PathPortModel, PointPortModel, PortModel } from '../objects/port-model';
 import { ShapeAnnotation, PathAnnotation } from '../objects/annotation';
 import { findAnnotation, findPort } from '../utility/diagram-util';
 import { PointPort } from './port';
-import { Size, GridPanel, addChildToContainer, updateZindex, BpmnShape } from '../index';
+import { Size, GridPanel, addChildToContainer, updateZindex, BpmnShape, ColumnDefinition, RowDefinition } from '../index';
 import { swimLaneMeasureAndArrange, laneInterChanged, findLaneIndex, updateSwimLaneObject, pasteSwimLane } from '../utility/swim-lane-util';
 import { ICustomHistoryChangeArgs } from '../objects/interface/IElement';
 import { DiagramEvent, BlazorAction } from '../enum/enum';
 import { isBlazor } from '@syncfusion/ej2-base';
-import { addContainerChild, removeChild } from '../utility/container-util';
+import { addContainerChild, dropContainerChild, removeChild } from '../utility/container-util';
+import { updateLaneSizeAfterGridChange } from '../interaction/container-interaction';
 
 
 /**
@@ -293,6 +294,9 @@ export class UndoRedo {
             entry = this.getUndoEntry(diagram);
             if (entry.type === 'StartGroup') {
                 endGroupActionCount--;
+                if (endGroupActionCount === 0 && diagram.enableCollaborativeEditing){
+                    diagram.historyChangeTrigger(entry, 'Undo');
+                }
             } else if (entry.type === 'EndGroup') {
                 endGroupActionCount++;
             }
@@ -479,6 +483,25 @@ export class UndoRedo {
             diagram.itemType = 'Redo';
             changeType = entry.changeType;
         }
+        this.laneOrPhaseCollectionChanged(changeType, node, obj, diagram);
+    }
+    /**
+     * Helper method to handle lane or phase collection changed entries.
+     *
+     * @param {string} changeType - The collection change type, e.g. 'Insert' or 'Remove'.
+     * @param {NodeModel} node - The node model affected by the change.
+     * @param {PhaseModel | LaneModel} obj - The lane or phase model being added or removed.
+     * @param {Diagram} diagram - The Diagram instance to operate on.
+     * @returns {void}
+     * @private
+     */
+    public laneOrPhaseCollectionChanged(
+        changeType: string,
+        node: NodeModel,
+        obj: PhaseModel | LaneModel,
+        diagram: Diagram
+    ): void
+    {
         if (changeType === 'Remove') {
             diagram.remove(node);
         } else {
@@ -519,10 +542,29 @@ export class UndoRedo {
 
     private recordChildCollectionChanged(entry: HistoryEntry, diagram: Diagram, isRedo: boolean): void {
         const entryObject: NodeModel | ConnectorModel = ((isRedo) ? entry.redoObject : entry.undoObject) as NodeModel | ConnectorModel;
+        this.childCollectionChanged(entryObject, diagram, isRedo, entry.historyAction);
+    }
+    /**
+     * Helper method to handle child collection changed entries.
+     *
+     * @param {NodeModel | ConnectorModel} entryObject - The node or connector model involved in the change.
+     * @param {Diagram} diagram - The Diagram instance to operate on.
+     * @param {boolean} isRedo - True when applying a redo; false for undo.
+     * @param {DiagramHistoryAction} historyAction - The history action for the child collection change.
+     * @returns {void}
+     * @private
+     */
+    public childCollectionChanged(
+        entryObject: NodeModel | ConnectorModel,
+        diagram: Diagram,
+        isRedo: boolean,
+        historyAction: DiagramHistoryAction
+    ): void
+    {
         let parentNode: NodeModel = diagram.nameTable[(entryObject as Node).parentId];
         const actualObject: Node = diagram.nameTable[(entryObject as Node).id];
         if (parentNode) {
-            addChildToContainer(diagram, parentNode, actualObject, !isRedo, entry.historyAction === 'AddNodeToLane', isRedo);
+            addChildToContainer(diagram, parentNode, actualObject, diagram.isCollaborativeContainerChanges ? undefined : !isRedo, historyAction === 'AddNodeToLane', isRedo);
         } else {
             if (actualObject.parentId) {
                 parentNode = diagram.nameTable[actualObject.parentId];
@@ -636,12 +678,18 @@ export class UndoRedo {
                 if (isRow) {
                     grid.updateRowHeight(obj.rowIndex, obj.wrapper.actualSize.height, true, padding, isUndoRedo);
                     swimlane.height = swimlane.wrapper.height = grid.height;
+                    // Bug 959396: Update the correct lane (using orientation + offset) by assigning the child’s actual width and height so the swimlane resizes properly during undo and redo.
+                    updateLaneSizeAfterGridChange(swimlane, (swimlane.shape as SwimLane).orientation === 'Horizontal', obj);
+                    // Bug 959396: Recalculate and update each phase’s offset by summing the corresponding grid row/column sizes based on swimlane orientation to keep phase positions accurate after undo/redo.
+                    this.updateSwimLanePhasesOffset(swimlane);
                 } else {
                     grid.updateColumnWidth(obj.columnIndex, obj.wrapper.actualSize.width, true, padding, isUndoRedo);
                     swimlane.width = swimlane.wrapper.width = grid.width;
                     if (obj.isPhase) {
                         actualObject.maxWidth = actualObject.wrapper.maxWidth = obj.wrapper.actualSize.width;
                     }
+                    updateLaneSizeAfterGridChange(swimlane, (swimlane.shape as SwimLane).orientation === 'Horizontal', obj);
+                    this.updateSwimLanePhasesOffset(swimlane);
                 }
                 swimLaneMeasureAndArrange(swimlane);
                 const tx: number = x - swimlane.wrapper.bounds.x;
@@ -652,6 +700,34 @@ export class UndoRedo {
             }
         }
 
+    }
+
+    private updateSwimLanePhasesOffset(swimlane: NodeModel): void {
+        const swimlanePhases: PhaseModel[] = (swimlane.shape as SwimLane).phases;
+        const swimlaneShape: SwimLane = swimlane.shape as SwimLane;
+        if (swimlanePhases && swimlanePhases.length > 0 && swimlane.wrapper &&
+            swimlane.wrapper.children && swimlane.wrapper.children.length > 0) {
+            const grid: GridPanel = swimlane.wrapper.children[0] as GridPanel;
+            const colDefns: ColumnDefinition[] = grid.columnDefinitions();
+            const rowDefns: RowDefinition[] = grid.rowDefinitions();
+            let offset: number = 0;
+            if (swimlaneShape.orientation === 'Horizontal') {
+                for (let i: number = 0; i < swimlanePhases.length; i++) {
+                    if (colDefns && colDefns[parseInt(i.toString(), 10)]) {
+                        offset += colDefns[parseInt(i.toString(), 10)].width;
+                        swimlanePhases[parseInt(i.toString(), 10)].offset = offset;
+                    }
+                }
+            } else {
+                const index: number = (swimlaneShape.hasHeader ? 1 : 0);
+                for (let i: number = index; i < swimlanePhases.length + index; i++) {
+                    if (rowDefns && rowDefns[parseInt(i.toString(), 10)]) {
+                        offset += rowDefns[parseInt(i.toString(), 10)].height;
+                        swimlanePhases[i - index].offset = offset;
+                    }
+                }
+            }
+        }
     }
 
     private recordLanePositionChanged(entry: HistoryEntry, diagram: Diagram, isRedo: boolean): void {
@@ -731,7 +807,15 @@ export class UndoRedo {
             }
         }
     }
-    private segmentChanged(connector: ConnectorModel, diagram: Diagram): void {
+    /**
+     * Helper method to handle segment changed entries.
+     *
+     * @param {ConnectorModel} connector - The connector model containing updated segments.
+     * @param {Diagram} diagram - The Diagram instance to operate on.
+     * @returns {void}
+     * @private
+     */
+    public segmentChanged(connector: ConnectorModel, diagram: Diagram): void {
         const conn: ConnectorModel = diagram.nameTable[connector.id];
         if (conn) {
             conn.segments = connector.segments;
@@ -762,8 +846,15 @@ export class UndoRedo {
             }
         }
     }
-
-    private positionChanged(obj: NodeModel, diagram: Diagram): void {
+    /**
+     * Helper method to handle position changed entries.
+     *
+     * @param {NodeModel} obj - The node model whose position changed.
+     * @param {Diagram} diagram - The Diagram instance to operate on.
+     * @returns {void}
+     * @private
+     */
+    public positionChanged(obj: NodeModel, diagram: Diagram): void {
         const node: NodeModel = diagram.nameTable[obj.id];
         if ((obj as Node).processId && !(node as Node).processId) {
             diagram.addProcess(obj as Node, (obj as Node).processId);
@@ -773,7 +864,11 @@ export class UndoRedo {
         }
         if ((obj as Node).parentId && diagram.nameTable[(obj as Node).parentId].shape.type === 'Container'
             && !(node as Node).parentId) {
-            addContainerChild(obj, (obj as Node).parentId, diagram);
+            if (!diagram.isCollaborativeContainerChanges) {
+                addContainerChild(obj, (obj as Node).parentId, diagram);
+            } else {
+                dropContainerChild(diagram.nameTable[(obj as Node).parentId], obj as Node, diagram);
+            }
         }
         if (!(obj as Node).parentId && (node as Node).parentId
             && diagram.nameTable[(node as Node).parentId].shape.type === 'Container') {
@@ -808,28 +903,7 @@ export class UndoRedo {
         if (obj && obj.nodes && obj.nodes.length > 0) {
             for (i = 0; i < obj.nodes.length; i++) {
                 node = obj.nodes[parseInt(i.toString(), 10)];
-                if (node.children && !node.container) {
-                    const elements: (NodeModel | ConnectorModel)[] = [];
-                    const nodes: (NodeModel | ConnectorModel)[] = diagram.commandHandler.getAllDescendants(node, elements);
-                    for (let i: number = 0; i < nodes.length; i++) {
-                        const tempNode: NodeModel | ConnectorModel = entry.childTable[nodes[parseInt(i.toString(), 10)].id];
-                        if ((getObjectType(tempNode) === Node)) {
-                            this.sizeChanged(tempNode, diagram, entry);
-                            this.positionChanged(tempNode as NodeModel, diagram);
-                        } else {
-                            this.connectionChanged(tempNode as ConnectorModel, diagram, entry);
-                        }
-                    }
-                } else {
-                    if (diagram.bpmnModule) {
-                        (diagram as any).sizeUndo = true;
-                    }
-                    this.sizeChanged(node, diagram);
-                    this.positionChanged(node, diagram);
-                    if (diagram.bpmnModule) {
-                        (diagram as any).sizeUndo = false;
-                    }
-                }
+                this.nodeSizeChange(node, diagram, entry);
             }
         }
         if (obj && obj.connectors && obj.connectors.length > 0) {
@@ -842,7 +916,39 @@ export class UndoRedo {
         }
         diagram.updateSelector();
     }
-
+    /**
+     * Handle node size changes for undo/redo operations.
+     *
+     * @param {NodeModel} node - The node model whose size changed.
+     * @param {Diagram} diagram - The Diagram instance the node belongs to.
+     * @param {HistoryEntry} [entry] - Optional history entry containing `childTable` for related nodes/connectors.
+     * @returns {void}
+     * @private
+     */
+    public nodeSizeChange(node: NodeModel, diagram: Diagram, entry?: HistoryEntry): void {
+        if (node.children && !node.container) {
+            const elements: (NodeModel | ConnectorModel)[] = [];
+            const nodes: (NodeModel | ConnectorModel)[] = diagram.commandHandler.getAllDescendants(node, elements);
+            for (let i: number = 0; i < nodes.length; i++) {
+                const tempNode: NodeModel | ConnectorModel = entry.childTable[nodes[parseInt(i.toString(), 10)].id];
+                if ((getObjectType(tempNode) === Node)) {
+                    this.sizeChanged(tempNode, diagram, entry);
+                    this.positionChanged(tempNode as NodeModel, diagram);
+                } else {
+                    this.connectionChanged(tempNode as ConnectorModel, diagram, entry);
+                }
+            }
+        } else {
+            if (diagram.bpmnModule) {
+                (diagram as any).sizeUndo = true;
+            }
+            this.sizeChanged(node, diagram);
+            this.positionChanged(node, diagram);
+            if (diagram.bpmnModule) {
+                (diagram as any).sizeUndo = false;
+            }
+        }
+    }
     private sizeChanged(obj: NodeModel | ConnectorModel, diagram: Diagram, entry?: HistoryEntry): void {
         const node: NodeModel | ConnectorModel = diagram.nameTable[obj.id];
         const scaleWidth: number = obj.wrapper.actualSize.width / node.wrapper.actualSize.width;
@@ -870,70 +976,7 @@ export class UndoRedo {
         if (obj && obj.nodes && obj.nodes.length > 0) {
             for (i = 0; i < obj.nodes.length; i++) {
                 node = obj.nodes[parseInt(i.toString(), 10)];
-                // Bug 832864: Undo redo not working properly for group node with connectors.
-                // This code is executed only for group nodes with connectors when the connector is not connected to a node either as a source or target.
-                let isConnect: boolean = false;
-                if (node.children && node.children.length > 0){
-                    for (let j: number = 0; j < node.children.length; j++) {
-                        const child: NodeModel | ConnectorModel = diagram.nameTable[node.children[parseInt(j.toString(), 10)]];
-                        if (!(getObjectType(child) === Node)) {
-                            if ((child as ConnectorModel).sourceID === '' || (child as ConnectorModel).targetID === '') {
-                                isConnect = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (isConnect && Object.keys(entry.childTable).length > 0){
-                        const elements: (NodeModel | ConnectorModel)[] = [];
-                        const nodes: (NodeModel | ConnectorModel)[] = diagram.commandHandler.getAllDescendants(node, elements);
-                        for (let i2: number = 0; i2 < nodes.length; i2++) {
-                            const tempNode: (NodeModel | ConnectorModel) = entry.childTable[nodes[parseInt(i2.toString(), 10)].id];
-                            if ((getObjectType(tempNode) === Node)) {
-                                let object: any = { id: '', rotateAngle: 0, wrapper: { offsetX: 0, offsetY: 0 } };
-                                if (type === 'redo') {
-                                    object.id = tempNode.id; object.rotateAngle = node.rotateAngle;
-                                }
-                                else {
-                                    object = tempNode as any;
-                                }
-                                this.rotationChanged(object as NodeModel, diagram);
-                                if (type === 'undo') {
-                                    const offNode: NodeModel = diagram.nameTable[object.id];
-                                    this.undoOffsets.push({ id: offNode.id, offsetX: offNode.offsetX, offsetY: offNode.offsetY });
-                                }
-                                else {
-                                    let lastIndex: number = -1;
-                                    for (let i: number = this.undoOffsets.length - 1; i >= 0; i--) {
-                                        if (this.undoOffsets[parseInt(i.toString(), 10)].id === object.id) {
-                                            object.wrapper = this.undoOffsets[parseInt(i.toString(), 10)];
-                                            lastIndex = i;
-                                            break;
-                                        }
-                                    }
-                                    if (lastIndex !== -1) {
-                                        this.undoOffsets.splice(lastIndex, 1);
-                                    }
-                                }
-                                this.positionChanged(object as NodeModel, diagram);
-                            }
-                            else {
-                                this.connectionChanged(tempNode as ConnectorModel, diagram, entry);
-                            }
-                        }
-                        const nd: NodeModel = diagram.nameTable[node.id];
-                        nd.rotateAngle = obj.rotateAngle;
-                        diagram.updateSelector();
-                        this.rotationChanged(node, diagram);
-                    }
-                    else{
-                        this.rotationChanged(node, diagram);
-                        this.positionChanged(node, diagram);
-                    }
-                }
-                else{
-                    this.rotationChanged(node, diagram);
-                    this.positionChanged(node, diagram);
-                }
+                this.rotateNode(obj, node, diagram, entry, type);
             }
         }
         (diagram as any).fromUndo = false;
@@ -945,14 +988,96 @@ export class UndoRedo {
             }
         }
     }
-
+    /**
+     * Rotates a node as part of undo/redo handling.
+     *
+     * @param {SelectorModel} obj - Selector object containing nodes/connectors involved in rotation.
+     * @param {NodeModel} node - The node model to rotate.
+     * @param {Diagram} diagram - The Diagram instance the node belongs to.
+     * @param {HistoryEntry} entry - The history entry that may contain `childTable` and related data.
+     * @param {string} [type] - Optional flag indicating operation direction ('undo' | 'redo').
+     * @returns {void}
+     * @private
+     */
+    public rotateNode(obj: SelectorModel, node: NodeModel, diagram: Diagram, entry: HistoryEntry, type?: string): void {
+        // Bug 832864: Undo redo not working properly for group node with connectors.
+        // This code is executed only for group nodes with connectors when the connector is not connected to a node either as a source or target.
+        let isConnect: boolean = false;
+        if (node.children && node.children.length > 0){
+            for (let j: number = 0; j < node.children.length; j++) {
+                const child: NodeModel | ConnectorModel = diagram.nameTable[node.children[parseInt(j.toString(), 10)]];
+                if (!(getObjectType(child) === Node)) {
+                    if ((child as ConnectorModel).sourceID === '' || (child as ConnectorModel).targetID === '') {
+                        isConnect = true;
+                        break;
+                    }
+                }
+            }
+            if (isConnect && Object.keys(entry.childTable).length > 0){
+                const elements: (NodeModel | ConnectorModel)[] = [];
+                const nodes: (NodeModel | ConnectorModel)[] = diagram.commandHandler.getAllDescendants(node, elements);
+                for (let i2: number = 0; i2 < nodes.length; i2++) {
+                    const tempNode: (NodeModel | ConnectorModel) = entry.childTable[nodes[parseInt(i2.toString(), 10)].id];
+                    if ((getObjectType(tempNode) === Node)) {
+                        let object: any = { id: '', rotateAngle: 0, wrapper: { offsetX: 0, offsetY: 0 } };
+                        if (type === 'redo') {
+                            object.id = tempNode.id; object.rotateAngle = node.rotateAngle;
+                        }
+                        else {
+                            object = tempNode as any;
+                        }
+                        this.rotationChanged(object as NodeModel, diagram);
+                        if (type === 'undo') {
+                            const offNode: NodeModel = diagram.nameTable[object.id];
+                            this.undoOffsets.push({ id: offNode.id, offsetX: offNode.offsetX, offsetY: offNode.offsetY });
+                        }
+                        else {
+                            let lastIndex: number = -1;
+                            for (let i: number = this.undoOffsets.length - 1; i >= 0; i--) {
+                                if (this.undoOffsets[parseInt(i.toString(), 10)].id === object.id) {
+                                    object.wrapper = this.undoOffsets[parseInt(i.toString(), 10)];
+                                    lastIndex = i;
+                                    break;
+                                }
+                            }
+                            if (lastIndex !== -1) {
+                                this.undoOffsets.splice(lastIndex, 1);
+                            }
+                        }
+                        this.positionChanged(object as NodeModel, diagram);
+                    }
+                    else {
+                        this.connectionChanged(tempNode as ConnectorModel, diagram, entry);
+                    }
+                }
+                const nd: NodeModel = diagram.nameTable[node.id];
+                nd.rotateAngle = obj.rotateAngle;
+                diagram.updateSelector();
+                this.rotationChanged(node, diagram);
+            }
+            else{
+                this.rotationChanged(node, diagram);
+                this.positionChanged(node, diagram);
+            }
+        }
+        else{
+            this.rotationChanged(node, diagram);
+            this.positionChanged(node, diagram);
+        }
+    }
     private rotationChanged(obj: NodeModel, diagram: Diagram): void {
         const node: NodeModel = diagram.nameTable[obj.id];
         diagram.rotate(node, obj.rotateAngle - node.rotateAngle);
     }
-
-    private recordConnectionChanged(obj: SelectorModel | ConnectorModel, diagram: Diagram):
-    void {
+    /**
+     * Helper method to update connection changed entries.
+     *
+     * @param {SelectorModel | ConnectorModel} obj - The selector or connector model to update.
+     * @param {Diagram} diagram - The Diagram instance to operate on.
+     * @returns {void}
+     * @private
+     */
+    public recordConnectionChanged(obj: SelectorModel | ConnectorModel, diagram: Diagram): void {
         let connector: ConnectorModel;
         if ((obj as SelectorModel) && (obj as SelectorModel).connectors)
         {
@@ -971,8 +1096,16 @@ export class UndoRedo {
             this.connectionChanged(connector, diagram);
         }
     }
-
-    private connectionChanged(obj: ConnectorModel, diagram: Diagram, entry?: HistoryEntry): void {
+    /**
+     * Helper method to handle connection changed entries.
+     *
+     * @param {ConnectorModel} obj - The connector model containing change information.
+     * @param {Diagram} diagram - The Diagram instance to operate on.
+     * @param {HistoryEntry} [entry] - Optional history entry associated with the change.
+     * @returns {void}
+     * @private
+     */
+    public connectionChanged(obj: ConnectorModel, diagram: Diagram, entry?: HistoryEntry): void {
         const connector: ConnectorModel = diagram.nameTable[obj.id];
         if (!connector) {
             return;
@@ -1057,57 +1190,92 @@ export class UndoRedo {
                 diagram.itemType = 'Redo';
                 changeType = entry.changeType;
             }
-            if (changeType === 'Remove') {
-                if ((obj as BpmnAnnotation).nodeId) {
-                    diagram.remove(diagram.nameTable[(obj as BpmnAnnotation).nodeId + '_textannotation_' + obj.id]);
-                } else {
-                    diagram.remove(obj);
-                    if ((obj as Node).parentId) {
-                        const parentNode: NodeModel = diagram.nameTable[(obj as Node).parentId];
-                        if (parentNode) {
-                            this.removeChildFromLane(diagram, parentNode, (obj as Node));
-                        }
-                    }
-                    diagram.clearSelectorLayer();
-                }
-            } else {
-                diagram.clearSelectorLayer();
-                if ((obj as Node | Connector).parentId && (diagram.nameTable[(obj as Node).parentId]
-                    && diagram.nameTable[(obj as Node).parentId].shape.type !== 'Container')) {
-                    const parentNode: NodeModel = diagram.nameTable[(obj as Node | Connector).parentId];
-                    if (parentNode) {
-                        diagram.addChild(parentNode, obj);
-                    } else {
-                        diagram.add(obj);
-                    }
-                } else if ((obj as BpmnAnnotation).nodeId) {
-                    diagram.addTextAnnotation(obj, diagram.nameTable[(obj as BpmnAnnotation).nodeId]);
-                } else {
-                    if (!diagram.nameTable[obj.id]) {
-                        if (obj && obj.shape && (obj as Node).shape.type === 'SwimLane' && entry.isUndo) {
-                            pasteSwimLane(obj as NodeModel, undefined, undefined, undefined, undefined, true);
-                        }
-                        //Bug 909155: Issue in connecting nodes with ports.
-                        // When we add child nodes at runtime and connect them with connector at runtime and perform undo redo, the connector is not visible after undo redo.
-                        //Added below code to update the zIndex of the connector to make it visible above the swimlane.
-                        this.updateConnectorZindex(obj, diagram);
-                        diagram.add(obj);
-
-                    }
-                }
-                if ((obj as Node).processId && diagram.nameTable[(obj as Node).processId]) {
-                    diagram.addProcess((obj as Node), (obj as Node).processId);
-                }
-                if ((obj as Node).parentId && diagram.nameTable[(obj as Node).parentId]
-                    && diagram.nameTable[(obj as Node).parentId].shape.type === 'Container') {
-                    addContainerChild((obj as Node), (obj as Node).parentId, diagram);
-                }
-            }
-
-            if (diagram.mode !== 'SVG') {
-                diagram.refreshDiagramLayer();
-            }
+            this.collectionChanged(obj, changeType, entry, diagram);
             diagram.itemType = 'PublicMethod';
+        }
+    }
+    /**
+     * Helper method to handle collection changed entries.
+     *
+     * @param {NodeModel | ConnectorModel} obj - The node or connector model involved in the collection change.
+     * @param {string} changeType - The change type (e.g. 'Insert' or 'Remove').
+     * @param {HistoryEntry} [entry] - Optional history entry associated with the change.
+     * @param {Diagram} [diagram] - Optional Diagram instance.
+     * @returns {void}
+     * @private
+     */
+    public collectionChanged(
+        obj: NodeModel | ConnectorModel,
+        changeType: string,
+        entry?: HistoryEntry,
+        diagram?: Diagram
+    ): void {
+        if (changeType === 'Remove') {
+            if ((obj as BpmnAnnotation).nodeId) {
+                diagram.remove(
+                    diagram.nameTable[(obj as BpmnAnnotation).nodeId + '_textannotation_' + obj.id]
+                );
+            } else {
+                diagram.remove(obj);
+                if ((obj as Node).parentId) {
+                    const parentNode: NodeModel = diagram.nameTable[(obj as Node).parentId];
+                    if (parentNode) {
+                        diagram.undoRedoModule.removeChildFromLane(diagram, parentNode, (obj as Node));
+                    }
+                }
+                diagram.clearSelectorLayer();
+            }
+        } else {
+            diagram.clearSelectorLayer();
+            if (
+                (obj as Node | Connector).parentId &&
+                (diagram.nameTable[(obj as Node).parentId] &&
+                    diagram.nameTable[(obj as Node).parentId].shape.type !== 'Container')
+            ) {
+                const parentNode: NodeModel = diagram.nameTable[(obj as Node | Connector).parentId];
+                if (parentNode) {
+                    diagram.addChild(parentNode, obj);
+                } else {
+                    diagram.add(obj);
+                }
+            } else if ((obj as BpmnAnnotation).nodeId) {
+                diagram.addTextAnnotation(obj, diagram.nameTable[(obj as BpmnAnnotation).nodeId]);
+            } else {
+                if (!diagram.nameTable[obj.id]) {
+                    if (
+                        obj && obj.shape && (obj as Node).shape.type === 'SwimLane' &&
+                        entry && entry.isUndo
+                    ) {
+                        pasteSwimLane(obj as NodeModel, undefined, undefined, undefined, undefined, true);
+                    }
+                    // Bug 909155: Issue in connecting nodes with ports.
+                    // When we add child nodes at runtime and connect them with connector at runtime and perform
+                    // undo redo, the connector is not visible after undo redo.
+                    // Added below code to update the zIndex of the connector to make it visible above the swimlane.
+                    diagram.undoRedoModule.updateConnectorZindex(obj, diagram);
+                    diagram.add(obj);
+                }
+            }
+
+            if ((obj as Node).processId && diagram.nameTable[(obj as Node).processId]) {
+                diagram.addProcess((obj as Node), (obj as Node).processId);
+            }
+
+            if (
+                (obj as Node).parentId &&
+                diagram.nameTable[(obj as Node).parentId] &&
+                diagram.nameTable[(obj as Node).parentId].shape.type === 'Container'
+            ) {
+                if (!diagram.isCollaborativeContainerChanges) {
+                    addContainerChild((obj as Node), (obj as Node).parentId, diagram);
+                } else {
+                    dropContainerChild(diagram.nameTable[(obj as Node).parentId], obj as Node, diagram);
+                }
+            }
+        }
+
+        if (diagram.mode !== 'SVG') {
+            diagram.refreshDiagramLayer();
         }
     }
     /**
@@ -1118,7 +1286,7 @@ export class UndoRedo {
      * @param {Diagram} diagram - provide the diagram value.
      * @private
      */
-    private updateConnectorZindex(obj: NodeModel | ConnectorModel, diagram: Diagram): void {
+    public updateConnectorZindex(obj: NodeModel | ConnectorModel, diagram: Diagram): void {
         if ((obj as Connector).sourceID || (obj as Connector).targetID) {
             const sourceNode: NodeModel = diagram.nameTable[(obj as Connector).sourceID];
             const targetNode: NodeModel = diagram.nameTable[(obj as Connector).targetID];
@@ -1145,31 +1313,48 @@ export class UndoRedo {
     private recordLabelCollectionChanged(entry: HistoryEntry, diagram: Diagram): void {
         const label: ShapeAnnotationModel | PathAnnotationModel = entry.undoObject as ShapeAnnotationModel | PathAnnotationModel;
         const obj: Node | Connector = entry.redoObject as Node | Connector;
-        const node: Node | Connector = diagram.nameTable[obj.id];
         if (entry && entry.changeType) {
-            let changeType: string;
+            let changeType: EntryChangeType;
             if (entry.isUndo) {
                 changeType = (entry.changeType === 'Insert') ? 'Remove' : 'Insert';
             } else {
                 changeType = entry.changeType;
             }
-            if (changeType === 'Remove') {
-                diagram.removeLabels(node, [label] as ShapeAnnotationModel[] | PathAnnotationModel[]);
-                diagram.clearSelectorLayer();
-            } else {
-                diagram.clearSelectorLayer();
-                diagram.addLabels(node, [label] as ShapeAnnotationModel[] | PathAnnotationModel[]);
-            }
-            if (diagram.mode !== 'SVG') {
-                diagram.refreshDiagramLayer();
-            }
+            this.labelCollectionChanged(obj, label, changeType, diagram);
+        }
+    }
+    /**
+     * Helper method to handle label collection changed entries.
+     *
+     * @param {Node | Connector} obj - The node or connector that owns the label.
+     * @param {ShapeAnnotationModel | PathAnnotationModel} label - The label model being added or removed.
+     * @param {string} changeType - The type of change ('Insert' or 'Remove').
+     * @param {Diagram} diagram - The Diagram instance to operate on.
+     * @returns {void}
+     * @private
+     */
+    public labelCollectionChanged(
+        obj: Node | Connector,
+        label: ShapeAnnotationModel | PathAnnotationModel,
+        changeType: string,
+        diagram: Diagram
+    ): void {
+        const node: Node | Connector = diagram.nameTable[obj.id];
+        if (changeType === 'Remove') {
+            diagram.removeLabels(node, [label] as ShapeAnnotationModel[] | PathAnnotationModel[]);
+            diagram.clearSelectorLayer();
+        } else {
+            diagram.clearSelectorLayer();
+            diagram.addLabels(node, [label] as ShapeAnnotationModel[] | PathAnnotationModel[]);
+        }
+        if (diagram.mode !== 'SVG') {
+            diagram.refreshDiagramLayer();
         }
     }
 
     private recordPortCollectionChanged(entry: HistoryEntry, diagram: Diagram): void {
         const port: PointPortModel = entry.undoObject as PointPortModel;
         const obj: Node | Connector = entry.redoObject as Node | Connector;
-        const node: NodeModel = diagram.nameTable[obj.id];
         if (entry && entry.changeType) {
             let changeType: string;
             if (entry.isUndo) {
@@ -1177,16 +1362,30 @@ export class UndoRedo {
             } else {
                 changeType = entry.changeType;
             }
-            if (changeType === 'Remove') {
-                diagram.removePorts(node as Node, [port]);
-                diagram.clearSelectorLayer();
-            } else {
-                diagram.clearSelectorLayer();
-                diagram.addPorts(node, [port]);
-            }
-            if (diagram.mode !== 'SVG') {
-                diagram.refreshDiagramLayer();
-            }
+            this.portCollectionChanged(obj, port, changeType, diagram);
+        }
+    }
+    /**
+     * Helper method to handle port collection changed entries.
+     *
+     * @param {Node | Connector} obj - The node or connector that owns the port.
+     * @param {PointPortModel | PathPortModel} port - The port model being added or removed.
+     * @param {string} changeType - The type of change ('Insert' or 'Remove').
+     * @param {Diagram} diagram - The Diagram instance to operate on.
+     * @returns {void}
+     * @private
+     */
+    public portCollectionChanged(obj: Node | Connector, port: PointPortModel | PathPortModel, changeType: string, diagram: Diagram): void {
+        const node: NodeModel | ConnectorModel = diagram.nameTable[obj.id];
+        if (changeType === 'Remove') {
+            diagram.removePorts(node as Node | Connector, [port] as PointPortModel[] | PathPortModel[]);
+            diagram.clearSelectorLayer();
+        } else {
+            diagram.clearSelectorLayer();
+            diagram.addPorts(node, [port] as PointPortModel[] | PathPortModel[]);
+        }
+        if (diagram.mode !== 'SVG') {
+            diagram.refreshDiagramLayer();
         }
     }
     /**
@@ -1236,6 +1435,9 @@ export class UndoRedo {
             entry = this.getRedoEntry(diagram);
             if (entry.type === 'EndGroup') {
                 startGroupActionCount--;
+                if (startGroupActionCount === 0 && diagram.enableCollaborativeEditing){
+                    diagram.historyChangeTrigger(entry, 'Redo');
+                }
             } else if (entry.type === 'StartGroup') {
                 startGroupActionCount++;
             }

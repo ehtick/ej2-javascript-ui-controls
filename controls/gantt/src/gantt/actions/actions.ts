@@ -6,7 +6,7 @@ export * from './column-reorder';
 export * from './column-resize';
 export * from './filter';
 export * from './sort';
-export * from './dependency';
+export * from '../task-dependency/dependency';
 export * from './selection';
 export * from './toolbar';
 export * from './day-markers';

@@ -12,6 +12,7 @@ import {
     isObject,
     mapCellValues,
     parseNumberCell,
+    safeNumber,
     toBoolean
 } from './visio-core';
 import { ParsingContext } from './visio-import-export';
@@ -29,6 +30,8 @@ import {
 } from './visio-models';
 import {
     CellMapValue,
+    ColorModifiers,
+    ColorRef,
     DocumentSettingsElement,
     FmtScheme,
     FontProps,
@@ -39,13 +42,14 @@ import {
     OneOrMany,
     OrderEntry, // Added for buildFmtSchemeFill/Stroke
     ParsedXmlObject,
+    ProcessedColor,
     ShapeAttributes,
     VisioShapeNode, // Added for getVisioPorts and parseVisioNodeStyle
     ThemeColorScheme,
     ThemeElements,
     ThemeExtList,
     ThemeExtension,
-    VarStyle,
+    VarientStyle,
     VariationClrScheme,
     VariationColor,
     VariationStyleScheme,
@@ -58,8 +62,30 @@ import {
     WindowElement,
     WindowRootElement,
     XmlRelationship, // Added for parserVisioRelationship
-    FontStyles
+    FontStyles,
+    ColorReferenceArray,
+    LineStyleRef,
+    TransformedColorRef,
+    RawColorValue,
+    FmtConnectorScheme,
+    FillStyleList,
+    SolidFill,
+    LineStyleEntry,
+    LineStyles,
+    FmtConnectorSchemeLineStyles,
+    ConnectorLineStyle,
+    FmtSchemeLineStyles,
+    SchemeLineStyle,
+    VarientStyleAttributes,
+    SchemeColor,
+    StrokeItem,
+    StrokeAttributes,
+    RgbColor,
+    VisioStyleSheet
 } from './visio-types';
+
+import { resolveMasterSourceForNode } from './visio-nodes';
+import { isValidColor } from './visio-theme';
 
 /**
  * Finds the default master data for a given shape from its master ID.
@@ -620,11 +646,12 @@ function findExtWithKey(exts: ReadonlyArray<ThemeExtension> | undefined, key: ke
  * Builds an array of normalized hex color strings ("#RRGGBB" format) in sequence order.
  *
  * @param {VariationClrScheme | undefined} variation - The variation color scheme node containing vt:varColor properties.
+ * @param {ProcessedColor[]} themeVariants - Optional array to populate with ProcessedColor objects for each extracted color.
  * @returns {string[]} An array of normalized hex colors (e.g., ["#FF00AA", "#00FF00"]), or empty array if input is undefined.
  *
  * @private
  */
-function extractHexColorsFromVariation(variation: VariationClrScheme | undefined): Array<string> {
+function extractHexColorsFromVariation(variation: VariationClrScheme | undefined, themeVariants?: ProcessedColor[]): Array<string> {
     if (!variation) {
         return [];
     }
@@ -642,6 +669,11 @@ function extractHexColorsFromVariation(variation: VariationClrScheme | undefined
 
         if (typeof hex === 'string') {
             result.push(hex);
+
+            // Populate the themeVariants array with ProcessedColor objects if provided
+            if (themeVariants) {
+                themeVariants.push(createProcessedColor(hex));
+            }
         }
     }
 
@@ -1057,8 +1089,8 @@ export function parseVisioTheme(obj: ThemeElements, context: ParsingContext): Vi
     if (variationStyleSchemes.length > styleIndex) {
         const chosenStyle: VariationStyleScheme = variationStyleSchemes[parseInt(styleIndex.toString(), 10)];
         if (isObject(chosenStyle)) {
-            const varStyle: OneOrMany<VarStyle> | undefined = chosenStyle['vt:varStyle'] as OneOrMany<VarStyle> | undefined;
-            const varStyleArr: ReadonlyArray<VarStyle> | undefined = toReadonlyArray<VarStyle>(
+            const varStyle: OneOrMany<VarientStyle> | undefined = chosenStyle['vt:varStyle'] as OneOrMany<VarientStyle> | undefined;
+            const varStyleArr: ReadonlyArray<VarientStyle> | undefined = toReadonlyArray<VarientStyle>(
                 varStyle
             );
             if (varStyleArr && varStyleArr.length > 0) {
@@ -1071,7 +1103,466 @@ export function parseVisioTheme(obj: ThemeElements, context: ParsingContext): Vi
     // Extract vt:varColor1..vt:varColor7 hex values from the chosen variation scheme
     theme.hexColors = extractHexColorsFromVariation(chosenVariation);
 
+    // ==================== ENHANCED THEME PROCESSING ====================
+    // Build richer theme helpers so the rest of the importer can resolve
+    // quick-style matrices and color ids into concrete hex values.
+    theme.baseColors = extractAndFormatColors(obj['a:clrScheme'] as unknown as ParsedXmlObject);
+
+    // ==================== Process Fill Styles ====================
+    // Transform extracted fill definitions into ProcessedColor objects using baseColors
+    if (theme.fmtSchemeFill && Array.isArray(theme.fmtSchemeFill)) {
+        const fillStyles: ColorReferenceArray = [];
+        for (const fillItem of theme.fmtSchemeFill) {
+            fillStyles.push(transformStyle(fillItem, theme.baseColors as Record<string, string>));
+        }
+        theme.fillStyles = fillStyles;
+    }
+
+    // ==================== Process Line Styles ====================
+    // Transform extracted line style definitions into processed stroke objects
+    if (theme.fmtSchemeStroke && Array.isArray(theme.fmtSchemeStroke)) {
+        const lineStyles: LineStyleRef[] = [];
+        for (const lineItem of theme.fmtSchemeStroke) {
+            lineStyles.push(transformLineStyle(lineItem, theme.baseColors as Record<string, string>));
+        }
+        theme.lineStyles = lineStyles;
+    }
+
+    // ==================== Process Connector Fill Styles ====================
+    // Extract and transform connector-specific fill styles
+    const fmtConnectorExt2: ThemeExtension | undefined = findExtWithKey(rootExts, 'vt:fmtConnectorScheme');
+    if (fmtConnectorExt2 && isObject(fmtConnectorExt2['vt:fmtConnectorScheme'])) {
+        const fmtConn: FmtConnectorScheme = fmtConnectorExt2['vt:fmtConnectorScheme'];
+
+        // Process connector fill styles
+        if (isObject(fmtConn['a:fillStyleLst'])) {
+            const connFillStyles: TransformedColorRef[] = [];
+            const fillLst: FillStyleList = fmtConn['a:fillStyleLst'];
+
+            for (const key in fillLst) {
+                if (key !== '$' && fillLst.hasOwnProperty(key)) {
+                    const items: ReadonlyArray<SolidFill> | undefined = toReadonlyArray(fillLst[`${key}`] as ReadonlyArray<SolidFill>);
+                    if (items) {
+                        for (let i: number = 0; i < items.length; i++) {
+                            connFillStyles.push(transformStyle(
+                                { name: key, value: items[parseInt(i.toString(), 10)] },
+                                theme.baseColors as Record<string, string>
+                            ));
+                        }
+                    }
+                }
+            }
+
+            if (connFillStyles.length > 0) {
+                theme.connFillStyles = connFillStyles;
+            }
+        }
+
+        // Process connector line styles
+        if (isObject(fmtConn['a:lnStyleLst'])) {
+            const connLineStyles: Array<{ name: string; value: LineStyleEntry }> = [];
+            const lnLst: LineStyleList = fmtConn['a:lnStyleLst'] as LineStyleList;
+
+            for (const key in lnLst) {
+                if (key !== '$' && lnLst.hasOwnProperty(key)) {
+                    const items: ReadonlyArray<LineStyleEntry> | undefined = toReadonlyArray(lnLst[`${key}`] as ReadonlyArray<LineStyleEntry>);
+                    if (items) {
+                        for (let i: number = 0; i < items.length; i++) {
+                            connLineStyles.push({ name: key, value: items[parseInt(i.toString(), 10)] });
+                        }
+                    }
+                }
+            }
+
+            if (connLineStyles.length > 0) {
+                theme.connLineStyles = connLineStyles;
+            }
+        }
+    }
+
+    // ==================== Process Extended Line Styles ====================
+    // Extract extended line style definitions for scheme and connectors
+    const lineStylesExt: ThemeExtension | undefined = findExtWithKey(rootExts, 'vt:lineStyles');
+    if (lineStylesExt && isObject(lineStylesExt['vt:lineStyles'])) {
+        const lineStyles2: LineStyles = lineStylesExt['vt:lineStyles'];
+
+        // Connector line styles extended
+        if (isObject(lineStyles2['vt:fmtConnectorSchemeLineStyles'])) {
+            const connLnExt: Array<{name: string; value: ConnectorLineStyle}> = [];
+            const connLnExtObj: FmtConnectorSchemeLineStyles = lineStyles2['vt:fmtConnectorSchemeLineStyles'];
+
+            for (const key in connLnExtObj) {
+                if (key !== '$' && connLnExtObj.hasOwnProperty(key)) {
+                    const items: ReadonlyArray<ConnectorLineStyle> | undefined = toReadonlyArray(connLnExtObj[`${key}`] as ReadonlyArray<ConnectorLineStyle> | undefined);
+                    if (items) {
+                        for (let i: number = 0; i < items.length; i++) {
+                            connLnExt.push({ name: key, value: items[parseInt(i.toString(), 10)] });
+                        }
+                    }
+                }
+            }
+
+            if (connLnExt.length > 0) {
+                theme.connLineStylesExt = connLnExt;
+            }
+        }
+
+        // Scheme line styles extended
+        if (isObject(lineStyles2['vt:fmtSchemeLineStyles'])) {
+            const lineExtArr: Array<{name: string; value: SchemeLineStyle}> = [];
+            const lineExtObj: FmtSchemeLineStyles = lineStyles2['vt:fmtSchemeLineStyles'];
+
+            for (const key in lineExtObj) {
+                if (key !== '$' && lineExtObj.hasOwnProperty(key)) {
+                    const items: ReadonlyArray<SchemeLineStyle> | undefined = toReadonlyArray(lineExtObj[`${key}`] as ReadonlyArray<SchemeLineStyle> | undefined);
+                    if (items) {
+                        for (let i: number = 0; i < items.length; i++) {
+                            lineExtArr.push({ name: key, value: items[parseInt(i.toString(), 10)] });
+                        }
+                    }
+                }
+            }
+            if (lineExtArr.length > 0) {
+                theme.lineStylesExt = lineExtArr;
+            }
+        }
+    }
+
+    // ==================== Extract Font Colors ====================
+    // Extract all node-specific font colors from fontStyles
+    if (theme.fontStyles && Array.isArray(theme.fontStyles)) {
+        const fontStyles: ColorReferenceArray = [];
+        for (let i: number = 0; i < theme.fontStyles.length; i++) {
+            fontStyles.push(transformStyle(theme.fontStyles[parseInt(i.toString(), 10)], theme.baseColor as Record<string, string>));
+        }
+        theme.fontColorsArray = fontStyles;
+    }
+
+    // ==================== Extract Font Colors ====================
+    // Extract all connector-specific font colors from connectorFont
+    if (theme.connectorFont && Array.isArray(theme.connectorFont)) {
+        const fontStyles: ColorReferenceArray = [];
+        for (let i: number = 0; i < theme.connectorFont.length; i++) {
+            fontStyles.push(transformStyle(theme.connectorFont[parseInt(i.toString(), 10)], theme.baseColor as Record<string, string>));
+        }
+        theme.connFontColors = fontStyles;
+    }
+
+    // ==================== Initialize Variant Color Arrays ====================
+    // Pre-process all variant colors (not just the chosen one)
+    theme.variantsColors = [];
+    if (colorVariations && colorVariations.length > 0) {
+        for (let i: number = 0; i < colorVariations.length; i++) {
+            theme.variantsColors.push(([]));
+            extractHexColorsFromVariation(colorVariations[parseInt(i.toString(), 10)], theme.variantsColors[parseInt(i.toString(), 10)]);
+        }
+    }
+
+    // ==================== Build Variant Index Arrays ====================
+    // Build 2D index arrays for fill, line, effect, and font styles across all variations
+    theme.variantFillIdx = [] as Array<Array<number>>;
+    if (variationStyleSchemes && variationStyleSchemes.length > 0) {
+        for (let k: number = 0; k < variationStyleSchemes.length; k++) {
+            const scheme: VariationStyleScheme = variationStyleSchemes[parseInt(k.toString(), 10)];
+
+            if (isObject(scheme)) {
+                const varientStyle: OneOrMany<VarientStyle> | undefined = scheme['vt:varStyle'] as OneOrMany<VarientStyle> | undefined;
+                const variantStyleArray: ReadonlyArray<VarientStyle> | undefined = toReadonlyArray<VarientStyle>(varientStyle);
+                const fillRow: Array<number> = [];
+                if (variantStyleArray && variantStyleArray.length > 0) {
+                    for (let j: number = 0; j < variantStyleArray.length; j++) {
+                        const item: VarientStyle = variantStyleArray[parseInt(j.toString(), 10)];
+                        const attrs: Partial<VarientStyleAttributes> = (item && item.$)
+                            ? item.$ : {};
+
+                        fillRow.push((attrs.fillIdx ? parseInt(attrs.fillIdx as string, 10) : 0));
+                    }
+                }
+                theme.variantFillIdx.push(fillRow);
+            }
+        }
+    }
+
+    // ==================== Extract Monotone Variant Flags ====================
+    // Extract monotone flags for each color variation
+    theme.isMonotoneVariant = [false, false, false, false];
+    if (colorVariations && colorVariations.length > 0) {
+        for (let m: number = 0; m < Math.min(colorVariations.length, 4); m++) {
+            const variation: VariationClrScheme = colorVariations[parseInt(m.toString(), 10)];
+            if (variation && variation.$ && variation.$.monotone) {
+                theme.isMonotoneVariant[parseInt(m.toString(), 10)] = true;
+            }
+        }
+    }
+    // Set theme variant indices (default to 0)
+    theme.themeVariantClr = requestedIndex;
+    theme.themeVariantStl = requestedIndex;
     return theme;
+}
+
+/**
+ * Converts a hexadecimal color string to RGB components.
+ * Strips the '#' prefix if present and extracts red, green, and blue values using bitwise operations.
+ *
+ * @param {string} hex - A hexadecimal color string (e.g., '#FF0000' or 'FF0000').
+ * @returns {{red: number, green: number, blue: number}} Object containing RGB components in range [0, 255].
+ *
+ * @example
+ * const rgb = hexToRgb('#FF0000');
+ * console.log(rgb); // { red: 255, green: 0, blue: 0 }
+ *
+ * @private
+ */
+function hexToRgb(hex: string): { red: number; green: number; blue: number } {
+    const cleanHex: string = hex.replace(/^#/, '');
+    const num: number = parseInt(cleanHex, 16);
+    return {
+        red: (num >> 16) & 255,
+        green: (num >> 8) & 255,
+        blue: num & 255
+    };
+}
+
+/**
+ * Creates a fully initialized ProcessedColor object from a hexadecimal color value.
+ * Initializes all color modifier fields to 0 and sets the resolved RGB color.
+ *
+ * @param {string} hexColor - A hexadecimal color string (e.g., '#FF0000').
+ * @returns {ProcessedColor} A ProcessedColor object with all fields initialized and RGB resolved.
+ *
+ * @private
+ */
+function createProcessedColor(hexColor: string): ProcessedColor {
+    const rgb: { red: number; green: number; blue: number } = hexToRgb(hexColor);
+    return {
+        tint: 0,
+        shade: 0,
+        comp: 0,
+        inv: 0,
+        gray: 0,
+        alpha: 0,
+        alphaOff: 0,
+        alphaMod: 0,
+        hue: 0,
+        hueOff: 0,
+        hueMod: 0,
+        sat: 0,
+        satOff: 0,
+        satMod: 0,
+        lum: 0,
+        lumOff: 0,
+        lumMod: 0,
+        red: 0,
+        redOff: 0,
+        redMod: 0,
+        green: 0,
+        greenOff: 0,
+        greenMod: 0,
+        blue: 0,
+        blueOff: 0,
+        blueMod: 0,
+        gamma: 0,
+        invGamma: 0,
+        isDynamic: false,
+        isInitialized: false,
+        hasEffects: false,
+        color: {
+            red: rgb.red,
+            green: rgb.green,
+            blue: rgb.blue,
+            gradientClr: null
+        },
+        hexVal: hexColor.replace(/^#/, '').toUpperCase()
+    };
+}
+
+/**
+ * Creates a ColorRef object for a scheme color reference (not yet resolved to RGB).
+ * Initializes all color modifier fields and stores the scheme color name for later resolution.
+ *
+ * @param {string} val - The scheme color name (e.g., 'accent1').
+ * @param {ColorModifiers} modifiers - The color modifiers (tint, shade, hasEffects).
+ * @returns {ColorRef} A ColorRef object with scheme color reference and modifiers.
+ *
+ * @private
+ */
+function createColorRef(val: string, modifiers: ColorModifiers): ColorRef {
+    return {
+        tint: modifiers.tint || 0,
+        shade: modifiers.shade || 0,
+        comp: 0,
+        inv: 0,
+        gray: 0,
+        alpha: 0,
+        alphaOff: 0,
+        alphaMod: 0,
+        hue: 0,
+        hueOff: 0,
+        hueMod:  modifiers.hueMod || 0,
+        sat: 0,
+        satOff: 0,
+        satMod:  modifiers.satMod || 0,
+        lum: 0,
+        lumOff: 0,
+        lumMod:  modifiers.lumMod || 0,
+        red: 0,
+        redOff: 0,
+        redMod: 0,
+        green: 0,
+        greenOff: 0,
+        greenMod: 0,
+        blue: 0,
+        blueOff: 0,
+        blueMod: 0,
+        gamma: 0,
+        invGamma: 0,
+        isDynamic: true,
+        isInitialized: false,
+        hasEffects: modifiers.hasEffects || false,
+        color: null,
+        val: val
+    };
+}
+
+/**
+ * Extracts color modifiers (tint and shade) from an XML color node.
+ * Parses a:tint and a:shade elements and converts from 1000-based scale to decimal range.
+ *
+ * @param {SchemeColor} colorObj - The XML color object containing potential a:tint and a:shade elements.
+ * @returns {ColorModifiers} Object with tint, shade, and hasEffects properties.
+ *
+ * @private
+ */
+function extractColorModifiers(colorObj: SchemeColor): ColorModifiers {
+    const modifiers: ColorModifiers = { hasEffects: false };
+
+    extractModifier(colorObj, 'a:tint', modifiers, 'tint');
+    extractModifier(colorObj, 'a:shade', modifiers, 'shade');
+    extractModifier(colorObj, 'a:satMod', modifiers, 'satMod');
+    extractModifier(colorObj, 'a:lumMod', modifiers, 'lumMod');
+    extractModifier(colorObj, 'a:hueMod', modifiers, 'hueMod');
+
+    return modifiers;
+}
+
+/**
+ * Extracts a specific color modifier from an XML color node.
+ * Looks for the given XML key (e.g., a:tint, a:shade) and converts
+ * its 1000-based scale value into a decimal range.
+ *
+ * @param {SchemeColor} colorObj - The XML color object containing modifier elements.
+ * @param {string} xmlKey - The XML element name to extract (e.g., 'a:tint', 'a:shade').
+ * @param {ColorModifiers} modifiers - The modifiers object to update with extracted values.
+ * @param {string} modifierName - The property name to assign the extracted value to in `modifiers`.
+ * @returns {void}
+ *
+ * @private
+ */
+function extractModifier(colorObj: SchemeColor, xmlKey: string, modifiers: ColorModifiers, modifierName: string): void {
+    if (colorObj[`${xmlKey}`]) {
+        const val: string = colorObj[`${xmlKey}`].$.val || '0';
+        modifiers[`${modifierName}`] = parseInt(val, 10) / 1000;
+        modifiers.hasEffects = true;
+    }
+}
+
+/**
+ * Transforms a raw data entry into a processed color object with resolved colors.
+ * Handles both direct RGB fills and scheme color references.
+ *
+ * @param {Partial<OrderEntry>} colorElem - The Raw data to be converted as color element.
+ * @param {Record<string, string>} baseColors - Base color map for reference resolution.
+ * @returns {TransformedColorRef} Processed color object with optional color and value properties.
+ *
+ * @private
+ */
+function transformStyle(colorElem: Partial<OrderEntry>, baseColors: Record<string, string>): TransformedColorRef {
+    const result: TransformedColorRef = {};
+    if (colorElem && colorElem.name) {
+        result.name = colorElem.name;
+    }
+    let value: RawColorValue;
+    if (colorElem && colorElem['vt:color']) {
+        value = colorElem['vt:color'] as RawColorValue;
+    }
+    else if (colorElem && colorElem.value) {
+        value = colorElem.value as RawColorValue;
+    }
+    if (value) {
+        // Handle direct RGB color
+        if (value['a:srgbClr']) {
+            const hexVal: string | undefined = value['a:srgbClr'].$.val;
+            if (hexVal) {
+                result.color = createProcessedColor('#' + hexVal);
+            }
+        }
+
+        // Handle scheme color reference
+        if (value['a:schemeClr']) {
+            const schemeVal: string | undefined = value['a:schemeClr'].$.val;
+            const modifiers: ColorModifiers = extractColorModifiers(value['a:schemeClr']);
+            if (schemeVal) {
+                result.color = createColorRef(schemeVal, modifiers);
+            }
+        }
+
+        // Preserve gradient data if present
+        if (value['a:gsLst']) {
+            result.value = value;
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Transforms a line (stroke) style entry into a processed stroke object with properties and colors.
+ * Extracts line width, dash pattern, cap style, and fill color.
+ *
+ * @param {StrokeItem} strokeItem - The line item with optional attributes and color/dash properties.
+ * @param {Record<string, string>} baseColors - Base color map for reference resolution.
+ * @returns {LineStyleRef} Processed stroke object with all line properties.
+ *
+ * @private
+ */
+function transformLineStyle(strokeItem: StrokeItem, baseColors: Record<string, string>): LineStyleRef {
+    const result: LineStyleRef = {
+        isLineDashed: false,
+        lineDashPattern: [],
+        isRoundJoin: false,
+        isBevelJoin: false,
+        isMiterJoin: false,
+        lineWidth: 0,
+        lineCap: null,
+        lineComp: 0,
+        fillStyle: null,
+        headEndType: null,
+        headEndWidth: 0,
+        headEndLen: 0,
+        tailEndType: null,
+        tailEndWidth: 0,
+        tailEndLen: 0
+    };
+
+    // Extract line width and cap style from attributes
+    if (strokeItem.$) {
+        const attributes: StrokeAttributes = strokeItem.$;
+        result.lineWidth = parseInt(attributes.w || '0', 10);
+        result.lineCap = attributes.cap === 'rnd' ? 0 : attributes.cap === 'sq' ? 1 : null;
+    }
+
+    // Extract dash pattern
+    if (strokeItem['a:prstDash']) {
+        const dashVal: string | undefined = strokeItem['a:prstDash'].$.val;
+        result.isLineDashed = dashVal && dashVal !== 'solid';
+    }
+
+    // Extract fill color from solid fill
+    if (strokeItem['a:solidFill']) {
+        result.fillStyle = transformStyle({ value: strokeItem['a:solidFill'] }, baseColors);
+    }
+
+    return result;
 }
 
 /**
@@ -1082,6 +1573,7 @@ export function parseVisioTheme(obj: ThemeElements, context: ParsingContext): Vi
  * @param {VisioShapeNode} shapeData - The raw shape XML object containing Cell array and optional Section array.
  * @param {ParsingContext} context - Parser utilities for logging warnings and accessing parsing state.
  * @param {MasterDefaultValues | undefined} defaultStyle - Optional default style data to fall back to for undefined properties.
+ * @param {VisioShape} shape -  Parsed Visio shape(s) for the vertex node
  * @param {string} attributeName - The attribute name of the shape (e.g., 'Image', 'Shape') used to determine opacity handling.
  * @returns {VisioNodeStyle} A VisioNodeStyle object containing parsed fill, stroke, gradient, and opacity properties.
  *
@@ -1093,8 +1585,8 @@ export function parseVisioTheme(obj: ThemeElements, context: ParsingContext): Vi
  *
  * @private
  */
-export function parseVisioNodeStyle(shapeData: VisioShapeNode, context: ParsingContext,
-                                    defaultStyle: MasterDefaultValues | undefined, attributeName: string): VisioNodeStyle {
+export function parseVisioNodeStyle(shapeData: VisioShapeNode, context: ParsingContext, defaultStyle: MasterDefaultValues | undefined,
+                                    shape: VisioShape, attributeName: string): VisioNodeStyle {
 
     // Normalize Section array
     const section: VisioSection[] = shapeData.Section ? (Array.isArray(shapeData.Section) ? shapeData.Section : [shapeData.Section]) : [];
@@ -1110,13 +1602,57 @@ export function parseVisioNodeStyle(shapeData: VisioShapeNode, context: ParsingC
         return cell ? (cell.$.V as string) : undefined; // Assert to string
     };
 
+    const getMasterCell: (name: string) => string | undefined = (name: string) => {
+        const masterSource: VisioShapeNode | null = resolveMasterSourceForNode(shapeData, context);
+        let masterCell: VisioCell | undefined;
+
+        let objectStyleSheet: VisioStyleSheet;
+        let styleName: string;
+        switch (name) {
+        case 'LineColor':
+            styleName = 'LineStyle';
+            break;
+        case 'FillForegnd':
+            styleName = 'FillStyle';
+            break;
+        }
+
+        if (!context || !context.entries || !context.entries.RootDocument || !context.entries.RootDocument.StyleSheets
+            || !context.entries.RootDocument.StyleSheets.StyleSheet) {
+            return undefined;
+        }
+
+        const styleSheets: VisioStyleSheet[] = context.entries.RootDocument.StyleSheets.StyleSheet;
+
+        if (masterSource && masterSource.$ && masterSource.$[`${styleName}`] && styleSheets && styleSheets.length > 1) {
+            objectStyleSheet = styleSheets.find((sheet: VisioStyleSheet) => sheet && sheet.$ && sheet.$.ID === masterSource.$[`${styleName}`]);
+        }
+        if (shapeData && masterSource && masterSource.Cell) {
+            masterCell = ensureArray(masterSource.Cell).find((c: VisioCell) => c.$.N === name);
+        }
+        if (masterCell && masterCell.$ && masterCell.$.V) {
+            return context.propertyManager.getColor(masterCell.$.V as string);
+        }
+        if (objectStyleSheet && objectStyleSheet.Cell) {
+            const cell: VisioCell | undefined = ensureArray(objectStyleSheet.Cell).find((c: VisioCell) => c.$.N === name);
+            if (cell && cell.$ && cell.$.V && isValidColor(cell.$.V as string)) {
+                return cell.$.V as string;
+            }
+            return undefined;
+        }
+        else {
+            return undefined;
+        }
+    };
+
     // Initialize the node style object
     const nodeStyle: VisioNodeStyle = new VisioNodeStyle();
-
+    const lineColor: string | undefined = getCell('LineColor');
+    const masterLineColor: string | undefined = getMasterCell('LineColor');
     // ==================== Parse Stroke Properties ====================
     nodeStyle.strokeWidth = getCell('LineWeight') != null ? Number(getCell('LineWeight')) : undefined;
     nodeStyle.linePattern = getCell('LinePattern') != null ? getCell('LinePattern') : undefined;
-    nodeStyle.strokeColor = getCell('LineColor') != null ? (nodeStyle.linePattern !== '0' ? getCell('LineColor') : undefined) : undefined;
+    nodeStyle.strokeColor = lineColor != null ? (nodeStyle.linePattern !== '0' ? lineColor : undefined) : masterLineColor != null ? masterLineColor : undefined;
     nodeStyle.strokeDashArray = getCell('LinePattern') != null ? getCell('LinePattern') : undefined;
 
     // Log warning about partial pattern matching between Visio and EJ2
@@ -1125,11 +1661,12 @@ export function parseVisioNodeStyle(shapeData: VisioShapeNode, context: ParsingC
     }
 
     // ==================== Parse Fill Properties ====================
-    nodeStyle.fillColor = getCell('FillForegnd') != null ? getCell('FillForegnd') : undefined;
+    nodeStyle.fillColor = getCell('FillForegnd') != null ? getCell('FillForegnd') : getMasterCell('FillForegnd') != null ? getMasterCell('FillForegnd') : getFillColor(shape, context);
     nodeStyle.fillPattern = getCell('FillPattern') != null ? getCell('FillPattern') : (defaultStyle && defaultStyle.FillPattern) ? defaultStyle.FillPattern : undefined;
 
     // ==================== Parse Opacity ====================
     // Image shapes use Transparency; other shapes use FillForegndTrans
+    context.addWarning('[WARNING] :: EJ2 only have common opacity not like line opacity and fill opacity in visio. So only visio fill opacity is applied for both line and fill');
     nodeStyle.opacity = (attributeName === 'Image')
         ? (getCell('Transparency') != null ? Number(getCell('Transparency')) : 1)
         : (getCell('FillForegndTrans') != null ? Number(getCell('FillForegndTrans')) : (defaultStyle && defaultStyle.FillForegndTrans) ? defaultStyle.FillForegndTrans : 1);
@@ -1176,6 +1713,338 @@ export function parseVisioNodeStyle(shapeData: VisioShapeNode, context: ParsingC
 }
 
 /**
+ * Converts an RGB color object to a hexadecimal string representation.
+ * Pads single-digit components with leading zeros.
+ *
+ * @param {RgbColor} color - The color object with red, green, and blue properties.
+ * @returns {string} A hexadecimal color string in format "#RRGGBB" (e.g., "#FF0000").
+ *
+ * @private
+ */
+function toHexStr(color: RgbColor): string {
+    const red: string = color.red.toString(16);
+    const redPadded: string = red.length === 1 ? '0' + red : red;
+    const green: string = color.green.toString(16);
+    const greenPadded: string = green.length === 1 ? '0' + green : green;
+    const blue: string = color.blue.toString(16);
+    const bluePadded: string = blue.length === 1 ? '0' + blue : blue;
+
+    return `#${redPadded}${greenPadded}${bluePadded}`;
+}
+
+/**
+ * Converts an RGB color object to HSV color space for transformation operations.
+ * Used as an intermediate step for applying tint, shade, and other color modifiers.
+ *
+ * @param {RgbColor} color - The RGB color object with red, green, and blue properties (0-255).
+ * @returns {HSVColor} An HSVColor object representing the color in HSV space.
+ *
+ * @private
+ */
+function toHsv(color: RgbColor): HSVColor {
+    const red: number = color.red / 255.0;
+    const green: number = color.green / 255.0;
+    const blue: number = color.blue / 255.0;
+    const max: number = Math.max(red, Math.max(green, blue));
+    const min: number = Math.min(red, Math.min(green, blue));
+    const delta: number = max - min;
+
+    let hue: number;
+    const value: number = max;
+    const saturation: number = max === 0 ? 0 : delta / max;
+
+    if (max === min) {
+        hue = 0;
+    } else {
+        if (max === red) {
+            hue = (green - blue) / delta + (green < blue ? 6 : 0);
+        } else if (max === green) {
+            hue = (blue - red) / delta + 2;
+        } else {
+            hue = (red - green) / delta + 4;
+        }
+        hue /= 6;
+    }
+
+    return new HSVColor(hue, saturation, value);
+}
+
+/**
+ * HSVColor class for color space conversion and manipulation.
+ * Provides methods to apply tint, shade, and other color transformations.
+ *
+ * @private
+ */
+class HSVColor {
+    hue: number = 0;
+    saturation: number = 0;
+    value: number = 0;
+
+    constructor(hue: number, saturation: number, value: number) {
+        this.hue = hue;
+        this.saturation = saturation;
+        this.value = value;
+    }
+
+    /**
+     * Converts HSV color to RGB color space.
+     * @returns {RgbColor} RGB color object with red, green, blue properties (0-255).
+     */
+    toRgb(): RgbColor {
+        const hsvHueScaled: number = this.hue * 6;
+        const hsvSaturation: number = this.saturation;
+        const hsvValue: number = this.value;
+
+        const sectorIndex: number = Math.floor(hsvHueScaled);
+        const fractionalPart: number = hsvHueScaled - sectorIndex;
+        const mod: number = (sectorIndex | 0) % 6;
+
+        // Intermediate values used in conversion
+        const valueMin: number = hsvValue * (1 - hsvSaturation);
+        const valueDecreasing: number = hsvValue * (1 - fractionalPart * hsvSaturation);
+        const valueIncreasing: number = hsvValue * (1 - (1 - fractionalPart) * hsvSaturation);
+
+        // Candidate RGB values for each sector
+        const redArr: number[] = [hsvValue, valueDecreasing, valueMin, valueMin, valueIncreasing, hsvValue];
+        const greenArr: number[] = [valueIncreasing, hsvValue, hsvValue, valueDecreasing, valueMin, valueMin];
+        const blueArr: number[] = [valueMin, valueMin, valueIncreasing, hsvValue, hsvValue, valueDecreasing];
+
+        const red: number = redArr[parseInt(mod.toString(), 10)];
+        const green: number = greenArr[parseInt(mod.toString(), 10)];
+        const blue: number = blueArr[parseInt(mod.toString(), 10)];
+
+        return {
+            red: ((red * 255) | 0),
+            green: ((green * 255) | 0),
+            blue: ((blue * 255) | 0)
+        };
+    }
+
+    /**
+     * Clamps a number to the range [0, 1].
+     * @param {number} val - The input number to clamp.
+     * @returns {this} The clamped number between 0 and 1.
+     */
+    clamp01(val: number): number {
+        return Math.min(1, Math.max(0, val));
+    }
+
+    /**
+     * Applies a tint effect (brightens the color).
+     * @param {number} amount - Percentage to increase brightness in range [0, 100].
+     * @returns {this} The current instance with modified value.
+     */
+    tint(amount: number): this {
+        this.value *= (1 + (amount / 100.0));
+        this.value = this.clamp01(this.value);
+        return this;
+    }
+
+    /**
+     * Applies a shade effect (darkens the color).
+     * @param {number} amount - Percentage to decrease brightness in range [0, 100].
+     * @returns {this} The current instance with modified value.
+     */
+    shade(amount: number): this {
+        this.value *= amount / 100.0;
+        this.value = this.clamp01(this.value);
+        return this;
+    }
+
+    /**
+     * Applies a saturation modifier.
+     * @param {number} amount - Percentage to scale saturation in range [0, 100].
+     * @returns {this} The current instance with modified saturation.
+     */
+    satMod(amount: number): this {
+        this.saturation *= amount / 100.0;
+        this.saturation = this.clamp01(this.saturation);
+        return this;
+    }
+
+    /**
+     * Applies a luminance modifier.
+     * @param {number} amount - Percentage to scale luminance in range [0, 100].
+     * @returns {this} The current instance with modified luminance.
+     */
+    lumMod(amount: number): this {
+        this.value *= amount / 100.0;
+        this.value = this.clamp01(this.value);
+        return this;
+    }
+
+    /**
+     * Applies a hue modifier.
+     * @param {number} amount - Percentage to scale hue in range [0, 100].
+     * @returns {this} The current instance with modified hue.
+     */
+    hueMod(amount: number): this {
+        this.hue *= amount / 100.0;
+        this.hue = this.clamp01(this.hue);
+        return this;
+    }
+}
+
+/**
+ * Applies color modifiers (tint, shade, saturation, luminance, hue) to a fill style color.
+ * Converts to HSV space, applies modifications, and converts back to RGB.
+ *
+ * @param {ColorRef | ProcessedColor} fillStyleColor - The fill style color object with modifiers and RGB color.
+ * @returns {void} Modifies the color object in place.
+ *
+ * @private
+ */
+function calcColor(fillStyleColor: ColorRef | ProcessedColor): void {
+    if (fillStyleColor.hasEffects) {
+        const hsvColor: HSVColor = toHsv(fillStyleColor.color as RgbColor);
+
+        if (fillStyleColor.tint !== 0) {
+            hsvColor.tint(fillStyleColor.tint);
+        }
+        if (fillStyleColor.shade !== 0) {
+            hsvColor.shade(fillStyleColor.shade);
+        }
+        if (fillStyleColor.satMod !== 0) {
+            hsvColor.satMod(fillStyleColor.satMod);
+        }
+        if (fillStyleColor.lumMod !== 0) {
+            hsvColor.lumMod(fillStyleColor.lumMod);
+        }
+        if (fillStyleColor.hueMod !== 0) {
+            hsvColor.hueMod(fillStyleColor.hueMod);
+        }
+
+        fillStyleColor.color = hsvColor.toRgb();
+    }
+}
+
+/**
+ * Retrieves the fill color for a shape based on quick style settings and theme data.
+ * Resolves fill colors from theme fill style matrices, variant colors, or base colors.
+ * Applies color modifiers (tint, shade, etc.) to generate the final fill color.
+ *
+ * @param {VisioShape} shape - Parsed Visio shape(s) for the vertex node
+ * @param {ParsingContext} context - Parser context containing theme and shape data.
+ * @returns {string | undefined} The resolved fill color in hex format (#RRGGBB), or undefined if not found.
+ *
+ * @private
+ */
+function getFillColor(shape: VisioShape, context: ParsingContext): string | undefined {
+    const theme: VisioTheme | undefined = context.data.currentTheme ? context.data.currentTheme : undefined;
+    if (!theme) {
+        return undefined;
+    }
+
+    let fillStyle: { color?: ColorRef | ProcessedColor; name?: string } | null = null;
+    let fillColorStyle: number = 0;
+
+    if (shape) {
+        fillColorStyle = shape.QuickFillColor;
+
+        const matrix: number = shape.QuickFillMatrix;
+        const index: number = matrix - 100;
+        switch (matrix) {
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+            if (theme.fillStyles && theme.fillStyles.length > 0) {
+                fillStyle = theme.fillStyles[matrix - 1];
+            }
+            break;
+        case 100:
+        case 101:
+        case 102:
+        case 103:
+            if (theme.isMonotoneVariant && theme.themeVariantStl !== undefined && theme.isMonotoneVariant[theme.themeVariantStl]) {
+                fillColorStyle = 100;
+            }
+            if (theme.variantFillIdx && theme.themeVariantStl !== undefined && theme.fillStyles) {
+                const variantRow: Array<number> = theme.variantFillIdx[theme.themeVariantStl];
+                if (variantRow && variantRow[parseInt(index.toString(), 10)] !== undefined) {
+                    fillStyle = theme.fillStyles[variantRow[parseInt(index.toString(), 10)] - 1];
+                }
+            }
+            break;
+        }
+    }
+
+    if (!fillColorStyle || !fillStyle) {
+        return undefined;
+    }
+
+    if (fillStyle && fillStyle.color && (fillStyle.color as ColorRef).val !== 'phClr') {
+        const colorValue: string = (fillStyle.color as ColorRef).val;
+        return theme.baseColors[`${colorValue}`] ? theme.baseColors[`${colorValue}`] : undefined;
+    }
+    let variantColor: ProcessedColor | null = null;
+
+    if (fillColorStyle < 8) {
+        // Base color from scheme (colors 1-7)
+        if (theme.baseColors) {
+            const colorKey: string | undefined = getColorKeyFromId(fillColorStyle);
+            if (colorKey && theme.baseColors[`${colorKey}`]) {
+                variantColor = createProcessedColor(theme.baseColors[`${colorKey}`]);
+            }
+        }
+    }
+    else {
+        // Variant colors (100-106, 200-206, etc.)
+        let clrIndex: number = 0;
+        if (fillColorStyle >= 200) {
+            clrIndex = fillColorStyle - 200;
+        } else if (fillColorStyle >= 100) {
+            clrIndex = fillColorStyle - 100;
+        }
+
+        if (clrIndex >= 0 && clrIndex <= 6) {
+            if (theme.themeVariantClr !== undefined && theme.variantsColors && theme.variantsColors.length > 0) {
+                const variantIndex: number = theme.themeVariantClr % theme.variantsColors.length;
+                const variantColors: ProcessedColor[] = theme.variantsColors[parseInt(variantIndex.toString(), 10)];
+                if (variantColors && variantColors[parseInt(clrIndex.toString(), 10)]) {
+                    variantColor = variantColors[parseInt(clrIndex.toString(), 10)];
+                }
+            }
+        }
+    }
+
+    if (!variantColor) {
+        return undefined;
+    }
+
+    if (fillStyle && fillStyle.color) {
+        fillStyle.color.color = variantColor.color;
+        calcColor(fillStyle.color);
+        return toHexStr(fillStyle.color.color as RgbColor);
+    }
+
+    return undefined;
+}
+
+/**
+ * Maps a fillColorStyle index to a color key in the theme color scheme.
+ *
+ * @param {number} colorId - The color ID (1-7).
+ * @returns {string | undefined} The color key (e.g., 'dk1', 'accent1'), or undefined if not found.
+ *
+ * @private
+ */
+function getColorKeyFromId(colorId: number): string | undefined {
+    const colorIdMap: Record<number, string> = {
+        1: 'dk1',
+        2: 'lt1',
+        3: 'accent1',
+        4: 'accent2',
+        5: 'accent3',
+        6: 'accent4',
+        7: 'accent5'
+    };
+    return colorIdMap[parseInt(colorId.toString(), 10)];
+}
+
+/**
  * Parses node shadow properties (outer shadow effect) from a cell map.
  * Extracts shadow pattern, type, opacity, color, and offset from the provided cell data.
  * Logs warnings about EJ2 shadow limitations during parsing.
@@ -1206,16 +2075,16 @@ export function parseVisioNodeShadow(cellMap: Map<string, CellMapValue>, context
 
         // ==================== Parse Shadow Opacity ====================
         // Shadow opacity is calculated as (1 - transparency)
-        const shdwOpacity: number = cellMap.get('ShdwForegndTrans') != null ? Number(cellMap.get('ShdwForegndTrans')) : 1; // Default to 1 if not found
+        const shdwOpacity: number = safeNumber(cellMap.get('ShdwForegndTrans') as CellMapValue, 1); // Default to 1 if not found/invalid
         nodeShadow.shadowOpacity = (1 - shdwOpacity); // Opacity is 1 - transparency, clamped implicitly by range 0-1
 
         // ==================== Parse Shadow Color ====================
         nodeShadow.shadowcolor = cellMap.get('ShdwForegnd') != null ? (cellMap.get('ShdwForegnd') as string) : '#ffffff'; // Assert to string
 
         // ==================== Parse Shadow Offset ====================
-        const shdwOffsetX: number = cellMap.get('ShapeShdwOffsetX') != null ? Number(cellMap.get('ShapeShdwOffsetX')) : 0;
-        const shdwOffsetY: number = cellMap.get('ShapeShdwOffsetY') != null ? Number(cellMap.get('ShapeShdwOffsetY')) : 0;
-        const shdwScaleFactor: number = cellMap.get('ShapeShdwScaleFactor') != null ? Number(cellMap.get('ShapeShdwScaleFactor')) : 0; // Default to 0 if not found
+        const shdwOffsetX: number = safeNumber(cellMap.get('ShapeShdwOffsetX') as CellMapValue, 0);
+        const shdwOffsetY: number = safeNumber(cellMap.get('ShapeShdwOffsetY') as CellMapValue, 0);
+        const shdwScaleFactor: number = safeNumber(cellMap.get('ShapeShdwScaleFactor') as CellMapValue, 0); // Default to 0 if not found/invalid
 
         // Calculate final shadow properties (offset, blur, etc.)
         nodeShadow.shadow = calculateShadowProperties(shdwOffsetX, shdwOffsetY, shdwScaleFactor);

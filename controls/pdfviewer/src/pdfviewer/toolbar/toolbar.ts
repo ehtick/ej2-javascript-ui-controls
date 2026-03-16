@@ -54,8 +54,8 @@ export class Toolbar {
      */
     public submitItem: HTMLElement;
     private fileInputElement: HTMLElement;
-    private textSelectItem: HTMLElement;
-    private panItem: HTMLElement;
+    public textSelectItem: HTMLElement;
+    public panItem: HTMLElement;
     private printItem: HTMLElement;
     /**
      * @private
@@ -160,10 +160,10 @@ export class Toolbar {
      * @private
      * @returns {HTMLElement} - html element
      */
-    public intializeToolbar(width: string): HTMLElement {
+    public intializeToolbar(width: string, skipToolbarCreation?: boolean): HTMLElement {
         let toolbarDiv: HTMLElement;
         if (!isBlazor()) {
-            toolbarDiv = this.createToolbar(width);
+            toolbarDiv = this.createToolbar(width, skipToolbarCreation);
         } else {
             if (!Browser.isDevice || this.pdfViewer.enableDesktopMode) {
                 toolbarDiv = this.pdfViewer.element.querySelector('.e-pv-toolbar');
@@ -186,24 +186,26 @@ export class Toolbar {
             this.updateToolbarItems();
             if (!Browser.isDevice || this.pdfViewer.enableDesktopMode) {
                 this.applyToolbarSettings();
-                this.initialEnableItems();
+                if (!skipToolbarCreation || isNullOrUndefined(skipToolbarCreation)) {
+                    this.initialEnableItems();
+                }
                 this.pdfViewerBase.navigationPane.adjustPane();
             } else {
                 this.initialEnableItems();
             }
-            if (this.pdfViewer.annotationModule) {
+            if (this.pdfViewer.annotationModule && !skipToolbarCreation) {
                 this.annotationToolbarModule = new AnnotationToolbar(this.pdfViewer, this.pdfViewerBase, this);
                 if (!Browser.isDevice || this.pdfViewer.enableDesktopMode) {
                     this.annotationToolbarModule.initializeAnnotationToolbar();
                 }
             }
-            if (this.pdfViewer.annotationModule) {
+            if (this.pdfViewer.annotationModule && !skipToolbarCreation) {
                 this.redactionToolbarModule = new RedactionToolbar(this.pdfViewer, this.pdfViewerBase, this);
                 if (!Browser.isDevice || this.pdfViewer.enableDesktopMode) {
                     this.redactionToolbarModule.initializeRedactionToolbar();
                 }
             }
-            if (this.pdfViewer.formDesignerModule) {
+            if (this.pdfViewer.formDesignerModule && !skipToolbarCreation) {
                 this.formDesignerToolbarModule = new FormDesignerToolbar(this.pdfViewer, this.pdfViewerBase, this);
                 if (!Browser.isDevice || this.pdfViewer.enableDesktopMode) {
                     this.formDesignerToolbarModule.initializeFormDesignerToolbar();
@@ -1207,9 +1209,16 @@ export class Toolbar {
         this.fileInputElement.click();
     }
 
-    private createToolbar(controlWidth: string | number): HTMLElement {
-        this.toolbarElement = createElement('div', { id: this.pdfViewer.element.id + '_toolbarContainer', className: 'e-pv-toolbar' });
-        this.pdfViewerBase.viewerMainContainer.appendChild(this.toolbarElement);
+    private createToolbar(controlWidth: string | number, skipToolbarCreation?: boolean): HTMLElement {
+        if (skipToolbarCreation) {
+            this.toolItems = [];
+            this.itemsIndexArray = [];
+            this.toolbarElement.classList.remove('e-rtl');
+        }
+        else {
+            this.toolbarElement = createElement('div', { id: this.pdfViewer.element.id + '_toolbarContainer', className: 'e-pv-toolbar' });
+            this.pdfViewerBase.viewerMainContainer.appendChild(this.toolbarElement);
+        }
         if (!Browser.isDevice || this.pdfViewer.enableDesktopMode) {
             this.toolbar = new tool({
                 clicked: this.toolbarClickHandler, width: '', height: '', overflowMode: 'Popup', cssClass: 'e-pv-toolbar-scroll',
@@ -1794,15 +1803,23 @@ export class Toolbar {
         }
         if (this.annotationToolbarModule) {
             if (!this.pdfViewer.toolbarSettings.showTooltip && ((this.annotationToolbarModule.toolbarElement &&
-                 this.annotationToolbarModule.toolbarElement.contains(args.target)) ||
-                  (this.annotationToolbarModule.shapeToolbarElement &&
-                    this.annotationToolbarModule.shapeToolbarElement.contains(args.target)))) {
+                this.annotationToolbarModule.toolbarElement.contains(args.target)) ||
+                (this.annotationToolbarModule.shapeToolbarElement &&
+                    this.annotationToolbarModule.shapeToolbarElement.contains(args.target)) ||
+                (args.target && args.target.closest &&
+                    (args.target.closest('.e-pv-shapes-toolbar'))))) {
                 args.cancel = true;
             }
         }
         if (this.formDesignerToolbarModule) {
             if (!this.pdfViewer.toolbarSettings.showTooltip && (this.formDesignerToolbarModule.toolbarElement &&
                 this.formDesignerToolbarModule.toolbarElement.contains(args.target))) {
+                args.cancel = true;
+            }
+        }
+        if (this.redactionToolbarModule) {
+            if (!this.pdfViewer.toolbarSettings.showTooltip && (this.redactionToolbarModule.toolbarElement &&
+                this.redactionToolbarModule.toolbarElement.contains(args.target))) {
                 args.cancel = true;
             }
         }
@@ -2279,6 +2296,7 @@ export class Toolbar {
             });
         } else if (zoomText === this.pdfViewer.localeObj.getConstant('Fit Page')) {
             this.pdfViewer.magnificationModule.fitToPage();
+            this.pdfViewer.magnificationModule.isFitToPage = true;
             setTimeout(() => {
                 this.zoomDropDown.focusOut();
             });
@@ -2911,5 +2929,77 @@ export class Toolbar {
      */
     public getModuleName(): string {
         return 'Toolbar';
+    }
+
+    /**
+     * @private
+     * @returns {string} - string
+     */
+    public updateRtlForToolbar(): void {
+        const selectedState: { [key: string]: boolean } = {};
+        const selectedOnParent: { [key: string]: boolean } = {};
+        const captureSelected: (key: string, el: HTMLElement | null | undefined) => void = (key: string, el: HTMLElement) => {
+            const onSelf: boolean = !!(el && el.classList.contains('e-pv-select'));
+            const onParent: boolean = !!(el && el.parentElement && el.parentElement.classList.contains('e-pv-select'));
+            const combined: boolean = onSelf || onParent;
+            const parentOnly: boolean = onParent && !onSelf;
+            switch (key) {
+            case 'annotationItem':
+                selectedState.annotationItem = combined;
+                selectedOnParent.annotationItem = parentOnly;
+                break;
+            case 'redactionItem':
+                selectedState.redactionItem = combined;
+                selectedOnParent.redactionItem = parentOnly;
+                break;
+            case 'formDesignerItem':
+                selectedState.formDesignerItem = combined;
+                selectedOnParent.formDesignerItem = parentOnly;
+                break;
+            case 'textSelectItem':
+                selectedState.textSelectItem = combined;
+                selectedOnParent.textSelectItem = parentOnly;
+                break;
+            case 'panItem':
+                selectedState.panItem = combined;
+                selectedOnParent.panItem = parentOnly;
+                break;
+            case 'textSearchItem':
+                selectedState.textSearchItem = combined;
+                selectedOnParent.textSearchItem = parentOnly;
+                break;
+            case 'commentItem':
+                selectedState.commentItem = combined;
+                selectedOnParent.commentItem = parentOnly;
+                break;
+            default:
+                break;
+            }
+        };
+        captureSelected('annotationItem', this.annotationItem);
+        captureSelected('redactionItem', this.redactionItem);
+        captureSelected('formDesignerItem', this.formDesignerItem);
+        captureSelected('textSelectItem', this.textSelectItem);
+        captureSelected('panItem', this.panItem);
+        captureSelected('textSearchItem', this.textSearchItem);
+        captureSelected('commentItem', this.commentItem);
+        this.toolbar.destroy();
+        this.intializeToolbar('100', true);
+
+        // Restore selected states captured before rebuild (keeps visual enable/highlight)
+        if (selectedState['annotationItem'] && this.annotationItem) {
+            this.selectItem(selectedOnParent['annotationItem'] ? this.annotationItem.parentElement : this.annotationItem); }
+        if (selectedState['redactionItem'] && this.redactionItem) {
+            this.selectItem(selectedOnParent['redactionItem'] ? this.redactionItem.parentElement : this.redactionItem); }
+        if (selectedState['formDesignerItem'] && this.formDesignerItem) {
+            this.selectItem(selectedOnParent['formDesignerItem'] ? this.formDesignerItem.parentElement : this.formDesignerItem); }
+        if (selectedState['textSelectItem'] && this.textSelectItem) {
+            this.selectItem(selectedOnParent['textSelectItem'] ? this.textSelectItem.parentElement : this.textSelectItem); }
+        if (selectedState['panItem'] && this.panItem) {
+            this.selectItem(selectedOnParent['panItem'] ? this.panItem.parentElement : this.panItem); }
+        if (selectedState['textSearchItem'] && this.textSearchItem) {
+            this.selectItem(selectedOnParent['textSearchItem'] ? this.textSearchItem.parentElement : this.textSearchItem); }
+        if (selectedState['commentItem'] && this.commentItem) {
+            this.selectItem(selectedOnParent['commentItem'] ? this.commentItem.parentElement : this.commentItem); }
     }
 }

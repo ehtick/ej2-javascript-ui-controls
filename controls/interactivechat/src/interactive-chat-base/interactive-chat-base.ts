@@ -548,6 +548,13 @@ export class InterActiveChatBase extends Component<HTMLElement> implements INoti
             footerIconsWrapper.prepend(this.clearIcon);
         }
     }
+    protected checkScrollAtBottom(Element: HTMLElement, fabHeight: number): boolean {
+        const scrollThreshold: number = 5;
+        const scrollTop: number = Math.floor(Element.scrollTop);
+        const scrollHeight: number = Math.floor(Element.scrollHeight);
+        const clientHeight: number = Math.floor(Element.clientHeight);
+        return scrollHeight - scrollTop <= clientHeight + scrollThreshold + fabHeight;
+    }
     protected updateHiddenTextarea(prompt: string): void {
         const hiddenTextarea: HTMLTextAreaElement = this.footer.querySelector('.e-hidden-textarea') as HTMLTextAreaElement;
         hiddenTextarea.value = prompt;

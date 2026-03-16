@@ -19,7 +19,8 @@
       "moduleResolution": "node",
       "suppressImplicitAnyIndexErrors": true,
       "types": ["jasmine","jasmine-ajax","requirejs","chai","es6-promise"],
-      "lib": ["es2015.collection","es2015.core","es5", "dom"]
+      "lib": ["es2015.collection","es2015.core","es5", "dom"],
+      "skipLibCheck": true
     },
     "exclude": [
       "node_modules",

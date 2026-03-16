@@ -5,6 +5,7 @@ import { Series, Points } from './chart-series';
 import { ColumnBase } from './column-base';
 import { IPointRenderEventArgs } from '../../chart/model/chart-interface';
 import { BorderModel } from '../../common/model/base-model';
+import { isNullOrUndefined } from '@syncfusion/ej2-base';
 
 /**
  * The `HiloOpenCloseSeries` module is used to render the hilo open close series.
@@ -112,8 +113,12 @@ export class HiloOpenCloseSeries extends ColumnBase {
      * @returns {IPointRenderEventArgs} The event arguments.
      */
     private triggerPointRenderEvent(series: Series, point: Points): IPointRenderEventArgs {
-        const fill: string = (point.open <= point.close) ? series.bearFillColor || series.chart.themeStyle.bearFillColor :
-            series.bullFillColor || series.chart.themeStyle.bullFillColor;
+        const hasGradient: boolean = (!isNullOrUndefined(series.linearGradient) && series.linearGradient.gradientColorStop.length > 0) ||
+                                     (!isNullOrUndefined(series.radialGradient) && series.radialGradient.gradientColorStop.length > 0);
+        const bearFillColor: string = hasGradient ? series.interior : series.bearFillColor;
+        const bullFillColor: string = hasGradient ? series.interior : series.bullFillColor;
+        const fill: string = (point.open <= point.close) ? bearFillColor || series.chart.themeStyle.bearFillColor :
+            bullFillColor || series.chart.themeStyle.bullFillColor;
         const border: BorderModel = { color: series.border.color, width: Math.max(series.border.width, 1) };
         return this.triggerEvent(series, point, fill, border);
     }
@@ -154,9 +159,12 @@ export class HiloOpenCloseSeries extends ColumnBase {
                 'L' + ' ' + (rect.x + rect.width) + ' ' + (close.y) + ' ');
         }
 
+        const hasGradient: boolean = (!isNullOrUndefined(series.linearGradient) && series.linearGradient.gradientColorStop.length > 0) ||
+                                     (!isNullOrUndefined(series.radialGradient) && series.radialGradient.gradientColorStop.length > 0);
+        const seriesColor: string = hasGradient ? series.interior : argsData.fill;
         const options: PathOption = new PathOption(
             series.chart.element.id + '_Series_' + series.index + '_Point_' + ((series.removedPointIndex !== null && series.removedPointIndex <= point.index) ? (point.index + 1) : point.index),
-            argsData.fill, argsData.border.width, argsData.fill, series.opacity, series.dashArray, direction);
+            seriesColor, argsData.border.width, seriesColor, series.opacity, series.dashArray, direction);
         pathAnimation(getElement(options.id), direction, series.chart.redraw, null, series.chart.duration);
         const element: HTMLElement =
             series.chart.renderer.drawPath(options, new Int32Array([series.clipRect.x, series.clipRect.y])) as HTMLElement;

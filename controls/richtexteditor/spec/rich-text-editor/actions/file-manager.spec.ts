@@ -320,7 +320,7 @@ describe('FileManager module', () => {
             setTimeout(() => {
                 let pop: Element = document.body.querySelector('.e-rte-quick-popup');
                 expect(isNullOrUndefined(pop)).toBe(false);
-                (pop.querySelectorAll('.e-toolbar-item')[12] as HTMLElement).click();
+                (pop.querySelectorAll('.e-toolbar-item')[13] as HTMLElement).click();
                 setTimeout(() => {
                     fileEle = document.body.querySelector('.e-rte-file-manager-dialog .e-filemanager');
                     expect(isNullOrUndefined(fileEle)).toBe(false);
@@ -478,7 +478,7 @@ describe('FileManager module', () => {
             target.dispatchEvent(MOUSEUP_EVENT);
             setTimeout(() => {
                 let pop: Element = document.body.querySelector('.e-rte-quick-popup');
-                (pop.querySelectorAll('.e-toolbar-item')[12] as HTMLElement).click();
+                (pop.querySelectorAll('.e-toolbar-item')[13] as HTMLElement).click();
                 setTimeout(() => {
                     (editor.fileManagerModule as any).fileObj.trigger('fileSelect', { fileDetails: { filterPath: '\\Pictures\\Employees\\', name: 'Andrew.png', isFile: true, type: '.png' } });
                     let insertBtn: HTMLButtonElement = document.body.querySelector('.e-rte-file-manager-dialog button.e-primary');
@@ -486,6 +486,82 @@ describe('FileManager module', () => {
                     setTimeout(() => {
                         let imageElement: HTMLImageElement = document.body.querySelector('.e-rte-image');
                         expect(imageElement.src).toBe('https://ej2services.syncfusion.com/js/development/api/RichTextEditor/GetImage/Pictures/Employees/Andrew.png');
+                        done();
+                    }, 100);
+                }, 100);
+            }, 500);
+        });
+    });
+
+    describe('1014616: Replacing an image resets its display from “Break” to “Inline”', () => {
+        let editor: RichTextEditor;
+        function onActionBegin(e: ActionBeginEventArgs) {
+            if (e.requestType === 'Replace') {
+                const url: string = e.itemCollection.url;
+                if (url.indexOf('?path') > -1) {
+                    const newURL: string = url.replace('?path=', '');
+                    e.itemCollection.url = newURL;
+                }
+            }
+        }
+        beforeAll(() => {
+            editor = renderRTE({
+                fileManagerSettings: {
+                    enable: true,
+                    path: '/Pictures/Employees',
+                    ajaxSettings: {
+                        url: hostURL + 'api/RichTextEditor/FileOperations',
+                        getImageUrl: hostURL + 'api/RichTextEditor/GetImage',
+                        uploadUrl: hostURL + 'api/RichTextEditor/Upload'
+                    }
+                },
+                actionBegin: onActionBegin,
+            });
+        });
+        afterAll(() => {
+            destroy(editor);
+        });
+        it('Check the image class name when replace image', (done: DoneFn) => {
+            editor.inputElement.innerHTML = '<p><img src="https://ej2services.syncfusion.com/js/development/api/RichTextEditor/GetImage/Pictures/Employees/Adam.png" class="e-rte-image e-img-break e-custom-class" style="width: 150px; height: 400px;"/></p>';
+            const INIT_MOUSEDOWN_EVENT: MouseEvent = new MouseEvent('mousedown', BASIC_MOUSE_EVENT_INIT);
+            editor.inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+            const target: HTMLElement = editor.inputElement.querySelector('img');
+            const MOUSEUP_EVENT: MouseEvent = new MouseEvent('mouseup', BASIC_MOUSE_EVENT_INIT);
+            setCursorPoint(target, 0);
+            target.dispatchEvent(MOUSEUP_EVENT);
+            setTimeout(() => {
+                let pop: Element = document.body.querySelector('.e-rte-quick-popup');
+                (pop.querySelectorAll('.e-toolbar-item')[13].firstElementChild as HTMLElement).click();
+                setTimeout(() => {
+                    (editor.fileManagerModule as any).fileObj.trigger('fileSelect', { fileDetails: { filterPath: '\\Pictures\\Employees\\', name: 'Andrew.png', isFile: true, type: '.png' } });
+                    let insertBtn: HTMLButtonElement = document.body.querySelector('.e-rte-file-manager-dialog button.e-primary');
+                    insertBtn.click();
+                    setTimeout(() => {
+                        let imageElement: HTMLImageElement = document.body.querySelector('.e-rte-image.e-img-break.e-custom-class');
+                        expect(!isNullOrUndefined(imageElement)).toBe(true);
+                        done();
+                    }, 100);
+                }, 100);
+            }, 500);
+        });
+        it('Check the image class name when replace image', (done: DoneFn) => {
+            editor.inputElement.innerHTML = '<p><img src="https://ej2services.syncfusion.com/js/development/api/RichTextEditor/GetImage/Pictures/Employees/Adam.png" class="e-rte-image e-custom-class" style="width: 150px; height: 400px;"/></p>';
+            const INIT_MOUSEDOWN_EVENT: MouseEvent = new MouseEvent('mousedown', BASIC_MOUSE_EVENT_INIT);
+            editor.inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+            const target: HTMLElement = editor.inputElement.querySelector('img');
+            const MOUSEUP_EVENT: MouseEvent = new MouseEvent('mouseup', BASIC_MOUSE_EVENT_INIT);
+            setCursorPoint(target, 0);
+            target.dispatchEvent(MOUSEUP_EVENT);
+            setTimeout(() => {
+                let pop: Element = document.body.querySelector('.e-rte-quick-popup');
+                (pop.querySelectorAll('.e-toolbar-item')[13].firstElementChild as HTMLElement).click();
+                setTimeout(() => {
+                    (editor.fileManagerModule as any).fileObj.trigger('fileSelect', { fileDetails: { filterPath: '\\Pictures\\Employees\\', name: 'Andrew.png', isFile: true, type: '.png' } });
+                    let insertBtn: HTMLButtonElement = document.body.querySelector('.e-rte-file-manager-dialog button.e-primary');
+                    insertBtn.click();
+                    setTimeout(() => {
+                        let imageElement: HTMLImageElement = document.body.querySelector('.e-rte-image.e-img-inline.e-custom-class');
+                        expect(!isNullOrUndefined(imageElement)).toBe(true);
                         done();
                     }, 100);
                 }, 100);

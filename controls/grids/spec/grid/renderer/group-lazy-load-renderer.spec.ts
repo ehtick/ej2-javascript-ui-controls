@@ -1101,15 +1101,300 @@ describe('LazyLoadGroup module', () => {
                     ],
                 }, done);
         });
+
         it('Expand the row', (done: Function) => {
             let expandElem = gridObj.getContent().querySelectorAll('.e-recordpluscollapse');
             gridObj.groupModule.expandCollapseRows(expandElem[0]);
             done();
         });
+
         it('Get the data', (done: Function) => {
             expect(gridObj.getDataRows().length).toBe(1);
             done();
         });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('EJ2-1000545: lazy load grouping with check box selection in virtual scrolling => ', () => {
+        let gridObj: Grid;
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: lazyLoadData.slice(0,100),
+                    enableVirtualization: true,
+                    allowGrouping: true,
+                    allowFiltering: true,
+                    allowSorting: true,
+                    toolbar: ['Search'],
+                    groupSettings: { enableLazyLoading: true, columns: ['ProductName'] },
+                    selectionSettings: { persistSelection: true },
+                    height: 400,
+                    columns: [
+                        { type: 'checkbox', width: 50 },
+                        { field: 'OrderID', headerText: 'Order ID', textAlign: 'Right', width: 120, isPrimaryKey: true },
+                        { field: 'ProductName', headerText: 'Product Name', width: 160 },
+                        { field: 'ProductID', headerText: 'Product ID', textAlign: 'Right', width: 120 },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 120 },
+                        { field: 'CustomerName', headerText: 'Customer Name', width: 160 },
+                    ],
+                }, done);
+        });
+
+        it('Click header to chek the selected records length', (done: Function) => {
+            debugger;
+            (gridObj.element.querySelector('.e-checkselectall') as HTMLElement).click();
+            done();
+        });
+
+        it('SelectedRecords', function (done: Function) {
+            expect(gridObj.getSelectedRecords().length).toBe(100);
+            expect(gridObj.selectionModule.selectedRowIndexes.length).toBe(100);
+            expect((<any>gridObj.element.querySelector('.e-checkselectall').nextSibling).classList.contains('e-check')).toBeTruthy();
+            done();
+        });
+
+        it('Expand the first caption row', (done: Function) => {
+            (gridObj.getContent().querySelectorAll('.e-recordpluscollapse')[0] as HTMLElement).click();
+            done();
+        });
+
+        it('Uncheck the first row', (done: Function) => {
+            (gridObj.element.querySelector('.e-rowcell') as HTMLElement).click();
+            done();
+        });
+
+        it('SelectedRecords', function (done: Function) {
+            expect(gridObj.getSelectedRecords().length).toBe(99);
+            expect(gridObj.selectionModule.selectedRowIndexes.length).toBe(99);
+            expect((<any>gridObj.element.querySelector('.e-checkselectall').nextSibling).classList.contains('e-stop')).toBeTruthy();
+            done();
+        });
+
+        it('perform sorting', (done: Function) => {
+            gridObj.sortColumn('OrderID', 'Descending');
+            expect((<any>gridObj.element.querySelector('.e-checkselectall').nextSibling).classList.contains('e-stop')).toBeTruthy();
+            done()
+        });
+
+        it('perform searching', (done: Function) => {
+            let actionComplete = (e: any) => {
+                expect(1).toBe(1);
+                expect((<any>gridObj.element.querySelector('.e-checkselectall').nextSibling).classList.contains('e-check')).toBeTruthy();
+                gridObj.actionComplete = null;
+                done();
+            };
+            gridObj.actionComplete = actionComplete;
+            gridObj.search("10249");
+            done()
+        });
+
+        it('clear searching', (done: Function) => {
+            let actionComplete = (e: any) => {
+                expect((<any>gridObj.element.querySelector('.e-checkselectall').nextSibling).classList.contains('e-stop')).toBeTruthy();
+                gridObj.actionComplete = null;
+                done();
+            };
+            gridObj.actionComplete = actionComplete;
+            gridObj.search("");
+        });
+
+        it('perform filtering', (done: Function) => {
+            let actionComplete = (e: any) => {
+                expect(1).toBe(1);
+                expect((<any>gridObj.element.querySelector('.e-checkselectall').nextSibling).classList.contains('e-check')).toBeTruthy();
+                gridObj.actionComplete = null;
+                done();
+            };
+            gridObj.actionComplete = actionComplete;
+            gridObj.filterByColumn("OrderID", "equal", 10249);
+            done();
+        });
+
+        it('clear filtering', (done: Function) => {
+            let actionComplete = (e: any) => {
+                expect((<any>gridObj.element.querySelector('.e-checkselectall').nextSibling).classList.contains('e-stop')).toBeTruthy();
+                gridObj.actionComplete = null;
+                done();
+            };
+            gridObj.actionComplete = actionComplete;
+            gridObj.clearFiltering();
+            done();
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('EJ2-1000545: lazy load grouping with check box selection in paging => ', () => {
+        let gridObj: Grid;
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: lazyLoadData.slice(0,100),
+                    allowPaging: true,
+                    allowGrouping: true,
+                    allowFiltering: true,
+                    allowSorting: true,
+                    toolbar: ['Search'],
+                    groupSettings: { enableLazyLoading: true, columns: ['OrderID'] },
+                    selectionSettings: { persistSelection: true },
+                    height: 400,
+                    columns: [
+                        { type: 'checkbox', width: 50 },
+                        { field: 'OrderID', headerText: 'Order ID', textAlign: 'Right', width: 120, isPrimaryKey: true },
+                        { field: 'ProductName', headerText: 'Product Name', width: 160 },
+                        { field: 'ProductID', headerText: 'Product ID', textAlign: 'Right', width: 120 },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 120 },
+                        { field: 'CustomerName', headerText: 'Customer Name', width: 160 },
+                    ],
+                }, done);
+        });
+
+        it('Click header to chek the selected records length', (done: Function) => {
+            (gridObj.element.querySelector('.e-checkselectall') as HTMLElement).click();
+            done();
+        });
+
+        it('SelectedRecords', function (done: Function) {
+            expect(gridObj.getSelectedRecords().length).toBe(100);
+            expect((<any>gridObj.element.querySelector('.e-checkselectall').nextSibling).classList.contains('e-check')).toBeTruthy();
+            done();
+        });
+
+        it('caption expand', (done: Function) => {
+            const expandElem: NodeListOf<Element> = gridObj.getContent().querySelectorAll('.e-recordpluscollapse');
+            gridObj.groupModule.expandCollapseRows(expandElem[0]);
+            done();
+        });
+
+        it('Goto another page', function (done: Function) {
+            gridObj.goToPage(2);
+            done();
+        });
+
+        it('Goto previous page', function (done: Function) {
+            let actionComplete = (e: any) => {
+                expect(gridObj.currentViewData.length).toBe(1);
+                gridObj.actionComplete = null;
+                done();
+            };
+            gridObj.actionComplete = actionComplete;
+            gridObj.goToPage(1);
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('EJ2-1000545: lazy load grouping with check box selection in infinite scroll => ', () => {
+        let gridObj: Grid;
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: lazyLoadData.slice(0,100),
+                    enableInfiniteScrolling: true,
+                    allowGrouping: true,
+                    allowFiltering: true,
+                    allowSorting: true,
+                    toolbar: ['Search'],
+                    groupSettings: { enableLazyLoading: true, columns: ['ProductName', 'CustomerID'] },
+                    selectionSettings: { persistSelection: true },
+                    height: 400,
+                    columns: [
+                        { type: 'checkbox', width: 50 },
+                        { field: 'OrderID', headerText: 'Order ID', textAlign: 'Right', width: 120, isPrimaryKey: true },
+                        { field: 'ProductName', headerText: 'Product Name', width: 160 },
+                        { field: 'ProductID', headerText: 'Product ID', textAlign: 'Right', width: 120 },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 120 },
+                        { field: 'CustomerName', headerText: 'Customer Name', width: 160 },
+                    ],
+                }, done);
+        });
+
+        it('Click header to chek the selected records length', (done: Function) => {
+            (gridObj.element.querySelector('.e-checkselectall') as HTMLElement).click();
+            done();
+        });
+
+        it('SelectedRecords', function (done: Function) {
+            expect(gridObj.getSelectedRecords().length).toBe(100);
+            expect(gridObj.selectionModule.selectedRowIndexes.length).toBe(100);
+            expect((<any>gridObj.element.querySelector('.e-checkselectall').nextSibling).classList.contains('e-check')).toBeTruthy();
+            done();
+        });
+
+        it('caption expand', (done: Function) => {
+            const expandElem: NodeListOf<Element> = gridObj.getContent().querySelectorAll('.e-recordpluscollapse');
+            gridObj.groupModule.expandCollapseRows(expandElem[0]);
+            done();
+        });
+        it('caption expand again', (done: Function) => {
+            const expandElem: NodeListOf<Element> = gridObj.getContent().querySelectorAll('.e-recordpluscollapse');
+            gridObj.groupModule.expandCollapseRows(expandElem[0]);
+            done();
+        });
+
+        it('Uncheck the first row', (done: Function) => {
+            (gridObj.element.querySelector('.e-rowcell') as HTMLElement).click();
+            done();
+        });
+
+        it('SelectedRecords', function (done: Function) {
+            expect(gridObj.getSelectedRecords().length).toBe(99);
+            expect((<any>gridObj.element.querySelector('.e-checkselectall').nextSibling).classList.contains('e-stop')).toBeTruthy();
+            done();
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('EJ2-845947: lazy load grouping with check box selection in remote data => ', () => {
+        let gridObj: Grid;
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: lazyLoadData.slice(0,100),
+                    allowPaging: true,
+                    allowGrouping: true,
+                    allowFiltering: true,
+                    allowSorting: true,
+                    toolbar: ['Search'],
+                    groupSettings: { enableLazyLoading: true, columns: ['OrderID'] },
+                    selectionSettings: { persistSelection: true },
+                    height: 400,
+                    columns: [
+                        { type: 'checkbox', width: 50 },
+                        { field: 'OrderID', headerText: 'Order ID', textAlign: 'Right', width: 120, isPrimaryKey: true },
+                        { field: 'ProductName', headerText: 'Product Name', width: 160 },
+                        { field: 'ProductID', headerText: 'Product ID', textAlign: 'Right', width: 120 },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 120 },
+                        { field: 'CustomerName', headerText: 'Customer Name', width: 160 },
+                    ],
+                }, done);
+        });
+
+        it('Coverage for updateCurrentViewData', (done: Function) => {
+            (gridObj as any).dataSource.result = gridObj.dataSource;
+            (gridObj as any).contentModule.updateCurrentViewData();
+            done();
+        });
+        it('Coverage for render', (done: Function) => {
+            let args: any = { count: 1, data: lazyLoadData.slice(0, 1), index: 0, isRowExist: false, level: 1, up: false};
+            (gridObj as any).contentModule.lazyLoadHandler(args);
+            done();
+        });
+
         afterAll(() => {
             destroy(gridObj);
             gridObj = null;

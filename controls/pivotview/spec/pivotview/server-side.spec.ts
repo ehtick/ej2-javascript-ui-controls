@@ -41,7 +41,7 @@ describe('Server side pivot engine ', () => {
             PivotView.Inject(FieldList);
             pivotGridObj = new PivotView({
                 dataSourceSettings: {
-                    url: 'https://ej2services.syncfusion.com/js/hotfix/api/pivot/post',
+                    url: 'https://ej2services.syncfusion.com/js/development/api/pivot/post',
                     mode: 'Server',
                     expandAll: true,
                     enableSorting: true,
@@ -70,7 +70,7 @@ describe('Server side pivot engine ', () => {
             }, 4500);
         });
         it('Popup field list - ascend & descend', () => {
-            expect(document.querySelectorAll('.e-field-table .e-field-list-tree-outer-div .e-field-list ul li')[0].textContent).toBe('Quarter');
+            expect(document.querySelectorAll('.e-field-table .e-field-list-tree-outer-div .e-field-list ul li')[0].textContent).toBe('InStock');
             (document.querySelectorAll('.e-sort-ascend')[0] as HTMLElement).click();
         });
         it('Popup field list - ascend & descend-1', (done: Function) => {
@@ -153,7 +153,7 @@ describe('Server side pivot engine ', () => {
             PivotView.Inject(FieldList);
             pivotGridObj = new PivotView({
                 dataSourceSettings: {
-                    url: 'https://ej2services.syncfusion.com/js/hotfix/api/pivot/post',
+                    url: 'https://ej2services.syncfusion.com/js/development/api/pivot/post',
                     mode: 'Server',
                     expandAll: true,
                     enableSorting: true,
@@ -182,7 +182,7 @@ describe('Server side pivot engine ', () => {
             }, 4000);
         });
         it('Popup field list - ascend & descend', () => {
-            expect(document.querySelectorAll('.e-field-table .e-field-list-tree-outer-div .e-field-list ul li')[0].textContent).toBe('Quarter');
+            expect(document.querySelectorAll('.e-field-table .e-field-list-tree-outer-div .e-field-list ul li')[0].textContent).toBe('InStock');
         });
         it('Field list Filering - rows - 1', (done: Function) => {
             setTimeout(() => {
@@ -385,7 +385,7 @@ describe('Server side pivot engine ', () => {
             PivotView.Inject(FieldList);
             pivotGridObj = new PivotView({
                 dataSourceSettings: {
-                    url: 'https://ej2services.syncfusion.com/js/hotfix/api/pivot/post',
+                    url: 'https://ej2services.syncfusion.com/js/development/api/pivot/post',
                     mode: 'Server',
                     expandAll: true,
                     enableSorting: true,
@@ -455,10 +455,10 @@ describe('Server side pivot engine ', () => {
             }
             document.body.appendChild(elem);
             let dataBound: EmitType<Object> = () => { done(); };
-            PivotView.Inject(FieldList);
+            PivotView.Inject(FieldList, PDFExport, Toolbar);
             pivotGridObj = new PivotView({
                 dataSourceSettings: {
-                    url: 'https://ej2services.syncfusion.com/js/hotfix/api/pivot/post',
+                    url: 'https://ej2services.syncfusion.com/js/development/api/pivot/post',
                     mode: 'Server',
                     expandAll: true,
                     enableSorting: true,
@@ -472,8 +472,9 @@ describe('Server side pivot engine ', () => {
                     formatSettings: [{ name: 'Price', format: 'C0' }, { name: 'Sold', format: 'N0' }],
                 },
                 showFieldList: true,
-                toolbar: ['FieldList'],
+                toolbar: ['Export', 'FieldList'],
                 showToolbar: true,
+                allowPdfExport: true,
                 dataBound: dataBound
             });
             pivotGridObj.appendTo('#PivotGrid');
@@ -486,6 +487,15 @@ describe('Server side pivot engine ', () => {
                 expect(pivotGridObj.pivotValues[0][1].formattedText).toBe('FY 2022');
                 done();
             }, 3000);
+        });
+        it('PDF Export - NewSheet', (done: Function) => {
+            setTimeout(() => {
+                let li: HTMLElement = document.getElementById('PivotGridexport_menu').children[0] as HTMLElement;
+                expect(li.classList.contains('e-menu-caret-icon')).toBeTruthy();
+                util.triggerEvent(li, 'mouseover');
+                (document.querySelectorAll('.e-menu-popup li')[0] as HTMLElement).click();
+                done();
+            }, 2000);
         });
     });
 
@@ -519,7 +529,7 @@ describe('Server side pivot engine ', () => {
     //         PivotView.Inject(FieldList, Toolbar, PDFExport, ExcelExport);
     //         pivotGridObj = new PivotView({
     //             dataSourceSettings: {
-    //                 url: 'https://ej2services.syncfusion.com/js/hotfix/api/pivot/post',
+    //                 url: 'https://ej2services.syncfusion.com/js/development/api/pivot/post',
     //                 mode: 'Server',
     //                 expandAll: true,
     //                 enableSorting: true,
@@ -602,7 +612,7 @@ describe('Server side pivot engine ', () => {
     //         PivotView.Inject(GroupingBar);
     //         pivotGridObj = new PivotView({
     //             dataSourceSettings: {
-    //                 url: 'https://ej2services.syncfusion.com/js/hotfix/api/pivot/post',
+    //                 url: 'https://ej2services.syncfusion.com/js/development/api/pivot/post',
     //                 mode: 'Server',
     //                 expandAll: true,
     //                 enableSorting: true,

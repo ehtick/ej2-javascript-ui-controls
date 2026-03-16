@@ -1,6 +1,6 @@
 import { RangePath } from '../../common/interface';
 import { getSelectedRange } from '../../common/utils/selection';
-import { getBlockModelById } from '../../common/utils/block';
+import { getBlockModelById, getContentModelByNode } from '../../common/utils/block';
 import { BlockModel, ContentModel } from '../../models/index';
 import { BlockManager } from '../base/block-manager';
 import { events } from '../../common/constant';
@@ -42,17 +42,9 @@ export class MentionAction {
             const rangeParent: HTMLElement = range.startContainer.nodeType === Node.TEXT_NODE
                 ? range.startContainer.parentElement
                 : (range.startContainer as HTMLElement);
-            const mentionChips: NodeListOf<HTMLElement> = rangeParent.querySelectorAll('span.e-mention-chip');
-            if (mentionChips && mentionChips.length > 0) {
-                mentionChips.forEach((chip: HTMLElement) => {
-                    const nextSibling: Node = chip.nextSibling as Node;
-                    if (nextSibling && nextSibling.nodeType === Node.TEXT_NODE && nextSibling.textContent === '\u200B') {
-                        nextSibling.parentNode.removeChild(nextSibling);
-                    }
-                    if (isRemoveChip) {
-                        chip.remove();
-                    }
-                });
+            const insertedChip: HTMLElement = rangeParent.querySelector('span[class="e-mention-chip"]');
+            if (insertedChip && isRemoveChip) {
+                insertedChip.remove();
             }
         }
     }
@@ -72,14 +64,15 @@ export class MentionAction {
             (rangePath && (!rangePath.startContainer || !rangePath.endContainer))) {
             return;
         }
-        const { startOffset, endOffset, parentElement }: RangePath = rangePath;
+        const { startContainer, startOffset, endOffset, contentElement }: RangePath = rangePath;
         const blockEl: HTMLElement = this.parent.currentFocusedBlock as HTMLElement;
         const block: BlockModel = getBlockModelById(blockEl.id, this.parent.getEditorBlocks());
+        const targetNode: Node = document.contains(startContainer) ? startContainer : contentElement;
 
         if (!block || !block.content || block.content.length === 0) { return; }
 
-        const affectedContent: ContentModel = block.content.find((c: ContentModel) => c.id === parentElement.id);
-        if (!affectedContent) { return; }
+        const affectedContent: ContentModel = getContentModelByNode(targetNode, this.parent.getEditorBlocks());
+        if (!affectedContent || !affectedContent.content) { return; }
         const text: string = affectedContent.content;
         if (startOffset === endOffset) {
             let start: number = startOffset;

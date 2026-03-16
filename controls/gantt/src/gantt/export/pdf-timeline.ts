@@ -116,7 +116,6 @@ export class PdfTimeline {
         }
         const hasTimeComponent: boolean = hours !== 0 || minutes !== 0 || seconds !== 0;
         remainWidth = hasTimeComponent ? detail.totalWidth : Math.round(detail.totalWidth);
-        remainWidth = Math.round(detail.totalWidth);
         const height: number = this.parent.timelineModule.isSingleTier ? 0 : this.topTierHeight;
         this.bottomTierPoint = new PointF(startPoint.x, pixelToPoint(startPoint.y + height));
         while (remainWidth > 0) {
@@ -340,7 +339,7 @@ export class PdfTimeline {
             graphics.rotateTransform(-90);
             graphics.translateTransform(-( renderHeight),
                                         -((this.holidayWidth + width + fontSize) / ((this.holidayWidth + width) / width)));
-            if ((strSize.width + 10) < renderHeight) {
+            if (!isNullOrUndefined(strSize) && ((strSize.width + 10) < renderHeight)) {
                 graphics.drawString(
                     this.holidayLabel,
                     font1,
@@ -366,7 +365,7 @@ export class PdfTimeline {
             graphics.rotateTransform(-90);
             graphics.translateTransform(-(renderHeight),
                                         -((this.holidayWidth + width + fontSize) / ((this.holidayWidth + width) / width)));
-            if ((strSize.width + 10) < renderHeight) {
+            if (!isNullOrUndefined(strSize) && ((strSize.width + 10) < renderHeight)) {
                 graphics.drawString(
                     this.holidayLabel,
                     font1,

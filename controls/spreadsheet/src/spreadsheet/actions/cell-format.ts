@@ -405,7 +405,7 @@ export class CellFormat {
                 this.updateRowHeight(rowIdx, colIdx, lastCell, actionUpdate);
             }
             if (!cellModel.wrap) {
-                if (size > 1 && getRowHeight(sheet, rowIdx) < 20) {
+                if (size > 1 && getRowHeight(sheet, rowIdx) < 20 && !isHiddenRow(sheet, rowIdx)) {
                     if (!this.borders) {
                         this.borders = [];
                     }

@@ -2304,6 +2304,7 @@ describe('EJ2-993266: Edited values are not saved when using editTemplate with v
                 actionComplete: actionComplete
             }, done);
     });
+
     it('Coverage - 1', (done: Function) => {
             const editedData: any = {
                 "OrderID": 10248,
@@ -2324,6 +2325,7 @@ describe('EJ2-993266: Edited values are not saved when using editTemplate with v
             (<any>gridObj).virtualscrollModule.setEditedDataToTemplate(<any>gridObj.editModule.virtualFormObj.element, editedData);
         done();
     });
+    
     afterAll(() => {
         destroy(gridObj);
         gridObj = actionComplete = null;
@@ -2360,6 +2362,63 @@ describe('Coverage for virtualization with pinned the row.', function () {
         (gridObj as any).contentModule.getRowCollection(2, false)
         done();
     });
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Coverage for updateScrollbarOnResize', function () {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: virtualData,
+                enableVirtualization: true,
+                enableColumnVirtualization: true,
+                height: "400",
+                columns: count500,
+                load: function(args: any) {
+                    args.enableSeamlessScrolling = true;
+                }
+            }, done);
+    });
+
+    it('Coverage - updateScrollbarOnResize', (done: Function) => {
+        (gridObj as any).contentModule.updateScrollbarOnResize();
+        done();
+    });
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Coverage for enableVirtualization', function () {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: virtualData,
+                enableVirtualization: true,
+                enableColumnVirtualization: true,
+                height: "400",
+                columns: count500,
+                load: function(args: any) {
+                    args.enableSeamlessScrolling = true;
+                }
+            }, done);
+    });
+
+    it('Coverage - scrollTop', (done: Function) => {
+        (gridObj as any).contentModule.virtualEle.verticalScrollbar.scrollTop = 800;
+        done();
+    });
+    it('Coverage - scrollLeft', (done: Function) => {
+        (gridObj as any).contentModule.virtualEle.horizontalScrollbar.scrollLeft = 500;
+        done();
+    });
+
     afterAll(() => {
         destroy(gridObj);
         gridObj = null;

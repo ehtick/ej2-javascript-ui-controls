@@ -8,8 +8,9 @@ import { Gantt } from './../base/gantt';
 import { Deferred } from '@syncfusion/ej2-data';
 import { ContextMenu as Menu, OpenCloseMenuEventArgs } from '@syncfusion/ej2-navigations';
 import { NotifyArgs, ContextMenuItemModel } from '@syncfusion/ej2-grids';
-import { ITaskData, IGanttData, IPredecessor, RowPosition, ITaskSegment, TaskType } from '../base/common';
-import { TaskFieldsModel } from '../models/models';
+import { ITaskData, IGanttData, IPredecessor, RowPosition, ITaskSegment, TaskType, TimelineViewMode } from '../base/common';
+import { TaskFieldsModel, TimelineSettingsModel, TimelineTierSettingsModel } from '../models/models';
+import { Edit } from './edit';
 // eslint-disable-next-line
 /**
  * The ContextMenu module is used to handle the context menu items & sub-menu items.
@@ -31,7 +32,8 @@ export class ContextMenu {
     private clickedPosition: number;
     private targetElement: Element;
     private isEdit: boolean;
-    private isCntxtMenuDependencyDelete: boolean = false;
+    private isContextMenuDependencyDelete: boolean = false;
+    private isFromContextMenuBeforeOpen: boolean = false;
     /**
      * @private
      */
@@ -238,7 +240,7 @@ export class ContextMenu {
             this.parent.treeGrid.grid.saveCell();
             break;
         case 'Dependency' + index:
-            this.isCntxtMenuDependencyDelete = true;
+            this.isContextMenuDependencyDelete = true;
             this.parent.connectorLineEditModule.removePredecessorByIndex(this.rowData, index);
             break;
         case 'Auto':
@@ -265,7 +267,8 @@ export class ContextMenu {
         this.isEdit = true;
         const taskSettings: TaskFieldsModel = this.parent.taskFields;
         const currentClickedDate: Date = this.getClickedDate(args.element as HTMLElement);
-        if (isNullOrUndefined(this.parent.timelineSettings.bottomTier) && this.parent.timelineSettings.bottomTier.unit !== 'Hour') {
+        const bottomTier: TimelineTierSettingsModel = this.parent.timelineModule.customTimelineSettings.bottomTier;
+        if (!isNullOrUndefined(bottomTier) && bottomTier.unit !== 'Hour' && bottomTier.unit !== 'Minutes') {
             currentClickedDate.setHours(0, 0, 0, 0);
         }
         const eventArgs: ActionBeginArgs = {
@@ -327,7 +330,7 @@ export class ContextMenu {
         // task left position
         if (this.parent.enableRtl) {
             const box: ClientRect = this.parent.element.getBoundingClientRect();
-            const scrollLeft: number = window.pageXOffset || document.documentElement.scrollLeft ||
+            const scrollLeft: number = document.documentElement.scrollLeft || window.pageXOffset ||
             document.body.scrollLeft;
             const clientLeft: number = document.documentElement.clientLeft || document.body.clientLeft || 0;
             ganttElementPositionLeft = box.left + scrollLeft - clientLeft;
@@ -376,17 +379,19 @@ export class ContextMenu {
             }
         }
         const startDate: Date = this.rowData.ganttProperties.startDate;
-        if (!isNullOrUndefined(this.parent.timelineSettings.bottomTier) && this.parent.timelineSettings.bottomTier.unit === 'Hour') {
-            splitTaskDuration = Math.ceil(currentTaskDifference / this.parent.timelineSettings.timelineUnitSize);
-            splitTaskDuration -= 1;
-        }
         let contextMenuClickDate: Date;
-        if (!isNullOrUndefined(this.parent.timelineSettings.bottomTier) && (this.parent.timelineSettings.bottomTier.unit === 'Minutes' || this.parent.timelineSettings.bottomTier.unit === 'Hour')) {
-            splitTaskDuration = Math.ceil(currentTaskDifference / this.parent.timelineSettings.timelineUnitSize);
-            splitTaskDuration -= 1;
-            contextMenuClickDate = this.parent.dataOperation.getEndDate(
-                startDate, splitTaskDuration, this.parent.timelineSettings.bottomTier.unit.toLocaleLowerCase()
-                , this.rowData, false);
+        const customTimeline: TimelineSettingsModel = this.parent.timelineModule.customTimelineSettings;
+        const tier: TimelineViewMode = customTimeline.bottomTier.unit === 'None' ?
+            customTimeline.topTier.unit : customTimeline.bottomTier.unit;
+        // To get the context menu click action performed date based on the left value
+        if (tier === 'Hour' || tier === 'Minutes') {
+            const dateByLeftValue: Date = this.parent.timelineModule['dateByLeftValue'](this.rowData.ganttProperties.left + currentTaskDifference);
+            contextMenuClickDate = new Date(dateByLeftValue);
+            if (tier === 'Hour') {
+                contextMenuClickDate.setMinutes(0, 0, 0);
+            } else {
+                contextMenuClickDate.setSeconds(0, 0);
+            }
         }
         else {
             contextMenuClickDate =
@@ -422,9 +427,10 @@ export class ContextMenu {
         args.chartRow = closest(target, '.e-chart-row');
         const menuElement: Element = closest(target, '.e-gantt');
         const editForm: Element = closest(target, cons.editForm);
-        if (!editForm && this.parent.editModule && this.parent.editModule.cellEditModule
-            && this.parent.editModule.cellEditModule.isCellEdit && this.parent.editModule.dialogModule.dialogObj
-            && !this.parent.editModule.dialogModule.dialogObj.open) {
+        const editModule: Edit = this.parent.editModule;
+        if (!editForm && editModule && editModule.cellEditModule
+            && editModule.cellEditModule.isCellEdit && editModule.dialogModule.dialogObj
+            && !editModule.dialogModule.dialogObj.open) {
             this.parent.treeGrid.grid.saveCell();
             this.parent.editModule.cellEditModule.isCellEdit = false;
         }
@@ -435,7 +441,7 @@ export class ContextMenu {
             );
         }
         if ((isNullOrUndefined(args.gridRow) && isNullOrUndefined(args.chartRow)) || this.contentMenuItems.length === 0) {
-            if (!isNullOrUndefined(args.parentItem) && !isNullOrUndefined(menuElement) || ! isNullOrUndefined(closest(target, '.e-content')) ) {
+            if (!isNullOrUndefined(args.parentItem) && !isNullOrUndefined(menuElement)) {
                 args.cancel = false;
             } else {
                 args.cancel = true;
@@ -456,6 +462,7 @@ export class ContextMenu {
             if (!args.parentItem) {
                 this.rowData = this.parent.ganttChartModule.getRecordByTarget((args['event'] as PointerEvent));
             }
+            this.isFromContextMenuBeforeOpen = true;
             for (const item of args.items) {
                 // let target: EventTarget = target;
                 if (!item.separator) {
@@ -465,13 +472,41 @@ export class ContextMenu {
                         const ganttProp: ITaskData = this.rowData.ganttProperties;
                         if (this.parent.editModule && this.parent.editModule.taskbarEditModule) {
                             const segmentIndex: number = this.parent.editModule.taskbarEditModule.segmentIndex;
+                            const customTimeline: TimelineSettingsModel = this.parent.timelineModule.customTimelineSettings;
+                            const tier: TimelineViewMode = customTimeline.bottomTier.unit === 'None' ?
+                                customTimeline.topTier.unit : customTimeline.bottomTier.unit;
                             isInvalidSegmentSplit = ganttProp && ganttProp.segments &&
                                 ganttProp.segments.length > 1 && segmentIndex === -1;
                             if (ganttProp.segments && segmentIndex !== -1 && ganttProp.segments[segmentIndex as number]) {
                                 const isMultiSegment: boolean = ganttProp.segments.length > 1;
                                 const isWiderThanUnit: boolean = ganttProp.segments[segmentIndex as number].width >
                                     this.parent.timelineSettings.timelineUnitSize;
-                                isSingleDayTask = !(isMultiSegment && isWiderThanUnit);
+                                isSingleDayTask = (!isMultiSegment && !isWiderThanUnit);
+                            }
+                            // Prevent "Split Task" context menu option when:
+                            // • Clicking exactly at the start boundary of the first segment- segment[0] with comparing units
+                            // • Or on a non-segmented task at its start point (no split makes sense)- First condition checks
+                            if ((isNullOrUndefined(ganttProp.segments) && !isNullOrUndefined(this.parent.taskFields.segments) &&
+                            !isNullOrUndefined(ganttProp.startDate)) || (segmentIndex === 0 &&
+                                !isNullOrUndefined(ganttProp.segments[segmentIndex as number].startDate))) {
+                                const contextMenuTargetDate: Date = this.getClickedDate(target as HTMLElement);
+                                if (!isNullOrUndefined(contextMenuTargetDate)) {
+                                    const segStart: Date = isNullOrUndefined(ganttProp.segments) ? ganttProp.startDate :
+                                        ganttProp.segments[segmentIndex as number].startDate;
+                                    const sameDay: boolean = segStart.getFullYear() === contextMenuTargetDate.getFullYear()
+                                        && segStart.getMonth() === contextMenuTargetDate.getMonth()
+                                        && segStart.getDate() === contextMenuTargetDate.getDate();
+                                    if (tier === 'Day' && sameDay) {
+                                        isSingleDayTask = true;
+                                    } else if (tier === 'Hour' && sameDay &&
+                                        segStart.getHours() === contextMenuTargetDate.getHours()) {
+                                        isSingleDayTask = true;
+                                    } else if (tier === 'Minutes' && sameDay &&
+                                        segStart.getHours() === contextMenuTargetDate.getHours()
+                                        && segStart.getMinutes() === contextMenuTargetDate.getMinutes()) {
+                                        isSingleDayTask = true;
+                                    }
+                                }
                             }
                         }
                     }
@@ -514,6 +549,7 @@ export class ContextMenu {
                     this.contextMenu.hideItems(args.hideChildItems);
                 }
             });
+            this.isFromContextMenuBeforeOpen = false;
             return callBackPromise;
         }
     }
@@ -671,7 +707,8 @@ export class ContextMenu {
         const currentClickedDate: Date = this.getClickedDate(target as HTMLElement);
         this.segmentIndex = this.parent.chartRowsModule.getSegmentIndex(currentClickedDate, this.rowData);
         const segments: ITaskSegment[] = this.rowData.ganttProperties.segments;
-        if (!isNullOrUndefined(segments) && segments.length > 0) {
+        // Avoid to show the merge option for 1st segment
+        if (!isNullOrUndefined(segments) && segments.length > 0 && this.segmentIndex !== 0) {
             if (isNullOrUndefined(taskfields.segments) && this.segmentIndex === -1) {
                 this.updateItemVisibility(item.text);
             } else {

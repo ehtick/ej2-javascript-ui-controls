@@ -6,12 +6,12 @@ import { UndoRedo } from '../../../src/diagram/objects/undo-redo';
 import { Snapping } from '../../../src/diagram/objects/snapping';
 import { MouseEvents } from '../../../spec/diagram/interaction/mouseevents.spec';
 import { DiagramContextMenu } from '../../../src/diagram/objects/context-menu';
-import { Node, SnapSettingsModel, DiagramElement, ShapeAnnotationModel, PointPortModel, Connector } from '../../../src/diagram/index';
-import { SnapConstraints, PortVisibility, PortConstraints, AnnotationConstraints, ConnectorConstraints } from '../../../src/diagram/enum/enum';
+import { Node, SnapSettingsModel, DiagramElement, ShapeAnnotationModel, PointPortModel, Connector, LineRouting } from '../../../src/diagram/index';
+import { SnapConstraints, PortVisibility, PortConstraints, AnnotationConstraints, ConnectorConstraints, DiagramConstraints } from '../../../src/diagram/enum/enum';
 import { MenuItemModel } from '@syncfusion/ej2-navigations';
 import { profile, inMB, getMemoryProfile } from '../../../spec/common.spec';
 import { GradientModel, LinearGradientModel, RadialGradientModel, NodeConstraints, ShadowModel, GradientType } from "../../../src/diagram/index"
-Diagram.Inject(UndoRedo, DiagramContextMenu, Snapping);
+Diagram.Inject(UndoRedo, DiagramContextMenu, Snapping, LineRouting);
 /**
  * Groups Spec
  */
@@ -2898,7 +2898,7 @@ describe('Bug 886881: Exception throws while ungrouping a group node with annota
     // });
 });
 
-describe('Bug 1001807: OffsetY value applied through programmatically is not working well for group nodes', function () {
+describe('OffsetY value applied through programmatically is not working well for group nodes', function () {
     let diagram: Diagram;
     let ele: HTMLElement;
     beforeAll((): void => {
@@ -2964,6 +2964,76 @@ describe('Bug 1001807: OffsetY value applied through programmatically is not wor
         diagram.nodes[3].offsetY = 250;
         diagram.dataBind();
         expect((diagram.nodes[3].offsetX === 250) && (diagram.nodes[3].offsetY === 250)).toBe(true);
+        done();
+    });
+});
+
+describe('Bug 959575 - Dragging multiple groups with node is not working properly', function () {
+    let diagram: Diagram;
+    let ele: HTMLElement;
+    let mouseEvents = new MouseEvents();
+    beforeAll((): void => {
+        const isDef = (o: any) => o !== undefined && o !== null;
+        if (!isDef(window.performance)) {
+            console.log("Unsupported environment, window.performance.memory is unavailable");
+            this.skip();
+            return;
+        }
+        ele = createElement('div', { id: 'diagram_group' });
+        document.body.appendChild(ele);
+        let nodes: NodeModel[] = [
+            {
+                id: 'node1',
+                width: 100,
+                height: 100,
+                offsetX: 100,
+                offsetY: 200,
+            },
+            {
+                id: 'node2',
+                width: 100,
+                height: 100,
+                offsetX: 300,
+                offsetY: 200,
+            },
+            {
+                id: 'node3',
+                width: 100,
+                height: 100,
+                offsetX: 500,
+                offsetY: 200,
+            },
+            {
+                id: 'Group1',
+                children: ['node1', 'node2'],
+            },
+        ]
+
+        diagram = new Diagram({
+            width: '800px', height: '500px', nodes: nodes,
+            mode: "SVG",
+            constraints: DiagramConstraints.Default | DiagramConstraints.LineRouting,
+        });
+        diagram.appendTo('#diagram_group');
+    });
+    afterAll(function () {
+        diagram.destroy();
+        diagram = null;
+        ele.remove();
+        ele = null;
+    });
+    it('Dragging a multiselected group node and a single node when routing is enabled', function (done) {
+        let diagramCanvas = document.getElementById(diagram.element.id + 'content');
+        diagram.select([diagram.nameTable['Group1'], diagram.nameTable['node3']]);
+        if (diagram.selectedItems.nodes) {
+            let textElement = diagram.selectedItems.wrapper.children[0];
+            let centerX = textElement.offsetX;
+            let centerY = textElement.offsetY;
+            mouseEvents.mouseDownEvent(diagramCanvas, 150, 250);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 100 + centerX, 100 + centerY);
+            mouseEvents.mouseUpEvent(diagramCanvas, 100 + centerX, 100 + centerY);
+        }
+        expect(diagram.selectedItems.offsetX === 450 && diagram.selectedItems.offsetY === 250).toBe(true);
         done();
     });
 });

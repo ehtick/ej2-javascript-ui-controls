@@ -4147,6 +4147,15 @@ describe('ChatUI Component', () => {
             attachmentIcon.click(); 
         });
 
+        it('Name attribute check', () => {
+           chatUI = new ChatUI({
+                enableAttachments: true
+            });
+            chatUI.appendTo(chatUIElem);
+            let uploaderEle: HTMLInputElement = chatUIElem.querySelector('.e-chat-file-upload');
+            expect(uploaderEle.getAttribute('name')).toBe('UploadFiles');
+        });
+
         it('should initialize with default attachment settings', () => {
             chatUI = new ChatUI({
                 enableAttachments: true

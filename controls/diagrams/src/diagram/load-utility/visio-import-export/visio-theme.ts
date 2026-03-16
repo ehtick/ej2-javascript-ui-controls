@@ -1,11 +1,13 @@
 import { VisioTextAlignmentModel, VisioTextDecorationModel } from './visio-annotations';
 import { VisioConnector, VisioDecoratorModel } from './visio-connectors';
 import { LINE_PATTERN_MAP, TransformKey, VALID_TYPES } from './visio-constants';
-import { inchToPoint, isObject } from './visio-core';
+import { getDecoratorShape, inchToPoint, inchToPx, isObject } from './visio-core';
 import { ParsingContext } from './visio-import-export';
 import { VisioTheme } from './visio-models';
 import { getTextAlign, getTextDecoration } from './visio-nodes';
-import { ConnectorInput, ConnectorResolvedStyle, ConnectorStrokeList, FlatTransform, FormattedColors, ParsedXmlObject, ResolvedAnnotationStyle, Transform, VarStyle, VisioNode } from './visio-types';
+import { ConnectorInput, ConnectorResolvedStyle, ConnectorStrokeList, FlatTransform, FormattedColors, ParsedXmlObject, ResolvedAnnotationStyle, Transform, VarientStyle, VisioNode, ColorEntry, FaceNameEntry } from './visio-types';
+import { ensureArray } from './visio-core';
+import { VisioStyleModel } from './visio-connectors';
 
 // ==================== Configuration ====================
 
@@ -35,7 +37,7 @@ const themeConfig: ThemeConfig = {
     enableCache: true,
     defaultFill: 'white',
     defaultStroke: 'black',
-    minStrokeWidth: 0.5,
+    minStrokeWidth: 0,
     maxStrokeWidth: 100
 };
 
@@ -204,7 +206,7 @@ function normalizeStrokeWidth(width: number | undefined): number {
  * @private
  */
 export function isValidColor(color: string, isAnnotation?: boolean): boolean {
-    if (typeof color !== 'string') {
+    if (typeof color !== 'string' || color.toLowerCase() === 'themed') {
         return false;
     }
 
@@ -391,7 +393,7 @@ export function getNodeStyle(node: NodeInput, context: ParsingContext, isGroup: 
                 const strokeValue: any = strokeElement.value;
 
                 if (strokeValue && strokeValue['$'] && strokeValue['$'].w) {
-                    const strokeInInches: number = emuToInches(strokeValue.$.w);
+                    const strokeInInches: number = emuToInches(Number(strokeValue.$.w));
                     strokeWidth = (strokeWidth !== undefined) ? strokeWidth : strokeInInches;
                 }
 
@@ -435,7 +437,7 @@ export function getNodeStyle(node: NodeInput, context: ParsingContext, isGroup: 
     strokeColor = (strokeColor === 'transparent') ? 'transparent' : (isValidColor(strokeColor) ? strokeColor : defaultStroke);
 
     // ==================== Build and Return Resolved Style ====================
-    const finalStrokeWidth: number = normalizeStrokeWidth(inchToPoint(strokeWidth));
+    const finalStrokeWidth: number = normalizeStrokeWidth(inchToPx(strokeWidth));
     const finalOpacity: number = normalizeOpacity((1 - node.style.opacity) || 1);
 
     const result: NodeResolvedStyle = {
@@ -528,7 +530,7 @@ export function isActiveThemeApplied(node: VisioNode, context: ParsingContext): 
     } else {
         // Use variant style index
         const index: number = fillMatrix ? getMatrix(fillMatrix) : 0;
-        const variant: VarStyle = currentTheme.variant[parseInt(index.toString(), 10)];
+        const variant: VarientStyle = currentTheme.variant[parseInt(index.toString(), 10)];
         range = node.IsConnector ? 1 : Number(variant.$.fillIdx);
     }
 
@@ -737,8 +739,7 @@ function connectorType(VisioTheme: VisioTheme, range: number): AccentColorDefini
     const rangeIndex: number = toZeroBasedIndex(range);
 
     // ==================== Access Connector Stroke Style ====================
-    const accent: AccentColorDefinition = (VisioTheme.connectorStroke as
-        ConnectorStrokeList)['a:ln'][parseInt(rangeIndex.toString(), 10)] as unknown as AccentColorDefinition;
+    const accent: AccentColorDefinition = (VisioTheme.connectorStroke)['a:ln'][parseInt(rangeIndex.toString(), 10)] as unknown as AccentColorDefinition;
     return accent;
 }
 
@@ -760,8 +761,13 @@ export function getConnectorFontType(VisioTheme: VisioTheme, range: number): Acc
     // }
 
     // ==================== Convert to Zero-Based Index ====================
-    const rangeIndex: number = toZeroBasedIndex(range);
-
+    let rangeIndex: number = toZeroBasedIndex(range);
+    if (rangeIndex < 0) {
+        rangeIndex = 0;
+    }
+    if (rangeIndex >= VisioTheme.connectorFont.length) {
+        rangeIndex = VisioTheme.connectorFont.length - 1;
+    }
     // ==================== Access Connector Font Style ====================
     const accent: AccentColorDefinition = VisioTheme.connectorFont[parseInt(rangeIndex.toString(), 10)] as unknown as AccentColorDefinition;
     return accent;
@@ -965,6 +971,11 @@ export function applyThemeStyles(connector: ConnectorInput | VisioConnector | Vi
 
     // ==================== Extract Style Properties ====================
     let { strokeColor, strokeDashArray, strokeWidth } = connector.style as unknown as ConnectorInput;
+    let sourceDecorator: string;
+    let targetDecorator: string;
+    let sourceDecoratorSize: string;
+    let targetDecoratorSize: string;
+    let cornerRadius: number;
     const opacity: number = normalizeOpacity(connector.style.opacity);
 
     // ==================== Check if Active Theme is Applied ====================
@@ -985,17 +996,8 @@ export function applyThemeStyles(connector: ConnectorInput | VisioConnector | Vi
         if (LineElement && LineElement['$']) {
             // ==================== Extract Width and Convert ====================
             if (LineElement['$'].w) {
-                const widthInInches: number = emuToInches(LineElement.$.w);
+                const widthInInches: number = emuToInches(Number(LineElement.$.w));
                 strokeWidth = strokeWidth !== undefined ? strokeWidth : widthInInches;
-            }
-
-            // ==================== Extract Dash Pattern ====================
-            if (LineElement['a:prstDash'] && LineElement['a:prstDash']['$'] && LineElement['a:prstDash']['$'].val) {
-                const lineDashArray: StrokeDashArrayValue = mapPrstDashToStrokeDashArray(
-                    LineElement['a:prstDash'].$.val,
-                    strokeWidth as number || 0
-                );
-                strokeDashArray = (strokeDashArray !== undefined) ? strokeDashArray : lineDashArray;
             }
 
             // ==================== Extract Stroke Color ====================
@@ -1003,6 +1005,62 @@ export function applyThemeStyles(connector: ConnectorInput | VisioConnector | Vi
                 const findFill: ColorInfo = extractColorWithModifiers(LineElement['a:solidFill']);
                 if (findFill) {
                     strokeColor = resolveAccentColor(findFill, activeTheme.theme, activeTheme.fillIdxColor);
+                }
+            }
+        }
+
+        // ==================== Extract applied theme index ====================
+        const connStylesExt: ConnLineStyleEntry[] = activeTheme.currentTheme
+            && activeTheme.currentTheme.connLineStylesExt as ConnLineStyleEntry[];
+        let styleIndex: number = 1;
+        const quickMatrixRaw: number = connector.QuickStyleLineMatrix;
+        if (quickMatrixRaw != null) {
+            const parsed: number = Number(quickMatrixRaw);
+            if (Number.isFinite(parsed) && parsed >= 1) {
+                styleIndex = Math.floor(parsed);
+            }
+        }
+
+        // ==================== Extract Connector decorator shape ====================
+        if (Array.isArray(connStylesExt) && connStylesExt.length > 0) {
+            const currentAccent: ConnLineStyleEntry = connStylesExt[parseInt(styleIndex.toString(), 10)];
+            if (currentAccent && currentAccent.value && currentAccent.value['vt:lineEx'] && currentAccent.value['vt:lineEx']['$']) {
+                const exAttrs: LineExAttrs = currentAccent.value['vt:lineEx']['$'];
+                const parseAttr: (k: string) => number | string | undefined = (k: string) => {
+                    const value: string | undefined = exAttrs[`${k}`];
+                    return value == null ? undefined : (isFinite(Number(value)) ? Number(value) : value);
+                };
+
+                const start: number = parseAttr('start') as number | undefined;
+                const end: number = parseAttr('end') as number | undefined;
+                const pattern: string = parseAttr('pattern') as string | undefined;
+                const startSize: string = parseAttr('startSize') as string | undefined;
+                const endSize: string = parseAttr('endSize') as string | undefined;
+                const rounding: string = parseAttr('rndg') as string | undefined;
+
+                // Map numeric codes to decorator shape strings
+                if (start !== undefined) {
+                    sourceDecorator = getDecoratorShape(Number(start));
+                }
+                if (end !== undefined) {
+                    targetDecorator = getDecoratorShape(Number(end));
+                }
+                // ==================== Extract Dash Pattern ====================
+                if (pattern !== undefined) {
+                    strokeDashArray = strokeDashArray !== undefined ? strokeDashArray : VisioStyleModel.convertDashPattern(pattern);
+                }
+                // ==================== Extract Source Decorator Size ====================
+                if (startSize !== undefined && (connector as VisioDecoratorModel).arrowDimension === undefined) {
+                    sourceDecoratorSize = startSize;
+                }
+                // ==================== Extract Target Decorator Size ====================
+                if (endSize !== undefined && (connector as VisioDecoratorModel).arrowDimension === undefined) {
+                    targetDecoratorSize = endSize;
+                }
+                // ==================== Extract Connector Corner Radius ====================
+                if (rounding !== undefined) {
+                    cornerRadius = (connector as VisioConnector).cornerRadius !== undefined ? (connector as VisioConnector).cornerRadius
+                        : emuToInches(Number(rounding));
                 }
             }
         }
@@ -1019,8 +1077,13 @@ export function applyThemeStyles(connector: ConnectorInput | VisioConnector | Vi
     const result: ConnectorResolvedStyle = {
         strokeColor: finalStrokeColor,
         strokeDashArray: finalStrokeDashArray,
-        strokeWidth: normalizeStrokeWidth(inchToPoint(strokeWidth as number)),
-        opacity: opacity
+        strokeWidth: normalizeStrokeWidth(inchToPx(strokeWidth as number)),
+        opacity: opacity,
+        startDecorator: sourceDecorator || 'None',
+        endDecorator: targetDecorator || 'None',
+        startDecoratorSize: sourceDecoratorSize,
+        endDecoratorSize: targetDecoratorSize,
+        cornerRadius: cornerRadius || (connector as VisioConnector).cornerRadius
     };
 
     return result;
@@ -1133,6 +1196,186 @@ export function normalizeRange(range: number): number {
     return n < 1 ? 1 : n;
 }
 
+
+/**
+ * Manages global document properties: colors, font
+ *
+ * This is a singleton-style class that stores various global properties from a Visio document:
+ * - document's colors (indexed by number, hex string values)
+ * - document's fonts (indexed by ID, font name values)
+ *
+ * @private
+ */
+export interface IVisioPropertiesManager {
+    initialize(rootElement: ParsedXmlObject): void;
+    getColor(index: string | number): string;
+    dispose(): void;
+}
+
+/**
+ * Manages global document properties such as colors and fonts.
+ * This singleton-style class encapsulates the parsing and retrieval of
+ * Visio document-wide properties, including:
+ * - Custom color definitions (indexed by number, mapped to hex values)
+ * - Font definitions (indexed by ID, mapped to font names)
+ *
+ * @example
+ * const manager = new VisioPropertiesManager();
+ * manager.initialize(parsedXmlRoot);
+ * const redHex = manager.getColor(2); // Returns "#FF0000"
+ *
+ * @private
+ */
+export class VisioPropertiesManager implements IVisioPropertiesManager {
+
+    /**
+     * Static default colors palette
+     */
+    static readonly DEFAULT_COLORS: { [key: string]: string } = {
+        '0': '#000000',   // Black
+        '1': '#FFFFFF',   // White
+        '2': '#FF0000',   // Red
+        '3': '#00FF00',   // Green
+        '4': '#0000FF',   // Blue
+        '5': '#FFFF00',   // Yellow
+        '6': '#FF00FF',   // Magenta
+        '7': '#00FFFF',   // Cyan
+        '8': '#800000',   // Maroon
+        '9': '#008000',   // Dark Green
+        '10': '#000080',  // Navy
+        '11': '#808000',  // Olive
+        '12': '#800080',  // Purple
+        '13': '#008080',  // Teal
+        '14': '#C0C0C0',  // Silver
+        '15': '#E6E6E6',  // Platinum
+        '16': '#CDCDCD',  // Light Gray
+        '17': '#B3B3B3',  // Medium Gray
+        '18': '#9A9A9A',  // Gray
+        '19': '#808080',  // Dark Gray
+        '20': '#666666',  // Darker Gray
+        '21': '#4D4D4D',  // Charcoal
+        '22': '#333333',  // Dark Charcoal
+        '23': '#1A1A1A'  // Almost Black
+    };
+
+    // Optional soft limit—tune or make it configurable if needed
+    private static readonly MAX_CACHE_SIZE: number = 5000;
+    /**
+     * Map with the document's colors.
+     * The key is the index number and the value is the hex representation of the color.
+     */
+    private colorElementMap: Map<string, string>;
+
+    /**
+     * Map with the document's fonts.
+     * The key is the ID and the value is the name of the font.
+     */
+    private fontElementMap: Map<string, string>;
+
+    constructor() {
+        this.colorElementMap = new Map();
+        this.fontElementMap = new Map();
+    }
+
+    /**
+     * Loads the properties of the document from the XML root element.
+     * Parses both color and font entries from the Visio document structure.
+     *
+     * @param {ParsedXmlObject} rootElement The parsed XML element of the Visio document
+     * @returns {void}
+     *
+     * @private
+     */
+    public initialize(rootElement: ParsedXmlObject): void {
+        if (!rootElement) {
+            return;
+        }
+
+        type ColorEntryContainer = { ColorEntry?: ColorEntry | ColorEntry[] };
+
+        // Parse color entries - Colors contains ColorEntry elements
+        const colorsContainer: ColorEntryContainer | undefined = rootElement['Colors'] as ColorEntryContainer | undefined;
+        if (colorsContainer) {
+            const colorList: ColorEntry[] = ensureArray(colorsContainer['ColorEntry']);
+            for (const colorElement of colorList) {
+                if (colorElement && colorElement.$) {
+                    const { IX: colorId, RGB: colorValue } = colorElement.$;
+                    if (colorId && colorValue) {
+                        this.colorElementMap.set(String(colorId), colorValue);
+                    }
+                }
+            }
+        }
+
+        type FaceNamesContainer = { FaceName?: FaceNameEntry | FaceNameEntry[] };
+
+        // Parse font entries - FaceNames contains FaceName elements
+        const fontsContainer: FaceNamesContainer | undefined = rootElement['FaceNames'] as FaceNamesContainer | undefined;
+        if (fontsContainer) {
+            const fontList: FaceNameEntry[] = ensureArray(fontsContainer['FaceName']);
+            for (const fontElement of fontList) {
+                if (fontElement && fontElement.$) {
+                    const { ID: fontId, Name: fontValue } = fontElement.$;
+                    if (fontId && fontValue) {
+                        this.fontElementMap.set(String(fontId), fontValue);
+                    }
+                }
+            }
+        }
+
+        // Soft size check for resilience
+        const totalSize: number = this.colorElementMap.size + this.fontElementMap.size;
+        if (totalSize > VisioPropertiesManager.MAX_CACHE_SIZE) {
+            // Avoid throwing—just warn. If necessary, add LRU/eviction strategy here.
+            console.warn(
+                `[VisioPropertiesManager] Parsed entries exceed soft limit (${totalSize} > ${VisioPropertiesManager.MAX_CACHE_SIZE}). ` +
+                'Consider disposing instances sooner or enabling eviction.'
+            );
+        }
+    }
+
+    /**
+     * Returns the color of the index indicated in 'index'.
+     * First checks the document's custom colors, then falls back to default palette.
+     * Returns empty string if color not found.
+     *
+     * @param {string | number} index Index of the color (string or number)
+     * @returns {string} Hexadecimal representation of the color (e.g., "#FFFFFF")
+     *
+     * @private
+     */
+    public getColor(index: string | number): string {
+        const key: string = String(index);
+
+        // First check custom colors from document
+        let color: string | undefined = this.colorElementMap.get(key);
+
+        // If not found, check default colors
+        if (!color) {
+            color = VisioPropertiesManager.DEFAULT_COLORS[`${key}`];
+        }
+
+        // If still not found, return empty string
+        if (!color) {
+            return '';
+        }
+        return color;
+    }
+
+    /**
+     * Cleans up resources and clears internal maps.
+     * Call this when the manager is no longer needed.
+     *
+     * @returns {void}
+     *
+     * @private
+     */
+    public dispose(): void {
+        this.colorElementMap.clear();
+        this.fontElementMap.clear();
+    }
+}
+
 /**
  * Resolves annotation (text) styling from theme and node properties.
  *
@@ -1164,7 +1407,7 @@ export function setAnnotationStyle(node: any, context: ParsingContext): Resolved
     //         color: 'Black',
     //         fontFamily: undefined,
     //         fill: undefined,
-    //         fontSize: 8 * 1.33,
+    //         fontSize: 10 * 1.33,
     //         opacity: 1,
     //         bold: false,
     //         italic: false,
@@ -1236,7 +1479,7 @@ export function setAnnotationStyle(node: any, context: ParsingContext): Resolved
 
     const finalFontFamily: string | undefined = themeApplied ? resolvedFontFamily : incoming.fontFamily;
 
-    const finalFontSize: number = typeof incoming.fontSize === 'number' ? incoming.fontSize : 8 * 1.33;
+    const finalFontSize: number = typeof incoming.fontSize === 'number' ? incoming.fontSize : 10 * 1.33;
     const finalOpacity: number = normalizeOpacity(incoming.opacity);
 
     const finalBold: boolean = (Bold === true)
@@ -1392,7 +1635,7 @@ function convertVisioGradientToEJ2(gradFillValue: AccentColorDefinition): VisioL
     const stops: ProcessedGradientStop[] = extractGradientStops(gradStopLst);
 
     // ==================== Extract Angle ====================
-    const officeAngle: number = extractGradientAngle(linElement);
+    const officeAngle: number = linElement ? extractGradientAngle(linElement) : 0;
 
     // ==================== Build Gradient ====================
     const gradient: VisioLinearGradient = {
@@ -2774,3 +3017,62 @@ export interface VariationColors {
 }
 
 interface SrgbClrAttr { val: string; }
+
+/**
+ * Attributes inside the `vt:lineEx.$` node.
+ * Represents Visio extended connector line-style decorations.
+ *
+ * @interface LineExAttrs
+ */
+interface LineExAttrs {
+    /** Rounding flag, e.g. "0" or "1" */
+    rndg?: string;
+    /** Start decorator code as string */
+    start?: string;
+    /** Start decorator size as string */
+    startSize?: string;
+    /** End decorator code as string */
+    end?: string;
+    /** End decorator size as string */
+    endSize?: string;
+    /** Pattern id as string */
+    pattern?: string;
+    /** Allow other unexpected attributes */
+    [key: string]: string | undefined;
+}
+
+
+/**
+ * Wrapper for the `vt:lineEx` element inside a connector style entry.
+ *
+ * @interface VtLineEx
+ */
+interface VtLineEx {
+    /** Raw attribute map from the `vt:lineEx.$` XML structure */
+    $: LineExAttrs;
+}
+
+
+/**
+ * Represents one extended connector line-style entry
+ * inside `connLineStylesExt`.
+ *
+ * @interface ConnLineStyleEntry
+ */
+export interface ConnLineStyleEntry {
+
+    /** Node/element name — typically "vt:lineStyle" or similar */
+    name: string;
+
+    /**
+     * Object containing nested style nodes.
+     *
+     * Expected structure:
+     * - value['vt:lineEx'] → arrowhead, rounding, line pattern attributes.
+     * - Additional Visio XML nodes may also be present.
+     */
+    value: {
+        /** Optional extended line-style data from Visio */
+        'vt:lineEx'?: VtLineEx;
+    };
+}

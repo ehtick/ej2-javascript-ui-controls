@@ -1316,6 +1316,38 @@ describe('Diagram Control', () => {
             // expect(diagram.nodes[9].offsetX == 410 && diagram.nodes[9].offsetY == 300 && diagram.nodes[9].wrapper.actualSize.width == 270 && diagram.nodes[9].wrapper.actualSize.height == 200).toBe(false);
             done();
         });
+        it('Checking Select the node and resize East', (done: Function) => {
+            let diagramCanvas = document.getElementById(diagram.element.id + 'content');
+            const source = diagram.nameTable['node05'];
+            diagram.select([source]);
+
+            let handle = document.getElementById('resizeEast');
+            let bound1: any = handle.getBoundingClientRect();
+            let cx1: number = bound1.left + bound1.width / 2;
+            let cy1: number = bound1.top + bound1.height / 2;
+            mouseevents.mouseDownEvent(diagramCanvas, cx1, cy1);
+            mouseevents.mouseMoveEvent(diagramCanvas, cx1 + 30, cy1);
+            mouseevents.mouseUpEvent(diagramCanvas, cx1 + 30, cy1);
+            expect(diagram.nodes.length > 5)
+            done();
+        });
+        it('Checking Select the node and resize South', (done: Function) => {
+            let diagramCanvas = document.getElementById(diagram.element.id + 'content');
+
+            const source2 = diagram.nameTable['node03'];
+            diagram.select([source2]);
+
+            let handle2 = document.getElementById('resizeSouth');
+            let bound2: any = handle2.getBoundingClientRect();
+            let cx2 = bound2.left + bound2.width / 2;
+            let cy2 = bound2.top + bound2.height / 2;
+
+            mouseevents.mouseDownEvent(diagramCanvas, cx2, cy2);
+            mouseevents.mouseMoveEvent(diagramCanvas, cx2 + 30, cy2);
+            mouseevents.mouseUpEvent(diagramCanvas, cx2 + 30, cy2);
+            expect(diagram.nodes.length > 5)
+            done();
+        });
         it('memory leak', () => {
             profile.sample();
             let average: any = inMB(profile.averageChange)

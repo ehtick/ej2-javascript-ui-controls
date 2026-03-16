@@ -50,6 +50,9 @@ export class BlockRenderer {
     /** @hidden */
     public tableRenderer: TableRenderer;
 
+    /** @hidden */
+    public isEntireBlocksRendering: boolean;
+
     /**
      * Creates a new BlockRendererManager instance
      *
@@ -190,10 +193,6 @@ export class BlockRenderer {
         case BlockType.Table:
             contentElement = this.tableRenderer.renderTable(block, blockElement);
             break;
-        case BlockType.Quote:
-            contentElement = this.quoteRenderer.renderQuote(block);
-            blockElement.classList.add('e-quote-block');
-            break;
         case BlockType.Divider:
             contentElement = this.commonBlocksRenderer.renderDivider(blockElement);
             break;
@@ -209,7 +208,7 @@ export class BlockRenderer {
     }
 
     private populateClassListsForContent(block: BlockModel, contentElement: HTMLElement): void {
-        const notAllowedTypes: string[] = [BlockType.Code, BlockType.Callout]; //Table, Code, Callout etc.
+        const notAllowedTypes: string[] = [BlockType.Code, BlockType.Callout, BlockType.Quote]; //Table, Code, Callout etc.
         if (isListTypeBlock(block.blockType)) {
             const listItem: HTMLElement = contentElement.querySelector('li');
             if (listItem) {
@@ -233,6 +232,9 @@ export class BlockRenderer {
 
         if (block.blockType === BlockType.Callout) {
             contentElement = this.calloutRenderer.renderCallout(block, blockElement);
+        }
+        else if (block.blockType === BlockType.Quote) {
+            contentElement = this.quoteRenderer.renderQuote(block, blockElement);
         }
         else if (block.blockType.toString().startsWith('Collapsible')) {
             contentElement = this.collapsibleRenderer.renderCollapsibleBlock(block, blockElement);
@@ -274,7 +276,7 @@ export class BlockRenderer {
         if (blocks.length <= 0) {
             return;
         }
-
+        this.isEntireBlocksRendering = true;
         blocks.forEach((block: BlockModel) => {
             const blockElement: HTMLElement = this.createBlockElement(block);
             this.insertBlockIntoDOM(blockElement);
@@ -294,6 +296,9 @@ export class BlockRenderer {
                     }
                 });
             }
+            if (block.blockType === BlockType.Table && this.tableRenderer) {
+                this.tableRenderer.refreshColWidths(block);
+            }
         });
 
         requestAnimationFrame(() => {
@@ -303,6 +308,7 @@ export class BlockRenderer {
                         this.listRenderer.toggleCheckedState(block, (block.properties as IChecklistBlockSettings).isChecked, true);
                     }
                 });
+                this.isEntireBlocksRendering = false;
             }
         });
     }
@@ -373,32 +379,17 @@ export class BlockRenderer {
     public handleBlockUIUpdates(options: any): void {
         switch (options.type) {
         case 'AddBlock': {
-            const { addedBlock, targetBlockModel, preventUIUpdate, isAfter, preventEventTrigger,
-                preventUpdateAction, forceIgnoreTargetUpdate } = options.state;
-            const isIgnoredTypes: string[] = [BlockType.Callout, BlockType.CollapsibleHeading, BlockType.CollapsibleParagraph,
-                BlockType.Divider, BlockType.Image];
-            const isIgnored: boolean = forceIgnoreTargetUpdate ||
-                (targetBlockModel && isIgnoredTypes.indexOf(targetBlockModel.blockType) !== -1);
-
-            if (!isIgnored && targetBlockModel) {
-                this.reRenderBlockContent(targetBlockModel);
-                if (!preventUpdateAction) {
-                    this.parent.eventService.addChange({
-                        action: 'Update',
-                        data: { block: targetBlockModel }
-                    });
-                }
-            }
-
+            const { addedBlock, targetBlockModel, preventUIUpdate, isAfter, preventEventTrigger } = options.state;
             const blockElement: HTMLElement = this.createBlockElement(addedBlock);
             const targetElement: HTMLElement = targetBlockModel ? this.parent.getBlockElementById(targetBlockModel.id) : null;
+            const blockToFocus: HTMLElement = isAfter ? blockElement : targetElement;
+
             this.insertBlockElementInDOM(blockElement, targetElement, isAfter);
+            // Hide placeholder for created block by default, let blockToFocus decide based on isAfter boolean
+            this.parent.togglePlaceholder(blockElement, false);
 
             if (!preventUIUpdate) {
-                this.parent.setFocusAndUIForNewBlock(blockElement);
-            }
-            else {
-                this.parent.togglePlaceholder(blockElement, false);
+                this.parent.setFocusAndUIForNewBlock(blockToFocus);
             }
             if (isListTypeBlock(addedBlock.blockType)) {
                 this.parent.listPlugin.recalculateMarkersForListItems();
@@ -409,7 +400,8 @@ export class BlockRenderer {
                 action: 'Insertion',
                 data: {
                     block: addedBlock,
-                    targetId: targetBlockModel ? targetBlockModel.id : ''
+                    targetId: targetBlockModel ? targetBlockModel.id : '',
+                    isAfter
                 } as BlockDatas
             });
             if (!preventEventTrigger) {
@@ -438,7 +430,7 @@ export class BlockRenderer {
             });
 
             const reversedFromModels: IFromBlockData[] = [...movedBlocks].reverse();
-            movedBlocks.forEach((data: IFromBlockData) => {
+            reversedFromModels.forEach((data: IFromBlockData) => {
                 const prevParent: IFromBlockData = reversedFromModels.find(
                     (fromModel: IFromBlockData) => fromModel.parent !== null
                 );
@@ -512,7 +504,9 @@ export class BlockRenderer {
         case 'ReRenderBlockContent': {
             const data: any = options.state.data;
             data.forEach((data: { block: BlockModel, oldBlock: BlockModel }) => {
-                this.reRenderBlockContent(data.block);
+                if (!options.state.excludeDomUpdate) {
+                    this.reRenderBlockContent(data.block);
+                }
                 if (!options.state.preventChangesTracking) {
                     this.parent.eventService.addChange({
                         action: 'Update',
@@ -533,8 +527,13 @@ export class BlockRenderer {
 
     private getParentElementToInsert(destination: IToBlockData, allBlocks: HTMLElement[]): HTMLElement {
         const wrapperClassName: string = destination.toParentBlockModel
-            ? (destination.toParentBlockModel.blockType === BlockType.Callout ? '.' + constants.CALLOUT_CONTENT_CLS :
-                destination.toParentBlockModel.blockType.toString().startsWith('Collapsible') ? '.' + constants.TOGGLE_CONTENT_CLS : '')
+            ? (destination.toParentBlockModel.blockType === BlockType.Callout
+                ? '.' + constants.CALLOUT_CONTENT_CLS
+                : destination.toParentBlockModel.blockType.toString().startsWith('Collapsible')
+                    ? '.' + constants.TOGGLE_CONTENT_CLS
+                    : destination.toParentBlockModel.blockType === BlockType.Quote
+                        ? '.' + constants.QUOTE_CONTENT_CLS
+                        : '')
             : '';
         return wrapperClassName
             ? allBlocks[destination.toParentBlockIndex as number].querySelector(wrapperClassName)

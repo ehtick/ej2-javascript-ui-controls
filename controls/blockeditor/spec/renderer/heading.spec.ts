@@ -3,6 +3,7 @@ import { createEditor } from "../common/util.spec";
 import { BlockModel} from "../../src/models/index";
 import { BlockType, ContentType } from '../../src/models/enums';
 import { BlockEditor } from '../../src/index';
+import { getBlockContentElement } from "../../src/common/index";
 
 describe('Heading Block', () => {
     beforeAll(() => {
@@ -23,16 +24,16 @@ describe('Heading Block', () => {
             document.body.appendChild(editorElement);
             const blocks: BlockModel[] = [
                 { id: 'heading1', blockType: BlockType.Heading, properties: { level: 1 },
-                    content: [{ id: 'heading1-content', contentType: ContentType.Text, content: 'Heading 1' }] 
+                    content: [{ contentType: ContentType.Text, content: 'Heading 1' }] 
                 },
                 { id: 'heading2', blockType: BlockType.Heading, properties: { level: 2 },
-                    content: [{ id: 'heading2-content', contentType: ContentType.Text, content: 'Heading 2' }] 
+                    content: [{ contentType: ContentType.Text, content: 'Heading 2' }] 
                 },
                 { id: 'heading3', blockType: BlockType.Heading, properties: { level: 3 },
-                    content: [{ id: 'heading3-content', contentType: ContentType.Text, content: 'Heading 3' }] 
+                    content: [{ contentType: ContentType.Text, content: 'Heading 3' }] 
                 },
                 { id: 'heading4', blockType: BlockType.Heading, properties: { level: 4 },
-                    content: [{ id: 'heading4-content', contentType: ContentType.Text, content: 'Heading 4' }] 
+                    content: [{ contentType: ContentType.Text, content: 'Heading 4' }] 
                 }
             ];
             editor = createEditor({ blocks: blocks });
@@ -78,7 +79,8 @@ describe('Heading Block', () => {
         });
 
         it('should update the block model on interaction', (done) => {
-            const heading1 = editorElement.querySelector('#heading1-content');
+            const headingblock = editorElement.querySelector('#heading1') as HTMLElement;
+            const heading1 = getBlockContentElement(headingblock);
             heading1.textContent = 'Updated content';
             editor.blockManager.setFocusToBlock(heading1.closest('.e-block') as HTMLElement);
             editor.blockManager.stateManager.updateContentOnUserTyping(heading1.closest('.e-block') as HTMLElement);

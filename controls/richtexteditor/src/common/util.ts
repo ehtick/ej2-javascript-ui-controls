@@ -1,12 +1,29 @@
 /**
  * Defines common util methods used by Rich Text Editor.
  */
-import { isNullOrUndefined, Browser, removeClass, closest, createElement, detach } from '@syncfusion/ej2-base';
+import { isNullOrUndefined, Browser, removeClass, addClass, closest, createElement, detach } from '@syncfusion/ej2-base';
 import { IToolbarStatus, OffsetPosition } from './interface';
 import { CLS_AUD_FOCUS, CLS_IMG_FOCUS, CLS_RESIZE, CLS_RTE_DRAG_IMAGE, CLS_TABLE_MULTI_CELL, CLS_TABLE_SEL, CLS_TABLE_SEL_END, CLS_VID_FOCUS } from './constant';
 import { IsFormatted } from '../editor-manager/plugin/isformatted';
 import { BLOCK_TAGS } from '../editor-manager/base/constant';
 import * as CONSTANT from './constant';
+
+/**
+ * Mapping of legacy image layout class names to normalized layout class names.
+ *
+ * Keys are legacy layout class names that may appear on image elements or
+ * caption wrappers (for example, when content is pasted). Values are the
+ * normalized class names used throughout the editor styles.
+ *
+ * @private
+ */
+export const layoutMap: { [key: string]: string } = {
+    'e-imginline': 'e-img-inline',
+    'e-imgbreak': 'e-img-break',
+    'e-imgleft': 'e-img-left',
+    'e-imgright': 'e-img-right',
+    'e-imgcenter': 'e-img-center'
+};
 
 /**
  * @returns {boolean} - returns boolean value
@@ -37,10 +54,11 @@ export function setEditFrameFocus(editableElement: Element, selector: string): v
 
 /**
  * @param {string} value - specifies the string value
+ * @param {boolean} [isBlazor] - specifies if the editor is in Blazor mode
  * @returns {void}
  * @hidden
  */
-export function updateTextNode(value: string): string {
+export function updateTextNode(value: string, isBlazor?: boolean): string {
     const resultElm: HTMLElement = document.createElement('div');
     resultElm.innerHTML = value;
     const tableElm: NodeListOf<HTMLElement> = resultElm.querySelectorAll('table');
@@ -104,18 +122,86 @@ export function updateTextNode(value: string): string {
     }
     const imageElm: NodeListOf<HTMLElement> = resultElm.querySelectorAll('img');
     for (let i: number = 0; i < imageElm.length; i++) {
-        if ((imageElm[i as number] as HTMLImageElement).classList.contains('e-rte-image-unsupported')) {
+        const img: HTMLElement = imageElm[i as number] as HTMLElement;
+        if (img.classList.contains('e-rte-image-unsupported')) {
             continue; // Should not add the class if the image is Broken.
         }
-        if (!imageElm[i as number].classList.contains('e-rte-image')) {
-            imageElm[i as number].classList.add('e-rte-image');
-        }
-        if (!(imageElm[i as number].classList.contains('e-imginline') ||
-        imageElm[i as number].classList.contains('e-imgbreak'))) {
-            imageElm[i as number].classList.add('e-imginline');
+        if (!img.classList.contains('e-rte-image')) { img.classList.add('e-rte-image'); }
+        if (!isBlazor) {
+            const wrap: HTMLElement = (closest(img, '.e-img-caption') as HTMLElement) || (closest(img, '.e-rte-img-caption') as HTMLElement) ||
+                (closest(img, '.e-caption-inline') as HTMLElement);
+            if (wrap) {
+                swapCaptionClassName(wrap, img, layoutMap);
+            } else {
+                swapImageClassName(img, layoutMap);
+            }
+        } else {
+            if (!(img.classList.contains('e-imginline') ||
+            img.classList.contains('e-imgbreak'))) {
+                img.classList.add('e-imginline');
+            }
         }
     }
     return resultElm.innerHTML;
+}
+
+/**
+ * Swap and normalize caption wrapper class names and layout classes.
+ *
+ * @param {HTMLElement} wrap - The caption wrapper element that may contain legacy classes.
+ * @param {HTMLElement} img - The image element associated with the caption.
+ * @param {Object} layoutMap - Mapping of legacy layout class names to new class names.
+ * @returns {void}
+ * @private
+ * @hidden
+ */
+export function swapCaptionClassName(wrap: HTMLElement, img: HTMLElement, layoutMap: { [key: string]: string }): void {
+    removeClass([wrap], 'e-img-caption');
+    removeClass([wrap], 'e-rte-img-caption');
+    removeClass([wrap], 'e-caption-inline');
+    wrap.classList.add('e-img-caption-container');
+    wrap.style.width = img.style.width === '' ? 'auto' : img.style.width;
+    const captionTextEle: HTMLElement = wrap.querySelector('.e-img-inner');
+    removeClass([captionTextEle], 'e-img-inner');
+    addClass([captionTextEle], 'e-img-caption-text');
+    // Move any older layout class from image/wrapper to wrapper with new name
+    for (const old of Object.keys(layoutMap)) {
+        if (wrap.classList.contains(old)) {
+            removeClass([wrap], old);
+        }
+    }
+    for (const old of Object.keys(layoutMap)) {
+        if (img.classList.contains(old)) {
+            removeClass([img], old);
+            wrap.classList.add(layoutMap[old as string]);
+            break;
+        }
+    }
+}
+
+/**
+ * Swap and normalize image-only layout class names.
+ *
+ * @param {HTMLElement} img - The image element to normalize.
+ * @param {Object} layoutMap - Mapping of legacy layout class names to new class names.
+ * @returns {void}
+ * @private
+ * @hidden
+ */
+export function swapImageClassName(img: HTMLElement, layoutMap: { [key: string]: string }): void {
+    for (const old of Object.keys(layoutMap)) {
+        if (img.classList.contains(old)) {
+            removeClass([img], old);
+            img.classList.add(layoutMap[old as string]);
+            break;
+        }
+    }
+    if (isNullOrUndefined(img.closest('.e-img-caption-container'))) {
+        const hasLayout: boolean = ['e-img-inline', 'e-img-break', 'e-img-left',
+            'e-img-right', 'e-img-center', 'e-img-left-wrap', 'e-img-right-wrap']
+            .some((c: string) => img.classList.contains(c));
+        if (!hasLayout) { img.classList.add('e-img-inline'); }
+    }
 }
 
 /**
@@ -606,6 +692,10 @@ export function resetContentEditableElements(value: string, editorMode: string):
         valueElementWrapper.querySelectorAll('.e-img-inner').forEach((el: Element) => {
             el.setAttribute('contenteditable', 'true');
         });
+        //will modify after caption class changes for blazor
+        valueElementWrapper.querySelectorAll('.e-img-caption-text').forEach((el: Element) => {
+            el.setAttribute('contenteditable', 'true');
+        });
         value = valueElementWrapper.innerHTML;
         valueElementWrapper.remove();
     }
@@ -626,7 +716,11 @@ export function cleanupInternalElements(value: string, editorMode: string): stri
             valueElementWrapper.querySelectorAll('.e-img-inner').forEach((el: Element) => {
                 el.setAttribute('contenteditable', 'false');
             });
-            const item: NodeListOf<Element> = valueElementWrapper.querySelectorAll('.e-column-resize, .e-row-resize, .e-table-box, .e-table-rhelper, .e-img-resize, .e-vid-resize, .e-tb-row-insert, .e-tb-col-insert');
+            //will modify after caption class changes for blazor
+            valueElementWrapper.querySelectorAll('.e-img-caption-text').forEach((el: Element) => {
+                el.setAttribute('contenteditable', 'false');
+            });
+            const item: NodeListOf<Element> = valueElementWrapper.querySelectorAll('.e-column-resize, .e-row-resize, .e-table-box, .e-table-rhelper, .e-img-resize, .e-vid-resize, .e-tb-row-insert, .e-tb-col-insert, .e-table-wrapper , .e-row-wrapper, .e-col-wrapper');
             if (item.length > 0) {
                 for (let i: number = 0; i < item.length; i++) {
                     detach(item[i as number]);
@@ -884,8 +978,8 @@ export function needToWrapLiChild(node: Node): boolean {
             } else if (['OL', 'UL'].indexOf(tag) !== -1) {
                 const prev: Node = child.previousSibling;
                 const next: Node = child.nextSibling;
-                const isSurroundedByContent: boolean = prev && isBlockNode(prev as HTMLElement)
-                && next && next.nodeType === Node.TEXT_NODE &&
+                const isSurroundedByContent: boolean = prev &&
+                isBlockNode(prev as HTMLElement) && next && next.nodeType === Node.TEXT_NODE &&
                 next.textContent.trim().length > 0;
                 if (isSurroundedByContent) {
                     hasBlockElement = true;
@@ -902,6 +996,16 @@ export function needToWrapLiChild(node: Node): boolean {
         }
     });
     return hasBlockElement && hasNonBlockContent;
+}
+
+/**
+ * Checks if the given HTML element is a block-level element.
+ *
+ * @param {Element} element - The HTML element to check.
+ * @returns {boolean} - True if the element is a block-level element, false otherwise.
+ */
+export function isBlockNode(element: Element): boolean {
+    return (!!element && (element.nodeType === Node.ELEMENT_NODE && BLOCK_TAGS.indexOf(element.tagName.toLowerCase()) >= 0));
 }
 
 /**
@@ -967,6 +1071,51 @@ export function cleanHTMLString(htmlString: string, editNode: Element): string {
                     child.nodeValue = child.nodeValue.replace(/[\n\r\t]/g, ' ');
                     child.nodeValue = child.nodeValue.replace(/[ ]{2,}/g, ' ');
                 }
+                if ((child.nodeValue === ' ' || child.textContent.indexOf(' ') === 0 || child.textContent.lastIndexOf(' ') === child.textContent.length - 1) && child.parentElement.innerHTML !== ' ') {
+                    const isEmptyText: boolean = child.nodeValue === ' ';
+                    const isTrimStart: boolean = child.textContent.indexOf(' ') === 0;
+                    const isTrimend: boolean = child.textContent.lastIndexOf(' ') === child.textContent.length - 1;
+                    if (child.nextSibling && isBlockNode(child.nextSibling as Element) && isEmptyText) {
+                        child.nodeValue = child.nodeValue.replace(/[ ]/g, '');
+                    } else if (child.previousSibling && isBlockNode(child.previousSibling as Element) && isEmptyText) {
+                        child.nodeValue = child.nodeValue.replace(/[ ]/g, '');
+                    } else {
+                        let element: HTMLElement = child as HTMLElement;
+                        let hasNextSibling: boolean = false;
+                        let hasPreviousSibling: boolean = false;
+                        let nextElement: HTMLElement;
+                        while (!isBlockNode(element)) {
+                            if (element.previousSibling && !hasPreviousSibling) {
+                                hasPreviousSibling = true;
+                            }
+                            if (element.nextSibling && !hasNextSibling) {
+                                hasNextSibling = true;
+                                nextElement = element.nextSibling as HTMLElement;
+                            }
+                            element = element.parentElement as HTMLElement;
+                        }
+                        if (isEmptyText) {
+                            if (!hasPreviousSibling && hasNextSibling) {
+                                child.nodeValue = child.nodeValue.replace(/[ ]/g, '');
+                            } else if (hasPreviousSibling && !hasNextSibling) {
+                                child.nodeValue = child.nodeValue.replace(/[ ]/g, '');
+                            } else if (hasPreviousSibling && hasNextSibling && nextElement.nodeType === 3 && nextElement.textContent.trim() === '') {
+                                child.nodeValue = child.nodeValue.replace(/[ ]/g, '');
+                            }
+                        }
+                        if (isTrimStart || isTrimend) {
+                            if (!hasPreviousSibling && child.textContent.indexOf(' ') === 0) {
+                                child.textContent = child.textContent.substring(child.textContent.indexOf(' ') + 1);
+                            }
+                            if (!hasNextSibling && child.textContent.lastIndexOf(' ') === child.textContent.length - 1 && isBlockNode(child.parentElement)) {
+                                child.textContent = child.textContent.substring(0, child.textContent.lastIndexOf(' '));
+                            }
+                            if (hasNextSibling && isBlockNode(nextElement) && child.textContent.lastIndexOf(' ') === child.textContent.length - 1) {
+                                child.textContent = child.textContent.substring(0, child.textContent.lastIndexOf(' '));
+                            }
+                        }
+                    }
+                }
             } else if (child.nodeType === 1) {
                 if (!hasPre(child as HTMLElement) && !hasPreLineStyle(child as HTMLElement)) {
                     cleanTextContent(child, hasPreLine);
@@ -1031,16 +1180,6 @@ export function alignmentHtml(htmlString: string): string {
 }
 
 /**
- * Checks if the given HTML element is a block-level element.
- *
- * @param {Element} element - The HTML element to check.
- * @returns {boolean} - True if the element is a block-level element, false otherwise.
- */
-export function isBlockNode(element: Element): boolean {
-    return (!!element && (element.nodeType === Node.ELEMENT_NODE && BLOCK_TAGS.indexOf(element.tagName.toLowerCase()) >= 0));
-}
-
-/**
  * Formats a DOM node with proper indentation for improved readability.
  *
  * @param {Node} node - The DOM node to format.
@@ -1058,9 +1197,6 @@ export function formatNode(node: Node, indentLevel: number): string {
     node.childNodes.forEach((child: Node) => {
         if (child.nodeType === Node.TEXT_NODE) {
             let text: string = child.textContent;
-            if (text.trim().length === 0) {
-                text = text.trim();
-            }
             if (text) {
                 text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 result += text;
@@ -1169,6 +1305,7 @@ export function getRootOffsetParent(mediaElement: HTMLElement, parentID: string)
     } else {
         offsetParent = ((mediaElement.offsetParent &&
             ((mediaElement.offsetParent.classList.contains('e-img-caption') ||
+            mediaElement.offsetParent.classList.contains('e-img-caption-container') ||
             mediaElement.offsetParent.classList.contains('e-video-clickelem')) ||
             ignoreOffset.indexOf(mediaElement.offsetParent.tagName) > -1)) ?
             rootEle : mediaElement.offsetParent) || doc.documentElement;

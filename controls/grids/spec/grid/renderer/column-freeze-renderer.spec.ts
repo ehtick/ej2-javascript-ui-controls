@@ -533,8 +533,8 @@ describe('Column freeze render module', () => {
             destroy(gridObj as any);
         });
     });
-
-describe('EJ2-999591: Issue with dynamically updating frozen columns using setProperties method in Grid', () => {
+    
+    describe('EJ2-999591: Issue with dynamically updating frozen columns using setProperties method in Grid', () => {
         let gridObj: Grid;
         beforeAll((done: Function) => {
             gridObj = createGrid(

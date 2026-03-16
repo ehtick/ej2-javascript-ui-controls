@@ -403,7 +403,7 @@ describe('Chart Control', () => {
                 element1 = <HTMLElement>crosshair.childNodes[2].childNodes[2];
                 expect(element1.getAttribute('d') !== '').toBe(true);
                 element1 = <HTMLElement>crosshair.childNodes[2].childNodes[1];
-                expect(element1.textContent == 'Japan').toBe(true);
+                expect(element1.textContent == 'China').toBe(true);
                 element1 = <HTMLElement>crosshair.childNodes[2].childNodes[3];
                 expect(element1.textContent == '35.075' || element1.textContent == '35.076').toBe(true);
                 done();

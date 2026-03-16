@@ -3338,6 +3338,15 @@ export class Phase extends ChildProperty<Shape> {
     public offset: number;
 
     /**
+     * Sets the initial offset of the phase
+     *
+     * @default 100
+     * @private
+     */
+    @Property(100)
+    public initialOffset: number;
+
+    /**
      * Allows the user to save custom information about phases. Example: addInfo: {'phase': 'phase 1 info' }
      *
      * @aspDefaultValueIgnore

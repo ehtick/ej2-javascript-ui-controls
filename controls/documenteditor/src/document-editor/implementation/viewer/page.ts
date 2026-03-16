@@ -3429,7 +3429,8 @@ export class TableRowWidget extends BlockWidget {
      */
     public updateUniformWidthUnitForCells():void{
         let isSetMinwidth: boolean = false;
-        if (this.ownerTable && this.ownerTable.tableHolder && this.ownerTable.tableHolder.columns && this.childWidgets.length !== this.ownerTable.tableHolder.columns.length && this.ownerTable.tableFormat.allowAutoFit) {
+        if (this.ownerTable && this.ownerTable.tableHolder && this.ownerTable.tableHolder.columns && this.childWidgets.length !== this.ownerTable.tableHolder.columns.length
+            && this.ownerTable.tableFormat.allowAutoFit) {
             isSetMinwidth = true;
         }
         for (let i: number = 0; i < this.childWidgets.length; i++) {

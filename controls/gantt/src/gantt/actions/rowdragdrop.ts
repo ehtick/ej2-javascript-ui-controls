@@ -189,6 +189,8 @@ export class RowDD {
                 this.parent['hideLoadingIndicator']();
             }
         }
+        // Restore original position by removing 'relative' added in rowDragStart event
+        this.parent.element.style.position = '';
     }
     private validPosition(args: RowDropEventArgs, dropRecord: IGanttData): boolean {
         const dropLevel: number = dropRecord.level;
@@ -352,9 +354,6 @@ export class RowDD {
                                     const updatedParent: ITreeData = getValue('uniqueIDCollection.' + this.treeGridData[parseInt(i.toString(), 10)].parentUniqueID, this.parent.treeGrid);
                                     this.treeGridData[parseInt(i.toString(), 10)].parentItem.index = updatedParent.index;
                                 }
-                            }
-                            if (this.parent.undoRedoModule) {
-                                this.parent.undoRedoModule['canUpdateIndex'] = false;
                             }
                         }
                         // eslint-disable-next-line

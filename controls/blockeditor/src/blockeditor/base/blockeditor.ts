@@ -1,5 +1,5 @@
 import { Component, getUniqueID, INotifyPropertyChanged, NotifyPropertyChanges, Property, isNullOrUndefined as isNOU, formatUnit, Collection, EmitType, Complex, Event, append, L10n, addClass, updateCSSText } from '@syncfusion/ej2-base';
-import { UserModel, CommandMenuSettingsModel, InlineToolbarSettingsModel, PasteCleanupSettingsModel, BlockActionMenuSettingsModel, ContextMenuSettingsModel, LabelSettingsModel, ImageBlockSettingsModel, CodeBlockSettingsModel } from '../../models/index';
+import { UserModel, CommandMenuSettingsModel, InlineToolbarSettingsModel, PasteCleanupSettingsModel, BlockActionMenuSettingsModel, ContextMenuSettingsModel, LabelSettingsModel, ImageBlockSettingsModel, CodeBlockSettingsModel, TransformSettingsModel } from '../../models/index';
 import { BlockEditorModel } from './blockeditor-model';
 import { BlockModel } from '../../models/block/block-model';
 import { User } from '../../models/common/user';
@@ -9,7 +9,7 @@ import { ContextMenuSettings } from '../../models/menus/context-menu-settings';
 import { BlockActionMenuSettings } from '../../models/menus/blockaction-menu-settings';
 import { PasteCleanupSettings } from '../../models/common/paste-settings';
 import { LabelSettings } from '../../models/common/label-settings';
-import { FocusEventArgs, BlurEventArgs, SelectionChangedEventArgs, BlockDragEventArgs, BlockDropEventArgs, BeforePasteCleanupEventArgs, AfterPasteCleanupEventArgs, BlockChangedEventArgs } from '../../models/eventargs';
+import { FocusEventArgs, BlurEventArgs, SelectionChangedEventArgs, BlockDragEventArgs, BlockDropEventArgs, BeforePasteCleanupEventArgs, AfterPasteCleanupEventArgs, BlockChangedEventArgs, FileUploadSuccessEventArgs } from '../../models/eventargs';
 import { getBlockModelById } from '../../common/utils/block';
 import { getTemplateFunction } from '../../common/utils/common';
 import { getCurrentLocaleJson, getLocaleItems } from '../../common/utils/data';
@@ -17,11 +17,13 @@ import { CommandName } from '../../models/enums';
 import { events } from '../../common/constant';
 import * as constants from '../../common/constant';
 
-import { MentionRenderer, MenuBarRenderer, TooltipRenderer, DialogRenderer, FloatingIconRenderer, DropDownListRenderer } from '../renderer/index';
+import { MentionRenderer, MenuBarRenderer, TooltipRenderer, DialogRenderer, FloatingIconRenderer, DropDownListRenderer, TabRenderer, UploaderRenderer, ProgressBarRenderer, ImageUploaderRenderer } from '../renderer/index';
 import { EventManager, Intermediate } from '../managers/index';
 import { InlineContentInsertionModule, SlashCommandModule, ContextMenuModule, BlockActionMenuModule, InlineToolbarModule, LinkModule } from '../renderer/index';
 import { BlockManager } from '../../block-manager/base/block-manager';
-import { ImageBlockSettings, CodeBlockSettings } from '../../models/common/index';
+import { ImageBlockSettings, CodeBlockSettings, FontColorSettingsModel, FontColorSettings, BackgroundColorSettingsModel, BackgroundColorSettings } from '../../models/common/index';
+import { TransformSettings } from '../../models/menus/transform-settings';
+import { BeforeUploadEventArgs, FailureEventArgs, UploadingEventArgs } from '@syncfusion/ej2-inputs';
 
 /**
  * Represents the root class for the Block Editor component.
@@ -179,6 +181,17 @@ export class BlockEditor extends Component<HTMLElement> implements INotifyProper
     public inlineToolbarSettings: InlineToolbarSettingsModel;
 
     /**
+     * Specifies the configuration object for available block transformations in the inline toolbar.
+     * This property allows customization of the transform menu items including text, icons, and behavior configuration.
+     *
+     * {% codeBlock src='blockeditor/transform/index.md' %}{% endcodeBlock %}
+     *
+     * @default {}
+     */
+    @Complex<TransformSettingsModel>({}, TransformSettings)
+    public transformSettings: TransformSettingsModel;
+
+    /**
      * Specifies the configuration settings for the block actions menu.
      * This property allows customization of the actions menu within the editor.
      *
@@ -243,6 +256,51 @@ export class BlockEditor extends Component<HTMLElement> implements INotifyProper
      */
     @Complex<CodeBlockSettingsModel>({ languages: [], defaultLanguage: 'plaintext' }, CodeBlockSettings)
     public codeBlockSettings: CodeBlockSettingsModel;
+
+    /**
+     * Defines the color palette for the font color toolbar command.
+     *
+     * @default
+     * {
+     * default: '#ff0000',
+     * mode: 'Palette',
+     * columns: 10,
+     * modeSwitcher: false,
+     *  colorCode: {
+     *     'Custom': [
+     *       '', '#000000', '#e7e6e6', '#44546a', '#4472c4', '#ed7d31', '#a5a5a5', '#ffc000', '#70ad47', '#ff0000',
+     *       '#f2f2f2', '#808080', '#cfcdcd', '#d5dce4', '#d9e2f3', '#fbe4d5', '#ededed', '#fff2cc', '#e2efd9', '#ffcccc',
+     *       '#d9d9d9', '#595959', '#aeaaaa', '#acb9ca', '#b4c6e7', '#f7caac', '#dbdbdb', '#ffe599', '#c5e0b3', '#ff8080',
+     *       '#bfbfbf', '#404040', '#747070', '#8496b0', '#8eaadb', '#f4b083', '#c9c9c9', '#ffd966', '#a8d08d', '#ff3333',
+     *       '#a6a6a6', '#262626', '#3b3838', '#323e4f', '#2f5496', '#c45911', '#7b7b7b', '#bf8f00', '#538135', '#b30000',
+     *       '#7f7f7f', '#0d0d0d', '#161616', '#212934', '#1f3763', '#823b0b', '#525252', '#7f5f00', '#375623', '#660000'
+     *     ]
+     *  }
+     * }
+     */
+    @Complex<FontColorSettingsModel>({}, FontColorSettings)
+    public fontColorSettings: FontColorSettingsModel;
+
+    /**
+     * Defines the color palette for the background color (text highlight color) toolbar command.
+     *
+     * @default
+     * {
+     *   default: '#ffff00',
+     *   mode: 'Palette',
+     *   columns: 5,
+     *   modeSwitcher: false,
+     *   colorCode: {
+     *     'Custom': [
+     *       '#ffff00', '#00ff00', '#00ffff', '#ff00ff', '#0000ff', '#ff0000',
+     *       '#000080', '#008080', '#008000', '#800080', '#800000', '#808000',
+     *       '#c0c0c0', '#000000', ''
+     *     ]
+     *   }
+     * }
+     */
+    @Complex<BackgroundColorSettingsModel>({}, BackgroundColorSettings)
+    public backgroundColorSettings: BackgroundColorSettingsModel;
 
     /* Events */
 
@@ -353,6 +411,43 @@ export class BlockEditor extends Component<HTMLElement> implements INotifyProper
     @Event()
     public afterPasteCleanup: EmitType<AfterPasteCleanupEventArgs>;
 
+    /**
+     * Event triggered before a file upload begins.
+     * This event is cancelable - set args.cancel to true to prevent the upload.
+     * Allows host applications to validate files or add custom data to the upload request.
+     *
+     * @event beforeFileUpload
+     */
+    @Event()
+    public beforeFileUpload: EmitType<BeforeUploadEventArgs>;
+
+    /**
+     * Event triggered during file upload with progress updates.
+     * Emits progress information at regular intervals (typically 10% increments).
+     *
+     * @event fileUploading
+     */
+    @Event()
+    public fileUploading: EmitType<UploadingEventArgs>;
+
+    /**
+     * Event triggered when a file upload completes successfully.
+     * Provides server response containing the uploaded image URL and metadata.
+     *
+     * @event fileUploadSuccess
+     */
+    @Event()
+    public fileUploadSuccess: EmitType<FileUploadSuccessEventArgs>;
+
+    /**
+     * Event triggered when a file upload fails or validation errors occur.
+     * Provides error information for display to the user.
+     *
+     * @event fileUploadFailed
+     */
+    @Event()
+    public fileUploadFailed: EmitType<FailureEventArgs>;
+
 
     /* Renderers */
     /** @hidden */
@@ -365,6 +460,14 @@ export class BlockEditor extends Component<HTMLElement> implements INotifyProper
     public dialogRenderer: DialogRenderer;
     /** @hidden */
     public dropdownListRenderer: DropDownListRenderer;
+    /** @hidden */
+    public tabRenderer: TabRenderer;
+    /** @hidden */
+    public uploaderRenderer: UploaderRenderer;
+    /** @hidden */
+    public progressBarRenderer: ProgressBarRenderer;
+    /** @hidden */
+    public imageUploaderRenderer: ImageUploaderRenderer;
 
     /* Manager instances */
     /** @hidden */
@@ -467,6 +570,8 @@ export class BlockEditor extends Component<HTMLElement> implements INotifyProper
         this.initializeManagers();
         this.intializeEngines();
 
+        this.blockManager.observer.notify('modulesInitialized');
+
         // Set dimensions and styles
         this.setDimension();
         this.setCssClass();
@@ -557,9 +662,13 @@ export class BlockEditor extends Component<HTMLElement> implements INotifyProper
     private intializeEngines(): void {
         this.menubarRenderer = new MenuBarRenderer(this);
         this.mentionRenderer = new MentionRenderer(this);
+        this.tabRenderer = new TabRenderer(this);
+        this.uploaderRenderer = new UploaderRenderer(this);
+        this.progressBarRenderer = new ProgressBarRenderer(this);
         this.tooltipRenderer = new TooltipRenderer(this);
         this.dialogRenderer = new DialogRenderer(this);
         this.dropdownListRenderer = new DropDownListRenderer(this);
+        this.imageUploaderRenderer = new ImageUploaderRenderer(this);
 
         this.inlineContentInsertionModule = new InlineContentInsertionModule(this);
         this.inlineToolbarModule = new InlineToolbarModule(this);
@@ -687,7 +796,7 @@ export class BlockEditor extends Component<HTMLElement> implements INotifyProper
      */
     public updateEditorReadyOnlyState(): void {
         const defaultNonEditableElements: string[] = [
-            'e-callout-icon', 'e-toggle-icon', 'e-image-container', 'e-checkmark-container', 'e-divider-block',
+            'e-callout-icon', 'e-toggle-icon', 'e-image-container', 'e-image-placeholder' , 'e-checkmark-container', 'e-divider-block',
             'e-code-block-toolbar', 'e-code-block-copy-button', 'e-mention-chip',
             ...this.blockManager.blockRenderer.tableRenderer.nonEditableElements
         ];
@@ -799,13 +908,13 @@ export class BlockEditor extends Component<HTMLElement> implements INotifyProper
      * Sets the selection range within a content.
      * This method selects content within the specified element using a start and end index.
      *
-     * @param {string} contentId - The ID of the content element.
+     * @param {Node} node - Node to apply selection
      * @param {number} startIndex - The starting index of the selection.
      * @param {number} endIndex - The ending index of the selection.
      * @returns {void}
      */
-    public setSelection(contentId: string, startIndex: number, endIndex: number): void {
-        this.blockManager.editorMethods.setSelection(contentId, startIndex, endIndex);
+    public setSelection(node: Node, startIndex: number, endIndex: number): void {
+        this.blockManager.editorMethods.setSelection(node, startIndex, endIndex);
     }
 
     /**
@@ -958,10 +1067,17 @@ export class BlockEditor extends Component<HTMLElement> implements INotifyProper
         this.blockManager.observer.notify(events.destroy, {});
 
         this.mentionRenderer = null;
+        this.tabRenderer = null;
+        this.uploaderRenderer = null;
+        this.progressBarRenderer = null;
         this.menubarRenderer = null;
         this.tooltipRenderer = null;
         this.dialogRenderer = null;
         this.dropdownListRenderer = null;
+        if (this.imageUploaderRenderer) {
+            this.imageUploaderRenderer.destroy();
+            this.imageUploaderRenderer = null;
+        }
 
         this.inlineToolbarModule = null;
         this.inlineContentInsertionModule = null;
@@ -1045,6 +1161,12 @@ export class BlockEditor extends Component<HTMLElement> implements INotifyProper
                 break;
             case 'contextMenuSettings':
                 this.notify(events.moduleChanged, { module: 'contextMenuSettings', newProp: newProp, oldProp: oldProp });
+                break;
+            case 'fontColorSettings':
+                this.notify(events.moduleChanged, { module: 'fontColorSettings', newProp: newProp, oldProp: oldProp });
+                break;
+            case 'backgroundColorSettings':
+                this.notify(events.moduleChanged, { module: 'backgroundColorSettings', newProp: newProp, oldProp: oldProp });
                 break;
             }
         }

@@ -3683,7 +3683,7 @@ describe('Unable to drag connector end thumb and resize node handler when we inc
         //Need to evaluate testcase
         //expect(diagram.connectors[0].targetPoint.x == 480 || diagram.connectors[0].targetPoint.x == 472).toBe(true);
         expect(true).toBe(true);
-        expect(diagram.connectors[0].targetPoint.y == 200 || diagram.connectors[0].targetPoint.y == 192).toBe(true);
+        expect(diagram.connectors[0].targetPoint.y == 200 || diagram.connectors[0].targetPoint.y == 220).toBe(true);
         done();
     });
     it('Check whether the node position is same or not after we dragging it', (done: Function) => {

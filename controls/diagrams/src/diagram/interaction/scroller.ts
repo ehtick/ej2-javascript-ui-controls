@@ -2,7 +2,7 @@ import { IElement } from '../objects/interface/IElement';
 import { Diagram } from '../diagram';
 import { Rect } from '../primitives/rect';
 import { PointModel } from '../primitives/point-model';
-import { FitModes, DiagramRegions, RealAction, ScrollActions } from '../enum/enum';
+import { FitModes, DiagramRegions, RealAction, ScrollActions, ScrollLimit } from '../enum/enum';
 import { Matrix, identityMatrix, scaleMatrix, translateMatrix, transformPointByMatrix, multiplyMatrix } from '../primitives/matrix';
 import { MarginModel } from '../core/appearance-model';
 import { IFitOptions } from '../objects/interface/interfaces';
@@ -163,7 +163,6 @@ export class DiagramScroller {
     private vScrollSize: number = 0;
     /** @private */
     public isNegativeOffset: boolean = false;
-
     constructor(diagram: Diagram) {
         this.diagram = diagram;
         this.objects = [];
@@ -445,6 +444,9 @@ export class DiagramScroller {
                 };
             }
         }
+        if (this.diagram.preventScroll) {
+            this.checkScroll(false);
+        }
         this.diagram.transformLayers();
         this.diagram.element.style.overflow = 'hidden';
     }
@@ -701,6 +703,17 @@ export class DiagramScroller {
         let factor: number;
         let deltaX: number = -this.horizontalOffset;
         let deltaY: number = -this.verticalOffset;
+        // Previously, the ruler size was included in the viewport size, causing incorrect centering of content.
+        // The ruler size is now excluded to ensure accurate viewport centering.
+        let diagramContentWidth: number = this.viewPortWidth;
+        let diagramContentHeight: number = this.viewPortHeight;
+        if (this.diagram.rulerSettings.showRulers) {
+            //Get rulerSize
+            const hRulerSize: number = this.diagram.rulerSettings.horizontalRuler.thickness;
+            const vRulerSize: number = this.diagram.rulerSettings.verticalRuler.thickness;
+            diagramContentWidth -= vRulerSize;
+            diagramContentHeight -= hRulerSize;
+        }
         region = region ? region : 'PageSettings';
         //fit mode
         if ((region === 'PageSettings' && this.diagram.pageSettings.width && this.diagram.pageSettings.height)
@@ -712,8 +725,8 @@ export class DiagramScroller {
             const scale: PointModel = { x: 0, y: 0 };
             //Bug 853566: Fit to page is not working when zoom value less than minZoom.
             // Resetting margin value if the margin value is greater than the viewport size to avoid scale value in negative.
-            if ((margin.left + margin.right) > this.viewPortWidth) {
-                if (this.viewPortWidth <= 100) {
+            if ((margin.left + margin.right) > diagramContentWidth) {
+                if (diagramContentWidth <= 100) {
                     margin.left = 5;
                     margin.right = 5;
                 } else {
@@ -721,8 +734,8 @@ export class DiagramScroller {
                     margin.right = 25;
                 }
             }
-            if ((margin.top + margin.bottom) > this.viewPortHeight) {
-                if (this.viewPortHeight <= 100) {
+            if ((margin.top + margin.bottom) > diagramContentHeight) {
+                if (diagramContentHeight <= 100) {
                     margin.top = 5;
                     margin.bottom = 5;
                 } else {
@@ -730,10 +743,10 @@ export class DiagramScroller {
                     margin.bottom = 25;
                 }
             }
-            scale.x = (this.viewPortWidth - (margin.left + margin.right)) / (bounds.width);
-            scale.y = (this.viewPortHeight - (margin.top + margin.bottom)) / (bounds.height);
-            if (!canZoomIn && (((bounds.width - this.horizontalOffset) < this.viewPortWidth) &&
-                (bounds.height - this.verticalOffset) < this.viewPortHeight)) {
+            scale.x = (diagramContentWidth - (margin.left + margin.right)) / (bounds.width);
+            scale.y = (diagramContentHeight - (margin.top + margin.bottom)) / (bounds.height);
+            if (!canZoomIn && (((bounds.width - this.horizontalOffset) < diagramContentWidth) &&
+                (bounds.height - this.verticalOffset) < diagramContentHeight)) {
                 scale.x = Math.min(this.currentZoom, scale.x);
                 scale.y = Math.min(this.currentZoom, scale.y);
             }
@@ -745,7 +758,7 @@ export class DiagramScroller {
             case 'Width':
                 zoomFactor = scale.x;
                 factor = zoomFactor / this.currentZoom;
-                centerX = (this.viewPortWidth - (bounds.width) * zoomFactor) / 2 - bounds.x * zoomFactor;
+                centerX = (diagramContentWidth - (bounds.width) * zoomFactor) / 2 - bounds.x * zoomFactor;
                 deltaX += centerX + (margin.left - margin.right) / 2 * zoomFactor;
                 deltaY -= -this.verticalOffset * factor;
                 deltaY = region !== 'CustomBounds' ? deltaY : deltaY - this.verticalOffset * factor;
@@ -753,16 +766,16 @@ export class DiagramScroller {
             case 'Height':
                 zoomFactor = scale.y;
                 factor = (zoomFactor / this.currentZoom);
-                centerX = ((this.viewPortWidth - (bounds.width) * zoomFactor) / 2) - bounds.x * zoomFactor;
-                centerY = ((this.viewPortHeight - (bounds.height) * zoomFactor) / 2) - bounds.y * zoomFactor;
+                centerX = ((diagramContentWidth - (bounds.width) * zoomFactor) / 2) - bounds.x * zoomFactor;
+                centerY = ((diagramContentHeight - (bounds.height) * zoomFactor) / 2) - bounds.y * zoomFactor;
                 deltaX += centerX + (margin.left - margin.right) / 2 * zoomFactor;
                 deltaY += centerY + (margin.top - margin.bottom) / 2 * zoomFactor;
                 break;
             case 'Page':
                 zoomFactor = Math.min(scale.x, scale.y);
                 factor = (zoomFactor / this.currentZoom);
-                centerX = (this.viewPortWidth - (bounds.width) * zoomFactor) / 2 - bounds.x * zoomFactor;
-                centerY = (this.viewPortHeight - (bounds.height) * zoomFactor) / 2 - bounds.y * zoomFactor;
+                centerX = (diagramContentWidth - (bounds.width) * zoomFactor) / 2 - bounds.x * zoomFactor;
+                centerY = (diagramContentHeight - (bounds.height) * zoomFactor) / 2 - bounds.y * zoomFactor;
                 deltaX += centerX + (margin.left - margin.right) / 2 * zoomFactor;
                 deltaY += centerY + (margin.top - margin.bottom) / 2 * zoomFactor;
                 break;
@@ -775,7 +788,85 @@ export class DiagramScroller {
             factor = 1 / this.currentZoom;
             this.zoom(factor, deltaX, deltaY, { x: 0, y: 0 }, true, undefined, undefined, canZoomOut);
         }
+        this.checkScroll(true);
     }
+    /**
+     * Checks and manages scrollbar visibility based on scroll settings and fit-to-page mode.
+     * @param {boolean} isFitToPage - Flag indicating whether fit-to-page mode is active.
+     * When true, enables fit-to-page behavior during scrollbar visibility checks.
+     * @param {boolean} isPropChange - Optional flag indicating whether this is called during a property change.
+     * When true and scrollLimit is 'Infinity' or 'Limited', sets overflow to auto.
+     *
+     * @returns {void}
+     * @private
+     */
+    public checkScroll(isFitToPage: boolean, isPropChange?: boolean): void {
+        const scrollLimit: ScrollLimit = this.diagram.scrollSettings.scrollLimit;
+        const diagramContent: HTMLElement = document.getElementById(this.diagram.element.id + 'content');
+        if (isPropChange && (scrollLimit === 'Infinity' || scrollLimit === 'Limited')) {
+            diagramContent.style.overflowX = 'auto';
+            diagramContent.style.overflowY = 'auto';
+            this.diagram.preventScroll = false;
+            return;
+        }
+        if (scrollLimit === 'Diagram') {
+            const contentBounds: Rect = this.getPageBounds(true);
+            contentBounds.x *= this.currentZoom;
+            contentBounds.y *= this.currentZoom;
+            contentBounds.width *= this.currentZoom;
+            contentBounds.height *= this.currentZoom;
+            const hOff: number = this.horizontalOffset;
+            const vOff: number = this.verticalOffset;
+            const viewportRect: Rect = new Rect(-hOff, -vOff, this.viewPortWidth, this.viewPortHeight);
+            this.showHideScrollbars(contentBounds, diagramContent, hOff, vOff, viewportRect, isFitToPage);
+        }
+    }
+
+    /**
+     * Shows or hides the horizontal and vertical scrollbars based on content bounds and viewport dimensions.
+     *
+     * Determines whether scrollbars are needed by comparing content bounds with the viewport rectangle.
+     * If scroll padding is not applied, sets the overflow CSS properties to 'auto' or 'hidden' accordingly.
+     * When fit to page mode is enabled and no overflow is detected, prevents scrolling.
+     *
+     * @param {Rect} contentBounds - The bounding rectangle of the diagram content.
+     * @param {HTMLElement} diagramContent - The HTML element containing the diagram content.
+     * @param {number} hOff - The horizontal offset of the viewport.
+     * @param {number} vOff - The vertical offset of the viewport.
+     * @param {Rect} viewportRect - The bounding rectangle representing the viewport area.
+     * @param {boolean} [isFitToPage] - Optional flag indicating whether fit-to-page mode is active.
+     *
+     * @returns {void}
+     * @private
+     */
+    public showHideScrollbars(contentBounds: Rect, diagramContent: HTMLElement, hOff: number, vOff: number,
+                              viewportRect: Rect, isFitToPage?: boolean): void {
+        const { left, right, top, bottom }: MarginModel = this.diagram.scrollSettings.padding;
+        const hasScrollPadding: boolean = left !== 0 || right !== 0 || top !== 0 || bottom !== 0;
+        //1002726: Scrollbar visibility issue when the diagram content within viewport.
+        if (!hasScrollPadding) {
+            const needOverflowX: boolean =
+                contentBounds.x < viewportRect.x ||
+                (contentBounds.width + hOff + contentBounds.x) > viewportRect.width;
+            const needOverflowY: boolean =
+                contentBounds.y < viewportRect.y ||
+                (contentBounds.height + vOff + contentBounds.y) > viewportRect.height;
+            if (!needOverflowX && !needOverflowY && isFitToPage) {
+                this.diagram.preventScroll = true;
+            }
+            const desiredOverflowX: string = needOverflowX ? 'auto' : 'hidden';
+            const desiredOverflowY: string = needOverflowY ? 'auto' : 'hidden';
+
+            if (diagramContent.style.overflowX !== desiredOverflowX) {
+                diagramContent.style.overflowX = desiredOverflowX;
+            }
+            if (diagramContent.style.overflowY !== desiredOverflowY) {
+                diagramContent.style.overflowY = desiredOverflowY;
+            }
+        }
+
+    }
+
     /**
      * bringIntoView method \
      *

@@ -1,4 +1,4 @@
-import { Component, INotifyPropertyChanged, Property, Complex, Collection, Internationalization, NotifyPropertyChanges, ModuleDeclaration } from '@syncfusion/ej2-base';
+import { Component, INotifyPropertyChanged, Property, Complex, Collection, Internationalization, NotifyPropertyChanges, ModuleDeclaration, SanitizeHtmlHelper } from '@syncfusion/ej2-base';
 import { Browser, EmitType, remove, Event, EventHandler } from '@syncfusion/ej2-base';
 import { DataManager } from '@syncfusion/ej2-data';
 import { StockChartModel } from './stock-chart-model';
@@ -37,10 +37,10 @@ import { IThemeStyle } from '../chart/model/chart-interface';
 import { StockChartLegendSettingsModel } from './legend/legend-model';
 import { StockLegend, StockChartLegendSettings } from './legend/legend';
 import { ColumnSeries, RangeAreaSeries, SeriesModel, SplineRangeAreaSeries } from './index';
-import { VisibleRangeModel } from '../common/model/interface';
+import { VisibleRangeModel, ICrosshairLabelRenderEventArgs  } from '../common/model/interface';
 import { Periods, StockTooltipSettings } from '../common/model/base';
 import { isNullOrUndefined } from '@syncfusion/ej2-base';
-import { createTemplate } from '../common/utils/helper';
+import { createTemplate, applyGradientsToSeries } from '../common/utils/helper';
 import { createElement } from '@syncfusion/ej2-base';
 
 /**
@@ -479,6 +479,15 @@ export class StockChart extends Component<HTMLElement> implements INotifyPropert
 
     @Event()
     public tooltipRender: EmitType<ITooltipRenderEventArgs>;
+
+    /**
+     * Triggers before the crosshairtooltip for the series is rendered.
+     *
+     * @event crosshairLabelRender
+     */
+
+    @Event()
+    public crosshairLabelRender: EmitType<ICrosshairLabelRenderEventArgs>;
 
     /**
      * Triggers before the series is rendered.
@@ -964,6 +973,7 @@ export class StockChart extends Component<HTMLElement> implements INotifyPropert
             style: 'display: block;'
         });
         this.svgObject = this.mainObject;
+        applyGradientsToSeries(this.svgObject, false, this.visibleSeries, this.element);
         this.element.appendChild(this.mainObject);
     }
 

@@ -7,7 +7,7 @@ export const allTypesOfBlock: BlockModel[] = [
         blockType: BlockType.Heading,
         properties: { level: 2 },
         content: [
-            { id: 'demo-heading-content', contentType: ContentType.Text, content: 'Welcome to the Block Editor Demo!' }
+            { contentType: ContentType.Text, content: 'Welcome to the Block Editor Demo!' }
         ]
     },
 
@@ -15,9 +15,9 @@ export const allTypesOfBlock: BlockModel[] = [
         id: 'demo-intro',
         blockType: BlockType.Paragraph,
         content: [
-            { id: 'intro-t1', contentType: ContentType.Text, content: 'Welcome to the ' },
-            { id: 'intro-bold', contentType: ContentType.Text, content: 'Block Editor', properties: { styles: { bold: true } } },
-            { id: 'intro-t2', contentType: ContentType.Text, content: '! This demo highlights all supported block types and inline formatting options. Each section below explains the purpose of the block and shows how it appears in the editor.' }
+            { contentType: ContentType.Text, content: 'Welcome to the ' },
+            { contentType: ContentType.Text, content: 'Block Editor', properties: { styles: { bold: true } } },
+            { contentType: ContentType.Text, content: '! This demo highlights all supported block types and inline formatting options. Each section below explains the purpose of the block and shows how it appears in the editor.' }
         ]
     },
 
@@ -25,14 +25,14 @@ export const allTypesOfBlock: BlockModel[] = [
         id: 'heading-paragraph',
         blockType: BlockType.Heading,
         properties: { level: 3 },
-        content: [{ id: 'heading-paragraph-content', contentType: ContentType.Text, content: 'Paragraph' }]
+        content: [{ contentType: ContentType.Text, content: 'Paragraph' }]
     },
 
     {
         id: 'paragraph-explainer',
         blockType: BlockType.Paragraph,
         content: [
-            { id: 'p-ex-1', contentType: ContentType.Text, content: 'Paragraph blocks are used for writing regular text. They are the most common block type and support inline formatting to enhance readability and emphasis.' }
+            { contentType: ContentType.Text, content: 'Paragraph blocks are used for writing regular text. They are the most common block type and support inline formatting to enhance readability and emphasis.' }
         ]
     },
 
@@ -41,7 +41,7 @@ export const allTypesOfBlock: BlockModel[] = [
         blockType: BlockType.Heading,
         properties: { level: 3 },
         content: [
-            { id: 'heading-inline-formatting-content', contentType: ContentType.Text, content: 'Inline Formatting' }
+            { contentType: ContentType.Text, content: 'Inline Formatting' }
         ]
     },
 
@@ -50,15 +50,15 @@ export const allTypesOfBlock: BlockModel[] = [
         id: 'inline-core-styles',
         blockType: BlockType.Paragraph,
         content: [
-            { id: 'ics-1', contentType: ContentType.Text, content: 'Use ' },
-            { id: 'ics-bold', contentType: ContentType.Text, content: 'bold', properties: { styles: { bold: true } } },
-            { id: 'ics-2', contentType: ContentType.Text, content: ', ' },
-            { id: 'ics-italic', contentType: ContentType.Text, content: 'italic', properties: { styles: { italic: true } } },
-            { id: 'ics-3', contentType: ContentType.Text, content: ', and ' },
-            { id: 'ics-underline', contentType: ContentType.Text, content: 'underline', properties: { styles: { underline: true } } },
-            { id: 'ics-4', contentType: ContentType.Text, content: ' for emphasis; or ' },
-            { id: 'ics-strike', contentType: ContentType.Text, content: 'strikethrough', properties: { styles: { strikethrough: true } } },
-            { id: 'ics-5', contentType: ContentType.Text, content: ' to indicate removals or outdated text.' }
+            { contentType: ContentType.Text, content: 'Use ' },
+            { contentType: ContentType.Text, content: 'bold', properties: { styles: { bold: true } } },
+            { contentType: ContentType.Text, content: ', ' },
+            { contentType: ContentType.Text, content: 'italic', properties: { styles: { italic: true } } },
+            { contentType: ContentType.Text, content: ', and ' },
+            { contentType: ContentType.Text, content: 'underline', properties: { styles: { underline: true } } },
+            { contentType: ContentType.Text, content: ' for emphasis; or ' },
+            { contentType: ContentType.Text, content: 'strikethrough', properties: { styles: { strikethrough: true } } },
+            { contentType: ContentType.Text, content: ' to indicate removals or outdated text.' }
         ]
     },
 
@@ -67,14 +67,14 @@ export const allTypesOfBlock: BlockModel[] = [
         id: 'inline-technical-semantic',
         blockType: BlockType.Paragraph,
         content: [
-            { id: 'its-1', contentType: ContentType.Text, content: 'Math and chemistry: E = mc' },
-            { id: 'its-sup', contentType: ContentType.Text, content: '2', properties: { styles: { superscript: true } } },
-            { id: 'its-2', contentType: ContentType.Text, content: ', H' },
-            { id: 'its-sub', contentType: ContentType.Text, content: '2', properties: { styles: { subscript: true } } },
-            { id: 'its-3', contentType: ContentType.Text, content: 'O - with superscript and subscript. Add inline code ' },
-            { id: 'its-4', contentType: ContentType.Text, content: ' and helpful ' },
-            { id: 'its-link', contentType: ContentType.Link, content: 'links', properties: { url: 'https://ej2.syncfusion.com/documentation/block-editor/getting-started' } },
-            { id: 'its-5', contentType: ContentType.Text, content: ' for quick references.' }
+            { contentType: ContentType.Text, content: 'Math and chemistry: E = mc' },
+            { contentType: ContentType.Text, content: '2', properties: { styles: { superscript: true } } },
+            { contentType: ContentType.Text, content: ', H' },
+            { contentType: ContentType.Text, content: '2', properties: { styles: { subscript: true } } },
+            { contentType: ContentType.Text, content: 'O - with superscript and subscript. Add inline code ' },
+            { contentType: ContentType.Text, content: ' and helpful ' },
+            { contentType: ContentType.Link, content: 'links', properties: { url: 'https://ej2.syncfusion.com/documentation/block-editor/getting-started' } },
+            { contentType: ContentType.Text, content: ' for quick references.' }
         ]
     },
 
@@ -83,19 +83,19 @@ export const allTypesOfBlock: BlockModel[] = [
         id: 'inline-transforms-colors',
         blockType: BlockType.Paragraph,
         content: [
-            { id: 'itc-1', contentType: ContentType.Text, content: 'Transform text to ' },
-            { id: 'itc-upper', contentType: ContentType.Text, content: 'uppercase', properties: { styles: { uppercase: true } } },
-            { id: 'itc-2', contentType: ContentType.Text, content: ' or ' },
-            { id: 'itc-lower', contentType: ContentType.Text, content: 'LOWERCASE', properties: { styles: { lowercase: true } } },
-            { id: 'itc-3', contentType: ContentType.Text, content: '. Add ' },
-            { id: 'itc-color', contentType: ContentType.Text, content: 'color', properties: { styles: { color: 'green' } } },
-            { id: 'itc-4', contentType: ContentType.Text, content: ' or ' },
-            { id: 'itc-bg', contentType: ContentType.Text, content: 'background highlights', properties: { styles: { backgroundColor: '#FEF3C7', color: '#92400E' } } },
-            { id: 'itc-5', contentType: ContentType.Text, content: ' as needed. Mention ' },
-            { id: 'itc-mention', contentType: ContentType.Mention, properties: { userId: 'user1' } },
-            { id: 'itc-6', contentType: ContentType.Text, content: ' and tag with ' },
-            { id: 'itc-label', contentType: ContentType.Label, properties: { labelId: 'progress' } },
-            { id: 'itc-7', contentType: ContentType.Text, content: ' to add context.' }
+            { contentType: ContentType.Text, content: 'Transform text to ' },
+            { contentType: ContentType.Text, content: 'uppercase', properties: { styles: { uppercase: true } } },
+            { contentType: ContentType.Text, content: ' or ' },
+            { contentType: ContentType.Text, content: 'LOWERCASE', properties: { styles: { lowercase: true } } },
+            { contentType: ContentType.Text, content: '. Add ' },
+            { contentType: ContentType.Text, content: 'color', properties: { styles: { color: 'green' } } },
+            { contentType: ContentType.Text, content: ' or ' },
+            { contentType: ContentType.Text, content: 'background highlights', properties: { styles: { backgroundColor: '#FEF3C7', color: '#92400E' } } },
+            { contentType: ContentType.Text, content: ' as needed. Mention ' },
+            { contentType: ContentType.Mention, properties: { userId: 'user1' } },
+            { contentType: ContentType.Text, content: ' and tag with ' },
+            { contentType: ContentType.Label, properties: { labelId: 'progress' } },
+            { contentType: ContentType.Text, content: ' to add context.' }
         ]
     },
 
@@ -103,15 +103,15 @@ export const allTypesOfBlock: BlockModel[] = [
         id: 'heading-headings',
         blockType: BlockType.Heading,
         properties: { level: 3 },
-        content: [{ id: 'heading-headings-content', contentType: ContentType.Text, content: 'Headings' }]
+        content: [{ contentType: ContentType.Text, content: 'Headings' }]
     },
     {
         id: 'headings-paragraph',
         blockType: BlockType.Paragraph,
         content: [
-            { id: 'hp-1', contentType: ContentType.Text, content: 'Headings help organize content into sections. Use different levels ' },
-            { id: 'hp-2', contentType: ContentType.Text, content: '(h1, h2, h3 or h4)', properties: { styles: { bold: true } } },
-            { id: 'hp-3', contentType: ContentType.Text, content: ' to create a hierarchy:' }
+            { contentType: ContentType.Text, content: 'Headings help organize content into sections. Use different levels ' },
+            { contentType: ContentType.Text, content: '(h1, h2, h3 or h4)', properties: { styles: { bold: true } } },
+            { contentType: ContentType.Text, content: ' to create a hierarchy:' }
         ]
     },
 
@@ -119,37 +119,42 @@ export const allTypesOfBlock: BlockModel[] = [
         id: 'heading-quote',
         blockType: BlockType.Heading,
         properties: { level: 3 },
-        content: [{ id: 'heading-quote-content', contentType: ContentType.Text, content: 'Quote' }]
+        content: [{ contentType: ContentType.Text, content: 'Quote' }]
     },
 
     {
         id: 'quote-explainer',
         blockType: BlockType.Paragraph,
         content: [
-            { id: 'q-ex-1', contentType: ContentType.Text, content: 'Use quote blocks to emphasize important statements or references.' }
+            { contentType: ContentType.Text, content: 'Use quote blocks to emphasize important statements or references.' }
         ]
     },
 
     {
         id: 'quote-block',
         blockType: BlockType.Quote,
-        content: [
-            { id: 'quote-text', contentType: ContentType.Text, content: '“Quotes are perfect for highlighting key messages or testimonials.”' }
-        ]
+        properties: {
+            children: [{
+                blockType: BlockType.Paragraph,
+                content: [
+                    { contentType: ContentType.Text, content: '"Quotes are perfect for highlighting key messages or testimonials."' }
+                ]
+            }]
+        }
     },
 
     {
         id: 'heading-callout',
         blockType: BlockType.Heading,
         properties: { level: 3 },
-        content: [{ id: 'heading-callout-content', contentType: ContentType.Text, content: 'Callout' }]
+        content: [{ contentType: ContentType.Text, content: 'Callout' }]
     },
 
     {
         id: 'callout-explainer',
         blockType: BlockType.Paragraph,
         content: [
-            { id: 'co-ex-1', contentType: ContentType.Text, content: 'Callouts are great for tips, warnings, or notes that need attention.' }
+            { contentType: ContentType.Text, content: 'Callouts are great for tips, warnings, or notes that need attention.' }
         ]
     },
 
@@ -162,9 +167,9 @@ export const allTypesOfBlock: BlockModel[] = [
                     id: 'callout-tip-p',
                     blockType: BlockType.Paragraph,
                     content: [
-                        { id: 'co-1', contentType: ContentType.Text, content: 'Tip: ', properties: { styles: { bold: true } } },
-                        { id: 'co-2', contentType: ContentType.Text, content: 'Use the ' },
-                        { id: 'co-4', contentType: ContentType.Text, content: 'command to quickly insert blocks like headings, lists, or code.' }
+                        { contentType: ContentType.Text, content: 'Tip: ', properties: { styles: { bold: true } } },
+                        { contentType: ContentType.Text, content: 'Use the ' },
+                        { contentType: ContentType.Text, content: 'command to quickly insert blocks like headings, lists, or code.' }
                     ]
                 }
             ]
@@ -175,14 +180,14 @@ export const allTypesOfBlock: BlockModel[] = [
         id: 'heading-checklist',
         blockType: BlockType.Heading,
         properties: { level: 3 },
-        content: [{ id: 'heading-checklist-content', contentType: ContentType.Text, content: 'Checklist' }]
+        content: [{ contentType: ContentType.Text, content: 'Checklist' }]
     },
 
     {
         id: 'checklist-desc',
         blockType: BlockType.Paragraph,
         content: [
-            { id: 'cl-d-1', contentType: ContentType.Text, content: 'Checklists help track tasks or steps:' }
+            { contentType: ContentType.Text, content: 'Checklists help track tasks or steps:' }
         ]
     },
 
@@ -190,22 +195,22 @@ export const allTypesOfBlock: BlockModel[] = [
         id: 'checklist-item-2',
         blockType: BlockType.Checklist,
         properties: { isChecked: true },
-        content: [{ id: 'cli-2', contentType: ContentType.Text, content: 'Apply inline formatting' }]
+        content: [{ contentType: ContentType.Text, content: 'Apply inline formatting' }]
     },
     {
         id: 'checklist-item-3',
         blockType: BlockType.Checklist,
         content: [
-            { id: 'cli-3-t1', contentType: ContentType.Text, content: 'Invite reviewer ' },
-            { id: 'cli-3-mention', contentType: ContentType.Mention, properties: { userId: 'user-john' } }
+            { contentType: ContentType.Text, content: 'Invite reviewer ' },
+            { contentType: ContentType.Mention, properties: { userId: 'user-john' } }
         ]
     },
     {
         id: 'checklist-item-4',
         blockType: BlockType.Checklist,
         content: [
-            { id: 'cli-4-t1', contentType: ContentType.Text, content: 'Publish guide and share ' },
-            { id: 'cli-4-link', contentType: ContentType.Link, content: 'the link', properties: { url: 'https://ej2.syncfusion.com/documentation/block-editor/getting-started' } }
+            { contentType: ContentType.Text, content: 'Publish guide and share ' },
+            { contentType: ContentType.Link, content: 'the link', properties: { url: 'https://ej2.syncfusion.com/documentation/block-editor/getting-started' } }
         ]
     },
 
@@ -213,77 +218,77 @@ export const allTypesOfBlock: BlockModel[] = [
         id: 'heading-lists',
         blockType: BlockType.Heading,
         properties: { level: 3 },
-        content: [{ id: 'heading-lists-content', contentType: ContentType.Text, content: 'Lists' }]
+        content: [{ contentType: ContentType.Text, content: 'Lists' }]
     },
 
     {
         id: 'lists-desc',
         blockType: BlockType.Paragraph,
         content: [
-            { id: 'ld-1', contentType: ContentType.Text, content: 'Lists organize information clearly:' }
+            { contentType: ContentType.Text, content: 'Lists organize information clearly:' }
         ]
     },
 
     {
         id: 'bullet-item-head',
         blockType: BlockType.BulletList,
-        content: [{ id: 'bl-head-t', contentType: ContentType.Text, content: 'Unordered List', properties: { styles: { bold: true } } }]
+        content: [{ contentType: ContentType.Text, content: 'Unordered List', properties: { styles: { bold: true } } }]
     },
     {
         id: 'bullet-item-1',
         blockType: BlockType.BulletList,
         indent: 1,
-        content: [{ id: 'bl-1-t', contentType: ContentType.Text, content: 'Concise points for quick scanning' }]
+        content: [{ contentType: ContentType.Text, content: 'Concise points for quick scanning' }]
     },
     {
         id: 'bullet-item-2',
         blockType: BlockType.BulletList,
         indent: 1,
-        content: [{ id: 'bl-2-t', contentType: ContentType.Text, content: 'Great for features or tips' }]
+        content: [{ contentType: ContentType.Text, content: 'Great for features or tips' }]
     },
     {
         id: 'bullet-item-3',
         blockType: BlockType.BulletList,
         indent: 1,
-        content: [{ id: 'bl-3-t', contentType: ContentType.Text, content: 'Easy to reorder and nest' }]
+        content: [{ contentType: ContentType.Text, content: 'Easy to reorder and nest' }]
     },
 
     {
         id: 'numbered-item-head',
         blockType: BlockType.NumberedList,
-        content: [{ id: 'nl-head-t', contentType: ContentType.Text, content: 'Ordered List', properties: { styles: { bold: true } } }]
+        content: [{ contentType: ContentType.Text, content: 'Ordered List', properties: { styles: { bold: true } } }]
     },
     {
         id: 'numbered-item-1',
         blockType: BlockType.NumberedList,
         indent: 1,
-        content: [{ id: 'nl-1-t', contentType: ContentType.Text, content: 'Start a new document' }]
+        content: [{ contentType: ContentType.Text, content: 'Start a new document' }]
     },
     {
         id: 'numbered-item-2',
         blockType: BlockType.NumberedList,
         indent: 1,
-        content: [{ id: 'nl-2-t', contentType: ContentType.Text, content: 'Add structure with headings' }]
+        content: [{ contentType: ContentType.Text, content: 'Add structure with headings' }]
     },
     {
         id: 'numbered-item-3',
         blockType: BlockType.NumberedList,
         indent: 1,
-        content: [{ id: 'nl-3-t', contentType: ContentType.Text, content: 'Fill in content and review' }]
+        content: [{ contentType: ContentType.Text, content: 'Fill in content and review' }]
     },
 
     {
         id: 'heading-code-block',
         blockType: BlockType.Heading,
         properties: { level: 3 },
-        content: [{ id: 'heading-code-block-content', contentType: ContentType.Text, content: 'Code Block' }]
+        content: [{ contentType: ContentType.Text, content: 'Code Block' }]
     },
 
     {
         id: 'code-desc',
         blockType: BlockType.Paragraph,
         content: [
-            { id: 'cd-1', contentType: ContentType.Text, content: 'Use code blocks to display syntax-highlighted code snippets for technical documentation or tutorials.' }
+            { contentType: ContentType.Text, content: 'Use code blocks to display syntax-highlighted code snippets for technical documentation or tutorials.' }
         ]
     },
 
@@ -292,7 +297,6 @@ export const allTypesOfBlock: BlockModel[] = [
         blockType: BlockType.Code,
         content: [
             {
-                id: 'code-snippet-code',
                 contentType: ContentType.Text,
                 content: "function greet(name) {\n  return `Hello, ${name}!`;\n}"
             }
@@ -303,14 +307,14 @@ export const allTypesOfBlock: BlockModel[] = [
         id: 'heading-image',
         blockType: BlockType.Heading,
         properties: { level: 3 },
-        content: [{ id: 'heading-image-content', contentType: ContentType.Text, content: 'Image Block' }]
+        content: [{ contentType: ContentType.Text, content: 'Image Block' }]
     },
 
     {
         id: 'image-desc',
         blockType: BlockType.Paragraph,
         content: [
-            { id: 'img-d-1', contentType: ContentType.Text, content: 'Image blocks allow you to insert visuals to support or enhance your content.' }
+            { contentType: ContentType.Text, content: 'Image blocks allow you to insert visuals to support or enhance your content.' }
         ]
     },
 
@@ -327,20 +331,20 @@ export const allTypesOfBlock: BlockModel[] = [
         id: 'heading-toggle',
         blockType: BlockType.Heading,
         properties: { level: 3 },
-        content: [{ id: 'heading-toggle-content', contentType: ContentType.Text, content: 'Toggle Block' }]
+        content: [{ contentType: ContentType.Text, content: 'Toggle Block' }]
     },
 
     {
         id: 'toggle-desc',
         blockType: BlockType.Paragraph,
-        content: [{ id: 'tc-2', contentType: ContentType.Text, content: 'Toggle blocks are interactive and help manage long or optional content.' }]
+        content: [{ contentType: ContentType.Text, content: 'Toggle blocks are interactive and help manage long or optional content.' }]
     },
 
     {
         id: 'toggle-block',
         blockType: BlockType.CollapsibleParagraph,
         content: [
-            { id: 'toggle-title', contentType: ContentType.Text, content: 'Click to expand', properties: { styles: { bold: true } } }
+            { contentType: ContentType.Text, content: 'Click to expand', properties: { styles: { bold: true } } }
         ],
         properties: {
             isExpanded: false,
@@ -348,7 +352,7 @@ export const allTypesOfBlock: BlockModel[] = [
                 {
                     id: 'toggle-child-1',
                     blockType: BlockType.Paragraph,
-                    content: [{ id: 'tc-1', contentType: ContentType.Text, content: 'This is a toggle block. You can hide or show content as needed. Useful for FAQs or detailed sections.' }]
+                    content: [{ contentType: ContentType.Text, content: 'This is a toggle block. You can hide or show content as needed. Useful for FAQs or detailed sections.' }]
                 }
             ]
         }
@@ -358,7 +362,7 @@ export const allTypesOfBlock: BlockModel[] = [
         id: 'heading-divider',
         blockType: BlockType.Heading,
         properties: { level: 3 },
-        content: [{ id: 'heading-divider-content', contentType: ContentType.Text, content: 'Divider' }]
+        content: [{ contentType: ContentType.Text, content: 'Divider' }]
     },
 
 
@@ -366,7 +370,7 @@ export const allTypesOfBlock: BlockModel[] = [
         id: 'divider-desc',
         blockType: BlockType.Paragraph,
         content: [
-            { id: 'dd-1', contentType: ContentType.Text, content: 'Dividers are horizontal lines used to separate sections or indicate a break in content.' }
+            { contentType: ContentType.Text, content: 'Dividers are horizontal lines used to separate sections or indicate a break in content.' }
         ]
     },
 

@@ -4,6 +4,7 @@ export enum _TextProcessingMode {
     redaction,
     textLineExtraction,
     imageExtraction,
+    imageRedaction
 }
 /**
  * Public enum for PDF image format.

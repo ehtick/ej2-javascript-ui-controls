@@ -8,6 +8,7 @@ import { PdfSubSuperScript, PdfTextDirection } from './../../core/enumerator';
 import { _TrueTypeReader, _TrueTypeGlyph, _TrueTypeMetrics } from './ttf-reader';
 import { _RtlRenderer } from './../graphics/rightToLeft/text-renderer';
 import { Size } from './../pdf-type';
+import { PdfDocument } from '../pdf-document';
 /**
  * Represents the base class for font objects.`
  * ```typescript
@@ -39,6 +40,7 @@ export abstract class PdfFont {
     _descent: number;
     _lineGap: number = 0;
     _height: number;
+    _document: PdfDocument;
     /**
      * Gets the size of the PDF font.
      *
@@ -704,6 +706,39 @@ export class PdfStandardFont extends PdfFont {
         width = this._applyFormatSettings(line, format, width);
         return width;
     }
+    /**
+     * Gets a variant of the current font with the specified size and style.
+     *
+     * @param {number} size The Font size.
+     * @param {PdfFontStyle} style The Font style.
+     * @returns {PdfStandardFont} The Font object.
+     *
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data, password);
+     * // Gets the first page
+     * let page: PdfPage = document.getPage(0) as PdfPage;
+     * // Create a new PDF standard font
+     * let font: PdfStandardFont = document.embedFont(PdfFontFamily.helvetica, 10, PdfFontStyle.regular);
+     * // Gets a font variant from the base font with the given size and style
+     * const titleFont: PdfStandardFont = font.getFont(14, PdfFontStyle.bold);
+     * // Create a new PDF string format
+     * let format: PdfStringFormat = new PdfStringFormat(PdfTextAlignment.right, PdfVerticalAlignment.bottom);
+     * // Draw the text
+     * page.graphics.drawString('Helvetica', titleFont, {x: 0, y: 180, width: page.size.width, height: 40}, new PdfBrush({r: 0, g: 0, b: 255}), format);
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    getFont(size: number, style: PdfFontStyle): PdfStandardFont {
+        if (this._document) {
+            return this._document.embedFont(this._fontFamily, size, style);
+        } else {
+            return new PdfStandardFont(this._fontFamily, size, style);
+        }
+    }
     _checkStyle(): void {
         if (this._fontFamily === PdfFontFamily.symbol || this._fontFamily === PdfFontFamily.zapfDingbats) {
             this._style &= ~(PdfFontStyle.bold |  PdfFontStyle.italic);
@@ -971,6 +1006,39 @@ export class PdfCjkStandardFont extends PdfFont {
         width *= (0.001 * this._size);
         width = this._applyFormatSettings(line, format, width);
         return width;
+    }
+    /**
+     * Gets a variant of the current font with the specified size and style.
+     *
+     * @param {number} size The Font size.
+     * @param {PdfFontStyle} style The Font style.
+     * @returns {PdfCjkStandardFont} The Font object.
+     *
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data, password);
+     * // Gets the first page
+     * let page: PdfPage = document.getPage(0) as PdfPage;
+     * // Create a new PDF CJK standard font
+     * let font: PdfCjkStandardFont = document.embedFont(PdfCjkFontFamily.heiseiMinchoW3, 20, PdfFontStyle.bold, true);
+     * // Gets a font variant from the base font with the given size and style
+     * const titleFont: PdfCjkStandardFont = font.getFont(14, PdfFontStyle.bold);
+     * // Create a new PDF string format
+     * let format: PdfStringFormat = new PdfStringFormat(PdfTextAlignment.right, PdfVerticalAlignment.bottom);
+     * // Draw the text
+     * page.graphics.drawString('Helvetica', titleFont, {x: 0, y: 180, width: page.size.width, height: 40}, new PdfBrush({r: 0, g: 0, b: 255}), format);
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    getFont(size: number, style: PdfFontStyle): PdfCjkStandardFont {
+        if (this._document) {
+            return this._document.embedFont(this._fontFamily, size, style, true);
+        } else {
+            return new PdfCjkStandardFont(this._fontFamily, size, style);
+        }
     }
     _initializeInternals(primitive?: _PdfFontPrimitive): void {
         if (primitive) {
@@ -1299,6 +1367,49 @@ export class PdfTrueTypeFont extends PdfFont {
         width *= (0.001 * this._size);
         width = this._applyFormatSettings(line, format, width);
         return width;
+    }
+    /**
+     * Gets a variant of the current font with the specified size and style.
+     *
+     * @param {number} size The Font size.
+     * @param {PdfFontStyle} style The Font style.
+     * @returns {PdfTrueTypeFont} The Font object.
+     *
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data, password);
+     * // Gets the first page
+     * let page: PdfPage = document.getPage(0) as PdfPage;
+     * // Create a new PDF truetype font
+     * let font: PdfTrueTypeFont = document.embedFont(fontData, 14, { shouldUnderline: true });
+     * // Gets a font variant from the base font with the given size and style
+     * const titleFont: PdfTrueTypeFont = font.getFont(14, PdfFontStyle.bold);
+     * // Create a new PDF string format
+     * let format: PdfStringFormat = new PdfStringFormat(PdfTextAlignment.right, PdfVerticalAlignment.bottom);
+     * // Draw the text
+     * page.graphics.drawString('Helvetica', titleFont, {x: 0, y: 180, width: page.size.width, height: 40}, new PdfBrush({r: 0, g: 0, b: 255}), format);
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    getFont(size: number, style?: PdfFontStyle): PdfTrueTypeFont {
+        if (this._document) {
+            let strikeout: boolean = false;
+            let underline: boolean = false;
+            if (style) {
+                if (style & PdfFontStyle.underline) {
+                    strikeout = true;
+                }
+                if (style & PdfFontStyle.strikeout) {
+                    underline = true;
+                }
+            }
+            return this._document.embedFont(this._fontInternal._fontData, size, {shouldStrikeout: strikeout, shouldUnderline: underline});
+        } else {
+            return new PdfTrueTypeFont(this._fontInternal._fontData, size, style);
+        }
     }
     _createFontInternal(data: string | Uint8Array, style: PdfFontStyle, primitive?: _PdfFontPrimitive): void {
         this.style = style;

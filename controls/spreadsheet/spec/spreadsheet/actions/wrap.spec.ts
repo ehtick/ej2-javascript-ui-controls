@@ -675,8 +675,7 @@ describe('Wrap ->', () => {
                                     { value: '', isLocked: false, style: { textAlign: 'left', backgroundColor: '#FFFFC8' } },
                                     { value: '' }
                                 ]
-                            }
-                            ,
+                            },
                             {
                                 cells: [
                                     { value: 'Inventory Value (included Raw Materials and Work in Process at replacement cost and Finished Goods at selling price)', isLocked: true, wrap: true, style: { textAlign: 'left' } },
@@ -687,8 +686,7 @@ describe('Wrap ->', () => {
                                     { value: '', isLocked: false, style: { textAlign: 'left', backgroundColor: '#FFFFC8' } },
                                     { value: 'If 3PL, enter value of Danaher Opco\'s inventory at site. Do not include inventory that belongs to others (non-Danaher/Opco companies)', isLocked: true, wrap: true, style: { textAlign: 'left', color: '#FF0000' } }
                                 ]
-                            }
-                            ,
+                            },
                             {
                                 cells: [
                                     { value: 'Inventory Value (included Raw Materials and Work in Process at replacement cost and Finished Goods at selling price)', isLocked: true, wrap: true, style: { textAlign: 'left' } },
@@ -699,8 +697,7 @@ describe('Wrap ->', () => {
                                     { value: '', isLocked: false, style: { textAlign: 'left', backgroundColor: '#FFFFC8' } },
                                     { value: '' }
                                 ]
-                            }
-                            ,
+                            },
                             {
                                 cells: [
                                     { value: 'If 3PL, enter value of Danaher Opco\'s inventory at site. Do not include inventory that belongs to others (non-Danaher/Opco companies)', isLocked: true, wrap: true, style: { textAlign: 'left', color: '#FF0000' } },

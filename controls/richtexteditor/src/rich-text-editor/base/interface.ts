@@ -34,7 +34,6 @@ import { Popup } from '@syncfusion/ej2-popups';
 import { Resize } from '../actions/resize';
 import { ClipBoardCleanup } from '../actions/clipboard-cleanup';
 import { FileManager } from '../actions/file-manager';
-import { EnterKeyAction } from '../actions/enter-key';
 import { EmojiPicker } from '../actions/emoji-picker';
 import { SlashMenuSettingsModel } from '../../models';
 import { CustomUserAgentData } from '../../common/user-agent';
@@ -205,7 +204,6 @@ export interface IRichTextEditor extends Component<HTMLElement> {
     fullScreenModule?: FullScreen
     resizeModule?: Resize
     refreshUI?(): void
-    enterKeyModule?: EnterKeyAction
     enterKey?: EnterKey
     shiftEnterKey?: ShiftEnterKey
     audioModule?: Audio
@@ -285,6 +283,7 @@ export interface IRichTextEditor extends Component<HTMLElement> {
     isEntireRTEContentSelected(): boolean
     imageModule: Image;
     isRTEFocused: boolean;
+    isSelectAll: boolean
     getHtml(): string;
 }
 
@@ -1226,6 +1225,7 @@ export interface PopupRootBound {
     popupRoot: HTMLElement
     self: PopupUploader | PasteCleanup
 }
+
 
 /**
  * Represents the Menu Rendering args of the Toolbar renderer.

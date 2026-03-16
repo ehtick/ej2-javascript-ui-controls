@@ -1,4 +1,4 @@
-import { _ContentParser, _PdfContentStream, _PdfCrossReference, _PdfRecord, _PdfReference, PdfColor, PdfDocument, PdfFontStyle, PdfPage, PdfPath, PdfRotationAngle, Rectangle } from '@syncfusion/ej2-pdf';
+import { _ContentParser, _PdfContentStream, _PdfCrossReference, _PdfRecord, _PdfReference, PdfBitmap, PdfColor, PdfDocument, PdfFontStyle, PdfPage, PdfPath, PdfRotationAngle, Rectangle } from '@syncfusion/ej2-pdf';
 import { TextGlyph, TextLine, TextWord } from './text-structure';
 import { _TextProcessingMode } from './enum';
 import { PdfRedactor } from './redaction/pdf-redactor';
@@ -10,6 +10,7 @@ import { _PdfShapeParser } from './redaction/shape-parser-helper';
 import { _ImageStructure } from './image-extraction/image-structure';
 import { PdfEmbeddedImage } from './image-extraction/pdf-embedded-image';
 import { _PdfImage } from './image-extraction/image';
+import { PdfRedactionRegion } from './redaction';
 
 export class _PdfContentParserHelper {
     _document: PdfDocument;
@@ -181,15 +182,15 @@ export class _PdfContentParserHelper {
             return { updatedText, isChangeOperator };
         }
     }
-    _intersect(redaction: Rectangle, imageBounds: Rectangle): Rectangle {
+    _intersect(redaction: Rectangle, imageBounds: Rectangle): boolean {
         const x1: number = Math.max(redaction.x, imageBounds.x);
-        const x2: number = Math.min(redaction.x + redaction.width, imageBounds.x, imageBounds.width);
+        const x2: number = Math.min(redaction.x + redaction.width, imageBounds.x + imageBounds.width);
         const y1: number = Math.max(redaction.y, imageBounds.y);
         const y2: number = Math.min(redaction.y + redaction.height, imageBounds.y + imageBounds.height);
         if (x2 >= x1 && y2 >= y1) {
-            return {x: x1, y: y1, width: x2 - x1, height: y2 - y1};
+            return true;
         }
-        return {x: 0, y: 0, width: 0, height: 0};
+        return false;
     }
     _multiply(matrix1: number[], matrix2: number[]): number[] {
         const matrix: number[] = [];
@@ -243,7 +244,7 @@ export class _PdfContentParserHelper {
         return;
     }
     async _processImageRecordCollection(recordCollection: _PdfRecord[],  page: PdfPage, fontCollection: Map<string, _FontStructure>,
-                             xObjectCollection: Map<string, any>, graphicState: _GraphicState, callBack: any): Promise<any> { // eslint-disable-line 
+                             xObjectCollection: Map<string, any>, graphicState: _GraphicState, callBack: any, mode?: _TextProcessingMode, options?: PdfRedactionRegion[], isValidCanvas?: boolean): Promise<any> { // eslint-disable-line     
         let textState: _TextState;
         const red: number = 0;
         const green: number = 0;
@@ -267,24 +268,29 @@ export class _PdfContentParserHelper {
                 if (xObjectCollection.has(xobject)) {
                     let base: any = xObjectCollection.get(xobject); //eslint-disable-line
                     if (base) {
-                        if (this._mode === _TextProcessingMode.redaction) {
-                            let pdfStream: any = _getXObject(element, page, xObjectCollection, this, this._mode, graphicState); // eslint-disable-line
-                            delete base.dictionary._map.Length;
-                            delete base.dictionary._map.Filter;
-                            base.dictionary.update('Length', pdfStream.length);
-                            pdfStream.dictionary = base.dictionary;
-                            pdfStream.dictionary._updated = true;
-                            let objectId: any = base.dictionary.objId; // eslint-disable-line
-                            const strParts: string[] = objectId.split(' ');
-                            const reference: _PdfReference = _PdfReference.get(Number(strParts[0]), Number(strParts[1]));
-                            this._document._crossReference._cacheMap.set(reference, pdfStream);
-                        } else if (this._mode === _TextProcessingMode.imageExtraction) {
+                        let pdfStream: any; //eslint-disable-line
+                        if (!(base instanceof _ImageStructure)) {
+                            pdfStream = _getXObject(element, page, xObjectCollection, this, this._mode, graphicState);
+                            if (typeof(pdfStream) !== 'undefined') {
+                                delete base.dictionary._map.Length;
+                                delete base.dictionary._map.Filter;
+                                base.dictionary.update('Length', pdfStream.length);
+                                pdfStream.dictionary = base.dictionary;
+                                pdfStream.dictionary._updated = true;
+                                let objectId: any = base.dictionary.objId; // eslint-disable-line
+                                const strParts: string[] = objectId.split(' ');
+                                const reference: _PdfReference = _PdfReference.get(Number(strParts[0]), Number(strParts[1]));
+                                this._document._crossReference._cacheMap.set(reference, pdfStream);
+                            }
+                        } else if ( this._mode === _TextProcessingMode.imageExtraction || isValidCanvas) {
                             const imageInfo: PdfEmbeddedImage = new PdfEmbeddedImage();
+                            const value: any = (n: number) => Number(Math.fround(n).toFixed(8)); // eslint-disable-line
                             const ctm: number[] = graphicState._state._ctm;
                             const scaleMatrix: number[] = [1, 0, 0, -1.01, 0, 1];
+                            const scale: number = value(1.33333333333333);
                             let transformMatrix: number[] = this._multiply(scaleMatrix, graphicState._state._ctm);
-                            const documentMatrix: number[] = [1.33333333333333, 0, 0, -1.33333333333333, 0,
-                                page.size.height * 1.3333333333333];
+                            const documentMatrix: number[] = [scale, 0, 0, -scale, 0,
+                                Number(value(page.size.height * scale).toFixed(4))];
                             transformMatrix = this._multiply(transformMatrix, documentMatrix);
                             if (page.rotation === PdfRotationAngle.angle90) {
                                 if (transformMatrix[0] !== 0 && transformMatrix[3] !== 0) {
@@ -330,36 +336,97 @@ export class _PdfContentParserHelper {
                                                1.3333333333333333)), ctm[0], ctm[3]];
                                 }
                             }
-                            let bytes: Uint8Array;
-                            if (base._isImageMask) {
-                                const pdfImage: _PdfImage = new _PdfImage();
-                                const image: _PdfImage = await pdfImage._initializeFromImage(base._crossReference, base._stream, false,
-                                                                                             base._smask, base._mask, false);
-                                image._imageFormat = base._imageFormat;
-                                image._canvasRenderCallback = callBack;
-                                bytes = await image._createMask(base._stream, true);
-                                imageInfo._data = bytes;
-                            } else {
-                                const image: _PdfImage = new _PdfImage();
-                                const pdfImage: any = await image._buildImage(base._crossReference, base._stream, false, callBack); // eslint-disable-line
-                                pdfImage._imageFormat = base._imageFormat;
-                                pdfImage._canvasRenderCallback = callBack;
-                                bytes = await pdfImage._createImageData(false, true);
-                                imageInfo._data = bytes;
+                            let isTextOnly: boolean = false;
+                            if (options && options.length > 0) {
+                                const pt: number = 1.3333;
+                                const imgRect: any = {x: bounds[0] * pt, y: bounds[1] * pt, width: bounds[2] * pt, // eslint-disable-line
+                                    height: bounds[3] * pt};
+                                const matchingRegions: PdfRedactionRegion[] = options.filter(opt =>  // eslint-disable-line
+                                    this._intersect({x: opt.bounds.x * pt, y: opt.bounds.y * pt, width: opt.bounds.width * pt,
+                                        height: opt.bounds.height * pt}, imgRect));
+                                for (const region of matchingRegions) {
+                                    if (region.isTextOnly) {
+                                        isTextOnly = true;
+                                        continue;
+                                    }
+                                }
                             }
-                            imageInfo._resourceName = xobject;
-                            imageInfo._physicalDimension = {width: base._width, height: base._height};
-                            imageInfo._type = base._imageFormat;
-                            imageInfo._isImageInterpolated = base._isImageInterpolated;
-                            imageInfo._isSoftMasked = base._isSoftMasked;
-                            imageInfo._isImageInterpolated = base._isImageInterpolated;
-                            imageInfo._pageIndex =  base._PageIndex;
-                            imageInfo._bounds = {x: bounds[0], y: bounds[1], width: bounds[2], height: bounds[3]};
-                            this._imageInfo.push(imageInfo);
+                            if (this._mode === _TextProcessingMode.imageExtraction || !isTextOnly) {
+                                let bytes: Uint8Array;
+                                let isIntersect: boolean;
+                                if (base._isImageMask) {
+                                    const pdfImage: _PdfImage = new _PdfImage();
+                                    const image: _PdfImage = await pdfImage._initializeFromImage(base._crossReference, base._stream, false,
+                                                                                                 base._smask, base._mask, false);
+                                    image._imageFormat = base._imageFormat;
+                                    image._canvasRenderCallback = callBack;
+                                    if (mode === _TextProcessingMode.imageRedaction) {
+                                        image._bounds = bounds;
+                                        image._options = options;
+                                        image._page = page;
+                                    }
+                                    bytes = await image._createMask(base._stream, true);
+                                    isIntersect = image._isIntersect;
+                                    imageInfo._data = bytes;
+                                } else {
+                                    const image: _PdfImage = new _PdfImage();
+                                    const pdfImage: any = await image._buildImage(base._crossReference, base._stream, false, callBack); // eslint-disable-line
+                                    pdfImage._imageFormat = base._imageFormat;
+                                    pdfImage._canvasRenderCallback = callBack;
+                                    if (mode === _TextProcessingMode.imageRedaction) {
+                                        pdfImage._bounds = bounds;
+                                        pdfImage._options = options;
+                                        pdfImage._page = page;
+                                    }
+                                    bytes = await pdfImage._createImageData(false, true);
+                                    isIntersect = pdfImage._isIntersect;
+                                    imageInfo._data = bytes;
+                                }
+                                if (isIntersect) {
+                                    const image: PdfBitmap = new PdfBitmap(bytes);
+                                    image._key = xobject;
+                                    image._reference = base._imageReference;
+                                    if (base._isImageMasked) {
+                                        image._maskReference = base._maskReference;
+                                    }
+                                    if (base._smaskReference) {
+                                        image._maskReference = base._smaskReference;
+                                    }
+                                    image._save();
+                                    if (image && image._imageStream && image._imageStream.dictionary) {
+                                        this._document._crossReference._cacheMap.delete(image._reference);
+                                        this._document._crossReference._cacheMap.set(image._reference, image._imageStream);
+                                        image._imageStream.dictionary._updated = true;
+                                        if (image._maskStream && image._maskStream.dictionary) {
+                                            this._document._crossReference._cacheMap.delete(image._maskReference);
+                                            this._document._crossReference._cacheMap.set(image._maskReference, image._maskStream);
+                                            image._maskStream.dictionary._updated = true;
+                                            image._imageStream.dictionary.set('SMask', image._maskReference);
+                                        }
+                                    }
+                                } else {
+                                    imageInfo._resourceName = xobject;
+                                    imageInfo._physicalDimension = {width: base._width, height: base._height};
+                                    imageInfo._type = base._imageFormat;
+                                    imageInfo._isImageInterpolated = base._isImageInterpolated;
+                                    imageInfo._isSoftMasked = base._isSoftMasked;
+                                    imageInfo._isImageInterpolated = base._isImageInterpolated;
+                                    imageInfo._pageIndex =  base._pageIndex;
+                                    imageInfo._bounds = {x: bounds[0], y: bounds[1], width: bounds[2], height: bounds[3]};
+                                    this._imageInfo.push(imageInfo);
+                                }
+                            }
                         }
+                    }
+                    if (this._mode === _TextProcessingMode.redaction) {
+                        this._redaction._optimizeContent(recordCollection, i, updatedText, stream);
                     }
                 }
             }
+        }
+        if (stream._bytes.length > 0 && this._mode === _TextProcessingMode.redaction) {
+            stream.write('\r\n');
+            return stream;
         }
         if (this._mode === _TextProcessingMode.imageExtraction) {
             return this._imageInfo;

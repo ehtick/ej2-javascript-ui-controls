@@ -1,6 +1,7 @@
 import { PdfPage } from './../src/pdf/core/pdf-page';
 import { PdfDocument } from './../src/pdf/core/pdf-document';
 import { crossReferenceStream, crossReferenceTable, pdfSuccinctly, annotations, lineAnnotation } from './inputs.spec';
+import { _PdfDictionary } from '../src/pdf/core/pdf-primitives';
 describe('Cross table parsing', () => {
     it('Cross Reference Stream', () => {
         let document: PdfDocument = new PdfDocument(crossReferenceStream);

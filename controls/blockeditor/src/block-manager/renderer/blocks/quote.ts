@@ -1,6 +1,7 @@
-import { createElement } from '@syncfusion/ej2-base';
+import { createElement, addClass } from '@syncfusion/ej2-base';
 import { BlockModel, IQuoteBlockSettings } from '../../../models/index';
 import { BlockManager } from '../../base/block-manager';
+import * as constants from '../../../common/constant';
 
 export class QuoteRenderer {
     private parent: BlockManager;
@@ -10,22 +11,37 @@ export class QuoteRenderer {
     }
 
     /**
-     * Renders a quote block
+     * Renders a quote block with container structure for children
      *
      * @param {BlockModel} block - The block model containing data.
-     * @returns {HTMLElement} - The created or updated element.
+     * @param {HTMLElement} blockElement - The block container element.
+     * @returns {HTMLElement} - The rendered quote block element.
      */
-    public renderQuote(block: BlockModel): HTMLElement {
+    public renderQuote(block: BlockModel, blockElement: HTMLElement): HTMLElement {
         const quoteProps: IQuoteBlockSettings = block.properties as IQuoteBlockSettings;
-        quoteProps.placeholder = this.parent.getPlaceholderValue(block);
-        const quoteElement: HTMLElement = createElement('blockquote', {
-            attrs: {
-                contenteditable: 'true',
-                placeholder: quoteProps.placeholder
-            }
-        });
-        this.parent.blockRenderer.contentRenderer.renderContent(block, quoteElement);
 
-        return quoteElement;
+        // Mark outer block
+        addClass([blockElement], constants.QUOTE_BLOCK_CLS);
+
+        // Wrapper (can be contenteditable=false if you want to restrict editing to children only)
+        const wrapper: HTMLElement = createElement('div', {
+            className: 'e-quote-wrapper',
+            attrs: { contenteditable: 'true' }  // or 'false' depending on UX preference
+        });
+
+        // The visible quote area
+        const content: HTMLElement = createElement('blockquote', {
+            className: constants.QUOTE_CONTENT_CLS,
+            attrs: { contenteditable: 'true' }
+        });
+
+        // Render child blocks (this is the key difference)
+        quoteProps.children.forEach((childBlock: BlockModel) => {
+            const childEl: HTMLElement = this.parent.blockRenderer.createBlockElement(childBlock);
+            content.appendChild(childEl);
+        });
+
+        wrapper.appendChild(content);
+        return wrapper;
     }
 }

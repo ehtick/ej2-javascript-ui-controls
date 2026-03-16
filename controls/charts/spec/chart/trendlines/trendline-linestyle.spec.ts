@@ -121,6 +121,106 @@ describe('Chart', () => {
             };
             chartObj.refresh();
         });
+
+        it('Trendline Legend Shape as Circle', (done: Function) => { 
+            loaded = (args: Object): void => {
+                chartObj.loaded = null;
+                legendElement = document.getElementById('container_chart_legend_shape_1');
+                expect(legendElement.tagName).toEqual('ellipse');
+                expect(legendElement.getAttribute('rx')).toEqual('5');
+                expect(legendElement.getAttribute('ry')).toEqual('5');
+                done();
+            };
+            chartObj.series[0].trendlines[0].legendShape = 'Circle';
+            chartObj.legendSettings = { height: null, width: null };
+            chartObj.loaded = loaded;
+            chartObj.refresh();
+        });
+
+        it('Trendline Legend Shape as Rectangle', (done: Function) => {
+            loaded = (args: Object): void => {
+                chartObj.loaded = null;
+                legendElement = document.getElementById('container_chart_legend_shape_1');
+                expect(legendElement.tagName).toEqual('path');
+                expect(legendElement.getAttribute('d')).not.toEqual(null);
+                done();
+            };
+            chartObj.series[0].trendlines[0].legendShape = 'Rectangle';
+            chartObj.legendSettings = { height: null, width: null };
+            chartObj.loaded = loaded;
+            chartObj.refresh();
+        });
+
+        it('Trendline Legend Shape as Cross', (done: Function) => {
+            loaded = (args: Object): void => {
+                chartObj.loaded = null;
+                legendElement = document.getElementById('container_chart_legend_shape_1');
+                expect(legendElement.tagName).toEqual('path');
+                expect(legendElement.getAttribute('d')).not.toEqual(null);
+                done();
+            };
+            chartObj.series[0].trendlines[0].legendShape = 'Cross';
+            chartObj.legendSettings = { height: null, width: null };
+            chartObj.loaded = loaded;
+            chartObj.refresh();
+        });
+
+        it('Trendline Legend Shape as Diamond', (done: Function) => {
+            loaded = (args: Object): void => {
+                chartObj.loaded = null;
+                legendElement = document.getElementById('container_chart_legend_shape_1');
+                expect(legendElement.tagName).toEqual('path');
+                expect(legendElement.getAttribute('d')).not.toEqual(null);
+                done();
+            };
+            chartObj.series[0].trendlines[0].legendShape = 'Diamond';
+            chartObj.legendSettings = { height: null, width: null };
+            chartObj.loaded = loaded;
+            chartObj.refresh();
+        });
+
+        it('Trendline Legend Shape as HorizontalLine', (done: Function) => {
+            loaded = (args: Object): void => {
+                chartObj.loaded = null;
+                legendElement = document.getElementById('container_chart_legend_shape_1');
+                expect(legendElement.tagName).toEqual('path');
+                expect(legendElement.getAttribute('d')).not.toEqual(null);
+                done();
+            };
+            chartObj.series[0].trendlines[0].legendShape = 'HorizontalLine';
+            chartObj.legendSettings = { height: null, width: null };
+            chartObj.loaded = loaded;
+            chartObj.refresh();
+        });
+
+        it('Trendline Legend Shape as VerticalLine', (done: Function) => {
+            loaded = (args: Object): void => {
+                chartObj.loaded = null;
+                legendElement = document.getElementById('container_chart_legend_shape_1');
+                expect(legendElement.tagName).toEqual('path');
+                expect(legendElement.getAttribute('d')).not.toEqual(null);
+                done();
+            };
+            chartObj.series[0].trendlines[0].legendShape = 'VerticalLine';
+            chartObj.legendSettings = { height: null, width: null };
+            chartObj.loaded = loaded;
+            chartObj.refresh();
+        });
+
+        it('Trendline Legend Shape as Triangle', (done: Function) => {
+            loaded = (args: Object): void => {
+                chartObj.loaded = null;
+                legendElement = document.getElementById('container_chart_legend_shape_1');
+                expect(legendElement.tagName).toEqual('path');
+                expect(legendElement.getAttribute('d')).not.toEqual(null);
+                done();
+            };
+            chartObj.series[0].trendlines[0].legendShape = 'Triangle';
+            chartObj.legendSettings = { height: null, width: null };
+            chartObj.loaded = loaded;
+            chartObj.refresh();
+        });
+
     });
     it('memory leak', () => {
         profile.sample();

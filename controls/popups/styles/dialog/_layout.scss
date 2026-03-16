@@ -105,6 +105,18 @@
       &.e-hide {
         display: none;
       }
+
+      & .e-footer-btn {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    &.e-dlg-tooltip .e-footer-content {
+      display: flex;
+      justify-content: flex-end;
+      flex-wrap: nowrap;
     }
 
     .e-footer-content {

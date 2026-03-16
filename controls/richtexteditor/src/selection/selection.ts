@@ -269,12 +269,36 @@ export class NodeSelection {
         nodeCollection = nodeCollection.reverse();
         for (let index: number = 0; index < nodeCollection.length; index++) {
             if (nodeCollection[index as number].nodeName !== 'BR' &&
-            (nodeCollection[index as number].nodeType !== 3 || (nodeCollection[index as number].textContent.trim() === '' && !nodeCollection[index as number].textContent.includes('\u00A0')))) {
+            (nodeCollection[index as number].nodeType !== 3 || ((nodeCollection[index as number].textContent.trim() === ''  && !this.isSurroundedByInline(nodeCollection[index as number])) && !nodeCollection[index as number].textContent.includes('\u00A0')))) {
                 nodeCollection.splice(index, 1);
                 index--;
             }
         }
         return nodeCollection.reverse();
+    }
+    private isBlocElement(element: Element): boolean {
+        return (!!element && (element.nodeType === Node.ELEMENT_NODE && CONSTANT.BLOCK_TAGS.indexOf(element.tagName.toLowerCase()) >= 0));
+    }
+    private isSurroundedByInline(node: Node): boolean {
+        let previousSibling: HTMLElement = node.previousSibling as HTMLElement;
+        let nextSibling: HTMLElement = node.nextSibling as HTMLElement;
+        while (!this.isBlocElement(node as Element) && !previousSibling && !nextSibling) {
+            node = node.parentNode as HTMLElement;
+            previousSibling = node.previousSibling as HTMLElement;
+            nextSibling = node.nextSibling as HTMLElement;
+        }
+        let previousInline: boolean = false;
+        let nextInline: boolean = false;
+        if (previousSibling && !this.isBlocElement(previousSibling as Element)) {
+            previousInline = true;
+        }
+        if (nextSibling && !this.isBlocElement(nextSibling as Element)) {
+            nextInline = true;
+        }
+        if (previousInline && nextInline) {
+            return true;
+        }
+        return false;
     }
 
     /**

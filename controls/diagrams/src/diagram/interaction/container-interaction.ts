@@ -42,11 +42,12 @@ import { Layer } from '../diagram/layer';
  * @param {NodeModel | ConnectorModel} obj - provide the isVertical value.
  * @param {PointModel} position - provide the position value.
  * @param {boolean} isBoundsUpdate - provide the isBoundsUpdate value.
+ * @param {boolean} groupAction - provide the groupAction value.
  * @private
  */
 export function updateCanvasBounds(
-    diagram: Diagram, obj: NodeModel | ConnectorModel, position: PointModel, isBoundsUpdate: boolean): boolean {
-    let container: NodeModel; const connectorList: string[] = []; let groupAction: boolean = false;
+    diagram: Diagram, obj: NodeModel | ConnectorModel, position: PointModel, isBoundsUpdate: boolean, groupAction: boolean): boolean {
+    let container: NodeModel; const connectorList: string[] = [];
     if (checkParentAsContainer(diagram, obj, true)) {
         diagram.protectPropertyChange(true);
         container = diagram.nameTable[(obj as Node).parentId];
@@ -65,7 +66,7 @@ export function updateCanvasBounds(
                 const parent: NodeModel = diagram.nameTable[(container as Node).parentId] || container;
                 const shape: SwimLaneModel = parent.shape as SwimLaneModel;
                 if (shape.type === 'SwimLane') {
-                    groupAction = updateLaneBoundsAfterAddChild(container, parent, obj as NodeModel, diagram, true);
+                    groupAction = updateLaneBoundsAfterAddChild(container, parent, obj as NodeModel, diagram, true, undefined, groupAction);
                 } else {
                     const parent: NodeModel = diagram.nameTable[(container as Node).parentId] || container;
                     const shape: SwimLaneModel = parent.shape as SwimLaneModel;
@@ -445,6 +446,13 @@ export function addChildToContainer(diagram: Diagram, parent: NodeModel, node: N
             }
             diagram.updateDiagramObject(node);
             moveSwinLaneChild(node, diagram);
+            if (!(diagram.diagramActions & DiagramAction.UndoRedo)) {
+                const entry: HistoryEntry = {
+                    type: 'ChildCollectionChanged', category: 'Internal',
+                    undoObject: undoObj, redoObject: cloneObject(node), historyAction: historyAction ? 'AddNodeToLane' : undefined
+                };
+                diagram.addHistoryEntry(entry);
+            }
             if (!(container as Node).parentId) {
                 diagram.updateDiagramObject(container);
             } else if (!isUndo) {
@@ -454,13 +462,6 @@ export function addChildToContainer(diagram: Diagram, parent: NodeModel, node: N
                     considerSwimLanePadding(diagram, node, 20);
                     diagram.updateDiagramElementQuad();
                 }
-            }
-            if (!(diagram.diagramActions & DiagramAction.UndoRedo)) {
-                const entry: HistoryEntry = {
-                    type: 'ChildCollectionChanged', category: 'Internal',
-                    undoObject: undoObj, redoObject: cloneObject(node), historyAction: historyAction ? 'AddNodeToLane' : undefined
-                };
-                diagram.addHistoryEntry(entry);
             }
         }
         else if (!isUndo && (diagram as any).multiselect) {
@@ -487,9 +488,9 @@ export function updateLaneBoundsWithSelector(container: NodeModel, selector: Sel
 }
 export function updateLaneBoundsAfterAddChild(
     container: NodeModel, swimLane: NodeModel, node: NodeModel | SelectorModel, diagram: Diagram, isBoundsUpdate?: boolean,
-    isSelector?: boolean): boolean {
+    isSelector?: boolean, isGroupAction?: boolean): boolean {
     const undoObject: NodeModel = cloneObject(container);
-    let isUpdateRow: boolean;  let isUpdateColumn: boolean; let isGroupAction: boolean = false;
+    let isUpdateRow: boolean;  let isUpdateColumn: boolean;
     const padding: number = (swimLane.shape as SwimLane).padding;
     const containerBounds: Rect = container.wrapper.bounds;
     const containerOuterBounds: Rect = container.wrapper.outerBounds;
@@ -517,6 +518,8 @@ export function updateLaneBoundsAfterAddChild(
             // size = nodeBounds.right - containerBounds.right;
             isUpdateColumn = true;
             grid.updateColumnWidth(container.columnIndex, containerBounds.width + size, true, padding);
+            // Bug: 959396 - Adjust the target lane index using the header/phase offset and set the lane’s dimension to the container’s actual size—height for horizontal lanes, width for vertical lanes—before save/load to preserve the swimlane size
+            updateLaneSizeAfterGridChange(swimLane, isHorizontal, container);
         }
         if (containerBounds.bottom < nodeBounds.bottom + padding &&
             containerOuterBounds.y <= containerBounds.y) {
@@ -531,6 +534,7 @@ export function updateLaneBoundsAfterAddChild(
             // size = nodeBounds.bottom - containerBounds.bottom;
             isUpdateRow = true;
             grid.updateRowHeight(container.rowIndex, containerBounds.height + size, true, padding);
+            updateLaneSizeAfterGridChange(swimLane, isHorizontal, container);
         }
         if (isSelector && containerBounds.top > nodeBounds.top - padding &&
             containerOuterBounds.y <= containerBounds.y) {
@@ -549,7 +553,8 @@ export function updateLaneBoundsAfterAddChild(
         }
         diagram.isRowHeightUpdate = isUpdateRow;
         if (!(diagram.diagramActions & DiagramAction.UndoRedo)) {
-            if (isBoundsUpdate) {
+            // BUG FIX: 958772 - The fix ensures that startGroupAction() is triggered only once during a multi‑node resize, preventing duplicate history groups and eliminating the Undo exception.
+            if (isBoundsUpdate && !isGroupAction) {
                 diagram.startGroupAction();
                 isGroupAction = true;
             }
@@ -586,6 +591,33 @@ export function updateLaneBoundsAfterAddChild(
     }
     diagram.updateDiagramElementQuad();
     return isGroupAction;
+}
+
+export function updateLaneSizeAfterGridChange(swimLane: NodeModel, isHorizontal: boolean, container: NodeModel): void {
+    const offset: number = updateSwimlaneSize(swimLane, isHorizontal);
+    const index: number = isHorizontal ? container.rowIndex : container.columnIndex;
+    const targetIndex: number = index + offset;
+    if (targetIndex >= 0 && (swimLane.shape as SwimLane).lanes[parseInt(targetIndex.toString(), 10)]) {
+        (swimLane.shape as SwimLane).lanes[parseInt(targetIndex.toString(), 10)].height = (container as Node).wrapper.actualSize.height;
+        (swimLane.shape as SwimLane).lanes[parseInt(targetIndex.toString(), 10)].width = (container as Node).wrapper.actualSize.width;
+    }
+}
+
+export function updateSwimlaneSize(swimLane: NodeModel, isHorizontal: boolean): number {
+    const hasHeader: boolean = ((swimLane as NodeModel).shape as SwimLane).hasHeader;
+    const hasPhases: boolean = !!((swimLane.shape as SwimLane).phases && (swimLane.shape as SwimLane).phases.length > 0);
+    let offset: number = 0;
+    if (isHorizontal) {
+        if (hasHeader && hasPhases) {
+            return offset = -2;
+        } else if (hasHeader || hasPhases) {
+            return offset = -1;
+        } else {
+            return offset;
+        }
+    } else {
+        return offset = hasPhases ? -1 : 0;
+    }
 }
 
 

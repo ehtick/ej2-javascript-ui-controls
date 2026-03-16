@@ -30,5 +30,6 @@ export * from './plugin/code-block';
 export * from './plugin/paste-clean-up-action';
 export * from './plugin/clipboard-cleanup-action';
 export * from './plugin/table-pasting';
+export * from './plugin/enter-key';
 export * from './plugin/ai-assitant-actions';
 export * from './plugin/lineHeight';

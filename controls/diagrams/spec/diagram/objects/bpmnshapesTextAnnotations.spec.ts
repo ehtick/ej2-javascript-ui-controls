@@ -4,15 +4,15 @@ import { NodeModel, BpmnShapeModel, BpmnAnnotationModel, SwimLaneModel } from '.
 import { ShapeStyleModel } from '../../../src/diagram/core/appearance-model';
 import { ShadowModel, RadialGradientModel, StopModel } from '../../../src/diagram/core/appearance-model';
 import { BpmnDiagrams } from '../../../src/diagram/objects/bpmn';
-import { BpmnShape, IElement, PointModel, UndoRedo } from '../../../src/diagram/index';
+import { BpmnShape, ConnectorModel, IElement, PointModel, UndoRedo } from '../../../src/diagram/index';
 import { MouseEvents } from './../interaction/mouseevents.spec';
-import { NodeConstraints } from '../../../src/diagram/enum/enum';
+import { DiagramConstraints, NodeConstraints } from '../../../src/diagram/enum/enum';
 import {
     SymbolPalette, SymbolInfo
 } from '../../../src/symbol-palette/index';
 
 
-Diagram.Inject(BpmnDiagrams,UndoRedo);
+Diagram.Inject(BpmnDiagrams, UndoRedo);
 SymbolPalette.Inject(BpmnDiagrams);
 
 /**
@@ -30,11 +30,11 @@ describe('Diagram Control', () => {
 
         beforeAll((): void => {
             const isDef = (o: any) => o !== undefined && o !== null;
-                if (!isDef(window.performance)) {
-                    console.log("Unsupported environment, window.performance.memory is unavailable");
-                    this.skip(); //Skips test (in Chai)
-                    return;
-                }
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                this.skip(); //Skips test (in Chai)
+                return;
+            }
             ele = createElement('div', { id: 'diagram1' });
             document.body.appendChild(ele);
             let shadow1: ShadowModel = { angle: 135 };
@@ -48,7 +48,7 @@ describe('Diagram Control', () => {
                         type: 'Bpmn', shape: 'DataObject',
                         dataObject: { collection: false, type: 'Input' },
                         annotations: [
-                            { id: 'annot1',angle: 30, length: 150, text: 'textAnnotation1' },
+                            { id: 'annot1', angle: 30, length: 150, text: 'textAnnotation1' },
                             { angle: 90, width: 100, height: 100, length: 150, text: 'textAnnotation2' },
                             { id: 'annot3', angle: 180, width: 100, height: 100, length: 150, text: 'textAnnotation3' },
                             { id: 'annot4', angle: 280, width: 100, height: 100, length: 150, text: 'textAnnotation4' }
@@ -110,7 +110,7 @@ describe('Diagram Control', () => {
             let oldTextNodeOffsetX = diagram.nameTable[(diagram.selectedItems.nodes[0].shape as BpmnShape).annotations[0].id].offsetX;
             let oldTextNodeOffsetY = diagram.nameTable[(diagram.selectedItems.nodes[0].shape as BpmnShape).annotations[0].id].offsetY;
             diagram.select([node]);
-            diagram.drag(node,100,-200);
+            diagram.drag(node, 100, -200);
             console.log('offsetX', (diagram.nameTable[(diagram.selectedItems.nodes[0].shape as BpmnShape).annotations[0].id].offsetX));
             console.log('offsetY', (diagram.nameTable[(diagram.selectedItems.nodes[0].shape as BpmnShape).annotations[0].id].offsetY));
             let newTextNodeOffsetX = diagram.nameTable[(diagram.selectedItems.nodes[0].shape as BpmnShape).annotations[0].id].offsetX;
@@ -140,9 +140,9 @@ describe('Diagram Control', () => {
             let oldNodeLength = diagram.nodes.length;
             diagram.select([diagram.nameTable['annot4']]);
             mouseEvents.keyDownEvent(diagramCanvas, 'Delete');
-            console.log('oldNode length',oldNodeLength);
-            console.log('newNode length',diagram.nodes.length);
-            expect(diagram.nodes.length ===oldNodeLength-1).toBe(true);
+            console.log('oldNode length', oldNodeLength);
+            console.log('newNode length', diagram.nodes.length);
+            expect(diagram.nodes.length === oldNodeLength - 1).toBe(true);
             done();
         });
 
@@ -151,13 +151,13 @@ describe('Diagram Control', () => {
 
             let oldLength = diagram.nodes.length;
             diagram.addTextAnnotation({ id: 'newAnnotation', text: 'New Annotation', length: 100, angle: 270 }, diagram.nodes[0]);
-            expect(diagram.nodes.length === oldLength+1).toBe(true);
+            expect(diagram.nodes.length === oldLength + 1).toBe(true);
             done();
         });
 
-       });
+    });
 
-       describe('BPMN Text Annotations test2', () => {
+    describe('BPMN Text Annotations test2', () => {
         let diagram: Diagram;
 
         let ele: HTMLElement;
@@ -166,18 +166,18 @@ describe('Diagram Control', () => {
 
         beforeAll((): void => {
             const isDef = (o: any) => o !== undefined && o !== null;
-                if (!isDef(window.performance)) {
-                    console.log("Unsupported environment, window.performance.memory is unavailable");
-                    this.skip(); //Skips test (in Chai)
-                    return;
-                }
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                this.skip(); //Skips test (in Chai)
+                return;
+            }
             ele = createElement('div', { id: 'diagramBpmnTextAn' });
             document.body.appendChild(ele);
 
             let node: NodeModel[] = [
                 {
                     id: 'start', width: 100, height: 100, offsetX: 300, offsetY: 450,
-                    annotations:[{content:'start'}],
+                    annotations: [{ content: 'start' }],
                     style: { fill: 'red', strokeColor: 'blue', strokeWidth: 5 } as ShapeStyleModel,
                     shape: {
                         type: 'Bpmn', shape: 'Event',
@@ -187,28 +187,28 @@ describe('Diagram Control', () => {
                     id: 'textAn1', width: 100, height: 100, offsetX: 450, offsetY: 450,
                     shape: {
                         type: 'Bpmn', shape: 'TextAnnotation',
-                        textAnnotation:{textAnnotationDirection:'Left',textAnnotationTarget:'start'}
+                        textAnnotation: { textAnnotationDirection: 'Left', textAnnotationTarget: 'start' }
                     } as BpmnShapeModel,
                 },
                 {
                     id: 'textAn2', width: 100, height: 100, offsetX: 150, offsetY: 450,
                     shape: {
                         type: 'Bpmn', shape: 'TextAnnotation',
-                        textAnnotation:{textAnnotationDirection:'Right',textAnnotationTarget:'start'}
+                        textAnnotation: { textAnnotationDirection: 'Right', textAnnotationTarget: 'start' }
                     } as BpmnShapeModel,
                 },
                 {
                     id: 'textAn3', width: 100, height: 100, offsetX: 450, offsetY: 150,
                     shape: {
                         type: 'Bpmn', shape: 'TextAnnotation',
-                        textAnnotation:{textAnnotationDirection:'Top',textAnnotationTarget:'start'}
+                        textAnnotation: { textAnnotationDirection: 'Top', textAnnotationTarget: 'start' }
                     } as BpmnShapeModel,
                 },
                 {
                     id: 'textAn4', width: 100, height: 100, offsetX: 450, offsetY: 500,
                     shape: {
                         type: 'Bpmn', shape: 'TextAnnotation',
-                        textAnnotation:{textAnnotationDirection:'Bottom',textAnnotationTarget:'start'}
+                        textAnnotation: { textAnnotationDirection: 'Bottom', textAnnotationTarget: 'start' }
                     } as BpmnShapeModel,
                 },
             ];
@@ -222,146 +222,146 @@ describe('Diagram Control', () => {
             diagram.destroy();
             ele.remove();
         });
-            it('Checking nodes and connectors render', (done: Function) => {
-                let nodeCount = diagram.nodes.length;
-                let connectorCount = diagram.connectors.length;
-                expect(nodeCount === 5 && connectorCount === 4).toBe(true);
-                done();
+        it('Checking nodes and connectors render', (done: Function) => {
+            let nodeCount = diagram.nodes.length;
+            let connectorCount = diagram.connectors.length;
+            expect(nodeCount === 5 && connectorCount === 4).toBe(true);
+            done();
+        });
+        it('Apply font style at runtime using keyboard', (done: Function) => {
+            diagramCanvas = document.getElementById(diagram.element.id + 'content');
+            let start: NodeModel = diagram.nameTable['start'];
+            diagram.select([start]);
+            mouseEvents.keyDownEvent(diagramCanvas, 'B', true);
+            mouseEvents.keyDownEvent(diagramCanvas, 'I', true);
+            mouseEvents.keyDownEvent(diagramCanvas, 'U', true);
+            mouseEvents.keyDownEvent(diagramCanvas, 'U', true);
+            expect(start.annotations[0].style.bold).toBe(true);
+            done();
+        });
+        it('Checking nodes opacity', (done: Function) => {
+            let start: NodeModel = diagram.nameTable['start'];
+            diagram.updateNodeProperty(start.wrapper, true, 0.5);
+            expect(start.wrapper.style.opacity === 0.5).toBe(true);
+            done();
+        });
+    });
+
+    describe('Testing Bpmn text annotation in symbol palette ', () => {
+        let diagram: Diagram;
+        let palette: SymbolPalette;
+        let ele: HTMLElement;
+        let events: MouseEvents = new MouseEvents();
+        beforeAll((): void => {
+            ele = createElement('div', { styles: 'width:100%;height:500px;' });
+            ele.appendChild(createElement('div', { id: 'textAnnotationPalette', styles: 'width:25%;float:left;' }));
+            ele.appendChild(createElement('div', { id: 'diagramBpmnIssue', styles: 'width:50%;height:500px;float:left;' }));
+            document.body.appendChild(ele);
+            diagram = new Diagram({
+                width: '70%', height: 500
             });
-            it('Apply font style at runtime using keyboard', (done: Function) => {
-                diagramCanvas = document.getElementById(diagram.element.id + 'content');
-                let start:NodeModel = diagram.nameTable['start'];
-                diagram.select([start]);
-                mouseEvents.keyDownEvent(diagramCanvas, 'B', true);
-                mouseEvents.keyDownEvent(diagramCanvas, 'I', true);
-                mouseEvents.keyDownEvent(diagramCanvas, 'U', true);
-                mouseEvents.keyDownEvent(diagramCanvas, 'U', true);
-                expect(start.annotations[0].style.bold).toBe(true);
-                done();
-            });
-            it('Checking nodes opacity', (done: Function) => {
-                let start:NodeModel = diagram.nameTable['start'];
-                diagram.updateNodeProperty(start.wrapper,true,0.5);
-                expect(start.wrapper.style.opacity === 0.5).toBe(true);
-                done();
-            });
-       });
-   
-       describe('Testing Bpmn text annotation in symbol palette ',()=>{
-            let diagram: Diagram;
-            let palette: SymbolPalette;
-            let ele: HTMLElement;
-            let events: MouseEvents = new MouseEvents();
-            beforeAll((): void => {
-                ele = createElement('div', { styles: 'width:100%;height:500px;' });
-                ele.appendChild(createElement('div', { id: 'textAnnotationPalette', styles: 'width:25%;float:left;' }));
-                ele.appendChild(createElement('div', { id: 'diagramBpmnIssue', styles: 'width:50%;height:500px;float:left;' }));
-                document.body.appendChild(ele);
-                diagram = new Diagram({
-                    width: '70%', height: 500
-                });
-                diagram.appendTo('#diagramBpmnIssue');
-                var BpmnShape : NodeModel[] =[  {
-                    id: 'BPMNnode1',
-                    annotations:[{content:'Text'}],
-                        shape: {
-                            type: 'Bpmn', shape: 'TextAnnotation',
-                            textAnnotation:{textAnnotationDirection:'Auto',textAnnotationTarget:'',},
-                            annotation:{}
-                        }
-                },
+            diagram.appendTo('#diagramBpmnIssue');
+            var BpmnShape: NodeModel[] = [{
+                id: 'BPMNnode1',
+                annotations: [{ content: 'Text' }],
+                shape: {
+                    type: 'Bpmn', shape: 'TextAnnotation',
+                    textAnnotation: { textAnnotationDirection: 'Auto', textAnnotationTarget: '', },
+                    annotation: {}
+                }
+            },
+            {
+                id: 'BPMNnode2',
+                annotations: [{ content: 'Text' }],
+                shape: {
+                    type: 'Bpmn', shape: 'TextAnnotation',
+                    textAnnotation: { textAnnotationDirection: 'Right', textAnnotationTarget: '', },
+                    annotation: {}
+                }
+            },
+            {
+                id: 'BPMNnode3',
+                annotations: [{ content: 'Text' }],
+                shape: {
+                    type: 'Bpmn', shape: 'TextAnnotation',
+                    textAnnotation: { textAnnotationDirection: 'Bottom', textAnnotationTarget: '', },
+                    annotation: {}
+                }
+            },
+            {
+                id: 'BPMNnode4',
+                annotations: [{ content: 'Text' }],
+                shape: {
+                    type: 'Bpmn', shape: 'TextAnnotation',
+                    textAnnotation: { textAnnotationDirection: 'Left', textAnnotationTarget: '', },
+                    annotation: {}
+                }
+            },
+            {
+                id: 'BPMNnode5',
+                annotations: [{ content: 'Text' }],
+                shape: {
+                    type: 'Bpmn', shape: 'TextAnnotation',
+                    textAnnotation: { textAnnotationDirection: 'Top', textAnnotationTarget: '', },
+                    annotation: {}
+                }
+            },
+            ]
+            var palettes = [
                 {
-                    id: 'BPMNnode2',
-                    annotations:[{content:'Text'}],
-                        shape: {
-                            type: 'Bpmn', shape: 'TextAnnotation',
-                            textAnnotation:{textAnnotationDirection:'Right',textAnnotationTarget:'',},
-                            annotation:{}
-                        }
-                },
-                {
-                    id: 'BPMNnode3',
-                    annotations:[{content:'Text'}],
-                        shape: {
-                            type: 'Bpmn', shape: 'TextAnnotation',
-                            textAnnotation:{textAnnotationDirection:'Bottom',textAnnotationTarget:'',},
-                            annotation:{}
-                        }
-                },
-                {
-                    id: 'BPMNnode4',
-                    annotations:[{content:'Text'}],
-                        shape: {
-                            type: 'Bpmn', shape: 'TextAnnotation',
-                            textAnnotation:{textAnnotationDirection:'Left',textAnnotationTarget:'',},
-                            annotation:{}
-                        }
-                },
-                {
-                    id: 'BPMNnode5',
-                    annotations:[{content:'Text'}],
-                        shape: {
-                            type: 'Bpmn', shape: 'TextAnnotation',
-                            textAnnotation:{textAnnotationDirection:'Top',textAnnotationTarget:'',},
-                            annotation:{}
-                        }
-                },
-                ]
-                var palettes = [
-                    {
-                        id: 'BpmnShapes', expanded: true, symbols: BpmnShape
-                        , title: 'Bpmn'
-                    }
-                ];
-                palette = new SymbolPalette({
-                    width: '25%', height: '500px',
-                    palettes: palettes,
-                    symbolHeight: 50, symbolWidth: 50,
-                    symbolPreview: { height: 100, width: 100 },
-                    enableSearch: true,
-                    symbolMargin: { left: 12, right: 12, top: 12, bottom: 12 },
-                    getSymbolInfo: (symbol: NodeModel): SymbolInfo => {
-                        return { fit: true };
-                    }
-                });
-                palette.appendTo('#textAnnotationPalette');
+                    id: 'BpmnShapes', expanded: true, symbols: BpmnShape
+                    , title: 'Bpmn'
+                }
+            ];
+            palette = new SymbolPalette({
+                width: '25%', height: '500px',
+                palettes: palettes,
+                symbolHeight: 50, symbolWidth: 50,
+                symbolPreview: { height: 100, width: 100 },
+                enableSearch: true,
+                symbolMargin: { left: 12, right: 12, top: 12, bottom: 12 },
+                getSymbolInfo: (symbol: NodeModel): SymbolInfo => {
+                    return { fit: true };
+                }
             });
-            afterAll((): void => {
-                diagram.destroy();
-                palette.destroy();
-                ele.remove();
-            });
-            // it('Dragging text annotation from palette to diagram ', (done: Function) => {
-            //         palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
-            //             let clonedElement: HTMLElement; let diagramElement: any;
-            //             let position: PointModel = palette['getMousePosition'](e.sender);
-            //             let target = document.elementFromPoint(position.x, position.y).childNodes[0];
-            //             let symbols: IElement = palette.symbolTable[target['id']];
-            //             palette['selectedSymbols'] = symbols;
-            //             if (symbols !== undefined) {
-            //                 clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
-            //                 clonedElement.setAttribute('paletteId', palette.element.id);
-            //             }
-            //             return clonedElement;
-            //         };
-            //         palette.getPersistData();
-            //         let element = (document.getElementById('BPMNnode1_container').getBoundingClientRect());;
-            //         events.mouseDownEvent(palette.element, element.left + palette.element.offsetLeft, element.top + palette.element.offsetTop, false, false);
-            //         events.mouseMoveEvent(palette.element, element.left + 40 + palette.element.offsetLeft, element.top + palette.element.offsetLeft, false, false);
-            //         events.mouseMoveEvent(palette.element, element.left + 60, element.top, false, false);
-            //         events.mouseMoveEvent(diagram.element, 600, 100, false, false);
-            //         events.mouseMoveEvent(diagram.element, 600, 100 - diagram.element.offsetTop, false, false);
-            //         events.mouseMoveEvent(diagram.element, 600, 100 - 5 - diagram.element.offsetTop, false, false);
-            //         events.mouseUpEvent(diagram.element, 600, 100 - 10 - diagram.element.offsetTop, false, false);
-            //         events.clickEvent(diagram.element, 600, 100 - 10 - diagram.element.offsetTop, false, false);
-            //         expect(diagram.nodes.length === 1).toBe(true);
-            //         diagram.undo();
-            //         expect(diagram.nodes.length === 0).toBe(true);
-            //         diagram.redo();
-            //         expect(diagram.nodes.length === 1).toBe(true);
-            //         done();
-            // });
-        });        
+            palette.appendTo('#textAnnotationPalette');
+        });
+        afterAll((): void => {
+            diagram.destroy();
+            palette.destroy();
+            ele.remove();
+        });
+        // it('Dragging text annotation from palette to diagram ', (done: Function) => {
+        //         palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+        //             let clonedElement: HTMLElement; let diagramElement: any;
+        //             let position: PointModel = palette['getMousePosition'](e.sender);
+        //             let target = document.elementFromPoint(position.x, position.y).childNodes[0];
+        //             let symbols: IElement = palette.symbolTable[target['id']];
+        //             palette['selectedSymbols'] = symbols;
+        //             if (symbols !== undefined) {
+        //                 clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+        //                 clonedElement.setAttribute('paletteId', palette.element.id);
+        //             }
+        //             return clonedElement;
+        //         };
+        //         palette.getPersistData();
+        //         let element = (document.getElementById('BPMNnode1_container').getBoundingClientRect());;
+        //         events.mouseDownEvent(palette.element, element.left + palette.element.offsetLeft, element.top + palette.element.offsetTop, false, false);
+        //         events.mouseMoveEvent(palette.element, element.left + 40 + palette.element.offsetLeft, element.top + palette.element.offsetLeft, false, false);
+        //         events.mouseMoveEvent(palette.element, element.left + 60, element.top, false, false);
+        //         events.mouseMoveEvent(diagram.element, 600, 100, false, false);
+        //         events.mouseMoveEvent(diagram.element, 600, 100 - diagram.element.offsetTop, false, false);
+        //         events.mouseMoveEvent(diagram.element, 600, 100 - 5 - diagram.element.offsetTop, false, false);
+        //         events.mouseUpEvent(diagram.element, 600, 100 - 10 - diagram.element.offsetTop, false, false);
+        //         events.clickEvent(diagram.element, 600, 100 - 10 - diagram.element.offsetTop, false, false);
+        //         expect(diagram.nodes.length === 1).toBe(true);
+        //         diagram.undo();
+        //         expect(diagram.nodes.length === 0).toBe(true);
+        //         diagram.redo();
+        //         expect(diagram.nodes.length === 1).toBe(true);
+        //         done();
+        // });
+    });
 
     // describe('BPMN Text Annotations inside swimlane', () => {
 
@@ -459,11 +459,11 @@ describe('Diagram Control', () => {
 
         beforeAll((): void => {
             const isDef = (o: any) => o !== undefined && o !== null;
-                if (!isDef(window.performance)) {
-                    console.log("Unsupported environment, window.performance.memory is unavailable");
-                    this.skip(); //Skips test (in Chai)
-                    return;
-                }
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                this.skip(); //Skips test (in Chai)
+                return;
+            }
             ele = createElement('div', { id: 'diagram2' });
             document.body.appendChild(ele);
 
@@ -506,47 +506,49 @@ describe('Diagram Control', () => {
                 },
                 {
                     id: 'event1', style: { strokeWidth: 2 },
-                    height:70,width:70,offsetX:400,offsetY:200,
-                    shape: { type: 'Bpmn', shape: 'Event',
+                    height: 70, width: 70, offsetX: 400, offsetY: 200,
+                    shape: {
+                        type: 'Bpmn', shape: 'Event',
                         event: { event: 'Start', trigger: 'None' },
-                     },
+                    },
                 },
                 {
                     id: 'textNode1', width: 70, height: 70,
-                    offsetX:400,offsetY:400,
-                    annotations:[{content:'textNode1'}],
-                        shape: {
-                            type: 'Bpmn', shape: 'TextAnnotation',
-                            textAnnotation:{ textAnnotationDirection:'Auto',textAnnotationTarget:'event1'}
-                            // annotation:{}
-                        }
+                    offsetX: 400, offsetY: 400,
+                    annotations: [{ content: 'textNode1' }],
+                    shape: {
+                        type: 'Bpmn', shape: 'TextAnnotation',
+                        textAnnotation: { textAnnotationDirection: 'Auto', textAnnotationTarget: 'event1' }
+                        // annotation:{}
+                    }
                 },
                 {
                     id: 'textNode2', width: 70, height: 70,
-                    offsetX:600,offsetY:400,
-                    annotations:[{content:'textNode1'}],
-                        shape: {
-                            type: 'Bpmn', shape: 'TextAnnotation',
-                            textAnnotation:{ textAnnotationDirection:'Auto',textAnnotationTarget:''}
-                            // annotation:{}
-                        }
+                    offsetX: 600, offsetY: 400,
+                    annotations: [{ content: 'textNode1' }],
+                    shape: {
+                        type: 'Bpmn', shape: 'TextAnnotation',
+                        textAnnotation: { textAnnotationDirection: 'Auto', textAnnotationTarget: '' }
+                        // annotation:{}
+                    }
                 },
                 {
                     id: 'event2', style: { strokeWidth: 2 },
-                    height:70,width:70,offsetX:100,offsetY:100,
-                    shape: { type: 'Bpmn', shape: 'Event',
+                    height: 70, width: 70, offsetX: 100, offsetY: 100,
+                    shape: {
+                        type: 'Bpmn', shape: 'Event',
                         event: { event: 'Start', trigger: 'None' },
-                     },
+                    },
                 },
                 {
                     id: 'textNode3', width: 70, height: 70,
-                    offsetX:100,offsetY:200,
-                    annotations:[{content:'textNode3'}],
-                        shape: {
-                            type: 'Bpmn', shape: 'TextAnnotation',
-                            textAnnotation:{ textAnnotationDirection:'Auto',textAnnotationTarget:'event2'}
-                            // annotation:{}
-                        }
+                    offsetX: 100, offsetY: 200,
+                    annotations: [{ content: 'textNode3' }],
+                    shape: {
+                        type: 'Bpmn', shape: 'TextAnnotation',
+                        textAnnotation: { textAnnotationDirection: 'Auto', textAnnotationTarget: 'event2' }
+                        // annotation:{}
+                    }
                 },
             ];
             diagram = new Diagram({
@@ -559,13 +561,13 @@ describe('Diagram Control', () => {
             diagram.destroy();
             ele.remove();
         });
-        it('Checking drag of text annotation and drop into swimlane',(done: Function)=>{
+        it('Checking drag of text annotation and drop into swimlane', (done: Function) => {
             diagramCanvas = document.getElementById(diagram.element.id + 'content');
             let node = diagram.nameTable['textNode3'];
             let oldOffset = node.offsetX;
-            mouseEvents.mouseDownEvent(diagramCanvas,100,100);
-            mouseEvents.mouseMoveEvent(diagramCanvas,1000,300);
-            mouseEvents.mouseUpEvent(diagramCanvas,1000,300);
+            mouseEvents.mouseDownEvent(diagramCanvas, 100, 100);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 1000, 300);
+            mouseEvents.mouseUpEvent(diagramCanvas, 1000, 300);
             let newOffset = node.offsetX;
             // ToDo: Need to check why offsetX remains same after drag and drop.
             expect(oldOffset !== newOffset || oldOffset === newOffset).toBe(true);
@@ -606,13 +608,13 @@ describe('Diagram Control', () => {
         //     expect(oldOffset !== newOffset && oldOffset === 600 &&  oldSourcePointX > newSourcePointX ).toBe(true);
         //     done();
         // });
-        it('Checking dragging of text annotation node',(done: Function)=>{
+        it('Checking dragging of text annotation node', (done: Function) => {
             let event = diagram.nameTable['event1'];
             let oldEventOffset = event.offsetX;
             let node = diagram.nameTable['textNode1'];
             let oldOffsetX = node.offsetX;
             let oldOffsetY = node.offsetY;
-            diagram.drag(node,100,100);
+            diagram.drag(node, 100, 100);
             let newOffsetX = node.offsetX;
             let newOffsetY = node.offsetY;
             let newEventOffset = event.offsetX;
@@ -633,81 +635,81 @@ describe('Diagram Control', () => {
         //     expect(oldWidth !== newWidth).toBe(true);
         //     done();
         // });
-        it('Editing text annotation node content dynamically',(done: Function)=>{
+        it('Editing text annotation node content dynamically', (done: Function) => {
             let textNode = diagram.nameTable['textNode1'];
             let oldTextContent = textNode.wrapper.children[1].content;
             textNode.annotations[0].content = 'updated';
             diagram.dataBind();
-            let newTextContent= textNode.wrapper.children[1].content;
+            let newTextContent = textNode.wrapper.children[1].content;
             expect(newTextContent === 'updated' && oldTextContent !== newTextContent).toBe(true);
             done();
         });
-        it('Checking rotation of text annotation node with parent',(done: Function)=>{
+        it('Checking rotation of text annotation node with parent', (done: Function) => {
             let textNode = diagram.nameTable['textNode1'];
             diagram.select([textNode]);
-            diagram.rotate(diagram.selectedItems,45);
+            diagram.rotate(diagram.selectedItems, 45);
             expect(textNode.rotateAngle === 45).toBe(true);
             done();
         });
-        it('Checking rotation of text annotation node without parent',(done: Function)=>{
+        it('Checking rotation of text annotation node without parent', (done: Function) => {
             let textNode = diagram.nameTable['textNode2'];
             diagram.select([textNode]);
-            diagram.rotate(diagram.selectedItems,45);
+            diagram.rotate(diagram.selectedItems, 45);
             expect(textNode.rotateAngle === 45).toBe(true);
             done();
         });
-        it('Adding text annotation node dynamically and checking node and connector collections',(done: Function)=>{
-            let newNode:NodeModel = {id:'newTextNode',width:100,height:100,offsetX:100,offsetY:100,annotations:[{content:'newNodeText'}],shape:{type:'Bpmn',shape:'TextAnnotation',textAnnotation:{textAnnotationDirection:'Auto',textAnnotationTarget:'event1'}}}
+        it('Adding text annotation node dynamically and checking node and connector collections', (done: Function) => {
+            let newNode: NodeModel = { id: 'newTextNode', width: 100, height: 100, offsetX: 100, offsetY: 100, annotations: [{ content: 'newNodeText' }], shape: { type: 'Bpmn', shape: 'TextAnnotation', textAnnotation: { textAnnotationDirection: 'Auto', textAnnotationTarget: 'event1' } } }
             let oldNodesLength = diagram.nodes.length;
-            let oldConLength  = diagram.connectors.length;
+            let oldConLength = diagram.connectors.length;
             diagram.add(newNode);
             let newNodesLength = diagram.nodes.length;
             let newConLength = diagram.connectors.length;
-            expect(oldNodesLength !== newNodesLength && oldConLength !== newConLength && (newNodesLength === oldNodesLength+1) && (newConLength === oldConLength+1) ).toBe(true);
+            expect(oldNodesLength !== newNodesLength && oldConLength !== newConLength && (newNodesLength === oldNodesLength + 1) && (newConLength === oldConLength + 1)).toBe(true);
             diagram.undo();
             expect(oldNodesLength === diagram.nodes.length && oldConLength === diagram.connectors.length).toBe(true);
             done();
         });
-        it('Copy paste of text annotation node and undo redo',(done: Function)=>{
+        it('Copy paste of text annotation node and undo redo', (done: Function) => {
             let textNode2 = diagram.nameTable['textNode2'];
             diagram.select([textNode2]);
             let oldNodesLength = diagram.nodes.length;
-            let oldConLength  = diagram.connectors.length;
+            let oldConLength = diagram.connectors.length;
             diagram.copy();
             diagram.paste();
             let newNodesLength = diagram.nodes.length;
             let newConLength = diagram.connectors.length;
-            expect(oldNodesLength !== newNodesLength && oldConLength !== newConLength && (newNodesLength === oldNodesLength+1) && (newConLength === oldConLength+1) ).toBe(true);
+            expect(oldNodesLength !== newNodesLength && oldConLength !== newConLength && (newNodesLength === oldNodesLength + 1) && (newConLength === oldConLength + 1)).toBe(true);
             diagram.undo();
             expect(oldNodesLength === diagram.nodes.length && oldConLength === diagram.connectors.length).toBe(true);
             diagram.redo();
             expect(oldNodesLength !== diagram.nodes.length && oldConLength !== diagram.connectors.length).toBe(true);
             done();
         });
-        it('Deleting text annotation node and undo redo',(done: Function)=>{
+        it('Deleting text annotation node and undo redo', (done: Function) => {
             let textNode2 = diagram.nameTable['textNode2'];
             diagram.select([textNode2]);
             let oldNodesLength = diagram.nodes.length;
-            let oldConLength  = diagram.connectors.length;
+            let oldConLength = diagram.connectors.length;
             diagram.remove();
             let newNodesLength = diagram.nodes.length;
             let newConLength = diagram.connectors.length;
-            expect(oldNodesLength !== newNodesLength && oldConLength !== newConLength && (newNodesLength === oldNodesLength-1) && (newConLength === oldConLength-1) ).toBe(true);
+            expect(oldNodesLength !== newNodesLength && oldConLength !== newConLength && (newNodesLength === oldNodesLength - 1) && (newConLength === oldConLength - 1)).toBe(true);
             diagram.undo();
             expect(oldNodesLength === diagram.nodes.length && oldConLength === diagram.connectors.length).toBe(true);
             diagram.redo();
             expect(oldNodesLength !== diagram.nodes.length && oldConLength !== diagram.connectors.length).toBe(true);
             done();
         });
-        it('Adding text annotation node dynamically using add annotation method',(done: Function)=>{
+        it('Adding text annotation node dynamically using add annotation method', (done: Function) => {
             let parent = diagram.nameTable['event1'];
             let oldNodesLength = diagram.nodes.length;
-            let annotation = {id:'newAnnNode',text:'NewAnnNodeText',angle:0,length:100}
-            diagram.addTextAnnotation(annotation as BpmnAnnotationModel,parent);
+            let annotation = { id: 'newAnnNode', text: 'NewAnnNodeText', angle: 0, length: 100 }
+            diagram.addTextAnnotation(annotation as BpmnAnnotationModel, parent);
             expect(oldNodesLength !== diagram.nodes.length).toBe(true);
             done();
         });
-        it('Copy, paste text annotation node',(done: Function)=>{
+        it('Copy, paste text annotation node', (done: Function) => {
             diagram.select([diagram.connectors[0]]);
             let oldNodeLength = diagram.nodes.length;
             let oldConnectorLength = diagram.connectors.length;
@@ -716,7 +718,7 @@ describe('Diagram Control', () => {
             expect(oldNodeLength !== diagram.nodes.length && oldConnectorLength !== diagram.connectors.length).toBe(true);
             done();
         });
-       
+
     });
     describe('BPMN Text Annotations Interactions with subprocess', () => {
         let diagram: Diagram;
@@ -726,11 +728,11 @@ describe('Diagram Control', () => {
 
         beforeAll((): void => {
             const isDef = (o: any) => o !== undefined && o !== null;
-                if (!isDef(window.performance)) {
-                    console.log("Unsupported environment, window.performance.memory is unavailable");
-                    this.skip(); //Skips test (in Chai)
-                    return;
-                }
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                this.skip(); //Skips test (in Chai)
+                return;
+            }
             ele = createElement('div', { id: 'diagramtext1' });
             document.body.appendChild(ele);
             let nodes: NodeModel[] = [
@@ -749,20 +751,21 @@ describe('Diagram Control', () => {
                 },
                 {
                     id: 'event1', style: { strokeWidth: 2 },
-                    height:70,width:70,offsetX:300,offsetY:200,
-                    shape: { type: 'Bpmn', shape: 'Event',
+                    height: 70, width: 70, offsetX: 300, offsetY: 200,
+                    shape: {
+                        type: 'Bpmn', shape: 'Event',
                         event: { event: 'Start', trigger: 'None' },
-                     },
+                    },
                 },
                 {
                     id: 'textNode1', width: 70, height: 70,
-                    offsetX:400,offsetY:200,
-                    annotations:[{content:'textNode1'}],
-                        shape: {
-                            type: 'Bpmn', shape: 'TextAnnotation',
-                            textAnnotation:{ textAnnotationDirection:'Auto',textAnnotationTarget:'event1'}
-                            // annotation:{}
-                        }
+                    offsetX: 400, offsetY: 200,
+                    annotations: [{ content: 'textNode1' }],
+                    shape: {
+                        type: 'Bpmn', shape: 'TextAnnotation',
+                        textAnnotation: { textAnnotationDirection: 'Auto', textAnnotationTarget: 'event1' }
+                        // annotation:{}
+                    }
                 },
             ];
             diagram = new Diagram({
@@ -797,11 +800,11 @@ describe('Diagram Control', () => {
 
         beforeAll((): void => {
             const isDef = (o: any) => o !== undefined && o !== null;
-                if (!isDef(window.performance)) {
-                    console.log("Unsupported environment, window.performance.memory is unavailable");
-                    this.skip(); //Skips test (in Chai)
-                    return;
-                }
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                this.skip(); //Skips test (in Chai)
+                return;
+            }
             ele = createElement('div', { id: 'diagramBpmnTextEdit' });
             document.body.appendChild(ele);
 
@@ -811,13 +814,13 @@ describe('Diagram Control', () => {
                     id: 'textAnnotationNode',
                     width: 100,
                     height: 100,
-                    offsetX:300,
-                    offsetY:100,
+                    offsetX: 300,
+                    offsetY: 100,
                     shape: {
-                      type: 'Bpmn',
-                      shape: 'TextAnnotation',
+                        type: 'Bpmn',
+                        shape: 'TextAnnotation',
                     },
-                  },
+                },
             ]
             diagram = new Diagram({
                 width: 1500, height: 1000, nodes: nodes
@@ -854,11 +857,11 @@ describe('Diagram Control', () => {
         let ele: HTMLElement;
         beforeAll((): void => {
             const isDef = (o: any) => o !== undefined && o !== null;
-                if (!isDef(window.performance)) {
-                    console.log("Unsupported environment, window.performance.memory is unavailable");
-                    this.skip(); //Skips test (in Chai)
-                    return;
-                }
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                this.skip(); //Skips test (in Chai)
+                return;
+            }
             ele = createElement('div', { id: 'diagramBpmnTextDirection' });
             document.body.appendChild(ele);
 
@@ -879,13 +882,13 @@ describe('Diagram Control', () => {
                     },
                 },
                 {
-                    id:'node1',
+                    id: 'node1',
                     offsetX: 300,
                     offsetY: 300,
                     width: 100,
                     height: 100,
-                    annotations:[{content:'Node1'}],
-                    shape:{type:'Bpmn',shape:'TextAnnotation',textAnnotation:{textAnnotationDirection:'Left'}}
+                    annotations: [{ content: 'Node1' }],
+                    shape: { type: 'Bpmn', shape: 'TextAnnotation', textAnnotation: { textAnnotationDirection: 'Left' } }
                 }
             ];
             diagram = new Diagram({
@@ -920,7 +923,7 @@ describe('Diagram Control', () => {
             expect(connector.sourceID === 'bpmn1').toBe(true);
             done();
         });
-        it('removing text annotation target at runtime',(done: Function) => {
+        it('removing text annotation target at runtime', (done: Function) => {
             let textAnnotation = diagram.nameTable['node1'];
             (textAnnotation.shape as BpmnShape).textAnnotation.textAnnotationTarget = '';
             diagram.dataBind();
@@ -938,15 +941,15 @@ describe('Diagram Control', () => {
 
         beforeAll((): void => {
             const isDef = (o: any) => o !== undefined && o !== null;
-                if (!isDef(window.performance)) {
-                    console.log("Unsupported environment, window.performance.memory is unavailable");
-                    this.skip(); //Skips test (in Chai)
-                    return;
-                }
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                this.skip(); //Skips test (in Chai)
+                return;
+            }
             ele = createElement('div', { id: 'diagramBpmnTextParentResize' });
             document.body.appendChild(ele);
 
-            let nodes: NodeModel[] = [ 
+            let nodes: NodeModel[] = [
                 {
                     id: 'dataObject', width: 150, height: 150, offsetX: 400, offsetY: 250, // Reduced 50px
                     shape: {
@@ -1020,8 +1023,8 @@ describe('Diagram Control', () => {
                                 },
                                 height: 600,
                                 children: [
-                                   
-                                   
+
+
                                 ],
                             },
                             {
@@ -1046,7 +1049,7 @@ describe('Diagram Control', () => {
                                     }
                                 ],
                             },
-                           
+
                         ],
                         phases: [
                             {
@@ -1067,7 +1070,7 @@ describe('Diagram Control', () => {
             ];
             diagram = new Diagram({
                 width: 1800, height: 1000, nodes: nodes,
-                selectedItems:{handleSize:30}
+                selectedItems: { handleSize: 30 }
             });
             diagram.appendTo('#diagramBpmnTextParentResize');
         });
@@ -1075,6 +1078,8 @@ describe('Diagram Control', () => {
         afterAll((): void => {
             diagram.destroy();
             ele.remove();
+            diagram = null;
+            ele = null;
         });
         it('Resizing dataObject with text annotation in north and south', (done: Function) => {
             const dataObject = diagram.nameTable['dataObject'];
@@ -1088,16 +1093,16 @@ describe('Diagram Control', () => {
             const thumb1 = document.getElementById('resizeSouth');
             const thumbBounds1: any = thumb1.getBoundingClientRect();
             mouseEvents.mouseOverEvent(diagramCanvas);
-            mouseEvents.mouseDownEvent(diagramCanvas, thumbBounds1.x + (thumbBounds1.width/2), thumbBounds1.y + (thumbBounds1.height/2));
-            mouseEvents.mouseMoveEvent(diagramCanvas, thumbBounds1.x + (thumbBounds1.width/2), thumbBounds1.y + 75);
-            mouseEvents.mouseUpEvent(diagramCanvas, thumbBounds1.x + (thumbBounds1.width/2), thumbBounds1.y + 75);
-    
+            mouseEvents.mouseDownEvent(diagramCanvas, thumbBounds1.x + (thumbBounds1.width / 2), thumbBounds1.y + (thumbBounds1.height / 2));
+            mouseEvents.mouseMoveEvent(diagramCanvas, thumbBounds1.x + (thumbBounds1.width / 2), thumbBounds1.y + 75);
+            mouseEvents.mouseUpEvent(diagramCanvas, thumbBounds1.x + (thumbBounds1.width / 2), thumbBounds1.y + 75);
+
             const thumb2 = document.getElementById('resizeNorth');
             const thumbBounds2: any = thumb2.getBoundingClientRect();
             mouseEvents.mouseOverEvent(diagramCanvas);
-            mouseEvents.mouseDownEvent(diagramCanvas, thumbBounds2.x + (thumbBounds2.width/2), thumbBounds2.y + (thumbBounds2.height/2));
-            mouseEvents.mouseMoveEvent(diagramCanvas, thumbBounds2.x + (thumbBounds2.width/2), thumbBounds2.y - 75);
-            mouseEvents.mouseUpEvent(diagramCanvas, thumbBounds2.x + (thumbBounds2.width/2), thumbBounds2.y - 75);
+            mouseEvents.mouseDownEvent(diagramCanvas, thumbBounds2.x + (thumbBounds2.width / 2), thumbBounds2.y + (thumbBounds2.height / 2));
+            mouseEvents.mouseMoveEvent(diagramCanvas, thumbBounds2.x + (thumbBounds2.width / 2), thumbBounds2.y - 75);
+            mouseEvents.mouseUpEvent(diagramCanvas, thumbBounds2.x + (thumbBounds2.width / 2), thumbBounds2.y - 75);
             let southNewOffsetY = textAnSouth.offsetY;
             let northNewOffsetY = textAnNorth.offsetY;
             expect(southOldOffsetY < southNewOffsetY && northOldOffsetY > northNewOffsetY).toBe(true);
@@ -1117,7 +1122,7 @@ describe('Diagram Control', () => {
             mouseEvents.mouseDownEvent(diagramCanvas, eastBounds.x + (eastBounds.width / 2), eastBounds.y + (eastBounds.height / 2));
             mouseEvents.mouseMoveEvent(diagramCanvas, eastBounds.x + 75, eastBounds.y + (eastBounds.height / 2));
             mouseEvents.mouseUpEvent(diagramCanvas, eastBounds.x + 75, eastBounds.y + (eastBounds.height / 2));
-        
+
             // WestSide
             const resizeWest = document.getElementById('resizeWest');
             const westBounds: any = resizeWest.getBoundingClientRect();
@@ -1148,7 +1153,7 @@ describe('Diagram Control', () => {
             mouseEvents.mouseDownEvent(diagramCanvas, northEastBounds.x + (northEastBounds.width / 2), northEastBounds.y + (northEastBounds.height / 2));
             mouseEvents.mouseMoveEvent(diagramCanvas, northEastBounds.x - 100, northEastBounds.y + 100);
             mouseEvents.mouseUpEvent(diagramCanvas, northEastBounds.x - 100, northEastBounds.y + 100);
-        
+
             // NorthWest
             const resizeNorthWest = document.getElementById('resizeNorthWest');
             const northWestBounds: any = resizeNorthWest.getBoundingClientRect();
@@ -1182,7 +1187,7 @@ describe('Diagram Control', () => {
             mouseEvents.mouseDownEvent(diagramCanvas, southEastBounds.x + (southEastBounds.width / 2), southEastBounds.y + (southEastBounds.height / 2));
             mouseEvents.mouseMoveEvent(diagramCanvas, southEastBounds.x + 50, southEastBounds.y + 50);
             mouseEvents.mouseUpEvent(diagramCanvas, southEastBounds.x + 50, southEastBounds.y + 50);
-        
+
             // SouthWest
             const resizeSouthWest = document.getElementById('resizeSouthWest');
             const southWestBounds: any = resizeSouthWest.getBoundingClientRect();
@@ -1198,7 +1203,7 @@ describe('Diagram Control', () => {
             expect(southWestOldOffsetX > southWestNewOffsetX && southWestOldOffsetY < southWestNewOffsetY).toBe(true);
             done();
         });
-        
+
         it('Text annotation-parent-resize inside swimlane', (done: Function) => {
             diagramCanvas = document.getElementById(diagram.element.id + 'content');
             let dataObjectElement = document.getElementById('dataObject_groupElement');
@@ -1206,10 +1211,10 @@ describe('Diagram Control', () => {
             let swimElement = document.getElementById('swimlanestackCanvas11_groupElement');
             let swimBounds: any = swimElement.getBoundingClientRect();
             mouseEvents.mouseOverEvent(diagramCanvas);
-            mouseEvents.mouseDownEvent(diagramCanvas, dataBounds.x + (dataBounds.width / 2),  dataBounds.y + (dataBounds.height / 2));
-            mouseEvents.mouseMoveEvent(diagramCanvas, dataBounds.x + (dataBounds.width / 2) + 400,  dataBounds.y + (dataBounds.height / 2));
-            mouseEvents.mouseMoveEvent(diagramCanvas, swimBounds.x + (swimBounds.width / 2) + 400,  swimBounds.y + (swimBounds.height / 2));
-            mouseEvents.mouseUpEvent(diagramCanvas, swimBounds.x + (swimBounds.width / 2) + 400,  swimBounds.y + (swimBounds.height / 2));
+            mouseEvents.mouseDownEvent(diagramCanvas, dataBounds.x + (dataBounds.width / 2), dataBounds.y + (dataBounds.height / 2));
+            mouseEvents.mouseMoveEvent(diagramCanvas, dataBounds.x + (dataBounds.width / 2) + 400, dataBounds.y + (dataBounds.height / 2));
+            mouseEvents.mouseMoveEvent(diagramCanvas, swimBounds.x + (swimBounds.width / 2) + 400, swimBounds.y + (swimBounds.height / 2));
+            mouseEvents.mouseUpEvent(diagramCanvas, swimBounds.x + (swimBounds.width / 2) + 400, swimBounds.y + (swimBounds.height / 2));
             done();
         });
 
@@ -1226,7 +1231,7 @@ describe('Diagram Control', () => {
             mouseEvents.mouseDownEvent(diagramCanvas, eastBounds.x + (eastBounds.width / 2), eastBounds.y + (eastBounds.height / 2));
             mouseEvents.mouseMoveEvent(diagramCanvas, eastBounds.x + 25, eastBounds.y + (eastBounds.height / 2));
             mouseEvents.mouseUpEvent(diagramCanvas, eastBounds.x + 25, eastBounds.y + (eastBounds.height / 2));
-        
+
             // WestSide
             const resizeWest = document.getElementById('resizeWest');
             const westBounds: any = resizeWest.getBoundingClientRect();
@@ -1249,11 +1254,11 @@ describe('Diagram Control', () => {
 
         beforeAll((): void => {
             const isDef = (o: any) => o !== undefined && o !== null;
-                if (!isDef(window.performance)) {
-                    console.log("Unsupported environment, window.performance.memory is unavailable");
-                    this.skip(); //Skips test (in Chai)
-                    return;
-                }
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                this.skip(); //Skips test (in Chai)
+                return;
+            }
             ele = createElement('div', { id: 'diagramtext2' });
             document.body.appendChild(ele);
             let nodes: NodeModel[] = [
@@ -1272,20 +1277,21 @@ describe('Diagram Control', () => {
                 },
                 {
                     id: 'event1', style: { strokeWidth: 2 },
-                    height:70,width:70,offsetX:300,offsetY:200,
-                    shape: { type: 'Bpmn', shape: 'Event',
+                    height: 70, width: 70, offsetX: 300, offsetY: 200,
+                    shape: {
+                        type: 'Bpmn', shape: 'Event',
                         event: { event: 'Start', trigger: 'None' },
-                     },
+                    },
                 },
                 {
                     id: 'textNode1', width: 70, height: 70,
-                    offsetX:400,offsetY:200,
-                    annotations:[{content:'textNode1'}],
-                        shape: {
-                            type: 'Bpmn', shape: 'TextAnnotation',
-                            textAnnotation:{ textAnnotationDirection:'Auto',textAnnotationTarget:'event1'}
-                            // annotation:{}
-                        }
+                    offsetX: 400, offsetY: 200,
+                    annotations: [{ content: 'textNode1' }],
+                    shape: {
+                        type: 'Bpmn', shape: 'TextAnnotation',
+                        textAnnotation: { textAnnotationDirection: 'Auto', textAnnotationTarget: 'event1' }
+                        // annotation:{}
+                    }
                 },
             ];
             diagram = new Diagram({
@@ -1315,4 +1321,382 @@ describe('Diagram Control', () => {
         //     done();
         // });
     });
+    describe('Drag text Annotation inside subprocess', () => {
+        let diagram: Diagram;
+        let palette: SymbolPalette;
+        let ele: HTMLElement;
+        let mouseEvents: MouseEvents = new MouseEvents();
+        beforeAll((): void => {
+            ele = createElement('div', { styles: 'width:100%;height:900px;' });
+            ele.appendChild(createElement('div', { id: 'bpmnPalette', styles: 'width:25%;float:left;' }));
+            ele.appendChild(createElement('div', { id: 'dragdropBpmn', styles: 'width:70%;height:500px;float:left;' }));
+            document.body.appendChild(ele);
+            let darkColor = '#C7D4DF';
+            let lightColor = '#f5f5f5';
+            let nodes: NodeModel[] = [
+                {
+                    id: 'swimlane',
+                    shape: {
+                        orientation: 'Vertical',
+                        type: 'SwimLane',
+                        header: {
+                            annotation: { content: 'ONLI' },
+                            height: 50, style: { fill: darkColor, fontSize: 11 },
+                        },
+                        lanes: [
+
+                            {
+                                id: 'stackCanvas2',
+                                header: {
+                                    annotation: { content: 'ONLINE' }, height: 50,
+                                    style: { fill: darkColor, fontSize: 11 }
+                                },
+                                style: { fill: lightColor }, width: 120,
+                                children: [
+                                    {
+                                        id: 'subProcessChild',
+                                        width: 200, height: 100,
+                                        constraints: NodeConstraints.Default | NodeConstraints.AllowDrop,
+                                        offsetX: 500, offsetY: 200,
+                                        shape: {
+                                            type: 'Bpmn', shape: 'Activity', activity: {
+                                                activity: 'SubProcess',
+                                                subProcess: {
+                                                    collapsed: false,
+
+                                                },
+                                            },
+                                        },
+                                    },
+
+                                ],
+                            },
+                        ],
+                        phases: [
+
+                            {
+                                id: 'phase2', offset: 400,
+                                style: { strokeWidth: 1, strokeDashArray: '3,3', strokeColor: '#606060' },
+                                header: { annotation: { content: 'Phase' } }
+                            },
+                        ],
+                        phaseSize: 20,
+                    },
+                    offsetX: 250, offsetY: 290,
+                    height: 200, width: 300
+                },
+                {
+                    id: 'start',
+                    height: 50,
+                    width: 50,
+                    margin: { left: 50, top: 50 },
+                    shape: { type: 'Bpmn', shape: 'Event' },
+                },
+
+                {
+                    id: 'subProcessNode',
+                    width: 400, height: 250,
+                    constraints: NodeConstraints.Default | NodeConstraints.AllowDrop,
+                    offsetX: 800, offsetY: 200,
+                    shape: {
+                        type: 'Bpmn', shape: 'Activity', activity: {
+                            activity: 'SubProcess',
+                            subProcess: {
+                                collapsed: false,
+                                processes: ['start'],
+                            },
+                        },
+                    },
+                }, {
+                    id: 'textNode', width: 70, height: 50,
+                    offsetX: 850, offsetY: 300,
+                    annotations: [{ content: 'textNode2' }],
+                    shape: {
+                        type: 'Bpmn', shape: 'TextAnnotation',
+                        textAnnotation: { textAnnotationDirection: 'Auto', textAnnotationTarget: 'start' }
+                    }
+                },
+            ];
+            diagram = new Diagram({
+                width: '70%', height: 900, nodes: nodes
+            });
+            diagram.appendTo('#dragdropBpmn');
+
+            let BpmnShape: NodeModel[] = [
+                {
+                    id: 'Start', width: 35, height: 35, shape: {
+                        type: 'Bpmn', shape: 'Event',
+                        event: { event: 'Start' }
+                    }
+                },
+
+                {
+                    id: 'End', width: 35, height: 35, offsetX: 665, offsetY: 230, shape: {
+                        type: 'Bpmn', shape: 'Event',
+                        event: { event: 'End' }
+                    },
+                },
+
+                {
+                    id: 'subProcess', width: 520, height: 250, offsetX: 355, offsetY: 230,
+                    constraints: NodeConstraints.Default | NodeConstraints.AllowDrop,
+                    shape: {
+                        shape: 'Activity', type: 'Bpmn',
+                        activity: {
+                            activity: 'SubProcess', subProcess: {
+                                type: 'Transaction', collapsed: false,
+                                processes: [], transaction: {
+                                    cancel: { visible: false }, failure: { visible: false }, success: { visible: false }
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    id: 'stackCanvas1', addInfo: "hellow",
+                    style: { strokeWidth: 5 },
+                    shape: {
+                        type: 'SwimLane', lanes: [
+                            {
+                                id: 'lane1',
+                                style: { strokeColor: 'black' }, height: 60, width: 150,
+                                header: { width: 50, height: 50, style: { strokeColor: 'black', fontSize: 11 } },
+                            }
+                        ],
+                        orientation: 'Horizontal', isLane: true
+                    },
+                    height: 60,
+                    width: 140,
+                    offsetX: 70,
+                    offsetY: 30,
+                }
+            ];
+            var palettes = [
+                {
+                    id: 'BpmnShapes', expanded: true, symbols: BpmnShape
+                    , title: 'Bpmn'
+                }
+            ];
+            palette = new SymbolPalette({
+                width: '25%', height: '500px',
+                palettes: palettes,
+                symbolHeight: 50, symbolWidth: 50,
+                symbolPreview: { height: 100, width: 100 },
+                enableSearch: true,
+                symbolMargin: { left: 12, right: 12, top: 12, bottom: 12 },
+                getSymbolInfo: (symbol: NodeModel): SymbolInfo => {
+                    return { fit: true };
+                }
+            });
+            palette.appendTo('#bpmnPalette');
+        });
+        afterAll((): void => {
+            diagram.destroy();
+            if (palette) { palette.destroy(); }
+            ele.remove();
+            (diagram as any) = null;
+            palette = null as any;
+            (ele as any) = null;
+        });
+        it('Checking drag text annotation inside subprocess', (done: Function) => {
+            
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+
+            const handleEl: HTMLElement = document.getElementById('start');
+            const rect: any = handleEl.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+
+            mouseEvents.clickEvent(diagramCanvas, cx, cy);
+
+            mouseEvents.mouseMoveEvent(diagramCanvas, cx, cy);
+            mouseEvents.mouseDownEvent(diagramCanvas, cx, cy);
+            mouseEvents.mouseMoveEvent(diagramCanvas, cx + 10, cy + 10);
+            mouseEvents.mouseUpEvent(diagramCanvas, cx + 10, cy + 10);
+            console.log("diagram.connectors[0].sourceID ",diagram.connectors[0].sourceID)
+            expect(diagram.connectors[0].sourceID === 'start').toBe(true);
+            done();
+        });
+        it('Drag and drop lane into swimalne', (done: Function) => {
+            
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+                let clonedElement; let diagramElement;
+                let position = palette['getMousePosition'](e.sender);
+                let symbols = palette.symbolTable['stackCanvas1'];
+                palette['selectedSymbols'] = symbols;
+                if (symbols !== undefined) {
+                    clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+                    clonedElement.setAttribute('paletteId', palette.element.id);
+                }
+                return clonedElement;
+            };
+            mouseEvents.mouseDownEvent(palette.element, 180, 75, false, false);
+            mouseEvents.mouseMoveEvent(palette.element, 310, 150, false, false);
+            mouseEvents.mouseMoveEvent(palette.element, 440, 280, false, false);
+
+            mouseEvents.mouseDownEvent(diagramCanvas, 537, 170);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 540, 170);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 614, 178);
+            mouseEvents.mouseUpEvent(diagramCanvas, 615, 180);
+            console.log("diagram.nodes[0].id ",diagram.nodes[0].id)
+            expect(diagram.nodes[0].id === 'swimlane').toBe(true);
+            done();
+        });
+        it('Drag and drop bpmn node into subProcess', (done: Function) => {
+            
+            diagram.clearSelection();
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            palette.element['ej2_instances'][1]['helper'] = (e: { target: HTMLElement, sender: PointerEvent | TouchEvent }) => {
+                let clonedElement; let diagramElement;
+                let position = palette['getMousePosition'](e.sender);
+                let symbols = palette.symbolTable['Start'];
+                palette['selectedSymbols'] = symbols;
+                if (symbols !== undefined) {
+                    clonedElement = palette['getSymbolPreview'](symbols, e.sender, palette.element);
+                    clonedElement.setAttribute('paletteId', palette.element.id);
+                }
+                return clonedElement;
+            };
+            mouseEvents.mouseDownEvent(palette.element, 30,80, false, false);
+            mouseEvents.mouseMoveEvent(palette.element, 200, 250, false, false);
+            mouseEvents.mouseMoveEvent(palette.element, 440, 450, false, false);
+
+            mouseEvents.mouseMoveEvent(diagramCanvas, 970, 370);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 1200, 240);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 1290, 190);
+            mouseEvents.mouseUpEvent(diagramCanvas, 1340, 190);
+            expect(diagram.nodes.length).toBeGreaterThan(10);
+            done();
+        });
+    });
+    describe('connect source node with another node', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+        let mouseEvents: MouseEvents = new MouseEvents();
+        beforeAll((): void => {
+            ele = createElement('div', { id: 'connectuml' });
+            document.body.appendChild(ele);
+            let nodes: NodeModel[] = [
+
+                {
+                    id: 'start',
+                    height: 50,
+                    width: 50,
+                    offsetX: 800, offsetY: 100,
+                    shape: { type: 'Bpmn', shape: 'Event' },
+                },
+                {
+                    id: 'textNode', width: 70, height: 50,
+                    offsetX: 850, offsetY: 300,
+                    annotations: [{ content: 'textNode2' }],
+                    shape: {
+                        type: 'Bpmn', shape: 'TextAnnotation',
+                        textAnnotation: { textAnnotationDirection: 'Auto', textAnnotationTarget: 'start' }
+                    }
+                },
+                {
+                    id: 'node',
+                    offsetX: 200,
+                    offsetY: 400,
+                    height: 200,
+                    width: 200
+
+                },
+
+            ];
+
+            diagram = new Diagram({
+                width: '900px', height: '600px', nodes: nodes,
+            });
+            diagram.appendTo('#connectuml');
+        });
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+            diagram = null;
+            ele = null;
+        });
+        it('connect source node with another node', (done: Function) => {
+            
+            diagram.select([diagram.connectors[0]]);
+            let diagramCanvas = document.getElementById(diagram.element.id + 'content');
+            mouseEvents.mouseMoveEvent(diagramCanvas, 814, 132);
+            mouseEvents.mouseDownEvent(diagramCanvas, 814, 132);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 607, 202);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 470, 390);
+            mouseEvents.mouseMoveEvent(diagramCanvas, 286, 352);
+            mouseEvents.mouseUpEvent(diagramCanvas, 286, 352);
+            console.log('connect source node with another node ')
+            expect(diagram.connectors.length === 1).toBe(true);
+            done();
+        })
+    });
+
+    describe('Bug 989164: Text annotation target is not connected to the defined target node', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+        beforeAll((): void => {
+            ele = createElement('div', { id: 'textAnnotationLayers' });
+            document.body.appendChild(ele);
+            const nodes: NodeModel[] = [
+                {
+                    id: 'event1', style: { strokeWidth: 2 },
+                    height: 70, width: 70, offsetX: 400, offsetY: 200,
+                    shape: {
+                        type: 'Bpmn', shape: 'Event',
+                        event: { event: 'Start', trigger: 'None' },
+                    },
+                },
+                //node with target
+                {
+                    id: 'textNode1', width: 70, height: 70,
+                    offsetX: 400, offsetY: 400,
+                    annotations: [{ content: 'textNode1' }],
+                    shape: {
+                        type: 'Bpmn', shape: 'TextAnnotation',
+                        textAnnotation: { textAnnotationDirection: 'Auto', textAnnotationTarget: 'event1' }
+                    }
+                },
+            ]
+
+            diagram = new Diagram({
+                width: '1000px', height: '500px', nodes: nodes,
+                layers: [
+                    {
+                        id: 'layer0',
+                        //Layer 0 objects
+                        objects: ['textNode1'],
+                    },
+                    {
+                        id: 'layer1',
+                        //Layer 1 objects
+                        objects: ['event1'],
+                    },
+                ],
+            });
+            diagram.appendTo('#textAnnotationLayers');
+        });
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+            diagram = null;
+            ele = null;
+        });
+        it('Check textAnnotation-rendering with different layer', (done: Function) => {
+            //Checling if the text annotation is connected to its parent by checking its source point.
+            let connector = diagram.connectors[0];
+            expect(connector.sourcePoint.x === 400 && connector.sourcePoint.y === 235).toBe(true);
+            done();
+        });
+         it('Hide-layer of text annotation and drag parent', (done: Function) => {
+            diagram.layers[0].visible = false;
+            diagram.dataBind();
+            let node = diagram.nameTable['event1'];
+            diagram.drag(node, 20, 20);
+            expect(diagram.layers[0].objects.length === 2).toBe(true);
+            done();
+        });
+    });
+
 });

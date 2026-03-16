@@ -5,6 +5,311 @@ import { setCursorPosition, getBlockContentElement } from '../../src/common/util
 import { BlockType, ContentType, CommandName } from '../../src/models/enums';
 import { BlockEditor } from '../../src/index';
 
+describe('Paste → Undo → Redo cursor position preservation', () => {
+    let editor: BlockEditor;
+    let editorElement: HTMLElement;
+
+    beforeEach(() => {
+        editorElement = createElement('div', { id: 'editor' });
+        document.body.appendChild(editorElement);
+
+        const blocks = [
+            {
+                id: 'paragraph1',
+                blockType: BlockType.Paragraph,
+                content: [{ contentType: ContentType.Text, content: 'Hello world 1' }]
+            },
+            {
+                id: 'heading2',
+                blockType: BlockType.Heading,
+                properties: { level: 2 },
+                content: [{ contentType: ContentType.Text, content: 'Hello world 2' }]
+            },
+            {
+                id: 'calloutblock',
+                blockType: BlockType.Callout,
+                properties: {
+                    children: [
+                        {
+                            id: 'calloutchild1',
+                            blockType: BlockType.Paragraph,
+                            content: [{ contentType: ContentType.Text, content: 'Callout child 1' }]
+                        },
+                        {
+                            id: 'calloutchild2',
+                            blockType: BlockType.Paragraph,
+                            content: [{ contentType: ContentType.Text, content: 'Callout child 2' }]
+                        }
+                    ]
+                }
+            },
+            {
+                id: 'toggleblock',
+                blockType: BlockType.CollapsibleParagraph,
+                content: [{ contentType: ContentType.Text, content: 'Click here to expand' }],
+                properties: {
+                    children: [
+                        {
+                            id: 'togglechild1',
+                            blockType: BlockType.Checklist,
+                            content: [{ contentType: ContentType.Text, content: 'Todo' }]
+                        },
+                        {
+                            id: 'togglechild2',
+                            blockType: BlockType.Paragraph,
+                            content: [{ contentType: ContentType.Text, content: 'Toggle child 2' }]
+                        }
+                    ]
+                }
+            }
+        ];
+
+        editor = createEditor({ blocks });
+        editor.appendTo('#editor');
+    });
+
+    afterEach(() => {
+        if (editor) {
+            editor.destroy();
+            editor = undefined;
+        }
+        remove(editorElement);
+    });
+
+    function createMockClipboardEvent(type: string, clipboardData: any = {}): any {
+        const event = {
+            type,
+            preventDefault: jasmine.createSpy('preventDefault'),
+            clipboardData,
+            bubbles: true,
+            cancelable: true
+        };
+        return event;
+    }
+
+    function getAbsoluteCursorOffset(contentEl: HTMLElement): number {
+        const sel = window.getSelection();
+        let offset = sel.anchorOffset;
+        let node: Node | null = sel.anchorNode;
+
+        while (node && node !== contentEl) {
+            let sib = node.previousSibling;
+            while (sib) {
+                if (sib.nodeType === Node.TEXT_NODE) {
+                    offset += (sib as Text).length || 0;
+                }
+                sib = sib.previousSibling;
+            }
+            node = node.parentNode;
+        }
+        return offset;
+    }
+
+    it('should preserve cursor position after paste → undo → redo  Paragraph', (done) => {
+        const blockElement = editorElement.querySelector('#paragraph1') as HTMLElement;
+        const contentElement = getBlockContentElement(blockElement);
+
+        editor.blockManager.setFocusToBlock(blockElement);
+        const startPos = 6;
+
+        setCursorPosition(contentElement, startPos);
+
+        const pasted = 'again ';
+        const pasteData = {
+            type: 'content',
+            newContent: [{ contentType: ContentType.Text, content: pasted }]
+        };
+
+        const mockClip = {
+            getData: (format: string) => {
+                if (format === 'text/plain') return pasted;
+                if (format === 'text/blockeditor') return JSON.stringify(pasteData);
+                return '';
+            }
+        };
+
+        (editor.blockManager.eventAction as any).clipboardActionHandler(
+            createMockClipboardEvent('paste', mockClip)
+        );
+
+        setTimeout(() => {
+            const posAfterPaste = getAbsoluteCursorOffset(contentElement);
+
+            editorElement.dispatchEvent(
+                new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true })
+            );
+
+            setTimeout(() => {
+                const posAfterUndo = getAbsoluteCursorOffset(contentElement);
+                expect(posAfterUndo).toBe(startPos);
+
+                editorElement.dispatchEvent(
+                    new KeyboardEvent('keydown', { key: 'y', ctrlKey: true, bubbles: true })
+                );
+
+                setTimeout(() => {
+                    const posAfterRedo = getAbsoluteCursorOffset(contentElement);
+                    expect(posAfterRedo).toBe(posAfterPaste);
+                    done();
+                }, 150);
+            }, 150);
+        }, 300);
+    });
+
+    it('should preserve cursor position after paste → undo → redo  Heading', (done) => {
+        const blockElement = editorElement.querySelector('#heading2') as HTMLElement;
+        const contentElement = getBlockContentElement(blockElement);
+
+        editor.blockManager.setFocusToBlock(blockElement);
+        const startPos = 6;
+
+        setCursorPosition(contentElement, startPos);
+
+        const pasted = 'again ';
+        const pasteData = {
+            type: 'content',
+            newContent: [{ contentType: ContentType.Text, content: pasted }]
+        };
+
+        const mockClip = {
+            getData: (format: string) => {
+                if (format === 'text/plain') return pasted;
+                if (format === 'text/blockeditor') return JSON.stringify(pasteData);
+                return '';
+            }
+        };
+
+        (editor.blockManager.eventAction as any).clipboardActionHandler(
+            createMockClipboardEvent('paste', mockClip)
+        );
+
+        setTimeout(() => {
+            const posAfterPaste = getAbsoluteCursorOffset(contentElement);
+
+            editorElement.dispatchEvent(
+                new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true })
+            );
+
+            setTimeout(() => {
+                const posAfterUndo = getAbsoluteCursorOffset(contentElement);
+                expect(posAfterUndo).toBe(startPos);
+
+                editorElement.dispatchEvent(
+                    new KeyboardEvent('keydown', { key: 'y', ctrlKey: true, bubbles: true })
+                );
+
+                setTimeout(() => {
+                    const posAfterRedo = getAbsoluteCursorOffset(contentElement);
+                    expect(posAfterRedo).toBe(posAfterPaste);
+                    done();
+                }, 150);
+            }, 150);
+        }, 300);
+    });
+
+    it('should preserve cursor position after paste → undo → redo  Callout root', (done) => {
+        const blockElement = editorElement.querySelector('#calloutblock') as HTMLElement;
+        const contentElement = getBlockContentElement(blockElement);
+
+        editor.blockManager.setFocusToBlock(blockElement);
+        const startPos = 6;
+
+        setCursorPosition(contentElement, startPos);
+
+        const pasted = 'again ';
+        const pasteData = {
+            type: 'content',
+            newContent: [{ contentType: ContentType.Text, content: pasted }]
+        };
+
+        const mockClip = {
+            getData: (format: string) => {
+                if (format === 'text/plain') return pasted;
+                if (format === 'text/blockeditor') return JSON.stringify(pasteData);
+                return '';
+            }
+        };
+
+        (editor.blockManager.eventAction as any).clipboardActionHandler(
+            createMockClipboardEvent('paste', mockClip)
+        );
+
+        setTimeout(() => {
+            const posAfterPaste = getAbsoluteCursorOffset(contentElement);
+
+            editorElement.dispatchEvent(
+                new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true })
+            );
+
+            setTimeout(() => {
+                const posAfterUndo = getAbsoluteCursorOffset(contentElement);
+                expect(posAfterUndo).toBe(startPos);
+
+                editorElement.dispatchEvent(
+                    new KeyboardEvent('keydown', { key: 'y', ctrlKey: true, bubbles: true })
+                );
+
+                setTimeout(() => {
+                    const posAfterRedo = getAbsoluteCursorOffset(contentElement);
+                    expect(posAfterRedo).toBe(posAfterPaste);
+                    done();
+                }, 150);
+            }, 150);
+        }, 300);
+    });
+
+    it('should preserve cursor position after paste → undo → redo CollapsibleParagraph / Toggle root', (done) => {
+        const blockElement = editorElement.querySelector('#toggleblock') as HTMLElement;
+        const contentElement = getBlockContentElement(blockElement);
+
+        editor.blockManager.setFocusToBlock(blockElement);
+        const startPos = 6;
+
+        setCursorPosition(contentElement, startPos);
+
+        const pasted = 'again ';
+        const pasteData = {
+            type: 'content',
+            newContent: [{ contentType: ContentType.Text, content: pasted }]
+        };
+
+        const mockClip = {
+            getData: (format: string) => {
+                if (format === 'text/plain') return pasted;
+                if (format === 'text/blockeditor') return JSON.stringify(pasteData);
+                return '';
+            }
+        };
+
+        (editor.blockManager.eventAction as any).clipboardActionHandler(
+            createMockClipboardEvent('paste', mockClip)
+        );
+
+        setTimeout(() => {
+            const posAfterPaste = getAbsoluteCursorOffset(contentElement);
+
+            editorElement.dispatchEvent(
+                new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true })
+            );
+
+            setTimeout(() => {
+                const posAfterUndo = getAbsoluteCursorOffset(contentElement);
+                expect(posAfterUndo).toBe(startPos);
+
+                editorElement.dispatchEvent(
+                    new KeyboardEvent('keydown', { key: 'y', ctrlKey: true, bubbles: true })
+                );
+
+                setTimeout(() => {
+                    const posAfterRedo = getAbsoluteCursorOffset(contentElement);
+                    expect(posAfterRedo).toBe(posAfterPaste);
+                    done();
+                }, 150);
+            }, 150);
+        }, 300);
+    });
+});
+
 describe('Undo/Redo Actions', () => {
     beforeAll(() => {
         const isDef: any = (o: any) => o !== undefined && o !== null;
@@ -42,8 +347,8 @@ describe('Undo/Redo Actions', () => {
             editorElement = createElement('div', { id: 'editor' });
             document.body.appendChild(editorElement);
              const blocks: BlockModel[] = [
-                { id: 'paragraph1', blockType: BlockType.Paragraph, content: [{ id: 'paragraph1-content', contentType: ContentType.Text, content: 'Hello world 1' }] },
-                { id: 'heading2', blockType: BlockType.Heading, properties: { level: 2 }, content: [{ id: 'heading2-content', contentType: ContentType.Text, content: 'Hello world 2' }] },
+                { id: 'paragraph1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Hello world 1' }] },
+                { id: 'heading2', blockType: BlockType.Heading, properties: { level: 2 }, content: [{ contentType: ContentType.Text, content: 'Hello world 2' }] },
                 {
                     id: 'calloutblock',
                     blockType: BlockType.Callout,
@@ -52,12 +357,12 @@ describe('Undo/Redo Actions', () => {
                             {
                                 id: 'calloutchild1',
                                 blockType: BlockType.Paragraph,
-                                content: [{ id: 'callout-child1-content', contentType: ContentType.Text, content: 'Callout child 1' }]
+                                content: [{ contentType: ContentType.Text, content: 'Callout child 1' }]
                             },
                             {
                                 id: 'calloutchild2',
                                 blockType: BlockType.Paragraph,
-                                content: [{ id: 'callout-child2-content', contentType: ContentType.Text, content: 'Callout child 2' }]
+                                content: [{ contentType: ContentType.Text, content: 'Callout child 2' }]
                             }
                         ]
                     }
@@ -65,7 +370,7 @@ describe('Undo/Redo Actions', () => {
                 {
                     id: 'toggleblock',
                     blockType: BlockType.CollapsibleParagraph,
-                    content: [{ id: 'toggle-content-1', contentType: ContentType.Text, content: 'Click here to expand' }],
+                    content: [{ contentType: ContentType.Text, content: 'Click here to expand' }],
                     properties: {
                         children: [
                             {
@@ -81,7 +386,7 @@ describe('Undo/Redo Actions', () => {
                         ]
                     }
                 },
-                { id: 'paragraph3', blockType: BlockType.Paragraph, content: [{ id: 'paragraph3-content', contentType: ContentType.Text, content: 'Hello world 3' }] },
+                { id: 'paragraph3', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Hello world 3' }] },
             ];
             editor = createEditor({ blocks: blocks });
             editor.appendTo('#editor');
@@ -119,11 +424,11 @@ describe('Undo/Redo Actions', () => {
                 expect((editor.blocks[0].content[1].properties as BaseStylesProp).styles.bold).toBe(true);
 
                 // Assert Dom after formatting
-                expect(contentElement.childNodes.length).toBe(2);
-                expect(contentElement.querySelector('span')).not.toBeNull();
-                expect(contentElement.querySelector('strong')).not.toBeNull();
-                expect(contentElement.querySelector('span').textContent).toBe("Hello world");
-                expect(contentElement.querySelector('strong').textContent).toBe("x");
+                const nodes = contentElement.childNodes;
+                expect(nodes.length).toBe(2);
+                expect(nodes[0].textContent).toBe("Hello world");
+                expect((nodes[1] as HTMLElement).tagName).toBe("STRONG");
+                expect(nodes[1].textContent).toBe("x");
                 // Neighbor model/DOM intact
                 expect(editor.blocks[1].id).toBe('heading2');
                 const nextAfterPara1 = (blockElement.nextElementSibling as HTMLElement);
@@ -151,11 +456,11 @@ describe('Undo/Redo Actions', () => {
                 expect((editor.blocks[0].content[1].properties as BaseStylesProp).styles.bold).toBe(true);
 
                 // Assert Dom after redo
-                expect(contentElement.childNodes.length).toBe(2);
-                expect(contentElement.querySelector('span')).not.toBeNull();
-                expect(contentElement.querySelector('strong')).not.toBeNull();
-                expect(contentElement.querySelector('span').textContent).toBe("Hello world");
-                expect(contentElement.querySelector('strong').textContent).toBe("x");
+                const nodesAfterRedo = contentElement.childNodes;
+                expect(nodesAfterRedo.length).toBe(2);
+                expect(nodesAfterRedo[0].textContent).toBe("Hello world");
+                expect((nodesAfterRedo[1] as HTMLElement).tagName).toBe("STRONG");
+                expect(nodesAfterRedo[1].textContent).toBe("x");
                 // Neighbor still intact after redo
                 expect(editor.blocks[1].id).toBe('heading2');
                 expect(((editorElement.querySelector('#paragraph1') as HTMLElement).nextElementSibling as HTMLElement).id).toBe('heading2');
@@ -223,7 +528,7 @@ describe('Undo/Redo Actions', () => {
             const blockElement = editorElement.querySelector('#paragraph1') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
             
-            editor.setSelection('paragraph1-content', 0, 13);
+            editor.setSelection(getBlockContentElement(blockElement).firstChild, 0, 13);
             const copiedData = editor.blockManager.clipboardAction.getClipboardPayload().blockeditorData;
 
             const mockClipboard: any = {
@@ -238,7 +543,7 @@ describe('Undo/Redo Actions', () => {
 
             editor.blockManager.clipboardAction.handleCopy(createMockClipboardEvent('copy', mockClipboard));
 
-            editor.setSelection('paragraph1-content', 1, 12);
+            editor.setSelection(getBlockContentElement(blockElement).firstChild, 1, 12);
 
             editor.blockManager.clipboardAction.handlePaste(createMockClipboardEvent('paste', mockClipboard));
 
@@ -474,20 +779,20 @@ describe('Undo/Redo Actions', () => {
 
             editor.blockManager.blockCommand.splitBlock();
 
-            // Model: paragraph inserted before heading2 with heading2 as id
-            expect(editor.blocks[0].id).toBe('paragraph1');
+            // Model: paragraph inserted before heading2
             expect(editor.blocks[1].blockType).toBe(BlockType.Paragraph);
-            expect(editor.blocks[1].id).toBe("heading2");
+            expect(editor.blocks[2].id).toBe("heading2");
             expect(editor.blocks[2].blockType).toBe(BlockType.Heading);
             expect(editor.blocks[2].content[0].content).toBe("Hello world 2");
 
-            // DOM 
-            let transformedEle = editorElement.querySelector('#heading2') as HTMLElement;
-            let prev = transformedEle.previousElementSibling as HTMLElement;
-            expect(prev.getAttribute('data-block-type')).toBe(BlockType.Paragraph);
-            expect(prev.id).toBe('paragraph1');
-            let next = transformedEle.nextElementSibling as HTMLElement;
-            expect(next.getAttribute('data-block-type')).toBe(BlockType.Heading);
+            // DOM
+            const headingEle = editorElement.querySelector('#heading2') as HTMLElement;
+            expect(headingEle).not.toBeNull();
+            const emptyPara = headingEle.previousElementSibling as HTMLElement;
+            expect(emptyPara).not.toBeNull();
+            expect(emptyPara.getAttribute('data-block-type')).toBe(BlockType.Paragraph);
+            expect(headingEle.getAttribute('data-block-type')).toBe(BlockType.Heading);
+            expect(headingEle.querySelector('h2')).not.toBeNull();
 
             triggerUndo(editorElement);
             expect(editor.blocks[1].blockType).toBe(BlockType.Heading);
@@ -497,43 +802,42 @@ describe('Undo/Redo Actions', () => {
 
             triggerRedo(editorElement);
             // Model: paragraph inserted before heading2 with heading2 as id
-            expect(editor.blocks[0].id).toBe('paragraph1');
             expect(editor.blocks[1].blockType).toBe(BlockType.Paragraph);
-            expect(editor.blocks[1].id).toBe("heading2");
+            expect(editor.blocks[2].id).toBe("heading2");
             expect(editor.blocks[2].blockType).toBe(BlockType.Heading);
             expect(editor.blocks[2].content[0].content).toBe("Hello world 2");
 
-            // DOM 
-            transformedEle = editorElement.querySelector('#heading2') as HTMLElement;
-            prev = transformedEle.previousElementSibling as HTMLElement;
-            expect(prev.getAttribute('data-block-type')).toBe(BlockType.Paragraph);
-            expect(prev.id).toBe('paragraph1');
-            next = transformedEle.nextElementSibling as HTMLElement;
-            expect(next.getAttribute('data-block-type')).toBe(BlockType.Heading);
+            // DOM
+            const headingEleAfterRedo = editorElement.querySelector('#heading2') as HTMLElement;
+            expect(headingEleAfterRedo).not.toBeNull();
+            const emptyParaAfterRedo = headingEleAfterRedo.previousElementSibling as HTMLElement;
+            expect(emptyParaAfterRedo).not.toBeNull();
+            expect(emptyParaAfterRedo.getAttribute('data-block-type')).toBe(BlockType.Paragraph);
+            expect(headingEleAfterRedo.getAttribute('data-block-type')).toBe(BlockType.Heading);
+            expect(headingEleAfterRedo.querySelector('h2')).not.toBeNull();
         });
 
         it('Enter action on beggining of formatted block - undo redo', () => {
             const blockElement = editorElement.querySelector('#paragraph1') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
-            editor.setSelection('paragraph1-content', 0, 13);
+            editor.setSelection(getBlockContentElement(blockElement).firstChild, 0, 13);
             editor.executeToolbarAction(CommandName.Bold);
             setCursorPosition(getBlockContentElement(blockElement), 0);
 
             editor.blockManager.blockCommand.splitBlock();
 
-            // Model: paragraph split into two; heading2 shifts to index 2
+            // Model: heading2 shifts to index 2
             expect(editor.blocks[0].blockType).toBe(BlockType.Paragraph);
-            expect(editor.blocks[0].id).toBe("paragraph1");
+            expect(editor.blocks[1].id).toBe("paragraph1");
             expect(editor.blocks[1].blockType).toBe(BlockType.Paragraph);
             expect(editor.blocks[1].content[0].content).toBe("Hello world 1");
             expect((editor.blocks[1].content[0].properties as BaseStylesProp).styles.bold).toBe(true);
             expect(editor.blocks[2].id).toBe('heading2');
             // DOM
-            let transformedEle = editorElement.querySelector('#paragraph1') as HTMLElement;
-            let nextAfterPara1 = transformedEle.nextElementSibling as HTMLElement;
-            expect(nextAfterPara1.getAttribute('data-block-type')).toBe(BlockType.Paragraph);
-            expect((nextAfterPara1.querySelector('strong'))).not.toBeNull();
-            expect((nextAfterPara1.textContent)).toBe("Hello world 1");
+            let formattedBlock = editorElement.querySelector('#paragraph1') as HTMLElement;
+            expect(formattedBlock.getAttribute('data-block-type')).toBe(BlockType.Paragraph);
+            expect((formattedBlock.querySelector('strong'))).not.toBeNull();
+            expect((formattedBlock.textContent)).toBe("Hello world 1");
 
             triggerUndo(editorElement);
             // Assert Model after undo
@@ -549,17 +853,16 @@ describe('Undo/Redo Actions', () => {
             triggerRedo(editorElement);
             // Assert Model after redo
             expect(editor.blocks[0].blockType).toBe(BlockType.Paragraph);
-            expect(editor.blocks[0].id).toBe("paragraph1");
+            expect(editor.blocks[1].id).toBe("paragraph1");
             expect(editor.blocks[1].blockType).toBe(BlockType.Paragraph);
             expect(editor.blocks[1].content[0].content).toBe("Hello world 1");
             expect((editor.blocks[1].content[0].properties as BaseStylesProp).styles.bold).toBe(true);
             expect(editor.blocks[2].id).toBe('heading2');
             // DOM
-            transformedEle = editorElement.querySelector('#paragraph1') as HTMLElement;
-            nextAfterPara1 = transformedEle.nextElementSibling as HTMLElement;
-            expect(nextAfterPara1.getAttribute('data-block-type')).toBe(BlockType.Paragraph);
-            expect((nextAfterPara1.querySelector('strong'))).not.toBeNull();
-            expect((nextAfterPara1.textContent)).toBe("Hello world 1");
+            formattedBlock = editorElement.querySelector('#paragraph1') as HTMLElement;
+            expect(formattedBlock.getAttribute('data-block-type')).toBe(BlockType.Paragraph);
+            expect((formattedBlock.querySelector('strong'))).not.toBeNull();
+            expect((formattedBlock.textContent)).toBe("Hello world 1");
         });
 
     });
@@ -572,18 +875,18 @@ describe('Undo/Redo Actions', () => {
             editorElement = createElement('div', { id: 'editor' });
             document.body.appendChild(editorElement);
              const blocks: BlockModel[] = [
-                { id: 'paragraph1', blockType: BlockType.BulletList, content: [{ id: 'paragraph1-content', contentType: ContentType.Text, content: 'Hello world' }] },
-                { id: 'paragraph2', blockType: BlockType.BulletList, content: [{ id: 'paragraph2-content', contentType: ContentType.Text, content: 'Paragraph 2' }] },
+                { id: 'paragraph1', blockType: BlockType.BulletList, content: [{ contentType: ContentType.Text, content: 'Hello world' }] },
+                { id: 'paragraph2', blockType: BlockType.BulletList, content: [{ contentType: ContentType.Text, content: 'Paragraph 2' }] },
                 { id: 'paragraph3', blockType: BlockType.Paragraph,
                     content: [
-                        { id: 'bold', contentType: ContentType.Text, content: 'Bold', properties: { styles: { bold: true } } },
-                        { id: 'italic', contentType: ContentType.Text, content: 'Italic', properties: { styles: { italic: true } } },
+                        { contentType: ContentType.Text, content: 'Bold', properties: { styles: { bold: true } } },
+                        { contentType: ContentType.Text, content: 'Italic', properties: { styles: { italic: true } } },
                     ]
                 },
                 { id: 'paragraph4', blockType: BlockType.Paragraph,
                     content: [
-                        { id: 'underline', contentType: ContentType.Text, content: 'Underline', properties: { styles: { underline: true } } },
-                        { id: 'strikethrough', contentType: ContentType.Text, content: 'Strikethrough', properties: { styles: { strikethrough: true } } },
+                        { contentType: ContentType.Text, content: 'Underline', properties: { styles: { underline: true } } },
+                        { contentType: ContentType.Text, content: 'Strikethrough', properties: { styles: { strikethrough: true } } },
                     ]
                 },
             ];

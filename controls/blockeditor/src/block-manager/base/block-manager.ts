@@ -12,7 +12,7 @@ import { NodeSelection } from '../../selection/selection';
 import { PopupRenderer } from '../renderer/common/popup-renderer';
 import { BlockActionMenuModule, ContextMenuModule, SlashCommandModule } from '../plugins/menus/index';
 import { FloatingIcon } from '../actions/floating-icon';
-import { decode, encode, findCellById, getBlockContentElement, getBlockModelById, isAlwaysOnPlaceHolderBlk, sanitizeHelper, setCursorPosition } from '../../common/utils/index';
+import { decode, encode, findCellById, getBlockContentElement, getBlockModelById, isAlwaysOnPlaceHolderBlk, NodeCutter, sanitizeHelper, setCursorPosition } from '../../common/utils/index';
 import { BlockType } from '../../models/enums';
 import { clearBreakTags, findClosestParent, isElementEmpty } from '../../common/utils/dom';
 import { ListPlugin } from '../plugins/block/list';
@@ -29,6 +29,7 @@ import { EventAction } from '../actions/event';
 import { BlockRenderer } from '../plugins/block/block-renderer';
 import { BlockEditor } from '../../blockeditor/base/blockeditor';
 import { TableSelectionManager } from '../plugins/table/selection-manager';
+import { SelectionOverlay } from '../renderer/common/selection-overlay';
 
 export class BlockManager {
 
@@ -62,6 +63,7 @@ export class BlockManager {
     public editorMethods: BlockEditorMethods;
 
     public nodeSelection: NodeSelection;
+    public nodeCutter: NodeCutter;
 
     public blockService: BlockService;
     public eventService: EventService;
@@ -74,6 +76,8 @@ export class BlockManager {
     public listPlugin: ListPlugin;
     public stateManager: StateManager;
     public popupRenderer: PopupRenderer;
+    public selectionOverlay: SelectionOverlay;
+    public lastHighlightedBlockId: string | null;
 
     /* Editor props */
     public rootEditorElement: HTMLElement;
@@ -103,6 +107,7 @@ export class BlockManager {
         italic: 'ctrl+i',
         underline: 'ctrl+u',
         strikethrough: 'ctrl+shift+x',
+        inlineCode: 'ctrl+`',
         link: 'ctrl+k',
         print: 'ctrl+p'
     };
@@ -129,11 +134,15 @@ export class BlockManager {
         this.tableService = new TableService(this);
         this.tableSelectionManager = new TableSelectionManager(this);
         this.blockCommand.createDefaultEmptyBlock();
+        this.popupRenderer = new PopupRenderer(this);
         this.blockRenderer = new BlockRenderer(this);
         this.listPlugin = new ListPlugin(this);
-        this.nodeSelection = new NodeSelection(this.blockContainer);
 
-        this.popupRenderer = new PopupRenderer(this);
+        this.nodeSelection = new NodeSelection(this.blockContainer);
+        this.nodeCutter = new NodeCutter();
+
+        this.selectionOverlay = new SelectionOverlay(this);
+        this.lastHighlightedBlockId = '';
 
         this.eventAction = new EventAction(this);
         this.floatingIconAction = new FloatingIcon(this);
@@ -341,12 +350,15 @@ export class BlockManager {
         const blockModel: BlockModel = blockElement ? getBlockModelById(blockElement.id, this.getEditorBlocks()) : null;
         const isTableBlock: HTMLElement = blockElement && findClosestParent(blockElement, `.${constants.TABLE_BLOCK_CLS}`);
         const isCalloutBlock: HTMLElement = blockElement && findClosestParent(blockElement, `.${constants.CALLOUT_BLOCK_CLS}`);
+        const isQuoteBlock: HTMLElement   = blockElement && findClosestParent(blockElement, `.${constants.QUOTE_BLOCK_CLS}`);
         const isCalloutHasOneChild: boolean = isCalloutBlock && isCalloutBlock.querySelectorAll(`.${constants.BLOCK_CLS}`).length === 1;
+        const isQuoteHasOneChild: boolean   = isQuoteBlock   && isQuoteBlock.querySelectorAll(`.${constants.BLOCK_CLS}`).length === 1;
         const isAlwaysOnBlock: boolean = blockModel && isAlwaysOnPlaceHolderBlk(blockModel.blockType);
         const tableCriteria: boolean = (isTableBlock &&
             ((blockModel && !((blockModel.properties as BasePlaceholderProp).placeholder)) || !isFocused));
         const isNullPlaceholder: boolean = (blockModel && (blockModel && !('placeholder' in blockModel.properties)));
-        if (!blockModel || isNullPlaceholder || tableCriteria || (isAlwaysOnBlock && !isFocused) || (isCalloutHasOneChild && !isFocused)) {
+        if (!blockModel || isNullPlaceholder || tableCriteria || (isAlwaysOnBlock && !isFocused) || (isCalloutHasOneChild && !isFocused) ||
+        (isQuoteHasOneChild && !isFocused)) {
             return;
         }
         const blockType: string = blockElement.getAttribute('data-block-type');
@@ -466,6 +478,8 @@ export class BlockManager {
         }
 
         this.popupRenderer = null;
+        if (this.selectionOverlay) { this.selectionOverlay.destroy(); }
+        this.selectionOverlay = null;
 
         this.inlineToolbarModule = null;
         this.inlineContentInsertionModule = null;
@@ -474,9 +488,11 @@ export class BlockManager {
         this.blockActionMenuModule = null;
         this.linkModule = null;
         this.nodeSelection = null;
+        this.nodeCutter = null;
 
         this.popupRenderer = null;
 
+        this.lastHighlightedBlockId = null;
         this.eventAction = null;
         this.formattingAction = null;
         this.listPlugin = null;

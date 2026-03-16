@@ -150,6 +150,12 @@
     }
   }
 
+  .e-mention .e-dropdownbase .e-list-item {
+    @if $skin-name == 'fluent2' {
+      margin-bottom: 0;
+    }
+  }
+
   .e-multi-column#{&}.e-ddl#{&}.e-popup#{&}.e-popup-open table {
     border-collapse: collapse;
     table-layout: fixed;

@@ -247,6 +247,14 @@ export class ContentRender implements IRenderer {
             remove(virtualTable);
             remove(virtualTrack);
         }
+        const verticalScrollbar: Element = contentDiv.querySelector('.e-virtual-vertical-scrollbar');
+        const horizontalScrollbar: Element = contentDiv.querySelector('.e-virtual-horizontal-scrollbar');
+        if (this.parent.enableVirtualization && !isNullOrUndefined(verticalScrollbar)) {
+            remove(verticalScrollbar);
+        }
+        if (this.parent.enableColumnVirtualization && !isNullOrUndefined(horizontalScrollbar)) {
+            remove(horizontalScrollbar);
+        }
         contentDiv.appendChild(this.createContentTable('_content_table'));
         this.setTable(contentDiv.querySelector('.' + literals.table));
         if (this.parent.selectionSettings.type === 'Multiple') {
@@ -469,6 +477,9 @@ export class ContentRender implements IRenderer {
             || infiniteDetailModified) {//  || (this.parent.infiniteScrollSettings && this.parent.infiniteScrollSettings.enableCache))
             this.visibleRows = [];
         }
+        if (args.requestType === 'paging' && this.parent.groupSettings.enableLazyLoading && this.parent.groupSettings.columns.length) {
+            this.parent.currentViewData = [];
+        }
         for (let i: number = startIndex, len: number = modelData.length; i < len; i++) {
             this.rows.push(modelData[parseInt(i.toString(), 10)]);
             if (this.parent.groupSettings.enableLazyLoading && !this.useGroupCache && this.parent.groupSettings.columns.length) {
@@ -478,6 +489,14 @@ export class ContentRender implements IRenderer {
                 this.setRowsInLazyGroup(modelData[parseInt(i.toString(), 10)], i);
                 if (isNullOrUndefined(modelData[parseInt(i.toString(), 10)].indent)) {
                     continue;
+                }
+            }
+            if (args.requestType === 'paging' && this.parent.groupSettings.enableLazyLoading && this.parent.groupSettings.columns.length) {
+                if (modelData[parseInt(i.toString(), 10)].isDataRow) {
+                    this.parent.currentViewData[modelData[parseInt(i.toString(), 10)].index] = modelData[parseInt(i.toString(), 10)].data;
+                } else if (modelData[parseInt(i.toString(), 10)].isCaptionRow &&
+                    !modelData.some((data: Row<Column>) => { return data.isDataRow; })) {
+                    this.parent.currentViewData.push(modelData[parseInt(i.toString(), 10)].data);
                 }
             }
             this.setInfiniteVisibleRows(args, modelData[parseInt(i.toString(), 10)]);
@@ -677,7 +696,8 @@ export class ContentRender implements IRenderer {
                         this.parent.notify(events.showAddNewRowFocus, {});
                     }
                 }
-                if (this.parent.getContent() && getScrollWidth(this.parent) > 0) {
+                if (this.parent.getContent() && ((<{ frozenRightCount?: number }>this.parent).frozenRightCount ||
+                    (<{ frozenLeftCount?: number }>this.parent).frozenLeftCount) && getScrollWidth(this.parent) > 0) {
                     this.parent.scrollModule.updateFrozenShadow();
                 }
                 frag = null;

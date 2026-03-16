@@ -1,5 +1,5 @@
 import { Spreadsheet } from '../base/index';
-import { contentLoaded, mouseDown, virtualContentLoaded, cellNavigate, getUpdateUsingRaf, IOffset, focusBorder, positionAutoFillElement, hideAutoFillOptions, performAutoFill, selectAutoFillRange, rangeSelectionByKeydown, removeCommentContainer, initiateComment } from '../common/index';
+import { contentLoaded, mouseDown, virtualContentLoaded, cellNavigate, getUpdateUsingRaf, IOffset, focusBorder, positionAutoFillElement, hideAutoFillOptions, performAutoFill, selectAutoFillRange, rangeSelectionByKeydown, removeCommentContainer, initiateComment, deInitProperties } from '../common/index';
 import { showAggregate, refreshOverlayElem, getRowIdxFromClientY, getColIdxFromClientX, hideAutoFillElement, NoteSaveEventArgs, showNote } from '../common/index';
 import { SheetModel, updateSelectedRange, getColumnWidth, mergedRange, activeCellMergedRange, Workbook, getSelectedRange, checkColumnValidation } from '../../workbook/index';
 import { getRowHeight, isSingleCell, activeCellChanged, MergeArgs, checkIsFormula, getSheetIndex } from '../../workbook/index';
@@ -54,6 +54,7 @@ export class Selection {
 
     private addEventListener(): void {
         this.parent.on(contentLoaded, this.init, this);
+        this.parent.on(deInitProperties, this.deInitProps, this);
         this.parent.on(mouseDown, this.mouseDownHandler, this);
         this.parent.on(virtualContentLoaded, this.virtualContentLoadedHandler, this);
         this.parent.on(cellNavigate, this.cellNavigateHandler, this);
@@ -75,6 +76,7 @@ export class Selection {
     private removeEventListener(): void {
         if (!this.parent.isDestroyed) {
             this.parent.off(contentLoaded, this.init);
+            this.parent.off(deInitProperties, this.deInitProps);
             this.parent.off(mouseDown, this.mouseDownHandler);
             this.parent.off(virtualContentLoaded, this.virtualContentLoadedHandler);
             this.parent.off(cellNavigate, this.cellNavigateHandler);
@@ -91,6 +93,16 @@ export class Selection {
             this.parent.off(focusBorder, this.chartBorderHandler);
             this.parent.off(selectionStatus, this.isTouchSelectionStarted);
             this.parent.off(rangeSelectionByKeydown, this.selectionByKeydown);
+        }
+    }
+
+    private deInitProps(): void {
+        const main: Element = this.parent.getMainContent();
+        if (main) {
+            const sel: Element = main.querySelector('.e-selection');
+            const active: Element = main.querySelector('.e-active-cell');
+            if (sel && sel.parentElement) { sel.parentElement.removeChild(sel); }
+            if (active && active.parentElement) { active.parentElement.removeChild(active); }
         }
     }
 
@@ -1391,14 +1403,14 @@ export class Selection {
 
     private chartBorderHandler(args: {
         startcell: { rowIndex: number, colIndex: number }, endcell: { rowIndex: number, colIndex: number },
-        classes: string[]
+        classes: string[], isMultiRange?: boolean
     }): void {
-        this.focusBorder(args.startcell, args.endcell, args.classes, true);
+        this.focusBorder(args.startcell, args.endcell, args.classes, true, args.isMultiRange);
     }
 
     private focusBorder(
         startcell: { rowIndex: number, colIndex: number }, endcell: { rowIndex: number, colIndex: number },
-        classes: string[], isChart?: boolean): void {
+        classes: string[], isChart?: boolean, isMultiRange?: boolean): void {
         isChart = isNullOrUndefined(isChart) ? false : isChart;
         const sheet: SheetModel = this.parent.getActiveSheet();
         const range: number[] = getSwapRange([startcell.rowIndex, startcell.colIndex, endcell.rowIndex, endcell.colIndex]);
@@ -1409,7 +1421,7 @@ export class Selection {
             rangeReference.appendChild(this.parent.createElement('div', { className: 'e-bottom' }));
             rangeReference.appendChild(this.parent.createElement('div', { className: 'e-left' }));
             rangeReference.appendChild(this.parent.createElement('div', { className: 'e-right' }));
-            setPosition(this.parent, rangeReference, range, 'e-range-indicator');
+            setPosition(this.parent, rangeReference, range, 'e-range-indicator', undefined, isMultiRange);
             return;
         }
         const updateRefIndicator: (range: number[], cls: string) => void = this.getRefIndicatorFn(isChart);
@@ -1507,6 +1519,8 @@ export class Selection {
 
     public destroy(): void {
         this.removeEventListener();
+        this.deInitProps();
+        this.isColSelected = null; this.isRowSelected = null;
         this.parent = null;
     }
 }

@@ -22,7 +22,7 @@ import { iterateExtend, setChecked, isComplexField , getObject } from '../base/u
 import { ColumnDeselectEventArgs, ColumnSelectEventArgs, ColumnSelectingEventArgs } from '../base/interface';
 import { addRemoveEventListener } from '../base/util';
 import * as literals from '../base/string-literals';
-import { VirtualContentRenderer } from '../renderer';
+import { GroupLazyLoadRenderer, VirtualContentRenderer } from '../renderer';
 
 /**
  * The `Selection` module is used to handle cell and row selection.
@@ -605,7 +605,10 @@ export class Selection implements IAction {
         }
         for (const rowIndex of rowIndexes) {
             const rowObj: Row<Column> = this.getRowObj(rowIndex);
-            const isUnSelected: boolean = this.selectedRowIndexes.indexOf(rowIndex) > -1;
+            const primaryKey: string = this.parent.getPrimaryKeyFieldNames()[0];
+            const isUnSelected: boolean = this.isLazyLoadPersistSelection() ?
+                !isNullOrUndefined(this.parent.selectionModule.selectedRowState[rowObj.data[`${primaryKey}`]]) :
+                this.selectedRowIndexes.indexOf(rowIndex) > -1;
             if (this.isPartialSelection && rowObj && rowObj.isDataRow && !rowObj.isSelectable) {
                 continue;
             }
@@ -871,7 +874,8 @@ export class Selection implements IAction {
                 target = selectedRow.querySelector('.e-selectionbackground.e-rowcell:not(.e-hide, .e-detailrowcollapse, .e-detailrowexpand, .e-rowdragdrop, .e-gridchkbox):' + selector);
                 this.isFocusLastCell = false;
             }
-            if (!target || preventFocus) { return; }
+            if (!target || preventFocus || (this.parent.isCheckBoxSelection && this.isLazyLoadGroup() &&
+                this.parent.enableInfiniteScrolling)) { return; }
             this.focus.onClick({ target }, true, !(this.parent.contextMenuModule && this.mouseButton === 2));
         }
     }
@@ -909,6 +913,7 @@ export class Selection implements IAction {
             }
             this.checkSelectAllClicked = false;
             this.isHdrSelectAllClicked = false;
+            this.rmtHdrChkbxClicked = false;
         }
     }
 
@@ -2989,10 +2994,11 @@ export class Selection implements IAction {
                 const selectedStateKeys: string[] = Object.keys(this.selectedRowState);
                 const unSelectedRowStateKeys: string[] = Object.keys(this.unSelectedRowState);
                 if (!this.isCheckboxReset) {
-                    const rowData: Object[] = (this.parent.groupSettings.columns.length && this.parent.isPersistSelection) ?
+                    const rowData: Object[] = (this.parent.groupSettings.columns.length && !this.parent.groupSettings.enableLazyLoading &&
+                        this.parent.isPersistSelection) ?
                         this.parent.currentViewData['records'] : this.parent.currentViewData;
                     for (const data of rowData) {
-                        if (!isNullOrUndefined(data[this.primaryKey])) {
+                        if (!isNullOrUndefined(data) && !isNullOrUndefined(data[this.primaryKey])) {
                             const key: string = data[this.primaryKey].toString();
                             if (selectedStateKeys.indexOf(key) === -1 && unSelectedRowStateKeys.indexOf(key) === -1) {
                                 this.selectedRowState[data[this.primaryKey]] = true;
@@ -3024,7 +3030,11 @@ export class Selection implements IAction {
     }
 
     private refreshPersistSelection(): void {
-        const rows: Element[] = this.parent.pinnedTopRecords.length ? this.parent.getAllDataRows(true) : this.parent.getRows();
+        let rows: Element[] = this.parent.pinnedTopRecords.length || this.isLazyLoadGroup() ?
+            this.parent.getAllDataRows(true) : this.parent.getRows();
+        if (this.isLazyLoadGroup()) {
+            rows = rows.filter((row: Element) => !row.classList.contains('e-groupcaptionrow'));
+        }
         this.totalRecordsCount = this.parent.getCurrentViewRecords().length;
         if (this.parent.allowPaging) {
             this.totalRecordsCount = this.parent.pageSettings.totalRecordsCount;
@@ -3061,12 +3071,21 @@ export class Selection implements IAction {
             } else {
                 this.selectRows(indexes);
             }
+        } else if (this.parent.isCheckBoxSelection && this.isLazyLoadPersistSelection()) {
+            this.persistSelectedRecordsCount = this.persistSelectedData.length &&
+                this.getAvailableSelectedData(this.persistSelectedData).length;
+            this.selectedRecords = [];
+            if (!this.parent.allowPaging) {
+                this.selectedRowIndexes = Object.keys(this.persistSelectedData).map((key: string) => parseInt(key, 10));
+            } else {
+                this.selectedRowIndexes = [];
+            }
         }
-        if ((this.parent.isCheckBoxSelection || this.parent.selectionSettings.checkboxMode === 'ResetOnRowClick') && this.getCurrentBatchRecordChanges().length > 0) {
+        if ((this.parent.isCheckBoxSelection || this.parent.selectionSettings.checkboxMode === 'ResetOnRowClick') &&
+            this.getCurrentBatchRecordChanges().length > 0) {
             this.setCheckAllState();
         }
     }
-
 
     private actionBegin(e: { requestType: string, action: string, data: object }): void {
         if (e.requestType === 'save' && this.parent.isPersistSelection) {
@@ -3183,7 +3202,7 @@ export class Selection implements IAction {
         }
         this.initialRowSelection = this.isRowType() && this.parent.element.querySelectorAll('.e-selectionbackground') &&
             this.parent.getSelectedRows().length ? true : false;
-        if (this.parent.isCheckBoxSelection && !this.initialRowSelection) {
+        if (this.parent.isCheckBoxSelection && !this.initialRowSelection && !this.isLazyLoadPersistSelection()) {
             const totalRecords: Row<Column>[] = this.parent.getRowsObject();
             const indexes: number[] = [];
             for (let i: number = 0; i < totalRecords.length; i++) {
@@ -3211,7 +3230,10 @@ export class Selection implements IAction {
                 new Set(availableFilteredSelectedData.map((item: object) => item[this.primaryKey]));
                 nonFilteredSelectedData = this.persistSelectedData.filter((item: object) => !filteredIds.has(item[this.primaryKey]));
             }
-            const rows: Element[] = this.parent.getRows();
+            let rows: Element[] = this.isLazyLoadPersistSelection() ? this.parent.getDataRows() : this.parent.getRows();
+            if (this.isLazyLoadPersistSelection()) {
+                rows = rows.filter((row: Element) => !row.classList.contains('e-groupcaptionrow'));
+            }
             for (let i: number = 0; i < rows.length; i++) {
                 this.updatePersistCollection(rows[parseInt(i.toString(), 10)], checkState);
             }
@@ -3243,6 +3265,9 @@ export class Selection implements IAction {
         const cRenderer: IRenderer = this.getRenderer();
         const editForm: HTMLFormElement = this.parent.element.querySelector('.e-gridform') as HTMLFormElement;
         this.checkedTarget = this.getCheckAllBox();
+        if (this.isLazyLoadPersistSelection() && !this.parent.isRemote()) {
+            this.isRowSelected = this.selectedRowIndexes.length && true;
+        }
         if (checkState && this.getCurrentBatchRecordChanges().length) {
             this.parent.checkAllRows = 'Check';
             this.updatePersistSelectedData(checkState);
@@ -3254,7 +3279,7 @@ export class Selection implements IAction {
                 this.selectedRowIndexes = Object.keys(this.virtualSelectedData).map((key: string) => parseInt(key, 10));
             } else if (!(this.parent.getDataModule().isRemote() || (!isNullOrUndefined(this.parent.dataSource)
                 && (<{result: object[]}>this.parent.dataSource).result)) && this.parent.isCheckBoxSelection && this.isPartialSelection &&
-                this.parent.partialSelectedRecords.length > 0) {
+                !this.isLazyLoadPersistSelection() && this.parent.partialSelectedRecords.length > 0) {
                 if (this.parent.isPersistSelection) {
                     this.persistSelectedData = [...this.parent.partialSelectedRecords];
                     this.persistSelectedRecordsCount = this.persistSelectedData.length &&
@@ -3264,6 +3289,18 @@ export class Selection implements IAction {
                     this.partialSelectedRecordsCount = this.partialSelectedData.length &&
                         this.getAvailableDataCount(this.partialSelectedData);
                 }
+            } else if (this.isLazyLoadPersistSelection() && !this.parent.isRemote()) {
+                this.persistSelectedData = this.isPartialSelection ? [...this.parent.partialSelectedRecords] :
+                    this.getData()['records'].slice();
+                if (!this.parent.allowPaging) {
+                    this.selectedRowIndexes = this.isPartialSelection ? [...this.parent.partialSelectedIndexes] :
+                        Object.keys(this.persistSelectedData).map((key: string) => parseInt(key, 10));
+                }
+            } else if (this.parent.isPersistSelection && this.parent.isRemote() &&
+                this.parent.groupSettings.columns.length && this.parent.groupSettings.enableLazyLoading) {
+                this.persistSelectedData = (this.parent.enableVirtualization ? this.parent.lazyLoadRender as GroupLazyLoadRenderer :
+                    (this.parent.contentModule as GroupLazyLoadRenderer)).getAllPagesData();
+                this.persistSelectedRecordsCount = this.persistSelectedData.length;
             }
         } else {
             this.parent.checkAllRows = 'Uncheck';
@@ -3317,7 +3354,13 @@ export class Selection implements IAction {
                 else if ((this.parent.getDataModule().isRemote() || (!isNullOrUndefined(this.parent.dataSource)
                     && (<{ result: object[] }>this.parent.dataSource).result))) {
                     const selectedKeys: { [key: number]: boolean } = this.parent.renderModule && this.parent.renderModule.selectableDataKey;
-                    const records: Object[] = this.getCurrentBatchRecordChanges();
+                    let records: Object[] = this.getCurrentBatchRecordChanges();
+                    if (this.isLazyLoadPersistSelection()) {
+                        records = records.filter((data: Object) => !data['key']);
+                        if (records.length) {
+                            records = Object.keys(records).map((key: string) => records[parseInt(key, 10)]);
+                        }
+                    }
                     for (let i: number = 0; i < records.length; i++) {
                         const isPrimaryKeyValue: number | string = this.getPkValue(this.primaryKey, records[parseInt(i.toString(), 10)]);
                         if ((!this.isPartialSelection && !isNullOrUndefined(isPrimaryKeyValue) || (this.isPartialSelection &&
@@ -3491,9 +3534,9 @@ export class Selection implements IAction {
 
     private isAllSelected(count?: number): boolean {
         if (this.parent.getDataModule().isRemote()
-        || (!isNullOrUndefined(this.parent.dataSource) && (<{result: object[]}>this.parent.dataSource).result)) {
+            || (!isNullOrUndefined(this.parent.dataSource) && (<{result: object[]}>this.parent.dataSource).result)) {
             return this.getAvailableSelectedData(this.persistSelectedData).length === (this.parent.enableVirtualization
-                || this.parent.enableInfiniteScrolling ? this.parent.totalDataRecordsCount : this.totalRecordsCount);
+            || this.parent.enableInfiniteScrolling || this.isLazyLoadGroup() ? this.parent.totalDataRecordsCount : this.totalRecordsCount);
         } else {
             if (this.isPartialSelection) {
                 if (this.parent.allowPaging && !this.selectionSettings.persistSelection
@@ -3539,7 +3582,8 @@ export class Selection implements IAction {
         }
         const data: object[] = this.isPartialSelection ? this.getAvailableSelectedData(this.parent.partialSelectedRecords)
             : (this.parent.getDataModule().isRemote() || (!isNullOrUndefined(this.parent.dataSource)
-          && (<{result: object[]}>this.parent.dataSource).result)) ? [] : this.getData();
+            && (<{result: object[]}>this.parent.dataSource).result)) ? [] : this.isLazyLoadPersistSelection() ?
+                    this.parent.getCurrentViewRecords() : this.getData();
         for (let i: number = 0; i < data.length; i++) {
             const pKey: string = this.getPkValue(this.primaryKey, data[parseInt(i.toString(), 10)]);
             if (this.selectedRowState[`${pKey}`]) {
@@ -3580,13 +3624,15 @@ export class Selection implements IAction {
                 if (this.parent.groupSettings.columns.length && getRecord['records']) {
                     getRecord = getRecord['records'];
                 }
-                this.totalRecordsCount = this.checkVirtualCheckBox() ? getRecord.length : this.totalRecordsCount;
+                this.totalRecordsCount = (this.checkVirtualCheckBox() || this.isLazyLoadPersistSelection()) ? getRecord.length :
+                    this.totalRecordsCount;
                 if ((checkToSelectAll && isFiltered && (this.parent.getDataModule().isRemote() ||
                     (!isNullOrUndefined(this.parent.dataSource) && (<{ result: object[] }>this.parent.dataSource).result) ||
                     getRecord.length)) || (!isFiltered && ((checkedLen === this.totalRecordsCount && this.totalRecordsCount
                         && !this.isPartialSelection && (!(this.parent.getDataModule().isRemote()
                         || (!isNullOrUndefined(this.parent.dataSource) && (<{result: object[]}>this.parent.dataSource).result))
                          || this.parent.allowPaging)) ||
+                    (this.parent.isRemote() && this.isLazyLoadPersistSelection() && checkedLen === this.parent.totalDataRecordsCount) ||
                     (!this.parent.enableVirtualization && !this.parent.enableInfiniteScrolling
                     && this.isPartialSelection && (this.isSelectAllRowCount(checkedLen)
                     || (this.isHdrSelectAllClicked && !this.parent.isPersistSelection)))
@@ -3609,9 +3655,11 @@ export class Selection implements IAction {
                     }
                     this.parent.checkAllRows = 'Check';
                 } else if (((!this.selectedRowIndexes.length && (!this.parent.enableVirtualization ||
-                             (!this.persistSelectedData.length && !isFiltered) || (isFiltered && this.someDataSelected())) ||
-                             checkedLen === 0 && this.getCurrentBatchRecordChanges().length === 0) && !this.parent.allowPaging) ||
-                             (this.parent.allowPaging && (checkedLen === 0 || (checkedLen && isFiltered && this.someDataSelected())))) {
+                        (!this.persistSelectedData.length && !isFiltered) || (isFiltered && this.someDataSelected())) ||
+                        checkedLen === 0 && this.getCurrentBatchRecordChanges().length === 0) && !this.parent.allowPaging) ||
+                        (this.parent.allowPaging && !this.isLazyLoadPersistSelection() &&
+                        (checkedLen === 0 || (checkedLen && isFiltered && this.someDataSelected()))) ||
+                        (this.isLazyLoadPersistSelection() && this.persistSelectedRecordsCount === 0)) {
                     addClass([spanEle], ['e-uncheck']);
                     if (isInteraction) {
                         this.getRenderer().setSelection(null, false, true);
@@ -3623,8 +3671,11 @@ export class Selection implements IAction {
                     input.indeterminate = true;
                 }
                 if ((this.parent.isEdit && !(this.parent.editModule && this.parent.editModule.editModule &&
-                        this.parent.editModule.editModule['initialRender']) && !this.parent.isPersistSelection) ||
-                    (checkedLen === 0 && this.getCurrentBatchRecordChanges().length === 0)) {
+                    this.parent.editModule.editModule['initialRender']) && !this.parent.isPersistSelection) ||
+                    (checkedLen === 0 && this.getCurrentBatchRecordChanges().length === 0) ||
+                    (this.parent.isRemote() && this.parent.checkAllRows === 'Uncheck' && this.isLazyLoadPersistSelection() &&
+                    (this.parent.enableVirtualization ? this.parent.lazyLoadRender as GroupLazyLoadRenderer :
+                        (this.parent.contentModule as GroupLazyLoadRenderer)).getAllPagesData().length === 0)) {
                     addClass([spanEle.parentElement], ['e-checkbox-disabled']);
                 } else {
                     removeClass([spanEle.parentElement], ['e-checkbox-disabled']);
@@ -3633,6 +3684,7 @@ export class Selection implements IAction {
                     const rowCount: number = this.parent.getRowsObject().filter((e: Row<Column>) => e.isSelectable).length;
                     if ((this.parent.isEdit && !(this.parent.editModule && this.parent.editModule.editModule &&
                         this.parent.editModule.editModule['initialRender']) && !this.parent.isPersistSelection) || (rowCount === 0 &&
+                        this.disableSelectableRecordsCount === this.totalRecordsCount &&
                         spanEle.parentElement.querySelector('.e-frame').classList.contains('e-uncheck'))) {
                         addClass([spanEle.parentElement], ['e-checkbox-disabled']);
                     } else {
@@ -3651,6 +3703,15 @@ export class Selection implements IAction {
     private checkVirtualCheckBox(): boolean {
         return this.parent.enableVirtualization && !(this.parent.getDataModule().isRemote() || (!isNullOrUndefined(this.parent.dataSource)
             && (<{result: object[]}>this.parent.dataSource).result)) && this.parent.isCheckBoxSelection && !this.isPartialSelection;
+    }
+
+    private isLazyLoadGroup(): boolean {
+        return this.parent.groupSettings && this.parent.groupSettings.columns.length &&
+            this.parent.groupSettings.enableLazyLoading;
+    }
+
+    private isLazyLoadPersistSelection(): boolean {
+        return this.parent.isPersistSelection && this.isLazyLoadGroup();
     }
 
     private virtualCheckBoxData(): object[] {
@@ -3686,7 +3747,7 @@ export class Selection implements IAction {
                 this.getData() && this.getData().length;
             return rowCount === recordCount && selectedRowCount !== 0 && selectedRowCount === this.partialSelectableRecordsCount;
         } else {
-            if (this.parent.allowPaging && this.parent.selectionSettings.persistSelection) {
+            if ((this.parent.allowPaging || this.isPartialSelection) && this.parent.selectionSettings.persistSelection) {
                 const selectedRowCount: number = this.persistSelectedRecordsCount;
                 rowCount = this.disableSelectableRecordsCount + this.partialSelectableRecordsCount;
                 return rowCount === this.totalRecordsCount && selectedRowCount !== 0 &&
@@ -4600,6 +4661,9 @@ export class Selection implements IAction {
             const spanEle: HTMLElement = checkAllBox.nextElementSibling as HTMLElement;
             removeClass([spanEle], ['e-check', 'e-stop', 'e-uncheck']);
             addClass([spanEle.parentElement], ['e-checkbox-disabled']);
+            if (checkAllBox.classList.contains('e-checkbox')) {
+                checkAllBox.classList.remove('e-checkbox');
+            }
         }
     }
 

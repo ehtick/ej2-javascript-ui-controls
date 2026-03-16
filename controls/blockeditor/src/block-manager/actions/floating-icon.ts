@@ -53,8 +53,11 @@ export class FloatingIcon {
         let blockElement: HTMLElement = target;
         this.hideDragIconForEmptyBlock(blockElement);
         const calloutContent: HTMLElement = blockElement.closest('.' + constants.CALLOUT_CONTENT_CLS) as HTMLElement;
+        const isToggleBlock: boolean = blockElement.classList.contains('e-toggle-block');
+        const tableBlock: HTMLElement = findClosestParent(target, '.' + constants.TABLE_BLOCK_CLS);
+        const quoteBlock: HTMLElement = findClosestParent(target, '.' + constants.QUOTE_BLOCK_CLS);
         if (
-            (calloutContent && blockElement === calloutContent.firstElementChild) ||
+            (calloutContent && blockElement === calloutContent.firstElementChild && !tableBlock) ||
             !this.isFullyVisibleInEditor(blockElement) ||
             this.parent.readOnly
         ) {
@@ -63,11 +66,11 @@ export class FloatingIcon {
             return;
         }
         updateCSSText(this.floatingIconContainer, 'display: flex;');
-        const isToggleBlock: boolean = blockElement.classList.contains('e-toggle-block');
-        const tableBlock: HTMLElement = findClosestParent(target, '.' + constants.TABLE_BLOCK_CLS);
-        blockElement = isToggleBlock
+        blockElement = (isToggleBlock && !tableBlock)
             ? blockElement.querySelector('.e-toggle-header') as HTMLElement
-            : (tableBlock ? tableBlock : blockElement);
+            : (tableBlock
+                ? tableBlock
+                : (quoteBlock ? quoteBlock : blockElement));
 
         const editorRect: DOMRect = getElementRect(this.parent.rootEditorElement) as DOMRect;
         const blockElementRect: DOMRect = getElementRect(blockElement) as DOMRect;
@@ -100,7 +103,7 @@ export class FloatingIcon {
         const dragIcon: HTMLElement = this.floatingIconContainer.querySelector('.e-block-drag-icon') as HTMLElement;
         updateCSSText(dragIcon, 'display: flex;');
         const ignoredTypes: string[] = [BlockType.Code, BlockType.Callout, BlockType.Divider, BlockType.CollapsibleHeading,
-            BlockType.CollapsibleParagraph, BlockType.Image, BlockType.Table];
+            BlockType.CollapsibleParagraph, BlockType.Image, BlockType.Table, BlockType.Quote];
         const blockType: string = target.getAttribute('data-block-type');
         const isIgnoredtype: boolean = blockType && ignoredTypes.indexOf(blockType) !== -1;
         const contentElement: HTMLElement = getBlockContentElement(target);
@@ -123,7 +126,11 @@ export class FloatingIcon {
 
     private handleDragIconClick(event: MouseEvent): void {
         if (!this.parent.blockActionMenuSettings.enable) { return; }
-
+        const dragIcon: HTMLElement = this.floatingIconContainer.querySelector('.e-block-drag-icon') as HTMLElement;
+        dragIcon.classList.add('e-drag-icon-selected');
+        this.parent.selectionOverlay.selectionOverlayInfo = { element: this.parent.currentHoveredBlock, direction: 'previous' };
+        this.parent.lastHighlightedBlockId = this.parent.currentHoveredBlock.id;
+        if (this.parent.selectionOverlay) { this.parent.selectionOverlay.show(this.parent.currentHoveredBlock.id); }
         this.parent.popupRenderer.adjustPopupPositionRelativeToTarget(
             this.floatingIconContainer,
             this.parent.blockActionMenuModule.popupObj
@@ -131,6 +138,7 @@ export class FloatingIcon {
 
         const popupElement: HTMLElement = document.querySelector('#' + this.parent.rootEditorElement.id + constants.BLOCKACTION_POPUP_ID);
         this.parent.blockActionMenuModule.toggleBlockActionPopup(popupElement.classList.contains('e-popup-open'), event);
+        if (this.parent.nodeSelection) { this.parent.nodeSelection.clearSelection(); }
     }
 
     private handleAddIconClick(): void {

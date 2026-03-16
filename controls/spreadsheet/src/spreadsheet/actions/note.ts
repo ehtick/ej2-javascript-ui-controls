@@ -524,7 +524,9 @@ export class SpreadsheetNote {
         const sheet: ExtendedSheet = this.parent.getActiveSheet() as ExtendedSheet;
         this.removeNoteElementsFromOtherSheets();
         if (!sheet.notes || sheet.notes.length === 0) {
-            this.parent.selectionModule.isNoteActiveElement = false;
+            if (this.parent.selectionModule) {
+                this.parent.selectionModule.isNoteActiveElement = false;
+            }
             if (this.activeNoteCell) {
                 this.activeNoteCell = null;
             }

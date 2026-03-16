@@ -1328,7 +1328,12 @@ export class RowDD {
                 const rowIndex: number = tObj.selectedRowIndex === -1 ?
                     (this.parent.grid.getRowIndexByPrimaryKey(args.data[0][`${primaryKeyField}`])) - 1
                     : tObj.getSelectedRowIndexes()[0] - 1;
-                const record: ITreeData = (tObj.getCurrentViewRecords()[parseInt(rowIndex.toString(), 10)] as ITreeData);
+                let record: ITreeData;
+                if (this.parent.enableVirtualization) {
+                    record = tObj.getCurrentViewRecords().find((e: ITreeData) => e.index === rowIndex) as ITreeData;
+                } else {
+                    record = tObj.getCurrentViewRecords()[parseInt(rowIndex.toString(), 10)] as ITreeData;
+                }
                 this.getParentData(record, args.data);
             } else {
                 args.dropIndex = args.dropIndex === args.fromIndex ? this.getTargetIdx(args.target.parentElement) : args.dropIndex;

@@ -554,49 +554,49 @@ export const BASIC_TRANSFORMATIONS: Readonly<Map<string, string>> = new Map([
  */
 export const LINE_PATTERN_MAP: Readonly<Record<string, string>> = {
     /** Pattern 2: Medium dashes with small gaps */
-    '2': '4 2',
+    '2': '8 4',
     /** Pattern 3: Small dashes with small gaps */
-    '3': '1 2',
+    '3': '1 4',
     /** Pattern 4: Dash-dot pattern */
-    '4': '4 2 1 2',
+    '4': '8 4 1 4',
     /** Pattern 5: Complex dash-dot pattern */
-    '5': '4 2 1 2 1 2',
+    '5': '8 4 1 4 1 4',
     /** Pattern 6: Double dash-dot pattern */
-    '6': '4 2 4 2 1 2',
+    '6': '8 4 8 4 1 4',
     /** Pattern 7: Large dashes with small gaps */
-    '7': '8 2 2 2',
+    '7': '12 4 4 4',
     /** Pattern 8: Large dashes with multiple small gaps */
-    '8': '8 2 2 2 2 2',
+    '8': '12 4 4 4 4 4',
     /** Pattern 9: Simple dot pattern */
-    '9': '2 2',
+    '9': '4 2',
     /** Pattern 10: Very small dashes and gaps */
-    '10': '1 1',
+    '10': '1 2',
     /** Pattern 11: Dot-dash pattern */
-    '11': '2 2 1 2',
+    '11': '4 2 1 2',
     /** Pattern 12: Complex dot-dash pattern */
-    '12': '2 2 1 2 1 2',
+    '12': '4 2 1 2 1 2',
     /** Pattern 13: Double dot-dash pattern */
-    '13': '2 2 2 2 1 2',
+    '13': '4 2 4 2 1 2',
     /** Pattern 14: Medium dash-dot pattern */
-    '14': '4 2 2 2',
+    '14': '8 2 4 2',
     /** Pattern 15: Complex medium dash pattern */
-    '15': '4 2 2 2 2 2',
+    '15': '8 2 4 2 4 2',
     /** Pattern 16: Large dashes with equal gaps */
-    '16': '8 4 8',
+    '16': '12 6',
     /** Pattern 17: Dash with large gap */
-    '17': '1 4',
+    '17': '1 6',
     /** Pattern 18: Large dash with dot and gap */
-    '18': '8 4 1 4',
+    '18': '12 6 1 6',
     /** Pattern 19: Large dash with dots */
-    '19': '8 2 1 2 1 2',
+    '19': '12 6 1 6 1 6',
     /** Pattern 20: Large dashes with multiple dots */
-    '20': '8 2 8 2 1 2',
+    '20': '12 6 12 6 1 6',
     /** Pattern 21: Very large dashes with pattern */
-    '21': '16 2 4 2',
+    '21': '20 6 8 6',
     /** Pattern 22: Very large dashes with complex pattern */
-    '22': '16 2 4 2 4 2',
+    '22': '20 6 8 6 8 6',
     /** Pattern 23: Medium dashes repeated */
-    '23': '4 2 4 2'
+    '23': '2 2'
 };
 
 // ============================================================================

@@ -350,7 +350,7 @@ export class TextBox extends Component<HTMLInputElement | HTMLTextAreaElement> i
                 this.handleFloatLabel();
                 break;
             case 'placeholder':
-                Input.setPlaceholder(this.placeholder, this.respectiveElement);
+                Input.setPlaceholder(this.placeholder, this.respectiveElement, this.getModuleName());
                 Input.calculateWidth(this.respectiveElement, this.textboxWrapper.container);
                 break;
             case 'autocomplete':

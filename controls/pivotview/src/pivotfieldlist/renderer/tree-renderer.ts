@@ -651,12 +651,23 @@ export class TreeViewRenderer implements IAction {
         const fieldInfo: FieldItemInfo = PivotUtil.getFieldInfo(id, this.parent);
         const parentNode: Element = node.closest('.' + cls.FIELD_TREE_PARENT);
         if (isChecked) {
+            let isMeasureField: boolean = false;
+            if (selectedNode.type === 'number') {
+                isMeasureField = true;
+            } else if (this.parent.dataType === 'olap') {
+                if (selectedNode.fieldType === 'Measure') {
+                    isMeasureField = true;
+                } else if (selectedNode.tag && (selectedNode.tag as string).toLowerCase().indexOf('[measures]') > -1) {
+                    isMeasureField = true;
+                } else if (selectedNode.type === 'CalculatedField' && selectedNode.formula &&
+                    (selectedNode.formula as string).toLowerCase().indexOf('measure') > -1) {
+                    isMeasureField = true;
+                }
+            }
             const eventdrop: FieldDropEventArgs = {
                 fieldName: id, dropField: fieldInfo.fieldItem,
                 dataSourceSettings: PivotUtil.getClonedDataSourceSettings(this.parent.dataSourceSettings),
-                dropAxis: (selectedNode.type === 'number' || (selectedNode.type === 'CalculatedField' &&
-                    selectedNode.formula && (selectedNode.formula as string).indexOf('Measure') > -1 &&
-                    this.parent.dataType === 'olap')) ? 'values' : 'rows',
+                dropAxis: isMeasureField ? 'values' : 'rows',
                 dropPosition: fieldInfo.position, draggedAxis: 'fieldlist', cancel: false
             };
             control.trigger(events.fieldDrop, eventdrop, (observedArgs: FieldDropEventArgs) => {
@@ -917,7 +928,7 @@ export class TreeViewRenderer implements IAction {
                 data = this.performeSearching(this.fieldSearch.value) as { [key: string]: Object; }[];
             }
         } else {
-            const keys: string[] = this.parent.pivotFieldList ? Object.keys(this.parent.pivotFieldList).reverse() : [];
+            const keys: string[] = this.parent.pivotFieldList ? Object.keys(this.parent.pivotFieldList) : [];
             const treeDataInfo: { [key: string]: { id?: string; pid?: string; caption?: string; isSelected?: boolean;
                 hasChildren?: boolean } } = {};
             for (const key of keys) {

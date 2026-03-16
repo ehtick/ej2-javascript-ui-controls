@@ -1,5 +1,5 @@
 import { Rect } from '@syncfusion/ej2-svg-base';
-import { RangeNavigator, RangeSlider, PeriodsModel } from '../../range-navigator';
+import { RangeNavigator, RangeSlider, PeriodsModel, FontModel } from '../../range-navigator';
 import { ExcelRowAndColumn } from '../../accumulation-chart';
 import { IChartEventArgs } from '../../chart/model/chart-interface';
 
@@ -177,3 +177,25 @@ export interface ExcelProperties {
     /** Specifies the collection of columns to be exported to the Excel sheet. */
     columns: ExcelRowAndColumn[];
 }
+/**
+ * Provides the event arguments for crosshair label render in both Chart and StockChart.
+ *
+ * @public
+ */
+export interface ICrosshairLabelRenderEventArgs {
+    /** Defines the text to be displayed in the crosshair label. */
+    text: string;
+    /** Specifies the raw value (number or Date) for which the label is rendered. */
+    value: number | Date;
+    /** Defines the axis name associated with the crosshair label. */
+    axisName?: string;
+    /** Specifies the background fill color of the label (if supported). */
+    fill?: string;
+    /** Specifies the text style for the label (if supported). */
+    textStyle?: FontModel;
+    /** Indicates the orientation of the axis associated with the label. */
+    axisOrientation?: 'Horizontal' | 'Vertical';
+    /** Defines the event's cancellation status. */
+    cancel?: boolean;
+}
+

@@ -350,7 +350,11 @@ export class ColumnChooser implements IAction {
             }
             if ((this.parent.getContent().firstElementChild as HTMLElement).offsetHeight < this.dlgObj.element.offsetHeight &&
                 !this.parent.element.classList.contains('e-drillthrough-grid')) {
-                resetDialogAppend(this.parent, this.dlgObj);
+                if (!isNullOrUndefined(closest(target, '.e-bigger'))) {
+                    resetDialogAppend(this.parent, this.dlgObj, 258);
+                } else {
+                    resetDialogAppend(this.parent, this.dlgObj);
+                }
                 if (this.dlgObj.element.querySelector('.e-ccsearch')) {
                     (this.dlgObj.element.querySelector('.e-ccsearch') as HTMLInputElement).select();
                 }

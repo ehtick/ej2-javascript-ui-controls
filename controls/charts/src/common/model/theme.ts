@@ -176,6 +176,9 @@ export function getThemeColor(theme: ChartTheme | AccumulationTheme, canvas: boo
             axisTitleFont: {
                 color: '#FFFFFF', fontFamily: 'Segoe UI', size: '14px', fontStyle: 'Normal', fontWeight: '600'
             },
+            seriesLabelFont: {
+                color: '#969696', fontFamily: 'Segoe UI', size: '14px', fontStyle: 'Normal', fontWeight: '400'
+            },
             datalabelFont: {
                 color: '#969696', fontFamily: 'Segoe UI', size: '12px', fontStyle: 'Normal', fontWeight: '400'
             },
@@ -243,6 +246,9 @@ export function getThemeColor(theme: ChartTheme | AccumulationTheme, canvas: boo
             axisTitleFont: {
                 color: theme === 'MaterialDark' ? 'rgba(255, 255, 255, 0.87)' : theme === 'FabricDark' ? '#DADADA' : '#FFFFFF', fontFamily: theme === 'MaterialDark' ? 'Roboto' : theme === 'FabricDark' ? 'Segoe UI' : 'Helvetica', size: '14px', fontStyle: 'Normal', fontWeight: '600'
             },
+            seriesLabelFont: {
+                color: '#969696', fontFamily: 'Segoe UI', size: '14px', fontStyle: 'Normal', fontWeight: '400'
+            },
             datalabelFont: {
                 color: theme === 'MaterialDark' ? 'rgba(255, 255, 255, 0.6)' : theme === 'FabricDark' ? '#A19F9D' : '#676767', fontFamily: theme === 'MaterialDark' ? 'Roboto' : theme === 'FabricDark' ? 'Segoe UI' : 'Helvetica', size: '12px', fontStyle: 'Normal', fontWeight: '400'
             },
@@ -287,6 +293,9 @@ export function getThemeColor(theme: ChartTheme | AccumulationTheme, canvas: boo
             },
             axisTitleFont: {
                 color: '#212529', fontFamily: 'Helvetica', size: '14px', fontStyle: 'Normal', fontWeight: '600'
+            },
+            seriesLabelFont: {
+                color: '#969696', fontFamily: 'Segoe UI', size: '14px', fontStyle: 'Normal', fontWeight: '400'
             },
             datalabelFont: {
                 color: '#495057', fontFamily: 'Helvetica', size: '12px', fontStyle: 'Normal', fontWeight: '400'
@@ -353,6 +362,9 @@ export function getThemeColor(theme: ChartTheme | AccumulationTheme, canvas: boo
             axisTitleFont: {
                 color: '#6B7280', fontFamily: 'Inter', size: '14px', fontStyle: 'Normal', fontWeight: '500'
             },
+            seriesLabelFont: {
+                color: '#969696', fontFamily: 'Segoe UI', size: '14px', fontStyle: 'Normal', fontWeight: '400'
+            },
             datalabelFont: {
                 color: '#111827', fontFamily: 'Inter', size: '12px', fontStyle: 'Normal', fontWeight: '400'
             },
@@ -417,6 +429,9 @@ export function getThemeColor(theme: ChartTheme | AccumulationTheme, canvas: boo
             },
             axisTitleFont: {
                 color: '#9CA3AF', fontFamily: 'Inter', size: '14px', fontStyle: 'Normal', fontWeight: '500'
+            },
+            seriesLabelFont: {
+                color: '#969696', fontFamily: 'Segoe UI', size: '14px', fontStyle: 'Normal', fontWeight: '400'
             },
             datalabelFont: {
                 color: '#FFFFFF', fontFamily: 'Inter', size: '12px', fontStyle: 'Normal', fontWeight: '400'
@@ -483,6 +498,9 @@ export function getThemeColor(theme: ChartTheme | AccumulationTheme, canvas: boo
             axisTitleFont: {
                 color: '#374151', fontFamily: 'Inter', size: '14px', fontStyle: 'Normal', fontWeight: '600'
             },
+            seriesLabelFont: {
+                color: '#969696', fontFamily: 'Segoe UI', size: '14px', fontStyle: 'Normal', fontWeight: '400'
+            },
             datalabelFont: {
                 color: '#6B7280', fontFamily: 'Inter', size: '12px', fontStyle: 'Normal', fontWeight: '400'
             },
@@ -547,6 +565,9 @@ export function getThemeColor(theme: ChartTheme | AccumulationTheme, canvas: boo
             },
             axisTitleFont: {
                 color: '#D1D5DB', fontFamily: 'Inter', size: '14px', fontStyle: 'Normal', fontWeight: '600'
+            },
+            seriesLabelFont: {
+                color: '#969696', fontFamily: 'Segoe UI', size: '14px', fontStyle: 'Normal', fontWeight: '400'
             },
             datalabelFont: {
                 color: '#9CA3AF', fontFamily: 'Inter', size: '12px', fontStyle: 'Normal', fontWeight: '400'
@@ -614,6 +635,9 @@ export function getThemeColor(theme: ChartTheme | AccumulationTheme, canvas: boo
             axisTitleFont: {
                 color: '#212529', fontFamily: 'Segoe UI', size: '12px', fontStyle: 'Normal', fontWeight: '600'
             },
+            seriesLabelFont: {
+                color: '#969696', fontFamily: 'Segoe UI', size: '14px', fontStyle: 'Normal', fontWeight: '400'
+            },
             datalabelFont: {
                 color: '#212529', fontFamily: 'Segoe UI', size: '12px', fontStyle: 'Normal', fontWeight: '400'
             },
@@ -679,6 +703,9 @@ export function getThemeColor(theme: ChartTheme | AccumulationTheme, canvas: boo
             },
             axisTitleFont: {
                 color: '#DEE2E6', fontFamily: 'Segoe UI', size: '12px', fontStyle: 'Normal', fontWeight: '600'
+            },
+            seriesLabelFont: {
+                color: '#969696', fontFamily: 'Segoe UI', size: '14px', fontStyle: 'Normal', fontWeight: '400'
             },
             datalabelFont: {
                 color: '#DEE2E6', fontFamily: 'Segoe UI', size: '12px', fontStyle: 'Normal', fontWeight: '400'
@@ -746,6 +773,9 @@ export function getThemeColor(theme: ChartTheme | AccumulationTheme, canvas: boo
             axisTitleFont: {
                 color: '#201F1E', fontFamily: 'Segoe UI', size: '14px', fontStyle: 'Normal', fontWeight: '600'
             },
+            seriesLabelFont: {
+                color: '#969696', fontFamily: 'Segoe UI', size: '14px', fontStyle: 'Normal', fontWeight: '400'
+            },
             datalabelFont: {
                 color: '#3B3A39', fontFamily: 'Segoe UI', size: '12px', fontStyle: 'Normal', fontWeight: '400'
             },
@@ -811,6 +841,9 @@ export function getThemeColor(theme: ChartTheme | AccumulationTheme, canvas: boo
             },
             axisTitleFont: {
                 color: '#F3F2F2', fontFamily: 'Segoe UI', size: '14px', fontStyle: 'Normal', fontWeight: '600'
+            },
+            seriesLabelFont: {
+                color: '#969696', fontFamily: 'Segoe UI', size: '14px', fontStyle: 'Normal', fontWeight: '400'
             },
             datalabelFont: {
                 color: '#D2D0CE', fontFamily: 'Segoe UI', size: '12px', fontStyle: 'Normal', fontWeight: '400'
@@ -878,6 +911,9 @@ export function getThemeColor(theme: ChartTheme | AccumulationTheme, canvas: boo
             axisTitleFont: {
                 color: '#242424', fontFamily: 'Segoe UI', size: '12px', fontStyle: 'Normal', fontWeight: '600'
             },
+            seriesLabelFont: {
+                color: '#969696', fontFamily: 'Segoe UI', size: '14px', fontStyle: 'Normal', fontWeight: '400'
+            },
             datalabelFont: {
                 color: '#242424', fontFamily: 'Segoe UI', size: '12px', fontStyle: 'Normal', fontWeight: '400'
             },
@@ -944,6 +980,9 @@ export function getThemeColor(theme: ChartTheme | AccumulationTheme, canvas: boo
             axisTitleFont: {
                 color: '#FFFFFF', fontFamily: 'Segoe UI', size: '12px', fontStyle: 'Normal', fontWeight: '600'
             },
+            seriesLabelFont: {
+                color: '#969696', fontFamily: 'Segoe UI', size: '14px', fontStyle: 'Normal', fontWeight: '400'
+            },
             datalabelFont: {
                 color: '#FFFFFF', fontFamily: 'Segoe UI', size: '12px', fontStyle: 'Normal', fontWeight: '400'
             },
@@ -1009,6 +1048,9 @@ export function getThemeColor(theme: ChartTheme | AccumulationTheme, canvas: boo
             },
             axisTitleFont: {
                 color: '#FFFFFF', fontFamily: 'Segoe UI', size: '12px', fontStyle: 'Normal', fontWeight: '600'
+            },
+            seriesLabelFont: {
+                color: '#969696', fontFamily: 'Segoe UI', size: '14px', fontStyle: 'Normal', fontWeight: '400'
             },
             datalabelFont: {
                 color: '#FFFFFF', fontFamily: 'Segoe UI', size: '12px', fontStyle: 'Normal', fontWeight: '400'
@@ -1077,6 +1119,9 @@ export function getThemeColor(theme: ChartTheme | AccumulationTheme, canvas: boo
             axisTitleFont: {
                 color: '#1C1B1F', fontFamily: 'Roboto', size: '14px', fontStyle: 'Normal', fontWeight: '600'
             },
+            seriesLabelFont: {
+                color: '#969696', fontFamily: 'Segoe UI', size: '14px', fontStyle: 'Normal', fontWeight: '400'
+            },
             datalabelFont: {
                 color: '#49454E', fontFamily: 'Roboto', size: '12px', fontStyle: 'Normal', fontWeight: '400'
             },
@@ -1144,6 +1189,9 @@ export function getThemeColor(theme: ChartTheme | AccumulationTheme, canvas: boo
             axisTitleFont: {
                 color: '#E6E1E5', fontFamily: 'Roboto', size: '14px', fontStyle: 'Normal', fontWeight: '600'
             },
+            seriesLabelFont: {
+                color: '#969696', fontFamily: 'Segoe UI', size: '14px', fontStyle: 'Normal', fontWeight: '400'
+            },
             datalabelFont: {
                 color: '#CAC4D0', fontFamily: 'Roboto', size: '12px', fontStyle: 'Normal', fontWeight: '400'
             },
@@ -1209,6 +1257,9 @@ export function getThemeColor(theme: ChartTheme | AccumulationTheme, canvas: boo
             },
             axisTitleFont: {
                 color: theme === 'Material' ? 'rgba(0, 0, 0, 1)' : theme === 'Fabric' ? '#333333' : '#212529', fontFamily: theme === 'Material' ? 'Roboto' : theme === 'Fabric' ? 'Segoe UI' : 'Helvetica', size: '14px', fontStyle: 'Normal', fontWeight: '600'
+            },
+            seriesLabelFont: {
+                color: '#969696', fontFamily: 'Segoe UI', size: '14px', fontStyle: 'Normal', fontWeight: '400'
             },
             datalabelFont: {
                 color: theme === 'Material' ? 'rgba(97, 97, 97, 1)' : theme === 'Fabric' ? '#666666' : '#676767', fontFamily: theme === 'Material' ? 'Roboto' : theme === 'Fabric' ? 'Segoe UI' : 'Helvetica', size: '12px', fontStyle: 'Normal', fontWeight: '400'

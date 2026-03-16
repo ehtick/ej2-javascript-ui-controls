@@ -2376,7 +2376,10 @@ export class ShapeLabelSettings extends ChildProperty<ShapeLabelSettings> {
     @Property('Helvetica')
     public fontFamily: string;
     /**
-     * specifies the default content of the label.
+     * Specifies the default content of the label.
+     *
+     * @remarks
+     * The labelContent is replaced with the calibrate measurement value for the calibrate annotation.
      */
     @Property('Label')
     public labelContent: string;
@@ -3997,6 +4000,9 @@ export class MeasurementSettings extends ChildProperty<MeasurementSettings> {
 
     /**
      * specifies the depth of the volume annotation.
+     *
+     * @remarks
+     * Applicable only for the volume annotation.
      */
     @Property(96)
     public depth: number;
@@ -4217,7 +4223,7 @@ export class FreeTextSettings extends ChildProperty<FreeTextSettings> {
     public isPrint: boolean;
 
     /**
-     * Allow to edit the FreeText annotation. FALSE, by default.
+     * Enables or disables text editing for the annotation. FALSE, by default.
      */
     @Property(false)
     public isReadonly: boolean;
@@ -4263,6 +4269,9 @@ export class FreeTextSettings extends ChildProperty<FreeTextSettings> {
 export class AnnotationSelectorSettings extends ChildProperty<AnnotationSelectorSettings> {
     /**
      * Specifies the selection border color.
+     *
+     * @remarks
+     * Not applicable for line type annotations, text markup annotations, and sticky note annotations.
      */
     @Property('')
     public selectionBorderColor: string;
@@ -4270,12 +4279,18 @@ export class AnnotationSelectorSettings extends ChildProperty<AnnotationSelector
     /**
      * Specifies the border color of the resizer.
      *
+     * @remarks
+     * Not applicable for text markup annotations and sticky note annotations.
      */
+
     @Property('black')
     public resizerBorderColor: string;
 
     /**
      * Specifies the fill color of the resizer.
+     *
+     * @remarks
+     * Not applicable for text markup annotations and sticky note annotations.
      *
      */
     @Property('#FF4081')
@@ -4284,36 +4299,54 @@ export class AnnotationSelectorSettings extends ChildProperty<AnnotationSelector
     /**
      * Specifies the size of the resizer.
      *
+     * @remarks
+     * Not applicable for text markup annotations and sticky note annotations.
+     *
      */
     @Property(8)
     public resizerSize: number;
 
     /**
-     * Specifies the thickness of the border of selection.
+     * Specifies the thickness of the selection border.
+     *
+     * @remarks
+     * Not applicable for line type annotations, text Markup annotations, and Sticky Note annotations.
      */
     @Property(1)
     public selectionBorderThickness: number;
 
     /**
      * Specifies the shape of the resizer.
+     *
+     * @remarks
+     * Not applicable for text markup annotations and sticky note annotations.
      */
     @Property('Square')
     public resizerShape: AnnotationResizerShape;
 
     /**
      * Specifies the border dash array of the selection.
+     *
+     * @remarks
+     * Not applicable for line type annotations, text Markup annotations, and sticky Note annotations.
      */
     @Property('')
     public selectorLineDashArray: number[];
 
     /**
      * Specifies the location of the resizer.
+     *
+     * @remarks
+     * Not applicable for text markup annotations and sticky note annotations.
      */
     @Property(AnnotationResizerLocation.Corners | AnnotationResizerLocation.Edges)
     public resizerLocation: AnnotationResizerLocation;
 
     /**
-     * specifies the cursor type of resizer
+     * specifies the cursor type of resizer.
+     *
+     * @remarks
+     * Not applicable for text markup annotations and sticky note annotations.
      */
     @Property(null)
     public resizerCursorType: CursorType;
@@ -7099,7 +7132,7 @@ export class PdfViewer extends Component<HTMLElement> implements INotifyProperty
     public enableStampAnnotations: boolean;
 
     /**
-     * Enables and disable the stickyNotes annotations when the PDF viewer control is loaded initially.
+     * add or remove the sticky note annotations in the PDF viewer.
      *
      * {% codeBlock src='pdfviewer/enableStickyNotesAnnotation/index.md' %}{% endcodeBlock %}
      *
@@ -9155,10 +9188,16 @@ export class PdfViewer extends Component<HTMLElement> implements INotifyProperty
                         }
                     }
                 }
+                if (this.annotation) {
+                    if (this.annotation.stampAnnotationModule) {
+                        this.annotation.stampAnnotationModule.validateStampSettings(newProp.stampSettings);
+                    }
+                }
                 break;
             case 'zoomValue':
                 if (!this.viewerBase.isSkipZoomValue) {
                     if (newProp.zoomValue > 0) {
+                        this.viewerBase.previousZoomValue = this.zoomValue;
                         this.magnificationModule.zoomTo(this.zoomValue);
                         this.viewerBase.isSkipZoomValue = false;
                     }
@@ -9230,6 +9269,32 @@ export class PdfViewer extends Component<HTMLElement> implements INotifyProperty
                 this.toolbarModule.updateZoomDropDown = true;
                 this.toolbarModule.createZoomDropdown();
                 this.toolbarModule.updateZoomDropDown = false;
+                break;
+            case 'enableRtl':
+                this.viewerBase.viewerContainer.style.direction = this.enableRtl ? 'rtl' : 'ltr';
+                if (this.viewerBase.pageContainer) {
+                    // page container should remain LTR so page rendering/layout stays consistent
+                    this.viewerBase.pageContainer.style.direction = this.enableRtl ? 'ltr' : 'rtl';
+                }
+                if (this.toolbarModule) {
+                    this.toolbarModule.updateRtlForToolbar();
+                    if (this.toolbarModule.annotationToolbarModule) {
+                        this.toolbarModule.annotationToolbarModule.updateRtlForAnnotationToolbar();
+                    }
+                    if (this.toolbarModule.formDesignerToolbarModule) {
+                        this.toolbarModule.formDesignerToolbarModule.updateRtlForFormDesignerToolbar();
+                    }
+                    if (this.textSearchModule && (this.textSearchModule as any).updateRtl) {
+                        this.textSearchModule.updateRtl(this.enableRtl);
+                    }
+                }
+                if (this.viewerBase.contextMenuModule) {
+                    this.viewerBase.contextMenuModule.contextMenuObj.enableRtl = this.enableRtl ? true : false;
+                }
+                if (this.viewerBase.navigationPane) {
+                    this.viewerBase.navigationPane.updateRtl(this.enableRtl);
+                }
+                this.viewerBase.updateViewerContainer();
                 break;
             case 'enableTextSearch':
                 if (!isNullOrUndefined(this.toolbarModule)) {
@@ -9903,6 +9968,46 @@ export class PdfViewer extends Component<HTMLElement> implements INotifyProperty
                 }
                 if (this.toolbarModule) {
                     this.toolbarModule.enableToolbarItem(['FormDesignerEditTool'], newProp.enableFormDesigner);
+                }
+                break;
+            case 'annotationSettings':
+                if (this.annotation) {
+                    this.annotation.validateCommonAnnotationSettings(newProp.annotationSettings);
+                }
+                break;
+            case 'rectangleSettings':
+                if (this.annotation) {
+                    if (this.annotation.shapeAnnotationModule) {
+                        this.annotation.shapeAnnotationModule.validateRectangleSettings(newProp.rectangleSettings);
+                    }
+                }
+                break;
+            case 'circleSettings':
+                if (this.annotation) {
+                    if (this.annotation.shapeAnnotationModule) {
+                        this.annotation.shapeAnnotationModule.validateCircleSettings(newProp.circleSettings);
+                    }
+                }
+                break;
+            case 'redactionSettings':
+                if (this.annotation) {
+                    if (this.annotation.redactionAnnotationModule) {
+                        this.annotation.redactionAnnotationModule.validateRedactionSettings(newProp.redactionSettings);
+                    }
+                }
+                break;
+            case 'freeTextSettings':
+                if (this.annotation) {
+                    if (this.annotation.freeTextAnnotationModule) {
+                        this.annotation.freeTextAnnotationModule.validateFreeTextSettings(newProp.freeTextSettings);
+                    }
+                }
+                break;
+            case 'radiusSettings':
+                if (this.annotation) {
+                    if (this.annotation.measureAnnotationModule) {
+                        this.annotation.measureAnnotationModule.validateRadiusSettings(newProp.radiusSettings);
+                    }
                 }
                 break;
             }
@@ -11054,6 +11159,7 @@ export class PdfViewer extends Component<HTMLElement> implements INotifyProperty
             this.viewerBase.clear(false);
         }
         this.viewerBase.setNavigationSettings();
+        this.viewerBase.validateAllAnnotationSettings();
         this.pageCount = 0;
         this.currentPageNumber = 0;
         if (!isBlazor()) {
@@ -11659,7 +11765,9 @@ export class PdfViewer extends Component<HTMLElement> implements INotifyProperty
         if (this.viewerBase.navigationPane){
             this.viewerBase.navigationPane.restrictUpdateZoomValue = true;
         }
-        this.defaultLocale = {};
+        if (this.viewerBase && !this.viewerBase.isLocaleChanged) {
+            this.defaultLocale = {};
+        }
         this.fileByteArray = null;
         this.uploadedFileByteArray = null;
     }

@@ -6,6 +6,7 @@
     overflow: auto;
     overflow-x: hidden;
     position: relative;
+    display: block;
 
     &:has([data-resizing = 'true']) {
       cursor: col-resize;
@@ -188,6 +189,9 @@
             }
           }
         }
+        &[data-block-type = 'BulletList'] {
+          margin-left: 20px;
+        }
       }
 
       /* Quote Block */
@@ -198,6 +202,9 @@
         font-size: unset;
         padding-left: $be-blockquote-text-padding;
         margin: $be-blockquote-margin;
+        &.e-quote-content .e-block {
+          padding-left: 0;
+        }
       }
 
       /* Callout Block */
@@ -276,16 +283,17 @@
         display: inline-flex;
         cursor: default;
         gap: $be-user-chip-gap;
-        height: $be-user-mention-chip-height;
-        padding: $be-user-mention-chip-padding;
+        height: 24px;
+        padding: 2px;
         border-radius: $be-user-mention-chip-border-radius;
+        align-items: baseline;
         .em-avatar {
           height: $be-user-mention-avatar-height;
           width: $be-user-mention-avatar-width;
           font-size: $be-user-mention-chip-font-size;
           line-height: $be-user-mention-chip-line-height;
           border-radius: $be-em-avatar-border-radius;
-          display: flex;
+          display: inline-block;
           align-items: center;
           justify-content: center;
           overflow: hidden;
@@ -305,8 +313,8 @@
       }
 
       .e-label-chip {
-        height: $be-label-mention-chip-height;
-        padding: $be-label-mention-chip-padding;
+        height: 26px;
+        padding: 2px 4px;
         font-size: $be-label-mention-chip-font-size;
         line-height: $be-label-mention-chip-line-height;
         border-radius: $be-label-mention-chip-border-radius;
@@ -386,12 +394,23 @@
       overflow: hidden;
 
       .e-ddl {
-        flex-basis: auto;
         height: $be-code-block-container-ddl-height;
         width: auto !important; /* stylelint-disable-line declaration-no-important */
         flex-shrink: 1;
         align-self: flex-start;
+      }
+      .e-ddl,
+      .e-code-block-dropdown-btn {
+        flex-basis: auto;
         order: 3;
+      }
+
+      /* Blazor specific styles for ddb */
+      .e-code-block-dropdown-btn {
+        min-width: 200px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
       }
     }
 
@@ -404,6 +423,11 @@
       width: 100%;
       height: $be-code-block-toolbar-height;
       box-sizing: border-box;
+
+      /* Blazor specific styles for dropdown button */
+      .e-code-block-dropdown-btn {
+        font-weight: $be-font-weight;
+      }
     }
 
     .e-code-block-languages {
@@ -470,6 +494,11 @@
         text-overflow: ellipsis;
         overflow: hidden;
         white-space: nowrap;
+        &:focus,
+        &:focus-within,
+        &.e-cell-focus {
+          text-overflow: clip;
+        }
       }
       td {
         height: $be-table-col-height;
@@ -625,6 +654,53 @@
       &.e-readonly .e-image-rsz-handle {
         display: none;
       }
+      .e-badge {
+        position: absolute;
+        top: $be-image-block-badge-top;
+        right: $be-image-block-badge-right;
+      }
+    }
+
+    /* ======== Image placeholder Styles ======== */
+    .e-image-placeholder {
+      user-select: none;
+      display: flex;
+      align-items: center;
+      height: $be-image-placeholder-ele-height;
+      border-radius: $be-image-placeholder-ele-border-radius;
+      padding: $be-image-placeholder-ele-padding;
+      gap: $be-image-placeholder-text-icon-gap;
+
+      .e-placeholder-icon-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        align-self: flex-end;
+
+        .e-icons {
+          font-weight: $be-image-placeholder-icon-font-weight;
+          font-size: $be-image-placeholder-icon-font-size;
+        }
+      }
+
+      .e-placeholder-text {
+        font-weight: $be-image-placeholder-text-font-weight;
+        font-size: $be-image-placeholder-text-font-size;
+        line-height: $be-image-placeholder-text-line-height;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+    }
+
+    /* ======== Selection Overlay ======== */
+    .e-be-selection-overlay {
+      position: absolute;
+      pointer-events: none;
+      box-sizing: border-box;
+      opacity: .5;
+      z-index: 1000;
+      border-radius: $be-selection-overlay-border-radius;
     }
 
     /* ======== RTL Styles ======== */
@@ -885,6 +961,25 @@
     .e-dropdownbase.e-dd-group .e-list-item {
       padding-left: $be-dropdownbase-list-padding-left;
     }
+
+    /* ======== Inline toolbar Transform item popup styles ======== */
+    .e-transform-item-template {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      .e-transform-icon-info {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+    }
+
+    .e-transform-item-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-grow: 1;
+    }
   }
 
   /* Context menu styles */
@@ -977,6 +1072,34 @@
           padding: $be-inline-toolbar-item-padding;
         }
       }
+      .e-toolbar-transform-dropdown {
+        gap: 4px;
+      }
+    }
+    .e-colorpicker-wrapper .e-split-btn-wrapper {
+      .e-dropdown-btn{
+        @if $theme-name == 'tailwind' {
+          padding-left: 2px;
+          padding-right: 2px;
+        }
+      }
+      .e-split-colorpicker {
+        .e-selected-color {
+          background: none;
+          display: block;
+          margin-top: $be-color-picker-margin-top;
+          width: $be-color-picker-width;
+          height: $be-color-picker-height;
+          .e-split-preview {
+            height: 3px;
+            bottom: 0;
+            top: unset;
+          }
+        }
+        &::before {
+          font-family: 'e-icons';
+        }
+      }
     }
   }
 
@@ -1060,6 +1183,23 @@
     }
   }
 
+  /* Image upload popup styles */
+  .e-image-upload-popup {
+    border-radius: $be-image-upload-popup-radius;
+    &.e-image-popup-hide {
+      display: block;
+      visibility: hidden;
+    }
+    .e-tab .e-content {
+      padding: $be-image-upload-popup-tab-content-padding;
+    }
+    .e-embed-actions {
+      padding-top: $be-embed-btn-padding-top;
+      display: flex;
+      justify-content: center;
+    }
+  }
+
   /* shortcut direction */
   .e-ctmenu-shortcut,
   .e-action-item-shortcut,
@@ -1070,5 +1210,11 @@
   /* ======== Color Picker Popup Styles ======== */
   .e-dropdown-popup:has(.e-be-color-picker) {
     margin-top: $be-color-picker-margin-top;
+  }
+
+  /* Blazor specific styles for ddb popup */
+  .e-blockeditor-codeblock-dropdown.e-dropdown-popup ul {
+    max-height: 300px;
+    overflow: auto;
   }
 }

@@ -47,8 +47,9 @@ export class Tooltip extends BaseTooltip {
         const data: PointData = this.getData();
         data.lierIndex = this.lierIndex;
         if (chart.isTouch && !this.isSelected(chart) &&
-            ((withInBounds(chart.mouseX, chart.mouseY, chart.chartAxisLayoutPanel.seriesClipRect) && chart.tooltip.shared)
-             || !chart.tooltip.shared)) {
+            ((withInBounds(chart.mouseX, chart.mouseY, chart.chartAxisLayoutPanel.seriesClipRect)
+            && (chart.tooltip.shared || chart.tooltip.split))
+             || (!this.chart.tooltip.shared && !this.chart.tooltip.split))) {
             if (!chart.crosshair.enable) {
                 this.tooltip();
                 if (chart.tooltip.fadeOutMode === 'Move') {
@@ -78,15 +79,15 @@ export class Tooltip extends BaseTooltip {
         }
         // Tooltip for chart series.
         if (!chart.disableTrackTooltip && !this.isSelected(chart)) {
-            if (!chart.tooltip.shared && (!chart.isTouch || (chart.startMove))) {
+            if ((!this.chart.tooltip.shared && !this.chart.tooltip.split) && (!chart.isTouch || (chart.startMove))) {
                 this.tooltip();
             }
             if (withInBounds(chart.mouseX, chart.mouseY, chart.chartAxisLayoutPanel.seriesClipRect)) {
-                if (chart.tooltip.shared && (!chart.isTouch || (chart.startMove))) {
+                if ((chart.tooltip.shared || chart.tooltip.split) && (!chart.isTouch || (chart.startMove))) {
                     this.tooltip();
                 }
             } else {
-                if (chart.tooltip.shared && chart.tooltip.fadeOutMode === 'Move') {
+                if ((chart.tooltip.shared || chart.tooltip.split) && chart.tooltip.fadeOutMode === 'Move') {
                     this.removeTooltip(this.chart.tooltip.fadeOutDuration);
                 }
             }
@@ -127,7 +128,7 @@ export class Tooltip extends BaseTooltip {
             document.getElementById(this.chart.element.id + '_Secondary_Element').appendChild(tooltipDiv);
             tooltipDiv.appendChild(tooltipSvg);
         }
-        if (!this.chart.tooltip.shared) {
+        if (!this.chart.tooltip.shared && !this.chart.tooltip.split) {
             this.renderSeriesTooltip(this.chart, !isTooltip, tooltipDiv);
         } else {
             this.renderGroupedTooltip(this.chart, !isTooltip, tooltipDiv);
@@ -164,7 +165,8 @@ export class Tooltip extends BaseTooltip {
         this.currentPoints = [];
         if (this.findData(data, this.previousPoints[0] as PointData)) {
             if (!(chart.dataEditingModule && chart.dataEditingModule.isPointDragging) && (this.previousPoints[0] &&
-                data.point.index === this.previousPoints[0].point.index && data.series.index === this.previousPoints[0].series.index)) {
+                data.point.index === this.previousPoints[0].point.index
+                && data.series.index === this.previousPoints[0].series.index && !(chart.tooltip.followPointer))) {
                 return null;
             }
             if (this.pushData(data, isFirst, tooltipDiv, true)) {
@@ -228,6 +230,7 @@ export class Tooltip extends BaseTooltip {
                 this.text = this.formattedText;
                 let location: ChartLocation = this.getSymbolLocation(point);
                 location = location ? location : new ChartLocation(null, null);
+                this.applyTooltipDistance(location, point, this.chart);
                 location.x = tooltip.location.x !== null ? tooltip.location.x : location.x;
                 location.y = tooltip.location.y !== null ? tooltip.location.y : location.y;
                 location = (location.x === null && location.y === null) ? null : location;
@@ -253,7 +256,7 @@ export class Tooltip extends BaseTooltip {
     private findMarkerHeight(pointData: PointData): number {
         let markerHeight: number = 0;
         const series: Series = <Series>pointData.series;
-        markerHeight = ((series.marker.visible || (this.chart.tooltip.shared &&
+        markerHeight = ((series.marker.visible || ((this.chart.tooltip.shared || this.chart.tooltip.split) &&
             (!series.isRectSeries || series.marker.visible)) || series.type === 'Scatter' || series.drawType === 'Scatter')
             && !(series.type === 'Candle' || series.type === 'Hilo' || series.type === 'HiloOpenClose')) ?
             ((series.marker.height + 2) / 2 + (2 * series.marker.border.width)) : 0;
@@ -320,7 +323,7 @@ export class Tooltip extends BaseTooltip {
 
     private getTemplateText(data: any): Points | Points[] {
         this.template = this.chart.enableHtmlSanitizer ? this.chart.sanitize(this.template as string) : this.template;
-        if (this.template && this.chart.tooltip.shared) {
+        if (this.template && (this.chart.tooltip.shared || this.chart.tooltip.split)) {
             const point: Points[] = [];
             for (let i: number = 0; i < data.length; i++) {
                 point[i as number] = extend({}, data[i as number].point) as Points;
@@ -391,7 +394,7 @@ export class Tooltip extends BaseTooltip {
             // if (data && this.header !== '' && this.currentPoints.length === 0) {
             //     headerContent = this.findHeader(data);
             // }
-            if (chart.tooltip.showNearestPoint && !data) {
+            if (chart.tooltip.showNearestPoint && !data && !this.chart.tooltip.split) {
                 data = this.getClosestX(chart, series, this.commonXValue([series]));
             }
             if (data) {
@@ -453,6 +456,41 @@ export class Tooltip extends BaseTooltip {
             this.getElement(this.element.id + '_tooltip_path').setAttribute('d', '');
         }
     }
+
+    /**
+     * Applies the tooltip distance offset to the resolved tooltip location.
+     *
+     * @param {ChartLocation} location - The resolved tooltip location to be adjusted.
+     * @param {PointData} point - The point data for which the tooltip is rendered.
+     * @param {Chart} chart - The chart instance used to determine orientation and RTL.
+     * @returns {void}
+     * @private
+     */
+    private applyTooltipDistance(
+        location: ChartLocation,
+        point: PointData,
+        chart: Chart
+    ): void {
+        const distance: number = Math.max(0, chart.tooltip.distance);
+        if (!location || distance === 0) {
+            return;
+        }
+        const series: Series = point.series;
+        if (!series.isRectSeries) {
+            location.y -= distance;
+            return;
+        }
+        const isNegative: boolean =
+            point.point && typeof point.point.y === 'number' && point.point.y < 0;
+        if (!chart.requireInvertedAxis) {
+            location.y += isNegative ? distance : -distance;
+        }
+        else {
+            const direction: number = chart.enableRtl ? -1 : 1;
+            location.x += isNegative ? -distance * direction : distance * direction;
+        }
+    }
+
     private triggerSharedTooltip(
         argument: ISharedTooltipRenderEventArgs, point: PointData, extraPoints: PointData[], chart: Chart,
         isFirst: boolean, dataCollection: PointData[]
@@ -499,9 +537,27 @@ export class Tooltip extends BaseTooltip {
                     }
                 }
                 const tooltip: TooltipSettingsModel = this.chart.tooltip;
+                const distance: number =
+                    this.chart.getModuleName() === 'chart'
+                        ? Math.max(0, (this.chart.tooltip as TooltipSettingsModel).distance || 0)
+                        : 0;
+
                 this.findMouseValues(point, this.chart, this);
                 let location: ChartLocation = this.findSharedLocation();
                 location = location ? location : new ChartLocation(null, null);
+                let splitLocations: ChartLocation[];
+                let splitClipBounds: Rect[];
+                let seriesTypes: string[];
+                if (tooltip.split) {
+                    splitLocations = this.findSplitLocation();
+                    [splitClipBounds, seriesTypes] = this.findSplitClipBounds();
+                }
+                // Apply distance  auto location
+                if (distance > 0 &&
+                    tooltip.location.x === null &&
+                    tooltip.location.y === null) {
+                    this.applyTooltipDistance(location, point, this.chart);
+                }
                 location.x = tooltip.location.x !== null ? tooltip.location.x : location.x;
                 location.y = tooltip.location.y !== null ? tooltip.location.y : location.y;
                 location = (location.x === null && location.y === null) ? null : location;
@@ -516,7 +572,10 @@ export class Tooltip extends BaseTooltip {
                                  this.chart.availableSize.height - padding - borderWidth * 2),
                         this.chart.crosshair.enable, extraPoints,
                         this.template ? this.getTemplateText(dataCollection) : null,
-                        this.template ? argsData.template.join('') : ''
+                        this.template ? argsData.template.join('') : '',
+                        splitLocations,
+                        splitClipBounds,
+                        seriesTypes
                     );
                 } else {
                     removeElement(this.element.id + '_tooltip');
@@ -554,6 +613,50 @@ export class Tooltip extends BaseTooltip {
                 return this.getSymbolLocation(<PointData>this.currentPoints[0]);
             }
         }
+    }
+
+    /**
+     * Get symbol locations for the current points.
+     * @returns {ChartLocation[]} Array of ChartLocation; invalid points are { x: null, y: null }.
+     */
+    private findSplitLocation(): ChartLocation[] {
+        const locations: ChartLocation[] = [];
+
+        for (let index: number = 0; index < this.currentPoints.length; index++) {
+            const symbolLocation: ChartLocation = this.getSymbolLocation(<PointData>this.currentPoints[index as number]);
+
+            if (symbolLocation && symbolLocation.x != null && symbolLocation.y != null) {
+                locations.push(symbolLocation);
+            } else {
+                locations.push({ x: null, y: null });
+            }
+        }
+
+        return locations;
+    }
+
+    /**
+     * Get clip bounds for each current point's series.
+     * @returns {[Rect[], string[]]} clipBounds and seriesTypes arrays.
+     * Missing series produce { x: null, y: null, width: null, height: null } and ''.
+     */
+    private findSplitClipBounds(): [Rect[], string[]] {
+        const clipBounds: Rect[] = [];
+        const seriesTypes: string[] = [];
+
+        for (let i: number = 0; i < this.currentPoints.length; i++) {
+            const point: PointData = this.currentPoints[i as number] as PointData;
+
+            if (point && point.series) {
+                clipBounds.push(point.series.clipRect);
+                seriesTypes.push(point.series.type as string);
+            } else {
+                clipBounds.push({ x: null, y: null, width: null, height: null });
+                seriesTypes.push('');
+            }
+        }
+
+        return [clipBounds, seriesTypes];
     }
 
     private getBoxLocation(data: PointData): ChartLocation {
@@ -640,7 +743,7 @@ export class Tooltip extends BaseTooltip {
             return chart.tooltip.format;
         }
         const textX: string = (series.type === 'Histogram') ? '${point.minimum}' + '-' + '${point.maximum}' :  '${point.x}';
-        const format: string = !chart.tooltip.shared ? textX : '${series.name}';
+        const format: string = !chart.tooltip.shared && !chart.tooltip.split ? textX : '${series.name}';
         switch (series.seriesType) {
         case 'XY':
             if (series.category === 'Indicator') {

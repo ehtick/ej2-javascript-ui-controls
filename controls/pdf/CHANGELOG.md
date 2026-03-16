@@ -2,7 +2,15 @@
 
 ## [Unreleased]
 
-## 32.2.8 (2025-12-22)
+## 33.1.44 (2026-03-16)
+
+### PDF
+
+#### Bug Fixes
+
+- Fixed an issue where stamp annotation appearance was not preserved correctly when saving the PDF multiple times.
+
+## 32.2.8 (2026-03-03)
 
 ### PDF
 
@@ -18,7 +26,7 @@
 #### Bug Fixes
 
 - Fixed an issue where an invalid password exception was thrown while decrypting a password protected document.
-- Fixed an issue where incorrect bounds were retrieved for newly created stamp annotation that used existing data.
+- Fixed an issue where incorrect bounds were retrieved for newly created stamp annotations that used existing data.
 
 ## 32.2.5 (2026-02-17)
 

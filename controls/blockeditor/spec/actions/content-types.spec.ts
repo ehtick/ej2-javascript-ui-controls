@@ -42,12 +42,12 @@ describe('Content types', () => {
                 {
                     id: 'mention-block',
                     blockType: BlockType.Paragraph,
-                    content: [{ contentType: ContentType.Mention, id: 'mention-content', properties: { userId: 'user1' } }]
+                    content: [{ contentType: ContentType.Mention, properties: { userId: 'user1' } }]
                 },
                 {
                     id: 'label-block',
                     blockType: BlockType.Paragraph,
-                    content: [{ contentType: ContentType.Label, id: 'label-content', properties: { labelId: 'progress' } }]
+                    content: [{ contentType: ContentType.Label, properties: { labelId: 'progress' } }]
                 },
                 {
                     id: 'combined-block',
@@ -56,8 +56,8 @@ describe('Content types', () => {
                         { contentType: ContentType.Text, content: 'To navigate to syncfusion site, ' },
                         { contentType: ContentType.Link, content: 'click here ', properties: { url: 'www.syncfusion.com' }},
                         { contentType: ContentType.Text, content: 'console.log("hello world"), ', properties: { styles: { inlineCode: true }} },
-                        { contentType: ContentType.Mention, id: 'mention-content', properties: { userId: 'user2' }},
-                        { contentType: ContentType.Label, id: 'label-content', properties: { labelId: 'progress' } }
+                        { contentType: ContentType.Mention, properties: { userId: 'user2' }},
+                        { contentType: ContentType.Label, properties: { labelId: 'progress' } }
                     ]
                 },
             ];
@@ -95,7 +95,7 @@ describe('Content types', () => {
             expect(anchorEle.textContent).toBe('syncfusion');
             expect(anchorEle.getAttribute('href')).toBe('https://www.syncfusion.com');
             expect(anchorEle.getAttribute('target')).toBe('_blank');
-            expect(editor.blocks[1].content[0].id).toBe(anchorEle.id);
+            expect(editor.blocks[1].content[0].contentType).toBe(ContentType.Link);
         });
 
         it('ensure content type code rendering', () => {
@@ -106,7 +106,8 @@ describe('Content types', () => {
             const codeEle = (contentElement.firstChild as HTMLElement);
             expect(codeEle.tagName).toBe('CODE');
             expect(codeEle.textContent).toBe('console.log("hello world")');
-            expect(editor.blocks[2].content[0].id).toBe(codeEle.id);
+            expect(editor.blocks[2].content[0].contentType).toBe(ContentType.Text);
+            expect((editor.blocks[2].content[0].properties as any).styles.inlineCode).toBe(true);
         });
 
         it('ensure content type mention rendering', () => {
@@ -117,7 +118,7 @@ describe('Content types', () => {
             const mentionChipEle = (contentElement.firstChild as HTMLElement);
             expect(mentionChipEle.tagName).toBe('DIV');
             expect((mentionChipEle.querySelector('.em-content') as HTMLElement).textContent).toBe('John Paul');
-            expect(editor.blocks[3].content[0].id).toBe(mentionChipEle.id);
+            expect(editor.blocks[3].content[0].contentType).toBe(ContentType.Mention);
             expect((editor.blocks[3].content[0].properties as IMentionContentSettings).userId).toBe(mentionChipEle.getAttribute('data-user-id'));
         });
 
@@ -129,7 +130,7 @@ describe('Content types', () => {
             const labelChipEle = (contentElement.firstChild as HTMLElement);
             expect(labelChipEle.tagName).toBe('SPAN');
             expect(labelChipEle.textContent).toBe('Progress: In-progress');
-            expect(editor.blocks[4].content[0].id).toBe(labelChipEle.id);
+            expect(editor.blocks[4].content[0].contentType).toBe(ContentType.Label);
             expect((editor.blocks[4].content[0].properties as ILabelContentSettings).labelId).toBe(labelChipEle.getAttribute('data-label-id'));
         });
 
@@ -140,29 +141,32 @@ describe('Content types', () => {
             expect(contentElement).not.toBeNull();
             expect(contentElement.textContent).toBe('To navigate to syncfusion site, click here console.log("hello world"), JSJohn SnowProgress: In-progress');
             const textEle = contentElement.firstChild as HTMLElement;
-            expect(textEle.tagName).toBe('SPAN');
+            expect(textEle.nodeType).toBe(Node.TEXT_NODE);
             expect(textEle.textContent).toBe('To navigate to syncfusion site, ');
-            expect(editor.blocks[5].content[0].id).toBe(textEle.id);
+            expect(editor.blocks[5].content[0].contentType).toBe(ContentType.Text);
 
             const anchorEle = contentElement.childNodes[1] as HTMLElement;
             expect(anchorEle.tagName).toBe('A');
             expect(anchorEle.textContent).toBe('click here ');
             expect(anchorEle.getAttribute('href')).toBe('https://www.syncfusion.com');
             expect(anchorEle.getAttribute('target')).toBe('_blank');
-            expect(editor.blocks[5].content[1].id).toBe(anchorEle.id);
+            expect(editor.blocks[5].content[1].contentType).toBe(ContentType.Link);
 
             const codeEle = contentElement.childNodes[2] as HTMLElement;
             expect(codeEle.tagName).toBe('CODE');
             expect(codeEle.textContent).toBe('console.log("hello world"), ');
-            expect(editor.blocks[5].content[2].id).toBe(codeEle.id);
+            expect(editor.blocks[5].content[2].contentType).toBe(ContentType.Text);
+            expect((editor.blocks[5].content[2].properties as any).styles.inlineCode).toBe(true);
 
             const mentionEle = contentElement.childNodes[3] as HTMLElement;
             expect(mentionEle.tagName).toBe('DIV');
             expect((mentionEle.querySelector('.em-content') as HTMLElement).textContent).toBe('John Snow');
+            expect(editor.blocks[5].content[3].contentType).toBe(ContentType.Mention);
 
             const labelEle = contentElement.lastChild as HTMLElement;
             expect(labelEle.tagName).toBe('SPAN');
             expect(labelEle.textContent).toBe('Progress: In-progress');
+            expect(editor.blocks[5].content[4].contentType).toBe(ContentType.Label);
         });
 
         it('ensure content type text rendering with special characters', () => {
@@ -179,10 +183,7 @@ describe('Content types', () => {
             expect(blockElement).not.toBeNull();
             const contentElement = getBlockContentElement(blockElement);
             expect(contentElement).not.toBeNull();
-            const expectedTextContent = specialCharsText
-                .replace(/</g, '&lt;') // Replace '<' with '&lt;'
-                .replace(/>/g, '&gt;'); // Replace '>' with '&gt;'
-            expect(contentElement.textContent).toBe(expectedTextContent);
+            expect(contentElement.textContent).toBe(specialCharsText);
         });
         
         it('ensure content type code rendering with special characters', () => {
@@ -610,7 +611,7 @@ describe('Content types', () => {
             const blocks: BlockModel[] = [{
                 id: 'paragraph',
                 blockType: BlockType.Paragraph,
-                content: [{ id: 'p-content', contentType: ContentType.Text, content: 'Initial text' }]
+                content: [{ contentType: ContentType.Text, content: 'Initial text' }]
             }];
             const users: UserModel[] = [
                 { id: 'user1', user: 'John Paul' },
@@ -646,7 +647,7 @@ describe('Content types', () => {
                 editor.blockContainer.dispatchEvent(event);
                 setTimeout(() => {
                     contentElement = getBlockContentElement(blockElement);
-                    expect((contentElement.childNodes[0] as HTMLElement).id).toBe(editor.blocks[0].content[0].id);
+                    expect((contentElement.childNodes[0] as HTMLElement).tagName).toBe('DIV');
                     expect((contentElement.childNodes[1] as HTMLElement).textContent).toBe('Initial text');
 
                     expect(editor.blocks[0].content[0].contentType).toBe(ContentType.Mention);
@@ -807,7 +808,7 @@ describe('Content types', () => {
             const blocks: BlockModel[] = [{
                 id: 'paragraph',
                 blockType: BlockType.Paragraph,
-                content: [{ id: 'p-content', contentType: ContentType.Text, content: 'Initial text' }]
+                content: [{ contentType: ContentType.Text, content: 'Initial text' }]
             }];
             const users: UserModel[] = [
                 { id: 'user1', user: 'John Paul' },

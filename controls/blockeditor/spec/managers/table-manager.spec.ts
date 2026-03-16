@@ -1,4 +1,4 @@
-import { createElement, remove } from "@syncfusion/ej2-base";
+import { createElement } from "@syncfusion/ej2-base";
 import {
     createEditor,
     getDataCell,
@@ -10,11 +10,11 @@ import {
     selectRectangle,
     selectHeaderRectangle,
 } from "../common/util.spec";
-import { BaseStylesProp, BlockModel } from "../../src/models/index";
-import { BlockType, CommandName, ContentType } from '../../src/models/enums';
+import { BlockModel } from "../../src/models/index";
+import { BlockType, ContentType } from '../../src/models/enums';
 import { BlockEditor } from '../../src/index';
-import { IHeadingBlockSettings, TableCellModel, TableColumnModel, ITableBlockSettings, TableRowModel } from '../../src/models/block/block-props';
-import { getBlockContentElement, setCursorPosition } from "../../src/common/utils/index";
+import { ITableBlockSettings } from '../../src/models/block/block-props';
+import { setCursorPosition } from "../../src/common/utils/index";
 
 
 describe('Table Manager', () => {
@@ -260,6 +260,56 @@ describe('Table Manager', () => {
             const focused = editorElement.querySelectorAll('.e-cell-focus');
             expect(focused.length).toBe(4);
         });
+
+        it('full table mouse drag selection shows pinned gripper on EVERY data row including the last row', (done) => {
+            // Fresh 2x2 table for clean testing
+            if (editor) editor.destroy();
+            editorElement.innerHTML = '';
+
+            const tableBlock = buildTableBlock('tbl_full_gripper_test', 2, 2, true, true);
+            editor = createEditor({ blocks: [tableBlock] });
+            editor.appendTo('#editor');
+
+            const table = domHelpers.query(editorElement, '.e-table-element') as HTMLTableElement;
+            const blockEl = table.closest('.e-block') as HTMLElement;
+
+            // === Perform full table selection via mouse drag ===
+            const startCell = getDataCell(editorElement, 1, 0);   // first data row, first data col
+            const endCell   = getDataCell(editorElement, 2, 1);   // last data row, last data col
+
+            startCell.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+            endCell.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+            document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+            setTimeout(() => {
+                // Get all pinned row grippers
+                const pinnedGrippers = blockEl.querySelectorAll(
+                    '.e-row-action-handle.e-pinned.e-action-bar-active'
+                ) as NodeListOf<HTMLElement>;
+            
+                // Expect exactly 2 pinned grippers (one per data row)
+                expect(pinnedGrippers.length).toBe(2);
+            
+                // Verify BOTH are visible (including the LAST row)
+                pinnedGrippers.forEach((gripper, index) => {
+                    expect(gripper.style.display).toBe('flex');
+                    expect(gripper.dataset.rowIndex).toBe(String(index + 1)); // "1" and "2"
+                });
+            
+                // Ensure no hidden pinned grippers exist
+                const allPinned = blockEl.querySelectorAll('.e-row-action-handle.e-pinned');
+                expect(allPinned.length).toBe(2);
+            
+                // Bonus: last row gripper is not hidden
+                const lastRowGripper = blockEl.querySelector(
+                    '.e-row-action-handle.e-pinned[data-row-index="2"]'
+                ) as HTMLElement;
+                expect(lastRowGripper).not.toBeNull();
+                expect(lastRowGripper.style.display).toBe('flex');
+            
+                done();
+            }, 120);
+        });
     });
 
     describe('Table selection - Keyboard multiselect (Shift+Arrows)', () => {
@@ -477,7 +527,7 @@ describe('Table Manager', () => {
             focusCellAndSelectAll(1, 0);
             pressShiftArrow('ArrowRight');
             const focused = editorElement.querySelectorAll('.e-cell-focus');
-            expect(focused.length).toBe(2);
+            expect(focused.length).toBe(6);
         });
     });
 
@@ -677,10 +727,10 @@ describe('Table Manager', () => {
             editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', code: 'Backspace' }));
     
             const props = (editor.blocks[0] as BlockModel).properties as ITableBlockSettings;
-            expect(props.rows[0].cells[0].blocks[0].content.length).toBe(0);
-            expect(props.rows[0].cells[1].blocks[0].content.length).toBe(0);
-            expect(props.rows[1].cells[0].blocks[0].content.length).toBe(0);
-            expect(props.rows[1].cells[1].blocks[0].content.length).toBe(0);
+            expect(props.rows[0].cells[0].blocks[0].content.length).toBe(1);
+            expect(props.rows[0].cells[1].blocks[0].content.length).toBe(1);
+            expect(props.rows[1].cells[0].blocks[0].content.length).toBe(1);
+            expect(props.rows[1].cells[1].blocks[0].content.length).toBe(1);
             expect(getDataCellEl(editorElement, 1, 0).textContent!.trim()).toBe('');
             expect(getDataCellEl(editorElement, 1, 1).textContent!.trim()).toBe('');
             expect(getDataCellEl(editorElement, 2, 0).textContent!.trim()).toBe('');
@@ -696,10 +746,10 @@ describe('Table Manager', () => {
             editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', code: 'Delete' }));
     
             const props = (editor.blocks[0] as BlockModel).properties as ITableBlockSettings;
-            expect(props.rows[0].cells[0].blocks[0].content.length).toBe(0);
-            expect(props.rows[0].cells[1].blocks[0].content.length).toBe(0);
-            expect(props.rows[1].cells[0].blocks[0].content.length).toBe(0);
-            expect(props.rows[1].cells[1].blocks[0].content.length).toBe(0);
+            expect(props.rows[0].cells[0].blocks[0].content.length).toBe(1);
+            expect(props.rows[0].cells[1].blocks[0].content.length).toBe(1);
+            expect(props.rows[1].cells[0].blocks[0].content.length).toBe(1);
+            expect(props.rows[1].cells[1].blocks[0].content.length).toBe(1);
             expect(getDataCellEl(editorElement, 1, 0).textContent!.trim()).toBe('');
             expect(getDataCellEl(editorElement, 1, 1).textContent!.trim()).toBe('');
             expect(getDataCellEl(editorElement, 2, 0).textContent!.trim()).toBe('');
@@ -762,8 +812,8 @@ describe('Table Manager', () => {
             //Model
             expect(props.columns[0].headerText).toBe('');
             expect(props.columns[1].headerText).toBe('');
-            expect(props.rows[0].cells[0].blocks[0].content.length).toBe(0);
-            expect(props.rows[0].cells[1].blocks[0].content.length).toBe(0);
+            expect(props.rows[0].cells[0].blocks[0].content.length).toBe(1);
+            expect(props.rows[0].cells[1].blocks[0].content.length).toBe(1);
 
             // DOM
             const headerCells = editorElement.querySelectorAll('table thead th');
@@ -787,8 +837,8 @@ describe('Table Manager', () => {
             //Model
             expect(props.columns[0].headerText).toBe('');
             expect(props.columns[1].headerText).toBe('');
-            expect(props.rows[0].cells[0].blocks[0].content.length).toBe(0);
-            expect(props.rows[0].cells[1].blocks[0].content.length).toBe(0);
+            expect(props.rows[0].cells[0].blocks[0].content.length).toBe(1);
+            expect(props.rows[0].cells[1].blocks[0].content.length).toBe(1);
 
             // DOM
             const headerCells = editorElement.querySelectorAll('table thead th');
@@ -821,9 +871,9 @@ describe('Table Manager', () => {
         beforeEach(() => {
             editorElement = createElement('div', { id: 'editor' });
             document.body.appendChild(editorElement);
-            const before: BlockModel = { id: 'before', blockType: BlockType.Paragraph, content: [{ id: 'bc', contentType: ContentType.Text, content: 'Before' }] };
+            const before: BlockModel = { id: 'before', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Before' }] };
             const table = buildTableBlock('table_block', 3, 2, true, true);
-            const after: BlockModel = { id: 'after', blockType: BlockType.Paragraph, content: [{ id: 'ac', contentType: ContentType.Text, content: 'After' }] };
+            const after: BlockModel = { id: 'after', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'After' }] };
             editor = createEditor({ blocks: [before, table, after] });
             editor.appendTo('#editor');
         });
@@ -1294,9 +1344,9 @@ describe('Table Manager', () => {
         beforeEach(() => {
             editorElement = createElement('div', { id: 'editor' });
             document.body.appendChild(editorElement);
-            const before: BlockModel = { id: 'before', blockType: BlockType.Paragraph, content: [{ id: 'bc', contentType: ContentType.Text, content: 'Before' }] };
+            const before: BlockModel = { id: 'before', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Before' }] };
             const table = buildTableBlock('table_block', 3, 2, true, true);
-            const after: BlockModel = { id: 'after', blockType: BlockType.Paragraph, content: [{ id: 'ac', contentType: ContentType.Text, content: 'After' }] };
+            const after: BlockModel = { id: 'after', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'After' }] };
             editor = createEditor({ blocks: [before, table, after] });
             editor.appendTo('#editor');
         });
@@ -1364,7 +1414,7 @@ describe('Table Manager', () => {
             const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
             press('ArrowRight', { shiftKey: true });
             const focused = editorElement.querySelectorAll('.e-cell-focus');
-            expect(focused.length).toBe(2);
+            expect(focused.length).toBe(3);
         });
 
         it('Consecutive adds/removes of focus do not leave stale focused cells', () => {
@@ -1505,13 +1555,13 @@ describe('Table Manager', () => {
             const before: BlockModel = {
                 id: 'before',
                 blockType: BlockType.Paragraph,
-                content: [{ id: 'bc', contentType: ContentType.Text, content: 'Before' }]
+                content: [{ contentType: ContentType.Text, content: 'Before' }]
             };
             const table = buildTableBlock('table_block', 3, 2, true, true); // header=true, rowNumbers=true
             const after: BlockModel = {
                 id: 'after',
                 blockType: BlockType.Paragraph,
-                content: [{ id: 'ac', contentType: ContentType.Text, content: 'After' }]
+                content: [{ contentType: ContentType.Text, content: 'After' }]
             };
             editor = createEditor({ blocks: [before, table, after] });
             editor.appendTo('#editor');
@@ -1636,4 +1686,69 @@ describe('Table Manager', () => {
             expect(th1.classList.contains('e-cell-focus')).toBe(true);
         });
     });
+
+    describe('Table UI Manager - Header-only table (hideRowLine coverage)', () => {
+        let editor: BlockEditor;
+        let editorElement: HTMLElement;
+
+        beforeEach(() => {
+            editorElement = createElement('div', { id: 'editor' });
+            document.body.appendChild(editorElement);
+            // Create a header-only table (0 body rows, 2 columns)
+            const tableBlock = buildTableBlock('table_header_only', 2, 0, true, true);
+            editor = createEditor({ blocks: [tableBlock] });
+            editor.appendTo('#editor');
+        });
+
+        afterEach(() => {
+            if (editor) {
+                editor.destroy();
+            }
+            if (editorElement && editorElement.parentElement) {
+                editorElement.parentElement.removeChild(editorElement);
+            }
+        });
+
+        it('hideRowLine() in header-only table sets rowTopDot to hidden and rowBottomDot to visible', (done) => {
+            const table = getTable(editorElement);
+            const tableBlockEl = editorElement.querySelector('.e-table-block') as HTMLElement;
+            const headerCell = getHeaderCell(editorElement, 0);
+            expect(headerCell).not.toBeNull();
+            headerCell.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+            
+            setTimeout(() => {
+                // Query row dots from DOM - there are 2 dots (top and bottom) both with class 'e-row-dot-hit'
+                const rowHits = tableBlockEl.querySelectorAll('.e-row-dot-hit') as NodeListOf<HTMLElement>;
+                
+                expect(rowHits.length).toBeGreaterThanOrEqual(2);
+                const rowTopHit = rowHits[0];
+                const rowBottomHit = rowHits[1];
+                
+                // Enter the dot to trigger showRowLine
+                rowTopHit.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+                
+                setTimeout(() => {
+                    // Leave header to trigger hideRowLine
+                    rowTopHit.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
+                    
+                    setTimeout(() => {
+                        // hideRowLine should hide rowTopDot and make rowBottomDot visible
+                        expect((rowTopHit.style as any).visibility).toBe('hidden');
+                        expect((rowBottomHit.style as any).visibility).toBe('');
+                        done();
+                    }, 50);
+                }, 50);
+            }, 50);
+        });
+    });
+
+    const domHelpers = {
+        query(el: Element | Document, sel: string): HTMLElement { return el.querySelector(sel) as HTMLElement; },
+        queryAll(el: Element | Document, sel: string): HTMLElement[] { return Array.from(el.querySelectorAll(sel)) as HTMLElement[]; },
+        mouse(el: Element, type: string, init: any = {}): void { el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, ...init })); },
+        key(el: Element, key: string, opts: any = {}): void {
+            el.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...opts }));
+            el.dispatchEvent(new KeyboardEvent('keyup', { key, bubbles: true, cancelable: true, ...opts }));
+        }
+    };
 });

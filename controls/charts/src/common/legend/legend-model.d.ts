@@ -1,4 +1,4 @@
-import { Property, Complex, ChildProperty, extend, getValue} from '@syncfusion/ej2-base';import { measureText, Rect, TextOption, Size, PathOption, CanvasRenderer } from '@syncfusion/ej2-svg-base';import { Chart, ILegendRegions } from '../../chart';import { Font, Border, Margin, Location, ContainerPadding, Accessibility } from '../model/base';import { MarginModel, FontModel, BorderModel, LocationModel, ContainerPaddingModel, AccessibilityModel } from '../model/base-model';import { subtractThickness, Thickness, drawSymbol, ChartLocation, titlePositionX, getTitle, textTrim, getTextAnchor } from '../utils/helper';import { RectOption, textElement, stringToNumber } from '../utils/helper';import { removeElement, showTooltip, getElement, appendChildElement } from '../utils/helper';import { ChartSeriesType, ChartShape, LegendMode } from '../../chart/utils/enum';import { Series } from '../../chart/series/chart-series';import { AccumulationType } from '../../accumulation-chart/model/enum';import { AccumulationChart } from '../../accumulation-chart/accumulation';import { BulletChart } from '../../bullet-chart/bullet-chart';import { Alignment, LegendTitlePosition, TextWrap, LabelOverflow, LegendShape, LegendPosition, LegendLayout} from '../utils/enum';import { StockChart } from '../../stock-chart';import { Chart3D } from '../../chart3d';import { CircularChart3D } from '../../circularchart3d';
+import { Property, Complex, ChildProperty, extend, getValue, createElement} from '@syncfusion/ej2-base';import { measureText, Rect, TextOption, Size, PathOption, CanvasRenderer } from '@syncfusion/ej2-svg-base';import { Chart, ILegendRegions } from '../../chart';import { Font, Border, Margin, Location, ContainerPadding, Accessibility } from '../model/base';import { MarginModel, FontModel, BorderModel, LocationModel, ContainerPaddingModel, AccessibilityModel } from '../model/base-model';import { subtractThickness, Thickness, drawSymbol, ChartLocation, titlePositionX, getTitle, textTrim, getTextAnchor } from '../utils/helper';import { RectOption, textElement, stringToNumber, createTemplate } from '../utils/helper';import { removeElement, showTooltip, getElement, appendChildElement, getFontStyle, measureElementRect } from '../utils/helper';import { ChartSeriesType, ChartShape, LegendMode } from '../../chart/utils/enum';import { Series } from '../../chart/series/chart-series';import { AccumulationType } from '../../accumulation-chart/model/enum';import { AccumulationChart } from '../../accumulation-chart/accumulation';import { BulletChart } from '../../bullet-chart/bullet-chart';import { Alignment, LegendTitlePosition, TextWrap, LabelOverflow, LegendShape, LegendPosition, LegendLayout} from '../utils/enum';import {  StockChart } from '../../stock-chart';import { Chart3D } from '../../chart3d';import { CircularChart3D } from '../../circularchart3d';import { AccumulationSeries } from '../../accumulation-chart';import { Sankey } from '../../sankey';
 
 /**
  * Interface for a class LegendSettings
@@ -322,6 +322,15 @@ export interface LegendSettingsModel {
      * Options to improve accessibility for legend elements.
      */
     accessibility?: AccessibilityModel;
+
+    /**
+     * Specifies the custom template used to display the legend content.
+     * The template can contain any valid HTML element or layout. When set, the provided template replaces the default legend text for the series.
+     *
+     * @default null.
+     */
+
+    template?: string | Function;
 
 }
 

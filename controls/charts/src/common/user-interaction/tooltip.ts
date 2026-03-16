@@ -192,25 +192,27 @@ export class BaseTooltip extends ChartData {
                     element.setAttribute('fill', (highlight && this.chart.highlightColor !== 'transparent' ? this.chart.highlightColor : series.pointColorMapping !== '' ? ((series as Series).points[0]).color : (series as Series).points[pointIndex as number].color || (series as Series).interior));
                 }
                 else {
-                    if ((this.control.highlightMode === 'None') && (this.chart.tooltip.enableHighlight) && ((!this.chart.tooltip.shared) || (isAccumulation))) {
+                    if ((this.control.highlightMode === 'None') && (this.chart.tooltip.enableHighlight) && ((!(this.chart.tooltip.shared || this.chart.tooltip.split)) || (isAccumulation))) {
                         if (highlight && (isAccumulation ? (this.control as AccumulationChart).accumulationSelectionModule
                             && (this.control as AccumulationChart).accumulationSelectionModule.selectedDataIndexes.length > 0
                             : this.chart.selectionModule && this.chart.selectionModule.selectedDataIndexes.length > 0)) {
                             return;
                         }
                         const target: string = this.element.id + '_Series_' + series.index + '_Point_' + pointIndex;
+                        let selectionHelper: Selection = null;
                         for (const currentSeries of this.chart.visibleSeries) {
                             let seriesElementsGroupCollections: Element[] = [];
                             const currentSeriesWidth: number = typeof currentSeries.width === 'number' ? currentSeries.width : parseFloat(currentSeries.width as string);
                             seriesElementsGroupCollections = isAccumulation
                                 ? [this.getElement(this.chart.element.id + '_Series_' + currentSeries.index)]
-                                : new Selection(this.chart).getSeriesElements(currentSeries);
+                                : ((selectionHelper || (selectionHelper = new Selection(this.chart))).getSeriesElements(currentSeries));
                             if (isAccumulation && (this.control as AccumulationChart).series[0].dataLabel.visible) {
                                 const dataLabelCollection: Element = this.getElement(this.element.id + '_datalabel_Series_0');
                                 if (dataLabelCollection) {
                                     seriesElementsGroupCollections.push(dataLabelCollection);
                                 }
                             }
+                            const isTargetSeries: boolean = !isAccumulation && (currentSeries.index === (series as Series).index);
                             seriesElementsGroupCollections.forEach((seriesElementsGroup: HTMLElement) => {
                                 if (seriesElementsGroup !== null) {
                                     seriesElementsGroup.childNodes.forEach((seriesElement: HTMLElement) => {
@@ -244,10 +246,19 @@ export class BaseTooltip extends ChartData {
                                     });
                                 }
                             });
+                            if (!isAccumulation && selectionHelper && (!this.chart.highlightModule ||
+                                this.chart.highlightModule.highlightDataIndexes.length === 0)) {
+                                const labelSeriesIndex: number = selectionHelper.rangeColorMappingEnabled() ? 0 : currentSeries.index;
+                                if (highlight) {
+                                    selectionHelper.updateSeriesLabelOpacity(labelSeriesIndex, !isTargetSeries);
+                                } else {
+                                    selectionHelper.updateSeriesLabelOpacity(labelSeriesIndex, false);
+                                }
+                            }
                         }
                     }
                     else if (series.isRectSeries) {
-                        element.setAttribute('opacity', (highlight && this.chart.highlightColor !== 'transparent' ? series.opacity / 2 : series.opacity).toString());
+                        element.setAttribute('opacity', ((highlight && this.chart.highlightColor !== 'transparent' && this.chart.highlightMode !== 'Point') ? (series.opacity / 2) : series.opacity).toString());
                     }
                 }
             } else {
@@ -268,12 +279,22 @@ export class BaseTooltip extends ChartData {
         chart: Chart | AccumulationChart | Chart3D, isFirst: boolean, location: ChartLocation, clipLocation: ChartLocation,
         point: Points | AccPoints | Chart3DPoint, shapes: ChartShape[], offset: number, bounds: Rect,
         crosshairEnabled: boolean = false, extraPoints: PointData[] = null,
-        templatePoint: Points | Points[] | AccPoints | Chart3DPoint| Chart3DPoint[] = null, customTemplate?: string
+        templatePoint: Points | Points[] | AccPoints | Chart3DPoint| Chart3DPoint[] = null, customTemplate?: string,
+        splitLocations?: ChartLocation[], splitClipBounds?: Rect[], seriesTypes?: string[]
     ): void {
         const series: Series = <Series>this.currentPoints[0].series;
         const tooltipModule: AccumulationTooltip | Tooltip | Tooltip3D = (<Chart>chart).tooltipModule || (<Chart3D>chart).tooltip3DModule ||
          (<AccumulationChart>chart).accumulationTooltipModule;
-        if (!tooltipModule || location === null) { // For the tooltip enable is false.
+        if (!isNullOrUndefined(point) && !isNullOrUndefined(series.gradientId)) {
+            const hasGradientStops : boolean =
+                (series.linearGradient.gradientColorStop.length) > 0 ||
+                (series.radialGradient.gradientColorStop.length) > 0;
+            if (hasGradientStops && !isNullOrUndefined(series.interior)) {
+                point.color = series.interior;
+            }
+        }
+        // For the tooltip enable is false.
+        if (!tooltipModule || location === null) {
             removeElement(this.chart.element.id + '_tooltip');
             return;
         }
@@ -285,8 +306,15 @@ export class BaseTooltip extends ChartData {
                     content: this.text,
                     fill: chart.tooltip.fill,
                     border: chart.tooltip.border,
-                    enableAnimation: chart.tooltip.enableAnimation,
-                    location: location,
+                    enableAnimation: (this.control as Chart | AccumulationChart).tooltip.followPointer
+                        || (this.control as Chart).tooltip.split ? false : chart.tooltip.enableAnimation,
+                    location: (this.control as Chart | AccumulationChart).tooltip.followPointer
+                        ? { x: chart.mouseX, y: chart.mouseY } : location,
+                    seriesTypes: seriesTypes,
+                    followPointer: (this.control as Chart | AccumulationChart).tooltip.followPointer,
+                    splitLocations: splitLocations,
+                    splitClipBounds: splitClipBounds,
+                    split: (this.control as Chart).getModuleName() === 'chart' ? (this.control as Chart).tooltip.split : false,
                     shared: (this.control as Chart | AccumulationChart).tooltip.shared,
                     crosshair: crosshairEnabled,
                     shapes: shapes,
@@ -294,15 +322,18 @@ export class BaseTooltip extends ChartData {
                     clipBounds: this.chart.chartAreaType === 'PolarRadar' ? new ChartLocation(0, 0) : clipLocation,
                     areaBounds: bounds,
                     palette: this.findPalette(),
-                    template: customTemplate || this.template as string | Function,
+                    template: (this.control as Chart).tooltip.split ? this.template as string | Function :
+                        (customTemplate || this.template as string | Function),
                     data: templatePoint,
                     theme: chart.theme,
                     offset: offset,
                     textStyle: chart.tooltip.textStyle,
                     isNegative: (series.isRectSeries && series.type !== 'Waterfall' && point && point.y < 0),
-                    inverted: this.chart.requireInvertedAxis && series.isRectSeries,
-                    arrowPadding: this.text.length > 1 || this.chart.stockChart || (this.chart.tooltip.location.x !== null
-                        || this.chart.tooltip.location.y !== null ) ? 0 : 7,
+                    inverted: this.chart.tooltip.split ? this.chart.requireInvertedAxis
+                        : this.chart.requireInvertedAxis && series.isRectSeries,
+                    arrowPadding: (this.text.length > 1 || this.chart.stockChart || (this.chart.tooltip.location.x !== null
+                        || this.chart.tooltip.location.y !== null) || (this.control as Chart | AccumulationChart).tooltip.followPointer)
+                        && !(this.control as Chart | AccumulationChart).tooltip.split ? 0 : 7,
                     availableSize: chart.availableSize,
                     duration: this.chart.tooltip.duration,
                     isCanvas: this.chart.enableCanvas,
@@ -329,7 +360,12 @@ export class BaseTooltip extends ChartData {
             this.svgTooltip.appendTo(this.getElement(this.element.id + '_tooltip'));
         } else {
             if (this.svgTooltip) {
-                this.svgTooltip.location = location;
+                this.svgTooltip.location = (this.control as Chart | AccumulationChart).tooltip.followPointer
+                    ? { x: chart.mouseX, y: chart.mouseY } : location;
+                this.svgTooltip.seriesTypes = seriesTypes;
+                this.svgTooltip.followPointer = (this.control as Chart | AccumulationChart).tooltip.followPointer;
+                this.svgTooltip.splitClipBounds = splitClipBounds;
+                this.svgTooltip.splitLocations = splitLocations;
                 this.svgTooltip.content = this.text;
                 this.svgTooltip.header = this.headerText;
                 this.svgTooltip.offset = offset;
@@ -342,8 +378,9 @@ export class BaseTooltip extends ChartData {
                 this.svgTooltip.textStyle = chart.tooltip.textStyle;
                 this.svgTooltip.isNegative = (series.isRectSeries && series.type !== 'Waterfall' && point && point.y < 0);
                 this.svgTooltip.clipBounds = this.chart.chartAreaType === 'PolarRadar' ? new ChartLocation(0, 0) : clipLocation;
-                this.svgTooltip.arrowPadding = this.text.length > 1 || this.chart.stockChart || (this.chart.tooltip.location.x !== null
-                    || this.chart.tooltip.location.y !== null) ? 0 : 7;
+                this.svgTooltip.arrowPadding = (this.text.length > 1 || this.chart.stockChart || (this.chart.tooltip.location.x !== null
+                    || this.chart.tooltip.location.y !== null) || (this.control as Chart | AccumulationChart).tooltip.followPointer)
+                    && !(this.control as Chart | AccumulationChart).tooltip.split ? 0 : 7;
                 this.svgTooltip.allowHighlight = chart.getModuleName() === 'chart' && !series.marker.allowHighlight;
                 this.svgTooltip.dataBind();
             }

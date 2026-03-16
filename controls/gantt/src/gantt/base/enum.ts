@@ -1,9 +1,10 @@
 /**
- * To define duration unit for whole project
+ * Defines the duration unit for the entire project.
+ *
  * ```props
- * * Minute :- To define unit value of duration as minute.
- * * Hour :- To define unit value of duration as hour.
- * * Day :- To define unit value of duration as day.
+ * * Minute  - Defines the unit of duration as minutes.
+ * * Hour    - Defines the unit of duration as hours.
+ * * Day     - Defines the unit of duration as days.
  * ```
  */
 export type DurationUnit =
@@ -12,12 +13,13 @@ export type DurationUnit =
     'Day';
 
 /**
- * To define grid lines in Gantt
+ * Defines grid lines in the Gantt chart.
+ *
  * ```props
- * * Horizontal :- Define horizontal lines.
- * * Vertical :- Define vertical lines.
- * * Both :- Define both horizontal and vertical lines.
- * * None :- Define no lines.
+ * * Horizontal - Defines horizontal lines.
+ * * Vertical   - Defines vertical lines.
+ * * Both       - Defines both horizontal and vertical lines.
+ * * None       - Defines no lines.
  * ```
  */
 export type GridLine =
@@ -27,15 +29,16 @@ export type GridLine =
     'None';
 
 /**
- * To define the day of a week
+ * Defines the day of the week.
+ *
  * ```props
- * * Monday :- To define the day as Monday.
- * * Tuesday :- To define the day as Tuesday.
- * * Wednesday :- To define the day as Wednesday.
- * * Thursday :- To define the day as Thursday.
- * * Friday :- To define the day as Friday.
- * * Saturday :- To define the day as Saturday.
- * * Sunday :- To define the day as Sunday.
+ * * Monday    - Defines the day as Monday.
+ * * Tuesday   - Defines the day as Tuesday.
+ * * Wednesday - Defines the day as Wednesday.
+ * * Thursday  - Defines the day as Thursday.
+ * * Friday    - Defines the day as Friday.
+ * * Saturday  - Defines the day as Saturday.
+ * * Sunday    - Defines the day as Sunday.
  * ```
  */
 export type DayOfWeek =
@@ -172,14 +175,14 @@ export type EditMode =
     'Dialog';
 
 /**
- * Defines the default items of Column menu
+ * Defines the default items of the column menu.
  * ```props
- * * SortAscending :- Sort the current column in ascending order.
- * * SortDescending :- Sort the current column in descending order.
- * * AutoFitAll :- Auto fit the size of all columns.
- * * AutoFit :- Auto fit the current column.
- * * ColumnChooser :- show the column chooser.
- * * Filter :- show the Filter popup.
+ * * SortAscending - Sorts the current column in ascending order.
+ * * SortDescending - Sorts the current column in descending order.
+ * * AutoFitAll - Auto-fits the size of all columns.
+ * * AutoFit - Auto-fits the current column.
+ * * ColumnChooser - Shows the column chooser.
+ * * Filter - Shows the filter popup.
  * ```
  */
 export type ColumnMenuItem =
@@ -191,15 +194,15 @@ export type ColumnMenuItem =
     'Filter';
 
 /**
- * Defines tab container type in add or edit dialog
+ * Defines the types of tabs available in the Add and Edit dialogs.
  * ```props
- * * General :- Defines tab container type as general.
- * * Dependency :- Defines tab as dependency editor.
- * * Resources :- Defines tab as resources editor.
- * * Notes :- Defines tab as notes editor.
- * * Custom :- Defines tab as custom column editor.
- * * Segments :- Defines tab as task segments editor.
- * * `Advanced` :- Displays the advanced tab for fields like constraint type and constraint date.
+ * * `General`: Renders the tab for general task fields.
+ * * `Dependency`: Renders the tab for managing task dependencies.
+ * * `Resources`: Renders the tab for assigning resources.
+ * * `Notes`: Renders the tab for adding task notes.
+ * * `Custom`: Renders the tab for editing custom column values.
+ * * `Segments`: Renders the tab for managing task segments.
+ * * `Advanced`: Renders the tab for advanced settings like task constraints.
  * ```
  */
 export type DialogFieldType =
@@ -212,7 +215,7 @@ export type DialogFieldType =
     'Advanced';
 
 /**
- * Defines filter type of Gantt
+ * Specifies the filter dialog style in Gantt Chart.
  * ```props
  * * Menu :- Defines filter type as menu.
  * * Excel :- Specifies the filtersetting type as excel.
@@ -252,11 +255,11 @@ export type SearchHierarchyMode =
     'None';
 
 /**
- * To define initial view of Gantt
+ * Specifies the initial view of the Gantt chart component.
  * ```props
- * * Default :- Shows grid side and side of Gantt.
- * * Grid :- Shows grid side alone in Gantt.
- * * Chart :- Shows chart side alone in Gantt.
+ * * Default :- Displays both the grid and the chart views side-by-side.
+ * * Grid :- Displays only the grid view.
+ * * Chart :- Displays only the chart view.
  * ```
  */
 export type SplitterView =
@@ -264,14 +267,13 @@ export type SplitterView =
     'Grid' |
     'Chart';
 /**
- * To define new position for add action
- * ```props
- * * Top :- Defines new row position as top of all rows.
- * * Bottom :- Defines new row position as bottom of all rows.
- * * Above :- Defines new row position as above the selected row.
- * * Below :- Defines new row position as below the selected row.
- * * Child :- Defines new row position as child to the selected row.
- * ```
+ * Defines the target position for adding new rows in the GanttChart.
+ * The available positions are:
+ * * `Top`: Adds a new row at the top of all rows.
+ * * `Bottom`: Adds a new row at the bottom of all rows.
+ * * `Above`: Adds a new row above the currently selected row.
+ * * `Below`: Adds a new row below the currently selected row.
+ * * `Child`: Adds a new row as a child to the currently selected row.
  */
 export type RowPosition =
     'Top' |
@@ -432,10 +434,10 @@ export type PdfPageSize =
     'Ledger';
 
 /**
- * Defines PDF page orientation.
+ * Defines the page orientation for PDF export.
  * ```props
- * * Landscape :- Landscape Orientation.
- * * Portrait :- Portrait Orientation.
+ * * Landscape :-Sets the page to landscape orientation.
+ * * Portrait :- Sets the page to portrait orientation.
  * ```
  */
 export type PageOrientation =
@@ -443,13 +445,13 @@ export type PageOrientation =
     'Portrait';
 
 /**
- * Defines the PDF dash style.
+ * Specifies the stroke dash style for PDF export in Gantt.
  * ```props
- * * Solid :- Solid DashStyle
- * * Dash :- Dash DashStyle
- * * Dot :- Dot DashStyle
- * * DashDot :- DashDot DashStyle
- * * DashDotDot :- DashDotDot DashStyle
+ * * Solid :- A solid line.
+ * * Dash :- A dashed line.
+ * * Dot :- A dotted line.
+ * * DashDot :- A line with a dash-dot pattern.
+ * * DashDotDot :- A line with a dash-dot-dot pattern.
  * ```
  */
 export type PdfDashStyle =
@@ -487,12 +489,11 @@ export type PdfVAlign =
     'Bottom' |
     'Middle';
 
-
 /**
  * Defines Export Type.
  * ```props
- * * CurrentViewData :- Current view data in gantt is exported.
- * * AllData :- All data of the gantt is exported.
+ * * CurrentViewData :- Exports the data of the current view.
+ * * AllData :- Exports all data from the Gantt.
  * ```
  */
 export type ExportType =
@@ -500,12 +501,12 @@ export type ExportType =
     'AllData';
 
 /**
- * Defines the exporting theme
+ * Defines the theme for PDF exporting in Gantt chart.
  * ```props
- * * Material :- Material theme.
- * * Fabric :- Fabric theme.
- * * Bootstrap :- Bootstrap theme.
- * * Bootstrap 4 :- Bootstrap 4 theme.
+ * * Material    :- Renders the export using the Material theme.
+ * * Fabric      :- Renders the export using the Fabric theme.
+ * * Bootstrap   :- Renders the export using the Bootstrap theme.
+ * * Bootstrap 4 :- Renders the export using the Bootstrap 4 theme.
  * ```
  */
 export type PdfTheme =

@@ -705,6 +705,17 @@ describe('Diagram Control', () => {
             expect(diagram.commandHandler.getLayer('Layer2').zIndex === 0).toBe(true);
             done();
         });
+        it('Remove the layers', (done: Function) => {
+            diagram.removeLayer('Layer4');
+            expect(diagram.layers.length === 3).toBe(true);
+            done();
+        });
+        it('cut the node from the layer', (done: Function) => {
+            diagram.select([diagram.nodes[0]]);
+            diagram.cut();
+            expect(diagram.nodes.length === 9).toBe(true);
+            done();
+        });
     });
 
     describe('multiplelayer canvas', () => {
@@ -1307,6 +1318,90 @@ describe('875087: Connector disappears when moved to another layer with Node con
         diagram.moveObjects(['group'], 'layer1');
         let group = diagram.nameTable['group'];
         expect(diagram.nodes.length === 6 && group.children.length === 2).toBe(true);
+        done();
+    });
+});
+
+describe('Move object', () => {
+    let diagram: Diagram;
+    let ele: HTMLElement;
+
+    beforeAll((): void => {
+        ele = createElement('div', { id: 'moveObject' });
+        document.body.appendChild(ele);
+        let nodes: NodeModel[] = [
+            {
+                id: 'node6', width: 50, height: 50, offsetX: 350,
+                offsetY: 100
+            },
+            {
+                id: 'node7', width: 50, height: 50, offsetX: 350,
+                offsetY: 170
+            },
+            { id: 'group4', children: ['node6', 'node7'], },
+            {
+                id: 'node1', width: 100, height: 100, offsetX: 100, offsetY: 100,
+                annotations: [{ content: 'Default Shape' }]
+            }, {
+                id: 'node11', width: 100, height: 100, offsetX: 150, offsetY: 150,
+                annotations: [{ content: 'Default Shape' }]
+            }, {
+
+                id: 'group', children: ['node1', 'node11', 'group4', 'connector2']
+            },
+            {
+                id: 'node3',
+                width: 100,
+                height: 100,
+                offsetX: 300,
+                offsetY: 300,
+
+            },
+            {
+                id: 'node13',
+                width: 100,
+                height: 100,
+                offsetX: 700,
+                offsetY: 300,
+
+            },
+        ];
+        let connectors: ConnectorModel[] = [{
+            id: 'connector1',
+            type: 'Straight',
+            sourceID: 'node13',
+            targetID: 'node3'
+
+        }, {
+            id: 'connector2',
+            type: 'Straight',
+            sourcePoint: { x: 100, y: 100 },
+            targetPoint: { x: 200, y: 200 }
+
+        }
+        ];
+        diagram = new Diagram({
+            width: '1500px',
+            height: '600px',
+            connectors: connectors, nodes: nodes,
+            layers: [
+            { id: 'layer1', visible: true, objects: ['node1', 'node11', 'group'] },
+            { id: 'layer2', visible: true, },
+            { id: 'layer3', visible: true, objects: ['connector1', 'node3', 'node13'] },
+            ]
+        });
+        diagram.appendTo("#moveObject");
+    });
+    afterAll((): void => {
+        diagram.destroy();
+        ele.remove();
+    });
+    it('move children node', (done: Function) => {
+        diagram.moveObjects(['node1'], 'layer2');
+        diagram.moveObjects(['group'], 'layer2');
+        diagram.moveObjects(['node3'], 'layer2');
+        diagram.removeLayer('layer4');
+        expect(diagram.nodes.length === 8).toBe(true);
         done();
     });
 });

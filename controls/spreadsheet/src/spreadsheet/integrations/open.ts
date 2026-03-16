@@ -229,6 +229,8 @@ export class Open {
         this.removeEventListener();
         const uploadBox: HTMLInputElement = select('#' + this.parent.element.id + '_fileUpload', this.parent.element);
         if (uploadBox) {
+            uploadBox.onchange = null;
+            uploadBox.onerror = null;
             detach(uploadBox);
         }
         this.isImportedFile = null;

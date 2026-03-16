@@ -176,7 +176,19 @@ export type AnnotationResizerShape = 'Square' | 'Circle';
  * Enum for annotation resizer location
  */
 export enum AnnotationResizerLocation {
+    /**
+     * Displays resizers at the corners of the annotation.
+     *
+     * @remarks
+     * Not applicable for line type annotations.
+     */
     Corners = 1,
+    /**
+     * Displays resizers at the edges of the annotation.
+     *
+     * @remarks
+     * Not applicable for stamp annotations.
+     */
     Edges = 2
 }
 
@@ -317,11 +329,35 @@ export enum StandardBusinessStampItem {
  * Enum type for allowed interactions for locked annotations
  */
 export enum AllowedInteraction {
+    /**
+     * Allows selecting the annotation.
+     */
     Select = 'Select',
+    /**
+     * Allows moving the annotation.
+     *
+     * @remarks
+     * Not applicable for text markup annotations.
+     */
     Move = 'Move',
+    /**
+     * Allows resizing the annotation.
+     *
+     * @remarks
+     * Not applicable for text markup annotations and sticky note annotations.
+     */
     Resize = 'Resize',
+    /**
+     * Allows deleting the annotation.
+     */
     Delete = 'Delete',
+    /**
+     * Disables all interactions for the annotation.
+     */
     None = 'None',
+    /**
+     * Allows modifying the annotation properties.
+     */
     PropertyChange = 'PropertyChange'
 }
 

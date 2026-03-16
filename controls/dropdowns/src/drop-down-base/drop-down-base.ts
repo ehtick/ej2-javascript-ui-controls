@@ -331,6 +331,7 @@ export class DropDownBase extends Component<HTMLElement> implements INotifyPrope
     protected isPrimitiveData: boolean = false;
     protected isCustomFiltering: boolean = false;
     protected debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    private skeletonInstances: Skeleton[];
     protected virtualListInfo: VirtualInfo = {
         currentPageNumber: null,
         direction: null,
@@ -718,7 +719,7 @@ export class DropDownBase extends Component<HTMLElement> implements INotifyPrope
         return checkTemplate;
     }
     protected l10nUpdate(actionFailure?: boolean): void {
-        const ele: Element = this.getModuleName() === 'listbox' ? this.ulElement : this.list;
+        let ele: Element = this.getModuleName() === 'listbox' ? this.ulElement : this.list;
         if ((!isNullOrUndefined(this.noRecordsTemplate) && this.noRecordsTemplate !== 'No records found') || this.actionFailureTemplate !== 'Request failed') {
             const template: string | Function = actionFailure ? this.actionFailureTemplate : this.noRecordsTemplate;
             let compiledString: Function;
@@ -784,6 +785,7 @@ export class DropDownBase extends Component<HTMLElement> implements INotifyPrope
                 }
             }
         }
+        ele = null;
     }
 
     protected checkAndResetCache(): void {
@@ -895,6 +897,9 @@ export class DropDownBase extends Component<HTMLElement> implements INotifyPrope
     protected UpdateSkeleton(isSkeletonCountChange?: boolean, skeletonCount?: number): void {
         const isContainSkeleton: Element | null = this.list.querySelector('.e-virtual-ddl-content');
         const isContainVirtualList: Element | null = this.list.querySelector('.e-virtual-list');
+        if (!this.skeletonInstances) {
+            this.skeletonInstances = [];
+        }
         if (isContainSkeleton && (!isContainVirtualList || isSkeletonCountChange) && this.isVirtualizationEnabled) {
             const totalSkeletonCount: number = isSkeletonCountChange ? skeletonCount : this.skeletonCount;
             for (let i: number = 0; i < totalSkeletonCount; i++) {
@@ -908,6 +913,7 @@ export class DropDownBase extends Component<HTMLElement> implements INotifyPrope
                     width: '95%',
                     cssClass: 'e-skeleton-text'
                 });
+                this.skeletonInstances.push(skeleton);
                 skeleton.appendTo(this.createElement('div'));
                 liElement.appendChild(skeleton.element);
                 if (isContainSkeleton.firstChild) {
@@ -938,6 +944,17 @@ export class DropDownBase extends Component<HTMLElement> implements INotifyPrope
                     isContainSkeleton.querySelectorAll('.e-virtual-list-end').forEach((el: Element) => el.remove());
                 }
             }
+        }
+    }
+
+    protected destroySkeletons(): void {
+        if (this.skeletonInstances && this.skeletonInstances.length > 0) {
+            this.skeletonInstances.forEach((skeleton: Skeleton) => {
+                if (skeleton && !skeleton.isDestroyed) {
+                    skeleton.destroy();
+                }
+            });
+            this.skeletonInstances = [];
         }
     }
 
@@ -1050,8 +1067,8 @@ export class DropDownBase extends Component<HTMLElement> implements INotifyPrope
     }
 
     private renderItemsBySelect(): void {
-        const element: Element = this.element;
-        const group: HTMLElement[] = <HTMLElement[] & NodeListOf<HTMLElement>>element.querySelectorAll('select>optgroup');
+        let element: Element = this.element;
+        let group: HTMLElement[] = <HTMLElement[] & NodeListOf<HTMLElement>>element.querySelectorAll('select>optgroup');
         let fields: FieldSettingsModel;
         const isSelectGroupCheck : boolean = this.getModuleName() === 'multiselect' && this.isGroupChecking && group.length > 0;
         fields = isSelectGroupCheck ? { value: 'value', text: 'text', groupBy: 'categeory' } : fields = { value: 'value', text: 'text' };
@@ -1077,6 +1094,8 @@ export class DropDownBase extends Component<HTMLElement> implements INotifyPrope
         this.updateFields(fields.text, fields.value, isSelectGroupCheck ? fields.groupBy : this.fields.groupBy,
                           this.fields.htmlAttributes, this.fields.iconCss, this.fields.disabled);
         this.resetList(jsonElement, fields);
+        element = null;
+        group = null;
     }
 
     private updateFields(
@@ -1644,6 +1663,12 @@ export class DropDownBase extends Component<HTMLElement> implements INotifyPrope
                 this.ulElement = this.list.querySelector('ul');
                 this.postRender(this.list, list, this.bindEvent);
             }
+            else if (this.getModuleName() === 'dropdownlist' && this.isVirtualizationEnabled) {
+                this.list.innerHTML = '';
+                this.createVirtualContent();
+                this.list.querySelector('.e-virtual-ddl-content').appendChild(ulElement);
+                this.updateListElements(this.listData as any);
+            }
         }
         if ( this.getModuleName() === 'multiselect' && this.isAngular && (this as any).ngEle ) {
             const popupHolder: HTMLElement = this.list;
@@ -1899,7 +1924,7 @@ export class DropDownBase extends Component<HTMLElement> implements INotifyPrope
     }
 
     private updateFixedGroupTemplateHader(element: HTMLElement): void {
-        const groupData: HTMLElement = element.cloneNode ? <HTMLElement>element.cloneNode(true) : element;
+        let groupData: HTMLElement = element.cloneNode ? <HTMLElement>element.cloneNode(true) : element;
         let isGroupDataUpdated: boolean = false;
         if (this.groupHeaderItems && this.groupHeaderItems.length > 0) {
             for (let i: number = 0; i < this.groupHeaderItems.length; i++) {
@@ -1920,6 +1945,7 @@ export class DropDownBase extends Component<HTMLElement> implements INotifyPrope
         }
         this.fixedHeaderElement.innerHTML = groupData.innerHTML;
         this.renderGroupTemplate(this.fixedHeaderElement);
+        groupData = null;
     }
 
     private updateGroupFixedHeader(element: HTMLElement, target: Element): void {
@@ -2019,7 +2045,7 @@ export class DropDownBase extends Component<HTMLElement> implements INotifyPrope
             }
             if (this.isVirtualizationEnabled) {
                 let oldUlElement: Element = this.list.querySelector('.e-list-parent' + ':not(.e-reorder)');
-                const virtualUlElement: Element = this.list.querySelector('.e-virtual-ddl-content');
+                let virtualUlElement: Element = this.list.querySelector('.e-virtual-ddl-content');
                 const isRemovedUlelement: boolean = false;
                 if ((!oldUlElement && this.list.querySelector('.e-list-parent' + '.e-reorder')) || (oldUlElement && this.isVirtualReorder && this.list.querySelector('.e-list-parent' + '.e-reorder'))) {
                     oldUlElement = this.list.querySelector('.e-list-parent' + '.e-reorder');
@@ -2041,6 +2067,8 @@ export class DropDownBase extends Component<HTMLElement> implements INotifyPrope
                     this.list.querySelector('.e-virtual-ddl-content').appendChild(ulElement);
                     this.updateListElements(listData);
                 }
+                oldUlElement = null;
+                virtualUlElement = null;
             }
         }
         return ulElement;
@@ -2472,7 +2500,7 @@ export class DropDownBase extends Component<HTMLElement> implements INotifyPrope
             items = ListBase.groupDataSource(
                 (items as { [key: string]: Object }[]), (fields as FieldSettingsModel & { properties: Object }).properties);
         }
-        const liCollections: HTMLElement[] = [];
+        let liCollections: HTMLElement[] = [];
         for (let i: number = 0; i < items.length; i++) {
             const item: { [key: string]: Object } | string | boolean | number = items[i as number];
             const isHeader: boolean = (item as { [key: string]: Object }).isHeader as boolean;
@@ -2582,6 +2610,7 @@ export class DropDownBase extends Component<HTMLElement> implements INotifyPrope
             this.updateSelection();
         }
         this.addedNewItem = true;
+        liCollections = null;
     }
     /**
      * Checks if the given HTML element is disabled.
@@ -2701,13 +2730,28 @@ export class DropDownBase extends Component<HTMLElement> implements INotifyPrope
                 detach(this.list);
             }
         }
+        if (this.generatedDataObject) {
+            this.generatedDataObject = {};
+        }
+        this.destroySkeletons();
         this.liCollections = null;
+        this.incrementalLiCollections = null;
+        this.incrementalUlElement = null;
         this.ulElement = null;
+        this.fixedHeaderElement = null;
         this.list = null;
+        this.item = null;
         this.enableRtlElements = null;
         this.groupHeaderItems = null;
         this.fiteredGroupHeaderItems = null;
         this.rippleFun = null;
+        this.popupContentElement = null;
+        this.virtualListInfo = null;
+        this.viewPortInfo = null;
+        this.selectedValueInfo = null;
+        this.virtualGroupDataSource = null;
+        this.virtualSelectAllData = null;
+        this.incrementalListData = null;
         super.destroy();
     }
 }

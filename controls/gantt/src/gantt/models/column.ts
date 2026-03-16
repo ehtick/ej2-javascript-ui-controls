@@ -256,6 +256,15 @@ export class Column {
      * @default None
      */
     public freeze: freezeDirection;
+
+    /**
+     * Specifies a custom template or UI for filtering within this column, utilizing either string templates or HTML element IDs.
+     *
+     * @default null
+     * @aspIgnore
+     */
+    public filterTemplate: string | Function;
+
     /**
      * Determines whether the column is locked in its current position.
      * When set to true, the column becomes fixed and cannot be reordered by the user.
@@ -290,7 +299,7 @@ export interface ColumnModel {
     allowReordering?: boolean;
 
     /**
-     * Disables column menu for the column if set to `false`. By default, column menus are enabled for all columns.
+     * Decides if the column menu should be available, providing options for column customization.
      *
      * @default true
      */
@@ -504,6 +513,12 @@ export interface ColumnModel {
      * @default {}
      */
     edit?: IEditCell;
+    /**
+     * Specifies a custom template or UI for filtering within this column, utilizing either string templates or HTML element IDs.
+     *
+     * @aspIgnore
+     */
+    filterTemplate?: string | Function;
     /**
      * To define column type.
      *

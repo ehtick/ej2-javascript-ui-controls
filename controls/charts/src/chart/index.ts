@@ -61,6 +61,7 @@ export * from './user-interaction/data-editing';
 export * from './user-interaction/high-light';
 export * from './series/last-value-label';
 export * from './series/data-label';
+export * from './series/series-label';
 export * from './series/error-bar';
 export * from './series/chart-series';
 export * from '../common/model/interface';

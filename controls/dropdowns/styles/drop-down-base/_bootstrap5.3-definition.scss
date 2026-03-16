@@ -63,6 +63,9 @@ $ddl-nodata-font-color: $content-text-color !default;
 $ddl-list-default-font-color: $content-text-color !default;
 $ddl-list-active-border-color: $content-bg-color !default;
 $mention-popup-bg-color: $content-bg-color !default;
+$mention-popup-border: 1px solid $flyout-border !default;
+$mention-popup-border-radius: $radius-4;
+$mention-popup-padding: 4px 0;
 $ddl-list-active-font-color: $content-text-color-selected !default;
 $mention-active-font-color: $primary !default;
 $ddl-list-active-bg-color: $content-bg-color-selected !default;
@@ -88,7 +91,7 @@ $ddl-auto-height: auto !default;
 $ddl-full-height: 100% !default;
 $ddl-full-width: 100% !default;
 $popup-multi-select-font-size: 500;
-$ddl-bgr-dropbase-list-icon-item-padding: 0 12px 0 0 !default;
+$ddl-bgr-dropbase-list-icon-item-padding: 12px !default;
 
 // Small Size color
 $ddl-small-list-font-color: $content-text-color !default;
@@ -111,10 +114,10 @@ $ddl-bigger-small-list-font-color: $content-text-color !default;
   }
 
   .e-dropdownbase .e-list-item .e-list-icon {
-    padding: 0 8px 0 0;
+    padding-inline-end: 8px;
   }
 
   .e-small .e-dropdownbase .e-list-item .e-list-icon {
-    padding: 0 6px 0 0;
+    padding-inline-end: 6px;
   }
 }

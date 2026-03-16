@@ -352,3 +352,8 @@ export interface OverviewObject {
     id: string;
     view: Overview;
 }
+
+export interface NodeDiff extends NodeModel {
+    diffX?: number;
+    diffY?: number;
+}

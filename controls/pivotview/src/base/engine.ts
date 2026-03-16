@@ -162,14 +162,17 @@ export class PivotEngine {
     private clonedReport: IDataOptions;
     private measureNames: { [key: string]: string } = {};
     private currencyCode: string;
-    private enablePaging: boolean = false;
-    private enableVirtualization: boolean = false;
+    /** @hidden */
+    public enablePaging: boolean = false;
+    /** @hidden */
+    public enableVirtualization: boolean = false;
     private enableHtmlSanitizer: boolean = false;
     private enableOptimizedRendering: boolean = false;
     private groupedDataType: { [key: string]: string } = {};
     private customProperties: ICustomProperties;
     private tabularPivotValues: IAxisSet[][] = [];
     private sortMembers: { [key: string]: Object } = {};
+    private isFilterAction: boolean = false;
     /** @hidden */
     public viewportPageCount: number = 3;
     /**
@@ -1224,16 +1227,17 @@ export class PivotEngine {
         this.getFormattedFields(this.dataSourceSettings);
         this.getCalculatedField(keys);
         keys = this.fields;
-        let len: number = keys.length;
+        const len: number = keys.length;
         const dataTypes: string[] = ['string', 'number', 'datetime', 'date', 'boolean'];
         if (this.savedFieldList) {
+            let index: number = 0;
             this.fieldList = this.savedFieldList;
-            while (len--) { /** while is used for better performance than for */
-                const key: string = keys[len as number];
+            while (index < len) { /** while is used for better performance than for */
+                const key: string = keys[index as number];
                 const field: IFieldOptions = this.getMappingField(key, this.dataSourceSettings.fieldMapping);
                 if (this.fieldList[key as string]) {
                     this.fieldList[key as string].isSelected = false;
-                    this.fieldList[key as string].index = len;
+                    this.fieldList[key as string].index = index;
                     this.fieldList[key as string].filter = [];
                     this.fieldList[key as string].sort = isSort ? 'Ascending' : 'None';
                     this.fieldList[key as string].isExcelFilter = false;
@@ -1281,7 +1285,7 @@ export class PivotEngine {
                         isSelected: false,
                         sort: isSort ? 'Ascending' : 'None',
                         filterType: '',
-                        index: len,
+                        index: index,
                         filter: [],
                         isCustomField: ((key.indexOf('_custom_group') !== -1) || (key.indexOf('_date_group') !== -1)),
                         showRemoveIcon: (field && 'showRemoveIcon' in field) ?
@@ -1316,11 +1320,13 @@ export class PivotEngine {
                     };
                     this.updateMembersOrder(key);
                 }
+                index++;
             }
         } else {
             this.fieldList = {};
-            while (len--) { /** while is used for better performance than for */
-                const key: string = keys[len as number];
+            let index: number = 0;
+            while (index < len) { /** while is used for better performance than for */
+                const key: string = keys[index as number];
                 const field: IFieldOptions = this.getMappingField(key, this.dataSourceSettings.fieldMapping);
                 if (!isNullOrUndefined(this.groupedDataType[key as string])) {
                     type = this.groupedDataType[key as string];
@@ -1349,7 +1355,7 @@ export class PivotEngine {
                     type: ((key.indexOf('_custom_group') !== -1) || (key.indexOf('_date_group') !== -1)) ?
                         'string' : type,
                     filterType: '',
-                    index: len,
+                    index: index,
                     filter: [],
                     sort: isSort ? 'Ascending' : 'None',
                     isSelected: false,
@@ -1383,6 +1389,7 @@ export class PivotEngine {
                         field.baseItem : undefined
                 };
                 this.updateMembersOrder(key);
+                index++;
             }
         }
         this.groupedDataType = {};
@@ -2616,6 +2623,8 @@ export class PivotEngine {
      * @hidden
      */
     public onFilter(filterItem: IFilter, dataSource: IDataOptions): void {
+        this.isFilterAction = true;
+        this.frameDrillObject();
         this.updateDataSourceSettings(dataSource, true);
         let headersInfo: IHeadersInfo = this.getHeadersInfo(filterItem.name, '');
         this.isLastHeaderHasMeasures = (this.valueAxis && headersInfo.axis === 'row') ||
@@ -2989,7 +2998,11 @@ export class PivotEngine {
         const rowheads: IAxisSet[] = []; const colheads: IAxisSet[] = [];
         const updatedRowMembers: IAxisSet[] = [];
         const valuesCount: number = (this.dataSourceSettings.values.length);
-        this.frameDrillObject();
+        if (!this.isFilterAction) {
+            this.frameDrillObject();
+        } else {
+            this.isFilterAction = false;
+        }
         this.getAggregatedHeaders(
             this.dataSourceSettings.rows, this.dataSourceSettings.columns, this.rMembers, this.cMembers, this.dataSourceSettings.values
         );
@@ -4009,10 +4022,40 @@ export class PivotEngine {
                     this.removeColumnGrandTotal = true;
                 }
             } else {
-                this.rowGrandTotal = this.rowGrandTotal ? this.rowGrandTotal :
-                    this.headerCollection.rowHeaders[this.headerCollection.rowHeaders.length - 1];
-                this.columnGrandTotal = this.columnGrandTotal ? this.columnGrandTotal :
-                    this.headerCollection.columnHeaders[this.headerCollection.columnHeaders.length - 1];
+                const getHeadersByType: (headers: IAxisSet[], type: string) => IAxisSet = (
+                    headers: IAxisSet[] | undefined,
+                    type: string
+                ): IAxisSet | undefined => {
+                    if (!headers || headers.length === 0) {
+                        return undefined;
+                    }
+                    return headers.find((h: IAxisSet) => h && h.type === type);
+                };
+                const rowGrand: IAxisSet = this.headerCollection && this.headerCollection.rowHeaders
+                    ? getHeadersByType(this.headerCollection.rowHeaders, 'grand sum') : undefined;
+                const colGrand: IAxisSet = this.headerCollection && this.headerCollection.columnHeaders
+                    ? getHeadersByType(this.headerCollection.columnHeaders, 'grand sum') : undefined;
+                const showRowGrandTotal: boolean = !!(this.dataSourceSettings && this.dataSourceSettings.showGrandTotals &&
+                    this.dataSourceSettings.showRowGrandTotals);
+                const showColGrandTotal: boolean = !!(this.dataSourceSettings && this.dataSourceSettings.showGrandTotals &&
+                    this.dataSourceSettings.showColumnGrandTotals
+                );
+                this.rowGrandTotal = this.rowGrandTotal ? this.rowGrandTotal : (rowGrand && showRowGrandTotal ? rowGrand : null);
+                this.columnGrandTotal = this.columnGrandTotal ? this.columnGrandTotal : (colGrand && showColGrandTotal ? colGrand : null);
+                if (!this.rowGrandTotal || (this.rowGrandTotal.type !== 'grand sum')) {
+                    const createdRow: IAxisSet[] = this.insertAllMember([], this.filterMembers, '', 'row');
+                    if (createdRow && createdRow.length > 0) {
+                        this.rowGrandTotal = createdRow[0];
+                        this.removeRowGrandTotal = true;
+                    }
+                }
+                if (!this.columnGrandTotal || (this.columnGrandTotal.type !== 'grand sum')) {
+                    const createdCol: IAxisSet[] = this.insertAllMember([], this.filterMembers, '', 'column');
+                    if (createdCol && createdCol.length > 0) {
+                        this.columnGrandTotal = createdCol[0];
+                        this.removeColumnGrandTotal = true;
+                    }
+                }
             }
         }
     }
@@ -4711,7 +4754,7 @@ export class PivotEngine {
                         if (!isChildren) {
                             for (const item of selectedHeaderCollection) {
                                 for (const rln of rowIndex) {
-                                    if (rowheads[rln as number] !== undefined) {
+                                    if (rowheads[rln as number] !== undefined && activeValues !== undefined) {
                                         if (rowheads[rln as number].valueSort[item.valueSort.levelName as string] &&
                                             rowheads[rln as number].level === activeValues.level && rowheads[rln as number].type !== 'grand sum') {
                                             for (const index of colIndex) {
@@ -4730,7 +4773,7 @@ export class PivotEngine {
                         } else {
                             const uniqueLevelName: string[] = uniqueName.split(this.valueSortSettings.headerDelimiter);
                             for (const rlen of rowIndex) {
-                                if (rowheads[rlen as number] !== undefined) {
+                                if (rowheads[rlen as number] !== undefined && activeValues !== undefined) {
                                     const levelName: string[] = (rowheads[rlen as number].valueSort.levelName as string
                                     ).split(this.valueSortSettings.headerDelimiter);
                                     if (levelName.indexOf(uniqueLevelName[uniqueLevelName.length - 1]) !== -1 && activeValues &&

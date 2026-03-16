@@ -47,7 +47,6 @@ export type PdfColor = {
     b: number;
     isTransparent?: boolean;
 };
-
 /**
  * A callback function used for external signing of a PDF document with extended options.
  *
@@ -60,7 +59,7 @@ export type PdfColor = {
  * @param {Object} options - Signing options.
  * @param {DigestAlgorithm} options.algorithm - The digest algorithm to use.
  * @param {CryptographicStandard} options.cryptographicStandard - The cryptographic standard.
- * @returns {{ signedData: Uint8Array, timestampData?: Uint8Array } | void}
+ * @returns {{ signedData: Uint8Array, timestampData?: Uint8Array } | void | Promise<{ signedData: Uint8Array; timestampData?: Uint8Array }>}
  */
 export type ExternalSignatureCallback = (
     data: Uint8Array,
@@ -68,4 +67,11 @@ export type ExternalSignatureCallback = (
         algorithm: DigestAlgorithm,
         cryptographicStandard: CryptographicStandard
     }
-) => {signedData: Uint8Array, timestampData?: Uint8Array} | void;
+) => {signedData: Uint8Array, timestampData?: Uint8Array} | void | Promise<{ signedData: Uint8Array; timestampData?: Uint8Array }>;
+/**
+ * A callback function used to obtain the timestamp from a trusted timestamp authority (TSA) server.
+ *
+ * @param {Uint8Array} data - Request bytes for timestamping.
+ * @returns {Promise<Uint8Array>} - Timestamp data obtained from a trusted timestamp authority server.
+ */
+export type TimestampCallback = (data: Uint8Array) => Promise<{ data: Uint8Array }>;

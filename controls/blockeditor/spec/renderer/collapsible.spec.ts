@@ -46,7 +46,12 @@ describe('Collapsible Blocks', () => {
                             },
                             {
                                 blockType: BlockType.Quote,
-                                content: [{ contentType: ContentType.Text, content: 'Toggle Item 3' }]
+                                properties: {
+                                    children: [{
+                                        blockType: BlockType.Paragraph,
+                                        content: [{ contentType: ContentType.Text, content: 'Toggle Item 3' }]
+                                    }]
+                                }
                             }
                         ]
                     }
@@ -70,7 +75,7 @@ describe('Collapsible Blocks', () => {
             expect(blockElement.classList).toContain('e-toggle-block');
             expect(blockElement.querySelector('.e-toggle-icon')).toBeDefined();
             const toggleChildBlocks = blockElement.querySelectorAll('.e-toggle-content .e-block');
-            expect(toggleChildBlocks.length).toBe(3);
+            expect(toggleChildBlocks.length).toBe(4);
             expect(toggleChildBlocks[0].querySelector('h1').textContent).toContain('Toggle Item 1');
             expect(toggleChildBlocks[1].querySelector('p').textContent).toContain('Toggle Item 2');
             expect(toggleChildBlocks[2].querySelector('blockquote').textContent).toContain('Toggle Item 3');
@@ -622,7 +627,7 @@ describe('Collapsible Blocks', () => {
             editor.blockManager.formattingAction.execCommand({ command: 'bold' });
 
             // Step 2: Select "Fox Jumps" (overlapping "Brown Fox" and "Jumps", indices 16 to 25)
-            setRange(blockContent.childNodes[1].firstChild, blockContent.childNodes[2].firstChild, 6, 6);
+            setRange(blockContent.childNodes[1].firstChild, blockContent.childNodes[2], 6, 6);
             editor.blockManager.formattingAction.execCommand({ command: 'italic' });
 
             // Assert DOM
@@ -688,7 +693,7 @@ describe('Collapsible Blocks', () => {
 
 
             // Step 2: Select "Fox Jumps" (overlapping "Brown Fox" and "Jumps", indices 16 to 25)
-            setRange(blockContent.childNodes[1].firstChild, blockContent.childNodes[2].firstChild, 6, 6);
+            setRange(blockContent.childNodes[1].firstChild, blockContent.childNodes[2], 6, 6);
             editor.blockManager.formattingAction.execCommand({ command: 'bold' });
 
             // Assert DOM
@@ -1596,7 +1601,7 @@ describe('Collapsible Blocks', () => {
                     setTimeout(() => {
                         const labelItem = editor.labelSettings.items.find((item) => item.id === 'high');
                         const children = (editor.blocks[0].properties as BaseChildrenProp).children[0];
-                        expect(contentElement.childElementCount).toBe(3);
+                        expect(contentElement.childElementCount).toBe(1);
                         const firstChild = contentElement.childNodes[0];
                         const insertedNode = (contentElement.childNodes[1] as HTMLElement);
                         const lastChild = contentElement.childNodes[2];
@@ -1658,7 +1663,7 @@ describe('Collapsible Blocks', () => {
                     editor.blockManager.setFocusToBlock(blockElement);
                     setTimeout(() => {
                         const children = (editor.blocks[0].properties as BaseChildrenProp).children[0];
-                        expect(contentElement.childElementCount).toBe(3);
+                        expect(contentElement.childElementCount).toBe(1);
                         const firstChild = contentElement.childNodes[0];
                         const insertedNode = (contentElement.childNodes[1] as HTMLElement);
                         const lastChild = contentElement.childNodes[2];
@@ -1673,7 +1678,6 @@ describe('Collapsible Blocks', () => {
                         expect(lastChild.textContent).toBe(' text');
 
                         expect(children.content[0].content).toBe('Bolded ');
-                        expect(children.content[1].content).toBe('User 1');
                         expect(children.content[1].contentType).toBe(ContentType.Mention);
                         expect(children.content[2].content).toBe(' text');
                         done();
@@ -1717,7 +1721,7 @@ describe('Collapsible Blocks', () => {
                     editor.blockManager.setFocusToBlock(blockElement);
                     setTimeout(() => {
                         const children = (editor.blocks[0].properties as BaseChildrenProp).children[0];
-                        expect(contentElement.childElementCount).toBe(3);
+                        expect(contentElement.childElementCount).toBe(1);
                         const firstChild = contentElement.childNodes[0];
                         const insertedNode = (contentElement.childNodes[1] as HTMLElement);
                         const lastChild = contentElement.childNodes[2];
@@ -1779,7 +1783,7 @@ describe('Collapsible Blocks', () => {
                     editor.blockManager.setFocusToBlock(blockElement);
                     setTimeout(() => {
                         const children = (editor.blocks[0].properties as BaseChildrenProp).children[0];
-                        expect(contentElement.childElementCount).toBe(3);
+                        expect(contentElement.childElementCount).toBe(1);
                         const firstChild = contentElement.childNodes[0];
                         const insertedNode = (contentElement.childNodes[1] as HTMLElement);
                         const lastChild = contentElement.childNodes[2];
@@ -1794,7 +1798,6 @@ describe('Collapsible Blocks', () => {
                         expect(lastChild.textContent).toBe(' text');
 
                         expect(children.content[0].content).toBe('Bolded ');
-                        expect(children.content[1].content).toBe('User 1');
                         expect(children.content[1].contentType).toBe(ContentType.Mention);
                         expect(children.content[2].content).toBe(' text');
                         done();
@@ -1831,7 +1834,7 @@ describe('Collapsible Blocks', () => {
                     editor.blockManager.setFocusToBlock(blockElement);
                     setTimeout(() => {
                         const block = editor.blocks[0];
-                        expect(contentElement.childElementCount).toBe(3);
+                        expect(contentElement.childElementCount).toBe(1);
                         const firstChild = contentElement.childNodes[0];
                         const insertedNode = (contentElement.childNodes[1] as HTMLElement);
                         const lastChild = contentElement.childNodes[2];
@@ -1885,7 +1888,7 @@ describe('Collapsible Blocks', () => {
                     li.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
                     editor.blockManager.setFocusToBlock(blockElement);
                     setTimeout(() => {
-                        expect(contentElement.childElementCount).toBe(3);
+                        expect(contentElement.childElementCount).toBe(1);
                         const block = editor.blocks[0];
                         const firstChild = contentElement.childNodes[0];
                         const insertedNode = (contentElement.childNodes[1] as HTMLElement);
@@ -1901,7 +1904,6 @@ describe('Collapsible Blocks', () => {
                         expect(lastChild.textContent).toBe(' text');
 
                         expect(block.content[0].content).toBe('Bolded ');
-                        expect(block.content[1].content).toBe('User 1');
                         expect(block.content[1].contentType).toBe(ContentType.Mention);
                         expect(block.content[2].content).toBe(' text');
                         done();

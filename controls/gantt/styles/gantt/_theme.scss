@@ -226,6 +226,9 @@ $applies-hover-bg: $theme-name == 'bootstrap5.3' or
       .e-chart-row-hover .e-chart-row:not(.e-active):hover {
         background-color: $gantt-chartrow-hover-bg-color;
       }
+      .e-chart-row-hover .e-chart-row.e-active:hover {
+        background-color: $gantt-chartrow-selection-hover-bg-color;
+      }
       .e-timeline-cell-hover .e-timeline-top-header-cell:not(.e-active):hover{
         background-color: $gantt-timelinecell-hover-bg-color;
       }

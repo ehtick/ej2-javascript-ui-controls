@@ -55,22 +55,42 @@ export function _addFontResources(dictionary: _PdfDictionary, crossReference: _P
  *
  * @param {_PdfDictionary} resources - The resources dictionary from a PDF page.
  * @param {_PdfCrossReference} crossReference - The cross-reference of the PDF document.
- * @param { boolean } isImageExtraction - Optional flag to indicate if image-specific processing is required.
+ * @param { _TextProcessingMode } [mode] - Optional processing mode that controls how XObjects are interpreted
  * @param { PdfPage } page - The current PDF page, used when constructing image structures.
  * @returns {Map<string, any>} A map of XObject resources.
  */
-export function _getXObjectResources(resources: _PdfDictionary, crossReference: _PdfCrossReference, isImageExtraction?: boolean, page?: PdfPage): Map<string, any> { //eslint-disable-line
-    const xObjectCollection: Map<string, any> = new Map<string, any>(); //eslint-disable-line
+export function _getXObjectResources(resources: _PdfDictionary, crossReference: _PdfCrossReference, mode?: _TextProcessingMode,
+                                     page?: PdfPage): Map<string, any> { // eslint-disable-line
+    const xObjectCollection: Map<string, any> = new Map(); // eslint-disable-line
     if (resources && resources.has('XObject')) {
         const xObjects: _PdfDictionary = resources.get('XObject') as _PdfDictionary;
-        xObjects.forEach((key: any, value: any) => { //eslint-disable-line
+        xObjects.forEach((key: any, value: any) => { // eslint-disable-line
             if (value instanceof _PdfReference) {
-                const xobject: any = crossReference._fetch(value) as _PdfDictionary; //eslint-disable-line
-                if (typeof(isImageExtraction) !== 'undefined' && xobject instanceof _PdfBaseStream && xobject.dictionary.has('Subtype') && xobject.dictionary.get('Subtype').name === 'Image') {
-                    const imageStruct: _ImageStructure = new _ImageStructure(xobject, crossReference, page);
-                    xObjectCollection.set(key, imageStruct);
-                } else if (typeof(isImageExtraction) === 'undefined' && xobject instanceof _PdfBaseStream && xobject.dictionary.has('Subtype') && xobject.dictionary.get('Subtype').name === 'Form') {
-                    xObjectCollection.set(key, xobject);
+                const xobject: any = crossReference._fetch(value); // eslint-disable-line
+                if (xobject !== null && typeof (xobject) !== 'undefined') {
+                    const subtype: string = xobject.dictionary.get('Subtype').name;
+                    switch (mode) {
+                    case _TextProcessingMode.imageExtraction:
+                        if (subtype === 'Image') {
+                            const imageStruct: _ImageStructure = new _ImageStructure(xobject, crossReference, page);
+                            xObjectCollection.set(key, imageStruct);
+                        }
+                        break;
+                    case _TextProcessingMode.imageRedaction:
+                        if (subtype === 'Image') {
+                            const imageStruct: _ImageStructure = new _ImageStructure(xobject, crossReference, page);
+                            imageStruct._imageReference = value;
+                            xObjectCollection.set(key, imageStruct);
+                        } else if (subtype === 'Form') {
+                            xObjectCollection.set(key, xobject);
+                        }
+                        break;
+                    default:
+                        if (subtype === 'Form') {
+                            xObjectCollection.set(key, xobject);
+                        }
+                        break;
+                    }
                 }
             }
         });

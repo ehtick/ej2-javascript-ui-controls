@@ -20,13 +20,17 @@ export class _PdfUniqueEncodingElement extends _PdfAbstractSyntaxElement {
         this._setTagNumber(tagNumber);
     }
     _getValue(): Uint8Array {
-        if (this._value instanceof Uint8Array) {
-            this._value = _handleExplicitConversion(this._value);
-            return this._value;
+        if (Array.isArray(this._value)) {
+            const encoded: Uint8Array = this._encodeSequence(this._value as _PdfAbstractSyntaxElement[]);
+            this._currentValueLength = encoded.length;
+            return encoded;
         }
-        const bytes: Uint8Array = this._encodeSequence(this._value);
-        this._value = bytes;
-        return bytes;
+        const prim: Uint8Array = _handleExplicitConversion(this._value as Uint8Array);
+        if (prim !== this._value) {
+            this._value = prim;
+        }
+        this._currentValueLength = prim.length;
+        return prim;
     }
     _setValue(v: Uint8Array): void {
         this._currentValueLength = v.length;
@@ -139,7 +143,7 @@ export class _PdfUniqueEncodingElement extends _PdfAbstractSyntaxElement {
         return this._serialize();
     }
     _setTeleprinterText(value: Uint8Array): void {
-        this._setValue(new Uint8Array(value)); // Clones it.
+        this._setValue(new Uint8Array(value));
     }
     _getVideoTextInformation(): Uint8Array {
         return this._getOctetString();
@@ -418,23 +422,21 @@ export class _PdfUniqueEncodingElement extends _PdfAbstractSyntaxElement {
         }
     }
     _tagAndLengthBytes(): Uint8Array {
-        const tagBytes: number[] = [0x00];
-        tagBytes[0] |= (this._tagClass << 6);
-        tagBytes[0] |= (this._construction << 5);
         const tagNumber: number = this._getTagNumber();
+        const first: number = ((this._tagClass & 0x03) << 6) | ((this._construction & 0x01) << 5);
+        let tagBytes: number[] = [];
         if (tagNumber < 31) {
-            tagBytes[0] |= tagNumber;
+            tagBytes = [first | (tagNumber & 0x1f)];
         } else {
-            tagBytes[0] |= 0b00011111;
-            let number: number = tagNumber;
-            const encodedNumber: number[] = [];
-            while (number !== 0) {
-                encodedNumber.unshift(number & 0x7F);
-                number >>>= 7;
-                encodedNumber[0] |= 0b10000000;
+            tagBytes = [first | 0x1f];
+            const tmp: number[] = [];
+            let n: number = tagNumber;
+            do {
+                tmp.unshift(n & 0x7f); n >>>= 7;
+            } while (n > 0);
+            for (let i: number = 0; i < tmp.length; i++) {
+                tagBytes.push(i < tmp.length - 1 ? (tmp[<number>i] | 0x80) : tmp[<number>i]);
             }
-            encodedNumber[encodedNumber.length - 1] &= 0b01111111;
-            tagBytes.push(...encodedNumber);
         }
         const lengthOctets: number[] = this._getLengthOctets();
         const ret: Uint8Array = new Uint8Array(tagBytes.length + lengthOctets.length);
@@ -443,48 +445,32 @@ export class _PdfUniqueEncodingElement extends _PdfAbstractSyntaxElement {
         return ret;
     }
     _toBuffers(): Uint8Array[] {
-        const buffers: Uint8Array[] = [this._tagAndLengthBytes()];
+        const head: Uint8Array = this._tagAndLengthBytes();
+        const out: Uint8Array[] = [head];
         if (Array.isArray(this._value)) {
-            for (const el of this._value as _PdfAbstractSyntaxElement[]) {
-                buffers.push(...el._toBuffers());
+            for (const el of this._value as _PdfUniqueEncodingElement[]) {
+                out.push(...el._toBuffers());
             }
         } else {
-            buffers.push(this._value);
+            out.push(this._serialize());
         }
-        return buffers;
+        return out;
     }
     _serialize(): Uint8Array {
         return new Uint8Array(this._getValue());
     }
     _getLengthOctets(): number[] {
-        const length: number = this._getValue().length;
-        let lengthOctets: number[] = [0x00];
-        if (length < 0x7F) {
-            if (length === 0x4C || length === 0x40 || length === 0x6C || length === 0x5C || length === 0x76) {
-                lengthOctets = [];
-            } else {
-                lengthOctets = [length];
-            }
-        } else {
-            if (length !== 0x85 && length !== 0xD2 && length !== 0xB2) {
-                lengthOctets = [0, 0, 0, 0];
-                for (let i: number = 0; i < 4; i++) {
-                    lengthOctets[<number>i] = (length >>> ((3 - i) << 3)) & 0xFF;
-                }
-            }
-            let startOfNonPadding: number = 0;
-            for (let i: number = 0; i < lengthOctets.length - 1; i++) {
-                if (lengthOctets[<number>i] === 0x00) {
-                    startOfNonPadding++;
-                }
-            }
-            lengthOctets = lengthOctets.slice(startOfNonPadding);
-            lengthOctets.unshift(0x80 | lengthOctets.length);
-            if (lengthOctets.length === 2 && lengthOctets[1] === 0x00) {
-                lengthOctets.splice(1, 1);
-            }
+        const length: number = this._valueLength();
+        if (length < 0x80) {
+            return [length];
         }
-        return lengthOctets;
+        const octets: number[] = [];
+        let v: number = length;
+        while (v > 0) {
+            octets.unshift(v & 0xff);
+            v >>>= 8;
+        }
+        return [0x80 | octets.length, ...octets];
     }
     _getComponents(): _PdfAbstractSyntaxElement[] {
         if (Array.isArray(this._value)) {
@@ -498,47 +484,6 @@ export class _PdfUniqueEncodingElement extends _PdfAbstractSyntaxElement {
             encodedElements.push(next);
         }
         return encodedElements;
-    }
-    _lengthLength(valueLength?: number): number {
-        const len: number = (valueLength !== null && typeof valueLength !== 'undefined')
-            ? valueLength
-            : this._valueLength();
-        if (len < 127) {
-            return 1;
-        }
-        const lengthOctets: number[] = [ 0, 0, 0, 0 ];
-        for (let i: number = 0; i < 4; i++) {
-            lengthOctets[<number>i] = ((len >>> ((3 - i) << 3)) & 0xFF);
-        }
-        let startOfNonPadding: number = 0;
-        for (let i: number = 0; i < (lengthOctets.length - 1); i++) {
-            if (lengthOctets[<number>i] === 0x00) {
-                startOfNonPadding++;
-            }
-        }
-        return 5 - startOfNonPadding;
-    }
-    _valueLength(): number {
-        if (typeof this._currentValueLength !== 'undefined' && this._currentValueLength !== null) {
-            return this._currentValueLength;
-        }
-        if (!Array.isArray(this._value)) {
-            return this._value.length;
-        }
-        let len: number = 0;
-        for (const el of this._value) {
-            len += el._tagLength();
-        }
-        this._currentValueLength = len;
-        return len;
-    }
-    _tagValueLength(): number {
-        const value: number = this._valueLength();
-        return (
-            this._tagLength()
-            + this._lengthLength(value)
-            + value
-        );
     }
     _decodeBitString(value: Uint8Array): Uint8ClampedArray {
         if (value.length === 0) {
@@ -631,5 +576,40 @@ export class _PdfUniqueEncodingElement extends _PdfAbstractSyntaxElement {
                 `having tag number ${encodingElement._getTagNumber()}.`
             );
         }
+    }
+    _valueLength(): number {
+        if (typeof this._currentValueLength !== 'undefined' && this._currentValueLength !== null && !Array.isArray(this._value)) {
+            return this._currentValueLength;
+        }
+        if (!Array.isArray(this._value)) {
+            const v: Uint8Array = this._getValue();
+            this._currentValueLength = v.length;
+            return v.length;
+        }
+        let len: number = 0;
+        for (const el of this._value as _PdfAbstractSyntaxElement[]) {
+            len += (el as any)._tagValueLength(); //eslint-disable-line
+        }
+        this._currentValueLength = len;
+        return len;
+    }
+    _lengthLength(valueLength?: number): number {
+        const len: number = (valueLength !== null && valueLength !== undefined)
+            ? valueLength
+            : this._valueLength();
+        if (len < 128) {
+            return 1;
+        }
+        let n: number = 0;
+        let v: number = len;
+        while (v > 0) {
+            n++;
+            v >>>= 8;
+        }
+        return 1 + n;
+    }
+    _tagValueLength(): number {
+        const value: number = this._valueLength();
+        return this._tagLength() + this._lengthLength(value) + value;
     }
 }

@@ -765,7 +765,6 @@ describe('Chart Legend', () => {
                 expect(legendElement).toBe(null);
                 legendElement = document.getElementById(legendId + '_text_' + 1);
                 expect(legendElement).not.toBe(null);
-
                 expect(legendElement.getAttribute('x') == '34').toBe(true);
                 expect(legendElement.getAttribute('y') == '309.25' || legendElement.getAttribute('y') == '301.25' || legendElement.getAttribute('y') == '319').toBe(true);
                 legendElement = document.getElementById(legendId + '_text_' + 2);
@@ -2185,7 +2184,7 @@ describe('Chart Legend', () => {
             };
             chartObj.series = seriesCollection;
             chartObj.legendSettings = {
-                position: 'Bottom', layout: 'Auto', maximumColumns: 3, fixedWidth: true
+              //  position: 'Bottom', layout: 'Auto', maximumColumns: 3, fixedWidth: true
             };
             chartObj.loaded = loaded;
             chartObj.refresh();

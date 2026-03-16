@@ -370,20 +370,22 @@ export function handlePageZoomChange(currentValue: number, previousValue: number
         this.previousImageZoom = previousValue;
     }
     else {
-        const organizeNodes: HTMLCollection = this.tileAreaDiv.children;
-        const imageSizeFactor: number = getImageZoomFactor.call(this, organizeNodes[0].cloneNode(true) as HTMLDivElement);
-        /* eslint-disable security/detect-object-injection */
-        for (let index: number = 0; index < organizeNodes.length; index++) {
-            const imageContainer: HTMLDivElement = organizeNodes[index] as HTMLDivElement;
-            imageContainer.style.width = 140 * imageSizeFactor + 'px';
-            imageContainer.style.height = 140 * imageSizeFactor + 'px';
-        }
-        /* eslint-enable security/detect-object-injection */
-        if (this.pdfViewerBase.getElement('_organizeLoadingIndicator').style.display !== 'block') {
-            this.currentImageZoom = currentValue;
-            this.previousImageZoom = previousValue;
-            if (this.currentImageZoom !== this.previousImageZoom) {
-                this.pdfViewer.firePageOrganizerZoomChanged(this.previousImageZoom, this.currentImageZoom);
+        if (this.tileAreaDiv && this.tileAreaDiv.children && this.tileAreaDiv.children.length > 0) {
+            const organizeNodes: HTMLCollection = this.tileAreaDiv.children;
+            const imageSizeFactor: number = getImageZoomFactor.call(this, organizeNodes[0].cloneNode(true) as HTMLDivElement);
+            /* eslint-disable security/detect-object-injection */
+            for (let index: number = 0; index < organizeNodes.length; index++) {
+                const imageContainer: HTMLDivElement = organizeNodes[index] as HTMLDivElement;
+                imageContainer.style.width = 140 * imageSizeFactor + 'px';
+                imageContainer.style.height = 140 * imageSizeFactor + 'px';
+            }
+            /* eslint-enable security/detect-object-injection */
+            if (this.pdfViewerBase.getElement('_organizeLoadingIndicator').style.display !== 'block') {
+                this.currentImageZoom = currentValue;
+                this.previousImageZoom = previousValue;
+                if (this.currentImageZoom !== this.previousImageZoom) {
+                    this.pdfViewer.firePageOrganizerZoomChanged(this.previousImageZoom, this.currentImageZoom);
+                }
             }
         }
     }

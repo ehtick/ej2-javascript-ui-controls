@@ -253,9 +253,9 @@ export class SheetRender implements IRenderer {
         this.parent.notify(beforeContentLoaded, { top: args.top, left: args.left });
         const colCount: string = sheet.colCount.toString(); const rowCount: string = sheet.colCount.toString();
         const layout: string = args.top && args.left ? 'RowColumn' : (args.top ? 'Row' : (args.left ? 'Column' : ''));
-        this.parent.getColHeaderTable().setAttribute('aria-colcount', colCount);
-        this.parent.getRowHeaderTable().setAttribute('aria-rowcount', rowCount); let emptyRow: Element;
-        attributes(this.parent.getContentTable(), { 'aria-rowcount': rowCount, 'aria-colcount': colCount });
+        attributes(this.parent.getColHeaderTable(), { 'aria-colcount': colCount, 'aria-label': 'Column Headers' });
+        attributes(this.parent.getRowHeaderTable(), { 'aria-rowcount': rowCount, 'aria-label': 'Row Headers' }); let emptyRow: Element;
+        attributes(this.parent.getContentTable(), { 'aria-rowcount': rowCount, 'aria-colcount': colCount, 'aria-label': 'Content' });
         (args.cells as Map<string, CellModel>).forEach((value: CellModel, key: string): void => {
             indexes = getRangeIndexes(key);
             if (indexes[1] === args.indexes[1] || !row) {

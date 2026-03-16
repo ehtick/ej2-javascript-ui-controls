@@ -299,10 +299,7 @@ export function findPortToolToActivate(
             const connector: ConnectorModel = { type: 'Orthogonal', sourcePortID: target.id };
             diagram.drawingObject = connector;
             diagram.tool |= DiagramTools.DrawOnce;
-            //1000270 - Exception at Port Draw with property update.
-            if (!(diagram.currentDrawingObject instanceof Connector)) {
-                diagram.currentDrawingObject = connector as Connector;
-            }
+            diagram.currentDrawingObject = connector as Connector;
             return 'PortDraw';
         }
     }

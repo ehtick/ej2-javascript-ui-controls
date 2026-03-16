@@ -608,10 +608,11 @@ export function calculateAggregate(type: AggregateType | string, data: Object, c
 let scrollWidth: number = null;
 
 /** @hidden
- * @returns {number} - Returns the scrollbarwidth
+ * @param {boolean} changeWidth - Recalculates the scrollbar width when true
+ * @returns {number} - Returns the scrollbar width
  */
-export function getScrollBarWidth(): number {
-    if (scrollWidth !== null) { return scrollWidth; }
+export function getScrollBarWidth(changeWidth?: boolean): number {
+    if (scrollWidth !== null && !changeWidth) { return scrollWidth; }
     const divNode: HTMLDivElement = document.createElement('div');
     let value: number = 0;
     divNode.style.cssText = 'width:100px;height: 100px;overflow: scroll;position: absolute;top: -9999px;';
@@ -1804,10 +1805,11 @@ export function sliceElements(row: Element, start: number, end: number): void {
 /**
  * @param {IGrid} gObj - Defines the grid
  * @param {Dialog} dlgObj - Defines the dialog
+ * @param {Dialog} dlgWidth - Defines the dialog width
  * @returns {void}
  * @hidden
  */
-export function resetDialogAppend(gObj: IGrid, dlgObj: Dialog): void {
+export function resetDialogAppend(gObj: IGrid, dlgObj: Dialog, dlgWidth?: number): void {
     let element: HTMLElement = gObj.createElement('div', { className: 'e-grid-popup', id: gObj.element.id + '_e-popup' });
     const pos: { left: number; top: number; } = calculatePosition(gObj.element, 'left', 'Top');
     if (document.getElementById(gObj.element.id + '_e-popup')) {
@@ -1816,7 +1818,7 @@ export function resetDialogAppend(gObj: IGrid, dlgObj: Dialog): void {
     element.style.top = pos.top + 'px';
     element.style.left = pos.left + 'px';
     element.style.zIndex = (dlgObj.zIndex).toString();
-    element.style.width = dlgObj.element.offsetWidth + 'px';
+    element.style.width = !isNullOrUndefined(dlgWidth) ? dlgWidth + 'px' : dlgObj.element.offsetWidth + 'px';
     element.appendChild(dlgObj.element);
     const sbPanel: HTMLElement = document.querySelector('.sb-demo-section,.e-grid-dialog-fixed');
     if (sbPanel) {
@@ -2606,4 +2608,28 @@ export function getSerachFilteredData(grid: IGrid): Object[] {
     } else {
         return grid.getDataModule().dataManager.executeLocal(grid.getDataModule().generateQuery(true));
     }
+}
+
+/** @hidden */
+let enableSeamlessScrolling: boolean = false;
+
+/**
+ * Returns whether seamless scrolling is enabled.
+ *
+ * @returns {boolean} True when seamless scrolling is enabled.
+ * @hidden
+ */
+export function isEnableSeamlessScrolling(): boolean {
+    return enableSeamlessScrolling;
+}
+
+/**
+ * Enable or disable seamless scrolling.
+ *
+ * @param {boolean} value - Set true to enable seamless scrolling, or false to disable it
+ * @returns {void}
+ * @hidden
+ */
+export function setEnableSeamlessScrolling(value: boolean): void {
+    enableSeamlessScrolling = value;
 }

@@ -3649,4 +3649,49 @@ describe('EJ2-54401- Select all checkbox is not displayed properly while selecti
             done();
         }, 450);
     });
+    describe('Popup State on Last Item Selection', () => {
+        let element: HTMLInputElement;
+        let listObj: any;
+        beforeEach(() => {
+            element = <HTMLInputElement>createElement('input', { id: 'multiselect', attrs: { type: 'text' } });
+            document.body.appendChild(element);
+        });
+        afterEach(() => {
+            if (element) {
+                element.remove();
+            }
+        });
+        it('popup should NOT close when selecting last item in checkbox mode.', function () {
+            listObj = new MultiSelect({
+                dataSource: datasource2,
+                mode: 'CheckBox',
+                fields: { text: "text", value: "text" },
+                change: function (e: any) {
+                    expect(e.value.length).toEqual(6);
+                }
+            });
+            listObj.appendTo(element);
+            listObj.showPopup();
+            var list = listObj.list.querySelectorAll('li');
+            mouseEventArgs.target = list[0];
+            mouseEventArgs.type = 'click';
+            listObj.onMouseClick(mouseEventArgs);
+            mouseEventArgs.target = list[1];
+            listObj.onMouseClick(mouseEventArgs);
+            var wrapper = listObj.inputElement.parentElement.parentElement;
+            expect(wrapper.firstElementChild.childNodes.length).toEqual(1);
+            mouseEventArgs.target = list[2];
+            mouseEventArgs.type = 'click';
+            listObj.onMouseClick(mouseEventArgs);
+            mouseEventArgs.target = list[3];
+            listObj.onMouseClick(mouseEventArgs);
+            mouseEventArgs.target = list[4];
+            listObj.onMouseClick(mouseEventArgs);
+            mouseEventArgs.target = list[5];
+            listObj.onMouseClick(mouseEventArgs);
+            expect(listObj.isPopupOpen).toBeTruthy();
+            listObj.onBlurHandler(mouseEventArgs);
+            listObj.destroy();
+        });
+    });
 });

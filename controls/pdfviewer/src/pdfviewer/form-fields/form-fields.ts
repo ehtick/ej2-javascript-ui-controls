@@ -928,6 +928,11 @@ export class FormFields {
             let fieldDatas: any = [];
             for (let m: number = 0; m < formFieldsData.length; m++) {
                 const currentData: any = formFieldsData[parseInt(m.toString(), 10)];
+                if (this.pdfViewer.printModule && this.pdfViewer.printModule.canPrint && currentData.IsPrint === false) {
+                    formFieldsData.splice(parseInt(m.toString(), 10), 1);
+                    m--;
+                    continue;
+                }
                 const isRequired: boolean = currentData.IsRequired;
                 if (currentData.Name === 'Textbox' || currentData.Name === 'Password' || currentData.Multiline) {
                     if (isRequired && (currentData.Text === '' || currentData.Text === null)) {

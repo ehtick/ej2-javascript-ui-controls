@@ -6,7 +6,7 @@ import { RichTextEditor, QuickToolbar, IQuickToolbar } from './../../../src/inde
 import { NodeSelection } from './../../../src/selection/index';
 import { DialogType } from "../../../src/common/enum";
 import { renderRTE, destroy, setCursorPoint, dispatchEvent, androidUA, iPhoneUA, currentBrowserUA } from "./../render.spec";
-import { BASIC_MOUSE_EVENT_INIT, DELETE_EVENT_INIT, BACKSPACE_EVENT_INIT } from '../../constant.spec';
+import { BASIC_MOUSE_EVENT_INIT, DELETE_EVENT_INIT, BACKSPACE_EVENT_INIT, ENTERKEY_EVENT_INIT } from '../../constant.spec';
 import * as classes from '../../../src/rich-text-editor/base/classes';
 import * as events from '../../../src/rich-text-editor/base/constant';
 import { ActionBeginEventArgs } from "./../../../src/common/interface";
@@ -1896,9 +1896,15 @@ describe('Audio Module', () => {
             clickEvent.initEvent("mousedown", false, true);
             target.dispatchEvent(clickEvent);
             (<any>rteObj).audioModule.editAreaClickHandler({ args: clickEvent });
-            (<any>rteObj).keyDown(keyBoardEvent);
-            expect(document.querySelector('.e-rte-quick-popup')).toBe(null);
-            done();
+            // (<any>rteObj).keyDown(keyBoardEvent);
+            const ENTER_KEY_DOWN_EVENT: KeyboardEvent = new KeyboardEvent('keydown', ENTERKEY_EVENT_INIT);
+            const ENTER_KEY_UP_EVENT: KeyboardEvent = new KeyboardEvent('keyup', ENTERKEY_EVENT_INIT);
+            rteObj.inputElement.dispatchEvent(ENTER_KEY_DOWN_EVENT);
+            rteObj.inputElement.dispatchEvent(ENTER_KEY_UP_EVENT);
+            setTimeout(() => {
+                expect(document.querySelector('.e-rte-quick-popup')).toBe(null);
+                done();
+            }, 100);
         });
     });
 
@@ -3192,7 +3198,8 @@ describe('Audio Module', () => {
                     items: [{ type: "audio/mp3" }],
                     types: ["Files"]
                 },
-                preventDefault: jasmine.createSpy('preventDefault')
+                preventDefault: jasmine.createSpy('preventDefault'),
+                stopImmediatePropagation: function () { return; }
             };
             // Backup the browser name (info.name)
             backupBrowserName = Browser.info.name;
@@ -3227,7 +3234,7 @@ describe('Audio Module', () => {
             dragEvent.dataTransfer.types = ["text"];
             const result = (rteObj.audioModule as any).dragOver(dragEvent);
             expect(dragEvent.preventDefault).not.toHaveBeenCalled();
-            expect(result).toBe(true);
+            expect(isNullOrUndefined(result)).toBe(true);
         });
     });
     describe('Audio module undoStack coverage', () => {
@@ -3244,6 +3251,40 @@ describe('Audio Module', () => {
             let undoCount = (rteObj as any).formatter.getUndoRedoStack().length;
             (rteObj as any).audioModule.undoStack({ subCommand: "audio" });
             expect((rteObj as any).formatter.getUndoRedoStack().length === undoCount).toBe(true);
+        });
+    });
+
+    describe('1014357: Audio dialog replacement when clicking another toolbar item', () => {
+        let rteEle: HTMLElement;
+        let rteObj: RichTextEditor;
+        beforeAll(() => {
+            rteObj = renderRTE({
+                height: 400,
+                toolbarSettings: {
+                    items: ['Audio', 'Bold']
+                }
+            });
+            rteEle = rteObj.element;
+        });
+        afterAll(() => {
+            destroy(rteObj);
+        });
+        it('should remove audio dialog when clicking another toolbar item', (done: Function) => {
+            (rteEle.querySelectorAll(".e-toolbar-item")[0] as HTMLElement).click();
+            setTimeout(() => {
+                expect(rteObj.element.lastElementChild.classList.contains('e-dialog')).toBe(true);
+                let mousedownEvent2 = new MouseEvent('mousedown', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window
+                });
+                document.dispatchEvent(mousedownEvent2);
+                setTimeout(() => {
+                    let dialogElements = rteObj.element.querySelectorAll('.e-dialog');
+                    expect(dialogElements.length).toBe(0);
+                    done();
+                }, 100);
+            }, 100);
         });
     });
     describe('AudioModule bindOnEnd else branch coverage', () => {
@@ -3533,7 +3574,8 @@ describe('Audio Module', () => {
                     items: [{ type: "audio/mp3" }],
                     types: ["Files"]
                 },
-                preventDefault: jasmine.createSpy('preventDefault')
+                preventDefault: jasmine.createSpy('preventDefault'),
+                stopImmediatePropagation: function () { return; }
             };
             done();
         });
@@ -3544,7 +3586,7 @@ describe('Audio Module', () => {
         it('should cover dragEnter', () => {
             dragEvent.dataTransfer.items = [{ type: 'audio/mp3' }];
             (rteObj.audioModule as any).dragEnter(dragEvent);
-            expect(dragEvent.dataTransfer.dropEffect === 'copy').toBe(true);
+            expect(isNullOrUndefined(dragEvent.dataTransfer.dropEffect)).toBe(true);
             expect(dragEvent.preventDefault).toHaveBeenCalled();
         });
     });

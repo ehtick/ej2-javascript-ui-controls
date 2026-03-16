@@ -1387,7 +1387,10 @@ export interface ShapeLabelSettingsModel {
     fontFamily?: string;
 
     /**
-     * specifies the default content of the label.
+     * Specifies the default content of the label.
+     *
+     * @remarks
+     * The labelContent is replaced with the calibrate measurement value for the calibrate annotation.
      */
     labelContent?: string;
 
@@ -2392,6 +2395,9 @@ export interface MeasurementSettingsModel {
 
     /**
      * specifies the depth of the volume annotation.
+     *
+     * @remarks
+     * Applicable only for the volume annotation.
      */
     depth?: number;
 
@@ -2536,7 +2542,7 @@ export interface FreeTextSettingsModel {
     isPrint?: boolean;
 
     /**
-     * Allow to edit the FreeText annotation. FALSE, by default.
+     * Enables or disables text editing for the annotation. FALSE, by default.
      */
     isReadonly?: boolean;
 
@@ -2559,17 +2565,26 @@ export interface AnnotationSelectorSettingsModel {
 
     /**
      * Specifies the selection border color.
+     *
+     * @remarks
+     * Not applicable for line type annotations, text markup annotations, and sticky note annotations.
      */
     selectionBorderColor?: string;
 
     /**
      * Specifies the border color of the resizer.
      *
+     * @remarks
+     * Not applicable for text markup annotations and sticky note annotations.
      */
+
     resizerBorderColor?: string;
 
     /**
      * Specifies the fill color of the resizer.
+     *
+     * @remarks
+     * Not applicable for text markup annotations and sticky note annotations.
      *
      */
     resizerFillColor?: string;
@@ -2577,31 +2592,49 @@ export interface AnnotationSelectorSettingsModel {
     /**
      * Specifies the size of the resizer.
      *
+     * @remarks
+     * Not applicable for text markup annotations and sticky note annotations.
+     *
      */
     resizerSize?: number;
 
     /**
-     * Specifies the thickness of the border of selection.
+     * Specifies the thickness of the selection border.
+     *
+     * @remarks
+     * Not applicable for line type annotations, text Markup annotations, and Sticky Note annotations.
      */
     selectionBorderThickness?: number;
 
     /**
      * Specifies the shape of the resizer.
+     *
+     * @remarks
+     * Not applicable for text markup annotations and sticky note annotations.
      */
     resizerShape?: AnnotationResizerShape;
 
     /**
      * Specifies the border dash array of the selection.
+     *
+     * @remarks
+     * Not applicable for line type annotations, text Markup annotations, and sticky Note annotations.
      */
     selectorLineDashArray?: number[];
 
     /**
      * Specifies the location of the resizer.
+     *
+     * @remarks
+     * Not applicable for text markup annotations and sticky note annotations.
      */
     resizerLocation?: AnnotationResizerLocation;
 
     /**
-     * specifies the cursor type of resizer
+     * specifies the cursor type of resizer.
+     *
+     * @remarks
+     * Not applicable for text markup annotations and sticky note annotations.
      */
     resizerCursorType?: CursorType;
 
@@ -4631,7 +4664,7 @@ export interface PdfViewerModel extends ComponentModel{
     enableStampAnnotations?: boolean;
 
     /**
-     * Enables and disable the stickyNotes annotations when the PDF viewer control is loaded initially.
+     * add or remove the sticky note annotations in the PDF viewer.
      *
      * {% codeBlock src='pdfviewer/enableStickyNotesAnnotation/index.md' %}{% endcodeBlock %}
      *

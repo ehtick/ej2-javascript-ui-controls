@@ -298,8 +298,9 @@ export class WorkbookDelete {
             for (let i: number = 0; i < cfCollection.length; i++) {
                 eventArgs['conditionalFormats'].push(extend({}, cfCollection[i as number], null, true));
                 const cfRange: number[] = getRangeIndexes(cfCollection[i as number].range);
-                const sltRangeIndex: number[] = getRangeIndexes(args.model.selectedRange);
-                if ((args.modelType === 'Column' && sltRangeIndex[1] <= cfRange[1] && sltRangeIndex[3] >= cfRange[3]) || (args.modelType === 'Row' && sltRangeIndex[0] <= cfRange[0] && sltRangeIndex[2] >= cfRange[2])) {
+                const delStart: number = args.start as number;
+                const delEnd: number = args.end as number;
+                if ((args.modelType === 'Column' && delStart <= cfRange[1] && delEnd >= cfRange[3]) || (args.modelType === 'Row' && delStart <= cfRange[0] && delEnd >= cfRange[2])) {
                     cfCollection.splice(cfCollection.indexOf(cfCollection[i as number]), 1);
                     i--;
                 } else {

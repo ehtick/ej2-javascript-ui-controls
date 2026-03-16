@@ -1423,6 +1423,12 @@ export class DateTimePicker extends DatePicker {
             if (this.enableMask)
             {
                 this.createMask();
+                if (this.globalize.culture === 'ar') {
+                    Input.setValue(tempVal, this.inputElement, this.floatLabelType, this.showClearButton);
+                    this.notify('setMaskSelection', {
+                        module: 'MaskedDateTime'
+                    });
+                }
             }
         }
         this.updateIconState();
@@ -2132,7 +2138,7 @@ export class DateTimePicker extends DatePicker {
                 }
                 break;
             case 'placeholder':
-                Input.setPlaceholder(newProp.placeholder, this.inputElement);
+                Input.setPlaceholder(newProp.placeholder, this.inputElement, this.getModuleName());
                 break;
             case 'enabled':
                 Input.setEnabled(this.enabled, this.inputElement);
@@ -2210,9 +2216,12 @@ export class DateTimePicker extends DatePicker {
             width += icons[index as number].offsetWidth;
         }
         if (label) {
-            const labelWidth: number = (this.element.parentElement.offsetWidth) - width;
-            if (labelWidth && !(this.cssClass && this.cssClass.split(' ').indexOf('e-outline') !== -1)) {
-                label.style.width = `${labelWidth}px`;
+            const isMaterial: string = window.getComputedStyle(this.element).getPropertyValue('--dummy-style').trim();
+            if (isMaterial === '') {
+                const labelWidth: number = (this.element.parentElement.offsetWidth) - width;
+                if (labelWidth) {
+                    label.style.width = `${labelWidth}px`;
+                }
             }
         }
     }

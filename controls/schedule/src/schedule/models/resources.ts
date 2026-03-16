@@ -42,7 +42,7 @@ export class Resources extends ChildProperty<Resources> {
     /**
      * Assigns the resource dataSource
      * The data can be passed either as an array of JavaScript objects,
-     * or else can create an instance of [`DataManager`](http://ej2.syncfusion.com/documentation/data/api-dataManager.html)
+     * or else can create an instance of [`DataManager`](https://ej2.syncfusion.com/documentation/api/data/datamanager.html)
      * in case of processing remote data and can be assigned to the `dataSource` property.
      * With the remote data assigned to dataSource, check the available
      *  [adaptors](http://ej2.syncfusion.com/documentation/data/adaptors.html) to customize the data processing.
@@ -53,7 +53,7 @@ export class Resources extends ChildProperty<Resources> {
     public dataSource: Record<string, any>[] | DataManager;
 
     /**
-     * Defines the external [`query`](http://ej2.syncfusion.com/documentation/data/api-query.html)
+     * Defines the external [`query`](https://ej2.syncfusion.com/documentation/api/data/query.html)
      * that will be executed along with the data processing.
      *
      * @default null

@@ -432,6 +432,21 @@ export interface TooltipSettingsModel {
     shared?: boolean;
 
     /**
+     * Specifies whether to enable split tooltip support.
+     * When set to `true`, tooltips will be displayed separately for each point in the series.
+     *
+     * @default false
+     */
+    split?: boolean;
+
+    /**
+     * If true, the chart displays a tooltip for the data point nearest the cursor;
+     *
+     * @default false
+     */
+    followPointer?: boolean;
+
+    /**
      * The fill color of the tooltip, specified as a valid CSS color string in hex or rgba format.
      *
      * @default null
@@ -527,6 +542,21 @@ export interface TooltipSettingsModel {
      */
 
     showNearestPoint?: boolean;
+
+    /**
+     * Specifies the gap (in pixels) between the tooltip and its
+     * pointer or target element. Increasing this value
+     * positions the tooltip farther away, improving clarity
+     * and preventing overlap with chart or UI elements
+     *
+     * > Note: This property is supported only for Chart tooltips.
+     * > It is not applicable to other components/modules.
+     *
+     * > Negative values are ignored.
+     *
+     * @default 0
+     */
+    distance?: number;
 
     /**
      * Options for customizing the tooltip borders, including the color and width of the tooltip's border.
@@ -1215,6 +1245,135 @@ export interface StockTooltipSettingsModel {
      */
 
     showHeaderLine?: boolean;
+
+}
+
+/**
+ * Interface for a class GradientColorStop
+ */
+export interface GradientColorStopModel {
+
+    /**
+     * The offset position of the color stop.
+     *
+     * @default 0
+     */
+    offset?: number;
+
+    /**
+     * The color of the stop.
+     *
+     * @default ''
+     */
+    color?: string;
+
+    /**
+     * The opacity of the color stop
+     *
+     * @default 1
+     */
+    opacity?: number;
+
+    /**
+     * The brightness adjustment for the color.
+     *
+     * @default 0
+     */
+    brighten?: number;
+
+    /**
+     * The lightness adjustment for the color.
+     *
+     * @default 0
+     */
+    lighten?: number;
+
+}
+
+/**
+ * Interface for a class LinearGradient
+ */
+export interface LinearGradientModel {
+
+    /**
+     * The x-coordinate of the gradient start point.
+     *
+     * @default 0
+     */
+    x1?: number;
+
+    /**
+     * The y-coordinate of the gradient start point.
+     *
+     * @default 0
+     */
+    y1?: number;
+
+    /**
+     * The x-coordinate of the gradient end point.
+     *
+     * @default 1
+     */
+    x2?: number;
+
+    /**
+     * The y-coordinate of the gradient end point.
+     *
+     * @default 1
+     */
+    y2?: number;
+
+    /**
+     * The collection of color stops in the gradient.
+     */
+    gradientColorStop?: GradientColorStopModel[];
+
+}
+
+/**
+ * Interface for a class RadialGradient
+ */
+export interface RadialGradientModel {
+
+    /**
+     * The x-coordinate of the radial gradient center.
+     *
+     * @default 0.5
+     */
+    cx?: number;
+
+    /**
+     * The y-coordinate of the radial gradient center.
+     *
+     * @default 0.5
+     */
+    cy?: number;
+
+    /**
+     * The radius of the radial gradient.
+     *
+     * @default 0.5
+     */
+    r?: number;
+
+    /**
+     * The focal x-coordinate for the radial gradient.
+     *
+     * @default null
+     */
+    fx?: number;
+
+    /**
+     * The focal y-coordinate for the radial gradient.
+     *
+     * @default null
+     */
+    fy?: number;
+
+    /**
+     * The collection of color stops in the gradient.
+     */
+    gradientColorStop?: GradientColorStopModel[];
 
 }
 

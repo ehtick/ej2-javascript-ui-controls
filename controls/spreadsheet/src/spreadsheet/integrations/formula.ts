@@ -64,6 +64,8 @@ export class Formula {
         }
         this.autocompleteInstance = null;
         if (this.acInputElement) { this.acInputElement.remove(); this.acInputElement = null; }
+        this.isFormula = null; this.isFormulaBar = null;
+        this.isPopupOpened = null; this.isPreventClose = null; this.isSubFormula = null;
         this.parent = null;
     }
 

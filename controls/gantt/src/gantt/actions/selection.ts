@@ -133,7 +133,10 @@ export class Selection {
                 }
             }
         }
-        args.target = this.actualTarget as Element;
+        // To assign the actualTarget element to args.target, if only the target element is null/undefined T1012179
+        if (isNullOrUndefined(args.target)) {
+            args.target = this.actualTarget as Element;
+        }
         if (!isNullOrUndefined(args.foreignKeyData) && Object.keys(args.foreignKeyData).length === 0) {
             delete args.foreignKeyData;
         }

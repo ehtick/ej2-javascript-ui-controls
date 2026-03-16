@@ -3484,6 +3484,7 @@ describe('Schedule base module', () => {
             util.destroy(schObj);
             done();
         });
+
         it('multi-day selection across days is chronological', (done: DoneFn) => {
             const schObj = util.createSchedule({ selectedDate: new Date(2018, 5, 11), currentView: 'Week' }, []);
             const day1Date = new Date(2018, 5, 11, 11, 30);
@@ -3505,6 +3506,7 @@ describe('Schedule base module', () => {
             util.destroy(schObj);
             done();
         });
+
         it('reverse drag selection returns chronological order', (done: DoneFn) => {
             const schObj = util.createSchedule({ selectedDate: new Date(2018, 5, 12), currentView: 'Week' }, []);
             const laterDate = new Date(2018, 5, 12, 15, 0);
@@ -3526,6 +3528,7 @@ describe('Schedule base module', () => {
             util.destroy(schObj);
             done();
         });
+
         it('full-day selection returns cells ordered by time', (done: DoneFn) => {
             const schObj = util.createSchedule({ selectedDate: new Date(2018, 5, 11), currentView: 'Day' }, []);
             const first = +new Date(2018, 5, 11, 9, 0);

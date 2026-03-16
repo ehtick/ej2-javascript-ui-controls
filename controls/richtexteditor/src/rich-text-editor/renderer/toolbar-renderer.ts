@@ -163,6 +163,8 @@ export class ToolbarRenderer implements IRenderer {
     }
 
     private dropDownOpen(args: MenuEventArgs): void {
+        const istableEditDialog: boolean = this.parent.tableModule && this.parent.tableModule.editdlgObj
+        && !isNOU(this.parent.tableModule.editdlgObj.element) && !isNOU(this.parent.tableModule.editdlgObj.element.querySelector('.e-rte-edit-tablecell-dialog,.e-rte-edit-table-content'));
         if (args.element.parentElement.getAttribute('id').indexOf('TableCell') > -1 && !isNOU(args.element.parentElement.querySelector('.e-cell-merge'))) {
             const listEle: NodeListOf<HTMLElement> = args.element.querySelectorAll('li');
             const selectedEles: NodeListOf<HTMLElement> = this.parent.inputElement.querySelectorAll('.e-cell-select');
@@ -180,7 +182,9 @@ export class ToolbarRenderer implements IRenderer {
                 addClass([listEle[1], listEle[2]], 'e-disabled');
             }
         }
-        this.parent.notify(events.selectionSave, args);
+        if (!istableEditDialog) {
+            this.parent.notify(events.selectionSave, args);
+        }
     }
 
     private dropDownClose(args: MenuEventArgs): void {
@@ -188,7 +192,10 @@ export class ToolbarRenderer implements IRenderer {
             this.lineHeightDropDown.items = this.itemValue;
             this.lineHeightDropDown.dataBind();
         }
-        if (!this.isEscapeKey)
+        const istableEditDialog: boolean = this.parent.tableModule && this.parent.tableModule.editdlgObj &&
+         !isNOU(this.parent.tableModule.editdlgObj.element)
+                && !isNOU(this.parent.tableModule.editdlgObj.element.querySelector('.e-rte-edit-tablecell-dialog,.e-rte-edit-table-content'));
+        if (!this.isEscapeKey && !istableEditDialog)
         {
             this.parent.notify(events.selectionRestore, args);
         }
@@ -278,6 +285,10 @@ export class ToolbarRenderer implements IRenderer {
         if (this.parent.inlineMode.enable && Browser.isDevice) {
             css = css + ' ' + CLS_INLINE_DROPDOWN;
         }
+        let editTableBorder: boolean = false;
+        if (args.itemName === 'BorderStyle') {
+            editTableBorder = true;
+        }
         const isTesting: boolean = this.parent.element && this.parent.element.dataset && this.parent.element.dataset.rteUnitTesting === 'true';
         // eslint-disable-next-line
         let proxy: this = this;
@@ -296,7 +307,7 @@ export class ToolbarRenderer implements IRenderer {
                     return;
                 }
                 if (this.parent.userAgentData.isSafari() && args.event.type === 'keydown' && this.parent.formatter.editorManager.nodeSelection &&
-                    !this.parent.inputElement.contains(this.parent.getRange().startContainer)) {
+                    !this.parent.inputElement.contains(this.parent.getRange().startContainer) && !editTableBorder) {
                     this.parent.notify(events.selectionRestore, args);
                 }
                 // Table styles dropdown preselect
@@ -361,19 +372,47 @@ export class ToolbarRenderer implements IRenderer {
                     //image preselect
                     const closestNode: HTMLElement = startNode.closest('img');
                     const imageEle: HTMLElement = closestNode ? closestNode : (targetEle ? targetEle : startNode.querySelector('img'));
-                    if (!isNOU(args.items[0 as number]) && (args.items[0 as number] as IDropDownItemModel).command === 'Images') {
-                        if (!isNOU(imageEle)) {
-                            let index: number;
-                            if (imageEle.classList.contains('e-imgleft') || imageEle.classList.contains('e-imginline')) {
+                    const isItemCommandImage: boolean = !isNOU(args.items[0 as number]) && (args.items[0 as number] as IDropDownItemModel).command === 'Images';
+                    if (isItemCommandImage && !isNOU(imageEle)) {
+                        // If the image is wrapped in a caption container, use that container for class checks
+                        let classCheckEle: HTMLElement = imageEle;
+                        const captionWrapper: HTMLElement = imageEle.closest('.e-img-caption-container') as HTMLElement | null;
+                        if (!isNOU(captionWrapper)) {
+                            classCheckEle = captionWrapper;
+                        }
+                        let index: number;
+                        if ((args.items[0 as number] as IDropDownItemModel).subCommand === 'Inline' ||
+                            (args.items[0 as number] as IDropDownItemModel).subCommand === 'Break') {
+                            if (classCheckEle.classList.contains(classes.CLS_IMG_INLINE) ||
+                                classCheckEle.classList.contains(classes.CLS_IMAGE_LEFT_WRAP) ||
+                                classCheckEle.classList.contains(classes.CLS_IMAGE_RIGHT_WRAP)) {
                                 index = 0;
-                            } else if (imageEle.classList.contains('e-imgcenter') || imageEle.classList.contains('e-imgbreak')) {
+                            } else if (classCheckEle.classList.contains(classes.CLS_IMG_CENTER) ||
+                                classCheckEle.classList.contains(classes.CLS_IMG_BREAK) ||
+                                classCheckEle.classList.contains(classes.CLS_IMG_LEFT) ||
+                                classCheckEle.classList.contains(classes.CLS_IMG_RIGHT)) {
                                 index = 1;
-                            } else if (imageEle.classList.contains('e-imgright')) {
+                            }
+                        } else if ((args.items[0 as number] as IDropDownItemModel).subCommand === 'LeftWrap' ||
+                            (args.items[0 as number] as IDropDownItemModel).subCommand === 'RightWrap') {
+                            if (classCheckEle.classList.contains(classes.CLS_IMAGE_LEFT_WRAP)) {
+                                index = 0;
+                            } else if (classCheckEle.classList.contains(classes.CLS_IMAGE_RIGHT_WRAP)) {
+                                index = 1;
+                            }
+                        } else {
+                            if (classCheckEle.classList.contains(classes.CLS_IMG_LEFT)) {
+                                // need to check and remove the default left active adding use case
+                                index = 0;
+                            } else if (classCheckEle.classList.contains(classes.CLS_IMG_CENTER) ||
+                                classCheckEle.classList.contains(classes.CLS_IMG_BREAK)) {
+                                index = 1;
+                            } else if (classCheckEle.classList.contains(classes.CLS_IMG_RIGHT)) {
                                 index = 2;
                             }
-                            if (!isNOU(args.element.childNodes[index as number] as HTMLElement)) {
-                                addClass([args.element.childNodes[index as number] as Element], 'e-active');
-                            }
+                        }
+                        if (!isNOU(args.element.childNodes[index as number] as HTMLElement)) {
+                            addClass([args.element.childNodes[index as number] as Element], 'e-active');
                         }
                     }
                     //Video preselect
@@ -763,20 +802,20 @@ export class ToolbarRenderer implements IRenderer {
             beforeOpen: () => {
                 if ((proxy.parent.userAgentData.isSafari() || !proxy.parent.userAgentData.isSafari()) &&
                     this.parent.formatter.editorManager.nodeSelection &&
-                    this.parent.inputElement.contains(this.parent.getRange().startContainer)) {
+                    this.parent.inputElement.contains(this.parent.getRange().startContainer) && !editTablecolorpicker) {
                     proxy.parent.notify(events.selectionSave, {});
                     this.rangeStore = true;
                 }
                 colorPicker.showButtons = colorPicker.mode === 'Picker' ? true : false;
             },
             change: (colorPickerArgs: IColorPickerEventArgs): void => {
-                if (this.rangeStore) {
+                if (this.rangeStore && !editTablecolorpicker) {
                     proxy.parent.notify(events.selectionRestore, {});
                     this.rangeStore = false;
                 }
-                if (!proxy.parent.userAgentData.isSafari() ||
+                if ((!proxy.parent.userAgentData.isSafari() ||
                     (proxy.parent.userAgentData.isSafari() && this.parent.formatter.editorManager.nodeSelection &&
-                    this.parent.inputElement.contains(this.parent.getRange().startContainer))) {
+                    this.parent.inputElement.contains(this.parent.getRange().startContainer))) && !editTablecolorpicker) {
                     proxy.parent.notify(events.selectionSave, {});
                 }
                 const colorpickerValue: string = colorPickerArgs.currentValue.rgba;
@@ -785,10 +824,12 @@ export class ToolbarRenderer implements IRenderer {
                     subCommand: args.subCommand,
                     value: colorpickerValue
                 };
-                proxy.parent.notify(events.selectionRestore, {});
+                if (!editTablecolorpicker) {
+                    proxy.parent.notify(events.selectionRestore, {});
+                }
                 const range: Range = proxy.parent.formatter.editorManager.nodeSelection.getRange(proxy.parent.contentModule.getDocument());
                 const closestElement: Element = closest(range.startContainer.parentNode, 'table');
-                if ((range.startContainer.nodeName === 'TD' || range.startContainer.nodeName === 'TH' || range.startContainer.nodeName === 'BODY' ||
+                if (!editTablecolorpicker && (range.startContainer.nodeName === 'TD' || range.startContainer.nodeName === 'TH' || range.startContainer.nodeName === 'BODY' ||
                     (range.startContainer.parentNode && closest(range.startContainer.parentNode, 'td,th'))) && range.collapsed && args.subCommand === 'BackgroundColor' && (closestElement && closest(closestElement, '.' + classes.CLS_RTE) || proxy.parent.iframeSettings.enable)
                     && toolbarType === 'quick') {
                     this.defaultColorPicker = colorPickerArgs.currentValue.hex;

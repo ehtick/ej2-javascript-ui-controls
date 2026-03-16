@@ -12,5 +12,5 @@
 @use 'ej2-grids/styles/grid/fabric-definition' as *;
 @use 'grid-chart/fabric-definition' as *;
 @use 'grid-chart/icons/fabric' as *;
-@use 'grid-chart/all' as *;
-@use 'grid-chart/bigger' as *;
+@use 'grid-chart/all.fabric' as *;
+@use 'grid-chart/bigger.fabric' as *;

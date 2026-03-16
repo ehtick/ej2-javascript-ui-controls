@@ -900,7 +900,7 @@ describe('Candle Series ', () => {
                 element1 = <HTMLElement>crosshair.childNodes[2].childNodes[2];
                 expect(element1.getAttribute('d') != '').toBe(true);
                 element1 = <HTMLElement>crosshair.childNodes[2].childNodes[1];
-                expect(element1.textContent).toEqual('#3');
+                expect(element1.textContent).toEqual('#2.832');
                 element1 = <HTMLElement>crosshair.childNodes[2].childNodes[3];
                 expect(element1.textContent === '22.756K' || element1.textContent === '22.976K' || element1.textContent === '22.867K').toBe(true);
                 trigger.mouseleavetEvent(chartArea, Math.ceil(x), Math.ceil(y));

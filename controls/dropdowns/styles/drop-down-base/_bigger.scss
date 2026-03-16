@@ -163,20 +163,20 @@
 
   .e-bigger .e-dropdownbase .e-list-item .e-list-icon {
     @if $skin-name == 'tailwind' or $skin-name == 'fluent2' {
-      padding: $ddl-bgr-dropbase-list-icon-padding;
+      padding-inline-end: $ddl-bgr-dropbase-list-icon-padding;
     }
   }
 
   .e-bigger.e-small .e-dropdownbase .e-list-item .e-list-icon {
     @if $skin-name == 'tailwind' or $skin-name == 'fluent2' {
-      padding: $ddl-bgr-small-dropbase-list-icon-padding;
+      padding-inline-end: $ddl-bgr-small-dropbase-list-icon-padding;
     }
   }
 
   .e-bigger .e-dropdownbase .e-list-item .e-list-icon,
   .e-bigger.e-small .e-dropdownbase .e-list-item .e-list-icon {
     @if $skin-name == 'bootstrap-dark' or $skin-name == 'bootstrap' or $skin-name == 'bootstrap4' or $skin-name == 'bootstrap5' or $skin-name == 'bootstrap5.3' or $skin-name == 'fabric-dark' or $skin-name == 'fabric' or $skin-name == 'FluentUI' or $skin-name == 'highcontrast' or $skin-name == 'highcontrast-light' {
-      padding: $ddl-bgr-dropbase-list-icon-item-padding;
+      padding-inline-end: $ddl-bgr-dropbase-list-icon-item-padding;
     }
   }
 

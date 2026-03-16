@@ -2,12 +2,12 @@ import { createElement } from '@syncfusion/ej2-base';
 import { Diagram } from '../../../src/diagram/diagram';
 import { NodeModel, PathModel } from '../../../src/diagram/objects/node-model';
 import { Node } from '../../../src/diagram/objects/node';
-import { ConnectorModel, DecoratorModel} from '../../../src/diagram/objects/connector-model';
+import { ConnectorModel, DecoratorModel } from '../../../src/diagram/objects/connector-model';
 import { PointPortModel } from '../../../src/diagram/objects/port-model';
 import { GroupableView } from '../../../src/diagram/core/containers/container';
 import { PathElement } from '../../../src/diagram/core/elements/path-element';
-import  {profile , inMB, getMemoryProfile} from '../../../spec/common.spec';
-import { PortVisibility, PortConstraints, NodeConstraints, ConnectorConstraints, SelectorConstraints, FlipDirection } from '../../../src/diagram/enum/enum';
+import { profile, inMB, getMemoryProfile } from '../../../spec/common.spec';
+import { PortVisibility, PortConstraints, NodeConstraints, ConnectorConstraints, SelectorConstraints, FlipDirection, DiagramTools, DiagramConstraints } from '../../../src/diagram/enum/enum';
 import { PointModel } from '../../../src/diagram/primitives/point-model';
 import { MouseEvents } from '../interaction/mouseevents.spec';
 import { Connector, ICollectionChangeEventArgs } from '../../../src/index';
@@ -220,12 +220,12 @@ describe('Diagram Control', () => {
                 id: "node", offsetX: 250, offsetY: 250, width: 100, height: 100, rotateAngle: 180, annotations: [{content: "Test"}],
                 ports: [
                     {
-                        id: "port", width: 25, height: 25, offset: {x: 0.5, y: 1},
+                        id: "port", width: 25, height: 25, offset: { x: 0.5, y: 1 },
                         visibility: PortVisibility.Visible, constraints: PortConstraints.Drag | PortConstraints.OutConnect
                     }
                 ]
             };
-            let connector: ConnectorModel = {sourceID: "node", sourcePortID: "port", targetPoint: { x: 350, y: 250 }};
+            let connector: ConnectorModel = { sourceID: "node", sourcePortID: "port", targetPoint: { x: 350, y: 250 } };
             diagram = new Diagram({ width: 800, height: 800, nodes: [node], connectors: [connector] });
             diagram.appendTo('#diagramPortDragIssue1');
         });
@@ -309,7 +309,7 @@ describe('Diagram Control', () => {
             document.body.appendChild(ele);
             let node: NodeModel = {
                 id: 'node', width: 100, height: 100, offsetX: 300, offsetY: 300,
-                flip:FlipDirection.Horizontal,
+                flip: FlipDirection.Horizontal,
                 ports: [
                     {
                         id: 'feed1',
@@ -332,7 +332,7 @@ describe('Diagram Control', () => {
             };
 
             let node2: NodeModel = {
-                id: 'node2', width: 100, height: 100, offsetX: 300, offsetY: 100, annotations: [{id:'node2', content: 'Label', style: { fill: 'white' } }],
+                id: 'node2', width: 100, height: 100, offsetX: 300, offsetY: 100, annotations: [{ id: 'node2', content: 'Label', style: { fill: 'white' } }],
                 shape: {
                     type: 'Native',
                     content: '<g xmlns="http://www.w3.org/2000/svg">' +
@@ -361,7 +361,7 @@ describe('Diagram Control', () => {
             };
 
             let node3: NodeModel = {
-                id: 'node4', width: 100, height: 150, offsetX: 700, offsetY: 100, style: { fill: 'none' }, annotations: [{id:'node3', content: 'None' }], flipMode: 'None',
+                id: 'node4', width: 100, height: 150, offsetX: 700, offsetY: 100, style: { fill: 'none' }, annotations: [{ id: 'node3', content: 'None' }], flipMode: 'None',
                 flip: FlipDirection.Horizontal,
                 shape: { type: 'Image', source: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOIAAADfCAMAAADcKv+WAAAAsVBMVEX///8rNXz2kh4aJ3YeKnejpsGMkLAyPIIoM3u7vc8UI3UjLnlrcZ9fZZfCxNYKHHLc3efQ0d9LUoz1igD+8eP3n0IRIXRXXZJzeaQ5QoT95M32jQD1iAD2kBT96tj83MD+9/D70Kn4r2gAAGv5u4H+8+j6wYz6yp/3mTH71bP3pVI/R4b6xpf4s3H3okr4qVr2lib7zqX4sWwAEW/x8fXk5Ox9gqqsr8aRlbUAC26oq8Veod7kAAAEZ0lEQVR4nO2d4VbiMBBGQ8VV0BW0gC5toQooKgIusq77/g+2srhtgXaSaelJwvnu//HMPaWTzCSgEAAAAAAAQCeh7gRKZ+L3dKdQMn3fcfu6kyiVnus4jj/RnUaJhIGzwn3RnUh5jNeKjjcNdadSEjPP+SKYt3QnUwrDyPDT0evqTqcEXl0niXurO6G90/WdTfx73SntmZbrbOPNdCe1V0In2FF0vHaoO6890k4xXBWdw9nN3XlphqsHeSi7ufvdFzEqOoexm3vcLqZJDmI3181+hv8+q1PdCRZmlPUeRkVnPtKdYzHCeWox3XC0fDc3lRquXshH3WkW4EX2MV1j8W5uQpeaxHO8051qTsjlYhNLd3M91We4IggsbJNDlUqTcLRwNydfLrbwH3SnzGTGNfwsOkPZH62dnfCo3ESx3yvM2OoFnYzicrGJ9yRT7JzyqJ7HimfM2Aat+MApNTHBmN7N1eoVHmdJRWZsnVTsqy8XW450m2yOImu52ILczRmjmDqqUYZqk41RHBcxJHdzpijO8hTTJF7bcMVhUUPHfTVb8TZvMY0fYvYOwAjFnck+35AYk5ug2Cr8KQ3G2YYmKBZbLtaKodmKdwXW/DX0lQ4DFAs7+nTTaIKiuC9UblzJAYARipyBzQ6ebPxvhqLoenlLTiBrF01RFCP2SOPLcC4zNEZRiKdcq6MnP9wwR1G85CisvsLRhkGK4oFddHyVgw2TFEWf+RxdpWMNoxRFL+AUHe+niqFhiiIcqxedILMJNlqR0f4HTmipohgqvpCu6pGNeYqKIwBX+STcQEWl3ZyvfqvRREXRkhZWYlRjh6IIp3TRYd1oNFNR0iaToxprFMUku+gE5KjGHkWiTXZ59zXNVRS9jMIqGdXYpChGqUc5Lvd032TF1DaZs1zYoLjbJstHNbYpbrfJvOXCDsWtNtkLD1Bxo01mLhe2KIqw/b/oKI1qbFSM2mS1UY2dius2WXFUY6niqk1WHdXYqvjZJquOaqxVFL3c35WyRjE/UDwIxUGDx+J7FHu9YMYOajoU35pcllHskh37pkMRAAAAADFvl1yaUWyTHRsv/V02uRVrgw6PjQ0cMzaxgXO5+Lm/qqhrG86+8aZ8tA9FKEIRilCEIhShCEUoQhGKUIQiFKEIRShCEYpQhCIUoQhFKEIRilCEIhShCEUoQhGKUIQiFKFokmKjwA/cV/P/wH3AJf991IvnKya/otgbbuhzrNjmIvmhfgAAAACANc1vXI6j2Hd27GUU+5sdu0xLX4WLRZVH/SqKPe8wYxfvUezJETP2o5mWvpJih9tpXEexN+xOI/5a2I9TZmwDilDkAEUSKJJAEYosoEgCRRIoQpEFFEmgSAJFKLKAIgkUSaAIRRZQJIEiCRShyAKKJFAkgSIUWUCRBIokUIQiCyiSQJEEilBkAUUSKJJAkVL8OOLRSdxHbTBjE/dRK3Vm7OAyLX0Vlsdc4jRr7Nj4Sfxhx+IfOAEAAAAAAAAAKMhf3Xcl0U5GidEAAAAASUVORK5CYII=' },
                 ports: [
@@ -431,7 +431,7 @@ describe('Diagram Control', () => {
 
 
     });
-    
+
     describe('Port edges', () => {
         let diagram: Diagram;
         let ele: HTMLElement;
@@ -439,16 +439,16 @@ describe('Diagram Control', () => {
             ele = createElement('div', { id: 'diagramPortDragIssue4' });
             document.body.appendChild(ele);
             let node: NodeModel = {
-                id: "node", offsetX: 250, offsetY: 250, width: 100, height: 100, rotateAngle: 180, annotations: [{content: "Test"}],
+                id: "node", offsetX: 250, offsetY: 250, width: 100, height: 100, rotateAngle: 180, annotations: [{ content: "Test" }],
                 ports: [
-                    { id: "port", width: 25, height: 25, offset: {x: 0.5, y: 1}, visibility: PortVisibility.Visible },
+                    { id: "port", width: 25, height: 25, offset: { x: 0.5, y: 1 }, visibility: PortVisibility.Visible },
                     { id: 'port2', visibility: PortVisibility.Hover, shape: 'Circle', offset: { x: 0.5, y: 0 } },
                     { id: 'port3', visibility: PortVisibility.Hidden, shape: 'Circle', offset: { x: 1, y: 0.5 } },
                     { id: 'port4', visibility: PortVisibility.Connect, shape: 'Circle', offset: { x: 0.5, y: 1 } }
-                   
+
                 ]
             };
-            let connector: ConnectorModel = {id:"connector1",sourceID: "node", sourcePortID: "port", targetPoint: { x: 350, y: 250 }};
+            let connector: ConnectorModel = { id: "connector1", sourceID: "node", sourcePortID: "port", targetPoint: { x: 350, y: 250 } };
             diagram = new Diagram({ width: 800, height: 800, nodes: [node], connectors: [connector] });
             diagram.appendTo('#diagramPortDragIssue4');
         });
@@ -461,12 +461,12 @@ describe('Diagram Control', () => {
         });
 
         it('Checking port inedges and out edges at runtime', (done: Function) => {
-            expect((diagram.nodes[0].ports[0]).outEdges[0] ==="connector1").toBe(true);
+            expect((diagram.nodes[0].ports[0]).outEdges[0] === "connector1").toBe(true);
             done();
-            diagram.connectors[0].sourcePortID ="port2";
+            diagram.connectors[0].sourcePortID = "port2";
             diagram.dataBind();
             diagram.undo();
-            expect((diagram.nodes[0].ports[0]).outEdges[0] ==="connector1").toBe(true);
+            expect((diagram.nodes[0].ports[0]).outEdges[0] === "connector1").toBe(true);
             done();
             diagram.redo();
             expect((diagram.nodes[0].ports[0]).outEdges.length === 0).toBe(true);
@@ -565,31 +565,31 @@ describe('Diagram Control', () => {
             let node: NodeModel = diagram.nodes[0];
             node.ports[0].constraints = PortConstraints.Drag;
             console.log(diagram.nodes[0].ports[0].offset.x);
-           console.log(diagram.nodes[0].ports[0].offset.y);
+            console.log(diagram.nodes[0].ports[0].offset.y);
             mouseEvents.clickEvent(diagramCanvas, 102.5, 102.5);
             mouseEvents.dragAndDropEvent(diagramCanvas, 102.5, 102.5, 103, 103);
-           console.log(diagram.nodes[0].ports[0].offset.x);
-           console.log(diagram.nodes[0].ports[0].offset.y);
-           expect(diagram.nodes[0].ports.length == 4).toBe(true);
-           diagram.clearSelection();
-           done();
-     });
+            console.log(diagram.nodes[0].ports[0].offset.x);
+            console.log(diagram.nodes[0].ports[0].offset.y);
+            expect(diagram.nodes[0].ports.length == 4).toBe(true);
+            diagram.clearSelection();
+            done();
+        });
 
 
-    //  it('Checking selected port drawing with constraint', (done: Function) => {
-    //     let mouseEvents: MouseEvents = new MouseEvents();
-    //     let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-    //     mouseEvents.mouseMoveEvent(diagramCanvas, 358, 68, true);
-    //     let node: NodeModel = diagram.nodes[0];
-    //     node.ports[0].constraints = PortConstraints.Draw;
-    //     mouseEvents.clickEvent(diagramCanvas, 106, 106);
-    //     mouseEvents.mouseDownEvent(diagramCanvas, 106, 106);
-    //     mouseEvents.mouseMoveEvent(diagramCanvas, 106, 108.5);
-    //     mouseEvents.mouseMoveEvent(diagramCanvas, 106, 204);
-    //     mouseEvents.mouseUpEvent(diagramCanvas, 106, 204);
-    //     expect(diagram.connectors.length != 0).toBe(true);
-    //     done();
-    // });
+        //  it('Checking selected port drawing with constraint', (done: Function) => {
+        //     let mouseEvents: MouseEvents = new MouseEvents();
+        //     let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+        //     mouseEvents.mouseMoveEvent(diagramCanvas, 358, 68, true);
+        //     let node: NodeModel = diagram.nodes[0];
+        //     node.ports[0].constraints = PortConstraints.Draw;
+        //     mouseEvents.clickEvent(diagramCanvas, 106, 106);
+        //     mouseEvents.mouseDownEvent(diagramCanvas, 106, 106);
+        //     mouseEvents.mouseMoveEvent(diagramCanvas, 106, 108.5);
+        //     mouseEvents.mouseMoveEvent(diagramCanvas, 106, 204);
+        //     mouseEvents.mouseUpEvent(diagramCanvas, 106, 204);
+        //     expect(diagram.connectors.length != 0).toBe(true);
+        //     done();
+        // });
 
         it('Checking port rendered in portlayer or not', (done: Function) => {
             let ele = document.getElementById("node_port_groupElement");
@@ -628,25 +628,25 @@ describe('Diagram Control', () => {
             document.body.appendChild(ele);
             let nodes: NodeModel[] = [
                 {
-                  id: 'node1', offsetX: 300, offsetY: 200, height: 100, width: 100,
-                  annotations: [{ content: 'Node1'}],
-                  ports: [
-                    {
-                      id: 'left', offset: {x: 1, y: 0.5}, visibility: PortVisibility.Visible
-                    }                   
-                  ]
+                    id: 'node1', offsetX: 300, offsetY: 200, height: 100, width: 100,
+                    annotations: [{ content: 'Node1' }],
+                    ports: [
+                        {
+                            id: 'left', offset: { x: 1, y: 0.5 }, visibility: PortVisibility.Visible
+                        }
+                    ]
                 },
-                 {
-                  id: 'node2', offsetX: 500, offsetY: 200, height: 100, width: 100,
-                  annotations: [{ content: 'Node2'}],
-                  ports: [
-                    
-                    {
-                      id: 'right', offset: {x: 0, y: 0.5}, visibility: PortVisibility.Visible
-                    }
-                  ]
+                {
+                    id: 'node2', offsetX: 500, offsetY: 200, height: 100, width: 100,
+                    annotations: [{ content: 'Node2' }],
+                    ports: [
+
+                        {
+                            id: 'right', offset: { x: 0, y: 0.5 }, visibility: PortVisibility.Visible
+                        }
+                    ]
                 }
-              ];
+            ];
             diagram = new Diagram({
                 width: '100%', height: 900, nodes: nodes
             });
@@ -664,9 +664,9 @@ describe('Diagram Control', () => {
             diagram.addConnector({ id: "connector1", sourceID: 'node1', targetID: 'node2', sourcePortID: 'left', targetPortID: 'right' })
             diagram.remove({ id: "connector1" })
             expect(diagram.nodes[0].ports[0].outEdges.length === 0 && diagram.nodes[1].ports[0].inEdges.length === 0).toBe(true);
-           done();
-     });
- });
+            done();
+        });
+    });
 });
 
 describe('Port Draw', () => {
@@ -717,64 +717,64 @@ describe('Port Hover for group node', () => {
         document.body.appendChild(ele);
         let port = [
             {
-              id: 'port1',
-              offset: { x: 0, y: 0.5 },
-              visibility: PortVisibility.Visible,
-              constraints: PortConstraints.Default | PortConstraints.Draw,
+                id: 'port1',
+                offset: { x: 0, y: 0.5 },
+                visibility: PortVisibility.Visible,
+                constraints: PortConstraints.Default | PortConstraints.Draw,
             },
             {
-              id: 'port2',
-              offset: { x: 1, y: 0.5 },
-              visibility: PortVisibility.Visible,
-              constraints: PortConstraints.Default | PortConstraints.Draw,
+                id: 'port2',
+                offset: { x: 1, y: 0.5 },
+                visibility: PortVisibility.Visible,
+                constraints: PortConstraints.Default | PortConstraints.Draw,
             },
             {
-              id: 'port3',
-              offset: { x: 0.5, y: 0 },
-              visibility: PortVisibility.Visible,
-              constraints: PortConstraints.Default | PortConstraints.Draw,
+                id: 'port3',
+                offset: { x: 0.5, y: 0 },
+                visibility: PortVisibility.Visible,
+                constraints: PortConstraints.Default | PortConstraints.Draw,
             },
             {
-              id: 'port4',
-              offset: { x: 0.5, y: 1 },
-              visibility: PortVisibility.Visible,
-              constraints: PortConstraints.Default | PortConstraints.Draw,
+                id: 'port4',
+                offset: { x: 0.5, y: 1 },
+                visibility: PortVisibility.Visible,
+                constraints: PortConstraints.Default | PortConstraints.Draw,
             },
-          ];
+        ];
         let nodes: NodeModel[] = [
             // Group
             {
-              id: 'child1',
-              width: 70,
-              height: 70,
-              offsetX: 400,
-              offsetY: 100,
-              shape: {
-                type: 'Image',
-                source:
-                  'data:image/jpeg;base64,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',
-              },
+                id: 'child1',
+                width: 70,
+                height: 70,
+                offsetX: 400,
+                offsetY: 100,
+                shape: {
+                    type: 'Image',
+                    source:
+                        'data:image/jpeg;base64,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',
+                },
             },
             {
-              id: 'child2',
-              width: 70,
-              height: 70,
-              offsetX: 550,
-              offsetY: 100,
-              shape: {
-                type: 'Path',
-                data: 'M100,20 L132.7,71.6 L200,78.4 L152.3,119.6 L166.5,186.2 L100,155 L33.5,186.2 L47.7,119.6 L0,78.4 L67.3,71.6 Z',
-              },
+                id: 'child2',
+                width: 70,
+                height: 70,
+                offsetX: 550,
+                offsetY: 100,
+                shape: {
+                    type: 'Path',
+                    data: 'M100,20 L132.7,71.6 L200,78.4 L152.3,119.6 L166.5,186.2 L100,155 L33.5,186.2 L47.7,119.6 L0,78.4 L67.3,71.6 Z',
+                },
             },
             {
-              id: 'group1',
-              children: ['child1', 'child2'],
-              padding: { left: 10, right: 10, top: 10, bottom: 10 },
-              ports: port,
-              style: { strokeColor: 'black' },
+                id: 'group1',
+                children: ['child1', 'child2'],
+                padding: { left: 10, right: 10, top: 10, bottom: 10 },
+                ports: port,
+                style: { strokeColor: 'black' },
             },
-          ];
-        diagram = new Diagram({ width: 700, height: 600, nodes: nodes,});
+        ];
+        diagram = new Diagram({ width: 700, height: 600, nodes: nodes, });
         diagram.appendTo('#diagramPort');
     });
 
@@ -805,124 +805,124 @@ describe('Port Draw Connection from group node', () => {
         document.body.appendChild(ele);
         let nodePorts: PointPortModel[] = [
             {
-              id: 'port_1',
-          
-              offset: { x: 0, y: 0.2 },
-              height: 20,
-              width: 20,
-              visibility: PortVisibility.Visible
-          
+                id: 'port_1',
+
+                offset: { x: 0, y: 0.2 },
+                height: 20,
+                width: 20,
+                visibility: PortVisibility.Visible
+
             },
             {
-              id: 'port_4',
-          
-              offset: { x: 0, y: 0.8 },
-              height: 20,
-              width: 20,
-              visibility: PortVisibility.Visible
+                id: 'port_4',
+
+                offset: { x: 0, y: 0.8 },
+                height: 20,
+                width: 20,
+                visibility: PortVisibility.Visible
             },
             {
-              id: 'port_5',
-          
-              offset: { x: 1, y: 0.2 },
-              height: 20,
-              width: 20,
-              visibility: PortVisibility.Visible
+                id: 'port_5',
+
+                offset: { x: 1, y: 0.2 },
+                height: 20,
+                width: 20,
+                visibility: PortVisibility.Visible
             },
             {
-              id: 'port_8',
-          
-              offset: { x: 1, y: 0.8 },
-              height: 20,
-              width: 20,
-              visibility: PortVisibility.Visible
+                id: 'port_8',
+
+                offset: { x: 1, y: 0.8 },
+                height: 20,
+                width: 20,
+                visibility: PortVisibility.Visible
             },
-          ];
+        ];
         let nodes: NodeModel[] = [
             {
-              id: 'node1',
-              offsetX: 200,
-              offsetY: 100,
-              annotations: [{ content: 'node1' }],
+                id: 'node1',
+                offsetX: 200,
+                offsetY: 100,
+                annotations: [{ content: 'node1' }],
             },
             {
-              id: 'image_1',
-              offsetX: 400,
-              offsetY: 200,
-              width: 100,
-              height: 100,
-          
-              shape: { type: 'Image', source: 'https://ej2.syncfusion.com/demos/src/diagram/employees/image16.png' },
-              constraints: NodeConstraints.Default & ~NodeConstraints.Select
+                id: 'image_1',
+                offsetX: 400,
+                offsetY: 200,
+                width: 100,
+                height: 100,
+
+                shape: { type: 'Image', source: 'https://ej2.syncfusion.com/demos/src/diagram/employees/image16.png' },
+                constraints: NodeConstraints.Default & ~NodeConstraints.Select
             },
             {
-              id: 'group_1',
-              offsetX: 200,
-              offsetY: 200,
-              width: 200,
-              height: 150,
-              ports:nodePorts,
-              children: ['image_1'],
-              annotations: [{ content: 'group1' }],
-              constraints: NodeConstraints.Default
-                & ~(NodeConstraints.Resize
-                  | NodeConstraints.Rotate
-                  | NodeConstraints.InConnect
-                  | NodeConstraints.OutConnect
-                  | NodeConstraints.Tooltip)
+                id: 'group_1',
+                offsetX: 200,
+                offsetY: 200,
+                width: 200,
+                height: 150,
+                ports: nodePorts,
+                children: ['image_1'],
+                annotations: [{ content: 'group1' }],
+                constraints: NodeConstraints.Default
+                    & ~(NodeConstraints.Resize
+                        | NodeConstraints.Rotate
+                        | NodeConstraints.InConnect
+                        | NodeConstraints.OutConnect
+                        | NodeConstraints.Tooltip)
             },
-          
-          ];
-          function  getConnectorDefaults(connector: Connector)  {
+
+        ];
+        function getConnectorDefaults(connector: Connector) {
             //defines type of the connectors
             connector.type = 'Bezier';
             connector.style.strokeColor = "Red";
             let decorator = {
-              shape: "None",
-              style: {
-                fill: '#6BA5D7',
-                strokeColor: 'Red',
-                strokeWidth: 4
-              }
+                shape: "None",
+                style: {
+                    fill: '#6BA5D7',
+                    strokeColor: 'Red',
+                    strokeWidth: 4
+                }
             };
             connector.sourceDecorator = decorator as DecoratorModel;
             connector.targetDecorator = decorator as DecoratorModel;
             connector.constraints = (ConnectorConstraints.Default & ~ConnectorConstraints.Drag) |
-              ConnectorConstraints.DragSourceEnd |
-              ConnectorConstraints.DragTargetEnd
-        
-          }
-        
-          function   getNodeDefaults(obj: NodeModel)  {
+                ConnectorConstraints.DragSourceEnd |
+                ConnectorConstraints.DragTargetEnd
+
+        }
+
+        function getNodeDefaults(obj: NodeModel) {
             //sets height and width for nodes
             obj.height = 65;
             obj.width = 100;
             // obj.ports = nodePorts
-            if(obj.ports)
-            {
-              for (let i: number = 0; i < obj.ports.length; i++) {
-                //sets styles for the ports
-                obj.ports[i].constraints = (PortConstraints.Draw | PortConstraints.InConnect | PortConstraints.OutConnect) & ~PortConstraints.Drag
-              }
+            if (obj.ports) {
+                for (let i: number = 0; i < obj.ports.length; i++) {
+                    //sets styles for the ports
+                    obj.ports[i].constraints = (PortConstraints.Draw | PortConstraints.InConnect | PortConstraints.OutConnect) & ~PortConstraints.Drag
+                }
             }
-            
-        
-          };
-        diagram = new Diagram({ width: 1050, height: 500, nodes: nodes,
-            getNodeDefaults:getNodeDefaults,
-            getConnectorDefaults:getConnectorDefaults,
+
+
+        };
+        diagram = new Diagram({
+            width: 1050, height: 500, nodes: nodes,
+            getNodeDefaults: getNodeDefaults,
+            getConnectorDefaults: getConnectorDefaults,
             selectedItems: {
                 constraints: SelectorConstraints.All
-                  & ~(SelectorConstraints.ResizeEast
-                    | SelectorConstraints.ResizeNorth
-                    | SelectorConstraints.ResizeSouth
-                    | SelectorConstraints.ResizeWest
-                    | SelectorConstraints.ResizeNorthEast
-                    | SelectorConstraints.ResizeNorthWest
-                    | SelectorConstraints.ResizeSouthEast
-                    | SelectorConstraints.ResizeSouthWest
-                    | SelectorConstraints.Rotate)
-              },
+                    & ~(SelectorConstraints.ResizeEast
+                        | SelectorConstraints.ResizeNorth
+                        | SelectorConstraints.ResizeSouth
+                        | SelectorConstraints.ResizeWest
+                        | SelectorConstraints.ResizeNorthEast
+                        | SelectorConstraints.ResizeNorthWest
+                        | SelectorConstraints.ResizeSouthEast
+                        | SelectorConstraints.ResizeSouthWest
+                        | SelectorConstraints.Rotate)
+            },
         });
         diagram.appendTo('#diagramGroupPort');
     });
@@ -934,23 +934,24 @@ describe('Port Draw Connection from group node', () => {
         ele = null;
     });
 
-    // it('Checking connector source id after drawing it from group node port', (done: Function) => {
-    //     diagram.select([diagram.nameTable['group_1']]);
-    //     let mouseEvents: MouseEvents = new MouseEvents();
-    //     let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
-    //     let port = document.getElementById('group_1_port_5_groupElement');
-    //     let bounds:any = port.getBoundingClientRect();
-    //     mouseEvents.mouseMoveEvent(diagramCanvas, 265, 190);
-    //     mouseEvents.mouseDownEvent(diagramCanvas, 265, 190);
-    //     mouseEvents.mouseMoveEvent(diagramCanvas, 340, 240);
-    //     mouseEvents.mouseMoveEvent(diagramCanvas, 350, 250);
-    //     mouseEvents.mouseUpEvent(diagramCanvas, 350, 250);
-    //     console.log(diagram.connectors[0].id);
-    //     console.log(diagram.connectors[0].sourceID);
-    //     expect(diagram.connectors.length > 0 && diagram.connectors[0].sourceID === 'group_1').toBe(true);
-    //     done();
-    // });
+    it('Checking connector source id after drawing it from group node port', (done: Function) => {
+        diagram.select([diagram.nameTable['group_1']]);
+        let mouseEvents: MouseEvents = new MouseEvents();
+        let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+        let port = document.getElementById('group_1_port_5_groupElement');
+        let bounds: any = port.getBoundingClientRect();
+        mouseEvents.mouseMoveEvent(diagramCanvas, 265, 190);
+        mouseEvents.mouseDownEvent(diagramCanvas, 265, 190);
+        mouseEvents.mouseMoveEvent(diagramCanvas, 340, 240);
+        mouseEvents.mouseMoveEvent(diagramCanvas, 350, 250);
+        mouseEvents.mouseUpEvent(diagramCanvas, 350, 250);
+        console.log(diagram.connectors[0].id);
+        console.log(diagram.connectors[0].sourceID);
+        expect(diagram.connectors.length > 0 && diagram.connectors[0].sourceID === 'group_1').toBe(true);
+        done();
+    });
 });
+
 describe('Connector Port Drag', () => {
     let diagram: Diagram;
     let ele: HTMLElement;
@@ -1024,8 +1025,8 @@ describe('Connector Port Drag', () => {
         let port = document.getElementById('connector2_port1_groupElement');
         let bounds: any = port.getBoundingClientRect();
         mouseEvents.mouseDownEvent(diagramCanvas, bounds.x, bounds.y);
-        mouseEvents.mouseMoveEvent(diagramCanvas, bounds.x + 3, bounds.y+ 3);
-        mouseEvents.mouseUpEvent(diagramCanvas, bounds.x + 3, bounds.y+ 3);
+        mouseEvents.mouseMoveEvent(diagramCanvas, bounds.x + 3, bounds.y + 3);
+        mouseEvents.mouseUpEvent(diagramCanvas, bounds.x + 3, bounds.y + 3);
         done();
     });
     it('Checking connector port drag basedd on alignments CenterRight', (done: Function) => {
@@ -1034,8 +1035,8 @@ describe('Connector Port Drag', () => {
         let port = document.getElementById('connector3_port1_groupElement');
         let bounds: any = port.getBoundingClientRect();
         mouseEvents.mouseDownEvent(diagramCanvas, bounds.x, bounds.y);
-        mouseEvents.mouseMoveEvent(diagramCanvas, bounds.x + 3, bounds.y+ 3);
-        mouseEvents.mouseUpEvent(diagramCanvas, bounds.x + 3, bounds.y+ 3);
+        mouseEvents.mouseMoveEvent(diagramCanvas, bounds.x + 3, bounds.y + 3);
+        mouseEvents.mouseUpEvent(diagramCanvas, bounds.x + 3, bounds.y + 3);
         done();
     });
     it('Checking connector port drag basedd on alignments TopLeft', (done: Function) => {
@@ -1044,8 +1045,8 @@ describe('Connector Port Drag', () => {
         let port = document.getElementById('connector4_port1_groupElement');
         let bounds: any = port.getBoundingClientRect();
         mouseEvents.mouseDownEvent(diagramCanvas, bounds.x, bounds.y);
-        mouseEvents.mouseMoveEvent(diagramCanvas, bounds.x + 3, bounds.y+ 3);
-        mouseEvents.mouseUpEvent(diagramCanvas, bounds.x + 3, bounds.y+ 3);
+        mouseEvents.mouseMoveEvent(diagramCanvas, bounds.x + 3, bounds.y + 3);
+        mouseEvents.mouseUpEvent(diagramCanvas, bounds.x + 3, bounds.y + 3);
         done();
     });
     it('Checking connector port drag basedd on alignments BottomLeft', (done: Function) => {
@@ -1054,8 +1055,8 @@ describe('Connector Port Drag', () => {
         let port = document.getElementById('connector5_port1_groupElement');
         let bounds: any = port.getBoundingClientRect();
         mouseEvents.mouseDownEvent(diagramCanvas, bounds.x, bounds.y);
-        mouseEvents.mouseMoveEvent(diagramCanvas, bounds.x + 3, bounds.y+ 3);
-        mouseEvents.mouseUpEvent(diagramCanvas, bounds.x + 3, bounds.y+ 3);
+        mouseEvents.mouseMoveEvent(diagramCanvas, bounds.x + 3, bounds.y + 3);
+        mouseEvents.mouseUpEvent(diagramCanvas, bounds.x + 3, bounds.y + 3);
         done();
     });
     it('Checking connector port drag basedd on alignments CenterLeft', (done: Function) => {
@@ -1064,8 +1065,8 @@ describe('Connector Port Drag', () => {
         let port = document.getElementById('connector6_port1_groupElement');
         let bounds: any = port.getBoundingClientRect();
         mouseEvents.mouseDownEvent(diagramCanvas, bounds.x, bounds.y);
-        mouseEvents.mouseMoveEvent(diagramCanvas, bounds.x + 3, bounds.y+ 3);
-        mouseEvents.mouseUpEvent(diagramCanvas, bounds.x + 3, bounds.y+ 3);
+        mouseEvents.mouseMoveEvent(diagramCanvas, bounds.x + 3, bounds.y + 3);
+        mouseEvents.mouseUpEvent(diagramCanvas, bounds.x + 3, bounds.y + 3);
         done();
     });
     it('Checking connector port drag basedd on alignments TopCenter', (done: Function) => {
@@ -1074,8 +1075,8 @@ describe('Connector Port Drag', () => {
         let port = document.getElementById('connector7_port1_groupElement');
         let bounds: any = port.getBoundingClientRect();
         mouseEvents.mouseDownEvent(diagramCanvas, bounds.x, bounds.y);
-        mouseEvents.mouseMoveEvent(diagramCanvas, bounds.x + 3, bounds.y+ 3);
-        mouseEvents.mouseUpEvent(diagramCanvas, bounds.x + 3, bounds.y+ 3);
+        mouseEvents.mouseMoveEvent(diagramCanvas, bounds.x + 3, bounds.y + 3);
+        mouseEvents.mouseUpEvent(diagramCanvas, bounds.x + 3, bounds.y + 3);
         done();
     });
     it('Checking connector port drag basedd on alignments BottomCenter', (done: Function) => {
@@ -1084,8 +1085,8 @@ describe('Connector Port Drag', () => {
         let port = document.getElementById('connector8_port1_groupElement');
         let bounds: any = port.getBoundingClientRect();
         mouseEvents.mouseDownEvent(diagramCanvas, bounds.x, bounds.y);
-        mouseEvents.mouseMoveEvent(diagramCanvas, bounds.x + 3, bounds.y+ 3);
-        mouseEvents.mouseUpEvent(diagramCanvas, bounds.x + 3, bounds.y+ 3);
+        mouseEvents.mouseMoveEvent(diagramCanvas, bounds.x + 3, bounds.y + 3);
+        mouseEvents.mouseUpEvent(diagramCanvas, bounds.x + 3, bounds.y + 3);
         done();
     });
     it('Checking connector port drag basedd on alignments CenterCenter', (done: Function) => {
@@ -1094,8 +1095,303 @@ describe('Connector Port Drag', () => {
         let port = document.getElementById('connector9_port1_groupElement');
         let bounds: any = port.getBoundingClientRect();
         mouseEvents.mouseDownEvent(diagramCanvas, bounds.x, bounds.y);
-        mouseEvents.mouseMoveEvent(diagramCanvas, bounds.x + 3, bounds.y+ 3);
-        mouseEvents.mouseUpEvent(diagramCanvas, bounds.x + 3, bounds.y+ 3);
+        mouseEvents.mouseMoveEvent(diagramCanvas, bounds.x + 3, bounds.y + 3);
+        mouseEvents.mouseUpEvent(diagramCanvas, bounds.x + 3, bounds.y + 3);
+        done();
+    });
+});
+
+describe('Connect to Connector Port', () => {
+    let diagram: Diagram;
+    let ele: HTMLElement;
+    beforeAll((): void => {
+        ele = createElement('div', { id: 'diagramConnectorPort' });
+        document.body.appendChild(ele);
+        let connectors: ConnectorModel[] = [
+            {
+                id: 'ConnectorPortconnector1',
+                sourcePoint: { x: 100, y: 100 },
+                targetPoint: { x: 300, y: 120 },
+                type: 'Orthogonal',
+                ports: [
+                    {
+                        id: 'connectorPort',
+                        offset: 0.5,
+                        visibility: PortVisibility.Visible,
+                    },
+                ],
+            },
+            {
+                id: 'ConnectorPortconnector2',
+                sourcePoint: { x: 200, y: 300 },
+                targetPoint: { x: 400, y: 520 },
+                type: 'Orthogonal',
+                ports: [
+                    {
+                        id: 'connectorPort1',
+                        offset: 0.5,
+                        visibility: PortVisibility.Visible,
+                    },
+                ],
+            },
+        ];
+        diagram = new Diagram({
+            width: 800, height: 800, connectors: connectors,
+            selectedItems: {
+                constraints: SelectorConstraints.All & ~SelectorConstraints.ToolTip,
+            },
+        });
+        diagram.appendTo('#diagramConnectorPort');
+    });
+
+    afterAll((): void => {
+        diagram.destroy();
+        ele.remove();
+        diagram = null;
+        ele = null;
+    });
+
+    it('Checking connector connect to connector port', (done: Function) => {
+        let mouseEvents: MouseEvents = new MouseEvents();
+        let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+        diagram.select([diagram.connectors[0]]);
+        let connectorSourceThumb = document.getElementById('ConnectorPortconnector1_srcDec');
+        let rect = connectorSourceThumb.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        let connectingPort = document.getElementById('ConnectorPortconnector2_connectorPort1_groupElement');
+        let rect1 = connectingPort.getBoundingClientRect();
+        const cx1 = rect1.left + rect1.width / 2;
+        const cy1 = rect1.top + rect1.height / 2;
+        mouseEvents.dragAndDropEvent(diagramCanvas, cx, cy, cx1, cy1);
+        expect(diagram.connectors[0].sourceID === 'ConnectorPortconnector2');
+        mouseEvents.mouseDownEvent(diagramCanvas, cx1, cy1);
+        mouseEvents.mouseMoveEvent(diagramCanvas, cx1, cy1);
+        mouseEvents.mouseMoveEvent(diagramCanvas, cx1 + 1, cy1 + 1);
+        mouseEvents.mouseUpEvent(diagramCanvas, cx1 + 1, cy1 + 1);
+        done();
+    });
+});
+
+describe('Draw connector from group port', () => {
+    let diagram: Diagram;
+    let ele: HTMLElement;
+    beforeAll((): void => {
+        ele = createElement('div', { id: 'GroupPortDiagram' });
+        document.body.appendChild(ele);
+        let nodes: NodeModel[] = [
+            {
+                id: 'child1',
+                offsetX: 300,
+                offsetY: 300,
+                width: 60,
+                height: 60,
+                ports: [
+                    {
+                        id: 'nodePort',
+                        offset: { x: 0.5, y: 0.5 },
+                        visibility: PortVisibility.Visible,
+                        constraints:
+                            PortConstraints.Default |
+                            PortConstraints.Draw,
+                    },
+                ],
+            },
+            {
+                id: 'group1',
+                children: ['child1'],
+                padding: { left: 20, right: 20, top: 20, bottom: 20 },
+                ports: [
+                    {
+                        id: 'nodePort1',
+                        offset: { x: 1, y: 0.5 },
+                        visibility: PortVisibility.Visible,
+                        constraints:
+                            PortConstraints.Default |
+                            PortConstraints.Draw,
+                    },
+                ],
+
+            }
+
+        ];
+
+        diagram = new Diagram({
+            width: 1050, height: 500, nodes: nodes,
+        });
+        diagram.appendTo('#GroupPortDiagram');
+    });
+
+    afterAll((): void => {
+        diagram.destroy();
+        ele.remove();
+        diagram = null;
+        ele = null;
+    });
+
+    it('Checking connector length after drawing it from group port', (done: Function) => {
+        let mouseEvents: MouseEvents = new MouseEvents();
+        let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+        let port = document.getElementById('group1_nodePort1_groupElement');
+        let bounds: any = port.getBoundingClientRect();
+        let cx: number = bounds.left + bounds.width / 2;
+        let cy: number = bounds.top + bounds.height / 2;
+        let ele1 = document.getElementById('child1_nodePort_groupElement');
+        let bounds1 = ele1.getBoundingClientRect();
+        let cx1: number = bounds1.left + bounds1.width / 2;
+        let cy1: number = bounds1.top + bounds1.height / 2;
+        mouseEvents.mouseDownEvent(diagramCanvas, cx, cy);
+        mouseEvents.mouseMoveEvent(diagramCanvas, cx1, cy1);
+        mouseEvents.mouseUpEvent(diagramCanvas, cx1, cy1);
+        expect(diagram.connectors.length > 0).toBe(true);
+        done();
+    });
+});
+
+describe('Draw polyline connector from Inconnect port ', () => {
+    let diagram: Diagram;
+    let ele: HTMLElement;
+    beforeAll((): void => {
+        ele = createElement('div', { id: 'InConnectPortDiagram' });
+        document.body.appendChild(ele);
+        let nodes: NodeModel[] = [{
+            id: 'InConnectnode1',
+            offsetX: 470,
+            offsetY: 350,
+            width: 150,
+            height: 150,
+            ports: [
+                {
+                    id: 'outlet-port',
+                    offset: { x: 0.5, y: 0 },
+                    shape: 'X',
+                    visibility: PortVisibility.Visible,
+                    constraints: PortConstraints.Default & ~PortConstraints.InConnect | PortConstraints.Draw,
+                },
+            ],
+            annotations: [
+                {
+                    content: "X OutConnect",
+                    offset: { x: 0.5, y: 0.2, },
+                },
+            ],
+
+        }];
+
+        diagram = new Diagram({
+            width: 1050, height: 500, nodes: nodes,
+            drawingObject: { id: 'connector1', type: 'Polyline' },
+            tool: DiagramTools.ContinuousDraw,
+            elementDraw: function elementDraw(args) {
+            if (args.state === 'Progress') {
+                args.source.sourceID = 'InConnectnode1';
+                diagram.dataBind();
+            }
+        },
+        });
+        diagram.appendTo('#InConnectPortDiagram');
+    });
+
+    afterAll((): void => {
+        diagram.destroy();
+        ele.remove();
+        diagram = null;
+        ele = null;
+    });
+
+    it('Checking polyline connector draw', (done: Function) => {
+        let mouseEvents: MouseEvents = new MouseEvents();
+        let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+        let port = document.getElementById('InConnectnode1_outlet-port_groupElement');
+        let bounds: any = port.getBoundingClientRect();
+        let cx: number = bounds.left + bounds.width / 2;
+        let cy: number = bounds.top + bounds.height / 2;
+        mouseEvents.mouseDownEvent(diagramCanvas, cx, cy);
+        mouseEvents.mouseMoveEvent(diagramCanvas, cx, cy);
+        mouseEvents.mouseMoveEvent(diagramCanvas, cx + 100, cy + 50);
+        mouseEvents.mouseDownEvent(diagramCanvas, cx + 100, cy + 100);
+        mouseEvents.dblclickEvent(diagramCanvas, cx + 100, cy + 100);
+        diagram.selectAll();
+        expect(diagram.selectedItems.connectors.length > 0).toBe(true);
+        done();
+    });
+});
+
+describe('Automatic Port Creation for connectors', function () {
+    let diagram: Diagram;
+    let ele: HTMLElement;
+    let mouseEvents = new MouseEvents();
+
+    beforeAll((): void => {
+        ele = createElement('div', { id: 'addAutomaticPort' });
+        document.body.appendChild(ele);
+        let nodes: NodeModel[] = [
+            {
+                id: 'startText',
+                height: 100,
+                width: 100,
+                offsetX: 100,
+                offsetY: 100,
+                margin: { left: 50, top: 50 },
+                shape: { type: 'Bpmn', shape: 'Event' },
+            },
+            {
+                id: 'textNode1', width: 70, height: 50,
+                offsetX: 100, offsetY: 300,
+                annotations: [{ content: 'textNode2' }],
+                shape: {
+                    type: 'Bpmn', shape: 'TextAnnotation',
+                    textAnnotation: { textAnnotationDirection: 'Auto', textAnnotationTarget: 'startText' }
+                }
+            }
+        ]
+        let connector: ConnectorModel[] = [
+            {
+                id: 'connector1',
+                sourcePoint: { x: 200, y: 200 },
+                targetPoint: { x: 400, y: 200 },
+                targetDecorator: {
+                    style: {
+                        strokeWidth: 2,
+                    }
+                }
+
+            }
+        ]
+        diagram = new Diagram({
+            width: '800px',
+            height: '500px',
+            nodes: nodes,
+            connectors: connector,
+            constraints: DiagramConstraints.Default | DiagramConstraints.AutomaticPortCreation,
+        });
+        diagram.appendTo('#addAutomaticPort');
+    });
+    afterAll((): void => {
+        diagram.destroy();
+        ele.remove();
+        (diagram as any) = null;
+        (ele as any) = null;
+    });
+    it('should add a port and then dragging one connector onto another', (done: Function) => {
+
+        let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+        const rect: any = diagramCanvas.getBoundingClientRect();
+        const startX = Math.round(rect.left + 240);
+        const startY = Math.round(rect.top + 200);
+        const endX = Math.round(rect.left + 400);
+        const endY = Math.round(rect.top + 200);
+
+        mouseEvents.mouseMoveEvent(diagramCanvas, startX, startY);
+
+        mouseEvents.mouseDownEvent(diagramCanvas, startX, startY, /* isDown */ true);
+        mouseEvents.mouseMoveEvent(diagramCanvas, startX + 1, startY + 1, true);
+        mouseEvents.mouseMoveEvent(diagramCanvas, startX, startY, true);
+        mouseEvents.mouseUpEvent(diagramCanvas, startX, startY, /* isDown */ true);
+
+        mouseEvents.mouseUpEvent(diagramCanvas, endX, endY, /* isDown */ false);
+        console.log("diagram.connectors[0].ports.length :", diagram.connectors[0].ports.length)
+        expect(diagram.connectors[0].ports.length).toBe(2);
         done();
     });
 });

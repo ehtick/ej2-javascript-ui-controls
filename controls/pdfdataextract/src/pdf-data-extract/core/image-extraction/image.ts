@@ -3,11 +3,12 @@ import { _PdfJpxImage } from '../jpx-image';
 import { _PdfImageProcessor } from '../import/decode-image';
 import { ImageFormat } from '../enum';
 import { _convertBlackAndWhiteToRGBA, _convertToRGBA, imageKind } from './image-utils';
-import { _isLittleEndian, _mathClamp, _PdfBaseStream, _PdfCrossReference, _PdfDecodeStream, _PdfDictionary, _PdfFlateStream, _PdfJpegStream, _PdfJpxStream, _PdfName, _PdfReference, FormatError } from '@syncfusion/ej2-pdf';
+import { _isLittleEndian, _mathClamp, _PdfBaseStream, _PdfCrossReference, _PdfDecodeStream, _PdfDictionary, _PdfFlateStream, _PdfJpegStream, _PdfJpxStream, _PdfName, _PdfReference, FormatError, PdfPage, PdfRotationAngle, Rectangle } from '@syncfusion/ej2-pdf';
 import { _PdfColorSpaceUtils } from './colorspace-utils';
 import { _PdfColorPalette } from './colorspace';
 import { _base64ToUint8Array } from '../utils';
 import { _PdfJpegImage } from './jpeg-image';
+import { PdfRedactionRegion } from '../redaction/pdf-redaction-region';
 export class _PdfImage {
     private image: any; // eslint-disable-line
     private width: number;
@@ -30,6 +31,10 @@ export class _PdfImage {
     private jpxDecoderOptions: any; // eslint-disable-line
     forceRgba: boolean;
     forceRgb: boolean;
+    _bounds: number[];
+    _page: PdfPage;
+    _options: PdfRedactionRegion[];
+    _isIntersect: boolean;
     async _initializeFromImage(xref: any, image: any, isInline: boolean, callBack: any, // eslint-disable-line 
         smask?: any, mask?: any, isMask?: boolean): Promise<any> { // eslint-disable-line
         if (image) {
@@ -354,6 +359,9 @@ export class _PdfImage {
             this._undoPreblend(data, drawWidth, actualHeight);
         }
         if (isOffscreenCanvasSupported && !mustBeResized) {
+            if (typeof(this._options) !== 'undefined') {
+                this._processImageRedaction(canvasImgData);
+            }
             ctx.putImageData(canvasImgData, 0, 0);
             const format: string = this._findImageFormat(this._imageFormat);
             const buffer: string = canvas.toDataURL(format);
@@ -420,6 +428,9 @@ export class _PdfImage {
             const ctx: CanvasRenderingContext2D = canvas.getContext('2d');
             const imgData: any = ctx.createImageData(width, height); // eslint-disable-line
             _convertBlackAndWhiteToRGBA(imgArray, 0, imgData.data, width, height, 0, inverseDecode);
+            if (typeof(this._options) !== 'undefined') {
+                this._processImageRedaction(imgData);
+            }
             ctx.putImageData(imgData, 0, 0);
             const format: string = this._findImageFormat(this._imageFormat);
             const buffer: string = canvas.toDataURL(format);
@@ -676,7 +687,7 @@ export class _PdfImage {
             buffer[<number>i] = scale * comps[<number>i];
         }
     }
-    _createBitmap(kind: any, width: number, height: number, src: Uint8ClampedArray): any { // eslint-disable-line
+    async _createBitmap(kind: any, width: number, height: number, src: Uint8ClampedArray): Promise<any> { // eslint-disable-line
         let imgData: any; // eslint-disable-line
         let canvas: any; // eslint-disable-line
         if (this._canvasRenderCallback) {
@@ -692,6 +703,9 @@ export class _PdfImage {
         } else {
             imgData = ctx.createImageData(width, height);
             _convertToRGBA(kind, src, new Uint32Array(imgData.data.buffer), width, height, this.needsDecode);
+        }
+        if (typeof(this._options) !== 'undefined') {
+            this._processImageRedaction(imgData);
         }
         ctx.putImageData(imgData, 0, 0);
         const format: string = this._findImageFormat(this._imageFormat);
@@ -738,6 +752,108 @@ export class _PdfImage {
             return imageBytes;
         }
         return new Uint8Array(imageBytes);
+    }
+    _processImageRedaction(canvasImgData: any): void { // eslint-disable-line
+        const pt: number = 1.3333;
+        const bounds: number[] = this._bounds;
+        const options: PdfRedactionRegion[] = this._options;
+        const page: PdfPage = this._page;
+        const imageBoundInPx: Rectangle = {x: bounds[0], y: bounds[1], width: bounds[2], height: bounds[3]};
+        imageBoundInPx.x *= pt;
+        imageBoundInPx.y *= pt;
+        imageBoundInPx.width *= pt;
+        imageBoundInPx.height *= pt;
+        let isIntersect: boolean = false;
+        const rotation: PdfRotationAngle = page.rotation;
+        let rect: Rectangle;
+        for (let i: number = 0 ; i < options.length; i++) {
+            const redactionBounds: Rectangle = options[<number>i].bounds;
+            let intersectBounds: Rectangle = this._intersect({x: redactionBounds.x * pt, y: redactionBounds.y * pt ,
+                width:  redactionBounds.width * pt, height: redactionBounds.height * pt}, imageBoundInPx);
+            if (intersectBounds !== null && imageBoundInPx.height > 0) {
+                isIntersect = true;
+                this._isIntersect = isIntersect;
+                if (rotation !== PdfRotationAngle.angle0 && page.cropBox === page.mediaBox) {
+                    switch (rotation) {
+                    case PdfRotationAngle.angle180:
+                        {
+                            intersectBounds = ({x: (page.size.width * pt) - intersectBounds.x - intersectBounds.width,
+                                y: (page.size.height * pt) - intersectBounds.y - intersectBounds.height,
+                                width: intersectBounds.width, height: intersectBounds.height});
+                            const mapX: number = (page.size.width - (bounds[2] + bounds[0]) - bounds[0]) * pt;
+                            const mapY: number = (page.size.height - (bounds[3] + bounds[1]) - bounds[1]) * pt;
+                            rect = ({x: (intersectBounds.x - (imageBoundInPx.x + mapX)) * canvasImgData.Width / imageBoundInPx.width,
+                                y: (intersectBounds.y - (imageBoundInPx.y + mapY)) * canvasImgData.Height / imageBoundInPx.height,
+                                width: intersectBounds.width * canvasImgData.Width / imageBoundInPx.width,
+                                height: intersectBounds.height * canvasImgData.Height / imageBoundInPx.height});
+                        }
+                        break;
+                    case PdfRotationAngle.angle270:
+                        {
+                            intersectBounds = ({x: ((page.size.width * pt) - intersectBounds.y - intersectBounds.height),
+                                y: intersectBounds.x, width: intersectBounds.height,
+                                height: intersectBounds.width});
+                            const mappingX: number = (((page.size.width - (bounds[1] + bounds[2])) - bounds[0]) * pt);
+                            rect = ({x: (intersectBounds.x - (imageBoundInPx.x + mappingX)) * canvasImgData.width / imageBoundInPx.height,
+                                y: ((intersectBounds.y - (imageBoundInPx.x)) * canvasImgData.Height / imageBoundInPx.width),
+                                width: intersectBounds.width * canvasImgData.Width / imageBoundInPx.height,
+                                height: intersectBounds.height * canvasImgData.height / imageBoundInPx.width});
+                        }
+                        break;
+                    case PdfRotationAngle.angle90:
+                        {
+                            intersectBounds = ({x: intersectBounds.y, y: ((page.size.height * pt) - intersectBounds.x -
+                                intersectBounds.width), width: intersectBounds.height, height: intersectBounds.width});
+                            const mappingY: number = (((page.size.height - (bounds[0] + bounds[2])) - bounds[1]) * pt);
+                            rect = ({x: (intersectBounds.x - imageBoundInPx.y) * canvasImgData.Width / imageBoundInPx.height,
+                                y: ((intersectBounds.y - (imageBoundInPx.y + mappingY)) * canvasImgData.Height / imageBoundInPx.width),
+                                width: intersectBounds.width * canvasImgData.Width / imageBoundInPx.height, height: intersectBounds.
+                                    height * canvasImgData.Height / imageBoundInPx.width});
+                        }
+                        break;
+                    default:
+                        rect = ({x: (intersectBounds.x - imageBoundInPx.x) * canvasImgData.width / imageBoundInPx.width,
+                            y: (intersectBounds.y - imageBoundInPx.y) * canvasImgData.height / imageBoundInPx.height,
+                            width: intersectBounds.width * canvasImgData.Width / imageBoundInPx.width,
+                            height: intersectBounds.height * canvasImgData.Height / imageBoundInPx.height});
+                        break;
+                    }
+                } else {
+                    rect = ({x: (intersectBounds.x - imageBoundInPx.x) * canvasImgData.width / imageBoundInPx.width,
+                        y: (intersectBounds.y - imageBoundInPx.y) * canvasImgData.height / imageBoundInPx.height,
+                        width: intersectBounds.width * canvasImgData.width / imageBoundInPx.width,
+                        height: intersectBounds.height * canvasImgData.height / imageBoundInPx.height});
+                }
+                this._applyRedaction(canvasImgData, rect.x, rect.y, rect.width, rect.height);
+            }
+        }
+    }
+    _intersect(a: Rectangle, b: Rectangle): any { // eslint-disable-line       
+        const x1: number = Math.max(a.x, b.x);
+        const x2: number = Math.min(a.x + a.width, b.x + b.width);
+        const y1: number = Math.max(a.y, b.y);
+        const y2: number = Math.min(a.y + a.height, b.y + b.height);
+        if (x2 >= x1 && y2 >= y1) {
+            return { x: x1, y: y1, width: x2 - x1, height: y2 - y1 };
+        }
+        return null;
+    }
+    _applyRedaction(imageData: ImageData, x: number, y: number, w: number, h: number): void {
+        const { width, height, data } = imageData;
+        const x0: number = Math.max(0, Math.floor(x));
+        const y0: number = Math.max(0, Math.floor(y));
+        const x1: number = Math.min(width, Math.ceil(x + w));
+        const y1: number = Math.min(height, Math.ceil(y + h));
+        for (let row: number = y0; row < y1; row++) {
+            let i: number = (row * width + x0) * 4;
+            for (let col: number = x0; col < x1; col++) {
+                data[<number>i] = 255;
+                data[i + 1] = 255;
+                data[i + 2] = 255;
+                data[i + 3] = 255;
+                i += 4;
+            }
+        }
     }
 }
 /**

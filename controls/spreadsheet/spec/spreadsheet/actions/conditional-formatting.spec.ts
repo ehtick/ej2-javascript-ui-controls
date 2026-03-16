@@ -1,5 +1,5 @@
 import { SpreadsheetHelper } from '../util/spreadsheethelper.spec';
-import { defaultData, InventoryList } from '../util/datasource.spec';
+import { conditionalFormatGreaterthan, defaultData, InventoryList } from '../util/datasource.spec';
 import { Spreadsheet, UsedRangeModel, clearViewer, DialogBeforeOpenEventArgs, CellModel, ConditionalFormatEventArgs, NoteModel } from '../../../src/index';
 import { EmitType, getComponent } from '@syncfusion/ej2-base';
 
@@ -466,6 +466,15 @@ describe('Conditional formatting ->', () => {
             done();
         });
 
+        it('Apply Between for Time Values->', (done: Function) => {
+            helper.invoke('conditionalFormat', [{ type: "Between", cFColor: 'RedFT', value: '3:30:00 AM,8:45:00 PM', range: 'C2:C11' }]);
+            expect(helper.invoke('getCell', [2, 2]).style.backgroundColor).toBe('rgb(255, 199, 206)');
+            expect(helper.invoke('getCell', [2, 2]).style.color).toBe('rgb(156, 0, 85)');
+            expect(helper.invoke('getCell', [3, 2]).style.backgroundColor).toBe('rgb(255, 199, 206)');
+            expect(helper.invoke('getCell', [3, 2]).style.color).toBe('rgb(156, 0, 85)');
+            done();
+        });
+
         it('Apply Between for Regular Expressions->', (done: Function) => {
             helper.invoke('clear', [{ type: 'Clear Formats', range: 'H2:H11' }]);
             helper.invoke('conditionalFormat', [{ type: "Between", cFColor: 'RedFT', value: '50^1,70^1', range: 'H2:H11' }]);
@@ -497,12 +506,12 @@ describe('Conditional formatting ->', () => {
             expect(cell1.textContent).toBe('Quantity');
             expect(cell1.style.backgroundColor).toBe('');
             helper.invoke('conditionalFormat', [{ type: "GreaterThan", cFColor: "RedFT", range: "D1:D200", value: '20' }]);
-            expect(cell1.style.backgroundColor).toBe('');
+            expect(cell1.style.backgroundColor).toBe('rgb(255, 199, 206)');
             const cell2: any = helper.invoke('getCell', [1, 3]);
             expect(cell2.style.backgroundColor).toBe('');
             helper.edit('D2', 'Check CF in string');
             expect(cell2.textContent).toBe('Check CF in string');
-            expect(cell2.style.backgroundColor).toBe('');
+            expect(cell2.style.backgroundColor).toBe('rgb(255, 199, 206)');
             done();
         });
     });
@@ -1056,7 +1065,35 @@ describe('Conditional formatting ->', () => {
             });
         });
     });
-
+    describe('EJ2-1002956 Greater than rule for text cells is not get highlighted', function () {
+        beforeAll((done: Function) => {
+            helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: conditionalFormatGreaterthan }], selectedRange: 'F2:F11' }] }, done);
+        });
+        afterAll(() => {
+            helper.invoke('destroy');
+        });
+        it('GreaterThan should highlight with numeric and string inputs', (done: Function) => {
+            let textCell: HTMLElement = helper.invoke('getCell', [11, 0]);
+            let numCell: HTMLElement = helper.invoke('getCell', [7, 0]);
+            let emptyCell: HTMLElement = helper.invoke('getCell', [18, 0]);
+            helper.invoke('conditionalFormat', [{ type: 'GreaterThan', cFColor: 'RedFT', range: 'A1:A20', value: '500' }]);
+            expect(getComputedStyle(textCell).backgroundColor).toBe('rgb(255, 199, 206)');
+            expect(getComputedStyle(numCell).backgroundColor).toBe('rgb(255, 199, 206)');
+            expect(getComputedStyle(emptyCell).backgroundColor).toBe('rgb(255, 255, 255)');
+            helper.invoke('clearConditionalFormat', ['A1:A20']);
+            helper.invoke('conditionalFormat', [{ type: 'GreaterThan', cFColor: 'RedFT', range: 'A1:A20', value: 'aaa' }]);
+            expect(getComputedStyle(textCell).backgroundColor).toBe('rgb(255, 199, 206)');
+            expect(getComputedStyle(numCell).backgroundColor).toBe('rgb(255, 255, 255)');
+            expect(getComputedStyle(emptyCell).backgroundColor).toBe('rgb(255, 255, 255)');
+            helper.invoke('clearConditionalFormat', ['A1:A20']);
+            helper.invoke('conditionalFormat', [{ type: 'GreaterThan', cFColor: 'RedFT', range: 'A1:A20', value: '-20' }]);
+            expect(getComputedStyle(textCell).backgroundColor).toBe('rgb(255, 199, 206)');
+            numCell = helper.invoke('getCell', [9, 0]);
+            expect(getComputedStyle(numCell).backgroundColor).toBe('rgb(255, 199, 206)');
+            expect(getComputedStyle(emptyCell).backgroundColor).toBe('rgb(255, 199, 206)');
+            done();
+        });
+    });
     describe('EJ2-60930, EJ2-831846, EJ2-878093 ->', () => {
         beforeEach((done: Function) => {
             helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: InventoryList }] }] }, done);
@@ -2454,6 +2491,56 @@ describe('Conditional formatting ->', () => {
         });
     });
 
+    describe('EJ2-1001529 CF not restored after inserting rows/Columns in undo,redo', function () {
+        beforeAll((done: Function) => { helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }], conditionalFormats: [{ type: 'GYRColorScale', range: 'D2:D11' }, { type: 'BlueDataBar', range: 'G2:G11' }] }] }, done); });
+        afterAll(() => {
+            helper.invoke('destroy');
+        });
+        it('Undo twice after row and column insert restores CF on D and F', (done: Function) => {
+            var spreadsheet = helper.getInstance();
+            helper.invoke('selectRange', ['A5:A10']); helper.openAndClickCMenuItem(9, 0, [6, 1], true);
+            helper.invoke('selectRange', ['E1:F1']); helper.openAndClickCMenuItem(0, 4, [6, 1], false, true);
+            setTimeout(() => {
+                helper.click('#spreadsheet_undo');
+                setTimeout(() => {
+                    helper.click('#spreadsheet_undo');
+                    setTimeout(() => {
+                        expect(spreadsheet.sheets[0].conditionalFormats[0].range).toBe('D2:D11');
+                        expect(spreadsheet.sheets[0].conditionalFormats[1].range).toBe('G2:G11');
+                        done();
+                    });
+                });
+            });
+        });
+        it('Delete full CF column D triggers splice and undo restores CF', (done: Function) => {
+            const spreadsheet = helper.getInstance();
+            spreadsheet.selectRange('D1');
+            helper.setAnimationToNone('#' + helper.id + '_contextmenu');
+            helper.openAndClickCMenuItem(0, 3, [7], false, true);
+            setTimeout(() => {
+                helper.click('#spreadsheet_undo');
+                setTimeout(() => {
+                    expect(spreadsheet.sheets[0].conditionalFormats[0].range).toBe('D2:D11');
+                    expect(spreadsheet.sheets[0].conditionalFormats[1].range).toBe('G2:G11');
+                    done();
+                });
+            });
+        });
+        it('Delete full CF rows 2..11 triggers splice and undo restores CF', (done: Function) => {
+            const spreadsheet = helper.getInstance();
+            spreadsheet.selectRange('A2:A11');
+            helper.setAnimationToNone('#' + helper.id + '_contextmenu');
+            helper.openAndClickCMenuItem(1, 0, [7], true, false);
+            setTimeout(() => {
+                helper.click('#spreadsheet_undo');
+                setTimeout(() => {
+                    expect(spreadsheet.sheets[0].conditionalFormats[0].range).toBe('D2:D11');
+                    expect(spreadsheet.sheets[0].conditionalFormats[1].range).toBe('G2:G11');
+                    done();
+                });
+            });
+        });
+    });
     describe('916989 - Insert column/row and perform undo/redo with cf->', () => {
         let spreadsheet: any;
         beforeAll((done: Function) => {
@@ -3715,6 +3802,27 @@ describe('Conditional formatting ->', () => {
             expect(hyperlinkElement.children[0].classList).toContain('e-fill-before');
             expect(hyperlinkElement.children[1].classList).toContain('e-fill');
             expect(hyperlinkElement.children[2].classList).toContain('e-fill-sec');
+            done();
+        });
+    });
+    describe('1002954 - Apply Conditional formatting (Between Rule) in empty cells', () => {
+        beforeAll((done: Function) => {
+            helper.initializeSpreadsheet({ sheets: [{
+                ranges: [{
+                    dataSource: defaultData
+                }],
+            }] }, done);
+        });
+        afterAll(() => {
+            helper.invoke('destroy');
+        });
+        it('Apply CF Highlight cell rules (Between) in Empty cells', (done: Function) => {
+            helper.invoke('selectRange', ['D15:F20']);
+            helper.invoke('conditionalFormat', [{ type: "Between", cFColor: "RedFT", value:'-5,5', range: 'D15:F20' }]);
+            expect(helper.invoke('getCell', [15, 3]).style.backgroundColor).toBe('rgb(255, 199, 206)');
+            helper.invoke('selectRange', ['A15:B16']);
+            helper.invoke('conditionalFormat', [{ type: "Between", cFColor: "RedFT", value:'3,8', range: 'A15:B16' }]);
+            expect(helper.invoke('getCell', [15, 1]).style.backgroundColor).toBe('');
             done();
         });
     });

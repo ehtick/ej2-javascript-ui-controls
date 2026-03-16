@@ -480,7 +480,31 @@ export class TaskProcessor extends DateProcessor {
         const notes: string = data[taskSettings.notes];
         progress = progress ? parseFloat(progress.toString()) ? parseFloat(progress.toString()) : 0 : 0;
         progress = (100 < progress) ? 100 : progress;
-        const predecessors: string | number | object[] = data[taskSettings.dependency];
+        let predecessors: string | number | object[] = data[taskSettings.dependency];
+        if (!isNullOrUndefined(predecessors)) {
+            const taskID: string = data[taskSettings.id].toString();
+            const digitRegex: RegExp = /^(\d+)/;
+            const guidRegex: RegExp = /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/;
+            const alphaNumRegex: RegExp = /^([A-Za-z]+-?\d+)/;
+            let matchedID: string | null;
+            predecessors = predecessors.toString().split(',').map((s: string): string => s.trim()).filter((item: string): boolean => {
+                let match: RegExpMatchArray = item.match(guidRegex);
+                if (!isNullOrUndefined(match && match[1])) {
+                    matchedID = match[1];
+                } else {
+                    match = item.match(alphaNumRegex);
+                    if (!isNullOrUndefined(match && match[1])) {
+                        matchedID = match[1];
+                    } else {
+                        match = item.match(digitRegex);
+                        if (!isNullOrUndefined(match && match[1])) {
+                            matchedID = match[1];
+                        }
+                    }
+                }
+                return matchedID !== taskID;
+            }).join(',');
+        }
         const baselineStartDate: Date = this.getDateFromFormat(data[taskSettings.baselineStartDate], true);
         const baselineEndDate: Date = this.getDateFromFormat(data[taskSettings.baselineEndDate], true);
         this.processCustomColumns(data);
@@ -781,6 +805,7 @@ export class TaskProcessor extends DateProcessor {
             this.parent.taskFields.startDate, this.parent.taskFields.id];
         const taskData: object[] = [];
         const calendarContext: CalendarContext = data.ganttProperties.calendarContext;
+        const isDialogEdit: boolean = this.parent.editModule && this.parent.editModule.dialogModule && this.parent.editModule.dialogModule['isEdit'];
         if (!isNullOrUndefined(this.parent.taskFields.segments)) {
             segments = onLoad ? data.taskData[this.parent.taskFields.segments] : data.ganttProperties.segments;
             if (!onLoad) {
@@ -927,7 +952,7 @@ export class TaskProcessor extends DateProcessor {
                                     }
                                     while (this.isOnHolidayOrWeekEnd(segment.startDate, true, calendarContext));
                                 }
-                                if ((!this.parent.includeWeekend || calendarContext.exceptionsRanges.length === 0)) {
+                                if ((!this.parent.includeWeekend)) {
                                     segment.startDate = this.getNextWorkingDay(segment.startDate, calendarContext);
                                 }
                                 const dayEndTime: number = this.parent['getEndTime'](ganttSegments[i - 1].endDate);
@@ -966,6 +991,21 @@ export class TaskProcessor extends DateProcessor {
                 }
                 this.parent.setRecordValue('taskData.' + this.parent.taskFields.segments, taskData, data);
             }
+        }
+        // Dialog-edit segment delete action for single segment, duration value incorrectly updates
+        if (!isNullOrUndefined(segments) && segments.length === 0 && isDialogEdit) {
+            const ganttProp: ITaskData = data.ganttProperties;
+            const endDate: Date = this.parent.dataOperation.getEndDate(
+                ganttProp.startDate, ganttProp.duration, ganttProp.durationUnit, ganttProp, false);
+            this.parent.setRecordValue('endDate', endDate, data.ganttProperties, true);
+            this.parent.setRecordValue(this.parent.taskFields.endDate, endDate, data, true);
+            this.parent.setRecordValue('segments', segments, data.ganttProperties, true);
+            this.parent.setRecordValue(this.parent.taskFields.segments, segments, data, true);
+        }
+        // Load time remove the segment in consideration if segement length is 1
+        if (!isNullOrUndefined(segments) && segments.length === 1 && this.parent.isLoad) {
+            this.parent.setRecordValue(this.parent.taskFields.segments, [], data, true);
+            this.parent.setRecordValue(this.parent.taskFields.segments, [], data.taskData, true);
         }
         if (ganttSegments.length > 1) {
             this.parent.setRecordValue('segments', ganttSegments, data.ganttProperties, true);
@@ -2080,7 +2120,7 @@ export class TaskProcessor extends DateProcessor {
                     }
                 }
                 date = new Date(date.setDate(date.getDate() + 1));
-                if ((!this.parent.includeWeekend || calendarContext.exceptionsRanges.length === 0)) {
+                if ((!this.parent.includeWeekend)) {
                     date = this.parent.dataOperation.getNextWorkingDay(date, calendarContext);
                 }
             }
@@ -3012,24 +3052,27 @@ export class TaskProcessor extends DateProcessor {
                 }
             }
         } else {
-            for (let count: number = 0; count < resourceIdCollection.length; count++) {
-                const resource: Object[] = resourceData.filter((resourceInfo: Object) => {
-                    if (typeof (resourceIdCollection[count as  number]) === 'object' &&
+            if (!isNullOrUndefined(resourceIdCollection)) {
+                for (let count: number = 0; count < resourceIdCollection.length; count++) {
+                    const item: object = resourceIdCollection[count as number];
+                    const resource: Object[] = resourceData.filter((resourceInfo: Object) => {
+                        if (typeof (resourceIdCollection[count as  number]) === 'object' &&
                         resourceIdCollection[count as number][resourceIDMapping as string] === resourceInfo[resourceIDMapping as string]) {
-                        return true;
-                    } else {
-                        return (resourceIdCollection[count as number] === resourceInfo[resourceIDMapping as string]);
-                    }
-                });
-                const ganttDataResource: Object = extend({}, resource[0]);
-                resources.push(ganttDataResource);
-                if (!isNullOrUndefined(resourceUnitMapping)
+                            return true;
+                        } else {
+                            return (resourceIdCollection[count as number] === resourceInfo[resourceIDMapping as string]);
+                        }
+                    });
+                    const ganttDataResource: Object = extend({}, resource[0]);
+                    resources.push(ganttDataResource);
+                    if (!isNullOrUndefined(resourceUnitMapping)
                     && !isNullOrUndefined(resourceIdCollection[count as number][resourceUnitMapping as string])) {
-                    ganttDataResource[resourceUnitMapping as string] = resourceIdCollection[count as number][resourceUnitMapping as string];
-                }
-                if (!isNullOrUndefined(resourceGroup)
+                        ganttDataResource[resourceUnitMapping as string] = item[resourceUnitMapping as string];
+                    }
+                    if (!isNullOrUndefined(resourceGroup)
                     && !isNullOrUndefined(resourceIdCollection[count as number][resourceGroup as string])) {
-                    ganttDataResource[resourceGroup as string] = resourceIdCollection[count as number][resourceGroup as string];
+                        ganttDataResource[resourceGroup as string] = item[resourceGroup as string];
+                    }
                 }
             }
         }
@@ -3564,6 +3607,9 @@ export class TaskProcessor extends DateProcessor {
             const task: IGanttData = flatData[i as number];
             parentTaskMap.set(task.uniqueID, task);
             this.updateTaskLeftWidth(task, parentTaskMap);
+            if (!this.parent['skipOffsetUpdate'] && this.parent.isLoad && task.ganttProperties.predecessorsName && this.parent['autoUpdatePredecessorOffset']) {
+                this.parent.predecessorModule['calculateOffset'](task);
+            }
         }
         if (this.parent.isLoad || this.parent.isFromOnPropertyChange) {
             if (this.offsetUpdateParentList) {

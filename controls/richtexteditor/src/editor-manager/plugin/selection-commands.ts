@@ -310,7 +310,8 @@ export class SelectionCommands {
                             === cursorNodes[0].textContent.trim();
                         const previousElement: HTMLElement = currentFormatNode.parentElement;
                         if (!domNode.isBlockNode(previousElement) && isSameTextContent &&
-                            !(previousElement.nodeName === 'SPAN' && (previousElement as HTMLElement).classList.contains('e-img-inner'))) {
+                            !(previousElement.nodeName === 'SPAN' && ((previousElement as HTMLElement).classList.contains('e-img-inner') ||
+                            (previousElement as HTMLElement).classList.contains('e-img-caption-text')))) {
                             currentFormatNode = previousElement;
                         } else {
                             break;
@@ -760,7 +761,8 @@ export class SelectionCommands {
                                         === nodes[index as number].textContent.trim();
                                     const parent: HTMLElement = currentFormatNode.parentElement;
                                     if (!domNode.isBlockNode(parent) && isSameTextContent &&
-                                    !(parent.nodeName === 'SPAN' && (parent as HTMLElement).classList.contains('e-img-inner'))) {
+                                        !(parent.nodeName === 'SPAN' && ((parent as HTMLElement).classList.contains('e-img-inner') ||
+                                        (parent as HTMLElement).classList.contains('e-img-caption-text')))) {
                                         currentFormatNode = parent;
                                     } else {
                                         break;
@@ -880,6 +882,7 @@ export class SelectionCommands {
         } else {
             range.insertNode(element);
         }
+        element.parentElement.normalize();
         return element;
     }
 
@@ -990,7 +993,8 @@ export class SelectionCommands {
             }
         }
         // The below code is used to remove the already present inline style from the text node.
-        if (!isNOU(parent) && parent.nodeType === 1 && !(parent.classList.contains('e-rte-img-caption') || parent.classList.contains('e-img-inner'))) {
+        if (!isNOU(parent) && parent.nodeType === 1 && !(parent.classList.contains('e-rte-img-caption') || parent.classList.contains('e-img-inner') ||
+            parent.classList.contains('e-img-caption-container') || parent.classList.contains('e-img-caption-text'))) {
             this.formatPainterCleanup(index, nodes, parent, range, nodeCutter, domNode);
         }
         const elem: HTMLElement = painterValues.element;

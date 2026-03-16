@@ -1,6 +1,6 @@
-import { EventHandler, INotifyPropertyChanged, Property, NotifyPropertyChanges, Collection, EmitType, Event, remove, L10n, SanitizeHtmlHelper } from '@syncfusion/ej2-base';import { ChildProperty, getUniqueID, isNullOrUndefined as isNOU, BaseEventArgs, Complex, removeClass, addClass } from '@syncfusion/ej2-base';import { ItemModel, Toolbar, ClickEventArgs } from '@syncfusion/ej2-navigations';import { InterActiveChatBase, ToolbarSettings, ToolbarItem, ToolbarItemClickedEventArgs, TextState } from '../interactive-chat-base/interactive-chat-base';import { ToolbarItemModel, ToolbarSettingsModel } from '../interactive-chat-base/interactive-chat-base-model';import { FileInfo, Uploader, BeforeUploadEventArgs, UploadingEventArgs } from '@syncfusion/ej2-inputs';
-import {AssistViewType,AttachmentClickEventArgs,ToolbarPosition,PromptRequestEventArgs,PromptChangedEventArgs,StopRespondingEventArgs} from "./ai-assistview";
-import {InterActiveChatBaseModel} from "../interactive-chat-base/interactive-chat-base-model";
+import { EventHandler, INotifyPropertyChanged, Property, NotifyPropertyChanges, Collection, EmitType, Event, remove, L10n, SanitizeHtmlHelper } from '@syncfusion/ej2-base';import { ChildProperty, getUniqueID, isNullOrUndefined as isNOU, BaseEventArgs, Complex, removeClass, addClass } from '@syncfusion/ej2-base';import { ItemModel, Toolbar, ClickEventArgs } from '@syncfusion/ej2-navigations';import { ToolbarSettings, ToolbarItem, ToolbarItemClickedEventArgs, TextState } from '../interactive-chat-base/interactive-chat-base';import { ToolbarItemModel, ToolbarSettingsModel } from '../interactive-chat-base/interactive-chat-base-model';import { FileInfo, Uploader, BeforeUploadEventArgs, UploadingEventArgs, StartListeningEventArgs, ErrorEventArgs, TranscriptChangedEventArgs, SpeechToText, StopListeningEventArgs, SpeechToTextState } from '@syncfusion/ej2-inputs';import { MarkdownConverter } from '@syncfusion/ej2-markdown-converter';import { ButtonSettings, ButtonSettingsModel, TooltipSettings, TooltipSettingsModel } from '@syncfusion/ej2-inputs';import { Fab } from '@syncfusion/ej2-buttons';import { AIAssistBase, ToolbarPosition } from '../ai-assist-base/ai-assist-base';
+import {AssistViewType,AttachmentClickEventArgs,PromptRequestEventArgs,PromptChangedEventArgs,StopRespondingEventArgs} from "./ai-assistview";
+import {AIAssistBaseModel} from "../ai-assist-base/ai-assist-base-model";
 
 /**
  * Interface for a class Prompt
@@ -89,6 +89,121 @@ export interface AssistViewModel {
      * @aspType string
      */
     viewTemplate?: string | Function;
+
+}
+
+/**
+ * Interface for a class SpeechToTextSettings
+ */
+export interface SpeechToTextSettingsModel {
+
+    /**
+     * Specifies whether speech-to-text functionality is enabled.
+     *
+     * @default false
+     */
+    enable?: boolean;
+
+    /**
+     * Specifies whether interim results should be captured during speech recognition.
+     *
+     * @default true
+     */
+    allowInterimResults?: boolean;
+
+    /**
+     * Specifies the language for speech recognition using ISO language codes.
+     *
+     * @default 'en-US'
+     */
+    lang?: string;
+
+    /**
+     * Specifies whether the speech-to-text control is disabled.
+     *
+     * @default false
+     */
+    disabled?: boolean;
+
+    /**
+     * Configuration object for the mic button appearance and behavior.
+     * Defines the button text, icons, position, and styling for both start and stop states.
+     *
+     * @type {ButtonSettingsModel}
+     * @default {}
+     */
+    buttonSettings?: ButtonSettingsModel;
+
+    /**
+     * Specifies whether to show tooltip for the mic button.
+     *
+     * @default true
+     */
+    showTooltip?: boolean;
+
+    /**
+     * Configuration object for tooltip appearance and behavior.
+     * Defines the tooltip text and position for both listening and stop states.
+     *
+     * @type {TooltipSettingsModel}
+     * @default {}
+     */
+    tooltipSettings?: TooltipSettingsModel;
+
+    /**
+     * Applies custom CSS classes to the speech-to-text component.
+     *
+     * @type {string}
+     * @default ''
+     */
+    cssClass?: string;
+
+    /**
+     * Stores the recognized speech transcript.
+     * This property is read-only and updated when speech recognition results are received.
+     *
+     * @type {string}
+     * @default ''
+     */
+    transcript?: string;
+
+    /**
+     * Indicates whether the component is currently listening.
+     *
+     * @default 'Inactive'
+     */
+    listeningState?: SpeechToTextState;
+
+    /**
+     * Event raised when speech recognition starts.
+     * Triggered when the user clicks the mic button and begins speaking.
+     *
+     * @event onStart
+     */
+    onStart?: EmitType<StartListeningEventArgs>;
+
+    /**
+     * Event raised when speech recognition stops.
+     * Triggered when the user stops speaking and clicks the mic button.
+     *
+     * @event onStop
+     */
+    onStop?: EmitType<StopListeningEventArgs>;
+
+    /**
+     * Event raised when the transcript changes during speech recognition.
+     * Triggered for both interim results (if enabled) and final results.
+     *
+     * @event transcriptChanged
+     */
+    transcriptChanged?: EmitType<TranscriptChangedEventArgs>;
+
+    /**
+     * Event raised when an error occurs during speech recognition.
+     *
+     * @event onError
+     */
+    onError?: EmitType<ErrorEventArgs>;
 
 }
 
@@ -250,7 +365,7 @@ export interface FooterToolbarSettingsModel {
 /**
  * Interface for a class AIAssistView
  */
-export interface AIAssistViewModel extends InterActiveChatBaseModel{
+export interface AIAssistViewModel extends AIAssistBaseModel{
 
     /**
      * Specifies the text input prompt for the AIAssistView component.
@@ -408,6 +523,15 @@ export interface AIAssistViewModel extends InterActiveChatBaseModel{
     footerToolbarSettings?: FooterToolbarSettingsModel;
 
     /**
+     * Configuration object for rendering Speech-to-Text in the AssistView footer.
+     * This property holds the settings required to initialize and display the Speech-to-Text component.
+     *
+     * @type {SpeechToTextSettingsModel}
+     * @default { enable: false }
+     */
+    speechToTextSettings?: SpeechToTextSettingsModel;
+
+    /**
      * Specifies whether the attachments is enabled in the AIAssistView component.
      *
      * @type {boolean}
@@ -432,6 +556,18 @@ export interface AIAssistViewModel extends InterActiveChatBaseModel{
      * @default false
      */
     showClearButton?: boolean;
+
+    /**
+     * Specifies whether to show a scroll-to-bottom indicator (typically a floating icon/button) when the user has scrolled up away from the latest message in the AI AssistView.
+     *
+     * By default, when enabled (`true`), the button appears automatically when the scroll position is not at the bottom. Clicking on it scrolls smoothly to the bottom and hides the button.
+     *
+     * When disabled(`false`), the users must manually scroll back down to see the latest messages/responses.
+     *
+     * @type {boolean}
+     * @default true
+     */
+    enableScrollToBottom?: boolean;
 
     /**
      * Specifies the template for the footer in the AIAssistView component.

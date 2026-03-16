@@ -1592,7 +1592,6 @@ describe('getCheckedRecords returns empty after expand/collapse', () => {
             done
         );
     });
-
     it('Check getCheckedRecords after expand collapse', (done: Function) => {
         actionComplete = (args?: CellSaveEventArgs): void => {
             if (args.requestType === 'refresh') {

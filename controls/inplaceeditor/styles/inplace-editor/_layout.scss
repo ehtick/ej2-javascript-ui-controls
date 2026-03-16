@@ -1,8 +1,9 @@
+@use 'ej2-base/styles/common/mixin' as *;
 @include export-module('inplaceeditor-layout') {
   .e-inplaceeditor {
     display: inline-block;
     position: relative;
-    width: auto;
+    width: $editable-bgr-tip-width;
 
     .e-input-group.e-control-wrapper .e-clear-icon.e-clear-icon-hide {
       display: block;
@@ -18,7 +19,7 @@
       display: inline-block;
       padding: $editor-nrml-value-container-padding;
       position: relative;
-      width: auto;
+      width: $editable-bgr-tip-width;
       word-break: break-word;
 
       .e-editable-value {
@@ -85,7 +86,7 @@
       display: inline-block;
       padding: $editor-nrml-value-container-padding;
       position: relative;
-      width: auto;
+      width: $editable-bgr-tip-width;
       word-break: break-word;
 
       .e-editable-value {
@@ -100,13 +101,13 @@
       }
 
       .e-editable-overlay-icon {
-        bottom: 0;
+        bottom: $padding-zero;
         cursor: pointer;
         display: inline-flex;
         height: inherit;
         position: absolute;
         right: $editor-nrml-overlay-icon-left-right;
-        top: 0;
+        top: $padding-zero;
         visibility: hidden;
         width: $editor-nrml-overlay-icon-container-size;
 
@@ -150,7 +151,7 @@
     .e-editable-action-buttons {
       margin-top: $editor-buttons-top-margin;
       position: absolute;
-      right: 0;
+      right: $padding-zero;
       z-index: 100;
     }
 
@@ -166,7 +167,7 @@
 
         .e-editable-overlay-icon {
           left: $editor-nrml-overlay-icon-left-right;
-          right: auto;
+          right: $editable-bgr-tip-width;
         }
 
         .e-spinner-pane {
@@ -186,7 +187,7 @@
 
         .e-editable-overlay-icon {
           left: $editor-nrml-overlay-icon-left-right;
-          right: auto;
+          right: $editable-bgr-tip-width;
         }
 
         .e-spinner-pane {
@@ -200,8 +201,8 @@
       }
 
       .e-editable-action-buttons {
-        left: 0;
-        right: auto;
+        left: $padding-zero;
+        right: $editable-bgr-tip-width;
       }
     }
   }
@@ -241,14 +242,14 @@
       display: none;
       min-height: 100%;
       position: absolute;
-      top: 0;
+      top: $padding-zero;
 
       &.e-show {
         display: block;
 
         &:not(.e-rte-spin-wrap) .e-spinner-inner {
-          left: auto;
-          right: 5px;
+          left: $editable-bgr-tip-width;
+          right: $editor-rtl-spinner-right;
           transform: translateX(-30%) translateY(-50%);
         }
       }
@@ -324,8 +325,8 @@
       }
 
       .e-editable-loading.e-show:not(.e-rte-spin-wrap) .e-spinner-inner {
-        left: 5px;
-        right: auto;
+        left: $editor-rtl-spinner-right;
+        right: $editable-bgr-tip-width;
         transform: translateX(30%) translateY(-50%);
       }
     }
@@ -335,7 +336,7 @@
 
   .e-inplaceeditor-tip {
     opacity: 1;
-    width: auto;
+    width: $editable-bgr-tip-width;
 
     &.e-tooltip-wrap {
       max-width: 100%;
@@ -347,7 +348,7 @@
       }
 
       .e-tip-content {
-        padding: 0;
+        padding: $padding-zero;
 
         .e-editable-title {
           align-content: center;
@@ -369,8 +370,8 @@
             float: right;
             margin-top: $editor-buttons-top-margin;
             position: relative;
-            right: auto;
-            top: auto;
+            right: $editable-bgr-tip-width;
+            top: $editable-bgr-tip-width;
           }
         }
 
@@ -382,8 +383,8 @@
             float: right;
             margin-top: $editor-buttons-top-margin;
             position: relative;
-            right: auto;
-            top: auto;
+            right: $editable-bgr-tip-width;
+            top: $editable-bgr-tip-width;
           }
         }
 
@@ -424,14 +425,14 @@
 
   .e-content-placeholder.e-inplaceeditor.e-placeholder-inplaceeditor {
     background-size: 150px 60px;
-    min-height: 60px;
+    min-height: $editor-content-min-height;
   }
 
   @if $skin-name == 'tailwind' or $skin-name == 'bootstrap5' or $skin-name == 'bootstrap5.3' {
     .e-control .e-inplaceeditor,
     .e-tooltip-wrap.e-popup.e-inplaceeditor-tip.e-popup-open,
     .e-inplaceeditor .e-input-group.e-control-wrapper.e-editable-elements {
-      border-radius: 4px;
+      border-radius: $inplace-editor-editable-radius;
     }
   }
 

@@ -21,6 +21,7 @@ import { isIDevice, convertToBlob} from '../../common/util';
 import { AudioCommand } from '../../editor-manager/plugin/audio';
 import { PopupUploader } from './popup-uploader-renderer';
 import * as EVENTS from './../../common/constant';
+import { RichTextEditorModel } from '../base';
 /**
  * `Audio` module is used to handle audio actions.
  */
@@ -48,11 +49,11 @@ export class Audio {
     private prevSelectedAudEle: HTMLAudioElement;
     private showPopupTime: number;
     private isDestroyed: boolean;
-    private docClick: EventListenerOrEventListenerObject
     private audioDragPopupTime: number;
     private showAudioQTbarTime: number;
     public isAudioRemoved: boolean;
     public isAudioClicked: boolean;
+    private onDocumentClickBoundFn: (e: MouseEvent) => void;
 
     private constructor(parent?: IRichTextEditor, serviceLocator?: ServiceLocator) {
         this.parent = parent;
@@ -62,7 +63,7 @@ export class Audio {
         this.dialogRenderObj = serviceLocator.getService<DialogRenderer>('dialogRenderObject');
         this.popupUploaderObj = serviceLocator.getService<PopupUploader>('popupUploaderObject');
         this.addEventListener();
-        this.docClick = this.onDocumentClick.bind(this);
+        this.onDocumentClickBoundFn = this.onDocumentClick.bind(this);
         this.isDestroyed = false;
     }
 
@@ -85,6 +86,7 @@ export class Audio {
         this.parent.on(events.destroy, this.destroy, this);
         this.parent.on(events.iframeMouseDown, this.closeDialog, this);
         this.parent.on(events.bindOnEnd, this.bindOnEnd, this);
+        this.parent.on(events.modelChanged, this.onPropertyChanged, this);
     }
 
     protected removeEventListener(): void {
@@ -108,9 +110,9 @@ export class Audio {
         this.parent.off(EVENTS.dropEvent, this.dragDrop);
         this.parent.off(EVENTS.dragEnter, this.dragEnter);
         this.parent.off(EVENTS.dragOver, this.dragOver);
+        this.parent.off(events.modelChanged, this.onPropertyChanged);
         if (!isNullOrUndefined(this.contentModule)) {
-            (this.parent.element.ownerDocument as Document).removeEventListener('mousedown', this.docClick);
-            this.docClick = null;
+            (this.parent.element.ownerDocument as Document).removeEventListener('mousedown', this.onDocumentClickBoundFn);
         }
     }
 
@@ -129,7 +131,23 @@ export class Audio {
         this.parent.on(EVENTS.dragOver, this.dragOver, this);
         this.parent.on(EVENTS.touchStart,  this.touchStart, this);
         this.parent.on(EVENTS.touchEnd, this.audioClick, this);
-        (this.parent.element.ownerDocument as Document).addEventListener('mousedown', this.docClick);
+        if (!this.parent.readonly) {
+            (this.parent.element.ownerDocument as Document).addEventListener('mousedown', this.onDocumentClickBoundFn);
+        }
+    }
+
+    private onPropertyChanged(e: { [key: string]: RichTextEditorModel }): void {
+        for (const prop of Object.keys(e.newProp)) {
+            if (prop === 'readonly') {
+                // When readonly is enabled, remove the mousedown listener from the document
+                if (this.parent.readonly) {
+                    (this.parent.element.ownerDocument as Document).removeEventListener('mousedown', this.onDocumentClickBoundFn);
+                } else {
+                    // Reattach when readonly is disabled
+                    (this.parent.element.ownerDocument as Document).addEventListener('mousedown', this.onDocumentClickBoundFn);
+                }
+            }
+        }
     }
 
     private checkAudioBack(range: Range): void {
@@ -235,14 +253,6 @@ export class Audio {
             range = this.parent.formatter.editorManager.nodeSelection.getRange(this.parent.contentModule.getDocument());
             selectNodeEle = this.parent.formatter.editorManager.nodeSelection.getNodeCollection(range);
             selectParentEle = this.parent.formatter.editorManager.nodeSelection.getParentNodeCollection(range);
-            if (!originalEvent.ctrlKey && originalEvent.key && (originalEvent.key.length === 1 || originalEvent.action === 'enter') &&
-                (this.isAudioElem(selectParentEle[0] as HTMLElement)) && (selectParentEle[0] as HTMLElement).parentElement) {
-                const prev: Node = ((selectParentEle[0] as HTMLElement).parentElement as HTMLElement).childNodes[0];
-                this.parent.formatter.editorManager.nodeSelection.setSelectionText(
-                    this.contentModule.getDocument(), prev, prev, prev.textContent.length, prev.textContent.length);
-                removeClass([selectParentEle[0] as HTMLElement], CLS_AUD_FOCUS);
-                this.quickToolObj.audioQTBar.hidePopup();
-            }
         }
         if (originalEvent.ctrlKey && (originalEvent.keyCode === 89 || originalEvent.keyCode === 90)) {
             this.undoStack({ subCommand: (originalEvent.keyCode === 90 ? 'undo' : 'redo') });
@@ -554,6 +564,9 @@ export class Audio {
         const args: MouseEvent = e.args as MouseEvent;
         const target: HTMLElement = args.target as HTMLElement;
         const showOnRightClick: boolean = this.parent.quickToolbarSettings.showOnRightClick;
+        if (this.parent.quickToolbarModule && this.parent.quickToolbarModule.audioQTBar) {
+            this.quickToolObj = this.parent.quickToolbarModule;
+        }
         if (args.which === 2 || (showOnRightClick && args.which === 1) || (!showOnRightClick && args.which === 3)) {
             if ((showOnRightClick && args.which === 1) && !isNullOrUndefined((target as HTMLElement)) &&
                 this.isAudioElem(target as HTMLElement)) {
@@ -567,7 +580,6 @@ export class Audio {
             return;
         }
         if (this.parent.editorMode === 'HTML' && this.parent.quickToolbarModule && this.parent.quickToolbarModule.audioQTBar) {
-            this.quickToolObj = this.parent.quickToolbarModule;
             this.contentModule = this.rendererFactory.getRenderer(RenderType.Content);
             if (this.isAudioElem(target) && this.parent.quickToolbarModule) {
                 this.parent.formatter.editorManager.nodeSelection.Clear(this.contentModule.getDocument());
@@ -913,17 +925,91 @@ export class Audio {
     }
 
     private dragEnter(e?: DragEvent): void {
-        e.dataTransfer.dropEffect = 'copy';
         e.preventDefault();
     }
 
     private dragOver(e?: DragEvent): void | boolean {
-        if ((Browser.info.name === 'edge' && e.dataTransfer.items[0].type.split('/')[0].indexOf('audio') > -1) ||
-            (Browser.isIE && e.dataTransfer.types[0] === 'Files')) {
+        // Early exit: missing event/dataTransfer or already handled by another listener.
+        if (!e || !e.dataTransfer || e.defaultPrevented) {
+            return;
+        }
+        const dataTransfer: DataTransfer = e.dataTransfer;
+        const items: DataTransferItemList = dataTransfer.items;
+        const item: DataTransferItem | undefined = (items && items.length) ? items[0] : undefined;
+        const mimeType: string = (items && items.length) ? (items[0].type || '') : '';
+        // Empty MIME: block with forbidden cursor and stop propagation
+        if (!mimeType) {
+            // preventDefault() marks this element as a valid drop target so dropEffect is applied.
+            e.preventDefault();
+            dataTransfer.dropEffect = 'none';
+            e.stopImmediatePropagation();
+            return true;
+        }
+        // Only handle audio
+        if (!mimeType.startsWith('audio/')) {
+            return;
+        }
+        // configured allowed extensions
+        const allowedTypes: string[] = (this.parent.insertAudioSettings.allowedTypes as string[]) || [];
+        const allowedExts: Set<string> = new Set<string>(allowedTypes.map((type: string) => (type || '').toLowerCase()));
+        //Decide acceptability for this drag
+        let canAccept: boolean = false;
+        if (item && item.kind === 'file') {
+            const mime: string = (item.type || '').toLowerCase();
+            if (mime && mime.startsWith('audio/')) {
+                const ext: string | null = this.getAudioExtensionFromMime(mime);
+                canAccept = !!(ext && allowedExts.has('.' + ext));
+            }
+        }
+        // preventDefault() marks this element as a valid drop target so dropEffect is applied.
+        if (!canAccept) {
+            e.preventDefault();
+        }
+        // set dropeffect
+        dataTransfer.dropEffect = canAccept ? 'copy' : 'none';
+        // Prevents subsequent dragOver listeners from running and altering the dropEffect.
+        e.stopImmediatePropagation();
+        // EdgeHTML compatibility: ensure drop is permitted for file/audio drags.
+        if (Browser.info.name === 'edge' && dataTransfer && (
+            (dataTransfer.items && dataTransfer.items[0].type && dataTransfer.items[0].type.split('/')[0] === 'audio') ||
+            (dataTransfer.types && dataTransfer.types[0] === 'Files')
+        )) {
             e.preventDefault();
         } else {
             return true;
         }
+    }
+
+    private getAudioExtensionFromMime(mimeType: string | null | undefined): string | null {
+        if (!mimeType) {
+            return null;
+        }
+        const lower: string = mimeType.toLowerCase().trim();
+        if (!lower.startsWith('audio/')) {
+            return null;
+        }
+        // Extract subtype after "audio/"
+        let subtype: string = lower.slice('audio/'.length);
+        // Drop parameters like "; codecs=opus"
+        const paramsIdx: number = subtype.indexOf(';');
+        if (paramsIdx !== -1) {
+            // Strip any MIME parameters (e.g., "; codecs=...") and keep only the raw subtype for extension matching
+            subtype = subtype.slice(0, paramsIdx).trim();
+        }
+        // Map MIME subtypes to their common file extensions when names differ
+        const alias: Map<string, string> = new Map<string, string>([
+            ['mpeg', 'mp3'],     // audio/mpeg → mp3
+            ['x-ms-wma', 'wma'], // audio/x-ms-wma → wma
+            ['x-wav', 'wav'],    // audio/x-wav → wav
+            ['x-m4a', 'm4a'],    // audio/x-m4a → m4a
+            ['x-aac', 'aac'],    // audio/x-aac → aac
+            ['x-flac', 'flac'],  // audio/x-flac → flac
+            ['x-ms-wax', 'wax'], // audio/x-ms-wax → wax
+            ['3gpp', '3gp']      // audio/3gpp → 3gp
+        ]);
+        // Prefer the alias when available; otherwise use the subtype (or null if empty)
+        const mapped: string | undefined = alias.get(subtype);
+        return (mapped != null) ? mapped : (subtype || null);
     }
 
     /**
@@ -1214,6 +1300,7 @@ export class Audio {
         this.removeEventListener();
         this.clearDialogObj();
         this.isDestroyed = true;
+        this.onDocumentClickBoundFn = null;
     }
 
     /**

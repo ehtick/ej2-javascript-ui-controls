@@ -8,6 +8,7 @@ export * from './selection';
 export * from './transform';
 export * from './html-parser';
 export * from './isformatted';
+export * from './node-cutter';
 export * from './clipboard-utils';
 export * from './table-utils';
 export * from './security';

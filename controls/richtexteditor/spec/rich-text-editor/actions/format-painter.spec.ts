@@ -72,7 +72,7 @@ describe('Format Painter Module', () => {
         let rteObject : RichTextEditor ;
         let toolbarELem: HTMLElement;
         const innerHTML: string = '<p>Getting started with format painter</p>';
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -87,11 +87,9 @@ describe('Format Painter Module', () => {
             });
             toolbarELem = document.body.querySelector('.e-rte-format-painter');
             editAreaClickArgs.args.target = rteObject.element.querySelector('.e-content');
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
         it('Should add cursor and activate toolbar after copy action and remove after paste action', (done: Function) => {
             rteObject.focusIn();
@@ -162,7 +160,7 @@ describe('Format Painter Module', () => {
         let rteObject : RichTextEditor ;
         let toolbarELem: HTMLElement;
         const innerHTML: string = '<p>Getting started with format painter</p>';
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -176,27 +174,23 @@ describe('Format Painter Module', () => {
                 } , value: innerHTML
             });
             toolbarELem = document.body.querySelector('.e-rte-format-painter');
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('Check for the toolbar update and cursor update after Format Copy action', (done: Function) => {
+        it('Check for the toolbar update and cursor update after Format Copy action', () => {
             rteObject.focusIn();
             rteObject.keyDown(copyKeyBoardEventArgs);
             expect(rteObject.element.querySelector('.e-content').classList.contains('e-rte-cursor-brush')).toEqual(false);
             expect(toolbarELem.parentElement.parentElement.classList.contains('e-active')).toEqual(true);
-            done();
         });
-        it('Check for the toolbar update and cursor update after Format paste action', (done: Function) => {
+        it('Check for the toolbar update and cursor update after Format paste action', () => {
             rteObject.focusIn();
             rteObject.keyDown(pasteKeyBoardEventArgs);
             expect(rteObject.element.querySelector('.e-content').classList.contains('e-rte-cursor-brush')).toEqual(false);
             expect(toolbarELem.parentElement.parentElement.classList.contains('e-active')).toEqual(true);
-            done();
         });
-        it('Check for the toolbar update and cursor update after Escape', (done: Function) => {
+        it('Check for the toolbar update and cursor update after Escape', () => {
             rteObject.focusIn();
             rteObject.keyDown(copyKeyBoardEventArgs);
             expect(rteObject.element.querySelector('.e-content').classList.contains('e-rte-cursor-brush')).toEqual(false);
@@ -204,7 +198,6 @@ describe('Format Painter Module', () => {
             rteObject.keyDown(escapeKeyBoardEventArgs);
             expect(rteObject.element.querySelector('.e-content').classList.contains('e-rte-cursor-brush')).toEqual(false);
             expect(toolbarELem.parentElement.parentElement.classList.contains('e-active')).toEqual(false);
-            done();
         });
     } );
 
@@ -218,7 +211,7 @@ describe('Format Painter Module', () => {
                                     <ul>
                                     <li>This is Heading 2 Node</li>
                                     </ul>`;
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -231,13 +224,11 @@ describe('Format Painter Module', () => {
                     'SourceCode', '|', 'ClearFormat', 'Print', 'InsertCode']
                 } , value: innerHTML
             });
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('Tests for painting inline format from P element to H2 element Case 1: With selection, Should only paste inline styles', (done: Function) => {
+        it('Tests for painting inline format from P element to H2 element Case 1: With selection, Should only paste inline styles', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -255,9 +246,8 @@ describe('Format Painter Module', () => {
             startElement = rteObject.inputElement.querySelector('.sourceParent');
             expect(startElement.querySelectorAll('strong').length).toEqual(1);
             expect(startElement.querySelectorAll('em').length).toEqual(1);
-            done();
         });
-        it('Tests for painting inline fornmat and block format from P element to H2 element Case 2: With full node selected, Should paste inline styles and block level styles', (done: Function) => {
+        it('Tests for painting inline fornmat and block format from P element to H2 element Case 2: With full node selected, Should paste inline styles and block level styles', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -277,9 +267,8 @@ describe('Format Painter Module', () => {
             expect(startElement.nodeName).toEqual('P');
             expect(startElement.querySelectorAll('strong').length).toEqual(1);
             expect(startElement.querySelectorAll('em').length).toEqual(1);
-            done();
         });
-        it('Tests for painting inline fornmat and block format from P element to H2 element Case 3: Multiple node selected, Should paste inline styles and block level styles', (done: Function) => {
+        it('Tests for painting inline fornmat and block format from P element to H2 element Case 3: Multiple node selected, Should paste inline styles and block level styles', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -301,9 +290,8 @@ describe('Format Painter Module', () => {
             expect(startElement.nextElementSibling.className).toEqual('sourceParent');
             expect(startElement.querySelectorAll('strong').length).toEqual(1);
             expect(startElement.querySelectorAll('em').length).toEqual(1);
-            done();
         });
-        it('Tests for painting inline fornmat and block format from P element to H2 element Case 4: Range collapsed, Should paste inline styles only cursor word and block level styles', (done: Function) => {
+        it('Tests for painting inline fornmat and block format from P element to H2 element Case 4: Range collapsed, Should paste inline styles only cursor word and block level styles', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -323,7 +311,6 @@ describe('Format Painter Module', () => {
             expect(startElement.querySelectorAll('em').length).toEqual(1);
             expect(startElement.querySelectorAll('em')[0].textContent).toEqual('started');
             expect(startElement.querySelectorAll('strong')[0].textContent).toEqual('started');
-            done();
         });
     });
 
@@ -338,7 +325,7 @@ describe('Format Painter Module', () => {
                                     <ul>
                                     <li>This is Heading 2 Node</li>
                                     </ul>`;
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -352,13 +339,11 @@ describe('Format Painter Module', () => {
                 } , value: innerHTML
             });
             toolbarELem = document.body.querySelector('.e-rte-format-painter');
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it(' with focus outside rte and click the toolbar button, should remove the strong inline styles', (done: Function) => {
+        it(' with focus outside rte and click the toolbar button, should remove the strong inline styles', () => {
             toolbarELem.click();
             let startElement = rteObject.inputElement.querySelector('.goalformatnode');
             setCursorPoint(startElement.firstElementChild.firstChild as Element, 2);
@@ -366,7 +351,6 @@ describe('Format Painter Module', () => {
             rteObject.keyDown(pasteKeyBoardEventArgs);
             startElement = rteObject.inputElement.querySelector('.goalformatnode');
             expect(startElement.querySelectorAll('strong').length).toEqual(0);
-            done();
         });
     });
 
@@ -379,7 +363,7 @@ describe('Format Painter Module', () => {
         </ul>
         <p class='lastParaNode'>Getting started first node</p> 
         `;
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -392,13 +376,11 @@ describe('Format Painter Module', () => {
                     'SourceCode', '|', 'ClearFormat', 'Print', 'InsertCode']
                 } , value: innerHTML
             });
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('should create one li and ul when one node is painted', (done: Function) => {
+        it('should create one li and ul when one node is painted', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -416,9 +398,8 @@ describe('Format Painter Module', () => {
             startElement = rteObject.inputElement.querySelector('.sourceParent');
             expect(startElement.nodeName).toEqual('UL');
             expect(startElement.querySelectorAll('li').length).toEqual(2);
-            done();
         });
-        it('should create multiple li and ul when more than one node is painted', (done: Function) => {
+        it('should create multiple li and ul when more than one node is painted', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -436,9 +417,8 @@ describe('Format Painter Module', () => {
             startElement = rteObject.inputElement.querySelector('.sourceParent');
             expect(startElement.nodeName).toEqual('UL');
             expect(startElement.querySelectorAll('li').length).toEqual(2);
-            done();
         });
-        it('should create one li and ul when p node is at start', (done: Function) => {
+        it('should create one li and ul when p node is at start', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -457,9 +437,8 @@ describe('Format Painter Module', () => {
             expect(startElement.nodeName).toEqual('UL');
             expect(startElement.querySelectorAll('li').length).toEqual(1);
             expect(startElement.previousElementSibling).toEqual(null);
-            done();
         });
-        it('should create one li and ul when p node is at end', (done: Function) => {
+        it('should create one li and ul when p node is at end', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -478,7 +457,6 @@ describe('Format Painter Module', () => {
             expect(startElement.nodeName).toEqual('UL');
             expect(startElement.querySelectorAll('li').length).toEqual(2);
             expect(startElement.nextElementSibling).toEqual(null);
-            done();
         });
     });
 
@@ -497,7 +475,7 @@ describe('Format Painter Module', () => {
                                         <li class = 'lastOrderListNode'>This is List 1 Node</li>
                                     </ol>
         `;
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -510,13 +488,11 @@ describe('Format Painter Module', () => {
                     'SourceCode', '|', 'ClearFormat', 'Print', 'InsertCode']
                 } , value: innerHTML
             });
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('should split ol and create a new ul Case 1 Middle list', (done: Function) => {
+        it('should split ol and create a new ul Case 1 Middle list', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -535,9 +511,8 @@ describe('Format Painter Module', () => {
             expect(startElement.parentElement.nodeName).toEqual('UL');
             expect(startElement.parentElement.querySelectorAll('li').length).toEqual(1);
             expect(rteObject.inputElement.querySelectorAll('ul').length).toEqual(2);
-            done();
         });
-        it('should split ol and create a new ul Case 1 Middle list items', (done: Function) => {
+        it('should split ol and create a new ul Case 1 Middle list items', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -556,9 +531,8 @@ describe('Format Painter Module', () => {
             expect(startElement.parentElement.nodeName).toEqual('UL');
             expect(startElement.parentElement.querySelectorAll('li').length).toEqual(3);
             expect(rteObject.inputElement.querySelectorAll('ul').length).toEqual(2);
-            done();
         });
-        it('should create one li and ul when p node is at start', (done: Function) => {
+        it('should create one li and ul when p node is at start', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -578,9 +552,8 @@ describe('Format Painter Module', () => {
             expect(startElement.parentElement.querySelectorAll('li').length).toEqual(1);
             expect(rteObject.inputElement.querySelectorAll('ul').length).toEqual(2);
             expect(startElement.previousElementSibling).toBeNull();
-            done();
         });
-        it('should create one li and ul when p node is at end', (done: Function) => {
+        it('should create one li and ul when p node is at end', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -600,7 +573,6 @@ describe('Format Painter Module', () => {
             expect(startElement.parentElement.querySelectorAll('li').length).toEqual(1);
             expect(rteObject.inputElement.querySelectorAll('ul').length).toEqual(2);
             expect(startElement.nextElementSibling).toBeNull();
-            done();
         });
     });
 
@@ -615,7 +587,7 @@ describe('Format Painter Module', () => {
         <li>
             Contains a modular library to load the necessary functionality on demand.</li>
     </ul>`;
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -628,13 +600,11 @@ describe('Format Painter Module', () => {
                     'SourceCode', '|', 'ClearFormat', 'Print', 'InsertCode']
                 } , value: innerHTML
             });
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('Copy formats in list and paste the format in the same list with nested list with para tag wrapped inside the same list', (done: Function) => {
+        it('Copy formats in list and paste the format in the same list with nested list with para tag wrapped inside the same list', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.copyFormat');
@@ -649,7 +619,6 @@ describe('Format Painter Module', () => {
             rteObject.keyDown(pasteKeyBoardEventArgs);
             startElement = rteObject.inputElement.querySelector('.copyFormat');
             expect(startElement.closest('li').parentElement.tagName === 'UL').toEqual(true);
-            done();
         });
     });
 
@@ -660,7 +629,7 @@ describe('Format Painter Module', () => {
         is a tool that allows you to <em class="e-rte-em" title="This is a color">copy</em> the <strong class="e-text-red-bg" style="background-color: rgb(255, 0, 0);">formatting </strong> 
         of one element and apply it to another element.
         </p>`;
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -675,13 +644,11 @@ describe('Format Painter Module', () => {
                     deniedFormats: 'span(e-bigger,e-text-red)[title,data-main]{color,background-color}; strong{background-color}; em[title]; p{background-color}(e-rte-text)[title];'
                 }
             });
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('Denied Format Testing Content 1 Should remove only the value in deniedFormats', (done: Function) => {
+        it('Denied Format Testing Content 1 Should remove only the value in deniedFormats', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.e-rte-text-red');
@@ -703,9 +670,8 @@ describe('Format Painter Module', () => {
             expect((startElement as HTMLElement).style.fontWeight).toEqual('800');
             expect(startElement.getAttribute('title')).toEqual(null);
             expect(startElement.getAttribute('data-main')).toEqual(null);
-            done();
         });
-        it('Denied Format Testing Content 2 Should remove only the value in deniedFormats', (done: Function) => {
+        it('Denied Format Testing Content 2 Should remove only the value in deniedFormats', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.e-rte-em');
@@ -724,9 +690,8 @@ describe('Format Painter Module', () => {
             expect(startElement.parentElement.nodeName).toEqual('H1');
             expect(startElement.className).toEqual('e-rte-em');
             expect(startElement.getAttribute('title')).toEqual(null);
-            done();
         });
-        it('Denied Format Testing Content 3 Should remove only the value in deniedFormats', (done: Function) => {
+        it('Denied Format Testing Content 3 Should remove only the value in deniedFormats', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.e-text-red-bg');
@@ -745,7 +710,6 @@ describe('Format Painter Module', () => {
             expect(startElement.parentElement.nodeName).toEqual('H1');
             expect(startElement.className).toEqual('e-text-red-bg');
             expect((startElement as HTMLElement).style.backgroundColor).toEqual('');
-            done();
         });
     });
 
@@ -756,7 +720,7 @@ describe('Format Painter Module', () => {
         let isPasteTriggered: boolean = false;
         let isEscapeTriggered: boolean = false;
         const innerHTML: string = '<p>Getting started with format painter</p>';
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -786,38 +750,32 @@ describe('Format Painter Module', () => {
                 }
             }
             toolbarELem = document.body.querySelector('.e-rte-format-painter');
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('Action Begin event testing Case 1 Format Copy', (done: Function) => {
+        it('Action Begin event testing Case 1 Format Copy', () => {
             toolbarELem.click();
             expect(isCopytriggered).toBe(true);
-            done();
         });
-        it('Action Begin event testing Case 2 Format Paste', (done: Function) => {
+        it('Action Begin event testing Case 2 Format Paste', () => {
             toolbarELem.click();
             rteObject.notify('editAreaClick', { args: { target: rteObject.inputElement.querySelector('p') } });
             expect(isPasteTriggered).toBe(true);
-            done();
         });
-        it('Action Begin event testing Case 3 Format Clear', (done: Function) => {
+        it('Action Begin event testing Case 3 Format Clear', () => {
             toolbarELem.click();
             rteObject.inputElement.querySelector('p').click();
             rteObject.keyDown(escapeKeyBoardEventArgs);
             expect(isEscapeTriggered).toBe(true);
-            done();
         });
-        it('Action Begin event testing Case 4 Keyboard', (done: Function) => {
+        it('Action Begin event testing Case 4 Keyboard', () => {
             rteObject.keyDown(copyKeyBoardEventArgs);
             expect(isCopytriggered).toBe(true);
             rteObject.keyDown(pasteKeyBoardEventArgs);
             expect(isPasteTriggered).toBe(true);
             rteObject.keyDown(escapeKeyBoardEventArgs);
             expect(isEscapeTriggered).toBe(true);
-            done();
         });
     });
 
@@ -916,7 +874,7 @@ describe('Format Painter Module', () => {
     describe('Format Painter testing with undo redo', () => {
         let rteObject : RichTextEditor ;
         const innerHTML: string = '<p>Getting started with format painter</p>';
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -929,28 +887,24 @@ describe('Format Painter Module', () => {
                     'SourceCode', '|', 'ClearFormat', 'Print', 'InsertCode']
                 } , value: innerHTML
             });
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('Check for the undo after Format Copy action', (done: Function) => {
+        it('Check for the undo after Format Copy action', () => {
             rteObject.focusIn();
             rteObject.keyDown(copyKeyBoardEventArgs);
             expect(rteObject.element.querySelector('.e-undo').parentElement.parentElement.classList.contains('e-overlay')).toEqual(true);
             expect(rteObject.element.querySelector('.e-redo').parentElement.parentElement.classList.contains('e-overlay')).toEqual(true);
-            done();
         });
-        it('Check for the undo after Format paste action', (done: Function) => {
+        it('Check for the undo after Format paste action', () => {
             rteObject.focusIn();
             rteObject.keyDown(copyKeyBoardEventArgs);
             rteObject.keyDown(pasteKeyBoardEventArgs);
             expect(rteObject.element.querySelector('.e-undo').parentElement.parentElement.classList.contains('e-overlay')).toEqual(false);
             expect(rteObject.element.querySelector('.e-redo').parentElement.parentElement.classList.contains('e-overlay')).toEqual(true);
-            done();
         });
-        it('Check for the redo after Format paste action and undo action', (done: Function) => {
+        it('Check for the redo after Format paste action and undo action', () => {
             rteObject.focusIn();
             rteObject.keyDown(copyKeyBoardEventArgs);
             rteObject.keyDown(pasteKeyBoardEventArgs);
@@ -973,7 +927,6 @@ describe('Format Painter Module', () => {
             rteObject.element.querySelector('.e-redo').parentElement.parentElement.click();
             expect(rteObject.element.querySelector('.e-undo').parentElement.parentElement.classList.contains('e-overlay')).toEqual(false);
             expect(rteObject.element.querySelector('.e-redo').parentElement.parentElement.classList.contains('e-overlay')).toEqual(true);
-            done();
         });
     } );
 
@@ -990,7 +943,7 @@ describe('Format Painter Module', () => {
                                     "Put your heart, mind, intellect, and soul even to your smallest acts. This is the secret of success." - 
                                     - Swami Sivananda</strong></span></span></span>
                                     </blockquote>`;
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -1003,13 +956,11 @@ describe('Format Painter Module', () => {
                     'SourceCode', '|', 'ClearFormat', 'Print', 'InsertCode']
                 } , value: innerHTML
             });
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('Tests for painting inline format from H2 element to Blockquote element Case 1: With selection', (done: Function) => {
+        it('Tests for painting inline format from H2 element to Blockquote element Case 1: With selection', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -1027,9 +978,8 @@ describe('Format Painter Module', () => {
             expect(startElement.innerHTML).toEqual(content);
             expect(startElement.nodeName).toEqual('BLOCKQUOTE');
             expect(startElement.className).toEqual('goalParent');
-            done();
         });
-        it('Tests for painting inline fornmat and block format from P element to H2 element Case 2: With full node selected', (done: Function) => {
+        it('Tests for painting inline fornmat and block format from P element to H2 element Case 2: With full node selected', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -1047,9 +997,8 @@ describe('Format Painter Module', () => {
             expect(startElement.innerHTML.trim()).toEqual(content);
             expect(startElement.nodeName).toEqual('H2');
             expect(startElement.className).toEqual('sourceParent');
-            done();
         });
-        it('Tests for painting inline fornmat and block format from P element to H2 element Case 3: Range collapsed', (done: Function) => {
+        it('Tests for painting inline fornmat and block format from P element to H2 element Case 3: Range collapsed', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -1063,11 +1012,10 @@ describe('Format Painter Module', () => {
             startElement = rteObject.inputElement.querySelectorAll('.sourceformatnode')[1];
             expect(startElement.innerHTML).toEqual('your');
             startElement = rteObject.inputElement.querySelectorAll('.sourceParent')[1];
-            const content: string = '<span style="font-size: 18pt;"><span style="background-color: rgb(217, 217, 217);"> <span style="color: rgb(31, 55, 99); text-decoration: inherit;"><strong class="goalformatnode" style="background-color: rgb(217, 217, 217);"> "Put your heart, mind, intellect, and soul even to </strong></span></span></span><span style="font-family: Tahoma, Geneva, sans-serif;"><span style="color: rgb(68, 114, 196); text-decoration: inherit;"><span style="background-color: rgb(204, 255, 255);"><b><u class="sourceformatnode">your</u></b></span></span></span><span style="font-size: 18pt;"><span style="background-color: rgb(217, 217, 217);"><span style="color: rgb(31, 55, 99); text-decoration: inherit;"><strong class="goalformatnode" style="background-color: rgb(217, 217, 217);"> smallest acts. This is the secret of success." - - Swami Sivananda</strong></span></span></span>';
+             const content: string = '<span style="font-size: 18pt;"><span style="background-color: rgb(217, 217, 217);"><span style="color: rgb(31, 55, 99); text-decoration: inherit;"><strong class="goalformatnode" style="background-color: rgb(217, 217, 217);"> "Put your heart, mind, intellect, and soul even to </strong></span></span></span><span style="font-family: Tahoma, Geneva, sans-serif;"><span style="color: rgb(68, 114, 196); text-decoration: inherit;"><span style="background-color: rgb(204, 255, 255);"><b><u class="sourceformatnode">your</u></b></span></span></span><span style="font-size: 18pt;"><span style="background-color: rgb(217, 217, 217);"><span style="color: rgb(31, 55, 99); text-decoration: inherit;"><strong class="goalformatnode" style="background-color: rgb(217, 217, 217);"> smallest acts. This is the secret of success." - - Swami Sivananda</strong></span></span></span>';
             expect(startElement.nodeName).toEqual('H2');
             expect(startElement.className).toEqual('sourceParent');
             expect(startElement.innerHTML).toEqual(content);
-            done();
         });
     });
 
@@ -1084,7 +1032,7 @@ describe('Format Painter Module', () => {
             <span style="font-size: 14pt;"><strong><em><span style="text-decoration: underline;">
             <span style="text-decoration: line-through;">Getting started with the format painter:</span></span></em>
         </strong></span></span></span></p>`;
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -1097,13 +1045,11 @@ describe('Format Painter Module', () => {
                     'SourceCode', '|', 'ClearFormat', 'Print', 'InsertCode']
                 } , value: innerHTML
             });
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('Should remove the nested node and insert it to previos element instead of the Nested Paragraph element', (done: Function) => {
+        it('Should remove the nested node and insert it to previos element instead of the Nested Paragraph element', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceParent1');
@@ -1120,7 +1066,6 @@ describe('Format Painter Module', () => {
             rteObject.keyDown(pasteKeyBoardEventArgs);
             const correctInnerHTML: string  = `<span style="font-family: Tahoma, Geneva, sans-serif;"><span style="color: rgb(68, 114, 196); text-decoration: inherit;"><span style="background-color: rgb(204, 255, 255);"><b><u>Getti</u></b></span></span></span>ng started with <strong>Format </strong> Painter.`;
             expect(startElement.innerHTML).toEqual(correctInnerHTML);
-            done();
         });
     });
 
@@ -1137,7 +1082,7 @@ describe('Format Painter Module', () => {
                                     <ul>
                                     <li>This is Heading 2 Node</li>
                                     </ul>`;
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -1150,13 +1095,11 @@ describe('Format Painter Module', () => {
                     'SourceCode', '|', 'ClearFormat', 'Print', 'InsertCode']
                 } , value: innerHTML
             });
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('Tests for painting inline format from P element to H2 element Case 1: With selection, Should only paste inline styles', (done: Function) => {
+        it('Tests for painting inline format from P element to H2 element Case 1: With selection, Should only paste inline styles', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -1204,20 +1147,19 @@ describe('Format Painter Module', () => {
             startElement = rteObject.inputElement.querySelector('.sourceParent');
             expect(startElement.querySelectorAll('strong').length).toEqual(1);
             expect(startElement.querySelectorAll('em').length).toEqual(1);
-            done();
         });
     });
 
     describe('EJ2-71348 Selecting the image caption and painting the copied format removes the image, selecting and applying removes outside the caption span' , () => {
         let rteObject : RichTextEditor ;
-        const innerHTML: string = `<p><span class="e-img-caption e-rte-img-caption null e-caption-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap null"><img src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png" class="e-rte-image e-imginline" alt="RTEImage-Feather.png" width="auto" height="auto" style="min-width: 0px; max-width: 1839px; min-height: 0px;"><span class="e-img-inner null" contenteditable="true">This is the caption of the image.</span></span></span> </p>        <p>Getting started with <strong>Format </strong> Painter.</p>
+        const innerHTML: string = `<p><span class="e-img-caption-container e-img-inline" contenteditable="false" draggable="false" style="width:auto"><span class="e-img-wrap null"><img src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png" class="e-rte-image" alt="RTEImage-Feather.png" width="auto" height="auto" style="min-width: 0px; max-width: 1839px; min-height: 0px;"><span class="e-img-caption-text null" contenteditable="true">This is the caption of the image.</span></span></span> </p>        <p>Getting started with <strong>Format </strong> Painter.</p>
         <h2 title="heading1"><span style="font-family: Tahoma, Geneva, sans-serif;">
             <span style="color: rgb(68, 114, 196); text-decoration: inherit;">
             <span style="background-color: rgb(204, 255, 255);">
                 <b><u  class ='sourceformatnode'>FORMAT PAINTER:</u></b>
             </span></span></span>
         </h2>`;
-        beforeAll( (done: Function) => {
+        beforeAll( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -1230,13 +1172,11 @@ describe('Format Painter Module', () => {
                     'SourceCode', '|', 'ClearFormat', 'Print', 'InsertCode']
                 } , value: innerHTML
             });
-            done();
         });
-        afterAll( (done: DoneFn) => {
+        afterAll( () => {
             destroy(rteObject);
-            done();
         });
-        it('Copy and pasting nested styles should not split the span containing the e-img-inner', (done: Function) => {
+        it('Copy and pasting nested styles should not split the span containing the e-img-caption-text', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -1244,12 +1184,11 @@ describe('Format Painter Module', () => {
             range.setEnd(startElement, 1);
             rteObject.selectRange(range);
             rteObject.keyDown(copyKeyBoardEventArgs);
-            startElement = rteObject.inputElement.querySelector('.e-img-inner');
+            startElement = rteObject.inputElement.querySelector('.e-img-caption-text');
             setCursorPoint(startElement.firstChild as Element, 9);
             rteObject.keyDown(pasteKeyBoardEventArgs);
             const immgCaptionInnerHTML: string = 'This is <span style="font-family: Tahoma, Geneva, sans-serif;"><span style="color: rgb(68, 114, 196); text-decoration: inherit;"><span style="background-color: rgb(204, 255, 255);"><b><u class="sourceformatnode">the</u></b></span></span></span> caption of the image.';
             expect(startElement.innerHTML).toEqual(immgCaptionInnerHTML);
-            done();
         });
     });
 
@@ -1257,7 +1196,7 @@ describe('Format Painter Module', () => {
         let rteObject : RichTextEditor ;
         const innerHTML: string = `<h2 class ='sourceParent'><b>Format Painter:</b></h2>
                                    <p class='goalParent'>Getting Starteed with the format painter , format painter allows to <em class ='goalformatnode1'>copy</em> and paste formatting.</p>`;
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -1270,13 +1209,11 @@ describe('Format Painter Module', () => {
                     'SourceCode', '|', 'ClearFormat', 'Print', 'InsertCode']
                 } , value: innerHTML
             });
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('Testing for removing old formats, should apply the copied format should not apply the block level formats', (done: Function) => {
+        it('Testing for removing old formats, should apply the copied format should not apply the block level formats', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceParent');
@@ -1294,7 +1231,6 @@ describe('Format Painter Module', () => {
             expect(startElement.nodeName).not.toEqual('H2');
             expect(startElement.querySelectorAll('b').length).toEqual(1);
             expect(startElement.querySelectorAll('em').length).toEqual(0);
-            done();
         });
     });
 
@@ -1308,7 +1244,7 @@ describe('Format Painter Module', () => {
                                     <ul>
                                     <li>This is Heading 2 Node</li>
                                     </ul>`;
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -1321,13 +1257,11 @@ describe('Format Painter Module', () => {
                     'SourceCode', '|', 'ClearFormat', 'Print', 'InsertCode']
                 } , value: innerHTML
             });
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('CASE 1 Range collapsed Tests for cursor maintained check', (done: Function) => {
+        it('CASE 1 Range collapsed Tests for cursor maintained check', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -1341,7 +1275,6 @@ describe('Format Painter Module', () => {
             rteObject.keyDown(pasteKeyBoardEventArgs);
             startElement = rteObject.inputElement.querySelector('.sourceParent');
             expect(window.getSelection().getRangeAt(0).startContainer).toEqual(startElement.childNodes[1].childNodes[0].childNodes[0]);
-            done();
         });
     });
 
@@ -1356,7 +1289,7 @@ describe('Format Painter Module', () => {
                                 </h2>
                                 <p>Format painter is configured not to work on <a class='goalformatnode' href="https://ej2.syncfusion.com/home/" target="_blank">the link node.</a></p>
         `;
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -1369,13 +1302,11 @@ describe('Format Painter Module', () => {
                     'SourceCode', '|', 'ClearFormat', 'Print', 'InsertCode']
                 } , value: innerHTML
             });
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('Should not remove the anchor element. Test for anchor element not getting removed', (done: Function) => {
+        it('Should not remove the anchor element. Test for anchor element not getting removed', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode1');
@@ -1390,9 +1321,8 @@ describe('Format Painter Module', () => {
             rteObject.selectRange(range);
             rteObject.keyDown(pasteKeyBoardEventArgs);
             expect(startElement.nodeName).toEqual('A');
-            done();
         });
-        it('Should not remove the anchor element. Test for anchor element not getting removed with nested styles', (done: Function) => {
+        it('Should not remove the anchor element. Test for anchor element not getting removed with nested styles', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode2');
@@ -1419,7 +1349,6 @@ describe('Format Painter Module', () => {
             rteObject.selectRange(range);
             rteObject.keyDown(pasteKeyBoardEventArgs);
             expect(startElement.nodeName).toEqual('A');
-            done();
         });
     });
 
@@ -1440,7 +1369,7 @@ describe('Format Painter Module', () => {
                                     
                                     <li>List 4 content.</li>
                                     <li class='goalformatnode2'>List 5 content.</li></ol>`;
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -1453,13 +1382,11 @@ describe('Format Painter Module', () => {
                     'SourceCode', '|', 'ClearFormat', 'Print', 'InsertCode']
                 } , value: innerHTML
             });
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('Should remove the nested node and insert it to previos element instead of the Nested Paragraph element', (done: Function) => {
+        it('Should remove the nested node and insert it to previos element instead of the Nested Paragraph element', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -1473,9 +1400,8 @@ describe('Format Painter Module', () => {
             range.setEnd(endElement, 1);
             rteObject.selectRange(range);
             rteObject.keyDown(pasteKeyBoardEventArgs);
-            const correctInnerHTML: string  = `<p class="sourceformatnode">How to use the format painter:</p><p class="sourceformatnode">List 1 content.</p><p class="sourceformatnode">List 2 content.</p><p class="sourceformatnode"> List 3 content. </p><p class="sourceformatnode">Sub List 1 content.</p><p class="sourceformatnode">Sub List 2 content.</p><p class="sourceformatnode">Sub List 2 content.</p><p class="sourceformatnode">List 4 content.</p><p class="sourceformatnode">List 5 content.</p>`;
+            const correctInnerHTML: string  = `<p class="sourceformatnode">How to use the format painter:</p><p class="sourceformatnode">List 1 content.</p><p class="sourceformatnode">List 2 content.</p><p class="sourceformatnode">List 3 content.</p><p class="sourceformatnode">Sub List 1 content.</p><p class="sourceformatnode">Sub List 2 content.</p><p class="sourceformatnode">Sub List 2 content.</p><p class="sourceformatnode">List 4 content.</p><p class="sourceformatnode">List 5 content.</p>`;
             expect(rteObject.inputElement.innerHTML).toEqual(correctInnerHTML);
-            done();
         });
     });
 
@@ -1513,7 +1439,7 @@ describe('Format Painter Module', () => {
                     element with font size of 24 pts.
                 </span>
         </div>`;
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -1526,13 +1452,11 @@ describe('Format Painter Module', () => {
                     'SourceCode', '|', 'ClearFormat', 'Print', 'InsertCode']
                 } , value: innerHTML
             });
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('Case 1 SELECTION Copying without inline styles and painting Partial text with styles of a block node, should remove the old styles', (done: Function) => {
+        it('Case 1 SELECTION Copying without inline styles and painting Partial text with styles of a block node, should remove the old styles', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -1547,9 +1471,8 @@ describe('Format Painter Module', () => {
             rteObject.keyDown(pasteKeyBoardEventArgs);
             startElement = rteObject.inputElement.querySelectorAll('.goalformatnode1')[0];
             expect(startElement.innerHTML).toEqual('Getting started with Format  Painter.');
-            done();
         });
-        it('Case 2 MULTIPLE Copying without inline styles and painting to multiple block node, should remove the old styles', (done: Function) => {
+        it('Case 2 MULTIPLE Copying without inline styles and painting to multiple block node, should remove the old styles', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -1563,11 +1486,10 @@ describe('Format Painter Module', () => {
             range.setEnd(endElement.lastElementChild, 1);
             rteObject.selectRange(range);
             rteObject.keyDown(pasteKeyBoardEventArgs);
-            const correctInnerHTML: string  = `<p class="sourceformatnode">Getting started with format painter</p><p class="sourceformatnode">Getting started with Format  Painter.</p><p class="sourceformatnode">   FORMAT PAINTER:</p><p class="sourceformatnode">  Getting started with the format painter:</p><p class="sourceformatnode">The format painter toolbar button allows you to copy the formatting of a selected text or object and apply it to another text or object. This is a quick and easy way to ensure consistent formatting throughout your document or website. </p><p class="sourceformatnode">By copying inline styles, you can easily transfer the font style, size, color, and other properties from one element to another without having to manually adjust each property individually. This saves you time and ensures that your design is consistent and professional. </p><p class="sourceformatnode">  "Put your heart, mind, intellect, and soul even to your smallest acts. This is the secret of success." - - Swami Sivananda</p><p class="sourceformatnode">This block content is of type    &lt;div&gt;  element with font size of 24 pts. </p>`;
+            const correctInnerHTML: string  = `<p class="sourceformatnode">Getting started with format painter</p><p class="sourceformatnode">Getting started with Format  Painter.</p><p class="sourceformatnode">  FORMAT PAINTER:</p><p class="sourceformatnode"> Getting started with the format painter:</p><p class="sourceformatnode">The format painter toolbar button allows you to copy the formatting of a selected text or object and apply it to another text or object. This is a quick and easy way to ensure consistent formatting throughout your document or website.</p><p class="sourceformatnode">By copying inline styles, you can easily transfer the font style, size, color, and other properties from one element to another without having to manually adjust each property individually. This saves you time and ensures that your design is consistent and professional.</p><p class="sourceformatnode"> "Put your heart, mind, intellect, and soul even to your smallest acts. This is the secret of success." - - Swami Sivananda</p><p class="sourceformatnode">This block content is of type    &lt;div&gt;  element with font size of 24 pts. </p>`;
             expect(rteObject.inputElement.innerHTML).toEqual(correctInnerHTML);
-            done();
         });
-        it('Case 3 FULL NODE Copying without inline styles and painting to full text node, should remove the old styles', (done: Function) => {
+        it('Case 3 FULL NODE Copying without inline styles and painting to full text node, should remove the old styles', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -1581,8 +1503,7 @@ describe('Format Painter Module', () => {
             rteObject.selectRange(range);
             rteObject.keyDown(pasteKeyBoardEventArgs);
             startElement = rteObject.inputElement.querySelectorAll('.sourceformatnode')[1];
-            expect(startElement.innerHTML).toEqual(`   FORMAT PAINTER:`);
-            done();
+            expect(startElement.innerHTML).toEqual(`  FORMAT PAINTER:`);
         });
     });
 
@@ -1612,7 +1533,7 @@ describe('Format Painter Module', () => {
             </tr>
         </tbody>
 </table>`;
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -1625,13 +1546,11 @@ describe('Format Painter Module', () => {
                     'SourceCode', '|', 'ClearFormat', 'Print', 'InsertCode']
                 } , value: innerHTML
             });
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('Case 1 Pasting a inline style with paragraph format to the Table td element.', (done: Function) => {
+        it('Case 1 Pasting a inline style with paragraph format to the Table td element.', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode1');
@@ -1648,9 +1567,8 @@ describe('Format Painter Module', () => {
             expect(startElement.nodeName).toEqual('TD');
             expect(startElement.firstChild.nodeName).toEqual('P');
             expect(startElement.firstChild.firstChild.nodeName).toEqual('STRONG');
-            done();
         });
-        it('Case 2 Pasting a list format to the Table td element', (done: Function) => {
+        it('Case 2 Pasting a list format to the Table td element', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode2');
@@ -1667,9 +1585,8 @@ describe('Format Painter Module', () => {
             expect(startElement.nodeName).toEqual('TD');
             expect(startElement.firstChild.nodeName).toEqual('UL');
             expect(startElement.firstChild.firstChild.nodeName).toEqual('LI');
-            done();
         });
-        it('Case 3 Pasting a inline style with paragraph format to the Table td element.', (done: Function) => {
+        it('Case 3 Pasting a inline style with paragraph format to the Table td element.', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode3');
@@ -1686,7 +1603,6 @@ describe('Format Painter Module', () => {
             expect(startElement.nodeName).toEqual('TD');
             expect(startElement.firstChild.nodeName).toEqual('P');
             expect(startElement.firstChild.firstChild.firstChild.nodeName).toEqual('STRONG');
-            done();
         });
     });
 
@@ -1712,7 +1628,7 @@ describe('Format Painter Module', () => {
                                     <p class='goalformatnode3'>
                                         <b>How to use the format painter:</b>
                                     </p>`;
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -1725,13 +1641,11 @@ describe('Format Painter Module', () => {
                     'SourceCode', '|', 'ClearFormat', 'Print', 'InsertCode']
                 } , value: innerHTML
             });
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('CASE 1 When copied and pasted list type not match,', (done: Function) => {
+        it('CASE 1 When copied and pasted list type not match,', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -1748,9 +1662,8 @@ describe('Format Painter Module', () => {
             expect(startElement.parentElement.querySelectorAll('li').length).toEqual(1);
             expect(startElement.parentElement.style.listStyleType).toEqual('circle');
             expect(startElement.textContent).toEqual('List Item 2 Consistent formatting throughout the document or website');
-            done();
         });
-        it('CASE 2 Selecting all the element and then applying the disc list', (done: Function) => {
+        it('CASE 2 Selecting all the element and then applying the disc list', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -1769,9 +1682,8 @@ describe('Format Painter Module', () => {
             expect((startElement as HTMLElement).style.listStyleType).toEqual('circle');
             const correctInnerHTML: string = `<li class="sourceformatnode">Format Painter</li><li class="sourceformatnode">Advantages of using the format painter:</li><li class="sourceformatnode">List Item 1 Saves time and effort in formatting</li><li class="sourceformatnode">List Item 2 Consistent formatting throughout the document or website</li><li class="sourceformatnode">List Item 3 Quick and easy to use</li><li class="sourceformatnode">Advantages of using the format painter:</li><li class="sourceformatnode">List Item 1 Saves time and effort in formatting</li><li class="sourceformatnode">List Item 2 Consistent formatting throughout the document or website</li><li class="sourceformatnode">List Item 3 Quick and easy to use</li><li class="sourceformatnode">Advantages of using the format painter:</li><li class="sourceformatnode">Saves time and effort in formatting</li><li class="sourceformatnode">Consistent formatting throughout the document or website</li><li class="sourceformatnode">Quick and easy to use</li>`;
             expect(startElement.innerHTML).toEqual(correctInnerHTML);
-            done();
         });
-        it('CASE 3 change the list type from Disc to Circle for a single node', (done: Function) => {
+        it('CASE 3 change the list type from Disc to Circle for a single node', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -1787,9 +1699,8 @@ describe('Format Painter Module', () => {
             startElement = rteObject.inputElement.querySelector('ul');
             expect(startElement.childElementCount).toEqual(3);
             expect((startElement as HTMLElement).style.listStyleType).toEqual('circle');
-            done();
         });
-        it('CASE 4 copying and pasting the circle type bullet to disc shaped list (Multi Nodes)', (done: Function) => {
+        it('CASE 4 copying and pasting the circle type bullet to disc shaped list (Multi Nodes)', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -1806,9 +1717,8 @@ describe('Format Painter Module', () => {
             expect(startElement.parentElement.querySelectorAll('li').length).toEqual(3);
             expect(startElement.parentElement.style.listStyleType).toEqual('circle');
             expect(startElement.parentElement.textContent).toEqual('List Item 1 Saves time and effort in formattingList Item 2 Consistent formatting throughout the document or websiteList Item 3 Quick and easy to use');
-            done();
         });
-        it('CASE 5 copying and pasting the number type list to paragraph before the disc type bullet list', (done: Function) => {
+        it('CASE 5 copying and pasting the number type list to paragraph before the disc type bullet list', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode1');
@@ -1825,9 +1735,8 @@ describe('Format Painter Module', () => {
             expect(startElement.parentElement.nodeName).toEqual('OL');
             expect(startElement.parentElement.querySelectorAll('li').length).toEqual(1);
             expect(startElement.parentElement.textContent).toEqual('Advantages of using the format painter:');
-            done();
         });
-        it('CASE 6 copying and pasting the circle bullet type list to paragraph before the disc type bullet list', (done: Function) => {
+        it('CASE 6 copying and pasting the circle bullet type list to paragraph before the disc type bullet list', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -1843,16 +1752,15 @@ describe('Format Painter Module', () => {
             startElement = rteObject.inputElement.querySelector('.sourceformatnode');
             expect(startElement.parentElement.querySelectorAll('li').length).toEqual(4);
             expect(startElement.parentElement.style.listStyleType).toEqual('circle');
-            const textContent: string = 'Advantages of using the format painter: List Item 1 Saves time and effort in formatting List Item 2 Consistent formatting throughout the document or website List Item 3 Quick and easy to use ';
+            const textContent: string = 'Advantages of using the format painter:List Item 1 Saves time and effort in formattingList Item 2 Consistent formatting throughout the document or websiteList Item 3 Quick and easy to use';
             expect(startElement.parentElement.textContent).toEqual(textContent);
-            done();
         });
     });
 
     describe('964344 when using the Format Painter tool, the selected text gets deleted after applying the copied formatting to it' , () => {
         let rteObject : RichTextEditor ;
         const innerHTML: string = `<ul><li class="focusnode"><strong>Select the text</strong> with the formatting you want to copy.</li><li class="startnode">Click the <strong>Format Painter</strong> button (paintbrush icon) in the toolbar.</li><li class="endnode">The cursor changes to a <strong>paintbrush</strong> icon.</li><li><strong>Click and drag</strong> over the text where you want to apply the copied format.</li><li>Release the mouse button, and the formatting will be applied.</li></ul><h5><br></h5>`;
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -1865,13 +1773,11 @@ describe('Format Painter Module', () => {
                     'SourceCode', '|', 'ClearFormat', 'Print', 'InsertCode']
                 } , value: innerHTML
             });
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('When selecting two lists, we are replacing the LI element one by one,', (done: Function) => {
+        it('When selecting two lists, we are replacing the LI element one by one,', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.focusnode');
@@ -1886,7 +1792,6 @@ describe('Format Painter Module', () => {
             rteObject.selectRange(range);
             rteObject.keyDown(pasteKeyBoardEventArgs);
             expect(rteObject.inputElement.innerHTML).toEqual('<ul><li class="focusnode"><strong>Select the text</strong> with the formatting you want to copy.</li><li class="focusnode"><strong>Click the </strong><strong>Format Painter</strong><strong> button (paintbrush icon) in the toolbar.</strong></li><li class="focusnode"><strong>The cursor changes to a </strong><strong>paintbrush</strong><strong> icon.</strong></li><li><strong>Click and drag</strong> over the text where you want to apply the copied format.</li><li>Release the mouse button, and the formatting will be applied.</li></ul><h5><br></h5>');
-            done();
         });
     });
 
@@ -1897,7 +1802,7 @@ describe('Format Painter Module', () => {
         let isPasteTriggered: boolean = false;
         let isEscapeTriggered: boolean = false;
         const innerHTML: string = '<p>Getting started with format painter</p>';
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -1927,38 +1832,32 @@ describe('Format Painter Module', () => {
                 }
             }
             toolbarELem = document.body.querySelector('.e-rte-format-painter');
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('Action Complete event testing Case 1 Format Copy', (done: Function) => {
+        it('Action Complete event testing Case 1 Format Copy', () => {
             toolbarELem.click();
             expect(isCopytriggered).toBe(true);
-            done();
         });
-        it('Action Complete event testing Case 2 Format Paste', (done: Function) => {
+        it('Action Complete event testing Case 2 Format Paste', () => {
             toolbarELem.click();
             rteObject.notify('editAreaClick', { args: { target: rteObject.inputElement.querySelector('p') } });
             expect(isPasteTriggered).toBe(true);
-            done();
         });
-        it('Action Complete event testing Case 3 Format Clear', (done: Function) => {
+        it('Action Complete event testing Case 3 Format Clear', () => {
             toolbarELem.click();
             rteObject.inputElement.querySelector('p').click();
             rteObject.keyDown(escapeKeyBoardEventArgs);
             expect(isEscapeTriggered).toBe(true);
-            done();
         });
-        it('Action Complete event testing Case 4 Keyboard', (done: Function) => {
+        it('Action Complete event testing Case 4 Keyboard', () => {
             rteObject.keyDown(copyKeyBoardEventArgs);
             expect(isCopytriggered).toBe(true);
             rteObject.keyDown(pasteKeyBoardEventArgs);
             expect(isPasteTriggered).toBe(true);
             rteObject.keyDown(escapeKeyBoardEventArgs);
             expect(isEscapeTriggered).toBe(true);
-            done();
         });
     });
 
@@ -1990,7 +1889,7 @@ describe('Format Painter Module', () => {
                                         </tbody>
                                     </table>
                                 `
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -2003,15 +1902,13 @@ describe('Format Painter Module', () => {
                     'SourceCode', '|', 'ClearFormat', 'Print', 'InsertCode']
                 } , value: innerHTML
             });
-            done();
         });
 
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
 
-        it('CASE 1 Copy and paste the format from the td element ,', (done: Function) => {
+        it('CASE 1 Copy and paste the format from the td element ,', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -2029,7 +1926,6 @@ describe('Format Painter Module', () => {
             expect(startElement.parentElement.parentElement.parentElement.nodeName).toEqual('STRONG');
             expect(startElement.parentElement.parentElement.parentElement.parentElement.nodeName).toEqual('P');
             expect(startElement.parentElement.parentElement.parentElement.innerHTML).toEqual(`<em><span style="text-decoration: underline;"><span class="sourceformatnode" style="text-decoration: line-through;">Getting started with format painter</span></span></em>`)
-            done();
         });
     });
 
@@ -2037,7 +1933,7 @@ describe('Format Painter Module', () => {
         let rteObject : RichTextEditor ;
         const innerHTML: string = `<p><span class="important" style="color:red">Format Painter</span> Getting started with <span class="goalformatnode1">format </span> painter</p>
             `;
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -2054,13 +1950,11 @@ describe('Format Painter Module', () => {
                         deniedFormats: 'span(important)'
                     }
             });
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('Denied Format Testing Content 1 Should remove only the value in deniedFormats', (done: Function) => {
+        it('Denied Format Testing Content 1 Should remove only the value in deniedFormats', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.important');
@@ -2078,7 +1972,6 @@ describe('Format Painter Module', () => {
             startElement = startElement.childNodes[0] as HTMLElement;
             expect(rteObject.element.querySelectorAll('goalformatnode1').length).toBe(0);
             expect(rteObject.element.querySelectorAll('important').length).toBe(0);
-            done();
         });
     });
 
@@ -2086,24 +1979,19 @@ describe('Format Painter Module', () => {
         let rteObject : RichTextEditor ;
         const innerHTML: string = `<p><span class="important" style="color:red">Format Painter</span> Getting started with <span class="goalformatnode1">format </span> painter</p>
             `;
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter']
                 } , value: innerHTML 
             });
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('Destroy the format painter module', (done: Function) => {
+        it('Destroy the format painter module', () => {
             rteObject.focusIn();
             rteObject.destroy();
-            setTimeout(() => {
-                expect(rteObject.formatPainterModule.previousAction).toBeNull();
-                done();
-            }, 50);
+            expect(rteObject.formatPainterModule.previousAction).toBeNull();
         });
     });
 
@@ -2111,7 +1999,7 @@ describe('Format Painter Module', () => {
         let rteObject : RichTextEditor ;
         const innerHTML: string = `<p><span class="important" style="color:red">Format Painter</span> Getting started with <span class="goalformatnode1">format </span> painter</p>
             `;
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -2124,13 +2012,11 @@ describe('Format Painter Module', () => {
                     'SourceCode', '|', 'ClearFormat', 'Print', 'InsertCode']
                 } , value: innerHTML 
             });
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('Dynamic property change to test denied attributes', (done: Function) => {
+        it('Dynamic property change to test denied attributes', (done: DoneFn) => {
             rteObject.formatPainterSettings = {
                 allowedFormats: 'span',
                 deniedFormats: 'span(important)'
@@ -2142,17 +2028,19 @@ describe('Format Painter Module', () => {
             range.setEnd(startElement.firstChild, 1);
             rteObject.selectRange(range);
             rteObject.keyDown(copyKeyBoardEventArgs);
-            startElement = rteObject.inputElement.querySelector('.goalformatnode1');
-            range.setStart(startElement.firstChild, 0);
-            range.setEnd(startElement.firstChild, 6);
-            rteObject.selectRange(range);
-            expect(startElement.nodeName).toEqual('SPAN');
-            expect(startElement.classList.contains('goalformatnode1')).toBe(true);
-            rteObject.keyDown(pasteKeyBoardEventArgs);
-            startElement = startElement.childNodes[0] as HTMLElement;
-            expect(rteObject.element.querySelectorAll('goalformatnode1').length).toBe(0);
-            expect(rteObject.element.querySelectorAll('important').length).toBe(0);
-            done();
+            setTimeout(() => {
+                startElement = rteObject.inputElement.querySelector('.goalformatnode1');
+                range.setStart(startElement.firstChild, 0);
+                range.setEnd(startElement.firstChild, 6);
+                rteObject.selectRange(range);
+                expect(startElement.nodeName).toEqual('SPAN');
+                expect(startElement.classList.contains('goalformatnode1')).toBe(true);
+                rteObject.keyDown(pasteKeyBoardEventArgs);
+                startElement = startElement.childNodes[0] as HTMLElement;
+                expect(rteObject.element.querySelectorAll('goalformatnode1').length).toBe(0);
+                expect(rteObject.element.querySelectorAll('important').length).toBe(0);
+                done();
+            }, 10);
         });
     });
 
@@ -2163,7 +2051,7 @@ describe('Format Painter Module', () => {
         <strong class="e-text-red-bg" style="background-color: rgb(255, 0, 0);">formatting </strong> 
         of one element and apply it to another element.
         </p>`;
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -2176,13 +2064,11 @@ describe('Format Painter Module', () => {
                     'SourceCode', '|', 'ClearFormat', 'Print', 'InsertCode']
                 } , value: innerHTML 
             });
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('Test for span not getting pasted properly', (done: Function) => {
+        it('Test for span not getting pasted properly', (done: DoneFn) => {
             rteObject.formatPainterSettings = {
                 allowedFormats: 'span'
             }
@@ -2193,16 +2079,18 @@ describe('Format Painter Module', () => {
             range.setEnd(startElement.firstChild, 1);
             rteObject.selectRange(range);
             rteObject.keyDown(copyKeyBoardEventArgs);
-            startElement = rteObject.inputElement.querySelector('.e-rte-em');
-            range.setStart(startElement.firstChild, 0);
-            range.setEnd(startElement.firstChild, 4);
-            rteObject.selectRange(range);
-            expect(startElement.nodeName).toEqual('EM');
-            expect(startElement.classList.contains('e-rte-em')).toBe(true);
-            rteObject.keyDown(pasteKeyBoardEventArgs);
-            startElement = rteObject.inputElement.querySelectorAll('.e-rte-text-red')[1];
-            expect(rteObject.element.querySelectorAll('.e-rte-text-red').length).toBe(2);
-            done();
+            setTimeout(() => {
+                startElement = rteObject.inputElement.querySelector('.e-rte-em');
+                range.setStart(startElement.firstChild, 0);
+                range.setEnd(startElement.firstChild, 4);
+                rteObject.selectRange(range);
+                expect(startElement.nodeName).toEqual('EM');
+                expect(startElement.classList.contains('e-rte-em')).toBe(true);
+                rteObject.keyDown(pasteKeyBoardEventArgs);
+                startElement = rteObject.inputElement.querySelectorAll('.e-rte-text-red')[1];
+                expect(rteObject.element.querySelectorAll('.e-rte-text-red').length).toBe(2);
+                done();
+            }, 100);
         });
     });
 
@@ -2213,7 +2101,7 @@ describe('Format Painter Module', () => {
         <strong class="e-text-red-bg" style="background-color: rgb(255, 0, 0);">formatting </strong> 
         of one element and apply it to another element.
         </p>`;
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -2226,13 +2114,11 @@ describe('Format Painter Module', () => {
                     'SourceCode', '|', 'ClearFormat', 'Print', 'InsertCode']
                 } , value: innerHTML 
             });
-            done();
         });
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
-        it('Test for span not getting pasted properly', (done: Function) => {
+        it('Test for span not getting pasted properly', (done: DoneFn) => {
             rteObject.formatPainterSettings = {
                 allowedFormats: 'span;strong;'
             }
@@ -2243,16 +2129,18 @@ describe('Format Painter Module', () => {
             range.setEnd(startElement.firstChild, 1);
             rteObject.selectRange(range);
             rteObject.keyDown(copyKeyBoardEventArgs);
-            startElement = rteObject.inputElement.querySelector('.e-rte-em');
-            range.setStart(startElement.firstChild, 0);
-            range.setEnd(startElement.firstChild, 4);
-            rteObject.selectRange(range);
-            expect(startElement.nodeName).toEqual('EM');
-            expect(startElement.classList.contains('e-rte-em')).toBe(true);
-            rteObject.keyDown(pasteKeyBoardEventArgs);
-            startElement = rteObject.inputElement.querySelectorAll('.e-rte-text-red')[1];
-            expect(startElement.querySelectorAll('strong').length).toBe(1);
-            done();
+            setTimeout(() => {
+                startElement = rteObject.inputElement.querySelector('.e-rte-em');
+                range.setStart(startElement.firstChild, 0);
+                range.setEnd(startElement.firstChild, 4);
+                rteObject.selectRange(range);
+                expect(startElement.nodeName).toEqual('EM');
+                expect(startElement.classList.contains('e-rte-em')).toBe(true);
+                rteObject.keyDown(pasteKeyBoardEventArgs);
+                startElement = rteObject.inputElement.querySelectorAll('.e-rte-text-red')[1];
+                expect(startElement.querySelectorAll('strong').length).toBe(1);
+                done();
+            }, 100);
         });
     });
 
@@ -2282,7 +2170,7 @@ describe('Format Painter Module', () => {
                                             <p class="sourceParentNode"><a class="e-rte-anchor sourceformatnode" href="https://dev.azure.com/EssentialStudio/Ej2-Web/_workitems/edit/830370" title="https://dev.azure.com/EssentialStudio/Ej2-Web/_workitems/edit/830370" target="_blank">https://dev.azure.com/EssentialStudio/Ej2-Web/_workitems/edit/830370 </a>- (CR Issue</p>
                                         </li>
                                     </ul>`
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -2295,15 +2183,13 @@ describe('Format Painter Module', () => {
                     'SourceCode', '|', 'ClearFormat', 'Print', 'InsertCode']
                 } , value: innerHTML
             });
-            done();
         });
 
-        afterEach( (done: DoneFn) => {
+        afterEach( () => {
             destroy(rteObject);
-            done();
         });
 
-        it('Test for content not getting deleted after the format paste action.', (done: Function) => {
+        it('Test for content not getting deleted after the format paste action.', () => {
             rteObject.focusIn();
             let range = new Range();
             let startElement = rteObject.inputElement.querySelector('.sourceformatnode');
@@ -2323,7 +2209,6 @@ describe('Format Painter Module', () => {
             expect(startElement.nodeName).toEqual('P');
             expect(startElement.classList.contains('sourceParentNode')).toBe(true);
             expect(startElement.textContent).toEqual('Engineer name');
-            done();
         });
     });
 
@@ -2510,10 +2395,9 @@ describe('Format Painter Module', () => {
             destroy(rteObj);
             Browser.userAgent = defaultUA;
         });
-        it(' To check correct shortcut key is displayed in tooltip for format painter in safari', (done: Function) => {
+        it(' To check correct shortcut key is displayed in tooltip for format painter in safari', () => {
             const title = document.querySelector('.e-toolbar-item.e-tbtn-align').getAttribute('title');
-            expect(title === 'Format Painter (Alt+Shift+C, Alt+Shift+V)' || title === 'Format Painter (⌥⇧C,  ⌥⇧V)').toBe(true);
-            done();
+            expect(title === 'Format Painter (Alt+Shift+C, Alt+Shift+V)' || title === 'Format Painter (⌥ ⇧ C,  ⌥ ⇧ V)').toBe(true);
         });
     });
 
@@ -2542,7 +2426,7 @@ describe('Format Painter Module', () => {
         to <span style="background-color: rgb(198, 140, 83);"><strong>multiple sections</strong></span>. 
         It's a helpful tool for anyone who works with text editing regularly, such as writers, editors, and content creators.
     </p>`
-        beforeEach( (done: Function) => {
+        beforeEach( () => {
             rteObject = renderRTE({
                 toolbarSettings : { items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
                     'Bold', 'Italic', 'Underline', 'StrikeThrough', '|',
@@ -2555,7 +2439,6 @@ describe('Format Painter Module', () => {
                     'SourceCode', '|', 'ClearFormat', 'Print', 'InsertCode']
                 } , value: innerHTML
             });
-            done();
         });
 
         afterEach( () => {
@@ -2578,17 +2461,19 @@ describe('Format Painter Module', () => {
             expect(goalParentNode.childNodes[1].nodeName).toEqual('SPAN');
             expect(goalParentNode.childNodes[1].textContent.charCodeAt(0)).toEqual(160);
             rteObject.keyDown(pasteKeyBoardEventArgs);
-            startElement = rteObject.inputElement.querySelectorAll('.sourceformatnode')[1];
-            expect(startElement.childNodes[1].nodeName).toEqual('SPAN');
-            expect(startElement.childNodes[1].textContent.charCodeAt(0)).toEqual(160);
-            done();
+            setTimeout(() => {
+                startElement = rteObject.inputElement.querySelectorAll('.sourceformatnode')[1];
+                expect(startElement.childNodes[1].nodeName).toEqual('SPAN');
+                expect(startElement.childNodes[1].textContent.charCodeAt(0)).toEqual(160);
+                done();
+            }, 100);
         });
     });
     describe('Bug 908187: Format painer when the action Begin args cancel argument set to true', () => {
         let rteObject: RichTextEditor;
         let toolbarELem: HTMLElement;
         const innerHTML: string = '<p>Getting started with format painter</p>';
-        beforeEach((done: Function) => {
+        beforeEach(() => {
             rteObject = renderRTE({
                 toolbarSettings: {
                     items: ['FormatPainter', 'ClearFormat', 'Undo', 'Redo', '|',
@@ -2610,11 +2495,9 @@ describe('Format Painter Module', () => {
             });
             toolbarELem = document.body.querySelector('.e-rte-format-painter');
             editAreaClickArgs.args.target = rteObject.element.querySelector('.e-content');
-            done();
         });
-        afterEach((done: DoneFn) => {
+        afterEach(() => {
             destroy(rteObject);
-            done();
         });
 
         it('Should not update cursor or toolbar button when action is canceled', (done: Function) => {
@@ -2752,10 +2635,9 @@ describe('Format Painter Module', () => {
             });
             rteEle = rteObj.element;
         });
-        afterAll((done) => {
+        afterAll(() => {
             console.error = originalConsoleError;
             destroy(rteObj);
-            done();
         });
         it('Should not throw error when refreshing after dynamic localization change', (done) => {
             rteObj.locale = 'de-DE';
@@ -2770,18 +2652,16 @@ describe('Format Painter Module', () => {
     describe('965886 - Undo Not Working After Pressing ESC Key Following Format Painter Use', () => {
         let rteObject: RichTextEditor;
         const innerHTML: string = '<p><strong>Bold text</strong> and normal text</p>';
-        beforeEach((done: Function) => {
+        beforeEach(() => {
             rteObject = renderRTE({
                 toolbarSettings: { 
                     items: ['FormatPainter', 'Bold', 'Italic', 'Undo', 'Redo']
                 }, 
                 value: innerHTML
             });
-            done();
         });
-        afterEach((done: DoneFn) => {
+        afterEach(() => {
             destroy(rteObject);
-            done();
         });
         it('Should undo format application when pressing Ctrl+Z after ESC key', (done: Function) => {
             rteObject.focusIn();
@@ -2822,7 +2702,7 @@ describe('Format Painter Module', () => {
         <strong style="color: red;">Bold Red Text</strong><br/>
         <strong style="color: red;" class="e-rte-strong-bg">Bold Red Text with Denied Class</strong>
         <p>Target1</p><p>Target2</p>`;
-        beforeEach((done: Function) => {
+        beforeEach(() => {
             rteObject = renderRTE({
                 value: innerHTML,
                 formatPainterSettings: {
@@ -2833,11 +2713,9 @@ describe('Format Painter Module', () => {
                     items: ['FormatPainter', 'ClearFormat']
                 }
             });
-            done();
         });
-        afterEach((done: Function) => {
+        afterEach(() => {
             destroy(rteObject);
-            done();
         });
         it('Should apply all styles if denied class is not present', (done: Function) => {
             rteObject.focusIn();
@@ -2850,10 +2728,12 @@ describe('Format Painter Module', () => {
             const targetElement = rteObject.inputElement.querySelectorAll('p')[0];
             domSelection.setSelectionText(document, targetElement.childNodes[0], targetElement.childNodes[0], 0, 1);
             rteObject.keyDown(pasteKeyBoardEventArgs);
-            const pastedStrong = targetElement.querySelector('strong');
-            expect(pastedStrong).not.toBeNull();
-            expect(pastedStrong.style.color).toBe('red');
-            done();
+            setTimeout(() => {
+                const pastedStrong = targetElement.querySelector('strong');
+                expect(pastedStrong).not.toBeNull();
+                expect(pastedStrong.style.color).toBe('red');
+                done();
+            }, 100);
         });
     });
 });

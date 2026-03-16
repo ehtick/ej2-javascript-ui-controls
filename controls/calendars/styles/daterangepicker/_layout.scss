@@ -22,6 +22,9 @@
   }
 
   #{&}.e-daterangepicker {
+    @if $skin-name == 'material' or $skin-name == 'material-dark' or $skin-name == 'Material3' {
+      --dummy-style: true;
+    }
     #{if(&, '&', '*')}.e-popup {
       border: $range-popup-border;
       border-radius: $range-popup-border-radius;

@@ -88,7 +88,7 @@ $ddl-auto-height: auto !default;
 $ddl-full-height: 100% !default;
 $ddl-full-width: 100% !default;
 $popup-multi-select-font-size: 500;
-$ddl-bgr-dropbase-list-icon-item-padding: 0 12px 0 0 !default;
+$ddl-bgr-dropbase-list-icon-item-padding: 12px !default;
 
 // Small Size color
 $ddl-small-list-font-color: $content-text-color !default;
@@ -111,10 +111,10 @@ $ddl-bigger-small-list-font-color: $content-text-color !default;
   }
 
   .e-dropdownbase .e-list-item .e-list-icon {
-    padding: 0 8px 0 0;
+    padding-inline-end: 8px;
   }
 
   .e-small .e-dropdownbase .e-list-item .e-list-icon {
-    padding: 0 6px 0 0;
+    padding-inline-end: 6px;
   }
 }

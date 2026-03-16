@@ -2040,4 +2040,25 @@ describe('Input Groups - Enable/Disable', () => {
             element.remove();
         });
     });
+    describe('setPlaceholder for modules with float-text-content but no child', () => {
+        let element: HTMLInputElement;
+        let parent: HTMLElement;
+        beforeAll(() => {
+            element = <HTMLInputElement>createElement('input', { id: 'inputpopup', attrs: { value: '' } });
+            parent = <HTMLElement>createElement('div', { className: 'e-float-input e-input-group' });
+            const floatTextContent: HTMLElement = <HTMLElement>createElement('span', { className: 'e-float-text-content' });
+            parent.appendChild(element);
+            parent.appendChild(floatTextContent);
+            document.body.appendChild(parent);
+            // moduleName 'textbox' is in the modules list in Input.setPlaceholder
+            Input.setPlaceholder('ModulePlaceholder', element, 'textbox');
+        });
+        it('should set floatTextContent.textContent when no child present and module is supported', () => {
+            const floatTextContent: Element = parent.getElementsByClassName('e-float-text-content')[0];
+            expect((<HTMLElement>floatTextContent).textContent).toBe('ModulePlaceholder');
+        });
+        afterAll(() => {
+            parent.remove();
+        });
+    });
 });

@@ -93,6 +93,11 @@ export class Edit {
         if (this.formulaErrorStrings) { this.formulaErrorStrings = []; }
         if (this.editCellData) { this.editCellData = {}; }
         if (this.keyCodes) { this.keyCodes = {}; }
+        this.isCellEdit = null;
+        this.isAltEnter = null;
+        this.isEdit = null;
+        this.isNewValueEdit = null;
+        this.isSpill = null;
         this.parent = null;
     }
 
@@ -267,7 +272,7 @@ export class Edit {
         const cell: CellModel = getCell(actCell[0], actCell[1], sheet, false, true);
         const isKeyboardShortcut: boolean = this.parent.enableKeyboardShortcut;
         if (!closest(trgtElem, '.e-spreadsheet .e-dialog')) {
-            if (!sheet.isProtected || trgtElem.classList.contains('e-sheet-rename') || !isLocked(cell, getColumn(sheet, actCell[1])) || ((trgtElem.classList.contains('e-formula-bar') || trgtElem.classList.contains('e-combobox')) && !(trgtElem as HTMLTextAreaElement).disabled)) {
+            if (!sheet.isProtected || trgtElem.classList.contains('e-sheet-rename') || !isLocked(cell, getColumn(sheet, actCell[1])) || ((trgtElem.classList.contains('e-formula-bar') || trgtElem.classList.contains('e-combobox') || trgtElem.classList.contains('e-comment-input')) && !(trgtElem as HTMLTextAreaElement).disabled)) {
                 if (this.isEdit) {
                     const editorElem: HTMLElement = this.getEditElement(sheet);
                     const isFormulaEdit: boolean = checkIsFormula(this.editCellData.value, true);

@@ -1,7 +1,7 @@
-import { ExcelImage } from '../../common/base/interface';
+import { ExcelImage, ExcelHeaderQueryCellInfoEventArgs, ExcelQueryCellInfoEventArgs } from '../../common/base/interface';
 import { PivotView } from '../base/pivotview';
-import { extend, isNullOrUndefined } from '@syncfusion/ej2-base';
-import { ExcelHeaderQueryCellInfoEventArgs, ExcelQueryCellInfoEventArgs, ExcelStyle, ExcelTheme } from '@syncfusion/ej2-grids';
+import { extend } from '@syncfusion/ej2-base';
+import {ExcelStyle, ExcelTheme } from '@syncfusion/ej2-grids';
 
 /**
  * `ExcelExportHelper` module is used to add theme styles in Excel document.
@@ -88,7 +88,8 @@ export class ExcelExportHelper {
     ): number {
         const excelImage: ExcelImage = {
             image: args.image.base64, row: rowIndex, column: colIndex + 1,
-            lastRow: rowIndex, lastColumn: colIndex + 1
+            lastRow: rowIndex, lastColumn: colIndex + 1, firstRowOffset: args.image.firstRowOffset,
+            firstColumnOffset: args.image.firstColumnOffset
         };
         if (args.image.width && args.image.height) {
             excelImage.width = args.image.width;

@@ -63,6 +63,9 @@ $ddl-nodata-font-color: $content-text-color !default;
 $ddl-list-default-font-color: $flyout-text-color !default;
 $ddl-list-active-border-color: $content-bg-color !default;
 $mention-popup-bg-color: $content-bg-color !default;
+$mention-popup-border: 1px solid $flyout-border !default;
+$mention-popup-border-radius: $radius-6;
+$mention-popup-padding: 4px 0;
 $ddl-list-active-font-color: $flyout-text-color-selected !default;
 $mention-active-font-color: $primary !default;
 $ddl-list-active-bg-color: $flyout-bg-color-selected !default;
@@ -110,10 +113,10 @@ $ddl-full-width: 100% !default;
   }
 
   .e-dropdownbase .e-list-item .e-list-icon {
-    padding: 0 8px 0 0;
+    padding-inline-end: 8px;
   }
 
   .e-small .e-dropdownbase .e-list-item .e-list-icon {
-    padding: 0 6px 0 0;
+    padding-inline-end: 6px;
   }
 }

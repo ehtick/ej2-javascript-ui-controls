@@ -25,7 +25,7 @@ export class Link {
     private i10n: L10n;
     private parent: IRichTextEditor;
     public contentModule: IRenderer;
-    private dialogObj: Dialog;
+    public dialogObj: Dialog;
     private checkBoxObj: CheckBox;
     public serviceLocator: ServiceLocator;
     private rendererFactory: RendererFactory;
@@ -193,11 +193,13 @@ export class Link {
         const args: MouseEvent = e.args as MouseEvent;
         const showOnRightClick: boolean = this.parent.quickToolbarSettings.showOnRightClick;
         const ismacRightClick: boolean = this.parent.userAgentData.isSafari() && args.which === 3;
+        if (this.parent.quickToolbarModule && this.parent.quickToolbarModule.linkQTBar) {
+            this.quickToolObj = this.parent.quickToolbarModule;
+        }
         if (args.which === 2 || (showOnRightClick && args.which === 1) || (!showOnRightClick && args.which === 3)) {
             return;
         }
         if (this.parent.editorMode === 'HTML' && this.parent.quickToolbarModule && this.parent.quickToolbarModule.linkQTBar) {
-            this.quickToolObj = this.parent.quickToolbarModule;
             let target: HTMLElement = args.target as HTMLElement;
             const isTargetDocument: boolean = target && ((target as HTMLElement).nodeName === 'HTML' || (target as HTMLElement).nodeName === '#document');
             const isTargetNotRteElements: boolean = !(target && (target as HTMLElement).nodeName !== '#text' &&

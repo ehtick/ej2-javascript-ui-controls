@@ -2604,7 +2604,9 @@ export enum RealAction {
     /** Indicate action in Progress */
     PanInProgress = 1 << 8,
     /** Indicate overview action  */
-    OverViewAction = 1 << 9
+    OverViewAction = 1 << 9,
+    /** Prevents creating a history entry when applying remote (collaboration) diagram changes.  */
+    PreventHistoryEntryForCollaboration = 1 << 10
 }
 
 /** @private */

@@ -1003,4 +1003,170 @@ describe('Chart Control', () => {
             chartObj.refresh();
         });
     });
+
+    describe('testing linear gradient support in charts', () => {
+        let chartObj: Chart;
+        let ele: HTMLElement;
+        let loaded: EmitType<ILoadedEventArgs>;
+        let chartElement: HTMLElement;
+        let chartData: any[] = [
+            { x: 1900, y: 4 }, { x: 1920, y: 3.0 }, { x: 1940, y: 3.8 },
+            { x: 1960, y: 3.4 }, { x: 1980, y: 3.2 }, { x: 2000, y: 3.9 }
+        ];
+        beforeAll((): void => {
+            ele = createElement('div', { id: 'container' });
+            document.body.appendChild(ele);
+            chartObj = new Chart({
+                primaryXAxis: {
+                    title: 'Year',
+                    minimum: 1900, maximum: 2000, interval: 10,
+                    edgeLabelPlacement: 'Shift'
+                },
+                primaryYAxis: {
+                    minimum: 2, maximum: 5, interval: 0.5,
+                    title: 'Sales Amount in Millions'
+                },
+                series: [{
+                    dataSource: chartData,
+                    xName: 'x', yName: 'y',
+                    opacity: 0.5, fill: '#69D2E7',
+                    name: 'Product A',
+                    // Series type as area series
+                    type: 'Area', animation: { enable: false },
+                    marker: { visible: true },
+                    linearGradient: {
+                        x1: 0, y1: 0,
+                        x2: 0, y2: 1,
+                        gradientColorStop: [
+                            { offset: 0, color: '#FF0000', opacity: 1, lighten: 0.3, brighten: 0.2 },
+                            { offset: 50, color: '#FF6B00', opacity: 0.9, lighten: 0.1, brighten: 0 },
+                            { offset: 100, color: '#0000FF', opacity: 1, lighten: 1, brighten: 1 }
+                        ]
+                    }
+                }],
+                tooltip: {
+                    enable: true,
+                    format: '${series.name} ${point.x} : ${point.y}',
+                    fill: '#7bb4eb',
+                    border: {
+                        width: 2,
+                        color: 'grey'
+                    }
+                },
+                title: 'Average Sales Comparison'
+            }, '#container');
+        });
+        afterAll((): void => {
+            chartObj.destroy();
+            ele.remove();
+        });
+        it('checking linear gardient for charts', (done: Function) => {
+            loaded = (args: Object): void => {
+                chartElement = document.getElementById('container_Series_0');
+                expect(chartElement.getAttribute('fill') == 'url(#container_series_0_linear_gradient)').toBe(true);
+                chartElement = document.getElementById('container_series_0_linear_gradient');
+                expect(chartElement.getAttribute('x1') == '0').toBe(true);
+                expect(chartElement.getAttribute('y1') == '0').toBe(true);
+                expect(chartElement.getAttribute('x2') == '0').toBe(true);
+                expect(chartElement.getAttribute('y2') == '1').toBe(true);
+                done();
+            };
+            chartObj.loaded = loaded;
+            chartObj.refresh();
+        });
+        it('checking linear gradient with different colors', (done: Function) => {
+            loaded = (args: Object): void => {
+                chartElement = document.getElementById('container_series_0_linear_gradient');
+                expect(chartElement.childElementCount).toBe(3);
+                done();
+            };
+            chartObj.loaded = loaded;
+            chartObj.series[0].linearGradient.gradientColorStop[0].color = '#1d2';
+            chartObj.series[0].linearGradient.gradientColorStop[1].color = 'red';
+            chartObj.series[0].linearGradient.gradientColorStop[2].color = '#5da';
+            chartObj.refresh();
+        });
+    });
+    describe('testing radial gradient support in charts', () => {
+        let chartObj: Chart;
+        let ele: HTMLElement;
+        let loaded: EmitType<ILoadedEventArgs>;
+        let chartElement: HTMLElement;
+        let chartData: any[] = [
+            { x: 1900, y: 4 }, { x: 1920, y: 3.0 }, { x: 1940, y: 3.8 },
+            { x: 1960, y: 3.4 }, { x: 1980, y: 3.2 }, { x: 2000, y: 3.9 }
+        ];
+        beforeAll((): void => {
+            ele = createElement('div', { id: 'container' });
+            document.body.appendChild(ele);
+            chartObj = new Chart({
+                primaryXAxis: {
+                    title: 'Year',
+                    minimum: 1900, maximum: 2000, interval: 10,
+                    edgeLabelPlacement: 'Shift'
+                },
+                primaryYAxis: {
+                    minimum: 2, maximum: 5, interval: 0.5,
+                    title: 'Sales Amount in Millions'
+                },
+                series: [{
+                    dataSource: chartData,
+                    xName: 'x', yName: 'y',
+                    opacity: 0.5, fill: '#69D2E7',
+                    name: 'Product A',
+                    // Series type as area series
+                    type: 'Area', animation: { enable: false },
+                    marker: { visible: true },
+                    radialGradient: {
+                        cx: 0.5, cy: 0.5,
+                        r: 0.5,
+                        gradientColorStop: [
+                            { offset: 0, color: '#FF0000', opacity: 1, lighten: 0.3, brighten: 0.2 },
+                            { offset: 50, color: '#FF6B00', opacity: 0.9, lighten: 0.1, brighten: 0 },
+                            { offset: 100, color: '#0000FF', opacity: 1, lighten: 1, brighten: 1 }
+                        ]
+                    }
+                }],
+                tooltip: {
+                    enable: true,
+                    format: '${series.name} ${point.x} : ${point.y}',
+                    fill: '#7bb4eb',
+                    border: {
+                        width: 2,
+                        color: 'grey'
+                    }
+                },
+                title: 'Average Sales Comparison'
+            }, '#container');
+        });
+        afterAll((): void => {
+            chartObj.destroy();
+            ele.remove();
+        });
+        it('checking radial gradient for charts', (done: Function) => {
+            loaded = (args: Object): void => {
+                chartElement = document.getElementById('container_Series_0');
+                expect(chartElement.getAttribute('fill') == 'url(#container_series_0_radial_gradient)').toBe(true);
+                chartElement = document.getElementById('container_series_0_radial_gradient');
+                expect(chartElement.getAttribute('cx') == '0.5').toBe(true);
+                expect(chartElement.getAttribute('cy') == '0.5').toBe(true);
+                expect(chartElement.getAttribute('r') == '0.5').toBe(true);
+                done();
+            };
+            chartObj.loaded = loaded;
+            chartObj.refresh();
+        });
+        it('checking radial gradient with different colors', (done: Function) => {
+            loaded = (args: Object): void => {
+                chartElement = document.getElementById('container_series_0_radial_gradient');
+                expect(chartElement.childElementCount).toBe(3);
+                done();
+            };
+            chartObj.loaded = loaded;
+            chartObj.series[0].radialGradient.gradientColorStop[0].color = '#1d2';
+            chartObj.series[0].radialGradient.gradientColorStop[1].color = 'red';
+            chartObj.series[0].radialGradient.gradientColorStop[2].color = '#5da';
+            chartObj.refresh();
+        });
+    });
 }); 

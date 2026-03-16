@@ -4,7 +4,7 @@ import { MenuEventArgs } from '@syncfusion/ej2-navigations';
 import { BaseChildrenProp, BlockActionItemModel, BlockModel } from '../../../models/index';
 import { getBlockIndexById, getBlockModelById, isListTypeBlock } from '../../../common/utils/block';
 import { IPopupRenderOptions, BlockPositionInfo, BlockActionMenuCloseEventProps, BlockActionMenuOpenEventProps } from '../../../common/interface';
-import { BlockActionMenuOpeningEventArgs, BlockActionMenuClosingEventArgs } from '../../../models/eventargs';
+import { BlockActionMenuBeforeOpenEventArgs, BlockActionMenuBeforeCloseEventArgs } from '../../../models/eventargs';
 import { events } from '../../../common/constant';
 import { getNormalizedKey } from '../../../common/utils/common';
 import * as constants from '../../../common/constant';
@@ -19,7 +19,7 @@ export class BlockActionMenuModule {
     private parent: BlockManager;
     private isPopupOpened: boolean = false;
     public popupObj: Popup;
-    private menuWrapperElement: HTMLUListElement;
+    private menuWrapperElement: HTMLElement;
     private shortcutMap: Map<string, BlockActionItemModel> = new Map();
 
     constructor(manager: BlockManager) {
@@ -52,9 +52,10 @@ export class BlockActionMenuModule {
     }
 
     private init(): void {
-        const popupElement: HTMLElement = this.parent.rootEditorElement.querySelector('#' + this.parent.rootEditorElement.id + constants.BLOCKACTION_POPUP_ID);
+        const popupElement: HTMLElement = document.querySelector(`#${this.parent.rootEditorElement.id + constants.BLOCKACTION_POPUP_ID}`);
 
         const args: IPopupRenderOptions = {
+            relateTo: this.parent.rootEditorElement,
             element: popupElement,
             content: this.menuWrapperElement,
             width: this.parent.blockActionMenuSettings.popupWidth,
@@ -78,7 +79,7 @@ export class BlockActionMenuModule {
         const actionItem: BlockActionItemModel = this.shortcutMap.get(normalizedKey);
         if (actionItem) {
             e.preventDefault();
-            this.handleBlockActions(actionItem, this.parent.currentFocusedBlock, e);
+            this.handleBlockActions(actionItem, this.parent.currentHoveredBlock, e);
         }
     }
 
@@ -102,8 +103,9 @@ export class BlockActionMenuModule {
                     event: e,
                     items: this.parent.blockActionMenuSettings.items,
                     cancel: false,
-                    callback: (args: BlockActionMenuClosingEventArgs) => {
+                    callback: (args: BlockActionMenuBeforeCloseEventArgs) => {
                         if (args.cancel) { return; }
+                        this.parent.selectionOverlay.clearSelectionOverlay();
                         this.popupObj.hide();
                         this.isPopupOpened = false;
                     }
@@ -115,7 +117,7 @@ export class BlockActionMenuModule {
                     event: e,
                     items: this.parent.blockActionMenuSettings.items,
                     cancel: false,
-                    callback: (args: BlockActionMenuOpeningEventArgs) => {
+                    callback: (args: BlockActionMenuBeforeOpenEventArgs) => {
                         if (args.cancel) { return; }
                         this.toggleDisabledItems(this.parent.currentHoveredBlock);
                         this.popupObj.show();

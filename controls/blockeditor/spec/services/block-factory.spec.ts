@@ -1,9 +1,6 @@
 import { BlockFactory } from '../../src/block-manager/services/block-factory';
 import { BlockType, ContentType } from '../../src/models/enums';
-import { SaveFormat } from '../../src/models/types';
-
 import {
-    BaseStylesProp,
     BlockModel,
     IBulletListBlockSettings,
     ICalloutBlockSettings,
@@ -35,7 +32,10 @@ describe('BlockFactory', () => {
             expect(block).not.toBeNull();
             expect(block.blockType).toBe(BlockType.Paragraph);
             expect(block.id).toContain(constants.BLOCK_ID_PREFIX);
-            expect(block.content).toEqual([]);
+            expect(block.blockType).toBe(BlockType.Paragraph);
+            expect(block.content.length).toBe(1);
+            expect(block.content[0].content).toBe('');
+            expect(block.content[0].contentType).toBe(ContentType.Text);
             expect(block.indent).toBe(0);
             expect(block.parentId).toBe('');
             expect(block.cssClass).toBe('');
@@ -48,7 +48,7 @@ describe('BlockFactory', () => {
                 blockType: BlockType.Paragraph,
                 indent: 2,
                 cssClass: 'custom-class',
-                content: [{ id: 'content-id', contentType: ContentType.Text, content: 'Sample content' }],
+                content: [{ contentType: ContentType.Text, content: 'Sample content' }],
                 properties: { placeholder: 'Type something...' }
             });
 
@@ -144,7 +144,7 @@ describe('BlockFactory', () => {
             });
 
             expect(block.blockType).toBe(BlockType.Code);
-            expect((block.properties as ICodeBlockSettings).language).toBe('javascript');
+            expect((block.properties as ICodeBlockSettings).language).toBe('plaintext');
         });
 
         it('should create a quote block with default values', () => {
@@ -153,7 +153,14 @@ describe('BlockFactory', () => {
             });
 
             expect(block.blockType).toBe(BlockType.Quote);
-            expect((block.properties as IQuoteBlockSettings).placeholder).toBe('');
+            expect((block.properties as IQuoteBlockSettings).children).not.toEqual([]);
+            // create default paragraph block as its children
+            const childProps = (block.properties as IQuoteBlockSettings).children;
+            expect(childProps.length).toBe(1);
+            expect(childProps[0].parentId).toBe(block.id);
+            expect(childProps[0].blockType).toBe(BlockType.Paragraph);
+            expect(childProps[0].content.length).toBe(1);
+            expect(childProps[0].content[0].contentType).toBe(ContentType.Text);
         });
 
         it('should create a quote block with custom placeholder', () => {
@@ -186,7 +193,7 @@ describe('BlockFactory', () => {
             const childBlock: BlockModel = {
                 id: 'child-block',
                 blockType: BlockType.Paragraph,
-                content: [{ id: 'child-content', contentType: ContentType.Text, content: 'Child content' }],
+                content: [{ contentType: ContentType.Text, content: 'Child content' }],
                 parentId: 'parent-id'
             };
 
@@ -234,7 +241,7 @@ describe('BlockFactory', () => {
             const childBlock: BlockModel = {
                 id: 'child-block',
                 blockType: BlockType.Paragraph,
-                content: [{ id: 'child-content', contentType: ContentType.Text, content: 'Child content' }],
+                content: [{ contentType: ContentType.Text, content: 'Child content' }],
                 parentId: 'parent-id'
             };
 
@@ -276,7 +283,7 @@ describe('BlockFactory', () => {
             const childBlock: BlockModel = {
                 id: 'child-block',
                 blockType: BlockType.Paragraph,
-                content: [{ id: 'child-content', contentType: ContentType.Text, content: 'Child content' }],
+                content: [{ contentType: ContentType.Text, content: 'Child content' }],
                 parentId: 'parent-id'
             };
 
@@ -402,7 +409,10 @@ describe('BlockFactory', () => {
             expect(block).not.toBeNull();
             expect(block.blockType).toBe(BlockType.Paragraph);
             expect(block.id).toContain(constants.BLOCK_ID_PREFIX);
-            expect(block.content).toEqual([]);
+            expect(block.blockType).toBe(BlockType.Paragraph);
+            expect(block.content.length).toBe(1);
+            expect(block.content[0].content).toBe('');
+            expect(block.content[0].contentType).toBe(ContentType.Text);
             expect(block.indent).toBe(0);
             expect(block.parentId).toBe('');
             expect(block.cssClass).toBe('');
@@ -465,7 +475,7 @@ describe('BlockFactory', () => {
             const grandChildBlock: BlockModel = {
                 id: 'grandchild-paragraph',
                 blockType: BlockType.Paragraph,
-                content: [{ id: 'grandchild-content', contentType: ContentType.Text, content: 'Grandchild text' }],
+                content: [{ contentType: ContentType.Text, content: 'Grandchild text' }],
                 parentId: 'child-callout' // This will be overridden by the factory if it propagates
             };
 
@@ -573,16 +583,18 @@ describe('BlockFactory', () => {
         });
 
         it('should ignore array props and use default properties for a block', () => {
-             // @ts-ignore: Intentionally testing invalid 'props' type
             const block = BlockFactory.createBlockFromPartial({
                 blockType: BlockType.Quote,
-                properties: ['array', 'of', 'props']
+                properties: {
+                    children: [] // Explicitly provided empty array
+                }
             });
 
             expect(block).not.toBeNull();
             expect(block.blockType).toBe(BlockType.Quote);
-            // Expect default placeholder as the invalid array props should be ignored
-            expect((block.properties as IQuoteBlockSettings).placeholder).toBe('');
+            // Assert that the children array is truly empty
+            expect((block.properties as IQuoteBlockSettings).children).toEqual([]);
+            expect((block.properties as IQuoteBlockSettings).children.length).toBe(0);
         });
     });
 
@@ -593,14 +605,12 @@ describe('BlockFactory', () => {
             });
 
             expect(content.contentType).toBe(ContentType.Text);
-            expect(content.id).toContain(constants.CONTENT_ID_PREFIX);
             expect(content.content).toBe('');
             expect((content.properties as ITextContentSettings).styles).toEqual({});
         });
 
         it('should create text content with custom values', () => {
             const content = BlockFactory.createContentFromPartial({
-                id: 'custom-content-id',
                 contentType: ContentType.Text,
                 content: 'Sample text',
                 properties: {
@@ -612,7 +622,6 @@ describe('BlockFactory', () => {
                 }
             });
 
-            expect(content.id).toBe('custom-content-id');
             expect(content.contentType).toBe(ContentType.Text);
             expect(content.content).toBe('Sample text');
             expect((content.properties as ITextContentSettings).styles.bold).toBe(true);
@@ -702,7 +711,6 @@ describe('BlockFactory', () => {
 
         it('should return null when the type property is missing from the partial content', () => {
             const content = BlockFactory.createContentFromPartial({
-                id: 'no-type-content-id',
                 content: 'Some text'
             });
             expect(content).toBeNull();
@@ -710,7 +718,6 @@ describe('BlockFactory', () => {
 
         it('should return null when the type property is null in the partial content', () => {
             const content = BlockFactory.createContentFromPartial({
-                id: 'null-type-content-id',
                 contentType: null,
                 content: 'Some text'
             });
@@ -1028,7 +1035,10 @@ describe('BlockFactory', () => {
             expect(block).not.toBeNull();
             expect(block.blockType).toBe(BlockType.Paragraph);
             expect(block.id).toContain(constants.BLOCK_ID_PREFIX);
-            expect(block.content).toEqual([]);
+            expect(block.blockType).toBe(BlockType.Paragraph);
+            expect(block.content.length).toBe(1);
+            expect(block.content[0].content).toBe('');
+            expect(block.content[0].contentType).toBe(ContentType.Text);
             expect(block.indent).toBe(0);
             expect(block.parentId).toBe('');
             expect(block.cssClass).toBe('');
@@ -1042,7 +1052,9 @@ describe('BlockFactory', () => {
             expect(block).not.toBeNull();
             expect(block.blockType).toBe(BlockType.Heading);
             expect(block.id).toContain(constants.BLOCK_ID_PREFIX);
-            expect(block.content).toEqual([]);
+            expect(block.content.length).toBe(1);
+            expect(block.content[0].content).toBe('');
+            expect(block.content[0].contentType).toBe(ContentType.Text);
             expect((block.properties as IHeadingBlockSettings).level).toBe(1);
             expect((block.properties as IHeadingBlockSettings).placeholder).toBe('');
         });
@@ -1053,7 +1065,9 @@ describe('BlockFactory', () => {
             expect(block).not.toBeNull();
             expect(block.blockType).toBe(BlockType.Checklist);
             expect(block.id).toContain(constants.BLOCK_ID_PREFIX);
-            expect(block.content).toEqual([]);
+            expect(block.content.length).toBe(1);
+            expect(block.content[0].content).toBe('');
+            expect(block.content[0].contentType).toBe(ContentType.Text);
             expect((block.properties as IChecklistBlockSettings).isChecked).toBe(false);
             expect((block.properties as IChecklistBlockSettings).placeholder).toBe('');
         });
@@ -1064,7 +1078,9 @@ describe('BlockFactory', () => {
             expect(block).not.toBeNull();
             expect(block.blockType).toBe(BlockType.BulletList);
             expect(block.id).toContain(constants.BLOCK_ID_PREFIX);
-            expect(block.content).toEqual([]);
+            expect(block.content.length).toBe(1);
+            expect(block.content[0].content).toBe('');
+            expect(block.content[0].contentType).toBe(ContentType.Text);
             expect((block.properties as IBulletListBlockSettings).placeholder).toBe('');
         });
 
@@ -1074,7 +1090,9 @@ describe('BlockFactory', () => {
             expect(block).not.toBeNull();
             expect(block.blockType).toBe(BlockType.NumberedList);
             expect(block.id).toContain(constants.BLOCK_ID_PREFIX);
-            expect(block.content).toEqual([]);
+            expect(block.content.length).toBe(1);
+            expect(block.content[0].content).toBe('');
+            expect(block.content[0].contentType).toBe(ContentType.Text);
             expect((block.properties as INumberedListBlockSettings).placeholder).toBe('');
         });
 
@@ -1084,8 +1102,10 @@ describe('BlockFactory', () => {
             expect(block).not.toBeNull();
             expect(block.blockType).toBe(BlockType.Code);
             expect(block.id).toContain(constants.BLOCK_ID_PREFIX);
-            expect(block.content).toEqual([]);
-            expect((block.properties as ICodeBlockSettings).language).toBe('javascript');
+            expect(block.content.length).toBe(1);
+            expect(block.content[0].content).toBe('');
+            expect(block.content[0].contentType).toBe(ContentType.Text);
+            expect((block.properties as ICodeBlockSettings).language).toBe('plaintext');
         });
 
         it('should create quote block', () => {
@@ -1095,7 +1115,13 @@ describe('BlockFactory', () => {
             expect(block.blockType).toBe(BlockType.Quote);
             expect(block.id).toContain(constants.BLOCK_ID_PREFIX);
             expect(block.content).toEqual([]);
-            expect((block.properties as IQuoteBlockSettings).placeholder).toBe('');
+            // create default paragraph block as its children
+            const childProps = (block.properties as IQuoteBlockSettings).children;
+            expect(childProps.length).toBe(1);
+            expect(childProps[0].parentId).toBe(block.id);
+            expect(childProps[0].blockType).toBe(BlockType.Paragraph);
+            expect(childProps[0].content.length).toBe(1);
+            expect(childProps[0].content[0].contentType).toBe(ContentType.Text);
         });
 
         it('should create callout block', () => {
@@ -1130,7 +1156,9 @@ describe('BlockFactory', () => {
             expect(block).not.toBeNull();
             expect(block.blockType).toBe(BlockType.CollapsibleParagraph);
             expect(block.id).toContain(constants.BLOCK_ID_PREFIX);
-            expect(block.content).toEqual([]);
+            expect(block.content.length).toBe(1);
+            expect(block.content[0].content).toBe('');
+            expect(block.content[0].contentType).toBe(ContentType.Text);
             expect((block.properties as ICollapsibleBlockSettings).isExpanded).toBe(false);
             // create default paragraph block as its children
             const childProps = (block.properties as ICollapsibleBlockSettings).children;
@@ -1148,7 +1176,9 @@ describe('BlockFactory', () => {
             expect(block).not.toBeNull();
             expect(block.blockType).toBe(BlockType.CollapsibleHeading);
             expect(block.id).toContain(constants.BLOCK_ID_PREFIX);
-            expect(block.content).toEqual([]);
+            expect(block.content.length).toBe(1);
+            expect(block.content[0].content).toBe('');
+            expect(block.content[0].contentType).toBe(ContentType.Text);
             expect((block.properties as ICollapsibleHeadingBlockSettings).isExpanded).toBe(false);
             expect((block.properties as ICollapsibleHeadingBlockSettings).level).toBe(1);
             // create default paragraph block as its children
@@ -1189,7 +1219,6 @@ describe('BlockFactory', () => {
 
             expect(content).not.toBeNull();
             expect(content.contentType).toBe(ContentType.Text);
-            expect(content.id).toContain(constants.CONTENT_ID_PREFIX);
             expect(content.content).toBe('');
             expect((content.properties as ITextContentSettings).styles).toEqual({});
         });
@@ -1199,7 +1228,6 @@ describe('BlockFactory', () => {
 
             expect(content).not.toBeNull();
             expect(content.contentType).toBe(ContentType.Link);
-            expect(content.id).toContain(constants.CONTENT_ID_PREFIX);
             expect(content.content).toBe('');
             expect((content.properties as ILinkContentSettings).url).toBe('');
             expect((content.properties as ILinkContentSettings).styles).toEqual({});
@@ -1210,7 +1238,6 @@ describe('BlockFactory', () => {
 
             expect(content).not.toBeNull();
             expect(content.contentType).toBe(ContentType.Mention);
-            expect(content.id).toContain(constants.CONTENT_ID_PREFIX);
             expect(content.content).toBe('');
             expect((content.properties as IMentionContentSettings).userId).toBe('');
         });
@@ -1220,7 +1247,6 @@ describe('BlockFactory', () => {
 
             expect(content).not.toBeNull();
             expect(content.contentType).toBe(ContentType.Label);
-            expect(content.id).toContain(constants.CONTENT_ID_PREFIX);
             expect(content.content).toBe('');
             expect((content.properties as ILabelContentSettings).labelId).toBe('');
         });
@@ -1240,22 +1266,6 @@ describe('BlockFactory', () => {
             expect(block1.id).toContain(constants.BLOCK_ID_PREFIX);
             expect(block2.id).toContain(constants.BLOCK_ID_PREFIX);
             expect(block3.id).toContain(constants.BLOCK_ID_PREFIX);
-
-        });
-
-        it('should generate unique IDs for multiple content creations without provided IDs', () => {
-            const content1 = BlockFactory.createTextContent();
-            const content2 = BlockFactory.createTextContent();
-            const content3 = BlockFactory.createLinkContent();
-
-            expect(content1.id).not.toBe(content2.id);
-            expect(content1.id).not.toBe(content3.id);
-            expect(content2.id).not.toBe(content3.id);
-
-            // Sanity check: ensure they still contain the prefix
-            expect(content1.id).toContain(constants.CONTENT_ID_PREFIX);
-            expect(content2.id).toContain(constants.CONTENT_ID_PREFIX);
-            expect(content3.id).toContain(constants.CONTENT_ID_PREFIX);
 
         });
     });
@@ -1336,6 +1346,5 @@ describe('BlockFactory', () => {
             expect(block.content).toEqual([]);
             expect(block.properties).toEqual({});
         });
-
     });
 });

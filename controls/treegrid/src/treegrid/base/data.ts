@@ -779,7 +779,7 @@ export class DataManipulation {
         let results: ITreeData[] = dataObj instanceof DataManager ? (<DataManager>dataObj).dataSource.json : <ITreeData[]>dataObj;
         let count: number = isCountRequired(this.parent) ? getValue('count', this.parent.dataSource)
             : results.length;
-        const qry: Query = new Query(); let gridQuery: Query = getObject('query', args);
+        let gridQuery: Query = getObject('query', args);
         let filterQuery: QueryOptions[]; let searchQuery: QueryOptions[];
         if (!isNullOrUndefined(gridQuery)) {
             filterQuery = gridQuery.queries.filter((q: QueryOptions) => q.fn === 'onWhere');
@@ -792,10 +792,7 @@ export class DataManipulation {
                 gridQuery = new Query(); gridQuery = getValue('grid.renderModule.data', this.parent).filterQuery(gridQuery);
                 gridQuery = getValue('grid.renderModule.data', this.parent).searchQuery(gridQuery);
             }
-            const fltrQuery: QueryOptions[]  = gridQuery.queries.filter((q: QueryOptions) => q.fn === 'onWhere');
-            const srchQuery: QueryOptions[]  = gridQuery.queries.filter((q: QueryOptions) => q.fn === 'onSearch');
-            qry.queries = fltrQuery.concat(srchQuery); const filteredData: Object = new DataManager(results).executeLocal(qry);
-            this.parent.notify('updateFilterRecs', { data: filteredData });
+            this.parent.getData({query: gridQuery, isFilter: true});
             results = <ITreeData[]>this.dataResults.result; this.dataResults.result = null;
             if (this.parent.grid.aggregates.length > 0) {
                 const query: Query = getObject('query', args);
@@ -819,33 +816,8 @@ export class DataManipulation {
         }
         if (this.parent.grid.sortSettings.columns.length > 0 || this.isSortAction) {
             this.isSortAction = false;
-            const parentData: Object = this.parent.parentData;
-            const query: Query = getObject('query', args); const srtQry: Query = new Query();
-            for (let srt: number = this.parent.grid.sortSettings.columns.length - 1; srt >= 0; srt--) {
-                const getColumnByField: string = 'getColumnByField';
-                const col: GridColumnModel = this.parent.grid.renderModule.data[`${getColumnByField}`](this.parent.grid.
-                    sortSettings.columns[parseInt(srt.toString(), 10)].field);
-                const compFun: Function | string = col.sortComparer && isOffline(this.parent) ?
-                    (col.sortComparer as Function).bind(col) :
-                    this.parent.grid.sortSettings.columns[parseInt(srt.toString(), 10)].direction;
-                srtQry.sortBy(this.parent.grid.sortSettings.columns[parseInt(srt.toString(), 10)].field, compFun);
-            }
-            const modifiedData: Object = new DataManager(parentData).executeLocal(srtQry);
-            if (this.parent.allowRowDragAndDrop && !isNullOrUndefined(this.parent.rowDragAndDropModule['draggedRecord']) &&
-            this.parent.rowDragAndDropModule['droppedRecord'].hasChildRecords && this.parent.rowDragAndDropModule['dropPosition'] !== 'middleSegment') {
-                const dragdIndex: number = (modifiedData as ITreeData[]).indexOf(this.parent.rowDragAndDropModule['draggedRecord']);
-                (modifiedData as ITreeData[]).splice(dragdIndex, 1);
-                const dropdIndex: number = (modifiedData as ITreeData[]).indexOf(this.parent.rowDragAndDropModule['droppedRecord']);
-                if (this.parent.rowDragAndDropModule['droppedRecord'].hasChildRecords && this.parent.rowDragAndDropModule['dropPosition'] === 'topSegment') {
-                    (modifiedData as ITreeData[]).splice(dropdIndex, 0, this.parent.rowDragAndDropModule['draggedRecord']);
-                }
-                else if (this.parent.rowDragAndDropModule['dropPosition'] === 'bottomSegment') {
-                    (modifiedData as ITreeData[]).splice(dropdIndex + 1, 0, this.parent.rowDragAndDropModule['draggedRecord']);
-                }
-            }
-            const sortArgs: { modifiedData: ITreeData[], filteredData: ITreeData[], srtQry: Query}
-      = {modifiedData: <Object[]>modifiedData, filteredData: results, srtQry: srtQry};
-            this.parent.notify('createSort', sortArgs); results = sortArgs.modifiedData;
+            const query: Query = getObject('query', args);
+            results = this.parent.getData({query: query, isSort: true});
             this.dataResults.result = null; this.sortedData = results; this.parent.notify('updateModel', {});
             if (this.parent.grid.aggregates.length > 0 && !isNullOrUndefined(query)) {
                 const isSort: boolean = false;

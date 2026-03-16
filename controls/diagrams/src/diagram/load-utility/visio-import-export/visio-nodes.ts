@@ -1,9 +1,7 @@
 import { AnnotationConstraints, FlipDirection, NodeConstraints } from '../../enum/enum';
-import { Annotation } from '../../objects/annotation';
-import { NodeModel, BpmnAnnotationModel } from '../../objects/node-model';
 import { VisioTextAlignmentModel, VisioTextDecorationModel, VisioToSyncfusionTextBinder } from './visio-annotations';
 import { VisioConnector } from './visio-connectors';
-import { createCombinedPathFromGeometries, createPathFromGeometry, ensureArray, formatPathData, getCellMapStringValue, inchToPoint, inchToPx, mapCellValues, radiansToDegrees, toCamelCase } from './visio-core';
+import { createCellMap, createPathFromGeometry, createPathFromGeometrySections, ensureArray, formatPathData, getAttrString, getCellMapStringValue, getTrimmedOrEmpty, inchToPoint, inchToPx, mapCellValues, radiansToDegrees, safeNumber } from './visio-core';
 import { ParsingContext } from './visio-import-export';
 import { VisioMaster, VisioShape } from './visio-models';
 import { getNodeStyle, setAnnotationStyle } from './visio-theme';
@@ -13,13 +11,9 @@ import {
     DetermineShapeResult,
     DiagramHyperlink,
     FlippableShape,
-    Member,
     Point,
     ShadowProps,
     SyncfusionTextBinding,
-    UmlClassShape,
-    UmlEnumeration,
-    UmlInterfaceShape,
     VisioShapeTransform,
     VisioTextTransform,
     BPMNPropertyMapType,
@@ -33,7 +27,6 @@ import {
     BPMNFlowShapeResult,
     UMLConnectorResult,
     UMLActivityShapeResult,
-    MediaMappingItem,
     NodeShapeConfig,
     VisioSection,
     VisioCell,
@@ -49,7 +42,8 @@ import {
     VisioPort,
     DiagramAnnotation,
     AnnotationStyle,
-    ResolvedAnnotationStyle
+    ResolvedAnnotationStyle,
+    Bounds
 } from './visio-types';
 
 /**
@@ -127,100 +121,119 @@ const ACTIONS_SECTION: string = 'Actions';
  * @private
  */
 export function convertVisioShapeToNode(node: any, context: ParsingContext, shapeGroup: VisioShape[]): any {
-    // ==================== Extract and Adjust Pivot Points ====================
-    // Get pivot point (rotation center) from Visio coordinates
-    const pivot: Point = getPivotFromVisioFormulas(node.pivotX, node.pivotY);
-    // Invert Y pivot: Visio 0 (bottom) -> EJ2 1 (bottom), Visio 1 (top) -> EJ2 0 (top)
-    pivot.y = (pivot.y === 1) ? 0 : ((pivot.y === 0) ? 1 : pivot.y);
+    // Compute EJ2 pivot by mapping Visio LocPin to top-origin pivot
+    let pivot: { x: number; y: number } = { x: 0.5, y: 0.5 };
+    const hasSize: boolean = node && node.width != null && node.height != null;
+    const hasPivot: boolean = node && node.pivotX != null && node.pivotY != null;
 
-    // ==================== Process Text Binding ====================
-    // Text binding handles text positioning relative to shape bounds
-    let textBinding: SyncfusionTextBinding | null = null;
+    if (hasSize && hasPivot) {
+        const widthInches: number = Number(node.width);
+        const heightInches: number = Number(node.height);
+        if (widthInches > 0 && heightInches > 0) {
+            pivot = normalizePivotForEJ2(
+                Number(node.pivotX),
+                Number(node.pivotY),
+                widthInches,
+                heightInches
+            );
+        }
+    }
 
-    // Determine if this is a group (has multiple children)
-    const isGroup: boolean = Array.isArray(node.children) && node.children.length > 1;
-
-    // ==================== Convert Ports to Diagram Format ====================
-    // Convert Visio ports to Syncfusion diagram ports with normalized coordinates
+    // Convert Visio ports into Syncfusion diagram port format
     const diagramPorts: DiagramPort[] = (node.ports || []).map((port: VisioPort) => ({
         id: port.id,
-        // Normalize port position relative to shape dimensions
-        offset: {
-            x: port.x,
-            y: port.y
-        },
+        offset: { x: port.x, y: port.y },
         shape: 'Circle',
-        style: {
-            strokeColor: '#757575',
-            strokeWidth: 1
-        }
+        style: { strokeColor: '#757575', strokeWidth: 1 }
     }));
 
-    // ==================== Process Text Annotation Positioning ====================
-    // If annotation has explicit text positioning, calculate text binding
-    if (node.annotation && (node.annotation as VisioAnnotationInput).txtPinX !== undefined) {
-        // Build shape transform object with position and size
+    // Resolve annotation style for text rendering
+    const annotation: VisioAnnotationInput | undefined = node.annotation as VisioAnnotationInput | undefined;
+    const annotationStyle: ResolvedAnnotationStyle = setAnnotationStyle(node, context);
+
+    // Initialize text binding (handles text positioning relative to shape bounds)
+    let textBinding: SyncfusionTextBinding | null = null;
+
+    // Process text annotation positioning if annotation data is available
+    if (annotation && annotation.txtPinX !== undefined) {
         const shapeTransform: VisioShapeTransform = {
             pinX: node.offsetX,
-            pinY: node.pinY / 96, // Convert from pixels to inches
+            pinY: node.pinY / 96,
             width: node.width,
             height: node.height,
             verticalAlignment: setVerticalAlignment(node)
         };
 
-        // Build text transform object with text-specific positioning
         const textTransform: VisioTextTransform = {
-            txtWidth: (node.annotation as VisioAnnotationInput).txtWidth,
-            txtHeight: (node.annotation as VisioAnnotationInput).txtHeight,
-            txtPinX: (node.annotation as VisioAnnotationInput).txtPinX,
-            txtPinY: (node.annotation as VisioAnnotationInput).txtPinY,
-            txtLocPinX: (node.annotation as VisioAnnotationInput).txtLocPinX,
-            txtLocPinY: (node.annotation as VisioAnnotationInput).txtLocPinY,
-            txtAngle: (node.annotation.rotateAngle || 0) * (Math.PI / 180),  // Convert to radians
-            txtMargin: node.annotation.margin
+            txtWidth: annotation.txtWidth,
+            txtHeight: annotation.txtHeight,
+            txtPinX: annotation.txtPinX,
+            txtPinY: annotation.txtPinY,
+            txtLocPinX: annotation.txtLocPinX,
+            txtLocPinY: annotation.txtLocPinY,
+            txtAngle: (annotation.rotateAngle || 0) * (Math.PI / 180),
+            txtMargin: (annotation as any).margin
         };
 
-        // Bind Visio text positioning to Syncfusion format
-        textBinding = VisioToSyncfusionTextBinder.bindVisioTextToSyncfusion(
-            shapeTransform,
-            textTransform
-        );
+        textBinding = VisioToSyncfusionTextBinder.bindVisioTextToSyncfusion(shapeTransform, textTransform);
     }
-    const nodeStyle: ResolvedAnnotationStyle = setAnnotationStyle(node, context);
-    // ==================== Build Syncfusion Node Object ====================
+
+    // Build group node object if the current node contains children
+    const isGroup: boolean = Array.isArray(node.children) && node.children.length > 0;
+    if (isGroup) {
+        return {
+            id: node.id,
+            addInfo: node.addInfo,
+            shape: setNodeShape(node, context, isGroup),
+            style: getNodeStyle(node, context, isGroup),
+            children: node.children,
+            parentId: node.parentId,
+            pivot: pivot,
+            constraints: setConstraints(node, context),
+            shadow: undefined,
+            rotateAngle: (360 - radiansToDegrees(node.rotateAngle)) % 360 || 0,
+            annotations: [
+                {
+                    content: node.annotation.content,
+                    width: inchToPx((node.annotation as VisioAnnotationInput).txtWidth ?
+                        (node.annotation as VisioAnnotationInput).txtWidth : node.width),
+                    height: inchToPx((node.annotation as VisioAnnotationInput).txtHeight ?
+                        (node.annotation as VisioAnnotationInput).txtHeight : node.height),
+                    visibility: node.annotation.visible,
+                    hyperlink: setHyperLink(node, annotationStyle),
+                    rotateAngle: setRotateAngle(node),
+                    constraints: setAnnotationConstraints(node.annotation),
+                    verticalAlignment: setVerticalAlignment(node),
+                    horizontalAlignment: setHorizontalAlignment(node),
+                    offset: (textBinding && textBinding.offset) || { x: 0.5, y: 0.5 },
+                    style: annotationStyle
+                }
+            ]
+        };
+    }
+
+    // Build standard node object for non-group shapes
     return {
-        // ==================== Basic Properties ====================
         id: node.id,
         width: inchToPx(node.width),
         height: inchToPx(node.height),
         offsetX: inchToPx(node.offsetX),
         offsetY: node.offsetY,
-
-        // ==================== Shape and Styling ====================
-        shape: setNodeShape(node, context),
+        shape: setNodeShape(node, context, isGroup),
+        addInfo: node.addInfo,
         style: getNodeStyle(node, context, isGroup),
-
-        // ==================== Behavior and Constraints ====================
         constraints: setConstraints(node, context),
         shadow: setShadow(node),
         flip: setFlip(node),
         visible: setVisibility(node),
-
-        // ==================== Interaction Properties ====================
         tooltip: { content: node.tooltip || '' },
         pivot: pivot,
         rotateAngle: (360 - radiansToDegrees(node.rotateAngle)) % 360 || 0,
-
-        // ==================== Hierarchy ====================
         children: node.children,
         parentId: node.parentId,
         padding: setPadding(isGroup),
-
-        // ==================== Connectivity ====================
         ports: diagramPorts,
         margin: (node as VisioShapeData).calculatedMargin ? (node as VisioShapeData).calculatedMargin : undefined,
-
-        // ==================== Text and Annotations ====================
         annotations: [
             {
                 content: node.annotation.content,
@@ -229,14 +242,12 @@ export function convertVisioShapeToNode(node: any, context: ParsingContext, shap
                 height: inchToPx((node.annotation as VisioAnnotationInput).txtHeight ?
                     (node.annotation as VisioAnnotationInput).txtHeight : node.height),
                 visibility: node.annotation.visible,
-                hyperlink: setHyperLink(node, nodeStyle),
+                hyperlink: setHyperLink(node, annotationStyle),
                 rotateAngle: setRotateAngle(node),
                 constraints: setAnnotationConstraints(node.annotation),
-                // verticalAlignment: setVerticalAlignment(node),
                 horizontalAlignment: setHorizontalAlignment(node),
-                // Use calculated text binding offset or default center
                 offset: (textBinding && textBinding.offset) || { x: 0.5, y: 0.5 },
-                style: nodeStyle
+                style: annotationStyle
             }
         ]
     };
@@ -257,7 +268,7 @@ export function convertVisioShapeToNode(node: any, context: ParsingContext, shap
  */
 function setVisibility(node: VisioNodeInput): boolean {
     // TextAnnotations are always visible
-    return node.shape.shape === 'TextAnnotation' ? true : node.visibility !== undefined ? !node.visibility : true;
+    return node.shape && node.shape.shape === 'TextAnnotation' ? true : node.visibility !== undefined ? !node.visibility : true;
 }
 
 /**
@@ -465,58 +476,13 @@ function setHyperLink(NodeData: VisioNodeInput, nodeStyle: ResolvedAnnotationSty
 }
 
 /**
- * Extracts pivot point (rotation center) from Visio formulas.
- * Handles both numeric values and formula strings containing multiplication operators.
- * Clamps values to 0-1 range (relative positioning).
- *
- * @param {number} locPinX - Horizontal pivot from Visio (may be formula string or number).
- * @param {number} locPinY - Vertical pivot from Visio (may be formula string or number).
- * @returns {Point} A point object with x and y values clamped to [0, 1].
- *
- * @example
- * const pivot = getPivotFromVisioFormulas(0.5, 0.5);
- * // Returns { x: 0.5, y: 0.5 }
- *
- * @private
- */
-function getPivotFromVisioFormulas(locPinX: number, locPinY: number): Point {
-    /**
-     * Helper parser for converting Visio pin formulas to normalized values (0-1).
-     * Handles both direct numbers and formula strings like "Width*0.5".
-     *
-     * @param {number} pin - The pin value or formula string.
-     * @returns {number} Normalized pivot value between 0 and 1, or 0.5 default.
-     */
-    const parse: (pin: string | number) => number = (pin: string | number): number => {
-        // ==================== Direct Numeric Value ====================
-        if (typeof pin === 'number') {
-            return pin;
-        }
-
-        // ==================== Parse Formula String ===================
-        // Extract value after multiplication operator (e.g., "Width*0.5" -> "0.5")
-        if (typeof pin === 'string' && pin.includes('*')) {
-            const valStr: string = pin.substring(pin.indexOf('*') + 1);
-            return isNaN(parseFloat(valStr)) ? 0.5 : parseFloat(valStr);
-        }
-
-        // ==================== Invalid/Missing Value ====================
-        return 0.5;
-    };
-
-    return {
-        x: Math.min(Math.max(parse(locPinX), 0), 1),  // Clamp to 0-1
-        y: Math.min(Math.max(parse(locPinY), 0), 1)   // Clamp to 0-1
-    };
-}
-
-/**
  * Sets the shape object for a Syncfusion diagram node.
  * Handles different shape types (Basic, Flow, Path, Image, BPMN, UML).
  * Converts Visio shape properties to EJ2 format with proper type mapping.
  *
  * @param {VisioNodeInput} shape - The VisioShape object with shape type information.
  * @param {ParsingContext} context - Parser context for warnings and configuration.
+ * @param {boolean} isGroup - Whether the shape is a group/container (has children).
  * @returns {NodeShapeConfig} A shape object with type and type-specific properties.
  *
  * @example
@@ -525,7 +491,15 @@ function getPivotFromVisioFormulas(locPinX: number, locPinY: number): Point {
  *
  * @private
  */
-function setNodeShape(shape: VisioNodeInput, context: ParsingContext): NodeShapeConfig {
+function setNodeShape(shape: VisioNodeInput, context: ParsingContext, isGroup: boolean): NodeShapeConfig {
+    if (!shape || !shape.shape || isGroup) {
+        return {
+            type: 'Basic',
+            shape: 'Rectangle',
+            cornerRadius: 0
+        };
+    }
+
     // ==================== Extract Shape Type ====================
     const type: 'Basic' | 'Flow' | 'Path' | 'Image' | 'Bpmn' | 'UmlClassifier' | 'UmlActivity' = shape.shape.type;
     const mainShapeObject: VisioShapeInput = shape && shape.shape;
@@ -629,7 +603,7 @@ function setConstraints(shape: VisioNodeInput, context: ParsingContext): NodeCon
     }
 
     // ==================== Shadow Constraints ====================
-    if (shape.shadow.shadowPattern) {
+    if (shape.shadow && shape.shadow.shadowPattern) {
         constraints |= NodeConstraints.Shadow;
     }
 
@@ -649,6 +623,43 @@ function setConstraints(shape: VisioNodeInput, context: ParsingContext): NodeCon
     }
 
     return constraints;
+}
+
+/**
+ * Normalizes Visio LocPin to EJ2 pivot with Y-axis flip.
+ * EJ2 expects pivot in [0..1] from the top-left; Visio's LocPinY=0 is bottom.
+ * @param {number} pivotXInches - Visio LocPinX in inches
+ * @param {number} pivotYInches - Visio LocPinY in inches
+ * @param {number} widthInches  - Shape width in inches
+ * @param {number} heightInches - Shape height in inches
+ * @returns {{ x: number, y: number }} Normalized EJ2 pivot (0..1)
+ */
+function normalizePivotForEJ2(
+    pivotXInches: number,
+    pivotYInches: number,
+    widthInches: number,
+    heightInches: number
+): { x: number; y: number } {
+    // Clamp helper to keep values within [0,1]
+    function clamp01(v: number): number {
+        if (v < 0) { return 0; }
+        if (v > 1) { return 1; }
+        return v;
+    }
+
+    // Compute normalized X from left (no flip needed on X)
+    let xNormalized: number = 0.5;
+    if (typeof widthInches === 'number' && isFinite(widthInches) && widthInches !== 0) {
+        xNormalized = clamp01(pivotXInches / widthInches);
+    }
+
+    // Compute normalized Y from top; flip Visio's bottom-origin LocPinY
+    let yNormalized: number = 0.5;
+    if (typeof heightInches === 'number' && isFinite(heightInches) && heightInches !== 0) {
+        yNormalized = clamp01(1 - (pivotYInches / heightInches));
+    }
+
+    return { x: xNormalized, y: yNormalized };
 }
 
 /**
@@ -733,7 +744,7 @@ export function determineShapeType(attributes: Attributes, defaultData: VisioSec
         'Terminator', 'Process', 'Decision', 'Document', 'Data', 'Or', 'Collate', 'Merge',
         'Extract', 'Sort', 'SummingJunction', 'MultiDocument', 'OffPageReference',
         'PreDefinedProcess', 'DirectData', 'SequentialData', 'PaperTap', 'Card',
-        'ManualOperation', 'StoredData', 'Preparation', 'Display', 'Delay'
+        'ManualOperation', 'StoredData', 'Preparation', 'Display', 'Delay', 'InternalStorage'
     ]);
 
     const bpmnShapes: ReadonlySet<string> = new Set<string>([
@@ -838,25 +849,10 @@ export function determineShapeType(attributes: Attributes, defaultData: VisioSec
             const shape: UMLActivityShapeResult = getUMLActivityShapes(shapes, finalShape);
             return shape;
         }
-        else if (finalShape === 'LineCallout') {
-            return { type: 'Basic', shape: 'Rectangle' };
-        }
-        else {
-            // ==================== Generate Path Data for Unknown Shapes ====================
-            const geometrySection: VisioSection = defaultData;
-            let formattedPath: string = undefined;
-
-            if (geometrySection && (geometrySection as any).N === 'Geometry' && geometrySection.Row) {
-                const pathData: string = createCombinedPathFromGeometries(geometrySection, name);
-                formattedPath = formatPathData(pathData);
-            }
-            context.addWarning(`[WARNING] :: The ${name} shape is not predefined, So it is rendered as Path shape`);
-            return { type: 'Path', data: formattedPath };
-        }
     }
 
     // ==================== Default Shape ====================
-    return { type: 'Basic', shape: 'Rectangle' };
+    return undefined;
 }
 
 /**
@@ -1957,4 +1953,483 @@ function getTextAnnotationTargetID(formula: string): string | null {
  */
 function toCapitalizedWords(str: string): string {
     return str.split(' ').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join('');
+}
+
+/**
+ * Retrieves the `__Index` value from a visio parsing context.
+ * Returns `null` if no entries or index is found.
+ *
+ * @param {ParsingContext} context - Current parsing context containing entries
+ * @returns {any} The index value if present, otherwise null
+ */
+function getIndex(context: ParsingContext): any {
+    const entries: any = (context as any).entries;
+    return entries && entries.__Index ? entries.__Index : null;
+}
+
+/**
+ * Resolves the master source node for a given page shape.
+ * Looks up the appropriate master or master-shape reference
+ * from the parsing context and returns the corresponding node.
+ *
+ * @param {VisioShapeNode} pageNode - Current page shape node
+ * @param {ParsingContext} context - Parsing context containing master maps
+ * @param {string} [parentMasterId] - Optional parent master ID for nested shapes
+ * @returns {VisioShapeNode|null} The resolved master node, or null if not found
+ */
+export function resolveMasterSourceForNode(
+    pageNode: VisioShapeNode,
+    context: ParsingContext,
+    parentMasterId?: string
+): VisioShapeNode | null {
+    const attributes: Attributes = (pageNode && (pageNode as any).$) ? (pageNode as any).$ : ({} as any);
+    const masterShapeId: string = (attributes && (attributes as any).MasterShape != null) ? String((attributes as any).MasterShape) : '';
+    const masterId: string = (attributes && (attributes as any).Master != null) ? String((attributes as any).Master) : '';
+
+    const idx: any = getIndex(context);
+    if (!idx) {
+        return null;
+    }
+
+    let owningMaster: string = '';
+    if (masterShapeId && parentMasterId && parentMasterId.length > 0) {
+        owningMaster = parentMasterId;
+    } else if (masterId) {
+        owningMaster = masterId;
+    }
+    else if (masterShapeId) {
+        // Fallback: if the instance only specifies a MasterShape but no Master,
+        // search masterChildByMasterId to find which master contains this child id.
+        const masterChildIndex: Map<string, Map<string, any>> = idx.masterChildByMasterId;
+        if (masterChildIndex && typeof masterChildIndex.forEach === 'function') {
+            masterChildIndex.forEach((childMap: Map<string, any>, masterKey: string) => {
+                if (!owningMaster && childMap && typeof childMap.has === 'function' && childMap.has(String(masterShapeId))) {
+                    owningMaster = String(masterKey);
+                }
+            });
+        }
+    }
+
+    if (masterShapeId && owningMaster) {
+        const childMap: Map<string, any> = idx.masterChildByMasterId && idx.masterChildByMasterId.get
+            ? idx.masterChildByMasterId.get(String(owningMaster)) : null;
+        if (childMap && childMap.get) {
+            const node: any = childMap.get(String(masterShapeId));
+            if (node) {
+                return node;
+            }
+        }
+    }
+    if (masterId) {
+        const roots: string[] = idx.masterRootIdsByMasterId && idx.masterRootIdsByMasterId.get
+            ? idx.masterRootIdsByMasterId.get(String(masterId)) : [];
+        const childMap2: Map<string, any> = idx.masterChildByMasterId && idx.masterChildByMasterId.get
+            ? idx.masterChildByMasterId.get(String(masterId)) : null;
+        if (childMap2 && roots && roots.length > 0) {
+            const rootNode: any = childMap2.get(String(roots[0]));
+            if (rootNode) {
+                return rootNode;
+            }
+        }
+    }
+    return null;
+}
+
+/**
+ * Resolves the semantic shape name for mapping to EJ2 diagram nodes.
+ * Checks instance attributes, master source attributes, and master index
+ * definitions to determine the most appropriate shape name.
+ *
+ * @param {VisioShapeNode} pageNode - Current page shape node
+ * @param {VisioShapeNode|null} masterSource - Master source node if available
+ * @param {ParsingContext} context - Parsing context with master index
+ * @param {string} [parentMasterId] - Optional parent master ID for nested shapes
+ * @returns {string} Resolved shape name or empty string if not found
+ */
+export function resolveShapeNameForMapping(
+    pageNode: VisioShapeNode,
+    masterSource: VisioShapeNode | null,
+    context: ParsingContext,
+    parentMasterId?: string
+): string {
+    const attributes: any = pageNode && (pageNode as any).$ ? (pageNode as any).$ : {};
+    // Foreign shapes must map to Image (existing behavior)
+    const typeStr: string = getAttrString(attributes, 'Type');
+    if (typeStr && typeStr.toLowerCase() === 'foreign') {
+        return 'Image';
+    }
+
+    // 1) instance attributes
+    const instNameU: string = getTrimmedOrEmpty(getAttrString(attributes, 'NameU'));
+    if (instNameU) { return instNameU; }
+    const instName: string = getTrimmedOrEmpty(getAttrString(attributes, 'Name'));
+    if (instName) { return instName; }
+
+    // Detect MasterShape-only child (do NOT use owning master semantic name for these)
+    const hasMasterShape: boolean = getTrimmedOrEmpty(getAttrString(attributes, 'MasterShape')).length > 0;
+    const hasMaster: boolean = getTrimmedOrEmpty(getAttrString(attributes, 'Master')).length > 0;
+
+    // 2) master child/root node attributes (specific to that shape)
+    if (masterSource && (masterSource as any).$) {
+        const msAttrs: any = (masterSource as any).$;
+        const msNameU: string = getTrimmedOrEmpty(getAttrString(msAttrs, 'NameU'));
+        if (msNameU) { return msNameU; }
+        const msName: string = getTrimmedOrEmpty(getAttrString(msAttrs, 'Name'));
+        if (msName) { return msName; }
+    }
+
+    // If it's a MasterShape-only child and we couldn't get a specific name, stop here.
+    // Falling back to the owning master's name would mislabel sub-shapes as "Task", etc.
+    if (hasMasterShape && !hasMaster) {
+        return '';
+    }
+
+    // 3) masters.xml index nameU (semantic name for top-level master instances)
+    const masterId: string = hasMaster ? getTrimmedOrEmpty(getAttrString(attributes, 'Master'))
+        : (parentMasterId ? getTrimmedOrEmpty(String(parentMasterId)) : '');
+
+    if (!masterId) { return ''; }
+
+    const idx: any = getIndex(context);
+    if (!idx || !idx.mastersById || !idx.mastersById.get) { return ''; }
+
+    const masterInfo: any = idx.mastersById.get(String(masterId));
+    if (!masterInfo) { return ''; }
+
+    const nameU: string = getTrimmedOrEmpty(masterInfo.nameU ? String(masterInfo.nameU) : '');
+    if (nameU) { return nameU; }
+
+    return '';
+}
+
+/**
+ * Builds a path shape from Visio geometry sections.
+ * Converts geometry rows into SVG path data, applying local scaling
+ * to produce a path representation of the shape.
+ *
+ * @param {VisioSection[]} geomSections - Geometry sections of the shape
+ * @param {VisioShape} node - Shape node with width and height
+ * @returns {DetermineShapeResult} Path shape result with type and data
+ */
+function buildPathShapeFromGeometrySections(geomSections: VisioSection[], node: VisioShape): DetermineShapeResult {
+    let finalPath: string = '';
+    if (geomSections && geomSections.length > 1) {
+        finalPath = formatPathData(
+            createPathFromGeometrySections(
+                geomSections,
+                { pinX: 0, pinY: 0, Width: node.width, Height: node.height },
+                { useLocalScaling: true }
+            )
+        );
+    } else {
+        let pathData: string = '';
+        const sectionsArr: VisioSection[] = ensureArray(geomSections);
+        for (const section of sectionsArr) {
+            if (!section || !section.Row) { continue; }
+            const part: string = createPathFromGeometry(
+                { Row: ensureArray(section.Row), width: node.width, height: node.height } as any,
+                { pinX: 0, pinY: 0, Width: node.width, Height: node.height },
+                undefined,
+                { useLocalScaling: true }
+            );
+            if (part && part.length > 0) {
+                pathData += part.trim() + ' ';
+            }
+        }
+        finalPath = formatPathData(pathData.trim());
+    }
+    return { type: 'Path', data: finalPath } as DetermineShapeResult;
+}
+
+/**
+ * Determines the default EJ2 node shape for a Visio shape.
+ * Resolves semantic name, attempts mapping to supported EJ2 types,
+ * and falls back to geometry-based path if no supported type is found.
+ *
+ * @param {VisioShapeNode} pageNode - Current page shape node
+ * @param {VisioShapeNode|null} masterSource - Master source node if available
+ * @param {VisioSection[]} geomSections - Geometry sections of the shape
+ * @param {VisioShape} node - Shape node with dimensions
+ * @param {ParsingContext} context - Parsing context with master index
+ * @param {string} [parentMasterId] - Optional parent master ID for nested shapes
+ * @returns {DetermineShapeResult} Determined shape result (mapped or path)
+ */
+export function determineDefaultNodeShape(
+    pageNode: VisioShapeNode,
+    masterSource: VisioShapeNode | null,
+    geomSections: VisioSection[],
+    node: VisioShape,
+    context: ParsingContext,
+    parentMasterId?: string
+): DetermineShapeResult {
+    // Resolve the best semantic name
+    const resolvedName: string = resolveShapeNameForMapping(pageNode, masterSource, context, parentMasterId);
+
+    // Feed mapper with a stable Attributes object; keep empty string if unknown (do not use undefined)
+    const attributes: any = pageNode && (pageNode as any).$ ? (pageNode as any).$ : {};
+    const mappingAttrs: any = {
+        Name: (resolvedName !== undefined && resolvedName !== null) ? String(resolvedName) : '',
+        Type: getAttrString(attributes, 'Type')
+    };
+
+    // Let existing mapper decide if EJ2 already supports it (Basic/Flow/Bpmn/UML/Image)
+    const mapped: DetermineShapeResult = determineShapeType(
+        mappingAttrs as any,
+        undefined as any,
+        masterSource ? masterSource : pageNode,
+        node,
+        context
+    ) as DetermineShapeResult;
+
+    // If mapper produced a supported non-Path type, use it.
+    if (mapped && (mapped as any).type && (mapped as any).type !== 'Path') {
+        return mapped;
+    }
+
+    // Otherwise, fall back to geometry-based path
+    return buildPathShapeFromGeometrySections(geomSections, node);
+}
+
+/**
+ * Attempts to determine a semantic group shape for a Visio group node.
+ * Resolves the group's name, runs the shape type mapper, and only collapses
+ * into semantic families (BPMN, UML, Image) to avoid losing visuals for generic groups.
+ *
+ * @param {VisioShapeNode} groupNode - Current group shape node
+ * @param {VisioShapeNode|null} groupMasterNode - Master source node for the group
+ * @param {VisioShape} groupShape - Group shape with dimensions
+ * @param {ParsingContext} context - Parsing context with master index
+ * @param {string} [parentMasterId] - Optional parent master ID for nested groups
+ * @returns {DetermineShapeResult|null} Semantic group shape result, or null if not applicable
+ */
+export function tryDetermineSemanticGroupShape(
+    groupNode: VisioShapeNode,
+    groupMasterNode: VisioShapeNode | null,
+    groupShape: VisioShape,
+    context: ParsingContext,
+    parentMasterId?: string
+): DetermineShapeResult | null {
+    const attrs: any = groupNode && (groupNode as any).$ ? (groupNode as any).$ : {};
+    // Collapse ONLY for true master instances (not MasterShape-only children)
+    const masterId: string = getTrimmedOrEmpty(getAttrString(attrs, 'Master'));
+    if (!masterId) {
+        return null;
+    }
+
+    const resolvedName: string = resolveShapeNameForMapping(groupNode, groupMasterNode, context, parentMasterId);
+    if (!resolvedName) {
+        return null;
+    }
+
+    // Run mapper with resolved name; defaultData is not needed for BPMN/UML/Image.
+    const mapped: DetermineShapeResult = determineShapeType(
+        { Name: String(resolvedName), Type: 'Group' } as any,
+        undefined as any,
+        groupNode,
+        groupShape,
+        context
+    ) as DetermineShapeResult;
+
+    if (!mapped || !(mapped as any).type) {
+        return null;
+    }
+
+    // Safety: only collapse semantic families (prevents losing visuals for generic grouped stencils)
+    const t: string = String((mapped as any).type);
+    if (t === 'Bpmn' || t === 'UmlClassifier' || t === 'UmlActivity' || t === 'Image') {
+        // Never collapse if mapper still fell back to Path
+        return mapped;
+    }
+
+    return null;
+}
+
+/**
+ * Collects geometry sections from a Visio shape node, keyed by IX.
+ * If IX is missing, generates a synthetic key to ensure uniqueness.
+ *
+ * @param {VisioShapeNode} node - Shape node containing Section elements
+ * @returns {Map<string, VisioSection>} Map of section keys to geometry sections
+ */
+function getGeometrySectionsByIX(node: VisioShapeNode): Map<string, VisioSection> {
+    const out: Map<string, VisioSection> = new Map<string, VisioSection>();
+    if (!node) {
+        return out;
+    }
+    const secs: VisioSection[] = ensureArray((node as any).Section);
+    let seen: number = 0;
+    for (let i: number = 0; i < secs.length; i++) {
+        // eslint-disable-next-line security/detect-object-injection
+        const s: VisioSection = secs[i];
+        if (s && s.$ && s.$.N === 'Geometry') {
+            // `IX` is not defined on VisioSection.$ in your typings; use 'any' safely
+            const ix: string = ((s as any).$ && (s as any).$.IX != null) ? String((s as any).$.IX) : ('g' + (seen++));
+            out.set(ix, s);
+        }
+    }
+    return out;
+}
+
+/**
+ * Merges geometry sections from master and instance nodes.
+ * Keeps master sections intact and supplements with instance-only sections,
+ * without overriding master rows with page rows.
+ *
+ * @param {VisioShapeNode} masterNode - Master shape node
+ * @param {VisioShapeNode} instNode - Instance shape node
+ * @returns {VisioSection[]} Combined geometry sections with master-preferred merge
+ */
+export function mergeGeometrySectionsByIndex(masterNode: VisioShapeNode, instNode: VisioShapeNode): VisioSection[] {
+    const merged: VisioSection[] = [];
+    const mMap: Map<string, VisioSection> = getGeometrySectionsByIX(masterNode);
+    const iMap: Map<string, VisioSection> = getGeometrySectionsByIX(instNode);
+
+    // Master wins entirely where both have the section
+    mMap.forEach(function (mSec: VisioSection, key: string): void {
+        merged.push(mSec);
+    });
+
+    // Add page-only sections (supplement)
+    iMap.forEach(function (iSec: VisioSection, key: string): void {
+        if (!mMap.has(key)) {
+            merged.push(iSec);
+        }
+    });
+
+    return merged;
+}
+
+/**
+ * Checks if all geometry sections explicitly have NoFill=1.
+ * Returns true only if every geometry section has the NoFill cell set to 1,
+ * indicating that all geometry sections should not be filled.
+ *
+ * @param {VisioSection[]} sections - Array of Visio geometry sections to check
+ * @returns {boolean} True if all sections have NoFill=1, false otherwise
+ * @remarks
+ * If any section is missing or has NoFill !== 1, returns false.
+ * Empty array or undefined sections also return false.
+ *
+ * @example
+ * // Check if all geometry sections have no fill
+ * const hasNoFill = allGeometrySectionsNoFill(geometrySections);
+ * // Result: true or false
+ */
+export function allGeometrySectionsNoFill(sections: VisioSection[]): boolean {
+    const geometrySections: VisioSection[] = ensureArray(sections);
+    if (!geometrySections || geometrySections.length === 0) { return false; }
+
+    for (let sectionIndex: number = 0; sectionIndex < geometrySections.length; sectionIndex++) {
+        const geometrySection: VisioSection = geometrySections[parseInt(sectionIndex.toString(), 10)];
+        if (!geometrySection) { return false; }
+
+        let noFillValue: number = 0; // default fill allowed
+        if (geometrySection.Cell) {
+            const cellMap: Map<string, CellMapValue> = createCellMap(ensureArray(geometrySection.Cell));
+            const noFillCell: CellMapValue | undefined = cellMap.get('NoFill');
+            noFillValue = safeNumber(noFillCell);
+        }
+        if (noFillValue !== 1) { return false; }
+    }
+    return true;
+}
+
+/**
+ * Checks if all geometry sections explicitly have NoLine=1.
+ * Returns true only if every geometry section has the NoLine cell set to 1,
+ * indicating that all geometry sections should not have a border line.
+ *
+ * @param {VisioSection[]} sections - Array of Visio geometry sections to check
+ * @returns {boolean} True if all sections have NoLine=1, false otherwise
+ * @remarks
+ * If any section is missing or has NoLine !== 1, returns false.
+ * Empty array or undefined sections also return false.
+ *
+ * @example
+ * // Check if all geometry sections have no line
+ * const hasNoLine = allGeometrySectionsNoLine(geometrySections);
+ * // Result: true or false
+ */
+export function allGeometrySectionsNoLine(sections: VisioSection[]): boolean {
+    const geometrySections: VisioSection[] = ensureArray(sections);
+    if (!geometrySections || geometrySections.length === 0) { return false; }
+
+    for (let sectionIndex: number = 0; sectionIndex < geometrySections.length; sectionIndex++) {
+        const geometrySection: VisioSection = geometrySections[parseInt(sectionIndex.toString(), 10)];
+        if (!geometrySection) { return false; }
+
+        let noLineValue: number = 0; // default line allowed
+        if (geometrySection.Cell) {
+            const cellMap: Map<string, CellMapValue> = createCellMap(ensureArray(geometrySection.Cell));
+            const noLineCell: CellMapValue | undefined = cellMap.get('NoLine');
+            noLineValue = safeNumber(noLineCell);
+        }
+        if (noLineValue !== 1) { return false; }
+    }
+    return true;
+}
+
+/**
+ * Determines if a Geometry section is hidden by checking the section-level
+ * NoShow cell (1 = hidden). Falls back to visible if the cell is not present.
+ *
+ * @param {VisioSection} section - The Geometry section to evaluate.
+ * @returns {boolean} True if the section is hidden, otherwise false.
+ */
+export function isGeometrySectionHidden(section: VisioSection): boolean {
+    // Guard: invalid section is not hidden
+    if (!section) { return false; }
+    // Build a cell map for section-level cells
+    if (section.Cell) {
+        const cellMap: Map<string, CellMapValue> = createCellMap(ensureArray(section.Cell));
+        const noShowValue: CellMapValue | undefined = cellMap.get('NoShow');
+        const hidden: boolean = safeNumber(noShowValue) === 1;
+        if (hidden) { return true; }
+    }
+    // Default visible when NoShow is not set
+    return false;
+}
+
+/**
+ * Determines if a Geometry row is hidden by checking a row-level
+ * NoShow cell (1 = hidden). If the row lacks NoShow, the row is
+ * considered visible.
+ *
+ * @param {VisioRow} row - The Geometry row to evaluate.
+ * @returns {boolean} True if the row is hidden, otherwise false.
+ */
+export function isGeometryRowHidden(row: VisioRow): boolean {
+    // Guard: invalid row is not hidden
+    if (!row) { return false; }
+    // Build a cell map for row-level cells
+    if (row.Cell) {
+        const cellMap: Map<string, CellMapValue> = createCellMap(ensureArray(row.Cell));
+        const noShowValue: CellMapValue | undefined = cellMap.get('NoShow');
+        if (safeNumber(noShowValue) === 1) { return true; }
+    }
+    // Default visible when NoShow is not set
+    return false;
+}
+
+/**
+ * Returns true only if every Geometry section in the array
+ * is hidden (NoShow = 1). Empty or invalid input returns false
+ * (do not hide the whole shape by default).
+ *
+ * @param {VisioSection[]} sections - Geometry sections collection.
+ * @returns {boolean} True if all sections are hidden, otherwise false.
+ */
+export function areAllGeometrySectionsHidden(sections: VisioSection[]): boolean {
+    // Guard: no sections means do not hide the whole shape
+    const allSections: VisioSection[] = ensureArray(sections);
+    if (!allSections || allSections.length === 0) { return false; }
+
+    // Check each section for NoShow=1
+    for (let i: number = 0; i < allSections.length; i++) {
+        const section: VisioSection = allSections[parseInt(i.toString(), 10)];
+        if (!isGeometrySectionHidden(section)) {
+            return false;
+        }
+    }
+    return true;
 }

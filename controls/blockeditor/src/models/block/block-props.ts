@@ -76,9 +76,9 @@ export type INumberedListBlockSettings = BasePlaceholderProp;
 export type IParagraphBlockSettings = BasePlaceholderProp;
 
 /**
- * Properties for quote blocks.
+ * Properties for quote blocks with nested children.
  */
-export type IQuoteBlockSettings = BasePlaceholderProp;
+export interface IQuoteBlockSettings extends BasePlaceholderProp, BaseChildrenProp {}
 
 /**
  * Properties for collapsible blocks, such as collapsible paragraphs or headings.

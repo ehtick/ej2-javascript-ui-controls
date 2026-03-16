@@ -1,10 +1,10 @@
-import { Animation, AnimationOptions, compile as templateComplier, Browser } from '@syncfusion/ej2-base';
+import { Animation, AnimationOptions, compile as templateComplier, Browser, SanitizeHtmlHelper } from '@syncfusion/ej2-base';
 import { merge, Effect, extend, isNullOrUndefined } from '@syncfusion/ej2-base';
 import { createElement, remove } from '@syncfusion/ej2-base';
 import { Index } from '../../common/model/base';
 import { TextAttributes } from '@syncfusion/ej2-svg-base';
 import { PathAttributes, RectAttributes, CircleAttributes, SVGCanvasAttributes, BaseAttibutes } from '@syncfusion/ej2-svg-base';
-import { FontModel, BorderModel, MarginModel } from '../model/base-model';
+import { FontModel, BorderModel, MarginModel, GradientColorStopModel, LinearGradientModel, RadialGradientModel } from '../model/base-model';
 import { VisibleLabels } from '../../chart/axis/axis';
 import { Series, Points } from '../../chart/series/chart-series';
 import { Axis } from '../../chart/axis/axis';
@@ -20,13 +20,14 @@ import { measureText, Rect, TextOption, Size, PathOption, SvgRenderer, CanvasRen
 import { BulletChart } from '../../bullet-chart/bullet-chart';
 import { RangeColorSettingModel } from '../../chart/chart-model';
 import { AccumulationDataLabelSettingsModel, IAccTextRenderEventArgs } from '../../accumulation-chart';
-import {Alignment} from './enum';
+import { Alignment } from './enum';
 import { Chart3D } from '../../chart3d';
 import { Chart3DAxis } from '../../chart3d/axis/axis';
-import { Chart3DPoint, Chart3DSeries} from '../../chart3d/series/chart-series';
+import { Chart3DPoint, Chart3DSeries } from '../../chart3d/series/chart-series';
 import { CircularChart3D } from '../../circularchart3d';
 import { VisibleRangeModel } from '../model/interface';
 import { ScrollBar } from '../scrollbar/scrollbar';
+import { Sankey } from '../../sankey/sankey';
 
 /**
  * Function to sort the dataSource, by default it sort the data in ascending order.
@@ -110,10 +111,10 @@ export function calculateScrollbarOffset(scrollbar: ScrollBar, isHorizontalAxis:
     const titlePadding: number = chart.titleStyle.position === 'Top' || (chart.titleStyle.position === 'Bottom' && !chart.legendSettings.visible) ? 15 : 5;
     if (chart.title) {
         titleHeight = (measureText(chart.title, chart.titleStyle, chart.themeStyle.chartTitleFont).height *
-        chart.titleCollection.length) + titlePadding;
+            chart.titleCollection.length) + titlePadding;
         if (chart.subTitle) {
             subTitleHeight = (measureText(chart.subTitle, chart.subTitleStyle, chart.themeStyle.chartSubTitleFont).height *
-            chart.subTitleCollection.length);
+                chart.subTitleCollection.length);
         }
     }
     let scrollbarOffsetValue: number;
@@ -155,7 +156,7 @@ export function calculateScrollbarOffset(scrollbar: ScrollBar, isHorizontalAxis:
  * @param {FontModel} themeFontStyle - The font style based on the theme.
  * @returns {Size} - The rotated size of the text.
  */
-export function rotateTextSize(font: FontModel, text: string, angle: number, chart: Chart| Chart3D, themeFontStyle: FontModel): Size {
+export function rotateTextSize(font: FontModel, text: string, angle: number, chart: Chart | Chart3D, themeFontStyle: FontModel): Size {
     const transformValue: string = chart.element.style.transform;
     if (transformValue) {
         chart.element.style.transform = '';
@@ -834,7 +835,8 @@ export function createZoomingLabels(chart: Chart, axis: Axis, parent: Element, i
             {
                 'id': chart.element.id + '_Zoom_' + index + '_AxisLabel_Shape_' + i,
                 'fill': chart.themeStyle.crosshairFill, 'width': 2, 'color': chart.themeStyle.crosshairFill,
-                'opacity': 1, 'stroke-dasharray': null, 'd': direction },
+                'opacity': 1, 'stroke-dasharray': null, 'd': direction
+            },
             null);
         parent.appendChild(pathElement);
         if (chart.theme === 'Fluent' || chart.theme === 'FluentDark') {
@@ -1000,8 +1002,7 @@ export function getValueYByPoint(value: number, size: number, axis: Axis): numbe
  */
 export function findClipRect(series: Series, isCanvas: boolean = false): void {
     const rect: Rect = series.clipRect;
-    if (isCanvas && (series.type === 'Polar' || series.type === 'Radar'))
-    {
+    if (isCanvas && (series.type === 'Polar' || series.type === 'Radar')) {
         if (series.drawType === 'Scatter') {
             rect.x = series.xAxis.rect.x;
             rect.y = series.yAxis.rect.y;
@@ -1449,7 +1450,7 @@ export function appendClipElement(
  * @returns {void}
  */
 export function triggerLabelRender(
-    chart: Chart | RangeNavigator| Chart3D, tempInterval: number, text: string, labelStyle: FontModel,
+    chart: Chart | RangeNavigator | Chart3D, tempInterval: number, text: string, labelStyle: FontModel,
     axis: Axis | Chart3DAxis
 ): void {
     const argsData: IAxisLabelRenderEventArgs = {
@@ -1473,7 +1474,7 @@ export function triggerLabelRender(
  * @returns {boolean} - It returns true if the axis range is set otherwise false.
  * @private
  */
-export function setRange(axis: Axis| Chart3DAxis): boolean {
+export function setRange(axis: Axis | Chart3DAxis): boolean {
     return (axis.minimum != null && axis.maximum != null);
 }
 /**
@@ -1848,7 +1849,8 @@ export function chartReactTemplate(
  * @private
  */
 export function createTemplate(
-    childElement: HTMLElement, pointIndex: number, content: string | Function, chart: Chart | AccumulationChart | RangeNavigator,
+    childElement: HTMLElement, pointIndex: number, content: string | Function,
+    chart: Chart | AccumulationChart | StockChart| RangeNavigator,
     point?: Points | AccPoints | VisibleLabels, series?: Series | AccumulationSeries, dataLabelId?: string, labelIndex?: number,
     argsData?: IAccTextRenderEventArgs, isTemplate?: boolean, points?: AccPoints[], datalabelGroup?: Element, id?: string,
     dataLabel?: AccumulationDataLabelSettingsModel, redraw?: boolean
@@ -1858,7 +1860,7 @@ export function createTemplate(
     try {
         let tempObject: Object = { chart: chart, series: series, point: point };
         if (childElement.id.indexOf('AxisLabelTemplate') > -1) {
-            tempObject =  { value: (point as VisibleLabels).value, label: point.text };
+            tempObject = { value: (point as VisibleLabels).value, label: point.text };
         }
         const templateId: string = dataLabelId ? dataLabelId + '_template' : 'template';
         const elementData: Element[] = templateFn ? templateFn(tempObject, chart, templateId, dataLabelId ||
@@ -1872,7 +1874,7 @@ export function createTemplate(
         }
         let reactCallback: Function;
         if (chart.getModuleName() === 'accumulationchart') {
-            reactCallback =  (points.length && points[pointIndex as number]) ? accReactTemplate.bind(
+            reactCallback = (points.length && points[pointIndex as number]) ? accReactTemplate.bind(
                 this, childElement, chart, isTemplate, points, argsData, points[pointIndex as number],
                 datalabelGroup, id, dataLabel, redraw
             ) : reactCallback;
@@ -2526,6 +2528,7 @@ export function calculateLegendShapes(location: ChartLocation, size: Size, shape
     }
     return { renderOption: options };
 }
+
 /**
  * Trims the text to fit within the specified maximum width.
  *
@@ -2534,11 +2537,13 @@ export function calculateLegendShapes(location: ChartLocation, size: Size, shape
  * @param {FontModel} font - The font settings for the text.
  * @param {boolean} isRtlEnabled - Indicates whether right-to-left text rendering is enabled.
  * @param {FontModel} [themeFontStyle] - The font style to be used for theme-specific settings.
+ * @param {Size} [templateSize] - The template size used for layout calculations.
  * @returns {string} - The trimmed text.
  */
-export function textTrim(maxWidth: number, text: string, font: FontModel, isRtlEnabled: boolean, themeFontStyle?: FontModel): string {
+export function textTrim(maxWidth: number, text: string, font: FontModel,
+                         isRtlEnabled: boolean, themeFontStyle?: FontModel, templateSize?: Size): string {
     let label: string = text;
-    let size: number = measureText(text, font, themeFontStyle).width;
+    let size: number = templateSize ? templateSize.width : measureText(text, font, themeFontStyle).width;
     if (size > maxWidth) {
         const textLength: number = text.length;
         for (let i: number = textLength - 1; i >= 0; --i) {
@@ -2809,7 +2814,7 @@ export function textElement(
  * @param {Chart | AccumulationChart | RangeNavigator | StockChart | Chart3D | CircularChart3D} chart - The chart for which to calculate the size.
  * @returns {void}
  */
-export function calculateSize(chart: Chart | AccumulationChart | RangeNavigator | StockChart | Chart3D | CircularChart3D): void {
+export function calculateSize(chart: Chart | AccumulationChart | RangeNavigator | StockChart | Chart3D | CircularChart3D | Sankey): void {
     // fix for Chart rendered with default width in IE issue
     let containerWidth: number = chart.element.clientWidth || chart.element.offsetWidth;
     let containerHeight: number = chart.element.clientHeight;
@@ -2827,8 +2832,9 @@ export function calculateSize(chart: Chart | AccumulationChart | RangeNavigator 
         marginHeight = range.margin.top + range.margin.bottom + tooltipSpace;
         const labelSize: number = measureText('tempString', range.labelStyle, range.themeStyle.axisLabelFont).height;
         const labelPadding: number = 15;
-        height = (chart.series.length ? (Browser.isDevice ? 80 : 120) : ((range.enableGrouping ? (40 + labelPadding + labelSize) : 40)
-            + marginHeight)) + periodHeight;
+        height = ((chart as RangeNavigator).series.length
+            ? (Browser.isDevice ? 80 : 120) : ((range.enableGrouping ? (40 + labelPadding + labelSize) : 40)
+                + marginHeight)) + periodHeight;
         if (range.disableRangeSelector) {
             height = periodHeight;
         }
@@ -2854,7 +2860,7 @@ export function calculateSize(chart: Chart | AccumulationChart | RangeNavigator 
  * @param {Chart | AccumulationChart | RangeNavigator | Chart3D | CircularChart3D} chart - The chart or chart element for which to create the SVG element.
  * @returns {void}
  */
-export function createSvg(chart: Chart | AccumulationChart | RangeNavigator | Chart3D | CircularChart3D): void {
+export function createSvg(chart: Chart | AccumulationChart | RangeNavigator | Chart3D | CircularChart3D | Sankey): void {
     (chart as Chart).canvasRender = new CanvasRenderer(chart.element.id);
     chart.renderer = (chart as Chart).enableCanvas ? (chart as Chart).canvasRender : new SvgRenderer(chart.element.id);
     calculateSize(chart);
@@ -2997,23 +3003,23 @@ export function textWrap(currentLabel: string, maximumWidth: number, font: FontM
  * @returns {string[]} An array of strings representing the wrapped lines of text.
  * @private
  */
-export function textWrapAnyWhere(currentLabel: string, maximumWidth: number, font: FontModel, themeFontStyle?: FontModel) : string[] {
-    let size : number = measureText(currentLabel, font,  themeFontStyle).width;
+export function textWrapAnyWhere(currentLabel: string, maximumWidth: number, font: FontModel, themeFontStyle?: FontModel): string[] {
+    let size: number = measureText(currentLabel, font, themeFontStyle).width;
     const labelCollection: string[] = [];
     if (size > maximumWidth) {
-        let label : string = '';
-        let startIndex : number = 0;
-        let labelIndex : number = 1;
+        let label: string = '';
+        let startIndex: number = 0;
+        let labelIndex: number = 1;
         while (labelIndex < currentLabel.length) {
             label = currentLabel.substring(startIndex, labelIndex);
             size = measureText(label, font, themeFontStyle).width;
             if (size < maximumWidth) {
-                labelIndex ++;
+                labelIndex++;
             }
             else if (size === maximumWidth) {
                 startIndex = labelIndex;
                 labelCollection.push(label);
-                labelIndex ++;
+                labelIndex++;
                 label = '';
             }
             else if (size > maximumWidth) {
@@ -3389,7 +3395,7 @@ export function getPercentage(percent: number, previous: number, next: number): 
  * @param {boolean} enableRtl - Specifies whether Right-to-Left is enabled.
  * @returns {string} - The text anchor value.
  */
-export function getTextAnchor(alignment: Alignment, enableRtl : boolean) : string {
+export function getTextAnchor(alignment: Alignment, enableRtl: boolean): string {
     switch (alignment) {
     case 'Near':
         return enableRtl ? 'end' : 'start';
@@ -3397,5 +3403,386 @@ export function getTextAnchor(alignment: Alignment, enableRtl : boolean) : strin
         return enableRtl ? 'start' : 'end';
     default:
         return 'middle';
+    }
+}
+
+
+/**
+ * @param {MouseEvent | Event} event - The DOM event whose target is used to start the search.
+ * @param {string} legendID - The legend root ID used to match template nodes (prefix before `_template_`).
+ * @returns {string | undefined} The matched ancestor element's `id`, or `undefined` if none is found.
+ */
+export function getAncestorElement(event: MouseEvent | Event, legendID: string): string {
+    const tplAncestor: HTMLElement = (event.target as HTMLElement).closest(
+        `[id^="${legendID}_template_"]`
+    ) as HTMLElement | null;
+    if (tplAncestor && tplAncestor.id) {
+        return tplAncestor.id;
+    }
+    return null;
+}
+
+/**
+ * To measure the size of the legend template for chart, accumulation chart, or stock chart.
+ *
+ * @param {string} legendID - The legend root ID used to match template nodes.
+ * @param {Chart | AccumulationChart | StockChart} chart - The chart instance for which the legend template size is measured.
+ * @param {number} index - The index of the legend item whose template size must be calculated.
+ * @param {AccPoints} [point] - The corresponding point of the legend item (optional).
+ * @returns {Size} - Returns the calculated width and height of the legend template.
+ */
+export function measureLegendTemplateSize(legendID: string, chart: Chart | AccumulationChart | StockChart,
+                                          index: number, point?: AccPoints): Size {
+    const wrapper: HTMLElement = createElement('div', {
+        id: legendID + index,
+        styles: 'position:absolute;visibility:hidden;top:0;left:0;pointer-events:none;'
+    }) as HTMLElement;
+    const content: string | Function = (chart as Chart | AccumulationChart).enableHtmlSanitizer
+        ? (chart as Chart | AccumulationChart).sanitize((chart as Chart | AccumulationChart).legendSettings.template as string)
+        : (chart as Chart | AccumulationChart | StockChart).legendSettings.template;
+    const rendered: HTMLElement = createTemplate(
+        wrapper, index, content, chart, chart.getModuleName() === 'accumulationchart' ? chart.visibleSeries[index as number].points[point.index as number] : null, chart.visibleSeries[index as number],
+        legendID + index, null
+    ) as HTMLElement;
+    if (chart.getModuleName() === 'accumulationchart') {
+        (chart as AccumulationChart).accumulationLegendModule.legendCollections[point.index].template = rendered;
+    }
+    const rect: ClientRect = measureElementRect(rendered, chart.redraw);
+    return new Size(rect.width, rect.height);
+}
+
+/**
+ * Left-pads a hex byte to two characters without using String.padStart
+ * Ensures values like 'A' become '0A'.
+ *
+ * @param {number} value - number in range 0..255
+ * @returns {string} two-character lowercase hex string
+ * @private
+ *
+ */
+export function toHex2(value: number): string {
+    const s: string = value.toString(16);
+    return (s.length === 1 ? '0' + s : s);
+}
+
+/**
+ * Adjusts the lightness of a color.
+ * Lightens the color by increasing brightness uniformly.
+ *
+ * @param {string} color - The input color (hex format recommended)
+ * @param {number} lighten - Lightness factor (0-1, where 1 is maximum lightness)
+ * @returns {string} The lightened color as hex string
+ *
+ * @example
+ * ```typescript
+ * lightenColor('#FF0000', 0.3);  // Returns lighter red
+ * ```
+ *
+ * @public
+ */
+export function lightenColor(color: string, lighten: number): string {
+    if (isNullOrUndefined(color)) {
+        return color || '#000000';
+    }
+    let hex: string = color;
+    if (color.charAt(0) !== '#') {
+        hex = colorNameToHex(color);
+    }
+    if (isNullOrUndefined(hex)) {
+        return color;
+    }
+    hex = hex.replace(/^#/, '');
+    if (hex.length === 3) {
+        hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+    let r: number = parseInt(hex.substring(0, 2), 16);
+    let g: number = parseInt(hex.substring(2, 4), 16);
+    let b: number = parseInt(hex.substring(4, 6), 16);
+    const factor: number = Math.min(1, lighten);
+    r = Math.round(r + (255 - r) * factor);
+    g = Math.round(g + (255 - g) * factor);
+    b = Math.round(b + (255 - b) * factor);
+    return '#' + toHex2(r) + toHex2(g) + toHex2(b);
+}
+
+/**
+ * Adjusts the brightness of a color.
+ * Can both brighten (positive value) and darken (negative value) a color.
+ *
+ * @param {string} color - The input color (hex format recommended)
+ * @param {number} brighten - Brightness adjustment (-1 to 1)
+ *                   Positive: brightens the color
+ *                   Negative: darkens the color
+ * @returns {string} The adjusted color as hex string
+ *
+ * @example
+ * ```typescript
+ * brightenColor('#FF0000', 0.2);   // Brightens red
+ * brightenColor('#FF0000', -0.3);  // Darkens red
+ * ```
+ *
+ * @public
+ */
+export function brightenColor(color: string, brighten: number): string {
+    if (isNullOrUndefined(color)) {
+        return color || '#000000';
+    }
+    let hex: string = color;
+    if (color.charAt(0) !== '#') {
+        hex = colorNameToHex(color);
+    }
+    if (isNullOrUndefined(hex)) {
+        return color;
+    }
+    hex = hex.replace(/^#/, '');
+    if (hex.length === 3) {
+        hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+    let r: number = parseInt(hex.substring(0, 2), 16);
+    let g: number = parseInt(hex.substring(2, 4), 16);
+    let b: number = parseInt(hex.substring(4, 6), 16);
+    const factor: number = 1 + Math.max(-1, Math.min(1, brighten)); // Clamp to 0-2
+    r = Math.round(r * factor);
+    g = Math.round(g * factor);
+    b = Math.round(b * factor);
+    r = Math.max(0, Math.min(255, r));
+    g = Math.max(0, Math.min(255, g));
+    b = Math.max(0, Math.min(255, b));
+    return '#' + toHex2(r) + toHex2(g) + toHex2(b);
+}
+
+/**
+ * Validates and normalizes gradient color stops.
+ *
+ * @param {GradientColorStopModel[]} stops - Raw gradient color stops to validate
+ * @returns {GradientColorStopModel[]} Normalized and sorted array of valid gradient stops
+ *
+ * @public
+ */
+export function normalizeGradientStops(stops: GradientColorStopModel[]): GradientColorStopModel[] {
+    if (!stops || stops.length === 0) {
+        return [];
+    }
+    const normalized: GradientColorStopModel[] = [];
+    for (const stop of stops) {
+        if (stop.offset === null || stop.offset === undefined || isNaN(stop.offset)) {
+            continue;
+        }
+        const offset: number = Math.min(100, Math.max(0, stop.offset));
+        if (!stop.color || stop.color === '') {
+            continue;
+        }
+        const opacity: number = !isNullOrUndefined(stop.opacity)
+            ? Math.min(1, Math.max(0, stop.opacity))
+            : 1;
+        const lighten: number = !isNullOrUndefined(stop.lighten)
+            ? Math.min(1, Math.max(0, stop.lighten))
+            : 0;
+        const brighten: number = !isNullOrUndefined(stop.brighten)
+            ? Math.min(1, Math.max(-1, stop.brighten))
+            : 0;
+        normalized.push({
+            offset,
+            color: stop.color,
+            opacity,
+            lighten,
+            brighten
+        });
+    }
+    normalized.sort((a: GradientColorStopModel, b: GradientColorStopModel) => a.offset - b.offset);
+    return normalized;
+}
+
+/**
+ * Sanitizes a color value to ensure it's a valid CSS color string.
+ * Prevents injection of malicious SVG attributes.
+ *
+ * @param {string} color - The color value to sanitize
+ * @returns {string} - The sanitized color value
+ *
+ * @public
+ */
+export function sanitizeGradientColor(color: string): string {
+    const sanitized: string = SanitizeHtmlHelper.sanitize(color);
+    return sanitized || '#000000';
+}
+
+/**
+ * Gets or creates the SVG <defs> element for storing gradient definitions.
+ * The <defs> element is the container for reusable SVG elements like gradients.
+ *
+ * @param {Element} svgObject - Specifies the svg element of the chart.
+ * @returns {SVGDefsElement} The SVG defs element
+ *
+ * @public
+ */
+export function getOrCreateSvgDefs(svgObject: Element): SVGDefsElement {
+    if (!svgObject) {
+        return null;
+    }
+    const svg: SVGSVGElement = svgObject as SVGSVGElement;
+    let defs: SVGDefsElement = svg.querySelector('defs') as SVGDefsElement;
+    if (!defs) {
+        // Create new <defs> element
+        defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+        svg.appendChild(defs);
+    }
+    return defs;
+}
+
+/**
+ * Removes an existing gradient element from the SVG defs section.
+ * Called before creating a new gradient to avoid duplicates.
+ *
+ * @param {SVGDefsElement} defs - The SVG defs element
+ * @param {string} gradientId - The ID of the gradient to remove
+ * @returns {void}
+ *
+ * @public
+ */
+export function removePreviousGradient(defs: SVGDefsElement, gradientId: string): void {
+    if (!defs || !gradientId) {
+        return;
+    }
+    const existingGradient: Element = defs.querySelector(`#${gradientId}`);
+    if (existingGradient) {
+        existingGradient.remove();
+    }
+}
+
+/**
+ * Builds and registers a linear gradient for a series.
+ *
+ * @param {Series} series - The series to apply the gradient to
+ * @param {LinearGradientModel} gradient - The linear gradient configuration
+ * @param {Element} svgObject - Specifies the svg element of the chart
+ * @param {Element} chartElement - Specifies the chart element
+ * @returns {void}
+ *
+ * @public
+ */
+export function createLinearGradient(series: Series, gradient: LinearGradientModel, svgObject: Element, chartElement: Element): void {
+    const stops: GradientColorStopModel[] = normalizeGradientStops(gradient.gradientColorStop);
+    if (stops.length === 0) {
+        return;
+    }
+    const defs: SVGDefsElement = getOrCreateSvgDefs(svgObject);
+    if (!defs) {
+        return;
+    }
+    const gradientId: string = `${chartElement.id}_series_${series.index}_linear_gradient`;
+    removePreviousGradient(defs, gradientId);
+    const svgNS: string = 'http://www.w3.org/2000/svg';
+    const linearGradient: Element = document.createElementNS(svgNS, 'linearGradient');
+    linearGradient.setAttribute('id', gradientId);
+    linearGradient.setAttribute('gradientUnits', 'objectBoundingBox');
+    linearGradient.setAttribute('x1', String(gradient.x1));
+    linearGradient.setAttribute('y1', String(gradient.y1));
+    linearGradient.setAttribute('x2', String(gradient.x2));
+    linearGradient.setAttribute('y2', String(gradient.y2));
+    for (const stop of stops) {
+        const stopElement: Element = document.createElementNS(svgNS, 'stop');
+        stopElement.setAttribute('offset', `${stop.offset}%`);
+        let adjustedColor: string = sanitizeGradientColor(stop.color);
+        if (stop.lighten && stop.lighten > 0 && stop.lighten <= 1) {
+            adjustedColor = lightenColor(adjustedColor, stop.lighten);
+        }
+        if (stop.brighten && stop.brighten >= -1 && stop.brighten !== 0 && stop.brighten <= 1) {
+            adjustedColor = brightenColor(adjustedColor, stop.brighten);
+        }
+        stopElement.setAttribute('stop-color', adjustedColor);
+        stopElement.setAttribute('stop-opacity', String(stop.opacity));
+        linearGradient.appendChild(stopElement);
+    }
+    defs.appendChild(linearGradient);
+    series.gradientId = gradientId;
+    series.interior = `url(#${gradientId})`;
+}
+
+/**
+ * Builds and registers a radial gradient for a series.
+ *
+ * @param {Series} series - The series to apply the gradient to
+ * @param {RadialGradientModel} gradient - The radial gradient configuration
+ * @param {Element} svgObject - Specifies the svg element of the chart.
+ * @param {Element} chartElement - Specifies the chart element.
+ * @returns {void}
+ *
+ * @public
+ */
+export function createRadialGradient(series: Series, gradient: RadialGradientModel, svgObject: Element, chartElement: Element): void {
+    const stops: GradientColorStopModel[] = normalizeGradientStops(gradient.gradientColorStop);
+    if (stops.length === 0) {
+        return;
+    }
+    const defs: SVGDefsElement = getOrCreateSvgDefs(svgObject);
+    if (!defs) {
+        return;
+    }
+    const gradientId: string = `${chartElement.id}_series_${series.index}_radial_gradient`;
+    removePreviousGradient(defs, gradientId);
+    const svgNS: string = 'http://www.w3.org/2000/svg';
+    const radialGradient: Element = document.createElementNS(svgNS, 'radialGradient');
+    const fx: number = !isNullOrUndefined(gradient.fx) ? gradient.fx : gradient.cx;
+    const fy: number = !isNullOrUndefined(gradient.fy) ? gradient.fy : gradient.cy;
+    radialGradient.setAttribute('id', gradientId);
+    radialGradient.setAttribute('gradientUnits', 'objectBoundingBox');
+    radialGradient.setAttribute('cx', String(gradient.cx));
+    radialGradient.setAttribute('cy', String(gradient.cy));
+    radialGradient.setAttribute('fx', String(fx));
+    radialGradient.setAttribute('fy', String(fy));
+    radialGradient.setAttribute('r', String(gradient.r));
+    for (const stop of stops) {
+        const stopElement: Element = document.createElementNS(svgNS, 'stop');
+        stopElement.setAttribute('offset', `${stop.offset}%`);
+        let adjustedColor: string = sanitizeGradientColor(stop.color);
+        if (stop.lighten && stop.lighten > 0 && stop.lighten <= 1) {
+            adjustedColor = lightenColor(adjustedColor, stop.lighten);
+        }
+        if (stop.brighten && stop.brighten >= -1 && stop.brighten !== 0 && stop.brighten <= 1) {
+            adjustedColor = brightenColor(adjustedColor, stop.brighten);
+        }
+        stopElement.setAttribute('stop-color', adjustedColor);
+        stopElement.setAttribute('stop-opacity', String(stop.opacity));
+        radialGradient.appendChild(stopElement);
+    }
+    defs.appendChild(radialGradient);
+    series.gradientId = gradientId;
+    series.interior = `url(#${gradientId})`;
+}
+
+/**
+ * Applies gradient fills to all visible series that have gradient configuration.
+ * This method is called during chart rendering after series are calculated.
+ * Linear gradients take precedence over radial if both are specified.
+ *
+ * @param {Element} svgObject - Specifies the svg element of the chart.
+ * @param {boolean} enableCanvas - Specifies canvas enabled.
+ * @param {Series[]} visibleSeries - Specifies the visible series of the chart.
+ * @param {Element} chartElement - Specifies the chart element
+ *
+ * @public
+ * @returns {void}
+ */
+export function applyGradientsToSeries(svgObject: Element, enableCanvas: boolean,
+                                       visibleSeries: Series[], chartElement: Element): void {
+    if (enableCanvas || !svgObject) {
+        return;
+    }
+    for (const series of visibleSeries) {
+        if (isNullOrUndefined(series)) {
+            continue;
+        }
+        const hasLinearGradient: boolean = series.linearGradient &&
+                                series.linearGradient.gradientColorStop &&
+                                series.linearGradient.gradientColorStop.length > 0;
+        const hasRadialGradient: boolean = series.radialGradient &&
+                                series.radialGradient.gradientColorStop &&
+                                series.radialGradient.gradientColorStop.length > 0;
+        if (hasLinearGradient) {
+            createLinearGradient(series, series.linearGradient, svgObject, chartElement);
+        } else if (hasRadialGradient) {
+            createRadialGradient(series, series.radialGradient, svgObject, chartElement);
+        }
     }
 }

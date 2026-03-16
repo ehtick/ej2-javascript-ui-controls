@@ -3,7 +3,9 @@ import { BaseChildrenProp, BlockModel, BlockProperties, IBulletListBlockSettings
     IHeadingBlockSettings, IImageBlockSettings, ILabelContentSettings, ILinkContentSettings, IMentionContentSettings,
     INumberedListBlockSettings, IParagraphBlockSettings, IQuoteBlockSettings, TableCellModel,
     TableColumnModel, ITableBlockSettings, TableRowModel, ITextContentSettings } from '../../models/index';
-import { generateUniqueId, isChildrenProp, isEmptyString, sanitizeBlock, sanitizeContent, sanitizeHeadingProps } from '../../common/utils/index';
+import { generateUniqueId } from '../../common/utils/common';
+import { isChildrenProp, isEmptyString } from '../../common/utils/block';
+import { sanitizeHeadingProps } from '../../common/utils/transform';
 import * as constants from '../../common/constant';
 import { BlockType, ContentType } from '../../models/enums';
 
@@ -12,20 +14,20 @@ import { BlockType, ContentType } from '../../models/enums';
  */
 export class BlockFactory {
 
-    private static defaultRootBlockProps: Partial<BlockModel> = {
-        parentId: '',
-        indent: 0,
-        content: [],
-        cssClass: '',
-        template: ''
-    };
-
     private static defaultInnerBlockProps: Partial<BlockProperties> = {
         placeholder: ''
     }
 
     private static defaultRootContentProps: Partial<ContentModel> = {
         content: ''
+    };
+
+    private static defaultRootBlockProps: Partial<BlockModel> = {
+        parentId: '',
+        indent: 0,
+        content: [ BlockFactory.createTextContent() ],
+        cssClass: '',
+        template: ''
     };
 
     static createBlockFromPartial(
@@ -94,7 +96,7 @@ export class BlockFactory {
         return {
             blockType: BlockType.Checklist,
             ...this.defaultRootBlockProps,
-            ...sanitizeBlock(rootProps),
+            ...rootProps,
             ...(isEmptyString(rootProps.id) ? { id: generateUniqueId(constants.BLOCK_ID_PREFIX) } : {}),
             properties: {
                 isChecked: false,
@@ -118,7 +120,7 @@ export class BlockFactory {
         return {
             blockType: BlockType.Paragraph,
             ...this.defaultRootBlockProps,
-            ...sanitizeBlock(rootProps),
+            ...rootProps,
             ...(isEmptyString(rootProps.id) ? { id: generateUniqueId(constants.BLOCK_ID_PREFIX) } : {}),
             properties: {
                 ...this.defaultInnerBlockProps,
@@ -142,7 +144,7 @@ export class BlockFactory {
         return {
             blockType: BlockType.Heading,
             ...this.defaultRootBlockProps,
-            ...sanitizeBlock(rootProps),
+            ...rootProps,
             ...(isEmptyString(rootProps.id) ? { id: generateUniqueId(constants.BLOCK_ID_PREFIX) } : {}),
             properties: {
                 level: 1,
@@ -166,7 +168,7 @@ export class BlockFactory {
         return {
             blockType: BlockType.Image,
             ...this.defaultRootBlockProps,
-            ...sanitizeBlock(rootProps),
+            ...rootProps,
             ...(isEmptyString(rootProps.id) ? { id: generateUniqueId(constants.BLOCK_ID_PREFIX) } : {}),
             content: [],
             properties: {
@@ -193,10 +195,10 @@ export class BlockFactory {
         return {
             blockType: BlockType.Code,
             ...this.defaultRootBlockProps,
-            ...sanitizeBlock(rootProps),
+            ...rootProps,
             ...(isEmptyString(rootProps.id) ? { id: generateUniqueId(constants.BLOCK_ID_PREFIX) } : {}),
             properties: {
-                language: 'javascript',
+                language: 'plaintext',
                 ...innerProps
             }
         };
@@ -216,7 +218,7 @@ export class BlockFactory {
         return {
             blockType: BlockType.BulletList,
             ...this.defaultRootBlockProps,
-            ...sanitizeBlock(rootProps),
+            ...rootProps,
             ...(isEmptyString(rootProps.id) ? { id: generateUniqueId(constants.BLOCK_ID_PREFIX) } : {}),
             properties: {
                 ...this.defaultInnerBlockProps,
@@ -239,7 +241,7 @@ export class BlockFactory {
         return {
             blockType: BlockType.NumberedList,
             ...this.defaultRootBlockProps,
-            ...sanitizeBlock(rootProps),
+            ...rootProps,
             ...(isEmptyString(rootProps.id) ? { id: generateUniqueId(constants.BLOCK_ID_PREFIX) } : {}),
             properties: {
                 ...this.defaultInnerBlockProps,
@@ -259,13 +261,21 @@ export class BlockFactory {
         rootProps: Partial<BlockModel> = {},
         innerProps: Partial<IQuoteBlockSettings> = {}
     ): BlockModel {
+        const blockId: string = isEmptyString(rootProps.id) ? generateUniqueId(constants.BLOCK_ID_PREFIX) : rootProps.id;
+
         return {
             blockType: BlockType.Quote,
             ...this.defaultRootBlockProps,
-            ...sanitizeBlock(rootProps),
-            ...(isEmptyString(rootProps.id) ? { id: generateUniqueId(constants.BLOCK_ID_PREFIX) } : {}),
+            ...rootProps,
+            id: blockId,
+            content: [],
             properties: {
-                ...this.defaultInnerBlockProps,
+                children: [
+                    BlockFactory.createParagraphBlock({
+                        parentId: blockId,
+                        content: [BlockFactory.createTextContent()]
+                    })
+                ],
                 ...innerProps
             }
         };
@@ -286,7 +296,7 @@ export class BlockFactory {
         return {
             blockType: BlockType.CollapsibleParagraph,
             ...this.defaultRootBlockProps,
-            ...sanitizeBlock(rootProps),
+            ...rootProps,
             id: blockId,
             properties: {
                 isExpanded: false,
@@ -318,7 +328,7 @@ export class BlockFactory {
         return {
             blockType: BlockType.CollapsibleHeading,
             ...this.defaultRootBlockProps,
-            ...sanitizeBlock(rootProps),
+            ...rootProps,
             id: blockId,
             properties: {
                 isExpanded: false,
@@ -350,7 +360,7 @@ export class BlockFactory {
         return {
             blockType: BlockType.Callout,
             ...this.defaultRootBlockProps,
-            ...sanitizeBlock(rootProps),
+            ...rootProps,
             id: blockId,
             content: [],
             properties: {
@@ -379,7 +389,7 @@ export class BlockFactory {
         return {
             blockType: BlockType.Divider,
             ...this.defaultRootBlockProps,
-            ...sanitizeBlock(rootProps),
+            ...rootProps,
             ...(isEmptyString(rootProps.id) ? { id: generateUniqueId(constants.BLOCK_ID_PREFIX) } : {}),
             content: [],
             properties: {
@@ -402,7 +412,7 @@ export class BlockFactory {
         return {
             blockType: 'Template',
             ...this.defaultRootBlockProps,
-            ...sanitizeBlock(rootProps),
+            ...rootProps,
             ...(isEmptyString(rootProps.id) ? { id: generateUniqueId(constants.BLOCK_ID_PREFIX) } : {}),
             content: [],
             properties: {
@@ -426,7 +436,7 @@ export class BlockFactory {
         const tableBlock: BlockModel = {
             blockType: BlockType.Table,
             ...this.defaultRootBlockProps,
-            ...sanitizeBlock(rootProps),
+            ...rootProps,
             ...(isEmptyString(rootProps.id) ? { id: generateUniqueId(constants.BLOCK_ID_PREFIX) } : {}),
             properties: {
                 width: '100%',
@@ -442,6 +452,10 @@ export class BlockFactory {
             if (!column.id) { column.id = generateUniqueId('col_'); }
             if (!column.type) { column.type = 'Text'; }
             if (!column.headerText) { column.headerText = `Column ${idx + 1}`; }
+            if (column.width) {
+                let value: number = parseInt(column.width.toString(), 10);
+                value = value < constants.TABLE_COL_MIN_WIDTH ? constants.TABLE_COL_MIN_WIDTH : value;
+            }
         });
 
         (tableBlock.properties as ITableBlockSettings).rows.forEach((r: TableRowModel) => {
@@ -534,8 +548,7 @@ export class BlockFactory {
         return {
             contentType: ContentType.Text,
             ...this.defaultRootContentProps,
-            ...sanitizeContent(rootProps),
-            ...(isEmptyString(rootProps.id) ? { id: generateUniqueId(constants.CONTENT_ID_PREFIX) } : {}),
+            ...rootProps,
             properties: {
                 styles: {},
                 ...innerProps
@@ -557,8 +570,7 @@ export class BlockFactory {
         return {
             contentType: ContentType.Link,
             ...this.defaultRootContentProps,
-            ...sanitizeContent(rootProps),
-            ...(isEmptyString(rootProps.id) ? { id: generateUniqueId(constants.CONTENT_ID_PREFIX) } : {}),
+            ...rootProps,
             properties: {
                 styles: {},
                 url: '',
@@ -581,8 +593,7 @@ export class BlockFactory {
         return {
             contentType: ContentType.Mention,
             ...this.defaultRootContentProps,
-            ...sanitizeContent(rootProps),
-            ...(isEmptyString(rootProps.id) ? { id: generateUniqueId(constants.CONTENT_ID_PREFIX) } : {}),
+            ...rootProps,
             properties: {
                 userId: '',
                 ...innerProps
@@ -604,8 +615,7 @@ export class BlockFactory {
         return {
             contentType: ContentType.Label,
             ...this.defaultRootContentProps,
-            ...sanitizeContent(rootProps),
-            ...(isEmptyString(rootProps.id) ? { id: generateUniqueId(constants.CONTENT_ID_PREFIX) } : {}),
+            ...rootProps,
             properties: {
                 labelId: '',
                 ...innerProps

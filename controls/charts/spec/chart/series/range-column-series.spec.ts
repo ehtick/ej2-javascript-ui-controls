@@ -494,7 +494,7 @@ describe('Chart', () => {
                 element1 = <HTMLElement>crosshair.childNodes[2].childNodes[2];
                 expect(element1.getAttribute('d') != '').toBe(true);
                 element1 = <HTMLElement>crosshair.childNodes[2].childNodes[1];
-                expect(element1.textContent).toEqual('3');
+                expect(element1.textContent).toEqual('2.827');
                 element1 = <HTMLElement>crosshair.childNodes[2].childNodes[3];
                
                 expect( Math.round(+element1.textContent) == 23 || Math.round(+element1.textContent) == 22).toBe(true);

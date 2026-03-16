@@ -16,12 +16,12 @@ import { IAnnotationRenderEventArgs } from '../chart/model/chart-interface';
 import { load, pointClick } from '../common/model/constants';
 import { pointMove, chartDoubleClick, chartMouseClick, chartMouseDown } from '../common/model/constants';
 import { chartMouseLeave, chartMouseMove, chartMouseUp, resized, beforeResize } from '../common/model/constants';
-import { MarginModel, BorderModel, CenterLabelModel, TooltipSettingsModel, IndexesModel, AccessibilityModel, TitleStyleSettingsModel } from '../common/model/base-model';
+import { MarginModel, BorderModel, CenterLabelModel, TooltipSettingsModel, IndexesModel, AccessibilityModel, TitleStyleSettingsModel, RadialGradientModel, LinearGradientModel, GradientColorStopModel } from '../common/model/base-model';
 import { AccumulationSeriesModel, PieCenterModel } from './model/acc-base-model';
 import { LegendSettings } from '../common/legend/legend';
 import { AccumulationLegend } from './renderer/legend';
 import { LegendSettingsModel } from '../common/legend/legend-model';
-import { ChartLocation, indexFinder, appendChildElement, redrawElement, getTextAnchor, stringToNumber, textWrap, subtractRect } from '../common/utils/helper';
+import { ChartLocation, indexFinder, appendChildElement, redrawElement, getTextAnchor, stringToNumber, textWrap, subtractRect, lightenColor, brightenColor, normalizeGradientStops, removePreviousGradient, sanitizeGradientColor, getOrCreateSvgDefs } from '../common/utils/helper';
 import { RectOption, showTooltip, ImageOption } from '../common/utils/helper';
 import { textElement, createSvg, calculateSize, removeElement, firstToLowerCase, withInBounds } from '../common/utils/helper';
 import { getElement, titlePositionX } from '../common/utils/helper';
@@ -1379,14 +1379,16 @@ export class AccumulationChart extends Component<HTMLElement> implements INotify
 
         if (legendElement) {
             const firstChild: HTMLElement = legendElement.firstElementChild as HTMLElement;
-            let className: string = firstChild.getAttribute('class');
-            if (className && className.indexOf('e-accumulationchart-focused') === -1) {
-                className = className + ' e-accumulationchart-focused';
+            if (firstChild) {
+                let className: string = firstChild.getAttribute('class');
+                if (className && className.indexOf('e-accumulationchart-focused') === -1) {
+                    className = className + ' e-accumulationchart-focused';
+                }
+                else if (!className) {
+                    className = 'e-accumulationchart-focused';
+                }
+                firstChild.setAttribute('class', className);
             }
-            else if (!className) {
-                className = 'e-accumulationchart-focused';
-            }
-            firstChild.setAttribute('class', className);
         }
         if (pagingElement) { pagingElement.setAttribute('class', 'e-accumulationchart-focused'); }
 
@@ -1429,13 +1431,14 @@ export class AccumulationChart extends Component<HTMLElement> implements INotify
             else if ((targetId.indexOf('_chart_legend_') > -1) && legendElement) {
                 (e.target as HTMLElement).removeAttribute('tabindex');
                 this.currentLegendIndex += (e.code === 'ArrowUp' || e.code === 'ArrowRight') ? + 1 : - 1;
-                this.currentLegendIndex = this.getActualIndex(this.currentLegendIndex, legendElement.children.length);
-
-                const currentLegend: Element = legendElement.children[this.currentLegendIndex];
+                this.currentLegendIndex = this.getActualIndex(this.currentLegendIndex, (targetId.indexOf('_chart_legend_template') > -1) ? this.accumulationLegendModule.legendCollections.length : legendElement.children.length);
+                const currentLegend: Element = (targetId.indexOf('_chart_legend_template') > -1) ?
+                    getElement(this.element.id + '_chart_legend_template_0' + this.currentLegendIndex) :
+                    legendElement.children[this.currentLegendIndex];
                 this.focusTarget(currentLegend as HTMLElement);
                 this.removeNavigationStyle();
-                this.setNavigationStyle(currentLegend.id);
-                this.previousTargetId = targetId = currentLegend.lastElementChild.id;
+                this.setNavigationStyle((targetId.indexOf('_chart_legend_template') > -1) ? (this.element.id + '_chart_legend_template_0' + this.currentLegendIndex) : currentLegend.id);
+                this.previousTargetId = targetId = (targetId.indexOf('_chart_legend_template') > -1) ? currentLegend.id : currentLegend.lastElementChild.id;
                 actionKey = this.highlightMode !== 'None' ? 'ArrowMove' : '';
             }
             else if (targetId.indexOf('_Point_') > -1) {
@@ -1458,7 +1461,6 @@ export class AccumulationChart extends Component<HTMLElement> implements INotify
             targetId = (targetId.indexOf('_chart_legend_g') > -1) ? e.target['lastElementChild'].id : targetId;
             actionKey = 'Enter';
         }
-
         if (actionKey !== '') {
             this.chartKeyboardNavigations(e, targetId, actionKey);
         }
@@ -1598,8 +1600,8 @@ export class AccumulationChart extends Component<HTMLElement> implements INotify
             if (targetId.indexOf('_chart_legend_') > -1 && this.accumulationLegendModule) {
                 this.isLegendClicked = true;
                 this.accumulationLegendModule.click(e as Event);
-                this.focusChild(document.getElementById(targetId).parentElement);
-                this.setNavigationStyle(document.getElementById(targetId).parentElement.id);
+                this.focusChild((targetId.indexOf('_chart_legend_template_') > -1) ? document.getElementById(targetId) : document.getElementById(targetId).parentElement);
+                this.setNavigationStyle((targetId.indexOf('_chart_legend_template_') > -1) ? document.getElementById(targetId).id : document.getElementById(targetId).parentElement.id);
             } else {
                 if (this.accumulationSelectionModule) {
                     this.accumulationSelectionModule.calculateSelectedElements(this, document.getElementById(targetId), 'click');
@@ -1912,6 +1914,7 @@ export class AccumulationChart extends Component<HTMLElement> implements INotify
      * @returns {void}
      */
     public renderElements(): void {
+        this.applyGradientsToSeries();
 
         this.renderBorder();
 
@@ -2621,6 +2624,165 @@ export class AccumulationChart extends Component<HTMLElement> implements INotify
         }
         return value;
     }
+
+    /**
+     * Builds and registers a linear gradient for a series.
+     *
+     * @param {AccumulationSeries} series - The series to apply the gradient to
+     * @param {LinearGradientModel} gradient - The linear gradient configuration
+     * @param {AccPoints} point - The data point for gradient.
+     * @param {number} pointIndex - Specifies the index of the point.
+     * @returns {string} - The URL for the created gradient.
+     *
+     * @private
+     */
+    public createLinearGradient(series: AccumulationSeries, gradient: LinearGradientModel, point?: AccPoints, pointIndex?: number): string {
+        const stops: GradientColorStopModel[] = normalizeGradientStops(gradient.gradientColorStop);
+        const defs: SVGDefsElement = getOrCreateSvgDefs(this.svgObject);
+        const gradientId: string = !isNullOrUndefined(point) && !isNullOrUndefined(pointIndex)
+            ? `${this.element.id}_series_${series.index}_point_${pointIndex}_linear_gradient`
+            : `${this.element.id}_series_${series.index}_linear_gradient`;
+        removePreviousGradient(defs, gradientId);
+        const svgNS: string = 'http://www.w3.org/2000/svg';
+        const linearGradient: Element = document.createElementNS(svgNS, 'linearGradient');
+        linearGradient.setAttribute('id', gradientId);
+        linearGradient.setAttribute('gradientUnits', 'objectBoundingBox');
+        linearGradient.setAttribute('x1', String(gradient.x1));
+        linearGradient.setAttribute('y1', String(gradient.y1));
+        linearGradient.setAttribute('x2', String(gradient.x2));
+        linearGradient.setAttribute('y2', String(gradient.y2));
+        for (const stop of stops) {
+            const stopElement: Element = document.createElementNS(svgNS, 'stop');
+            stopElement.setAttribute('offset', `${stop.offset}%`);
+            let adjustedColor: string = sanitizeGradientColor(stop.color);
+
+            if (stop.lighten && stop.lighten > 0 && stop.lighten <= 1) {
+                adjustedColor = lightenColor(adjustedColor, stop.lighten);
+            }
+
+            if (stop.brighten && stop.brighten >= -1 && stop.brighten !== 0 && stop.brighten <= 1) {
+                adjustedColor = brightenColor(adjustedColor, stop.brighten);
+            }
+            stopElement.setAttribute('stop-color', adjustedColor);
+            stopElement.setAttribute('stop-opacity', String(stop.opacity));
+            linearGradient.appendChild(stopElement);
+        }
+        defs.appendChild(linearGradient);
+        if (isNullOrUndefined(point)) {
+            series.gradientId = gradientId;
+        }
+        return gradientId;
+    }
+    /**
+     * Builds and registers a radial gradient for a series.
+     *
+     * @param {AccumulationSeries} series - The series to apply the gradient to
+     * @param {RadialGradientModel} gradient - The radial gradient configuration
+     * @param {AccPoints} point - The data point for gradient.
+     * @param {number} pointIndex - Specifies the index of the point.
+     * @returns {string} - The URL for the created gradient.
+     *
+     * @private
+     */
+    private createRadialGradient(series: AccumulationSeries, gradient: RadialGradientModel,
+                                 point?: AccPoints, pointIndex?: number): string {
+        const stops: GradientColorStopModel[] = normalizeGradientStops(gradient.gradientColorStop);
+        const defs: SVGDefsElement = getOrCreateSvgDefs(this.svgObject);
+        const gradientId: string = !isNullOrUndefined(point) && !isNullOrUndefined(pointIndex)
+            ? `${this.element.id}_series_${series.index}_point_${pointIndex}_radial_gradient`
+            : `${this.element.id}_series_${series.index}_radial_gradient`;
+        removePreviousGradient(defs, gradientId);
+        const svgNS: string = 'http://www.w3.org/2000/svg';
+        const radialGradient: Element = document.createElementNS(svgNS, 'radialGradient');
+        const fx: number = !isNullOrUndefined(gradient.fx) ? gradient.fx : gradient.cx;
+        const fy: number = !isNullOrUndefined(gradient.fy) ? gradient.fy : gradient.cy;
+        radialGradient.setAttribute('id', gradientId);
+        radialGradient.setAttribute('gradientUnits', 'objectBoundingBox');
+        radialGradient.setAttribute('cx', String(gradient.cx));
+        radialGradient.setAttribute('cy', String(gradient.cy));
+        radialGradient.setAttribute('fx', String(fx));
+        radialGradient.setAttribute('fy', String(fy));
+        radialGradient.setAttribute('r', String(gradient.r));
+        for (const stop of stops) {
+            const stopElement: Element = document.createElementNS(svgNS, 'stop');
+            stopElement.setAttribute('offset', `${stop.offset}%`);
+            let adjustedColor: string = sanitizeGradientColor(stop.color);
+            if (stop.lighten && stop.lighten > 0 && stop.lighten <= 1) {
+                adjustedColor = lightenColor(adjustedColor, stop.lighten);
+            }
+            if (stop.brighten && stop.brighten >= -1 && stop.brighten !== 0 && stop.brighten <= 1) {
+                adjustedColor = brightenColor(adjustedColor, stop.brighten);
+            }
+            stopElement.setAttribute('stop-color', adjustedColor);
+            stopElement.setAttribute('stop-opacity', String(stop.opacity));
+            radialGradient.appendChild(stopElement);
+        }
+        defs.appendChild(radialGradient);
+        if (isNullOrUndefined(point)) {
+            series.gradientId = gradientId;
+        }
+        return gradientId;
+    }
+    /**
+     * Public wrapper method to create a linear gradient for an individual point.
+     * Called from renderPoints in acc-base.ts.
+     *
+     * @param {AccumulationSeries} series - The series containing the point
+     * @param {AccPoints} point - The specific point to apply gradient to
+     * @param {number} pointIndex - The index of the point
+     * @param {LinearGradientModel} gradient - The linear gardient for point.
+     * @returns {string} The gradient ID
+     *
+     * @private
+     */
+    public createPointLinearGradient(series: AccumulationSeries, point: AccPoints,
+                                     pointIndex: number, gradient?: LinearGradientModel): string {
+        const gradientToUse: LinearGradientModel = point.linearGradient || gradient;
+        if (!gradientToUse) {
+            return '';
+        }
+        return this.createLinearGradient(series, gradientToUse, point, pointIndex);
+    }
+    /**
+     * Public wrapper method to create a radial gradient for an individual point.
+     * Called from renderPoints in acc-base.ts.
+     *
+     * @param {AccumulationSeries} series - The series containing the point
+     * @param {AccPoints} point - The specific point to apply gradient to
+     * @param {number} pointIndex - The index of the point
+     * @param {RadialGradientModel} gradient - Specifies the radial grdient for the point.
+     * @returns {string} The gradient ID
+     *
+     * @private
+     */
+    public createPointRadialGradient(series: AccumulationSeries, point: AccPoints,
+                                     pointIndex: number, gradient: RadialGradientModel): string {
+        const gradientToUse: RadialGradientModel = point.radialGradient || gradient;
+        if (!gradientToUse) {
+            return '';
+        }
+        return this.createRadialGradient(series, gradientToUse, point, pointIndex);
+    }
+
+    /**
+     * Applies gradient fills to the accumulation chart series and its individual points.
+     *
+     * @returns {void}
+     */
+    private applyGradientsToSeries(): void {
+        if (!this.svgObject || !this.visibleSeries || !this.visibleSeries.length) {
+            return;
+        }
+        const series: AccumulationSeries = this.visibleSeries[0];
+        if (series.linearGradient && series.linearGradient.gradientColorStop &&
+            series.linearGradient.gradientColorStop.length > 0) {
+            this.createLinearGradient(series, series.linearGradient);
+        }
+        else if (series.radialGradient && series.radialGradient.gradientColorStop &&
+            series.radialGradient.gradientColorStop.length > 0) {
+            this.createRadialGradient(series, series.radialGradient);
+        }
+    }
     /**
      * Called internally if any of the property value changed.
      *
@@ -2675,10 +2837,11 @@ export class AccumulationChart extends Component<HTMLElement> implements INotify
                     for (let i: number = 0; i < len; i++) {
                         series = newProp.series[i as number];
                         if (newProp.series[i as number] && (newProp.series[i as number].dataSource || newProp.series[i as number].yName
-                            || newProp.series[i as number].xName || series.type ||
+                            || newProp.series[i as number].xName || series.type || newProp.series[i as number].legendShape ||
                             newProp.series[i as number].dataLabel || series.radius || series.innerRadius ||
                             series.startAngle || series.endAngle || series.gapRatio || series.neckWidth || series.explode ||
-                            series.neckWidth || series.pyramidMode || series.explodeOffset || series.funnelMode)) {
+                            series.neckWidth || series.pyramidMode || series.explodeOffset || series.funnelMode ||
+                            series.linearGradient || series.radialGradient)) {
                             extend(this.changeVisibleSeries(this.visibleSeries, i), series, null, true);
                             seriesRefresh = true;
                         }

@@ -423,10 +423,11 @@
     }
 
     &.sf-pivotview {
-      .e-group-rows.e-rows.e-group-pivot-rows.e-tabular-group-rows{
-        display: block !important;
-      }
 
+      &:has(.e-pivot-grouping-bar) .e-headercontent .e-columnheader .e-group-row .e-headercelldiv {
+        display: none;
+      }
+      
       .e-headercell.no-borders.e-leftfreeze,
       .e-headercell.no-left-border.e-leftfreeze,
       .e-headercell.no-right-border.e-leftfreeze {
@@ -632,6 +633,13 @@
           border-bottom: $pivotgrid-border-size $pivotgrid-border-type $pivotgrid-default-border-color;
         }
       }
+    }
+
+    .e-group-values.e-values,
+    .e-group-rows.e-rows {
+      /* stylelint-disable */
+      display: block !important;
+      /* stylelint-enable */
     }
 
     .e-group-values,
@@ -878,12 +886,6 @@
     }
 
     &.sf-pivotview {
-      th.e-headercell-container.e-stacked-header {
-        /* stylelint-disable */
-        display: block !important;
-        /* stylelint-enable */
-      }
-      
       th.e-headercell.e-group-row.e-leftfreeze {
         /* stylelint-disable */
         box-shadow: none !important;
@@ -1664,8 +1666,12 @@
         .e-group-values,
         .e-group-columns {
           .e-pvt-btn-div {
+            max-width: $pivotgrid-width-unset;
+            width: $pivotgrid-width-100p;
             .e-pivot-button {
-              max-width: $pivotgrid-width-130;
+              width: $pivotgrid-width-100p !important;
+              max-width: $pivotgrid-width-130 !important;
+              min-width: $pivotgrid-width-80;
             }
           }
         }

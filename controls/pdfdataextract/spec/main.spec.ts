@@ -1,8 +1,7 @@
 import { _ContentParser, _PdfContentStream, _PdfDictionary, _PdfRecord, _PdfReference, PdfBitmap, PdfDocument, PdfPage, PdfPen } from '@syncfusion/ej2-pdf';
-import { pdfSuccinctly, annotations, fillStroke, image } from './inputs.spec';
+import { pdfSuccinctly, annotations, fillStroke, input } from './inputs.spec';
 import { PdfDataExtractor } from '../src/pdf-data-extract/core/pdf-data-extractor';
 import { TextLine } from '../src/pdf-data-extract/core/text-structure';
-import { PdfEmbeddedImage } from '../src/pdf-data-extract/core/image-extraction/pdf-embedded-image';
 import { PdfRedactionRegion } from '../src/pdf-data-extract/core/redaction/pdf-redaction-region';
 import { PdfRedactor } from '../src/pdf-data-extract/core/redaction/pdf-redactor';
 import { PdfTagType } from '../src/pdf-data-extract/core/text-extraction/enumerator';
@@ -63,6 +62,16 @@ describe('Pdf Text Extraction', () => {
         expect(text).toEqual("Adobe Systems Incorporated's Portable Document Format (PDF) is the de facto\r\nstandard for the accurate, reliable, and platform-independent representation of a\r\npaged document. It's the only universally accepted file format that allows pixel-perfect\r\nlayouts. In addition, PDF supports user interaction and collaborative workflows that\r\nare not possible with printed documents.\r\nPDF documents have been in widespread use for years, and dozens of free and\r\ncommercial PDF readers, editors, and libraries are readily available. However, despite\r\nthis popularity, it's still difficult to find a succinct guide to the native PDF format.\r\nUnderstanding the internal workings of a PDF makes it possible to dynamically\r\ngenerate PDF documents. For example, a web server can extract information from a\r\ndatabase, use it to customize an invoice, and serve it to the customer on the fly.\r\nThe PDF Standard\r\nThe PDF format is an open standard maintained by the International Organization for\r\nStandardization. The official specification is defined in ISO 32000-1:2008, but Adobe\r\nalso provides a free, comprehensive guide called PDF Reference, Sixth Edition,\r\nversion 1.7.\r\nChapter 1 Conceptual Overview\r\nWe'll begin with a conceptual overview of a simple PDF document. This chapter is\r\ndesigned to be a brief orientation before diving in and creating a real document from\r\nscratch.\r\nA PDF file can be divided into four parts: a header, body, cross-reference table, and\r\ntrailer. The header marks the file as a PDF, the body defines the visible document, the\r\ncross-reference table lists the location of everything in the file, and the trailer provides\r\ninstructions for how to start reading the file.\r\nPage 1 of 1 \r\nIntroduction \r\nPDF Succinctly");
         document.destroy();
     });
+    it('934219 - Pdf Extract TextLines', () => {
+        let document: PdfDocument = new PdfDocument(input);
+        let extractor: PdfDataExtractor = new PdfDataExtractor(document);
+        let textCollection: TextLine[] = extractor.extractTextLines({ startPageIndex: 0, endPageIndex: 0 });
+        expect(textCollection[0].text).toEqual('Datum:');
+        expect(textCollection[1].text).toEqual('Bez.:');
+        expect(textCollection[2].text).toEqual('Kunden-ID:');
+        expect(textCollection[3].text).toEqual('An:');
+        document.destroy();
+    });
     it('Pdf Extract Text Overload', () => {
         let document: PdfDocument = new PdfDocument(pdfSuccinctly);
         let extractor: PdfDataExtractor = new PdfDataExtractor(document);
@@ -83,7 +92,7 @@ describe('Pdf Redaction Test', () => {
         redactions.push(redactionOptions);
         let redactor: PdfRedactor = new PdfRedactor(document);
         redactor.add(redactions);
-        redactor.redact();
+        redactor.redactSync();
         let output = document.save(); 
         document.destroy();
         document = new PdfDocument(output);
@@ -104,7 +113,7 @@ describe('Pdf Redaction Test', () => {
         redactions.push(redactionOptions);
         let redactor: PdfRedactor = new PdfRedactor(document);
         redactor.add(redactions);
-        redactor.redact();
+        redactor.redactSync();
         let page: PdfPage = document.getPage(0);
         let resources: _PdfDictionary = page._pageDictionary.get('Resources');
         let xobject = resources.get('XObject');
@@ -133,33 +142,4 @@ describe('Tagged PDF Test', () => {
         expect(tagType).toEqual(PdfTagType.paragraph);
         document.destroy();
     });
-});
-describe('Image Extraction', () => {
-    it ('Image Extraction - 1', async() => {
-        let loadocument: PdfDocument =  new PdfDocument(image);
-        let extractor: PdfDataExtractor = new PdfDataExtractor(loadocument, canvasRenderCallback);
-        let imageInfoCollection: PdfEmbeddedImage[] = await extractor.extractImages({ startPageIndex: 0, endPageIndex: loadocument.pageCount - 1});
-        expect(imageInfoCollection[0].data.length).toEqual(87781);
-        let doc: PdfDocument = new PdfDocument();
-        for (let i: number = 0; i < imageInfoCollection.length; i++) {
-            let imageInfo: PdfEmbeddedImage = imageInfoCollection[i];
-            let page: PdfPage = doc.addPage();
-            const image2 = new PdfBitmap(imageInfoCollection[i].data);
-            let bounds = imageInfo.bounds;
-            page.graphics.drawImage(image2, {x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height});
-        }        
-        let output = doc.save();
-        let ldoc: PdfDocument = new PdfDocument(output);
-        let ref: _PdfReference = new _PdfReference(8, 0);
-        ref._isNew = false;
-        let value = ldoc._crossReference._fetch(ref);
-        ref = new _PdfReference(14, 0);
-        let bytes = value.getBytes();
-        expect(bytes.length).toEqual(87781)
-        doc.destroy();
-    });
-    function canvasRenderCallback(): any {
-        const canvas: HTMLCanvasElement = document.createElement('canvas');
-        return { canvas: canvas, applicationPlatform: undefined};
-    }
 });

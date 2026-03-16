@@ -22,6 +22,7 @@ export class InsertHtml {
         'q', 'ruby', 's', 'samp', 'script', 'select', 'slot', 'small', 'span', 'strong', 'sub', 'sup', 'svg',
         'template', 'textarea', 'time', 'title', 'u', 'tt', 'var', 'video', 'wbr'];
     public static contentsDeleted: boolean = false;
+    public static isBlazor: boolean = false;
     private static isAnotherLiFromEndLi: boolean = false;
     /**
      * Inserts an HTML node or text into the specified document.
@@ -41,6 +42,8 @@ export class InsertHtml {
         editNode: Element, isExternal?: boolean, enterAction?: string, editorManager?: EditorManager
     ): void {
         const insertedNode: Node = this.prepareInsertNode(insertNode, isExternal, editNode);
+        // Capture Blazor mode from the EditorManager for util functions
+        this.isBlazor = !isNOU(editorManager) ? editorManager.isBlazor : false;
         const scrollHeight: number = !isNOU(editNode) ? editNode.scrollHeight : 0;
         const nodeSelection: NodeSelection = new NodeSelection(editNode as HTMLElement);
         const nodeCutter: NodeCutter = new NodeCutter();
@@ -338,7 +341,12 @@ export class InsertHtml {
         this.insertNodeAtLocation(
             docElement, sibNode, parentNode, editNode, insertedNode, preNode, insertNode, isCursor, range, enterAction);
         this.removeEmptyElements(editNode as HTMLElement);
-        this.setSelectionAfterInsertion(insertedNode, nodeSelection, docElement);
+        if ((insertedNode as HTMLElement).nodeName === '#text' &&
+            (insertedNode as HTMLElement).textContent.trim() === '' && (insertedNode as HTMLElement).textContent.length !== 0) {
+            nodeSelection.setCursorPoint(docElement, insertedNode as Element, (insertedNode as HTMLElement).textContent.length);
+        } else {
+            this.setSelectionAfterInsertion(insertedNode, nodeSelection, docElement);
+        }
     }
 
     // Extracts content or cleans nested lists as required when managing inserts in outer content ranges.
@@ -449,7 +457,7 @@ export class InsertHtml {
         insertedNode: Node, nodeSelection: NodeSelection, docElement: Document
     ): void {
         if (insertedNode.nodeName === 'IMG') {
-            this.imageFocus(insertedNode, nodeSelection, docElement);
+            this.mediaFocus(insertedNode, nodeSelection, docElement);
         } else if (insertedNode.nodeType !== 3) {
             nodeSelection.setSelectionText(docElement, insertedNode, insertedNode, 0, insertedNode.childNodes.length);
         } else {
@@ -568,7 +576,7 @@ export class InsertHtml {
         if (insertedNode.nodeType !== 3 && insertedNode.childNodes.length > 0) {
             nodeSelection.setSelectionText(docElement, insertedNode, insertedNode, 1, 1);
         } else if (insertedNode.nodeName === 'IMG') {
-            this.imageFocus(insertedNode, nodeSelection, docElement);
+            this.mediaFocus(insertedNode, nodeSelection, docElement);
         } else if (insertedNode.nodeType !== 3) {
             nodeSelection.setSelectionContents(docElement, insertedNode);
         } else {
@@ -659,6 +667,24 @@ export class InsertHtml {
         this.listStyleCleanup(insertedNode);
         // Process based on content structure
         const containsBlockNode: boolean = this.containsBlockElements(insertedNode);
+        let processBlockElement: HTMLElement = (blockElement && blockElement.parentElement && blockElement.parentElement.nodeName === 'LI') ? blockElement.parentElement : blockElement;
+        if (!isNOU(processBlockElement) && processBlockElement.nodeName === 'LI') {
+            while (processBlockElement.parentElement && (processBlockElement.parentElement.nodeName === 'LI' || processBlockElement.parentElement.nodeName === 'OL' || processBlockElement.parentElement.nodeName === 'UL')) {
+                processBlockElement = processBlockElement.parentElement;
+            }
+            if (processBlockElement && (processBlockElement.nodeName === 'OL' || processBlockElement.nodeName === 'UL')) {
+                processBlockElement.classList.add('e-rte-copy-list');
+            }
+        } else {
+            insertedNode.childNodes.forEach((node: Node) => {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    const childElement: Element = node as Element;
+                    if (childElement.tagName === 'OL' || childElement.tagName === 'UL') {
+                        childElement.classList.add('e-rte-copy-list');
+                    }
+                }
+            });
+        }
         const lastSelectionNode: Node = containsBlockNode
             ? this.handleBlockNodeContent(nodes, insertedNode, range, nodeCutter, editNode, enterAction, isCollapsed)
             : this.handleInlineContent(
@@ -676,14 +702,6 @@ export class InsertHtml {
         this.removeEmptyBrFromParagraph(editNode as HTMLElement);
     }
 
-    // Clean up unnecessary line breaks after paste actions.
-    private static removeEmptyBrFromParagraph(editNode: HTMLElement): void {
-        const tempBr: HTMLBRElement | null = editNode.querySelector('br.rte-temp-br');
-        if (tempBr) {
-            tempBr.remove();
-        }
-    }
-
     // Cleans up inline styles applied to list items within the inserted content.
     private static listStyleCleanup(node: Node): void {
         if (node.nodeType === Node.ELEMENT_NODE) {
@@ -699,6 +717,13 @@ export class InsertHtml {
         }
     }
 
+    // Clean up unnecessary line breaks after paste actions.
+    private static removeEmptyBrFromParagraph(editNode: HTMLElement): void {
+        const tempBr: HTMLBRElement | null = editNode.querySelector('br.rte-temp-br');
+        if (tempBr) {
+            tempBr.remove();
+        }
+    }
 
     // Adjusts range settings when the editor is empty, covering cursor initialization aspects.
     private static adjustRangeForEmptyEditor(
@@ -1278,19 +1303,21 @@ export class InsertHtml {
         const range: Range = nodeSelection.getRange(docElement);
         const startContainer: Node = range.startContainer;
         const startOffset: number = range.startOffset;
-        const startParentElement: HTMLElement = range.startContainer.parentElement;
-        const endParentElement: HTMLElement = range.endContainer.parentElement;
-        if (!isNOU(startParentElement) && !isNOU(endParentElement)) {
-            const startClosestList: HTMLElement = startParentElement.closest('ol, ul') as HTMLElement;
-            const endClosestList: HTMLElement = endParentElement.closest('ol, ul') as HTMLElement;
-            if (!isNOU(startClosestList) && !isNOU(endClosestList)) {
-                const hasListCleanUp: boolean = this.cleanUpListItems(startClosestList);
-                const hasListContainerCleanUp: boolean = this.cleanUpListContainer(startClosestList);
-                if (hasListCleanUp || hasListContainerCleanUp) {
-                    range.setStart(startContainer, startOffset);
-                    range.setEnd(startContainer, startOffset);
-                }
+        let hasListCleanUp: boolean = false;
+        let hasListContainerCleanUp: boolean = false;
+        const copiedLists: NodeListOf<HTMLElement> = docElement.querySelectorAll('.e-rte-copy-list');
+        for (let i: number = 0; i < copiedLists.length; i++) {
+            const listItem: HTMLElement = copiedLists[i as number];
+            hasListCleanUp = this.cleanUpListItems(listItem);
+            hasListContainerCleanUp = this.cleanUpListContainer(listItem);
+            listItem.classList.remove('e-rte-copy-list');
+            if (listItem.getAttribute('class').length === 0) {
+                listItem.removeAttribute('class');
             }
+        }
+        if (hasListCleanUp || hasListContainerCleanUp) {
+            range.setStart(startContainer, startOffset);
+            range.setEnd(startContainer, startOffset);
         }
     }
 
@@ -1385,10 +1412,11 @@ export class InsertHtml {
                     childNode.previousSibling.textContent.trim() === '');
                 const prevElement: Element = (childNode as HTMLElement).previousElementSibling;
                 const isPrevLi: boolean = prevElement && prevElement.nodeName.toUpperCase() === 'LI';
-                if (isListNode && hasEmptyTextSibling && isPrevLi) {
+                if (isListNode && (hasEmptyTextSibling || isPrevLi) && prevElement) {
                     prevElement.appendChild(childNode);
                     this.cleanUpListContainer(childNode as HTMLElement);
                     i--;
+                    hasListContainerCleanUp = true;
                 } else if ((childNode as HTMLElement).nodeName.toLocaleUpperCase() !== 'LI') {
                     nonLiElementCollection.push(childNode);
                 }
@@ -1404,6 +1432,9 @@ export class InsertHtml {
                 if (newListItem.textContent && newListItem.textContent.trim() === '' && !newListItem.querySelector('img')) {
                     parentList.removeChild(newListItem);
                 }
+                if (newListItem.firstElementChild && (newListItem.firstElementChild.nodeName === 'OL' || newListItem.firstElementChild.nodeName === 'UL')) {
+                    newListItem.style.listStyleType = 'none';
+                }
                 hasListContainerCleanUp = true;
             });
         }
@@ -1414,7 +1445,7 @@ export class InsertHtml {
     private static placeCursorEnd(
         lastSelectionNode: Node, insertedNode: Node, nodeSelection: NodeSelection, docElement: Document, editNode?: Element): void {
         while (!isNOU(lastSelectionNode) && lastSelectionNode.nodeName !== '#text' && lastSelectionNode.nodeName !== 'IMG' &&
-        lastSelectionNode.nodeName !== 'BR' && lastSelectionNode.nodeName !== 'HR') {
+        lastSelectionNode.nodeName !== 'VIDEO' && lastSelectionNode.nodeName !== 'AUDIO' && lastSelectionNode.nodeName !== 'BR' && lastSelectionNode.nodeName !== 'HR') {
             if (!isNOU(lastSelectionNode.lastChild) && (lastSelectionNode.lastChild.nodeName === 'P' &&
                 (lastSelectionNode.lastChild as HTMLElement).innerHTML === '')) {
                 const lineBreak: HTMLElement = createElement('br');
@@ -1423,8 +1454,8 @@ export class InsertHtml {
             lastSelectionNode = lastSelectionNode.lastChild;
         }
         lastSelectionNode = isNOU(lastSelectionNode) ? insertedNode : lastSelectionNode;
-        if (lastSelectionNode.nodeName === 'IMG') {
-            this.imageFocus(lastSelectionNode, nodeSelection, docElement);
+        if (lastSelectionNode.nodeName === 'IMG' || lastSelectionNode.nodeName === 'VIDEO' || lastSelectionNode.nodeName === 'AUDIO') {
+            this.mediaFocus(lastSelectionNode, nodeSelection, docElement);
         } else {
             nodeSelection.setSelectionText(
                 docElement, lastSelectionNode, lastSelectionNode,
@@ -2504,7 +2535,7 @@ export class InsertHtml {
         docElement: Document, editNode?: Element
     ): void {
         (lastSelectionNode as HTMLElement).classList.add('lastNode');
-        editNode.innerHTML = updateTextNode(editNode.innerHTML);
+        editNode.innerHTML = updateTextNode(editNode.innerHTML, this.isBlazor);
         lastSelectionNode = (editNode as HTMLElement).querySelector('.lastNode');
         if (!isNOU(lastSelectionNode)) {
             this.placeCursorEnd(lastSelectionNode, insertedNode, nodeSelection, docElement, editNode);
@@ -2515,17 +2546,24 @@ export class InsertHtml {
         }
     }
 
-    // Handles focus management specifically for image elements during insertion operations.
-    private static imageFocus(node: Node, nodeSelection: NodeSelection, docElement: Document): void {
+    // Handles focus management specifically for image/audio/video elements during insertion operations.
+    private static mediaFocus(node: Node, nodeSelection: NodeSelection, docElement: Document): void {
         const focusNode: Node = document.createTextNode('\u00A0');
+        const wrapper: Element | null = node.nodeType === Node.ELEMENT_NODE ? (node as Element).closest('.e-audio-wrap, .e-video-wrap') : null;
         if (node.parentNode && node.parentNode.nodeName === 'A') {
             const anchorTag: Node = node.parentNode;
             const parentNode: Node = anchorTag.parentNode;
             parentNode.insertBefore(focusNode, anchorTag.nextSibling);
             parentNode.insertBefore(node, focusNode);
         }
-        else {
+        else if (node.nodeName === 'IMG' && (!node.nextSibling ||
+            (node.nextSibling && node.nextSibling.nodeName === '#text' && node.nextSibling.textContent !== '\u00A0'))) {
             node.parentNode.insertBefore(focusNode, node.nextSibling);
+        }
+        else if (!isNOU(wrapper) && (node.nodeName === 'VIDEO' || node.nodeName === 'AUDIO')) {
+            wrapper.parentNode.insertBefore(focusNode, wrapper.nextSibling);
+            nodeSelection.setSelectionText(docElement, focusNode, focusNode, 0, 0);
+            return;
         }
         nodeSelection.setSelectionText(docElement, node.nextSibling, node.nextSibling, 0, 0);
     }

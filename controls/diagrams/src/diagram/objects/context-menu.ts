@@ -269,8 +269,13 @@ export class DiagramContextMenu {
      * @private
      */
     public refreshItems(): void {
-        this.updateItems();
-        this.contextMenu.refresh();
+        if (!this.element || !this.contextMenu){
+            // Reinitialize the context menu when contextMenuSettings.show becomes true
+            this.render();
+        } else {
+            this.updateItems();
+            this.contextMenu.refresh();
+        }
     }
 
 

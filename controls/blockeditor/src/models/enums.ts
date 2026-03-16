@@ -127,5 +127,8 @@ export enum CommandName {
     Superscript = 'Superscript',
     Subscript = 'Subscript',
     Uppercase = 'Uppercase',
-    Lowercase = 'Lowercase'
+    Lowercase = 'Lowercase',
+    Link = 'Link',
+    InlineCode = 'InlineCode',
+    Transform = 'Transform'
 }

@@ -14,6 +14,6 @@ export interface _ISigner {
     readonly _algorithmName: string;
     _initialize(forSigning: boolean, parameters: _ICipherParam): void;
     _blockUpdate(bytes: Uint8Array, offset: number, length: number): void;
-    _generateSignature(): Uint8Array | null;
+    _generateSignature(): Uint8Array;
     _reset(): void;
 }

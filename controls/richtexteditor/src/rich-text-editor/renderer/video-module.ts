@@ -60,7 +60,6 @@ export class Video {
     private showPopupTime: number;
     private isResizeBind: boolean = true;
     private isDestroyed: boolean;
-    private docClick: EventListenerOrEventListenerObject
     private webUrlBtn: RadioButton;
     private embedUrlBtn: RadioButton;
     private widthNum: TextBox;
@@ -68,6 +67,7 @@ export class Video {
     private button: Button;
     private videoDragPopupTime: number;
     private showVideoQTbarTime: number;
+    private onDocumentClickBoundFn: (e: MouseEvent) => void;
 
     private constructor(parent?: IRichTextEditor, serviceLocator?: ServiceLocator) {
         this.parent = parent;
@@ -78,7 +78,7 @@ export class Video {
         this.popupUploaderObj = serviceLocator.getService<PopupUploader>('popupUploaderObject');
         this.addEventListener();
         this.isDestroyed = false;
-        this.docClick = this.onDocumentClick.bind(this);
+        this.onDocumentClickBoundFn = this.onDocumentClick.bind(this);
     }
 
     protected addEventListener(): void {
@@ -136,8 +136,7 @@ export class Video {
             this.parent.formatter.editorManager.observer.off(events.checkUndo, this.undoStack);
             if (this.parent.insertVideoSettings.resize) {
                 this.parent.off(EVENTS.touchStart, this.resizeStart);
-                (this.parent.element.ownerDocument as Document).removeEventListener('mousedown', this.docClick);
-                this.docClick = null;
+                (this.parent.element.ownerDocument as Document).removeEventListener('mousedown', this.onDocumentClickBoundFn);
                 this.parent.off(EVENTS.cut, this.onCutHandler);
                 EventHandler.remove(this.contentModule.getDocument(), Browser.touchMoveEvent, this.resizing);
             }
@@ -164,13 +163,21 @@ export class Video {
                     }
                     break;
                 }
+            } else if (prop === 'readonly') {
+                // When readonly is enabled, remove the mousedown listener from the document
+                if (this.parent.readonly) {
+                    (this.parent.element.ownerDocument as Document).removeEventListener('mousedown', this.onDocumentClickBoundFn);
+                } else {
+                    // Reattach when readonly is disabled
+                    (this.parent.element.ownerDocument as Document).addEventListener('mousedown', this.onDocumentClickBoundFn);
+                }
             }
         }
     }
 
     private addresizeHandler(): void {
         this.parent.on(EVENTS.touchStart, this.resizeStart, this);
-        (this.parent.element.ownerDocument as Document).addEventListener('mousedown', this.docClick);
+        (this.parent.element.ownerDocument as Document).addEventListener('mousedown', this.onDocumentClickBoundFn);
         this.parent.on(EVENTS.cut, this.onCutHandler, this);
     }
     private afterRender(): void {
@@ -179,7 +186,7 @@ export class Video {
         this.parent.on(EVENTS.dropEvent, this.dragDrop, this);
         this.parent.on(EVENTS.dragEnter, this.dragEnter, this);
         this.parent.on(EVENTS.dragOver, this.dragOver, this);
-        if (this.parent.insertVideoSettings.resize) {
+        if (this.parent.insertVideoSettings.resize && !this.parent.readonly) {
             this.addresizeHandler();
         }
     }
@@ -1144,6 +1151,9 @@ export class Video {
         }
         const args: MouseEvent = e.args as MouseEvent;
         const showOnRightClick: boolean = this.parent.quickToolbarSettings.showOnRightClick;
+        if (this.parent.quickToolbarModule && this.parent.quickToolbarModule.videoQTBar) {
+            this.quickToolObj = this.parent.quickToolbarModule;
+        }
         if (args.which === 2 || (showOnRightClick && args.which === 1) || (!showOnRightClick && args.which === 3)) {
             if ((showOnRightClick && args.which === 1) && !isNullOrUndefined((args.target as HTMLElement)) &&
                 ((args.target as HTMLElement).tagName === 'VIDEO' || this.isEmbedVidElem((args.target as HTMLElement)))) {
@@ -1154,7 +1164,6 @@ export class Video {
             return;
         }
         if (this.parent.editorMode === 'HTML' && this.parent.quickToolbarModule && this.parent.quickToolbarModule.videoQTBar) {
-            this.quickToolObj = this.parent.quickToolbarModule;
             const target: HTMLElement = args.target as HTMLElement;
             this.contentModule = this.rendererFactory.getRenderer(RenderType.Content);
             if ((target.nodeName === 'VIDEO' || this.isEmbedVidElem(target)) && this.parent.quickToolbarModule) {
@@ -1581,17 +1590,94 @@ export class Video {
     }
 
     private dragEnter(e?: DragEvent): void {
-        e.dataTransfer.dropEffect = 'copy';
         e.preventDefault();
     }
 
     private dragOver(e?: DragEvent): void | boolean {
-        if ((Browser.info.name === 'edge' && e.dataTransfer.items[0].type.split('/')[0] === 'video') ||
-            (Browser.isIE && e.dataTransfer.types[0] === 'Files')) {
+        // Early exit: missing event/dataTransfer or already handled by another listener.
+        if (!e || !e.dataTransfer || e.defaultPrevented) {
+            return;
+        }
+        const dataTransfer: DataTransfer = e.dataTransfer;
+        const items: DataTransferItemList = dataTransfer.items;
+        const item: DataTransferItem | undefined = (items && items.length) ? items[0] : undefined;
+        const mimeType: string = (items && items.length) ? (items[0].type || '') : '';
+        // Empty MIME: block with forbidden cursor and stop propagation
+        if (!mimeType) {
+            // preventDefault() marks this element as a valid drop target so dropEffect is applied.
+            e.preventDefault();
+            dataTransfer.dropEffect = 'none';
+            // Prevents subsequent dragOver listeners from running and altering the dropEffect.
+            e.stopImmediatePropagation();
+            return true;
+        }
+        // Only handle video
+        if (!mimeType.startsWith('video/')) {
+            return;
+        }
+        // configured allowed extensions
+        const allowedTypes: string[] = (this.parent.insertVideoSettings.allowedTypes as string[]) || [];
+        const allowedExts: Set<string> = new Set<string>(allowedTypes.map((type: string) => (type || '').toLowerCase()));
+        //Decide acceptability for this drag
+        let canAccept: boolean = false;
+        if (item && item.kind === 'file') {
+            const mime: string = (item.type || '').toLowerCase();
+            if (mime && mime.startsWith('video/')) {
+                const extension: string | null = this.getExtensionFromMime(mime);
+                canAccept = !!(extension && allowedExts.has('.' + extension));
+            }
+        }
+        // preventDefault() marks this element as a valid drop target so dropEffect is applied.
+        if (!canAccept) {
+            e.preventDefault();
+        }
+        // set dropeffect
+        dataTransfer.dropEffect = canAccept ? 'copy' : 'none';
+        // Prevents subsequent dragOver listeners from running and altering the dropEffect.
+        e.stopImmediatePropagation();
+        // EdgeHTML compatibility: ensure drop is permitted for file/video drags.
+        if (Browser.info.name === 'edge' && dataTransfer && (
+            (dataTransfer.items && dataTransfer.items[0].type && dataTransfer.items[0].type.split('/')[0] === 'video') ||
+            (dataTransfer.types && dataTransfer.types[0] === 'Files')
+        )) {
             e.preventDefault();
         } else {
             return true;
         }
+    }
+
+    private getExtensionFromMime(mimeType: string | null | undefined): string | null {
+        if (!mimeType) {
+            return null;
+        }
+        const lower: string = mimeType.toLowerCase().trim();
+        if (!lower.startsWith('video/')) {
+            return null;
+        }
+        // Get subtype after "video/"
+        let subtype: string = lower.slice('video/'.length);
+        // Drop parameters like "; codecs=vp9"
+        const paramsIndex: number = subtype.indexOf(';');
+        if (paramsIndex !== -1) {
+            // Strip any MIME parameters (e.g., "; codecs=...") and keep only the raw subtype for extension matching
+            subtype = subtype.slice(0, paramsIndex).trim();
+        }
+        // Map MIME subtypes to their common file extensions when names differ
+        const alias: Map<string, string> = new Map<string, string>([
+            ['x-msvideo', 'avi'],   // video/x-msvideo → avi
+            ['quicktime', 'mov'],   // video/quicktime → mov
+            ['x-ms-wmv', 'wmv'],    // video/x-ms-wmv → wmv
+            ['x-matroska', 'mkv'],  // video/x-matroska → mkv
+            ['mp2t', 'ts'],         // video/mp2t → ts
+            ['3gpp', '3gp'],        // video/3gpp → 3gp
+            ['3gpp2', '3g2'],       // video/3gpp2 → 3g2
+            ['x-flv', 'flv'],       // video/x-flv → flv
+            ['x-m4v', 'm4v'],       // video/x-m4v → m4v
+            ['x-ms-asf', 'asf']     // video/x-ms-asf → asf
+        ]);
+        // Prefer the alias when available; otherwise use the subtype (or null if empty)
+        const mapped: string | undefined = alias.get(subtype);
+        return (mapped != null) ? mapped : (subtype || null);
     }
 
     /**
@@ -1908,6 +1994,7 @@ export class Video {
         }
         this.clearDialogObj();
         this.isDestroyed = true;
+        this.onDocumentClickBoundFn = null;
     }
 
     /**

@@ -1,5 +1,5 @@
 import { Workbook, Worksheet, Worksheets } from '@syncfusion/ej2-excel-export';
-import { ExcelRow, ExcelCell, ExcelColumn, BeforeExportEventArgs, ExportCompleteEventArgs, ExcelImage, ExcelExportProperties } from '../../common/base/interface';
+import { ExcelRow, ExcelCell, ExcelColumn, BeforeExportEventArgs, ExportCompleteEventArgs, ExcelImage, ExcelExportProperties, ExcelHeaderQueryCellInfoEventArgs, ExcelQueryCellInfoEventArgs } from '../../common/base/interface';
 import * as events from '../../common/base/constant';
 import { PivotView } from '../base/pivotview';
 import { IAxisSet, PivotEngine } from '../../base/engine';
@@ -7,9 +7,10 @@ import { IPageSettings, IMatrix2D } from '../../base/engine';
 import { OlapEngine } from '../../base/olap/engine';
 import { isNullOrUndefined } from '@syncfusion/ej2-base';
 import { PivotExportUtil } from '../../base/export-util';
-import { Column, ExcelFooter, ExcelHeader, ExcelHeaderQueryCellInfoEventArgs, ExcelQueryCellInfoEventArgs, ExcelStyle, ExcelTheme } from '@syncfusion/ej2-grids';
+import { Column, ExcelFooter, ExcelHeader, ExcelStyle, ExcelTheme } from '@syncfusion/ej2-grids';
 import { DataSourceSettingsModel } from '../../model/datasourcesettings-model';
 import { ExcelExportHelper } from './excel-export-helper';
+import { PivotUtil } from '../../base/util';
 
 /**
  * @hidden
@@ -151,6 +152,8 @@ export class ExcelExport {
                     const pageSettings: IPageSettings = this.engine.pageSettings;
                     let mdxQuery: string;
                     (this.engine as PivotEngine).isPagingOrVirtualizationEnabled = false;
+                    (this.engine as PivotEngine).enableVirtualization = false;
+                    (this.engine as PivotEngine).enablePaging = false;
                     if (this.parent.dataType === 'olap') {
                         this.updateOlapPageSettings(true);
                         mdxQuery = this.parent.olapEngineModule.mdxQuery.slice(0);
@@ -165,6 +168,8 @@ export class ExcelExport {
                     this.engine.pivotValues = currentPivotValues;
                     this.engine.pageSettings = pageSettings;
                     (this.engine as PivotEngine).isPagingOrVirtualizationEnabled = true;
+                    (this.engine as PivotEngine).enableVirtualization = this.parent.enableVirtualization;
+                    (this.engine as PivotEngine).enablePaging = this.parent.enablePaging;
                     if (this.parent.dataType === 'olap') {
                         this.updateOlapPageSettings(false);
                         this.parent.olapEngineModule.mdxQuery = mdxQuery;
@@ -205,7 +210,11 @@ export class ExcelExport {
                 let columnCount: number = 0;
                 let rowHeight: number = 0;
                 for (let dataColl: number = 0; dataColl < dataCollections.length; dataColl++) {
-                    const pivotValues: IAxisSet[][] = dataCollections[dataColl as number] as IAxisSet[][]; let colLen: number = 0;
+                    let pivotValues: IAxisSet[][] = dataCollections[dataColl as number] as IAxisSet[][]; let colLen: number = 0;
+                    const isEmptyPivotTable: boolean = PivotUtil.getPivotEmptyInfo(this.parent, this.engine);
+                    if (isEmptyPivotTable) {
+                        pivotValues = PivotUtil.getEmptyPivotValues(this.parent);
+                    }
                     const rowLen: number = pivotValues.length;
                     const formatList: { [key: string]: string } = currentPivotInstance ? currentPivotInstance.renderModule.formatList
                         : this.parent.renderModule.formatList;
@@ -237,7 +246,12 @@ export class ExcelExport {
                                     const headerStyle: ExcelStyle = { bold: true, vAlign: 'Center', wrapText: true, indent: cCnt === 0 ? pivotCell.level * 10 : 0 };
                                     if (!(pivotCell.level === -1 && !pivotCell.rowSpan)) {
                                         const aggMatrix: IMatrix2D = this.engine.aggregatedValueMatrix;
-                                        let cellValue: string | number = pivotCell.axis === 'value' ? ((aggMatrix[rCnt as number] && aggMatrix[rCnt as number][cCnt as number]) ? aggMatrix[rCnt as number][cCnt as number] : (pivotCell.formattedText === '#DIV/0!' ? pivotCell.formattedText : pivotCell.value)) : pivotCell.formattedText;
+                                        let cellValue: string | number = pivotCell.axis === 'value' ?
+                                            ((aggMatrix[rCnt as number] && aggMatrix[rCnt as number][cCnt as number]) ?
+                                                aggMatrix[rCnt as number][cCnt as number] :
+                                                ((pivotCell.formattedText === '#DIV/0!' || isEmptyPivotTable) ? pivotCell.formattedText :
+                                                    pivotCell.formattedText === '' ? '' : pivotCell.value)) :
+                                            pivotCell.formattedText;
                                         const isgetValuesHeader: boolean = ((this.parent.dataSourceSettings.rows.length === 0 && this.parent.dataSourceSettings.valueAxis === 'row')
                                             || (this.parent.dataSourceSettings.columns.length === 0 && this.parent.dataSourceSettings.valueAxis === 'column'));
                                         if (pivotCell.type === 'grand sum' && !(this.parent.dataSourceSettings.values.length === 1 && this.parent.dataSourceSettings.valueAxis === 'row' && pivotCell.axis === 'column')) {
@@ -248,6 +262,8 @@ export class ExcelExport {
                                             cellValue = (!isNullOrUndefined(pivotCell.valueSort) && (this.parent.localeObj.getConstant('grandTotal') + this.parent.dataSourceSettings.valueSortSettings.headerDelimiter + pivotCell.formattedText
                                                 === pivotCell.valueSort.levelName) && isgetValuesHeader) ? this.parent.getValuesHeader(pivotCell, 'value') : cellValue;
                                         }
+                                        pivotCell.formattedText =
+                                            !isNullOrUndefined(cellValue) ? cellValue.toString() : cellValue as string;
                                         if (!(pivotCell.level === -1 && !pivotCell.rowSpan) && pivotCell.rowSpan !== 0) {
                                             cells.push({
                                                 index: cCnt + 1, value: cellValue,
@@ -358,14 +374,14 @@ export class ExcelExport {
                                     cCnt = cCnt + (pivotCell.colSpan ? (pivotCell.colSpan - 1) : 0);
                                 } else {
                                     const pivotCell: IAxisSet = { formattedText: '', colSpan: 1, rowSpan: 1 };
-                                    if (rCnt === 0 && cCnt === 0) {
+                                    if (rCnt === 0 && cCnt === 0 && !isEmptyPivotTable) {
                                         if (!includeHiddenColumn) {
                                             pivotCell.colSpan = pivotValues[0].length - (columnCount - hiddenColumnsIndex.length);
                                             pivotCell.rowSpan = Object.keys(pivotValues).length - this.engine.rowCount;
                                         }
                                         else {
-                                            pivotCell.colSpan = pivotValues[0].length - this.engine.columnCount;
-                                            pivotCell.rowSpan = Object.keys(pivotValues).length - this.engine.rowCount;
+                                            pivotCell.colSpan = this.parent.isTabular ? (this.parent.engineModule.rowMaxLevel + 1) : 1;
+                                            pivotCell.rowSpan = this.engine.headerContent.length;
                                         }
                                     }
                                     let excelHeaderQueryCellInfoArgs: ExcelHeaderQueryCellInfoEventArgs;
@@ -412,14 +428,22 @@ export class ExcelExport {
                             this.addHeaderAndFooter(args.excelExportProperties.footer, '', 'footer', args.excelExportProperties.footer.footerRows);
                         }
                     }
-                    if (this.columns.length < col.length) {
+                    if (this.parent.enableVirtualization) {
                         this.columns = [];
                         for (let cCnt: number = 0; cCnt < colLen; cCnt++) {
-                            let width: string | number = col[cCnt as number].width;
-                            if (typeof (width) === 'string' && width.indexOf('px') !== -1) {
-                                width = parseInt(width, 10);
+                            this.columns.push({ index: cCnt + 1, width: this.parent.gridSettings.columnWidth });
+                        }
+                    } else {
+                        if (this.columns.length < col.length) {
+                            this.columns = [];
+                            for (let cCnt: number = 0; cCnt < colLen; cCnt++) {
+                                let width: string | number = !isNullOrUndefined(col[cCnt as number]) ? col[cCnt as number].width :
+                                    this.parent.gridSettings.columnWidth;
+                                if (typeof (width) === 'string' && width.indexOf('px') !== -1) {
+                                    width = parseInt(width, 10);
+                                }
+                                this.columns.push({ index: cCnt + 1, width: width as number });
                             }
-                            this.columns.push({ index: cCnt + 1, width: width as number });
                         }
                     }
                     if (maxLevel > 0) {

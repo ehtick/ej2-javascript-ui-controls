@@ -1,5 +1,5 @@
 import { PivotEngine, IDataOptions, IDataSet, IAxisSet, IPageSettings, ICustomProperties, IFilter, IFieldOptions } from '../../src/base/engine';
-import { pivot_dataset, pivot_undefineddata, pivot_nodata } from '../base/datasource.spec';
+import { pivot_dataset, pivot_undefineddata, pivot_nodata, employeeData } from '../base/datasource.spec';
 import { PivotUtil } from '../../src/base/util';
 import * as util from '../utils.spec';
 import { profile, inMB, getMemoryProfile } from '../common.spec';
@@ -1430,8 +1430,8 @@ describe(' - VirtualScrolling', () => {
             args = new MouseEvent("mouseup", { view: window, bubbles: true, cancelable: true });
             document.querySelectorAll('.e-content-virtualtable')[0].dispatchEvent(args);
             expect(Math.round(document.querySelectorAll('.e-content-virtualtable')[0].scrollTop) === 0).toBeTruthy();
-            expect(document.querySelectorAll('.e-content-virtualtable td')[0].querySelector('td .e-cellvalue').textContent).toBe('Flight');
-            expect(document.querySelectorAll('.e-content-virtualtable td')[1].querySelector('td .e-cellvalue').textContent).toBe('$12,490.89');
+            expect(document.querySelectorAll('.e-content-virtualtable td')[0].querySelector('.e-cellvalue').textContent).toBe('Flight');
+            expect(document.querySelectorAll('.e-content-virtualtable td')[1].querySelector('.e-cellvalue').textContent).toBe('$12,490.89');
         });
 
         it('scroll right', () => {
@@ -1441,8 +1441,8 @@ describe(' - VirtualScrolling', () => {
             document.querySelector('.e-headercontent').dispatchEvent(args);
             args = new MouseEvent("mouseup", { view: window, bubbles: true, cancelable: true });
             document.querySelector('.e-headercontent').dispatchEvent(args);
-            expect(document.querySelectorAll('.e-content-virtualtable td')[0].querySelector('td .e-cellvalue').textContent).toBe('Flight');
-            expect(document.querySelectorAll('.e-content-virtualtable td')[1].querySelector('td .e-cellvalue').textContent).toBe('$12,490.89');
+            expect(document.querySelectorAll('.e-content-virtualtable td')[0].querySelector('.e-cellvalue').textContent).toBe('Flight');
+            expect(document.querySelectorAll('.e-content-virtualtable td')[1].querySelector('.e-cellvalue').textContent).toBe('$12,490.89');
         });
 
         it('scroll right false', () => {
@@ -1452,7 +1452,7 @@ describe(' - VirtualScrolling', () => {
             document.querySelector('.e-headercontent').dispatchEvent(args);
             args = new MouseEvent("mouseup", { view: window, bubbles: true, cancelable: true });
             document.querySelector('.e-headercontent').dispatchEvent(args);
-            expect(document.querySelectorAll('.e-content-virtualtable td')[0].querySelector('td .e-cellvalue').textContent).toBe('Flight');
+            expect(document.querySelectorAll('.e-content-virtualtable td')[0].querySelector('.e-cellvalue').textContent).toBe('Flight');
             expect(document.querySelectorAll('.e-content-virtualtable tr')[0].querySelector('td:not(.e-freezeleftborder) .e-cellvalue').textContent).toBe('$12,490.89');
         });
 
@@ -1790,79 +1790,6 @@ describe(' - VirtualScrolling', () => {
     //     });
     // });
     describe('Scroll apperance', () => {
-
-        describe('Scroll comparison ', () => {
-            let pivotGridObj: PivotView;
-            let elem: HTMLElement = createElement('div', { id: 'PivotGrid', styles: 'height:1000px; width:900px' });
-            let data: IDataSet[] = [
-                { row: 'row1', column: 'column1', value: 1 },
-                { row: 'row2', column: 'column2', value: 2 },
-                { row: 'row3', column: 'column3', value: 3 },
-                { row: 'row4', column: 'column4', value: 4 },
-            ]
-            afterAll(() => {
-                if (pivotGridObj) {
-                    pivotGridObj.destroy();
-                }
-                remove(elem);
-            });
-            beforeAll((done: Function) => {
-                if (!document.getElementById(elem.id)) {
-                    document.body.style.height = '500px';
-                    document.body.appendChild(elem);
-                }
-                let dataBound: EmitType<Object> = () => { done(); };
-                PivotView.Inject(GroupingBar, VirtualScroll);
-                pivotGridObj = new PivotView({
-                    dataSourceSettings: {
-                        dataSource: data,
-                        expandAll: false,
-                        rows: [{ name: 'row' }],
-                        columns: [{ name: 'column' }],
-                        values: [{ name: 'value' }],
-                    },
-                    width: 900,
-                    height: 300,
-                    enableVirtualization: false,
-                    showGroupingBar: true,
-                    dataBound: dataBound
-
-                });
-                pivotGridObj.appendTo('#PivotGrid');
-            });
-            it('Compare scrollbar', () => {
-                expect(true).toBe(true);
-                //expect(document.querySelector('.e-content').scrollHeight).toBe(document.querySelector('.e-content').clientHeight);
-            });
-
-            it('Display vertical scrollbar alone', () => {
-                pivotGridObj.height = 200;
-                expect(true).toBe(true);
-                //expect(document.querySelector('.e-content').scrollHeight).toBe(document.querySelector('.e-content').clientHeight);
-            });
-
-            it('Display horizondal scrollbar alone', () => {
-                pivotGridObj.setProperties({ height: '100%' }, true);
-                pivotGridObj.width = 300;
-                expect(true).toBe(true);
-                //expect(document.querySelector('.e-content').scrollHeight).toBe(document.querySelector('.e-content').clientHeight);
-            });
-
-            it('Hide both scrollbars', () => {
-                pivotGridObj.setProperties({ height: '100%' }, true);
-                pivotGridObj.width = '100%';
-                expect(true).toBe(true);
-                //expect(document.querySelector('.e-content').scrollHeight).toBe(document.querySelector('.e-content').clientHeight);
-            });
-
-            it('Hide both scrollbars by setting auto', () => {
-                pivotGridObj.setProperties({ height: 'auto' }, true);
-                expect(true).toBe(true);
-                //expect(document.querySelector('.e-content').scrollHeight).toBe(document.querySelector('.e-content').clientHeight);
-            });
-
-        });
-
         // describe('Scroll comparison - virtual scrolling', () => {
         //     let pivotGridObj: PivotView;
         //     let elem: HTMLElement = createElement('div', { id: 'PivotGrid', styles: 'height:1000px; width:900px' });
@@ -1981,10 +1908,25 @@ describe(' - VirtualScrolling', () => {
             pivotGridObj.appendTo('#PivotGrid');
         });
         it('Checking value sorting', function (done) {
-            setTimeout(() => {
-                expect(pivotGridObj.element.querySelectorAll('.e-columnheader .e-value-sort-icon').length > 0).toBeTruthy();
-                done();
-            }, 1000);
+            let waited = 0;
+            const maxWait = 5000;
+            const poll = 50;
+            const interval = setInterval(() => {
+                if (pivotGridObj && pivotGridObj.element) {
+                    const icons = pivotGridObj.element.querySelectorAll('.e-columnheader .e-value-sort-icon');
+                    if (icons && icons.length > 0) {
+                        clearInterval(interval);
+                        expect(icons.length > 0).toBeTruthy();
+                        done();
+                        return;
+                    }
+                }
+                waited += poll;
+                if (waited >= maxWait) {
+                    clearInterval(interval);
+                    done.fail('value sort icon not found within timeout');
+                }
+            }, poll);
         });
     });
     describe(' - Single Page Mode', () => {
@@ -2300,7 +2242,7 @@ describe('PivotView - Virtual Scrolling with Grouping Bar', () => {
         setTimeout(() => {
             expect(document.querySelectorAll('.e-content-virtualtable tr').length).toBe(30);
             expect(document.querySelectorAll('.e-content-virtualtable tr')[0].querySelectorAll('td:not(.e-leftfreeze)').length).toBe(14);
-            expect(document.querySelectorAll('.e-content-virtualtable td')[0].querySelector('td .e-cellvalue').textContent).toBe('Flight');
+            expect(document.querySelectorAll('.e-content-virtualtable td')[0].querySelector('.e-cellvalue').textContent).toBe('Flight');
             done();
         }, 100);
     });
@@ -2313,7 +2255,7 @@ describe('PivotView - Virtual Scrolling with Grouping Bar', () => {
         document.querySelector('.e-content-virtualtable').dispatchEvent(args);
         setTimeout(() => {
             expect(pivotGridObj.element.querySelectorAll('.e-headercontent')[0].scrollLeft === document.querySelectorAll('.e-content-virtualtable')[0].scrollLeft).toBeTruthy();
-            expect(document.querySelectorAll('.e-content-virtualtable tr')[0].querySelector('td .e-cellvalue').textContent).toBe('Flight');
+            expect(document.querySelectorAll('.e-content-virtualtable tr')[0].querySelector('.e-cellvalue').textContent).toBe('Flight');
             done();
         }, 100);
     });
@@ -2326,8 +2268,8 @@ describe('PivotView - Virtual Scrolling with Grouping Bar', () => {
         document.querySelector('.e-content-virtualtable').dispatchEvent(args);
         setTimeout(() => {
             expect(pivotGridObj.element.querySelectorAll('.e-content-virtualtable')[0].scrollTop).toBe(0);
-            expect(document.querySelectorAll('.e-content-virtualtable td')[0].querySelector('td .e-cellvalue').textContent).toBe('Flight');
-            expect(document.querySelectorAll('.e-content-virtualtable td')[1].querySelector('td .e-cellvalue').textContent).toBe('$32,045.16');
+            expect(document.querySelectorAll('.e-content-virtualtable td')[0].querySelector('.e-cellvalue').textContent).toBe('Flight');
+            expect(document.querySelectorAll('.e-content-virtualtable td')[1].querySelector('.e-cellvalue').textContent).toBe('$32,045.16');
             done();
         }, 100);
     });
@@ -2346,7 +2288,7 @@ describe('PivotView - Virtual Scrolling with Grouping Bar', () => {
     it('Collapse flight', (done: Function) => {
         (document.querySelectorAll('.e-content-virtualtable tr .e-icons')[0] as HTMLElement).click();
         setTimeout(() => {
-            expect(document.querySelectorAll('.e-content-virtualtable tr')[1].querySelector('td .e-cellvalue').textContent).toBe('Jet');
+            expect(document.querySelectorAll('.e-content-virtualtable tr')[1].querySelector('.e-cellvalue').textContent).toBe('Jet');
             done();
         }, 500);
     });
@@ -2370,7 +2312,7 @@ describe('PivotView - Virtual Scrolling with Grouping Bar', () => {
     });
     it('filter check', (done: Function) => {
         setTimeout(() => {
-            expect(document.querySelectorAll('.e-content-virtualtable tr')[0].querySelector('td .e-cellvalue').textContent).toBe('Jet');
+            expect(document.querySelectorAll('.e-content-virtualtable tr')[0].querySelector('.e-cellvalue').textContent).toBe('Jet');
             done();
         }, 500);
     });
@@ -2482,6 +2424,240 @@ describe('PivotView - Virtual Scrolling with Grouping Bar', () => {
         profile.sample();
         const average: number = inMB(profile.averageChange);
         const memory: number = inMB(getMemoryProfile());
+        expect(memory).toBeLessThan(profile.samples[0] + 0.25);
+        expect(average).toBeLessThan(10);
+    });
+});
+
+describe('Pivot Table - Virtual Scrolling comparison ', () => {
+    let pivotGridObj: PivotView;
+    let elem: HTMLElement = createElement('div', { id: 'PivotGrid', styles: 'height:1000px; width:900px' });
+    let data: IDataSet[] = [
+        { row: 'row1', column: 'column1', value: 1 },
+        { row: 'row2', column: 'column2', value: 2 },
+        { row: 'row3', column: 'column3', value: 3 },
+        { row: 'row4', column: 'column4', value: 4 },
+    ]
+    beforeAll(() => {
+        const isDefined = (value: any): boolean => value !== undefined && value !== null;
+        if (!isDefined((window as any).performance)) {
+            console.log('Unsupported environment: window.performance.memory is unavailable');
+            pending();
+        }
+    });
+    beforeAll((done: Function) => {
+        if (!document.getElementById(elem.id)) {
+            document.body.style.height = '500px';
+            document.body.appendChild(elem);
+        }
+        let dataBound: EmitType<Object> = () => { done(); };
+        PivotView.Inject(GroupingBar, VirtualScroll);
+        pivotGridObj = new PivotView({
+            dataSourceSettings: {
+                dataSource: data,
+                expandAll: false,
+                rows: [{ name: 'row' }],
+                columns: [{ name: 'column' }],
+                values: [{ name: 'value' }],
+            },
+            width: 900,
+            height: 300,
+            enableVirtualization: false,
+            showGroupingBar: true,
+            dataBound: dataBound
+
+        });
+        pivotGridObj.appendTo('#PivotGrid');
+    });
+    it('Compare scrollbar', () => {
+        expect(document.querySelector('.e-content').scrollHeight).toBe(document.querySelector('.e-content').clientHeight);
+    });
+
+    it('Display vertical scrollbar alone', () => {
+        pivotGridObj.height = 200;
+        expect(document.querySelector('.e-content').scrollHeight).toBe(document.querySelector('.e-content').clientHeight);
+    });
+
+    it('Display horizondal scrollbar alone', () => {
+        pivotGridObj.setProperties({ height: '100%' }, true);
+        pivotGridObj.width = 300;
+        expect(document.querySelector('.e-content').scrollHeight).toBe(document.querySelector('.e-content').clientHeight);
+    });
+
+    it('Hide both scrollbars', () => {
+        pivotGridObj.setProperties({ height: '100%' }, true);
+        pivotGridObj.width = '100%';
+        expect(document.querySelector('.e-content').scrollHeight).toBe(document.querySelector('.e-content').clientHeight);
+    });
+
+    it('Hide both scrollbars by setting auto', () => {
+        pivotGridObj.setProperties({ height: 'auto' }, true);
+        expect(document.querySelector('.e-content').scrollHeight).toBe(document.querySelector('.e-content').clientHeight);
+    });
+    afterAll(() => {
+        if (pivotGridObj) {
+            pivotGridObj.destroy();
+        }
+        remove(elem);
+    });
+    it('memory leak check', () => {
+        profile.sample();
+        const average = inMB(profile.averageChange);
+        const memory = inMB(getMemoryProfile());
+        expect(memory).toBeLessThan(profile.samples[0] + 0.25);
+        expect(average).toBeLessThan(10);
+    });
+});
+
+describe('Pivot Table - Invoke ResizeStop() with virtualization', () => {
+    let pivotGridObj: PivotView;
+    let elem: HTMLElement = createElement('div', { id: 'PivotGrid', styles: 'height:1000px; width:900px' });
+    let data: IDataSet[] = [
+        { row: 'row1', column: 'column1', value: 1 },
+        { row: 'row2', column: 'column2', value: 2 },
+        { row: 'row3', column: 'column3', value: 3 },
+        { row: 'row4', column: 'column4', value: 4 },
+    ]
+    beforeAll(() => {
+        const isDefined = (value: any): boolean => value !== undefined && value !== null;
+        if (!isDefined((window as any).performance)) {
+            console.log('Unsupported environment: window.performance.memory is unavailable');
+            pending();
+        }
+    });
+    beforeAll((done: Function) => {
+        if (!document.getElementById(elem.id)) {
+            document.body.style.height = '500px';
+            document.body.appendChild(elem);
+        }
+        let dataBound: EmitType<Object> = () => { done(); };
+        PivotView.Inject(GroupingBar, VirtualScroll);
+        pivotGridObj = new PivotView({
+            dataSourceSettings: {
+                dataSource: data,
+                expandAll: false,
+                rows: [{ name: 'row' }],
+                columns: [{ name: 'column' }],
+                values: [{ name: 'value' }],
+            },
+            width: 900,
+            height: 300,
+            enableVirtualization: true,
+            showGroupingBar: true,
+            dataBound: dataBound
+
+        });
+        pivotGridObj.appendTo('#PivotGrid');
+    });
+    it('Invoke resizeStop()', () => {
+        const args: any = {
+            column: {
+                width: '150px',
+                field: 'somefield',
+                customAttributes: { cell: { valueSort: { levelName: 'levelTest' } } }
+            },
+            e: { type: 'mouseup' }
+        };
+        (pivotGridObj.renderModule as any).onResizeStop(args);
+        expect(Object.keys(pivotGridObj.resizeInfo).length).toBe(0);
+    });
+    afterAll(() => {
+        if (pivotGridObj) {
+            pivotGridObj.destroy();
+        }
+        remove(elem);
+    });
+    it('memory leak check', () => {
+        profile.sample();
+        const average = inMB(profile.averageChange);
+        const memory = inMB(getMemoryProfile());
+        expect(memory).toBeLessThan(profile.samples[0] + 0.25);
+        expect(average).toBeLessThan(10);
+    });
+});
+
+describe('Pivot Table - Virtual Scrolling Changing Aggregation Type ', () => {
+    let pivotGridObj: PivotView;
+    let elem: HTMLElement = createElement('div', { id: 'PivotGrid', styles: 'height:1000px; width:900px' });
+    beforeAll(() => {
+        const isDefined = (value: any): boolean => value !== undefined && value !== null;
+        if (!isDefined((window as any).performance)) {
+            console.log('Unsupported environment: window.performance.memory is unavailable');
+            pending();
+        }
+    });
+    beforeAll((done: Function) => {
+        if (!document.getElementById(elem.id)) {
+            document.body.style.height = '500px';
+            document.body.appendChild(elem);
+        }
+        let dataBound: EmitType<Object> = () => { done(); };
+        PivotView.Inject(GroupingBar, VirtualScroll);
+        pivotGridObj = new PivotView({
+            dataSourceSettings: {
+                dataSource: employeeData as IDataSet[],
+                rows: [{ name: 'FirstName' }, { name: 'EmployeeID', caption: 'Employee Image' }],
+                columns: [{ name: 'Title' }],
+                values: [{ name: 'Salary' }, { name: 'OrdersCount' }],
+                filterSettings: [
+                    { name: 'Title', type: 'Include', items: ['Sales Representative'] }
+                ],
+                expandAll: true,
+                showGrandTotals: false
+            },
+            width: '100%',
+            height: 300,
+            enableVirtualization: true,
+            showGroupingBar: true,
+            aggregateTypes: ['Count', 'Avg', 'Product', 'PercentageOfDifferenceFrom'],
+            dataBound: dataBound
+        });
+        pivotGridObj.appendTo('#PivotGrid');
+    });
+    it('change Count aggregation via grouping bar dropdown', (done: Function) => {
+        setTimeout(() => {
+            const click: MouseEvent = new MouseEvent('click', { view: window, bubbles: true, cancelable: true });
+            expect(document.querySelectorAll('.e-values .e-dropdown-icon').length).toBeGreaterThan(0);
+            document.querySelectorAll('.e-values .e-dropdown-icon')[0].dispatchEvent(click);
+            let menu: MenuEventArgs = {
+                element: document.querySelectorAll('.e-menu-item')[1] as HTMLElement,
+                item: { id: pivotGridObj.element.id + '_Count', text: 'Count' }
+            };
+            (pivotGridObj.pivotButtonModule.menuOption as any).selectOptionInContextMenu(menu);
+            setTimeout(() => {
+                expect(pivotGridObj.dataSourceSettings.values[0].type).toBe('Count');
+                done();
+            }, 500);
+        }, 500);
+    });
+    it('change PercentageOfDifferenceFrom aggregation via grouping bar dropdown', (done: Function) => {
+        setTimeout(() => {
+            const click: MouseEvent = new MouseEvent('click', { view: window, bubbles: true, cancelable: true });
+            expect(document.querySelectorAll('.e-values .e-dropdown-icon').length).toBeGreaterThan(0);
+            document.querySelectorAll('.e-values .e-dropdown-icon')[0].dispatchEvent(click);
+            let menu: MenuEventArgs = {
+                element: document.querySelectorAll('.e-menu-item')[1] as HTMLElement,
+                item: { id: pivotGridObj.element.id + '_PercentageOfDifferenceFrom', text: '% of Difference From' }
+            };
+            (pivotGridObj.pivotButtonModule.menuOption as any).selectOptionInContextMenu(menu);
+            const ValueSettingsDialog: HTMLElement = document.getElementById(pivotGridObj.element.id + '_ValueDialog');
+            (ValueSettingsDialog.querySelector('.e-ok-btn') as HTMLElement).click();
+            setTimeout(() => {
+                expect(pivotGridObj.dataSourceSettings.values[0].type).toBe('PercentageOfDifferenceFrom');
+                done();
+            }, 500);
+        }, 500);
+    });
+    afterAll(() => {
+        if (pivotGridObj) {
+            pivotGridObj.destroy();
+        }
+        remove(elem);
+    });
+    it('memory leak check', () => {
+        profile.sample();
+        const average = inMB(profile.averageChange);
+        const memory = inMB(getMemoryProfile());
         expect(memory).toBeLessThan(profile.samples[0] + 0.25);
         expect(average).toBeLessThan(10);
     });

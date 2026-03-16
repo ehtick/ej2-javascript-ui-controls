@@ -3,7 +3,7 @@ import { BeforeOpenCloseMenuEventArgs, ContextMenu, MenuEventArgs, OpenCloseMenu
 import { ContextMenuItemModel, ContextMenuSettingsModel } from '../../models/index';
 import { getContextMenuItems } from '../../common/utils/data';
 import { BlockEditor } from '../base/blockeditor';
-import { ContextMenuOpeningEventArgs, ContextMenuClosingEventArgs, ContextMenuItemSelectEventArgs } from '../../models/eventargs';
+import { ContextMenuBeforeOpenEventArgs, ContextMenuBeforeCloseEventArgs, ContextMenuItemSelectEventArgs } from '../../models/eventargs';
 import { events } from '../../common/constant';
 import { sanitizeContextMenuItems } from '../../common/utils/transform';
 import * as constants from '../../common/constant';
@@ -86,14 +86,14 @@ export class ContextMenuModule {
     }
 
     private handleContextMenuBeforeOpen(args: BeforeOpenCloseMenuEventArgs): void {
-        const eventArgs: ContextMenuOpeningEventArgs = {
+        const eventArgs: ContextMenuBeforeOpenEventArgs = {
             event: args.event,
             items: this.editor.contextMenuSettings.items,
             parentItem: args.parentItem,
             cancel: !this.editor.contextMenuSettings.enable
         };
-        if (this.editor.contextMenuSettings.opening) {
-            this.editor.contextMenuSettings.opening.call(this, eventArgs);
+        if (this.editor.contextMenuSettings.beforeOpen) {
+            this.editor.contextMenuSettings.beforeOpen.call(this, eventArgs);
         }
         args.cancel = eventArgs.cancel;
         if (this.editor.readOnly) { args.cancel = true; }
@@ -103,14 +103,14 @@ export class ContextMenuModule {
     }
 
     private handleContextMenuBeforeClose(args: BeforeOpenCloseMenuEventArgs): void {
-        const eventArgs: ContextMenuClosingEventArgs = {
+        const eventArgs: ContextMenuBeforeCloseEventArgs = {
             event: args.event,
             items: this.editor.contextMenuSettings.items,
             parentItem: args.parentItem,
             cancel: false
         };
-        if (this.editor.contextMenuSettings.closing) {
-            this.editor.contextMenuSettings.closing.call(this, eventArgs);
+        if (this.editor.contextMenuSettings.beforeClose) {
+            this.editor.contextMenuSettings.beforeClose.call(this, eventArgs);
         }
         args.cancel = eventArgs.cancel;
     }

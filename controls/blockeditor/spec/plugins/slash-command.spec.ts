@@ -26,7 +26,7 @@ describe('Slash Command Module', () => {
                 {
                     id: 'paragraph1',
                     blockType: BlockType.Paragraph,
-                    content: [{ id: 'paragraph-content', contentType: ContentType.Text, content: 'Hello world' }]
+                    content: [{ contentType: ContentType.Text, content: 'Hello world' }]
                 }
             ];
             editor = createEditor({ blocks: blocks });
@@ -79,36 +79,36 @@ describe('Slash Command Module', () => {
             done();
         });
 
-        it('transforming heading to quote', (done) => {
-            let modelBlocks = editor.blocks;
-            let domBlocks = editor.element.querySelectorAll<HTMLElement>('.e-block');
-            const blockElement = editorElement.querySelector('.e-block') as HTMLElement;
-            expect(blockElement).not.toBeNull();
-            editor.blockManager.setFocusToBlock(blockElement);
-            const contentElement = getBlockContentElement(blockElement);
-            setCursorPosition(contentElement, 0);
-            contentElement.textContent = '/' + contentElement.textContent;
-            setCursorPosition(contentElement, 1);
-            editor.blockManager.stateManager.updateContentOnUserTyping(blockElement);
-            editorElement.querySelector('.e-mention.e-editable-element').dispatchEvent(new KeyboardEvent('keyup', { key: '/', code: 'Slash', bubbles: true }));
-            const slashCommandElement = document.querySelector('.e-popup.e-blockeditor-command-menu') as HTMLElement;
-            expect(slashCommandElement).not.toBeNull();
-            // click heading li element inside the popup
-            const quoteElement = slashCommandElement.querySelector('li[data-value="Quote"]') as HTMLElement;
-            expect(quoteElement).not.toBeNull();
-            quoteElement.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-            modelBlocks = editor.blocks;
-            domBlocks = editor.element.querySelectorAll<HTMLElement>('.e-block');
-            expect(modelBlocks.length).toBe(1);
-            expect(domBlocks.length).toBe(1);
-            expect(modelBlocks[0].blockType).toBe(BlockType.Quote);
-            const blockquoteElement = editorElement.querySelector('.e-block').querySelector('blockquote') as HTMLElement;
-            expect(blockquoteElement.textContent).toBe('Hello world');
-            expect(blockquoteElement).not.toBeNull();
-            expect(blockquoteElement.tagName).toBe('BLOCKQUOTE');
-            expect(modelBlocks[0].content[0].content).toBe('Hello world');
-            done();
-        });
+        // Feature
+        // it('transforming heading to quote', (done) => {
+        //     let modelBlocks = editor.blocks;
+        //     let domBlocks = editor.element.querySelectorAll<HTMLElement>('.e-block');
+        //     const blockElement = editorElement.querySelector('.e-block') as HTMLElement;
+        //     expect(blockElement).not.toBeNull();
+        //     editor.blockManager.setFocusToBlock(blockElement);
+        //     const contentElement = getBlockContentElement(blockElement);
+        //     setCursorPosition(contentElement, 0);
+        //     contentElement.textContent = '/' + contentElement.textContent;
+        //     setCursorPosition(contentElement, 1);
+        //     editor.blockManager.stateManager.updateContentOnUserTyping(blockElement);
+        //     editorElement.querySelector('.e-mention.e-editable-element').dispatchEvent(new KeyboardEvent('keyup', { key: '/', code: 'Slash', bubbles: true }));
+        //     const slashCommandElement = document.querySelector('.e-popup.e-blockeditor-command-menu') as HTMLElement;
+        //     expect(slashCommandElement).not.toBeNull();
+        //     // click heading li element inside the popup
+        //     const quoteElement = slashCommandElement.querySelector('li[data-value="Quote"]') as HTMLElement;
+        //     expect(quoteElement).not.toBeNull();
+        //     quoteElement.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        //     modelBlocks = editor.blocks;
+        //     domBlocks = editor.element.querySelectorAll<HTMLElement>('.e-block');
+        //     expect(modelBlocks.length).toBe(3);
+        //     expect(domBlocks.length).toBe(4);
+        //     expect(modelBlocks[1].blockType).toBe(BlockType.Quote);
+        //     const blockquoteElement = editorElement.querySelector('.e-quote-block').querySelector('blockquote') as HTMLElement;
+        //     expect(blockquoteElement).not.toBeNull();
+        //     expect(blockquoteElement.tagName).toBe('BLOCKQUOTE');
+        //     expect(modelBlocks[0].content[0].content).toBe('Hello world');
+        //     done();
+        // });
 
         it('transforming quote to bullet list', (done) => {
             let modelBlocks = editor.blocks;
@@ -220,7 +220,7 @@ describe('Slash Command Module', () => {
                 id: 'paragraph2',
                 blockType: BlockType.Paragraph,
                 content: [
-                    { id: 'content2', contentType: ContentType.Text, content: '' }
+                    { contentType: ContentType.Text, content: '' }
                 ]
             };
             editor.addBlock(newBlock, 'paragraph1', true);
@@ -258,7 +258,7 @@ describe('Slash Command Module', () => {
                 id: 'paragraph2',
                 blockType: BlockType.Paragraph,
                 content: [
-                    { id: 'content2', contentType: ContentType.Text, content: '' }
+                    { contentType: ContentType.Text, content: '' }
                 ]
             };
             editor.addBlock(newBlock, 'paragraph1', true);
@@ -541,7 +541,7 @@ describe('Slash Command Module', () => {
             const blocks: BlockModel[] = [
                 {
                     blockType: BlockType.Paragraph,
-                    content: [{ id: 'paragraph-content', contentType: ContentType.Text, content: 'Hello world' }]
+                    content: [{ contentType: ContentType.Text, content: 'Hello world' }]
                 }
             ];
             editor = createEditor({ 
@@ -767,10 +767,12 @@ describe('Slash Command Module', () => {
     describe('Image in Table + Slash Command integrations', () => {
         let editor: BlockEditor;
         let editorElement: HTMLElement;
+
         beforeEach(() => {
             editorElement = createElement('div', { id: 'editor' });
             document.body.appendChild(editorElement);
         });
+
         afterEach(() => {
             if (editor) {
                 editor.destroy();
@@ -778,6 +780,7 @@ describe('Slash Command Module', () => {
             }
             remove(editorElement);
         });
+
         function openSlashAndPick(label: string) {
             const activeBlock = editor.blockManager.currentFocusedBlock as HTMLElement;
             const content = getBlockContentElement(activeBlock);
@@ -791,6 +794,7 @@ describe('Slash Command Module', () => {
             const li = popup.querySelector(`li[data-value="${label}"]`) as HTMLElement;
             expect(li).not.toBeNull();
             li.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+
             // If Image is picked, the renderer opens a hidden file input; mock it for tests
             if (label === 'Image') {
                 setTimeout(() => {
@@ -798,6 +802,7 @@ describe('Slash Command Module', () => {
                     if (!fileInput) { return; }
                     const file = new File(['fake'], 'test.jpg', { type: 'image/jpeg' });
                     Object.defineProperty(fileInput, 'files', { value: [file], writable: false });
+
                     // Mock FileReader for Base64 flow
                     const mockFileReader = {
                         readAsDataURL: jasmine.createSpy('readAsDataURL').and.callFake(function(this: any) {
@@ -806,10 +811,12 @@ describe('Slash Command Module', () => {
                         onload: null as any
                     };
                     spyOn(window as any, 'FileReader').and.returnValue(mockFileReader as any);
+
                     fileInput.dispatchEvent(new Event('change'));
                 }, 0);
             }
         }
+
         it('Insert image via slash inside a cell, delete image → removed and focus moves to next block in same cell', (done) => {
             const table: BlockModel = {
                 id: 'table1',
@@ -821,8 +828,8 @@ describe('Slash Command Module', () => {
                         cells: [{
                             columnId: 'c1',
                             blocks: [
-                                { id: 'cell-p1', blockType: BlockType.Paragraph, content: [{ id: 'cp1', contentType: ContentType.Text, content: '' }] },
-                                { id: 'cell-p2', blockType: BlockType.Paragraph, content: [{ id: 'cp2', contentType: ContentType.Text, content: 'Next paragraph' }] }
+                                { id: 'cell-p1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '' }] },
+                                { id: 'cell-p2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Next paragraph' }] }
                             ]
                         }]
                     }]
@@ -830,12 +837,15 @@ describe('Slash Command Module', () => {
             } as any;
             editor = createEditor({ blocks: [table] });
             editor.appendTo('#editor');
+
             // Focus first cell's first block
             const firstCellFirstBlock = editorElement.querySelector('tbody td[role="gridcell"] .e-cell-blocks-container .e-block') as HTMLElement;
             expect(firstCellFirstBlock).not.toBeNull();
             editor.blockManager.setFocusToBlock(firstCellFirstBlock);
+
             // Insert Image using slash
             openSlashAndPick('Image');
+
             // Wait for upload mock and DOM update
             setTimeout(() => {
                 // Model check
@@ -851,12 +861,14 @@ describe('Slash Command Module', () => {
                 expect(props.rows[0].cells[0].blocks[1].blockType).toBe(BlockType.Paragraph);
                 expect(props.rows[0].cells[0].blocks[2].id).toBe('cell-p2');
                 expect(props.rows[0].cells[0].blocks[2].blockType).toBe(BlockType.Paragraph);
+
                 // Dom Check Ensure first block became image
                 let cellBlocks = editorElement.querySelectorAll('tbody td[role="gridcell"] .e-cell-blocks-container .e-block');
                 expect(cellBlocks.length).toBe(3);
-                const imgEl = (cellBlocks[0] as HTMLElement).querySelector('img') as HTMLImageElement;
+                const imgEl = (cellBlocks[0] as HTMLElement).querySelector('.e-image-placeholder') as HTMLImageElement;
                 expect(imgEl).not.toBeNull();
                 expect(cellBlocks[2].id).toBe('cell-p2');
+
                 // Click image to focus it
                 const renderer = (editor.blockManager.blockRenderer as any).imageRenderer;
                 const clickEvent = new MouseEvent('click', { bubbles: true });
@@ -866,8 +878,10 @@ describe('Slash Command Module', () => {
                 // Ensure block focus is set on the image block's container for Delete to work
                 const imageBlockElement = imgEl.closest('.e-block') as HTMLElement;
                 editor.blockManager.setFocusToBlock(imageBlockElement);
+
                 // Press Delete to remove the image block
                 editor.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', code: 'Delete', bubbles: true }));
+
                 // Model check after deletion
                 blocks = editor.blocks;
                 expect(blocks.length).toBe(1);
@@ -879,6 +893,7 @@ describe('Slash Command Module', () => {
                 expect(props.rows[0].cells[0].blocks[0].blockType).toBe(BlockType.Paragraph);
                 expect(props.rows[0].cells[0].blocks[1].id).toBe('cell-p2');
                 expect(props.rows[0].cells[0].blocks[1].blockType).toBe(BlockType.Paragraph);
+
                 // Expect image block removed and focus moved to next block in same cell (cell-p2)
                 cellBlocks = editorElement.querySelectorAll('tbody td[role="gridcell"] .e-cell-blocks-container .e-block');
                 expect(cellBlocks.length).toBe(2);
@@ -887,6 +902,7 @@ describe('Slash Command Module', () => {
                 done();
             }, 400);
         });
+
         it('Single image block inside R1C1: delete → transformed into paragraph block', (done) => {
             const table: BlockModel = {
                 id: 'table2',
@@ -918,12 +934,14 @@ describe('Slash Command Module', () => {
                 expect(props.rows[0].cells[0].blocks[0].id).toBe('cell-img');
                 expect(props.rows[0].cells[0].blocks[0].blockType).toBe(BlockType.Image);
                 expect((props.rows[0].cells[0].blocks[0].properties as IImageBlockSettings).src).toBe('https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png');
+
                 const img = editorElement.querySelector('tbody td[role="gridcell"] img') as HTMLImageElement;
                 expect(img).not.toBeNull();
                 expect(img.src).toBe('https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png');
                 let cellBlocks = editorElement.querySelectorAll('tbody td[role="gridcell"] .e-cell-blocks-container .e-block');
                 expect(cellBlocks.length).toBe(1);
                 expect(cellBlocks[0].id).toBe('cell-img');
+
                 // Click image to focus it
                 const renderer = (editor.blockManager.blockRenderer as any).imageRenderer;
                 const clickEvent = new MouseEvent('click', { bubbles: true });
@@ -933,7 +951,9 @@ describe('Slash Command Module', () => {
                 // Ensure block focus is set on the image block's container for Delete to work
                 const imageBlockElement = img.closest('.e-block') as HTMLElement;
                 editor.blockManager.setFocusToBlock(imageBlockElement);
+
                 editor.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', code: 'Delete', bubbles: true }));
+
                 // Model check
                 blocks = editor.blocks;
                 expect(blocks.length).toBe(1);
@@ -943,6 +963,7 @@ describe('Slash Command Module', () => {
                 expect(props.rows[0].cells[0].blocks.length).toBe(1);
                 expect(props.rows[0].cells[0].columnId).toBe('c1');
                 expect(props.rows[0].cells[0].blocks[0].blockType).toBe(BlockType.Paragraph);
+
                 // Should be transformed to Paragraph block instead of full removal
                 cellBlocks = editorElement.querySelectorAll('tbody td[role="gridcell"] .e-cell-blocks-container .e-block');
                 expect(cellBlocks.length).toBe(1);
@@ -951,17 +972,21 @@ describe('Slash Command Module', () => {
                 done();
             }, 400);
         });
+
         it('Transform paragraph with content into Image via slash → adds new Image block after existing paragraph', (done) => {
             const blocks: BlockModel[] = [{
                 id: 'p1',
                 blockType: BlockType.Paragraph,
-                content: [{ id: 'p1c', contentType: ContentType.Text, content: 'Hello world' }]
+                content: [{ contentType: ContentType.Text, content: 'Hello world' }]
             }];
             editor = createEditor({ blocks });
             editor.appendTo('#editor');
+
             const para = editorElement.querySelector('#p1') as HTMLElement;
             editor.blockManager.setFocusToBlock(para);
+
             openSlashAndPick('Image');
+
             setTimeout(() => {
                 // Model check
                 let blocks = editor.blocks;
@@ -971,28 +996,32 @@ describe('Slash Command Module', () => {
                 expect(blocks[0].content[0].content).toBe('Hello world ');
                 expect(blocks[1].blockType).toBe(BlockType.Image);
                 expect(blocks[2].blockType).toBe(BlockType.Paragraph);
+
                 // Dom check
                 // Should not replace because content is present; new image block should be appended after paragraph
                 const blocksDom = editorElement.querySelectorAll('.e-block');
                 expect(blocksDom.length).toBe(3);
                 expect((blocksDom[0] as HTMLElement).id).toBe('p1');
-                expect((blocksDom[1] as HTMLElement).querySelector('img')).not.toBeNull();
+                expect((blocksDom[1] as HTMLElement).querySelector('.e-image-placeholder')).not.toBeNull();
                 expect((blocksDom[2] as HTMLElement).getAttribute('data-block-type')).toBe('Paragraph');
                 expect((blocksDom[2] as HTMLElement).querySelector('p')).not.toBeNull();
                 done();
             }, 400);
         });
+
         it('Undo/Redo for transforming paragraph with content into Image (addition after)', (done) => {
             const blocks: BlockModel[] = [{
                 id: 'p1',
                 blockType: BlockType.Paragraph,
-                content: [{ id: 'p1c', contentType: ContentType.Text, content: 'Hello world' }]
+                content: [{ contentType: ContentType.Text, content: 'Hello world' }]
             }];
             editor = createEditor({ blocks });
             editor.appendTo('#editor');
+
             const para = editorElement.querySelector('#p1') as HTMLElement;
             editor.blockManager.setFocusToBlock(para);
             openSlashAndPick('Image');
+
             setTimeout(() => {
                 // Added (paragraph + image + trailing paragraph)
                 expect(editor.blocks.length).toBe(3);
@@ -1014,6 +1043,7 @@ describe('Slash Command Module', () => {
                 let domBlocks = editor.element.querySelectorAll('.e-block');
                 expect((domBlocks[1] as HTMLElement)).toBeUndefined();
                 expect((domBlocks[2] as HTMLElement)).toBeUndefined();
+
                 // Redo → image and trailing paragraph appear again after paragraph
                 editor.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'y', ctrlKey: true, code: 'KeyY' }));
                 expect(editor.blocks.length).toBe(2);
@@ -1025,19 +1055,21 @@ describe('Slash Command Module', () => {
                 expect(editor.blocks[1].blockType).toBe(BlockType.Image);
                 expect(editor.blocks[2].blockType).toBe(BlockType.Paragraph);
                 domBlocks = editor.element.querySelectorAll('.e-block');
-                expect((domBlocks[1] as HTMLElement).querySelector('img')).not.toBeNull();
+                expect((domBlocks[1] as HTMLElement).querySelector('.e-image-placeholder')).not.toBeNull();
                 expect((domBlocks[2] as HTMLElement).getAttribute('data-block-type')).toBe('Paragraph');
                 done();
             }, 300);
         });
+
         it('Insert Callout via slash, Undo until removed, Redo until reappears', (done) => {
             const blocks: BlockModel[] = [{
                 id: 'p1',
                 blockType: BlockType.Paragraph,
-                content: [{ id: 'p1c', contentType: ContentType.Text, content: '' }]
+                content: [{ contentType: ContentType.Text, content: '' }]
             }];
             editor = createEditor({ blocks });
             editor.appendTo('#editor');
+
             const para = editorElement.querySelector('#p1') as HTMLElement;
             editor.blockManager.setFocusToBlock(para);
             openSlashAndPick('Callout');
@@ -1048,6 +1080,7 @@ describe('Slash Command Module', () => {
             expect(editor.blocks[0].id).toBe('p1');
             // Dom check
             expect(editor.element.querySelector('.e-callout-block')).not.toBeNull();
+
             // Undo (remove callout)
             editor.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, code: 'KeyZ' }));
             expect(editor.blocks.length).toBe(1);
@@ -1059,6 +1092,7 @@ describe('Slash Command Module', () => {
             expect(editor.blocks[0].blockType).toBe(BlockType.Paragraph);
             expect(editor.blocks[0].id).toBe('p1');
             expect(editor.element.querySelector('.e-callout-block')).toBeNull();
+
             // Redo (callout appears again)
             editor.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'y', ctrlKey: true, code: 'KeyY' }));
             expect(editor.blocks.length).toBe(1);

@@ -5,7 +5,7 @@
  * @private
  */
 import { EmitType, KeyboardEventArgs, Observer } from '@syncfusion/ej2-base';
-import { EditorMode, EnterKey, ExportDocumentType, SelectionDirection, TriggerType } from './types';
+import { EditorMode, EnterKey, ExportDocumentType, SelectionDirection, ShiftEnterKey, TriggerType } from './types';
 import { MarkdownSelection } from '../markdown-parser/plugin/markdown-selection';
 import { UndoRedoManager } from '../editor-manager/plugin/undo';
 import { UndoRedoCommands } from '../markdown-parser/plugin/undo';
@@ -18,7 +18,7 @@ import { CustomUserAgentData } from './user-agent';
 import { DropDownButton, ItemModel as DropDownItemModel } from '@syncfusion/ej2-splitbuttons';
 import { ItemModel } from '@syncfusion/ej2-navigations';
 import { EmojiSettingsModel } from '../models/emoji-settings-model';
-import { FormatPainterSettingsModel, IFrameSettingsModel, ImageSettingsModel, PasteCleanupSettingsModel, QuickToolbarSettingsModel, TableSettingsModel } from '../models/models';
+import { FormatPainterSettingsModel, IFrameSettingsModel, ImageSettingsModel, PasteCleanupSettingsModel, QuickToolbarSettingsModel, TableSettingsModel, VideoSettingsModel, AudioSettingsModel } from '../models/models';
 import { ClickEventArgs } from '@syncfusion/ej2-navigations';
 import { Popup, Dialog } from '@syncfusion/ej2-popups';
 import { ColorPickerEventArgs, ColorPickerModel } from '@syncfusion/ej2-inputs';
@@ -75,6 +75,21 @@ export interface IHtmlFormatterCallBack {
 
 /**
  * @private
+ */
+export interface IHTMLEnterKeyCallBack {
+    requestType: string
+    enterAction: EnterKey
+    shiftEnterAction: ShiftEnterKey
+    event: KeyboardEvent
+    isEnterAction: boolean
+    isShiftEnterAction: boolean
+    cancel?: boolean
+    isSelectAll?: boolean
+    callBack?(args: IHtmlFormatterCallBack): Function
+}
+
+/**
+ * @deprecated
  */
 export interface IMarkdownToolbarStatus {
     OrderedList: boolean
@@ -259,7 +274,9 @@ export interface IEditorModel {
     destroy?(): void
     beforeSlashMenuApplyFormat?(): void
     codeBlockObj?: CodeBlockPlugin
+    isEntireRTEContentSelected?(): boolean
     aiAssistantActionObj?: AIAssistantActions
+    isBlazor?: boolean
 }
 /**
  * Interface for checklist item model
@@ -785,6 +802,7 @@ export interface ITableModel {
     readonly?: boolean;
     enableRtl?: boolean;
     enterKey?: EnterKey | string;
+    tableSelectionFeature?: boolean,
     editorMode?: EditorMode | string;
     quickToolbarSettings?: QuickToolbarSettingsModel;
     getEditPanel?(): Element;
@@ -898,6 +916,8 @@ export interface IPasteModel {
     iframeSettings?: IFrameSettingsModel;
     pasteCleanupSettings?: PasteCleanupSettingsModel;
     insertImageSettings?: ImageSettingsModel;
+    insertVideoSettings?: VideoSettingsModel;
+    insertAudioSettings?: AudioSettingsModel;
     getInsertImgMaxWidth?(): string | number;
     getDocument?(): Document;
     getEditPanel?(): Element;

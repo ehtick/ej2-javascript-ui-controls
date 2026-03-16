@@ -637,7 +637,7 @@ export class TextMarkupAnnotation {
                     const type: string = annotation.TextMarkupAnnotationType ? annotation.TextMarkupAnnotationType :
                         annotation.textMarkupAnnotationType;
                     const annotBounds: any = annotation.Bounds ? annotation.Bounds : annotation.bounds;
-                    const opacity: number = annotation.Opacity ? annotation.Opacity : annotation.opacity;
+                    const opacity: number = !isNullOrUndefined(annotation.Opacity) ? annotation.Opacity : annotation.opacity;
                     const color: string = annotation.Color ? annotation.Color : annotation.color;
                     const annotationRotation: number = annotation.AnnotationRotation ? annotation.AnnotationRotation :
                         annotation.annotationRotation;
@@ -1244,11 +1244,14 @@ export class TextMarkupAnnotation {
         this.underlineColor = this.underlineColor ? this.underlineColor : this.pdfViewer.underlineSettings.color ? this.pdfViewer.underlineSettings.color : '#00ff00';
         this.strikethroughColor = this.strikethroughColor ? this.strikethroughColor : this.pdfViewer.strikethroughSettings.color ? this.pdfViewer.strikethroughSettings.color : '#ff0000';
         this.squigglyColor = this.squigglyColor ? this.squigglyColor : (this.pdfViewer.squigglySettings.color ? this.pdfViewer.squigglySettings.color : '#ff0000');
-        this.highlightOpacity = this.highlightOpacity ? this.highlightOpacity : this.pdfViewer.highlightSettings.opacity;
-        this.underlineOpacity = this.underlineOpacity ? this.underlineOpacity : this.pdfViewer.underlineSettings.opacity;
-        this.strikethroughOpacity = this.strikethroughOpacity ? this.strikethroughOpacity : this.pdfViewer.strikethroughSettings.opacity;
-        this.squigglyOpacity = this.squigglyOpacity ? this.squigglyOpacity : (this.pdfViewer.squigglySettings.opacity ?
-            this.pdfViewer.squigglySettings.opacity : 1 );
+        this.highlightOpacity = !isNullOrUndefined(this.pdfViewer.highlightSettings.opacity) ?
+            this.pdfViewer.highlightSettings.opacity : this.highlightOpacity;
+        this.underlineOpacity = !isNullOrUndefined(this.pdfViewer.underlineSettings.opacity) ?
+            this.pdfViewer.underlineSettings.opacity : this.underlineOpacity;
+        this.strikethroughOpacity = !isNullOrUndefined(this.pdfViewer.strikethroughSettings.opacity) ?
+            this.pdfViewer.strikethroughSettings.opacity : this.strikethroughOpacity;
+        this.squigglyOpacity = !isNullOrUndefined(this.pdfViewer.squigglySettings.opacity) ?
+            this.pdfViewer.squigglySettings.opacity : this.squigglyOpacity;
         this.annotationAddMode = 'UI Drawn Annotation';
         let allowedInteractions: any[];
         const pageDetails: ISize = this.pdfViewerBase.pageSize[parseInt(pageNumber.toString(), 10)];
@@ -1807,6 +1810,12 @@ export class TextMarkupAnnotation {
                 const pageAnnotationObject: IPageAnnotations = textMarkupAnnotationCollection[parseInt(i.toString(), 10)];
                 if (pageAnnotationObject) {
                     for (let z: number = 0; pageAnnotationObject.annotations.length > z; z++) {
+                        if (this.pdfViewer.printModule && this.pdfViewer.printModule.canPrint &&
+                            pageAnnotationObject.annotations[parseInt(z.toString(), 10)].isPrint === false) {
+                            pageAnnotationObject.annotations.splice(parseInt(z.toString(), 10), 1);
+                            z--;
+                            continue;
+                        }
                         this.pdfViewer.annotationModule.updateModifiedDate(pageAnnotationObject.annotations[parseInt(z.toString(), 10)]);
                         if (this.pdfViewerBase.isJsonExported) {
                             if (pageAnnotationObject.annotations[parseInt(z.toString(), 10)].isAnnotationRotated) {
@@ -3412,23 +3421,23 @@ export class TextMarkupAnnotation {
     public updateTextMarkupSettings(textMarkUpSettings: string): void {
         if (textMarkUpSettings === 'highlightSettings') {
             this.highlightColor = this.pdfViewer.highlightSettings.color ? this.pdfViewer.highlightSettings.color : this.highlightColor;
-            this.highlightOpacity = this.pdfViewer.highlightSettings.opacity ?
+            this.highlightOpacity = !isNullOrUndefined(this.pdfViewer.highlightSettings.opacity) ?
                 this.pdfViewer.highlightSettings.opacity : this.highlightOpacity;
         }
         if (textMarkUpSettings === 'underlineSettings') {
             this.underlineColor = this.pdfViewer.underlineSettings.color ? this.pdfViewer.underlineSettings.color : this.underlineColor;
-            this.underlineOpacity = this.pdfViewer.underlineSettings.opacity ?
+            this.underlineOpacity = !isNullOrUndefined(this.pdfViewer.underlineSettings.opacity) ?
                 this.pdfViewer.underlineSettings.opacity : this.underlineOpacity;
         }
         if (textMarkUpSettings === 'strikethroughSettings') {
             this.strikethroughColor = this.pdfViewer.strikethroughSettings.color ?
                 this.pdfViewer.strikethroughSettings.color : this.strikethroughColor;
-            this.strikethroughOpacity = this.pdfViewer.strikethroughSettings.opacity ?
+            this.strikethroughOpacity = !isNullOrUndefined(this.pdfViewer.strikethroughSettings.opacity) ?
                 this.pdfViewer.strikethroughSettings.opacity : this.strikethroughOpacity;
         }
         if (textMarkUpSettings === 'squigglySettings') {
             this.squigglyColor = this.pdfViewer.squigglySettings.color ? this.pdfViewer.squigglySettings.color : this.squigglyColor;
-            this.squigglyOpacity = this.pdfViewer.squigglySettings.opacity ?
+            this.squigglyOpacity = !isNullOrUndefined(this.pdfViewer.squigglySettings.opacity) ?
                 this.pdfViewer.squigglySettings.opacity : this.squigglyOpacity;
         }
     }
@@ -3608,7 +3617,7 @@ export class TextMarkupAnnotation {
             IsPrint: !isNullOrUndefined(annotationObject.isPrint) ? annotationObject.isPrint : true,
             ModifiedDate: '',
             Note: '',
-            Opacity: annotationObject.opacity ? annotationObject.opacity : 1,
+            Opacity: !isNullOrUndefined(annotationObject.opacity) ? annotationObject.opacity : 1,
             Rect: {},
             State: '',
             StateModel: '',

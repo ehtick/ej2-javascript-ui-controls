@@ -1,5 +1,5 @@
 import { Browser, isBlazor, isNullOrUndefined } from '@syncfusion/ej2-base';
-import { Annotation, PdfViewer, PdfViewerBase, TileRenderingSettingsModel } from '../index';
+import { Annotation, cloneObject, PdfViewer, PdfViewerBase, TileRenderingSettingsModel } from '../index';
 import { getDiagramElement, PointModel, Rect } from '@syncfusion/ej2-drawings';
 
 /**
@@ -37,6 +37,10 @@ export class Magnification {
     private topValue: number = 0;
     private isTapToFitZoom: boolean = false;
     private isCanvasCreated: boolean = false;
+    /**
+     * @private
+     */
+    public isFitToPage: boolean = false;
     /**
      * @private
      */
@@ -426,6 +430,21 @@ export class Magnification {
     public checkZoomFactor(): boolean {
         return this.zoomPercentages.indexOf(this.zoomFactor * 100) > -1;
     }
+    /**
+     * Performs Visibility of Pages
+     *
+     * @returns {void}
+     */
+    private resetPagesVisibility(): void {
+        if (!this.pdfViewerBase || this.pdfViewerBase.pageCount <= 0
+            || this.pdfViewerBase.renderedPagesList.length === 0) { return; }
+        for (let i: number = 0; i < this.pdfViewerBase.renderedPagesList.length; i++) {
+            const pageDiv: HTMLElement = this.pdfViewerBase.getElement('_pageDiv_' + this.pdfViewerBase.renderedPagesList[parseInt(i.toString(), 10)]);
+            if (pageDiv && pageDiv.style.visibility === 'hidden') {
+                pageDiv.style.visibility = 'visible';
+            }
+        }
+    }
 
     /**
      * Executes when the zoom or pinch operation is performed
@@ -459,6 +478,11 @@ export class Magnification {
                 } else {
                     this.pdfViewerBase.viewerContainer.style.overflowY = 'auto';
                 }
+            }
+            if (this.isFitToPage && this.fitType !== 'fitToPage') {
+                this.isFitToPageMode = false;
+                this.resetPagesVisibility();
+                this.isFitToPage = false;
             }
             if (this.pdfViewerBase.pageCount > 0) {
                 if ((this.previousZoomFactor !== this.zoomFactor) || this.pdfViewerBase.isInitialPageMode) {
@@ -538,8 +562,14 @@ export class Magnification {
     private magnifyPages(): void {
         this.clearRerenderTimer();
         const pageDivElements: any = document.querySelectorAll('.e-pv-page-div');
-        const startPageElement: number = pageDivElements[0].id.split('_pageDiv_')[1];
-        const endPageElement: number = pageDivElements[pageDivElements.length - 1].id.split('_pageDiv_')[1];
+        let startPageElement: number;
+        let endPageElement: number;
+        if (!isNullOrUndefined(pageDivElements[0])) {
+            startPageElement = pageDivElements[0].id.split('_pageDiv_')[1];
+        }
+        if (!isNullOrUndefined(pageDivElements[pageDivElements.length - 1])) {
+            endPageElement = pageDivElements[pageDivElements.length - 1].id.split('_pageDiv_')[1];
+        }
         if (!isNullOrUndefined(this.pdfViewer.annotationModule)) {
             for (let i: number = 0; i < this.pdfViewerBase.renderedPagesList.length; i++) {
                 this.pdfViewer.annotation.clearAnnotationCanvas(this.pdfViewerBase.renderedPagesList[parseInt(i.toString(), 10)]);
@@ -1289,7 +1319,13 @@ export class Magnification {
                             }
                             adornerSvg.style.width = width + 'px';
                             adornerSvg.style.height = height + 'px';
-                            this.pdfViewer.renderSelector(i, this.pdfViewer.annotationSelectorSettings);
+                            const annotationSelectorSettings: any = cloneObject(this.pdfViewer.selectedItems &&
+                                this.pdfViewer.selectedItems.annotations[0] &&
+                                    this.pdfViewer.selectedItems.annotations[0].annotationSelectorSettings);
+                            const shapeType: any = this.pdfViewer.selectedItems && this.pdfViewer.selectedItems.annotations[0] &&
+                                this.pdfViewer.selectedItems.annotations[0].shapeAnnotationType;
+                            this.pdfViewerBase.updateSelector(annotationSelectorSettings, shapeType);
+                            this.pdfViewer.renderSelector(i, annotationSelectorSettings);
                             this.pdfViewerBase.applyElementStyles(diagramAdornerLayer, i);
                         }
                     }

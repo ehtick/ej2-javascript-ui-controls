@@ -1389,6 +1389,16 @@
       }
     }
   }
+
+  .e-bigger .e-menu-container.e-border-selector .e-menu-item[id = 'borderColorPicker'] {
+    height: auto !important; /* stylelint-disable-line declaration-no-important */
+    padding: 0;
+  }
+
+  .e-bigger .e-menu-container.e-border-selector ul.e-menu-parent.e-ul:has(div.e-border-colorpicker.sf-spreadsheet-colorpicker) {
+    max-width: $spreadsheet-colorpicker-max-width;
+  }
+
   .e-bigger .e-ribbon-group-overflow-ddb .e-ribbon-overflow-target .e-ribbonoverflow.e-ribbon-item {
     @if $skin-name == 'tailwind3' {
       height: 43px !important; /* stylelint-disable-line declaration-no-important */

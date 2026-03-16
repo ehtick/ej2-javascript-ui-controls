@@ -1,5 +1,6 @@
 import { _PdfDictionary } from "../src/pdf/core/pdf-primitives";
-import { _isNullOrUndefined } from "../src/pdf/core/utils";
+import { _TagClassType } from "../src/pdf/core/security/digital-signature/asn1/enumerator";
+import { _getBigInt, _isNullOrUndefined } from "../src/pdf/core/utils";
 export function setMeasureDictionary(measureDetail: any): _PdfDictionary {
     const measureDictionary: _PdfDictionary = new _PdfDictionary();
     measureDictionary.set('Type', 'Measure');
@@ -58,4 +59,11 @@ export function _makeLocalDate(spec: any): Date {
     getTimezoneOffset: () => -spec.tzOffsetMinutes,
   } as unknown as Date;
   return d;
+}
+export function setUniversal(el: any, tag: any) {
+	el._tagClass = (typeof _TagClassType !== 'undefined' ? (_TagClassType as any).universal : 'universal');
+	el._setTagNumber(tag);
+}
+export function toBigIntFn(): (v: string | number | boolean) => bigint {
+    return (typeof _getBigInt !== 'undefined') ? (_getBigInt as any)() : (() => { throw new Error('_getBigInt not available'); });
 }

@@ -2319,6 +2319,19 @@ export class TimePicker extends Component<HTMLElement> implements IInput {
             {
                 this.createMask();
             }
+            if ((this.globalize.culture === 'ar') && !isNullOrUndefined(date)) {
+                const formatOptions: {
+                    format: string;
+                    type: string;
+                } = { format: this.cldrTimeFormat(), type: 'time' };
+                const value: string = this.globalize.formatDate(date, formatOptions);
+                this.updateInputValue(value);
+                if (this.enableMask) {
+                    this.notify('setMaskSelection', {
+                        module: 'MaskedDateTime'
+                    });
+                }
+            }
         }
         if (!this.strictMode && isNullOrUndefined(this.value) && this.invalidValueString) {
             this.checkErrorState(this.invalidValueString);
@@ -2796,9 +2809,12 @@ export class TimePicker extends Component<HTMLElement> implements IInput {
             width += icons[index as number].offsetWidth;
         }
         if (label) {
-            const labelWidth: number = (this.element.parentElement.offsetWidth) - width;
-            if (labelWidth && !(this.cssClass && this.cssClass.split(' ').indexOf('e-outline') !== -1)) {
-                label.style.width = `${labelWidth}px`;
+            const isMaterial: string = window.getComputedStyle(this.element).getPropertyValue('--dummy-style').trim();
+            if (isMaterial === '') {
+                const labelWidth: number = (this.element.parentElement.offsetWidth) - width;
+                if (labelWidth) {
+                    label.style.width = `${labelWidth}px`;
+                }
             }
         }
     }

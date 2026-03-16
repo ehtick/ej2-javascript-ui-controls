@@ -492,8 +492,7 @@
         .e-sort-ascend,
         .e-sort-descend {
           font-size: $field-list-bigger-header-icon-size;
-          padding: $field-list-spacing-0 $field-list-spacing-0 $field-list-spacing-0 $field-list-bigger-icon-to-icon-padding;
-          width: $field-list-width-24;
+          padding: $field-list-spacing-0 $field-list-spacing-0 $field-list-spacing-0 $field-list-bigger-sort-icon-to-icon-padding;
         }
       }
 
@@ -766,7 +765,7 @@
           .e-sort-none,
           .e-sort-ascend,
           .e-sort-descend {
-            padding: $field-list-spacing-0 $field-list-bigger-icon-to-icon-padding $field-list-spacing-0 $field-list-spacing-0;
+            padding: $field-list-spacing-0 $field-list-spacing-0 $field-list-spacing-0 $field-list-bigger-sort-icon-to-icon-padding;
           }
         }
       }

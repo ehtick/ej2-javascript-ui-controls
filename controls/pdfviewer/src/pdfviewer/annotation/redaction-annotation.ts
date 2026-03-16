@@ -555,6 +555,15 @@ export class Redaction {
 
                     annotation.AnnotationSettings = annotation.AnnotationSettings ?
                         annotation.AnnotationSettings : this.pdfViewer.annotationModule.updateAnnotationSettings(annotation);
+                    if (isImportAction) {
+                        annotation.AnnotationSettings = { minHeight: 0, minWidth: 0,
+                            // eslint-disable-next-line security/detect-object-injection
+                            maxHeight: this.pdfViewerBase.pageSize[pageNumber].height,
+                            // eslint-disable-next-line security/detect-object-injection
+                            maxWidth: this.pdfViewerBase.pageSize[pageNumber].width,
+                            isPrint: true, isLock: false
+                        };
+                    }
 
                     annotation.allowedInteractions = annotation.AllowedInteractions ?
                         annotation.AllowedInteractions :
@@ -923,7 +932,10 @@ export class Redaction {
                     annotName: annotation.AnnotName,
                     annotationSelectorSettings: this.getSelector('Redaction', annotation.Subject),
                     annotationSettings: annotation.AnnotationSettings ||
-                        this.pdfViewer.annotationModule.updateAnnotationSettings(annotation),
+                    // eslint-disable-next-line security/detect-object-injection
+                        { minWidth: 0, minHeight: 0, maxHeight: this.pdfViewerBase.pageSize[pageNumber].height,
+                            // eslint-disable-next-line security/detect-object-injection
+                            maxWidth: this.pdfViewerBase.pageSize[pageNumber].width, isPrint: true, isLock: false },
                     isPrint: annotation.IsPrint !== undefined ? annotation.IsPrint : true,
                     comments: annotation.Comments ? this.pdfViewer.annotationModule.getAnnotationComments(
                         annotation.Comments, annotation, annotation.Author) : [],
@@ -1205,6 +1217,12 @@ export class Redaction {
                 const pageAnnotationObject: IPageAnnotations = annotationCollection[i as number];
                 if (pageAnnotationObject) {
                     for (let z: number = 0; pageAnnotationObject.annotations.length > z; z++) {
+                        if (this.pdfViewer.printModule && this.pdfViewer.printModule.canPrint &&
+                            pageAnnotationObject.annotations[parseInt(z.toString(), 10)].isPrint === false) {
+                            pageAnnotationObject.annotations.splice(parseInt(z.toString(), 10), 1);
+                            z--;
+                            continue;
+                        }
                         this.pdfViewer.annotationModule.updateModifiedDate(pageAnnotationObject.annotations[z as number]);
                         let bounds: PdfBoundsModel = pageAnnotationObject.annotations[z as number].bounds;
                         if (pageAnnotationObject.annotations[z as number].bounds.length > 1) {
@@ -2156,5 +2174,20 @@ export class Redaction {
             annotationCollection = redactionAnnotations;
         }
         return annotationCollection;
+    }
+
+    /**
+     * Validates and normalizes min/max width and height constraints for Redaction settings.
+     * @private
+     * @param {RedactionSettingsModel} settings - represents the redactionSeettings
+     * @returns {void}
+     */
+    public validateRedactionSettings(settings?: RedactionSettingsModel): void {
+        const redaction: RedactionSettingsModel = !isNullOrUndefined(settings) ?
+            settings : this.pdfViewer.redactionSettings;
+        if (redaction && (redaction.minHeight || redaction.minWidth || redaction.maxHeight || redaction.maxWidth)) {
+            this.pdfViewerBase.normalizeMinMaxPair(redaction, 'minWidth', 'maxWidth');
+            this.pdfViewerBase.normalizeMinMaxPair(redaction, 'minHeight', 'maxHeight');
+        }
     }
 }

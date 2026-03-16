@@ -8,7 +8,7 @@ import { OrganizeDetails } from '../organize-pdf';
  * @returns { void }
  */
 export function deleteTempPage(currentPageIndex: number, tileDiv: HTMLElement): void {
-    if (this.pdfViewer.pageOrganizerSettings.canDelete &&
+    if (this.pdfViewer.pageOrganizerSettings &&
         (this.tempOrganizePagesCollection.filter((item: OrganizeDetails) => item.isDeleted === false).length > 0)) {
         const index: number =
             this.tempOrganizePagesCollection.findIndex((item: OrganizeDetails) => item.currentPageIndex === currentPageIndex);

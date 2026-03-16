@@ -852,11 +852,14 @@ export class StickyNotesAnnotation {
             if (editObj) {
                 const saveBtn: any = editObj.element.querySelector('.e-btn-save');
                 const input: any = editObj.element.querySelector('input.e-input, textarea.e-input');
-                if (!saveBtn.ej2_instances[0] || !input) { return; }
-                if (editObj.prevValue !== input.value.trim()) {
-                    saveBtn.ej2_instances[0].disabled = input.value.trim().length === 0;
-                } else if (input.value === '') {
-                    saveBtn.ej2_instances[0].disabled = true;
+                if (saveBtn) {
+                    if (!saveBtn.ej2_instances[0] || !input) { return; }
+                    if (editObj.prevValue !== input.value.trim()) {
+                        saveBtn.ej2_instances[0].disabled = input.value.trim().length === 0;
+                    } else if (input.value === '') {
+                        saveBtn.ej2_instances[0].disabled = true;
+                    }
+                    saveBtn.ej2_instances[0].dataBind();
                 }
             }
         };
@@ -1181,6 +1184,8 @@ export class StickyNotesAnnotation {
                         subType = this.pdfViewer.annotationModule.textMarkupAnnotationModule.
                             currentTextMarkupAnnotation.textMarkupAnnotationType;
                     }
+                } else if (type === 'customStamp') {
+                    subType = currentAnnotation.stampAnnotationType;
                 } else {
                     subType = currentAnnotation.shapeAnnotationType;
                 }
@@ -1250,6 +1255,11 @@ export class StickyNotesAnnotation {
                     this.pdfViewer.strikethroughSettings.author : this.pdfViewer.annotationSettings.author ?
                         this.pdfViewer.annotationSettings.author : 'Guest';
             }
+            else if (annotType === 'Squiggly') {
+                author = (this.pdfViewer.squigglySettings.author !== 'Guest') ?
+                    this.pdfViewer.squigglySettings.author : this.pdfViewer.annotationSettings.author ?
+                        this.pdfViewer.annotationSettings.author : 'Guest';
+            }
         }
         else if (type === 'shape') {
             if ((annotType === 'Line' && subject === 'Line')) {
@@ -1312,6 +1322,10 @@ export class StickyNotesAnnotation {
             }
             else if (annotType === 'stamp') {
                 author = (this.pdfViewer.stampSettings.author !== 'Guest') ? this.pdfViewer.stampSettings.author :
+                    this.pdfViewer.annotationSettings.author ? this.pdfViewer.annotationSettings.author : 'Guest';
+            }
+            else if (annotType === 'image') {
+                author = (this.pdfViewer.customStampSettings.author !== 'Guest') ? this.pdfViewer.customStampSettings.author :
                     this.pdfViewer.annotationSettings.author ? this.pdfViewer.annotationSettings.author : 'Guest';
             }
         }
@@ -1791,7 +1805,7 @@ export class StickyNotesAnnotation {
     private updateCommentIcon(commentSpan: HTMLElement, annotationType: string, annotationSubType?: string): void {
         if (annotationType === 'sticky') {
             commentSpan.className = 'e-pv-comment-icon e-pv-icon';
-        } else if (annotationType === 'stamp') {
+        } else if (annotationType === 'stamp' || annotationType === 'customStamp') {
             commentSpan.className = 'e-pv-stamp-icon e-pv-icon';
         } else if (annotationType === 'shape') {
             if (annotationSubType === 'Line') {
@@ -2635,6 +2649,8 @@ export class StickyNotesAnnotation {
         let typeString: string = (type === 'measure') ? 'shape_measure' : type;
         if (typeString === 'freeText') {
             typeString = 'freetext';
+        } else if (typeString === 'customStamp') {
+            typeString = 'stamp';
         }
         const storeObject: IPageAnnotations[] = this.pdfViewer.annotationsCollection.get(this.pdfViewerBase.documentId + '_annotations_' + typeString);
         if (storeObject) {
@@ -2688,7 +2704,7 @@ export class StickyNotesAnnotation {
                                 this.pdfViewer.toolbarModule.annotationToolbarModule.
                                     showAnnotationToolbar(this.pdfViewer.toolbarModule.annotationItem);
                             }
-                        } else if (type === 'stamp') {
+                        } else if (type === 'stamp' || type === 'customStamp') {
                             this.pdfViewer.select([pageCollections[parseInt(i.toString(), 10)].randomId], currentSelector);
                             this.pdfViewer.annotation.onAnnotationMouseDown();
                         } else if (type === 'sticky') {
@@ -2879,6 +2895,11 @@ export class StickyNotesAnnotation {
             date = new Date();
         }
         this.globalize = new Internationalization();
+        if (!this.pdfViewer.dateTimeFormat || !/[yMdHhmsaE/\-:\s]+/.test(this.pdfViewer.dateTimeFormat)) {
+            const dateOptions: object = { format: 'M/d/yyyy h:mm:ss a', type: 'dateTime' };
+            const dateTime: string = this.globalize.formatDate(new Date(date), dateOptions);
+            return dateTime;
+        }
         if (this.pdfViewer.dateTimeFormat === 'M/d/yyyy h:mm:ss a' &&
             (this.pdfViewer.locale !== 'en-US' && this.pdfViewer.locale !== 'en')) {
             const dateFormat: string = this.globalize.getDatePattern({
@@ -3558,6 +3579,12 @@ export class StickyNotesAnnotation {
                 const pageAnnotationObject: IPageAnnotations = annotationCollection[parseInt(i.toString(), 10)];
                 if (pageAnnotationObject) {
                     for (let z: number = 0; pageAnnotationObject.annotations.length > z; z++) {
+                        if (this.pdfViewer.printModule && this.pdfViewer.printModule.canPrint &&
+                            pageAnnotationObject.annotations[parseInt(z.toString(), 10)].isPrint === false) {
+                            pageAnnotationObject.annotations.splice(parseInt(z.toString(), 10), 1);
+                            z--;
+                            continue;
+                        }
                         this.pdfViewer.annotationModule.updateModifiedDate(pageAnnotationObject.annotations[parseInt(z.toString(), 10)]);
                         pageAnnotationObject.annotations[parseInt(z.toString(), 10)].bounds =
                          JSON.stringify(this.pdfViewer.annotation.getBounds(pageAnnotationObject.
@@ -4008,8 +4035,9 @@ export class StickyNotesAnnotation {
         let annotationType : any;
         if (type === 'stamp' || type === 'Stamp') {
             annotationType = 'stamp';
-        }
-        else if (type === 'shape' || type === 'Line' || type === 'Radius' || type === 'Rectangle' || type === 'Ellipse'
+        } else if (type === 'customStamp' || type === 'Image') {
+            annotationType = 'customStamp';
+        } else if (type === 'shape' || type === 'Line' || type === 'Rectangle' || type === 'Ellipse'
             || type === 'Polygon' || type === 'LineWidthArrowHead' || type === 'Square' || type === 'Circle') {
             annotationType = 'shape';
         }
@@ -4022,7 +4050,8 @@ export class StickyNotesAnnotation {
         else if (type === 'sticky' || type === 'StickyNotes') {
             annotationType = 'sticky';
         }
-        else if (type === 'measure' || type === 'shape_measure') {
+        else if (type === 'measure' || type === 'shape_measure' || type === 'Distance'
+            || type === 'Perimeter' || type === 'Area' || type === 'Radius' || type === 'Volume') {
             annotationType = 'measure';
         }
         else if (type === 'ink' || type === 'Ink') {
@@ -4043,8 +4072,11 @@ export class StickyNotesAnnotation {
     private getAuthorName(annotation: any, commonDiv: any): string {
         let author: string;
         if (annotation){
-            const type: any = annotation.shapeAnnotationType;
+            let type: any = !isNullOrUndefined(annotation.measureType) && annotation.measureType !== '' ? annotation.measureType : annotation.shapeAnnotationType;
             const annotationType : any = this.getAnnotationType(type);
+            if (type === 'textMarkup' && type === annotationType) {
+                type = annotation.textMarkupAnnotationType;
+            }
             author = this.pdfViewer.annotationModule.updateAnnotationAuthor(annotationType, type);
         }
         else{

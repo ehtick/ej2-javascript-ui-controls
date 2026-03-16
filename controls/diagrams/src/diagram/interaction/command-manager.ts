@@ -76,6 +76,7 @@ import { DiagramHtmlElement } from '../core/elements/html-element';
 import { AnnotationModel } from '../objects/annotation-model';
 import { Overview } from '../../overview/overview';
 import { addContainerChild, dropContainerChild, getChildrenBound, removeGElement, adjustContainerSize } from '../utility/container-util';
+import { BpmnTextNode } from '../objects/bpmn';
 
 /**
  * Defines the behavior of commands
@@ -1629,19 +1630,9 @@ export class CommandHandler {
                         if (this.clonedChildrenTable[`${nodeId}`]) {
                             clonedObj.targetID = this.clonedChildrenTable[`${nodeId}`];
                         }
-                        //To check if the connector is cloned already for text annotation node.
-                        let allowClone: boolean = true;
-                        if (clonedObj.targetID) {
-                            const targetNode: Node = this.diagram.nameTable[clonedObj.targetID];
-                            if ((targetNode.shape as BpmnShape).shape === 'TextAnnotation' && targetNode.inEdges && targetNode.inEdges.length > 0) {
-                                allowClone = false;
-                            }
-                        }
-                        if (allowClone) {
-                            const newObj: ConnectorModel = this.cloneConnector(clonedObj, multiSelect);
-                            copiedObject.push(newObj);
-                            keyTable[copy.id] = newObj.id;
-                        }
+                        const newObj: ConnectorModel = this.cloneConnector(clonedObj, multiSelect);
+                        copiedObject.push(newObj);
+                        keyTable[copy.id] = newObj.id;
                     } else {
                         // Ej2-909148-BPMN -- BPMN Subprocess Issues with Node Misplacement During Copy/Paste and Undo/Redo
                         if (copy.shape && copy.shape.type === 'Bpmn') {
@@ -1877,7 +1868,15 @@ export class CommandHandler {
                     connector.push(j);
                 }
             }
-            const innerChild: Node = cloneObject(this.clipboardData.processTable[process[parseInt(g.toString(), 10)]]) as Node;
+            let innerChild: Node;
+            // Bug 980936: Cloning expanded subprocess throws exception.
+            // Added condition to prevent exception while cloning subprocess directly using paste method without copying the subprocess.
+            const processTable: {} = this.clipboardData.processTable;
+            if (processTable && processTable[process[parseInt(g.toString(), 10)]]) {
+                innerChild = cloneObject(processTable[process[parseInt(g.toString(), 10)]]) as Node;
+            } else {
+                innerChild = this.diagram.nameTable[process[parseInt(g.toString(), 10)]];
+            }
             innerChild.processId = node.id;
             const newNode: NodeModel = this.cloneNode(innerChild, false);
             temp[process[parseInt(g.toString(), 10)]] = newNode.id;
@@ -2796,6 +2795,7 @@ export class CommandHandler {
                     }
                 }
             }
+            this.updateGroupChildrenOrder(objects as Node[] | Connector[]);
             const redoObject: SelectorModel = cloneObject(this.diagram.selectedItems);
             const entry: HistoryEntry = { type: 'SendToBack', category: 'Internal', undoObject: undoObject, redoObject: redoObject };
             if (!(this.diagram.diagramActions & DiagramAction.UndoRedo)) {
@@ -3267,6 +3267,7 @@ export class CommandHandler {
                     this.updateLayerZindexTable(layerNum);
                 }
             }
+            this.updateGroupChildrenOrder(objects as Node[] | Connector[]);
             const redoObject: SelectorModel = cloneObject(this.diagram.selectedItems);
             const entry: HistoryEntry = { type: 'BringToFront', category: 'Internal', undoObject: undoObject, redoObject: redoObject };
             if (!(this.diagram.diagramActions & DiagramAction.UndoRedo)) {
@@ -3303,6 +3304,38 @@ export class CommandHandler {
     //     }
     //     return null;
     // }
+
+    // Bug 967706: Sync group children and wrappers with layer zIndex so z-order changes persist and render correctly after save/load, print, and export.
+    private updateGroupChildrenOrder(objects: Node[] | Connector[]): void {
+        const currObj: Node | Connector = this.diagram.nameTable[objects[0].id];
+        if (currObj.parentId) {
+            const parentObj: Node = this.diagram.nameTable[`${currObj.parentId}`];
+            if (parentObj && parentObj.isLane) {
+                return;
+            }
+            if (parentObj && parentObj.children) {
+                const layer: LayerModel = this.getObjectLayer(parentObj.id);
+                const layerObjects: string[] = Object.keys((layer as Layer).zIndexTable);
+                const orderedChildren: string[] = [];
+                const orderedWrappers: DiagramElement[] = [];
+                for (let j: number = 0; j < layerObjects.length; j++) {
+                    const childId: string = (layer as Layer).zIndexTable[layerObjects[parseInt(j.toString(), 10)]];
+                    if (childId && parentObj.children.indexOf(childId) !== -1) {
+                        orderedChildren.push(childId);
+                        const childObj: Node | Connector = this.diagram.nameTable[`${childId}`];
+                        if (childObj && childObj.wrapper) {
+                            orderedWrappers.push(childObj.wrapper);
+                        }
+                    }
+                }
+                parentObj.children = orderedChildren;
+                if (parentObj.wrapper.children.length > 0) {
+                    orderedWrappers.push(parentObj.wrapper.children[parentObj.wrapper.children.length - 1]);
+                }
+                parentObj.wrapper.children = orderedWrappers;
+            }
+        }
+    }
 
     private triggerOrderCommand(oldObj: NodeModel | ConnectorModel, newObj: NodeModel | ConnectorModel,
                                 obj: NodeModel | ConnectorModel): void {
@@ -3820,12 +3853,14 @@ export class CommandHandler {
                         }
                     });
                     this.updateLayerZindexTable(layerIndex);
-                    changedNodeZIndexesArray.forEach((object: Node | Connector) => {
-                        if (!(undoObject.nodes.some((node: Node) => node.id === object.id))) {
-                            const clonedNode: object = cloneObject(object);
-                            undoObject.nodes.push(clonedNode);
-                        }
-                    });
+                    if (!this.diagram.enableCollaborativeEditing) {
+                        changedNodeZIndexesArray.forEach((object: Node | Connector) => {
+                            if (!(undoObject.nodes.some((node: Node) => node.id === object.id))) {
+                                const clonedNode: object = cloneObject(object);
+                                undoObject.nodes.push(clonedNode);
+                            }
+                        });
+                    }
                     if (this.diagram.mode === 'SVG') {
                         const nodeIdToUpdate: string = intersectArray[intersectArray.length - 1].id;
                         const element: NodeModel | ConnectorModel = intersectArray[intersectArray.length - 1];
@@ -3850,13 +3885,16 @@ export class CommandHandler {
 
                 }
             }
+            this.updateGroupChildrenOrder(objects as Node[] | Connector[]);
             const redoObject: SelectorModel = cloneObject(this.diagram.selectedItems);
-            changeNodeZIndexesArray.forEach((object: Node | Connector) => {
-                if (!(redoObject.nodes.some((node: Node) => node.id === object.id))) {
-                    const clonedNode: object = cloneObject(object);
-                    redoObject.nodes.push(clonedNode);
-                }
-            });
+            if (!this.diagram.enableCollaborativeEditing) {
+                changeNodeZIndexesArray.forEach((object: Node | Connector) => {
+                    if (!(redoObject.nodes.some((node: Node) => node.id === object.id))) {
+                        const clonedNode: object = cloneObject(object);
+                        redoObject.nodes.push(clonedNode);
+                    }
+                });
+            }
             const historyEntry: HistoryEntry = {
                 type: 'SendForward', category: 'Internal',
                 undoObject: undoObject, redoObject: redoObject
@@ -4123,12 +4161,14 @@ export class CommandHandler {
                         }
                     });
                     this.updateLayerZindexTable(layerNum);
-                    changedNodeZIndexesArray.forEach((object: Node | Connector) => {
-                        if (!(undoObject.nodes.some((node: Node) => node.id === object.id))) {
-                            const clonedNode: object = cloneObject(object);
-                            undoObject.nodes.push(clonedNode);
-                        }
-                    });
+                    if (!this.diagram.enableCollaborativeEditing) {
+                        changedNodeZIndexesArray.forEach((object: Node | Connector) => {
+                            if (!(undoObject.nodes.some((node: Node) => node.id === object.id))) {
+                                const clonedNode: object = cloneObject(object);
+                                undoObject.nodes.push(clonedNode);
+                            }
+                        });
+                    }
                     if (this.diagram.mode === 'SVG') {
                         const nodeIdToUpdate: string = intersectArray[intersectArray.length - 1].id;
                         const element: NodeModel | ConnectorModel = intersectArray[intersectArray.length - 1];
@@ -4157,13 +4197,16 @@ export class CommandHandler {
                     });
                 }
             }
+            this.updateGroupChildrenOrder(objects as Node[] | Connector[]);
             const redoObject: SelectorModel = cloneObject(this.diagram.selectedItems);
-            changeNodeZIndexesArray.forEach((object: Node | Connector) => {
-                if (!(redoObject.nodes.some((node: Node) => node.id === object.id))) {
-                    const clonedNode: object = cloneObject(object);
-                    redoObject.nodes.push(clonedNode);
-                }
-            });
+            if (!this.diagram.enableCollaborativeEditing) {
+                changeNodeZIndexesArray.forEach((object: Node | Connector) => {
+                    if (!(redoObject.nodes.some((node: Node) => node.id === object.id))) {
+                        const clonedNode: object = cloneObject(object);
+                        redoObject.nodes.push(clonedNode);
+                    }
+                });
+            }
             const entry: HistoryEntry = { type: 'SendBackward', category: 'Internal', undoObject: undoObject, redoObject: redoObject };
             if (!(this.diagram.diagramActions & DiagramAction.UndoRedo) && changeNodeZIndexesArray.length > 0) {
                 this.addHistoryEntry(entry);
@@ -4390,7 +4433,7 @@ export class CommandHandler {
                 return this.dragTargetEnd(connector, tx, ty, null, point, endPoint, undefined, segment);
             }
         } else {
-            return true;
+            return false;
         }
     }
 
@@ -5504,6 +5547,7 @@ Remove terinal segment in initial
         update?: boolean, segment?: OrthogonalSegmentModel | BezierSegmentModel | StraightSegmentModel):
         boolean {
         const connector: ConnectorModel = this.diagram.nameTable[obj.id];
+        //1000270: random exception while drawing connector from port draw
         if (!connector) {
             return false;
         }
@@ -6971,6 +7015,36 @@ Remove terinal segment in initial
     }
 
     /** @private */
+    public getTextAnnotation(source: IElement): SelectorModel {
+        let selector: SelectorModel = { nodes: [] };
+        let parent: NodeModel;
+        if (source instanceof Node) {
+            parent = source;
+            selector = this.getBpmnTextNodes(parent, selector);
+        } else if (source && (source as SelectorModel).nodes && ((source as SelectorModel).nodes.length)) {
+            for (let index: number = 0; index < (source as SelectorModel).nodes.length; index++) {
+                parent = (source as SelectorModel).nodes[index];
+                selector = this.getBpmnTextNodes(parent, selector);
+            }
+        }
+        return selector;
+    }
+
+    private getBpmnTextNodes(parent: NodeModel, selector: SelectorModel): SelectorModel {
+        if (parent && parent.shape && parent.shape.type === 'Bpmn' && (parent as BpmnTextNode).hasTextAnnotation) {
+            for (let i: number = 0; i < (parent as Node).outEdges.length; i++) {
+                let con: ConnectorModel = this.diagram.nameTable[(parent as Node).outEdges[i]];
+                if (con && (con as any).isBpmnAnnotationConnector) {
+                    let node: NodeModel = this.diagram.nameTable[con.targetID];
+                    selector.nodes.push(clone(node));
+                }
+            }
+            return selector;
+        }
+        return selector;
+    }
+
+    /** @private */
     public getContainer(source: IElement): SelectorModel {
         const selector: SelectorModel = { nodes: [], connectors: [] };
         let container: string;
@@ -7122,6 +7196,12 @@ Remove terinal segment in initial
             this.state.backup.height = obj.height;
             this.state.backup.pivot = pivot;
         }
+        if ((obj as Selector).width * sx < 1) {
+            sx = 1;
+        }
+        if ((obj as Selector).height * sy < 1) {
+            sy = 1;
+        }
         obj = renderContainerHelper(this.diagram, obj) || obj;
         const minSize = 10;
         if (isNaN(sx) || !isFinite(sx)) {
@@ -7139,15 +7219,6 @@ Remove terinal segment in initial
             if (currentHeight > 0 && currentHeight * sy < minSize) {
                 sy = minSize / currentHeight;
             }
-        }
-        // Bug ID: 997519: Prevent selector scaling below minimum size during resize operations.
-        // When resizing nodes, the calculated scale factors (sx, sy) could shrink the selector 
-        // to less than 1 pixel in width or height, causing rendering issues and misalignment.
-        if ((obj as Selector).width * sx < 1) {
-            sx = 1;
-        }
-        if ((obj as Selector).height * sy < 1) {
-            sy = 1;
         }
         return this.diagram.scale(obj, sx, sy, pivot);
 
@@ -7408,7 +7479,13 @@ Remove terinal segment in initial
                                 if (!isAngleChanged) {
                                     delete newValue.rotateAngle;
                                 }
-                                this.diagram.nodePropertyChange(node, {} as Node, newValue);
+                                if (node.children && node.children.length > 0) {
+                                    this.diagram.realActions |= RealAction.EnableGroupAction;
+                                    this.diagram.nodePropertyChange(node, {} as Node, newValue);
+                                    this.diagram.realActions &= ~RealAction.EnableGroupAction;
+                                } else {
+                                    this.diagram.nodePropertyChange(node, {} as Node, newValue);
+                                }
                                 objects = objects.concat(this.diagram.spatialSearch.findObjects(actualObject.wrapper.outerBounds as Rect));
                             }
                         }

@@ -1,4 +1,4 @@
-import { Property, Browser, Component, ModuleDeclaration, createElement, setStyleAttribute, Fetch, getInstance } from '@syncfusion/ej2-base';import { EmitType, EventHandler, Complex, ChildProperty, Collection, isNullOrUndefined, remove } from '@syncfusion/ej2-base';import { Internationalization, L10n, NotifyPropertyChanges, INotifyPropertyChanged, compile, formatUnit } from '@syncfusion/ej2-base';import { removeClass, addClass, Event, KeyboardEventArgs, setValue, closest, select, SanitizeHtmlHelper } from '@syncfusion/ej2-base';import { MouseEventArgs, initializeCSPTemplate  } from '@syncfusion/ej2-base';import { PivotEngine, IAxisSet, IDataOptions, IDataSet, FieldItemInfo, INumberIndex, IValueSortSettings } from '../../base/engine';import { IGroupSettings, IFieldListOptions } from '../../base/engine';import { IDrilledItem, ICustomProperties, ISort, IFilter, IFieldOptions, ICalculatedFields, IDrillOptions } from '../../base/engine';import { IConditionalFormatSettings, IStringIndex, IField, IFormatSettings } from '../../base/engine';import { Tooltip, TooltipEventArgs, createSpinner, showSpinner, hideSpinner } from '@syncfusion/ej2-popups';import * as events from '../../common/base/constant';import * as cls from '../../common/base/css-constant';import { AxisFields } from '../../common/grouping-bar/axis-field-renderer';import { LoadEventArgs, EnginePopulatingEventArgs, DrillThroughEventArgs, MultiLevelLabelRenderEventArgs, EditCompletedEventArgs, ExportPageSize, ExcelExportProperties } from '../../common/base/interface';import { BeforeServiceInvokeEventArgs, FetchRawDataArgs, UpdateRawDataArgs, PivotActionBeginEventArgs, PivotActionCompleteEventArgs } from '../../common/base/interface';import { MultiLevelLabelClickEventArgs, PivotActionInfo, AfterServiceInvokeEventArgs, PivotColumn, ChartLabelInfo, PivotActionFailureEventArgs } from '../../common/base/interface';import { FetchReportArgs, LoadReportArgs, RenameReportArgs, RemoveReportArgs, ToolbarArgs } from '../../common/base/interface';import { PdfCellRenderArgs, NewReportArgs, ChartSeriesCreatedEventArgs, AggregateEventArgs } from '../../common/base/interface';import { ResizeInfo, ScrollInfo, ColumnRenderEventArgs, PivotCellSelectedEventArgs, SaveReportArgs, ExportCompleteEventArgs } from '../../common/base/interface';import { CellClickEventArgs, FieldDroppedEventArgs, HyperCellClickEventArgs } from '../../common/base/interface';import { BeforeExportEventArgs, EnginePopulatedEventArgs, BeginDrillThroughEventArgs, DrillArgs } from '../../common/base/interface';import { FieldListRefreshedEventArgs, MemberFilteringEventArgs, FieldDropEventArgs } from '../../common/base/interface';import { MemberEditorOpenEventArgs, FieldRemoveEventArgs, AggregateMenuOpenEventArgs } from '../../common/base/interface';import { CalculatedFieldCreateEventArgs, NumberFormattingEventArgs, FieldDragStartEventArgs, HeadersSortEventArgs } from '../../common/base/interface';import { Render } from '../renderer/render';import { PivotCommon } from '../../common/base/pivot-common';import { Common } from '../../common/actions/common';import { GroupingBar } from '../../common/grouping-bar/grouping-bar';import { DataSourceSettingsModel, DrillOptionsModel, FieldOptionsModel, FormatSettingsModel } from '../../model/datasourcesettings-model';import { DataSourceSettings } from '../../model/datasourcesettings';import { GridSettings } from '../model/gridsettings';import { GridSettingsModel } from '../model/gridsettings-model';import { PivotButton } from '../../common/actions/pivot-button';import { PivotFieldList } from '../../pivotfieldlist/base/field-list';import { Grid, QueryCellInfoEventArgs, ColumnModel, Reorder, Resize, getObject, Column } from '@syncfusion/ej2-grids';import { SelectionType, ContextMenuItemModel } from '@syncfusion/ej2-grids';import { CellSelectEventArgs, RowSelectEventArgs, ResizeArgs, getScrollBarWidth } from '@syncfusion/ej2-grids';import { RowDeselectEventArgs, ContextMenuClickEventArgs } from '@syncfusion/ej2-grids';import { EditSettingsModel, HeaderCellInfoEventArgs, CellDeselectEventArgs } from '@syncfusion/ej2-grids';import { PdfExportProperties, ExcelQueryCellInfoEventArgs, ColumnDragEventArgs } from '@syncfusion/ej2-grids';import { ExcelHeaderQueryCellInfoEventArgs, PdfQueryCellInfoEventArgs, PdfHeaderQueryCellInfoEventArgs } from '@syncfusion/ej2-grids';import { ExcelExport } from '../actions/excel-export';import { PDFExport } from '../actions/pdf-export';import { CalculatedField } from '../../common/calculatedfield/calculated-field';import { KeyboardInteraction } from '../actions/keyboard';import { PivotContextMenu } from '../../common/popups/context-menu';import { DataManager, ReturnOption, Query } from '@syncfusion/ej2-data';import { FieldList } from '../../common/actions/field-list';import { ConditionalFormatting } from '../../common/conditionalformatting/conditional-formatting';import { VirtualScroll } from '../actions/virtualscroll';import { DrillThrough } from '../actions/drill-through';import { Condition, GroupType, Sorting } from '../../base/types';import { EditMode, ToolbarItems, View, Primary, AggregateTypes, ChartSeriesType, PivotTableContextMenuItem, PagerPosition } from '../../common';import { PivotUtil } from '../../base/util';import { Toolbar } from '../../common/popups/toolbar';import { PivotChart } from '../../pivotchart/index';import { ChartSettings } from '../model/chartsettings';import { ChartSettingsModel } from '../model/chartsettings-model';import { Chart, ITooltipRenderEventArgs, ILoadedEventArgs, IPointEventArgs, AccumulationChart, ILegendClickEventArgs, IPrintEventArgs } from '@syncfusion/ej2-charts';import { IAnimationCompleteEventArgs, ILegendRenderEventArgs, ITextRenderEventArgs, IPointRenderEventArgs, ISeriesRenderEventArgs } from '@syncfusion/ej2-charts';import { IMouseEventArgs, IDragCompleteEventArgs, IZoomCompleteEventArgs, IScrollEventArgs } from '@syncfusion/ej2-charts';import { IResizeEventArgs, IAxisLabelRenderEventArgs, ExportType } from '@syncfusion/ej2-charts';import { PdfPageOrientation } from '@syncfusion/ej2-pdf-export';import { ClickEventArgs, BeforeOpenCloseMenuEventArgs, ItemModel } from '@syncfusion/ej2-navigations';import { OlapEngine, IOlapCustomProperties, ITupInfo, IDrillInfo, IOlapField } from '../../base/olap/engine';import { NumberFormatting } from '../../common/popups/formatting-dialog';import { Grouping } from '../../common/popups/grouping';import { Pager } from '../actions/pager';import { ChartExport } from '../../pivotchart/actions/chart-export';import { Save } from '@syncfusion/ej2-file-utils';import { Workbook } from '@syncfusion/ej2-excel-export';import { ExportType as PivotExportType } from '../../common/base/enum';
+import { Property, Browser, Component, ModuleDeclaration, createElement, setStyleAttribute, Fetch, getInstance } from '@syncfusion/ej2-base';import { EmitType, EventHandler, Complex, ChildProperty, Collection, isNullOrUndefined, remove } from '@syncfusion/ej2-base';import { Internationalization, L10n, NotifyPropertyChanges, INotifyPropertyChanged, compile, formatUnit } from '@syncfusion/ej2-base';import { removeClass, addClass, Event, KeyboardEventArgs, setValue, closest, select, SanitizeHtmlHelper } from '@syncfusion/ej2-base';import { MouseEventArgs, initializeCSPTemplate  } from '@syncfusion/ej2-base';import { PivotEngine, IAxisSet, IDataOptions, IDataSet, FieldItemInfo, INumberIndex, IValueSortSettings } from '../../base/engine';import { IGroupSettings, IFieldListOptions } from '../../base/engine';import { IDrilledItem, ICustomProperties, ISort, IFilter, IFieldOptions, ICalculatedFields, IDrillOptions } from '../../base/engine';import { IConditionalFormatSettings, IStringIndex, IField, IFormatSettings } from '../../base/engine';import { Tooltip, TooltipEventArgs, createSpinner, showSpinner, hideSpinner } from '@syncfusion/ej2-popups';import * as events from '../../common/base/constant';import * as cls from '../../common/base/css-constant';import { AxisFields } from '../../common/grouping-bar/axis-field-renderer';import { LoadEventArgs, EnginePopulatingEventArgs, DrillThroughEventArgs, MultiLevelLabelRenderEventArgs, EditCompletedEventArgs, ExportPageSize, ExcelExportProperties, PdfExportProperties } from '../../common/base/interface';import { BeforeServiceInvokeEventArgs, FetchRawDataArgs, UpdateRawDataArgs, PivotActionBeginEventArgs, PivotActionCompleteEventArgs } from '../../common/base/interface';import { MultiLevelLabelClickEventArgs, PivotActionInfo, AfterServiceInvokeEventArgs, PivotColumn, ChartLabelInfo, PivotActionFailureEventArgs } from '../../common/base/interface';import { FetchReportArgs, LoadReportArgs, RenameReportArgs, RemoveReportArgs, ToolbarArgs } from '../../common/base/interface';import { PdfCellRenderArgs, NewReportArgs, ChartSeriesCreatedEventArgs, AggregateEventArgs } from '../../common/base/interface';import { ResizeInfo, ScrollInfo, ColumnRenderEventArgs, PivotCellSelectedEventArgs, SaveReportArgs, ExportCompleteEventArgs } from '../../common/base/interface';import { CellClickEventArgs, FieldDroppedEventArgs, HyperCellClickEventArgs, ExcelHeaderQueryCellInfoEventArgs, ExcelQueryCellInfoEventArgs } from '../../common/base/interface';import { BeforeExportEventArgs, EnginePopulatedEventArgs, BeginDrillThroughEventArgs, DrillArgs } from '../../common/base/interface';import { FieldListRefreshedEventArgs, MemberFilteringEventArgs, FieldDropEventArgs } from '../../common/base/interface';import { MemberEditorOpenEventArgs, FieldRemoveEventArgs, AggregateMenuOpenEventArgs } from '../../common/base/interface';import { CalculatedFieldCreateEventArgs, NumberFormattingEventArgs, FieldDragStartEventArgs, HeadersSortEventArgs } from '../../common/base/interface';import { Render } from '../renderer/render';import { PivotCommon } from '../../common/base/pivot-common';import { Common } from '../../common/actions/common';import { GroupingBar } from '../../common/grouping-bar/grouping-bar';import { DataSourceSettingsModel, DrillOptionsModel, FieldOptionsModel, FormatSettingsModel } from '../../model/datasourcesettings-model';import { DataSourceSettings } from '../../model/datasourcesettings';import { GridSettings } from '../model/gridsettings';import { GridSettingsModel } from '../model/gridsettings-model';import { PivotButton } from '../../common/actions/pivot-button';import { PivotFieldList } from '../../pivotfieldlist/base/field-list';import { Grid, QueryCellInfoEventArgs, ColumnModel, Reorder, Resize, getObject, Column } from '@syncfusion/ej2-grids';import { SelectionType, ContextMenuItemModel } from '@syncfusion/ej2-grids';import { CellSelectEventArgs, RowSelectEventArgs, ResizeArgs, getScrollBarWidth } from '@syncfusion/ej2-grids';import { RowDeselectEventArgs, ContextMenuClickEventArgs } from '@syncfusion/ej2-grids';import { EditSettingsModel, HeaderCellInfoEventArgs, CellDeselectEventArgs } from '@syncfusion/ej2-grids';import { ColumnDragEventArgs } from '@syncfusion/ej2-grids';import { PdfQueryCellInfoEventArgs, PdfHeaderQueryCellInfoEventArgs } from '@syncfusion/ej2-grids';import { ExcelExport } from '../actions/excel-export';import { PDFExport } from '../actions/pdf-export';import { CalculatedField } from '../../common/calculatedfield/calculated-field';import { KeyboardInteraction } from '../actions/keyboard';import { PivotContextMenu } from '../../common/popups/context-menu';import { DataManager, ReturnOption, Query } from '@syncfusion/ej2-data';import { FieldList } from '../../common/actions/field-list';import { ConditionalFormatting } from '../../common/conditionalformatting/conditional-formatting';import { VirtualScroll } from '../actions/virtualscroll';import { DrillThrough } from '../actions/drill-through';import { Condition, GroupType, Sorting } from '../../base/types';import { EditMode, ToolbarItems, View, Primary, AggregateTypes, ChartSeriesType, PivotTableContextMenuItem, PagerPosition } from '../../common';import { PivotUtil } from '../../base/util';import { Toolbar } from '../../common/popups/toolbar';import { PivotChart } from '../../pivotchart/index';import { ChartSettings } from '../model/chartsettings';import { ChartSettingsModel } from '../model/chartsettings-model';import { Chart, ITooltipRenderEventArgs, ILoadedEventArgs, IPointEventArgs, AccumulationChart, ILegendClickEventArgs, IPrintEventArgs } from '@syncfusion/ej2-charts';import { IAnimationCompleteEventArgs, ILegendRenderEventArgs, ITextRenderEventArgs, IPointRenderEventArgs, ISeriesRenderEventArgs } from '@syncfusion/ej2-charts';import { IMouseEventArgs, IDragCompleteEventArgs, IZoomCompleteEventArgs, IScrollEventArgs } from '@syncfusion/ej2-charts';import { IResizeEventArgs, IAxisLabelRenderEventArgs, ExportType } from '@syncfusion/ej2-charts';import { PdfPageOrientation } from '@syncfusion/ej2-pdf-export';import { ClickEventArgs, BeforeOpenCloseMenuEventArgs, ItemModel } from '@syncfusion/ej2-navigations';import { OlapEngine, IOlapCustomProperties, ITupInfo, IDrillInfo, IOlapField } from '../../base/olap/engine';import { NumberFormatting } from '../../common/popups/formatting-dialog';import { Grouping } from '../../common/popups/grouping';import { Pager } from '../actions/pager';import { ChartExport } from '../../pivotchart/actions/chart-export';import { Save } from '@syncfusion/ej2-file-utils';import { Workbook } from '@syncfusion/ej2-excel-export';import { ExportType as PivotExportType } from '../../common/base/enum';
 import {ComponentModel} from '@syncfusion/ej2-base';
 
 /**
@@ -7,65 +7,156 @@ import {ComponentModel} from '@syncfusion/ej2-base';
 export interface GroupingBarSettingsModel {
 
     /**
-     * Allows you to show or hide the filter icon that used to be displayed on the pivot button of the grouping bar UI.
+     * Allows to show or hide the filter icon that used to be displayed on the pivot button of the `Grouping Bar` UI.
      * This filter icon is used to filter the members of a particular field at runtime in the pivot table.
-     * > By default, the filter icon is enabled in the grouping bar.
+     * > By default, the filter icon is enabled in the `Grouping Bar`.
      *
      * @default true
+     * @remarks
+     * - Effective only when `showGroupingBar` is `true`.
+     * - To disable globally, set {@link GroupingBarSettings.showFilterIcon} to `false`.
+     * - To disable for a specific field, set `showFilterIcon: false` in that field within {@link DataSourceSettings} (e.g., `rows`, `columns`).
+     *
+     * @example
+     * const pivotObj = new PivotView({
+     *   showGroupingBar: true,
+     *   groupingBarSettings: { showFilterIcon: false }
+     * });
+     * pivotObj.appendTo('#PivotView');
+     *
+     * @see {@link GroupingBarSettings}
+     * @see {@link DataSourceSettings}
      */
     showFilterIcon?: boolean;
 
     /**
-     * Allows you to show or hide the sort icon that used to be displayed in the pivot button of the grouping bar UI.
+     * Allows to show or hide the sort icon that used to be displayed in the pivot button of the `Grouping Bar` UI.
      * This sort icon is used to order members of a particular fields either in ascending or descending at runtime.
-     * > By default, the sort icon is enabled in the grouping bar.
+     * > By default, the sort icon is enabled in the `Grouping Bar`.
      *
      * @default true
+     * @remarks
+     * - Effective only when `showGroupingBar` is `true`.
+     * - Default behavior: Enabled for all fields; members are initially arranged in ascending order.
+     * - To disable globally, set {@link GroupingBarSettings.showSortIcon} to `false`.
+     * - To disable for a specific field, set `showSortIcon: false` in that field within {@link DataSourceSettings} (e.g., `rows`, `columns`).
+     *
+     * @example
+     * const pivotObj = new PivotView({
+     *   showGroupingBar: true,
+     *   groupingBarSettings: { showSortIcon: false }
+     * });
+     * pivotObj.appendTo('#PivotView');
+     *
+     * @see {@link GroupingBarSettings}
+     * @see {@link DataSourceSettings}
      */
     showSortIcon?: boolean;
 
     /**
-     * Allows you to show or hide the remove icon that used to be displayed in the pivot button of the grouping bar UI. This remove icon is used to remove any field during runtime.
-     * > By default, the remove icon is enabled in the grouping bar.
+     * Allows to show or hide the remove icon that used to be displayed in the pivot button of the `Grouping Bar` UI. This remove icon is used to remove any field during runtime.
+     * > By default, the remove icon is enabled in the `Grouping Bar`.
      *
      * @default true
+     * @remarks
+     * - Effective only when `showGroupingBar` is `true`.
+     * - To disable globally, set {@link GroupingBarSettings.showRemoveIcon} to `false`.
+     * - To disable for a specific field, set `showRemoveIcon: false` in that field within {@link DataSourceSettings} (e.g., `rows`, `columns`).
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   showGroupingBar: true,
+     *   groupingBarSettings: { showRemoveIcon: false }
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * @see {@link GroupingBarSettings}
+     * @see {@link DataSourceSettings}
      */
     showRemoveIcon?: boolean;
 
     /**
-     * Allows you to show or hide the value type icon that used to be displayed in the pivot button of the grouping bar UI.
+     * Allows to show or hide the value type icon that used to be displayed in the pivot button of the `Grouping Bar` UI.
      * This value type icon helps to select the appropriate aggregation type to value fields at runtime.
-     * > By default, the icon to set aggregate types is enabled in the grouping bar.
+     * > By default, the icon to set aggregate types is enabled in the `Grouping Bar`.
      *
      * @default true
+     * @remarks
+     * - Effective only when `showGroupingBar` is `true`.
+     * - To disable globally, set {@link GroupingBarSettings.showValueTypeIcon} to `false`.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   showGroupingBar: true,
+     *   groupingBarSettings: { showValueTypeIcon: false }
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * @see {@link GroupingBarSettings}
      */
     showValueTypeIcon?: boolean;
 
     /**
-     * Allow options to show the grouping bar UI to specific view port such as either pivot table or pivot chart or both table and chart.
-     * For example, to show the grouping bar UI to pivot table on its own, set the property `displayMode` to **Table**.
-     * > By default, the grouping bar UI will be shown to both pivot table as well as pivot chart.
+     * Allow options to show the `Grouping Bar` UI to specific view port such as either pivot table or pivot chart or both table and chart.
+     * For example, to show the `Grouping Bar` UI to pivot table on its own, set the property `displayMode` to **Table**.
+     * > By default, the `Grouping Bar` UI will be shown to both pivot table as well as pivot chart.
      *
      * @default Both
+     * @remarks
+     * - Effective only when `showGroupingBar` is `true`.
+     * - Possible values: `'Table'`, `'Chart'`, `'Both'`.
+     *
+     * @example
+     * const pivotObj = new PivotView({
+     *   showGroupingBar: true,
+     *   groupingBarSettings: { displayMode: 'Table' }
+     * });
+     * pivotObj.appendTo('#PivotView');
+     *
+     * @see {@link GroupingBarSettings}
      */
     displayMode?: View;
 
     /**
-     * Allows you to restrict the pivot buttons that were used to drag on runtime in the grouping bar UI.
-     * This will prevent you from modifying the current report.
-     * > By default, all fields are available for drag-and-drop operation in the grouping bar.
+     * Allows to restrict the pivot buttons that were used to drag on runtime in the `Grouping Bar` UI.
+     * This will prevent modifying the current report.
+     * > By default, all fields are available for drag-and-drop operation in the `Grouping Bar`.
      *
      * @default true
+     * @remarks
+     * - Effective only when `showGroupingBar` is `true`.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   showGroupingBar: true,
+     *   groupingBarSettings: { allowDragAndDrop: false }
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * @see {@link GroupingBarSettings}
      */
     allowDragAndDrop?: boolean;
 
     /**
-     * Allows you to show an additional UI along with the grouping bar UI, which contains the fields that aren't bound in the current report.
-     * It allows you to modify the report by re-arranging the pivot buttons through drag-and-drop operation between axes (row, column, value and filter)
+     * Allows to show an additional UI along with the `Grouping Bar` UI, which contains the fields that aren't bound in the current report.
+     * It allows modifying the report by re-arranging the pivot buttons through drag-and-drop operation between axes (row, column, value and filter)
      * that are used to update the pivot table during runtime.
      * > This property is applicable only for relational data source.
      *
      * @default false
+     * @remarks
+     * - Effective only when `showGroupingBar` is `true`.
+     * - Applicable only for relational data sources.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   showGroupingBar: true,
+     *   groupingBarSettings: { showFieldsPanel: true }
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * @see {@link GroupingBarSettings}
+     * @see {@link DataSourceSettings}
      */
     showFieldsPanel?: boolean;
 
@@ -77,76 +168,174 @@ export interface GroupingBarSettingsModel {
 export interface CellEditSettingsModel {
 
     /**
-     * Allows you to add a new record to the data grid used to update the appropriate cells in the pivot table.
+     * Allows to add a new record to the data grid used to update the appropriate cells in the pivot table.
      *
      * @default false
+     * @remarks
+     * - Effective only when `editing` is enabled and the `editing` UI is available (for example, in the `drill-through` grid).
+     * - To enable this icon, set the property `allowAdding` in `editSettings` to `true`.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   editSettings: { allowAdding: true }
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * @see {@link CellEditSettings}
      */
     allowAdding?: boolean;
 
     /**
-     * Allows you to edit the existing record in the data grid that used to update the appropriate cells in the pivot table.
+     * Allows to edit the existing record in the data grid that used to update the appropriate cells in the pivot table.
      *
      * @default false
+     * @remarks
+     * - Effective only when `editing` is enabled and the `editing` UI is available (for example, in the `drill-through` grid).
+     * - To enable this icon, set the property `allowEditing` in `editSettings` to `true`.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   editSettings: { allowEditing: true }
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * @see {@link CellEditSettings}
      */
     allowEditing?: boolean;
 
     /**
-     * Allows you to delete the existing record from the data grid that used to  update the appropriate cells in the pivot table.
+     * Allows to delete the existing record from the data grid that used to update the appropriate cells in the pivot table.
      *
      * @default false
+     * @remarks
+     * - Effective only when `editing` is enabled and the `editing` UI is available (for example, in the `drill-through` grid).
+     * - To enable this icon, set the property `allowDeleting` in `editSettings` to `true`.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   editSettings: { allowDeleting: true }
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * @see {@link CellEditSettings}
      */
     allowDeleting?: boolean;
 
     /**
-     * Allows an additional column appended in the data grid layout holds the command buttons to perform the CRUD operations to
-     * edit, delete, and update the raw items to the data grid that used to update the appropriate cells in the pivot table.
+     * Allows an additional column appended in the data grid layout holds the command buttons to perform the CRUD operations to edit, delete, and update the raw items to the data grid that used to update the appropriate cells in the pivot table.
      *
      * @default false
+     * @remarks
+     * - Effective only when `editing` is enabled and the `editing` UI is available (for example, in the drill-through grid).
+     * - To enable this column, set the property `allowCommandColumns` in `editSettings` to `true`.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   editSettings: { allowCommandColumns: true }
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * @see {@link CellEditSettings}
      */
     allowCommandColumns?: boolean;
 
     /**
-     * Allows direct editing of a value cell without opening the edit dialog. NOTE: It is applicable only if the value cell is made by a single raw data. Otherwise editing dialog will be shown.
+     * Allows direct `editing` of a value cell without opening the edit dialog. NOTE: It is applicable only if the value cell is made by a single raw data. Otherwise editing dialog will be shown.
      * > The `allowInlineEditing` property supports all modes of editing.
      *
      * @default false
+     * @remarks
+     * - Effective only when `editing` is enabled and the `editing` UI is available (for example, in the `drill-through` grid).
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   editSettings: { allowInlineEditing: true }
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * @see {@link CellEditSettings}
      */
     allowInlineEditing?: boolean;
 
     /**
      * Allow options for performing CRUD operations with different modes in the data grid that used to update the appropriate cells in the pivot table.
      * The available modes are as follows:
-     * * `Normal`: Allows the currently selected row alone will be completely changed to edit state. You can change the cell values and save it to the data source by clicking “Update” toolbar button.
-     * * `Dialog`: Allows the currently selected row data will be shown in an exclusive dialog. You can change the cell values and save it to the data source by clicking “Save” button in the dialog.
-     * * `Batch`: Allows you to perform double-click on any data specific cell in the data grid, the state of that selected cell will be changed to edit state.
-     * You can perform bulk changes like add, edit and delete data of the cells and finally save to the data source by clicking “Update” toolbar button.
-     *
-     * > Normal mode is enabled for CRUD operations in the data grid by default.
+     * * `Normal`: Allows the currently selected row alone will be completely changed to edit state. It is possible to change the cell values and save it to the data source by clicking “Update” toolbar button.
+     * * `Dialog`: Allows the currently selected row data will be shown in an exclusive dialog. It is possible to change the cell values and save it to the data source by clicking “Save” button in the dialog.
+     * * `Batch`: Allows to perform double-click on any data specific cell in the data grid, the state of that selected cell will be changed to edit state.
+     *   It is possible to perform bulk changes like add, edit and delete data of the cells and finally save to the data source by clicking “Update” toolbar button.
      *
      * @default Normal
+     * @remarks
+     * - `Normal` mode is enabled for CRUD operations in the data grid by default.
+     * - Effective only when `editing` is enabled and the `editing` UI is available (for example, the `drill-through` grid).
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   editSettings: { mode: 'Batch' }
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * @see {@link CellEditSettings}
      */
     mode?: EditMode;
 
     /**
-     * Allows you to restrict CRUD operations by double-clicking the appropriate value cell in the pivot table.
+     * Allows to restrict CRUD operations by double-clicking the appropriate value cell in the pivot table.
      *
      * @default true
+     * @remarks
+     * - Effective only when `allowEditing` is `true` in {@link CellEditSettings}.
+     * - Primarily used in `Batch` edit mode for direct cell access.
+     * - To disable, set to `false` in {@link PivotView.editSettings}.
+     *
+     * @example
+     * const pivotObj = new PivotView({
+     *   editSettings: { allowEditing: true, mode: 'Batch', allowEditOnDblClick: false }
+     * });
+     * pivotObj.appendTo('#PivotView');
+     *
+     * @see {@link CellEditSettings}
+     * @see {@link CellEditSettings.allowEditing}
      */
     allowEditOnDblClick?: boolean;
 
     /**
-     * Allows you to show a confirmation dialog to save and discard CRUD operations performed in the data grid that used to update the appropriate cells in the pivot table.
-     * > To use this option, it requires the property `mode` to be **Batch**, meaning, the `showConfirmDialog` option is only applicable for batch edit mode.
+     * Allows to show the confirmation dialog to save and discard CRUD operations performed in the data grid that used to update the appropriate cells in the pivot table.
+     * > To use this option, it requires {@link CellEditSettings.mode} is `Batch`, meaning, the `showConfirmDialog` option is only applicable for `Batch` edit mode.
      *
      * @default true
+     * @remarks
+     * - Effective only when `editing` is enabled via {@link PivotView.editSettings}.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   editSettings: { allowEditing: true, mode: 'Batch', showConfirmDialog: true }
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * @see {@link CellEditSettings}
+     * @see {@link CellEditSettings.mode}
      */
     showConfirmDialog?: boolean;
 
     /**
-     * Allows you to show the confirmation dialog to delete any records from the data grid.
+     * Allows to show the confirmation dialog to delete any records from the data grid.
      * > The `showDeleteConfirmDialog` property supports all modes of editing.
      *
      * @default false
+     * @remarks
+     * - Effective only when editing is enabled via {@link PivotView.editSettings}.
+     * - Supported in all edit modes: `Normal`, `Dialog`, and `Batch`.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   editSettings: { allowEditing: true, showDeleteConfirmDialog: true }
+     * });
+     * pivot.appendTo('#PivotView');
+     *
+     * @see {@link CellEditSettings}
+     * @see {@link CellEditSettings.mode}
      */
     showDeleteConfirmDialog?: boolean;
 
@@ -158,40 +347,115 @@ export interface CellEditSettingsModel {
 export interface ConditionalSettingsModel {
 
     /**
-     * Allows you to specify the value field caption to get visibility of hyperlink option for specific measure.
+     * Allows to specify the value field caption to get visibility of hyperlink option for specific measure.
+     *
+     * @remarks
+     * - Effective only within `hyperlinkSettings.conditionalSettings`.
+     * - Must exactly match the `caption` of a value item in {@link DataSourceSettings.values}.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: {
+     *     conditionalSettings: [
+     *       { measure: 'Sales Amount'},
+     *     ]
+     *   },
+     *   dataSourceSettings: {
+     *     values: [{ name: 'Amount', caption: 'Sales Amount' }]
+     *   }
+     * });
+     * pivot.appendTo('#PivotTable');
+     *
+     * @see {@link HyperlinkSettings.conditionalSettings}
+     * @see {@link DataSourceSettings.values}
      */
     measure?: string;
 
     /**
-     * Allows you to specify the row or column header to get visibility of hyperlink option for specific row or column header.
+     * Allows to specify the row or column header to get visibility of hyperlink option for specific row or column header.
+     *
+     * @remarks
+     * - Effective only within `hyperlinkSettings.conditionalSettings`.
+     * - Must exactly match the displayed header `caption` (for example, a member such as `Country`).
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: {
+     *     conditionalSettings: [
+     *       { label: 'Country' }
+     *     ]
+     *   }
+     * });
+     * pivot.appendTo('#PivotTable');
+     *
+     * @see {@link HyperlinkSettings.conditionalSettings}
+     * @see {@link DataSourceSettings.rows}
+     * @see {@link DataSourceSettings.columns}
      */
     label?: string;
 
     /**
-     * Allows you to choose the operator type such as equals, greater than, less than, etc. The available operators are as follows:
-     * * `LessThan`: Allows you to get the cells that have a value that is less than the start value.
-     * * `GreaterThan`: Allows you to get the cells that have a value that is greater than the start value.
-     * * `LessThanOrEqualTo`: Allows you to get the cells that have a value that is lesser than or equal to the start value.
-     * * `GreaterThanOrEqualTo`: Allows you to get the cells that have a value that is greater than or equal to the start value.
-     * * `Equals`:  Allows you to get the cells that have a value that matches with the start value.
-     * * `NotEquals`: Allows you to get the cells that have a value that does not match with the start value.
-     * * `Between`: Allows you to get the cells that have a value that between the start and end value.
-     * * NotBetween: Allows you to get the cells that have a value that is not between the start and end value.
+     * Allows to choose the operator type such as `Equals`, `GreaterThan`, `LessThan`, etc. The available operators are as follows:
+     * * `LessThan`: Allows to get the cells that have a value that is less than the start value.
+     * * `GreaterThan`: Allows to get the cells that have a value that is greater than the start value.
+     * * `LessThanOrEqualTo`: Allows to get the cells that have a value that is lesser than or equal to the start value.
+     * * `GreaterThanOrEqualTo`: Allows to get the cells that have a value that is greater than or equal to the start value.
+     * * `Equals`:  Allows to get the cells that have a value that matches with the start value.
+     * * `NotEquals`: Allows to get the cells that have a value that does not match with the start value.
+     * * `Between`: Allows to get the cells that have a value that between the start and end value.
+     * * NotBetween: Allows to get the cells that have a value that is not between the start and end value.
      *
      * @default NotEquals
+     * @remarks
+     * - When `conditions` is `Between` or `NotBetween`, both `value1` (start) and `value2` (end) must be specified.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: {
+     *     conditionalSettings: [{ measure: 'Sold', conditions: 'Between', value1: 150, value2: 200 }]
+     *   }
+     * });
+     * pivot.appendTo('#PivotTable');
+     *
+     * @see {@link Condition}
      */
     conditions?: Condition;
 
     /**
-     * Allows you to set the start value to get visibility of hyperlink option based on the condition applied.
+     * Allows to set the start value to get visibility of hyperlink option based on the condition applied.
      * For example, if the start value is 500 and the condition Equals is used, the hyperlink should be enabled to the cells that hold the value of 500 alone.
+     *
+     * @remarks
+     * - For `Condition.Between` and `Condition.NotBetween`, this is the lower bound of the range.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: {
+     *     conditionalSettings: [{ measure: 'Sold', conditions: 'Equals', value1: 500 }]
+     *   }
+     * });
+     * pivot.appendTo('#PivotTable');
      */
     value1?: number;
 
     /**
      * Allows you to set the end value to get visibility of hyperlink option based on the condition applied.
-     * For example, if the start value is 500, the end value is 1500 and the condition Between is used, the hyperlink should be enabled to the cells that holds the value between 500 to 1500.
+     * For example, if the start value is 500, the end value is 1500 and the condition `Between` is used, the hyperlink should be enabled to the cells that holds the value between 500 to 1500.
      * > This option will be used by default when the operator **Between** and **NotBetween** is chosen to apply.
+     * End value used by the comparison defined in {@link conditions}.
+     *
+     * @remarks
+     * - Used when `conditions` is `Condition.Between` or `Condition.NotBetween`; acts as the upper bound.
+     * - Must be specified together with {@link value1} for range-based operators.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: {
+     *     conditionalSettings: [{ measure: 'Sold', conditions: 'Between', value1: 500, value2: 1500 }]
+     *   }
+     * });
+     * pivot.appendTo('#PivotTable');
+     *
      */
     value2?: number;
 
@@ -203,58 +467,151 @@ export interface ConditionalSettingsModel {
 export interface HyperlinkSettingsModel {
 
     /**
-     * Allows you to set the visibility of hyperlink in all cells that are currently shown in the pivot table.
+     * Allows to set the visibility of hyperlink in all cells that are currently shown in the pivot table.
+     *
+     * @remarks
+     * - Applies to the current view only. To target specific fields or values, use `hyperlinkSettings.conditionalSettings`.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: { showHyperlink: true }
+     * });
+     * pivot.appendTo('#PivotTable');
      *
      * @default false
+     * @see {@link HyperlinkSettings.conditionalSettings}
      */
     showHyperlink?: boolean;
 
     /**
-     * Allows you to set the visibility of hyperlink in row headers that are currently shown in the pivot table.
+     * Allows to set the visibility of hyperlink in row headers that are currently shown in the pivot table.
+     *
+     * @remarks
+     * - Applies to the current view only.
+     * - To enable hyperlinks globally for all visible cells, use `hyperlinkSettings.showHyperlink`.
+     * - To target specific fields or values, use `hyperlinkSettings.conditionalSettings`.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: { showRowHeaderHyperlink: true }
+     * });
+     * pivot.appendTo('#PivotTable');
      *
      * @default false
+     * @see {@link HyperlinkSettings.showHyperlink}
+     * @see {@link HyperlinkSettings.conditionalSettings}
      */
     showRowHeaderHyperlink?: boolean;
 
     /**
-     * Allows you to set the visibility of hyperlink in column headers that are currently shown in the pivot table.
+     * Allows to set the visibility of hyperlink in column headers that are currently shown in the pivot table.
+     *
+     * @remarks
+     * - Applies to the current view only.
+     * - To enable hyperlinks globally for all visible cells, use `hyperlinkSettings.showHyperlink`.
+     * - To target specific fields or values, use `hyperlinkSettings.conditionalSettings`.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: { showColumnHeaderHyperlink: true }
+     * });
+     * pivot.appendTo('#PivotTable');
      *
      * @default false
+     * @see {@link HyperlinkSettings.showHyperlink}
+     * @see {@link HyperlinkSettings.conditionalSettings}
      */
     showColumnHeaderHyperlink?: boolean;
 
     /**
-     * Allows you to set the visibility of hyperlink in value cells that are currently shown in the pivot table.
+     * Allows to set the visibility of hyperlink in value cells that are currently shown in the pivot table.
+     *
+     * @remarks
+     * - Applies to the current view only.
+     * - To enable hyperlinks globally for all visible cells, use `hyperlinkSettings.showHyperlink`.
+     * - To target specific fields or values, use `hyperlinkSettings.conditionalSettings`.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: { showValueCellHyperlink: true }
+     * });
+     * pivot.appendTo('#PivotTable');
      *
      * @default false
+     * @see {@link HyperlinkSettings.showHyperlink}
+     * @see {@link HyperlinkSettings.conditionalSettings}
      */
     showValueCellHyperlink?: boolean;
 
     /**
-     * Allows you to set the visibility of hyperlink in summary cells that are currently shown in the pivot table.
+     * Allows to set the visibility of hyperlink in summary cells that are currently shown in the pivot table.
+     *
+     * @remarks
+     * - Applies to the current view only.
+     * - To enable hyperlinks globally for all visible cells, use `hyperlinkSettings.showHyperlink`.
+     * - To target specific fields or values, use `hyperlinkSettings.conditionalSettings`.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: { showSummaryCellHyperlink: true }
+     * });
+     * pivot.appendTo('#PivotTable');
      *
      * @default false
+     * @see {@link HyperlinkSettings.showHyperlink}
+     * @see {@link HyperlinkSettings.conditionalSettings}
      */
     showSummaryCellHyperlink?: boolean;
 
     /**
      * Allow options for setting the visibility of hyperlink based on specific condition. The options available here are as follows:
-     * * `measure`: Allows you to specify the value field caption to get visibility of hyperlink option for specific measure.
-     * * `condition`: Allows you to choose the operator type such as equals, greater than, less than, etc.
-     * * `value1`: Allows you to set the start value.
-     * * `value2`: Allows you to set the end value. This option will be used by default when the operator **Between** and **NotBetween** is chosen to apply.
+     * * `measure`: Allows to specify the value field caption to get visibility of hyperlink option for specific measure.
+     * * `condition`: Allows to choose the operator type such as equals, greater than, less than, etc.
+     * * `value1`: Allows to set the start value.
+     * * `value2`: Allows to set the end value. This option will be used by default when the operator **Between** and **NotBetween** is chosen to apply.
+     *
+     * @remarks
+     * - When `conditions` is `Between` or `NotBetween`, both `value1` and `value2` must be provided.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: {
+     *     conditionalSettings: [
+     *       { measure: 'Sold', conditions: 'Between', value1: 150, value2: 200 }
+     *     ]
+     *   }
+     * });
+     * pivot.appendTo('#PivotTable');
      *
      * @default []
      */
     conditionalSettings?: ConditionalSettingsModel[];
 
     /**
-     * Allows you to set the visibility of hyperlink in the cells based on specific row or column header.
+     * Header caption (row or column) used to set the visibility of hyperlink in the cells based on specific row or column header.
+     *
+     * @remarks
+     * - Must exactly match the displayed header caption. For hierarchical captions, use a dot-separated path (for example, "FY 2015.Q1.Units Sold").
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: {
+     *     headerText: 'FY 2015.Q1.Units Sold',
+     *   }
+     * });
+     * pivot.appendTo('#PivotTable');
+     *
      */
     headerText?: string;
 
     /**
-     * Allows you to add the CSS class name to the hyperlink options. Use this class name you can apply styles to a hyperlink easily at your end.
+     * Allows to add the CSS class name to the hyperlink options. Use this class name to apply styles to a hyperlink easily.
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   hyperlinkSettings: { showHyperlink: true, cssClass: 'e-custom-class' }
+     * });
+     * pivot.appendTo('#PivotTable');
      *
      * @default ''
      */
@@ -268,30 +625,70 @@ export interface HyperlinkSettingsModel {
 export interface PageSettingsModel {
 
     /**
-     * It allows to set the total column count of the pivot table.
+     * Allows to set the total number of records to be displayed on each page of the pivot table’s column axis.
+     *
+     * @remarks
+     * - Affects the column pager. Increase to show more columns per page.
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pageSettings: { columnPageSize: 8 }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default 5
+     * @see {@link PageSettings}
      */
     columnPageSize?: number;
 
     /**
-     * It allows to set the total row count of the pivot table.
+     * Allows to set the total number of records to be displayed on each page of the pivot table’s row axis.
+     *
+     * @remarks
+     * - Affects the row pager. Increase to show more rows per page.
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pageSettings: { rowPageSize: 20 }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default 5
+     * @see {@link PageSettings}
      */
     rowPageSize?: number;
 
     /**
-     * It allows to set the current column page count displayed in the pivot table.
+     * Allows to set the current column page number to be displayed in the pivot table.
+     *
+     * @remarks
+     * - Set to navigate between column pages.
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pageSettings: { currentColumnPage: 2 }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default 1
+     * @see {@link PageSettings}
      */
     currentColumnPage?: number;
 
     /**
-     * It allows to set the current row page count displayed in the pivot table.
+     * Allows to set the current row page number to be displayed in the pivot table.
+     *
+     * @remarks
+     * - Set to navigate between row pages.
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pageSettings: { currentRowPage: 3 }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default 1
+     * @see {@link PageSettings}
      */
     currentRowPage?: number;
 
@@ -303,74 +700,182 @@ export interface PageSettingsModel {
 export interface PagerSettingsModel {
 
     /**
-     * Allows to display the pager UI either at top or bottom of the Pivot Table UI.
+     * Allows to display the `Pager` UI either at top or bottom of the `Pivot Table` UI.
+     *
+     * @remarks
+     * - Controls where the pager renders relative to the Pivot Table.
+     * - Typical values: 'Top' or 'Bottom'.
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pagerSettings: { position: 'Top' }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default Bottom
+     * @see {@link PagerSettings}
      */
     position?: PagerPosition;
 
     /**
      * When the property is set to “true”, it allows to display the row and column paging options as vice versa.
-     * > In pager UI, paging options for column axis will be shown at left-side and for row will be shown at right-side.
+     * > In `Pager` UI, paging options for column axis will be shown at left-side and for row will be shown at right-side.
+     *
+     * @remarks
+     * - When `true`, column paging appears on the left and row paging on the right (swapped layout).
+     * - When `false`, uses the default layout.
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pagerSettings: { isInversed: true }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default false
+     * @see {@link PagerSettings}
      */
     isInversed?: boolean;
 
     /**
-     * Allows to show or hide row paging options in the pager UI.
+     * Allows to show or hide row paging options in the `Pager` UI.
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pagerSettings: { showRowPager: false, showColumnPager: true }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default true
+     * @see {@link PagerSettings}
      */
     showRowPager?: boolean;
 
     /**
-     * Allows to show or hide column paging options in the pager UI.
+     * Allows to show or hide column paging options in the `Pager` UI.
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pagerSettings: { showRowPager: true, showColumnPager: false }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default true
+     * @see {@link PagerSettings}
      */
     showColumnPager?: boolean;
 
     /**
-     * Allows to show row page size information in the pager UI.
+     * Allows to show row page size information in the `Pager` UI.
+     *
+     * @remarks
+     * - When enabled, allows viewing or changing how many rows are shown per page.
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pagerSettings: {
+     *     showRowPageSize: true,
+     *   }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default true
+     * @see {@link PagerSettings}
      */
     showRowPageSize?: boolean;
 
     /**
-     * Allows to show column page size information in the pager UI.
+     * Allows to show column page size information in the `Pager` UI.
+     *
+     * @remarks
+     * - When enabled, allows viewing or changing how many columns are shown per page.
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pagerSettings: {
+     *     showColumnPageSize: true,
+     *   }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default true
+     * @see {@link PagerSettings}
      */
     showColumnPageSize?: boolean;
 
     /**
-     * Allows you to choose from a variety of page sizes in the paging UI that can be used to display the pivot table's rows.
+     * Allows to choose from a variety of page sizes in the `Paging` UI that can be used to display the pivot table's rows.
+     *
+     * @remarks
+     * - When enabled, allows viewing or changing how many rows are shown per page.
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pagerSettings: {
+     *     rowPageSizes: [10, 25, 50, 100]
+     *   }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default [10, 50, 100, 200]
+     * @see {@link PagerSettings}
      */
     rowPageSizes?: number[];
 
     /**
-     * Allows you to choose from a variety of page sizes in the paging UI that can be used to display the pivot table's columns.
+     * Allows to choose from a variety of page sizes in the `Paging` UI that can be used to display the pivot table's columns.
+     *
+     * @remarks
+     * - One of these values can be selected to control how many columns are shown per page.
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pagerSettings: {
+     *     columnPageSizes: [5, 10, 20, 50]
+     *   }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default [5, 10, 20, 50, 100]
+     * @see {@link PagerSettings}
      */
     columnPageSizes?: number[];
 
     /**
-     * Allows the paging UI to be displayed with the absolute minimum of information by hiding all paging data except for the navigation options.
+     * Allows the `Paging` UI to be displayed with the absolute minimum of information by hiding all paging data except for the navigation options.
+     *
+     * @remarks
+     * - When `true`, the pager shows only the essential navigation UI (previous/next, etc.).
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   pagerSettings: { enableCompactView: true }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default false
+     * @see {@link PagerSettings}
      */
     enableCompactView?: boolean;
 
     /**
-     * Allows the pager UI to be customized by using an HTML string or the element's ID to display custom elements instead of the standard ones.
+     * Allows the `Pager` UI to be customized by using an HTML string or the element's ID to display custom elements instead of the standard ones.
+     *
+     * @remarks
+     * - Use this to fully customize the pager (for example, add custom labels or layout).
+     * - When a string is provided, it can be raw HTML or an element selector/ID.
+     *
+     * @example
+     * <div id="pagerTpl"><span class="my-pager">Custom pager</span></div>
+     * let pivotObj: PivotView = new PivotView({
+     *   pagerSettings: {
+     *     template: '#pagerTpl'
+     *   }
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default null
      * @aspType string
+     * @see {@link PagerSettings}
      */
     template?: string | Function;
 
@@ -388,7 +893,14 @@ export interface DisplayOptionModel {
      * * `Both`: Allows you to render the component as both table and chart.
      * > By default, **Table** is used as a default view in the component.
      *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   displayOption: { view: 'Chart' },
+     * });
+     * pivotObj.appendTo('#PivotTable');
+     *
      * @default Table
+     * @see {@link DisplayOption}
      */
     view?: View;
 
@@ -396,9 +908,16 @@ export interface DisplayOptionModel {
      * Allows you to set the primary view to be either table or chart.The available options are:
      * * `Table`: Allows you to display the pivot table as primary view.
      * * `Chart`: Allows you to display the pivot chart as primary view.
-     * > To use this option, it requires the property `view` to be **Both**.
+     * > To use this option, it requires the property `view` to be **Both**.default).
+     *
+     * @example
+     * let pivotObj: PivotView = new PivotView({
+     *   displayOption: { view: 'Both', primary: 'Chart' },
+     * });
+     * pivotObj.appendTo('#PivotTable');
      *
      * @default Table
+     * @see {@link DisplayOption}
      */
     primary?: Primary;
 
@@ -414,7 +933,22 @@ export interface VirtualScrollSettingsModel {
      * or also show the previous and next page in the pivot table. By rendering only the rows and columns relevant to the current view port for display
      * in the pivot table, it improves the pivot table's performance.
      *
+     * @remarks
+     * - `false` (default): Renders the current viewport plus the previous and next pages to provide smoother scrolling.
+     * - `true`: Renders only the rows and columns in the current viewport, reducing CPU and memory usage.
+     * - Improves performance for large datasets during initial render and UI actions (`drill up/down`, `sorting`, `filtering`).
+     *
+     * @example
+     * const pivot = new PivotView({
+     *   enableVirtualization: true,
+     *   virtualScrollSettings: {
+     *     allowSinglePage: true
+     *   }
+     * });
+     * pivot.appendTo('#PivotTable');
+     *
      * @default false
+     * @see {@link PivotView.virtualScrollSettings}.
      */
     allowSinglePage?: boolean;
 

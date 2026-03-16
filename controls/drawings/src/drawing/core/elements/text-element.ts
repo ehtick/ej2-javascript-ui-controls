@@ -8,6 +8,10 @@ import { SubTextElement, TextBounds } from '../../rendering/canvas-interface';
  * TextElement is used to display text/annotations
  */
 export class TextElement extends DrawingElement {
+    /** @private */
+    public freeTextSelectorWidth: number;
+    /** @private */
+    public isShapeLabel: boolean;
     /**
      * set the id for each element
      */

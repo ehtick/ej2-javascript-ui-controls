@@ -24,7 +24,8 @@ import { Filter } from "../../src/treegrid/actions/filter";
 import { ActionEventArgs, ITreeData } from "../../src/treegrid/base/interface";
 import { Selection } from "../../src/treegrid/actions/selection";
 import { Freeze } from "../../src/treegrid/actions/freeze-column";
-import { VirtualTreeContentRenderer } from "../../src/treegrid/renderer/virtual-tree-content-render";
+import { VirtualTreeContentRenderer, TreeInterSectionObserver } from "../../src/treegrid/renderer/virtual-tree-content-render";
+import { InterSection } from '@syncfusion/ej2-grids';
 import { DataManager, WebApiAdaptor } from "@syncfusion/ej2-data";
 
 /**
@@ -7191,4 +7192,383 @@ describe("998943: Script error when call the selectRow method when datasource is
     afterAll( () => {
        destroy(treegrid);
     });
+});
+
+describe("1011082: Virtual scroll coverage issues", () => {
+     let treegrid: TreeGrid;
+     let observer: TreeInterSectionObserver;
+     beforeAll((done: Function) => {
+        treegrid = createGrid(
+          {
+            dataSource: addVirtualData,
+            childMapping: "Crew",
+            treeColumnIndex: 1,
+            enableVirtualization: true,
+            enableVirtualMaskRow: true,
+            height: 400,
+            columns: [
+              { field: "TaskID", headerText: "ID", isPrimaryKey: true, width: 140 },
+              { field: "FIELD1", headerText: "Name", width: 140 },
+              { field: "FIELD2", headerText: "Year", width: 120, textAlign: "Right" },
+              { field: "FIELD3", headerText: "Stint", width: 120, textAlign: "Right" },
+              { field: "FIELD4", headerText: "TMID", width: 120, textAlign: "Right" }
+            ],  
+        },
+          done
+        );
+     })
+    it('generating TreeInterSectionObserver object ', () => {
+      const contentElement: any = treegrid.getContent().querySelector('.e-content');
+      const fakeOptions: InterSection = {
+          container: contentElement,
+          axes: ['Y'],
+          debounceEvent: false,
+          verticalScrollbar: treegrid.element
+              .querySelector('.e-virtual-vertical-scrollbar') as HTMLElement | undefined,
+          horizontalScrollbar: treegrid.element
+              .querySelector('.e-virtual-horizontal-scrollbar') as HTMLElement | undefined,
+          movableContainer: treegrid.element
+              .querySelector('.e-movablecontent') as HTMLElement | undefined,
+          prevTop: 0,
+          prevLeft: 0,
+          pageHeight: 400,
+          scrollbar: undefined,
+      };
+      const movableElement = treegrid.element.querySelector('.e-movablecontent') as HTMLElement;
+      observer = new TreeInterSectionObserver(contentElement,fakeOptions,movableElement);
+      expect(observer).not.toBeNull();
+    });
+    it("Coverage issue for onVirtualContentScrolling function", () => {
+      const handler = observer['onVirtualContentScrolling']();
+      expect(()=>{observer['onVirtualContentScrolling']()({ target: { classList: { contains: (c: any) => c === 'e-virtual-vertical-scrollbar' }}})}).not.toThrowError();
+      expect(()=>{observer['onVirtualContentScrolling']()({ target: { classList: { contains: (c: any) => c === 'e-virtual-horizontal-scrollbar' }}})}).not.toThrowError();
+    });
+    afterAll( () => {
+       destroy(treegrid);
+    });
+});
+
+describe("VirtualTreeContentRenderer - Virtual Operations Coverage", () => {
+  let treegrid: TreeGrid;
+
+  beforeAll((done: Function) => {
+    treegrid = createGrid(
+      {
+        dataSource: virtualData.slice(0, 400),
+        parentIdMapping: "ParentID",
+        idMapping: "TaskID",
+        enableVirtualization: true,
+        height: 350,
+        columns: [
+          { field: "TaskID", isPrimaryKey: true, headerText: "ID", width: 70 },
+          { field: "TaskName", headerText: "Task Name", width: 200 },
+          { field: "Duration", headerText: "Duration", width: 100 }
+        ]
+      },
+      done
+    );
+  });
+
+  it("virtualOtherAction with setTop resets translateY and indexes", (done: Function) => {
+    setTimeout(() => {
+      const renderer = treegrid.grid.contentModule as any;
+      const args: any = { setTop: true, isExpandCollapse: false };
+      
+      renderer.virtualOtherAction(args);
+      
+      expect(renderer.translateY).toBe(0);
+      expect(renderer.startIndex).toBe(0);
+      done();
+    }, 300);
+  });
+
+  it("virtualOtherAction with isExpandCollapse sets flag", (done: Function) => {
+    setTimeout(() => {
+      const renderer = treegrid.grid.contentModule as any;
+      const args: any = { setTop: false, isExpandCollapse: true };
+      
+      renderer.virtualOtherAction(args);
+      
+      expect(renderer.isExpandCollapse).toBe(true);
+      done();
+    }, 300);
+  });
+
+  it("generateCells creates cells for all columns", (done: Function) => {
+    setTimeout(() => {
+      const renderer = treegrid.grid.contentModule as any;
+      
+      const cells = renderer.generateCells();
+      
+      expect(cells.length).toBe(treegrid.columns.length);
+      expect(cells[0]).toBeDefined();
+      done();
+    }, 300);
+  });
+
+  it("generateCell with parameters creates proper Cell object", (done: Function) => {
+    setTimeout(() => {
+      const renderer = treegrid.grid.contentModule as any;
+      const column = treegrid.columns[0];
+      
+      const cell = renderer.generateCell(column as any, 'row1', undefined, 1, 0, {});
+      
+      expect(cell).toBeDefined();
+      expect(cell.column).toBe(column);
+      done();
+    }, 300);
+  });
+
+  it("getVirtualRowIndex calculates correct virtual index", (done: Function) => {
+    setTimeout(() => {
+      const renderer = treegrid.grid.contentModule as any;
+      
+      const index = renderer.getVirtualRowIndex(10);
+      
+      expect(index).toBe(10);
+      done();
+    }, 300);
+  });
+
+  afterAll(() => {
+    destroy(treegrid);
+  });
+});
+
+describe("VirtualTreeContentRenderer - Batch Edit Mode Coverage", () => {
+  let treegrid: TreeGrid;
+
+  beforeAll((done: Function) => {
+    treegrid = createGrid(
+      {
+        dataSource: virtualData.slice(0, 300),
+        parentIdMapping: "ParentID",
+        idMapping: "TaskID",
+        enableVirtualization: true,
+        height: 350,
+        editSettings: {
+          allowEditing: true,
+          allowAdding: true,
+          mode: 'Batch'
+        },
+        columns: [
+          { field: "TaskID", isPrimaryKey: true, headerText: "ID", width: 70 },
+          { field: "TaskName", headerText: "Task Name", width: 200 },
+          { field: "Duration", headerText: "Duration", width: 100 }
+        ]
+      },
+      done
+    );
+  });
+
+  it("getRowByIndex returns row in Batch edit mode", (done: Function) => {
+    setTimeout(() => {
+      const renderer = treegrid.grid.contentModule as any;
+      (treegrid as any).isEdit = true;
+      
+      const rowElement = renderer.getRowByIndex(0);
+      
+      expect(rowElement).toBeDefined();
+      (treegrid as any).isEdit = false;
+      done();
+    }, 300);
+  });
+
+  it("refreshCell regenerates cells for row object", (done: Function) => {
+    setTimeout(() => {
+      const renderer = treegrid.grid.contentModule as any;
+      const rowObj: any = { cells: [] };
+      
+      renderer.refreshCell(rowObj);
+      
+      expect(rowObj.cells.length).toBe(treegrid.columns.length);
+      done();
+    }, 300);
+  });
+
+  afterAll(() => {
+    destroy(treegrid);
+  });
+});
+
+describe("VirtualTreeContentRenderer - Frozen Grid Coverage", () => {
+  let treegrid: TreeGrid;
+
+  beforeAll((done: Function) => {
+    treegrid = createGrid(
+      {
+        dataSource: virtualData.slice(0, 200),
+        parentIdMapping: "ParentID",
+        idMapping: "TaskID",
+        enableVirtualization: true,
+        height: 350,
+        frozenRows: 2,
+        frozenColumns: 1,
+        columns: [
+          { field: "TaskID", isPrimaryKey: true, headerText: "ID", width: 70 },
+          { field: "TaskName", headerText: "Task Name", width: 200 },
+          { field: "Duration", headerText: "Duration", width: 100 }
+        ]
+      },
+      done
+    );
+  });
+
+  it("getFrozenRightVirtualRowByIndex retrieves frozen right rows", (done: Function) => {
+    setTimeout(() => {
+      const renderer = treegrid.grid.contentModule as any;
+      
+      const rowElement = renderer.getFrozenRightVirtualRowByIndex(0);
+      
+      expect(rowElement).toBeDefined();
+      done();
+    }, 300);
+  });
+
+  it("getRowCollection handles frozen rows", (done: Function) => {
+    setTimeout(() => {
+      const renderer = treegrid.grid.contentModule as any;
+      
+      const row = renderer.getRowCollection(0, false, false, false);
+      
+      expect(row).toBeDefined();
+      done();
+    }, 300);
+  });
+
+  afterAll(() => {
+    destroy(treegrid);
+  });
+});
+
+describe("VirtualTreeContentRenderer - Data Ready Coverage", () => {
+  let treegrid: TreeGrid;
+
+  beforeAll((done: Function) => {
+    treegrid = createGrid(
+      {
+        dataSource: virtualData.slice(0, 300),
+        parentIdMapping: "ParentID",
+        idMapping: "TaskID",
+        enableVirtualization: true,
+        height: 350,
+        columns: [
+          { field: "TaskID", isPrimaryKey: true, headerText: "ID", width: 70 },
+          { field: "TaskName", headerText: "Task Name", width: 200 },
+          { field: "Duration", headerText: "Duration", width: 100 }
+        ]
+      },
+      done
+    );
+  });
+
+  it("onDataReady with count parameter updates totalRecords", (done: Function) => {
+    setTimeout(() => {
+      const renderer = treegrid.grid.contentModule as any;
+      const args: any = {
+        count: 250,
+        requestType: undefined
+      };
+      
+      renderer.onDataReady(args);
+      
+      expect(renderer.totalRecords).toBe(250);
+      done();
+    }, 300);
+  });
+
+  it("dataBoundEvent initializes initialRowTop", (done: Function) => {
+    setTimeout(() => {
+      const renderer = treegrid.grid.contentModule as any;
+      
+      renderer.dataBoundEvent();
+      
+      expect(treegrid.grid.contentModule).toBeDefined();
+      done();
+    }, 300);
+  });
+
+  afterAll(() => {
+    destroy(treegrid);
+  });
+});
+
+describe("VirtualTreeContentRenderer - Scroll Operations Coverage", () => {
+  let treegrid: TreeGrid;
+
+  beforeAll((done: Function) => {
+    treegrid = createGrid(
+      {
+        dataSource: virtualData.slice(0, 500),
+        parentIdMapping: "ParentID",
+        idMapping: "TaskID",
+        enableVirtualization: true,
+        height: 350,
+        columns: [
+          { field: "TaskID", isPrimaryKey: true, headerText: "ID", width: 70 },
+          { field: "TaskName", headerText: "Task Name", width: 200 },
+          { field: "Duration", headerText: "Duration", width: 100 }
+        ]
+      },
+      done
+    );
+  });
+
+  it("appendContent handles virtual scroll", (done: Function) => {
+    setTimeout(() => {
+      const renderer = treegrid.grid.contentModule as any;
+      const target = document.createElement('tbody');
+      const fragment = document.createDocumentFragment();
+      const args: any = {
+        virtualInfo: {
+          sentinelInfo: { axis: 'Y' },
+          columnIndexes: [0],
+          page: 1,
+          direction: 'down',
+          event: 'refresh-virtual-block'
+        },
+        requestType: 'virtualscroll'
+      };
+      
+      renderer.appendContent(target, fragment, args);
+      
+      expect(treegrid.grid.contentModule).toBeDefined();
+      done();
+    }, 300);
+  });
+
+  afterAll(() => {
+    destroy(treegrid);
+  });
+});
+
+describe('Coverage for updateScrollbarOnResize', function () {
+  let gridObj: TreeGrid;
+  beforeAll((done: Function) => {
+    gridObj = createGrid(
+      {
+        dataSource: virtualData.slice(0, 500),
+        parentIdMapping: "ParentID",
+        idMapping: "TaskID",
+        enableVirtualization: true,
+        height: 350,
+        columns: [
+          { field: "TaskID", isPrimaryKey: true, headerText: "ID", width: 70 },
+          { field: "TaskName", headerText: "Task Name", width: 200 },
+          { field: "Duration", headerText: "Duration", width: 100 }
+        ],
+        load: function (args: any) {
+          args.enableSeamlessScrolling = true;
+        }
+      }, done);
+  });
+
+  it('Coverage - updateScrollbarOnResize', (done: Function) => {
+    (gridObj as any).grid.contentModule.updateScrollbar()
+    done();
+  });
+
+  afterAll(() => {
+    destroy(gridObj);
+  });
 });

@@ -27,6 +27,10 @@ export class PdfAction {
     _dictionary: _PdfDictionary;
     _page: PdfPage;
     _next: PdfAction;
+    _initialize(): void {
+        this._dictionary = new _PdfDictionary();
+        this._dictionary.update('Type', new _PdfName('Action'));
+    }
     /**
      * Get the next action to be performed after the action represented by this instance.
      *
@@ -106,6 +110,53 @@ export class PdfAction {
     }
 }
 /**
+ * Represents a JavaScript action in PDF document.
+ *
+ * ```typescript
+ * // Load an existing PDF document
+ * let document: PdfDocument = new PdfDocument(data);
+ * // Access text box field
+ * let field: PdfTextBoxField = document.form.fieldAt(0) as PdfTextBoxField;
+ * // Create a new `PdfJavaScriptAction` for adding the action
+ * field.actions.keyPressed = new PdfJavaScriptAction('AFDate_KeystrokeEx("m/d/yy")');
+ * field.actions.format = new PdfJavaScriptAction('AFDate_FormatEx("m/d/yy")');
+ * field.actions.validate = new PdfJavaScriptAction('AFDate_Validate("m/d/yy")');
+ * // Save the document
+ * document.save('output.pdf');
+ * // Destroy the document
+ * document.destroy();
+ */
+export class PdfJavaScriptAction extends PdfAction {
+    _script: string;
+    /**
+     * Initializes a new instance of the `PdfJavaScriptAction` class with JavaScript code.
+     *
+     * @param {string} script - A string value representing valid JavaScript code to be executed.
+     */
+    constructor(script: string) {
+        super();
+        this._initialize();
+        this._script = script;
+        this._dictionary.update('S', new _PdfName('JavaScript'));
+    }
+    /**
+     * Gets the JavaScript code to be executed when this action is executed.
+     *
+     * @returns {string} A string value representing valid JavaScript code to be executed.
+     */
+    get script(): string {
+        return this._script;
+    }
+    /**
+     * Sets the JavaScript code to be executed when this action is executed.
+     *
+     * @param {string} value A string value representing valid JavaScript code to be executed.
+     */
+    set script(value: string) {
+        this._script = value;
+    }
+}
+/**
  * Represents an action which goes to a destination in the current document.
  *
  * ```typescript
@@ -178,6 +229,7 @@ export class PdfGoToAction extends PdfAction {
     constructor(page: PdfPage)
     constructor(arg: PdfDestination | PdfPage) {
         super();
+        this._initialize();
         if (arg instanceof PdfDestination) {
             this._destination = arg;
             this._page = arg.page;
@@ -185,8 +237,6 @@ export class PdfGoToAction extends PdfAction {
             this._page = arg;
             this._destination = new PdfDestination(arg, {x: 0, y: 0});
         }
-        this._dictionary = new _PdfDictionary();
-        this._dictionary.update('Type', new _PdfName('Action'));
         this._dictionary.update('S', new _PdfName('GoTo'));
     }
     /**
@@ -266,7 +316,10 @@ export class PdfFieldActions {
     _gotFocus: PdfAction;
     _lostFocus: PdfAction;
     _field: PdfField;
-    _actions : PdfFieldActions;
+    _actions: PdfFieldActions;
+    _keyPressed: PdfJavaScriptAction;
+    _format: PdfJavaScriptAction;
+    _validate: PdfJavaScriptAction;
     /**
      * Initializes a new instance of the `PdfFieldActions` class.
      *
@@ -611,6 +664,150 @@ export class PdfFieldActions {
             this._updateAction(this._lostFocus, 'Bl');
         }
     }
+    /**
+     * Gets the JavaScript action run on each keystroke in a text field to validate or modify it.
+     *
+     * @returns {PdfJavaScriptAction} A `PdfJavaScriptAction` object specifying the action to be executed when the user types a keystroke.
+     *
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data);
+     * // Access text box field
+     * let field: PdfTextBoxField = document.form.fieldAt(0) as PdfTextBoxField;
+     * // Retrieve the JavaScript action associated with the key-press event of the field.
+     * let action: PdfJavaScriptAction = field.actions.keyPressed;
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    get keyPressed(): PdfJavaScriptAction {
+        if (!this._keyPressed) {
+            this._keyPressed = this._getFieldAction('K');
+        }
+        return this._keyPressed;
+    }
+    /**
+     *Sets the JavaScript action run on each keystroke in a text field to validate or modify it.
+     *
+     *@param {PdfJavaScriptAction} value A `PdfJavaScriptAction` object specifying the action to be executed when the user types a keystroke.
+     *
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data);
+     * // Access text box field
+     * let field: PdfTextBoxField = document.form.fieldAt(0) as PdfTextBoxField;
+     * // Assign a JavaScript action to validate the date format ('dd/mm/yyyy') during key-press.
+     * field.actions.keyPressed = new PdfJavaScriptAction("AFDate_KeystrokeEx('dd/mm/yyyy')");
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    set keyPressed(value: PdfJavaScriptAction) {
+        if (value) {
+            this._keyPressed = value;
+            this._updateFieldAction(this._keyPressed, 'K');
+        }
+    }
+    /**
+     * Gets the JavaScript action executed before the field value is formatted.
+     *
+     * @returns {PdfJavaScriptAction} A `PdfJavaScriptAction` object specifying the action to be executed before the field value is formatted.
+     *
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data);
+     * // Access text box field
+     * let field: PdfTextBoxField = document.form.fieldAt(0) as PdfTextBoxField;
+     * // Retrieve the JavaScript action that is assigned to the field's format event.
+     * let action: PdfJavaScriptAction = field.actions.format;
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    get format(): PdfJavaScriptAction {
+        if (!this._format) {
+            this._format = this._getFieldAction('F');
+        }
+        return this._format;
+    }
+    /**
+     * Sets the JavaScript action executed before the field value is formatted.
+     *
+     * @param {PdfJavaScriptAction} value A `PdfJavaScriptAction` object specifying the action to be executed before the field value is formatted.
+     *
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data);
+     * // Access text box field
+     * let field: PdfTextBoxField = document.form.fieldAt(0) as PdfTextBoxField;
+     * // Assign a JavaScript format action to apply the 'dd/mm/yyyy' date formatting to the field.
+     * field.actions.format = new PdfJavaScriptAction("AFDate_FormatEx('dd/mm/yyyy')");
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    set format(value: PdfJavaScriptAction) {
+        if (value) {
+            this._format = value;
+            this._updateFieldAction(this._format, 'F');
+        }
+    }
+    /**
+     * Gets the JavaScript action triggered when the field value changes for validation.
+     *
+     * @returns {PdfJavaScriptAction} A `PdfJavaScriptAction` object specifying the action to be executed when the field value changes for validation.
+     *
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data);
+     * // Access text box field
+     * let field: PdfTextBoxField = document.form.fieldAt(0) as PdfTextBoxField;
+     * // Retrieve the JavaScript action assigned to the field's validate event.
+     * let action: PdfJavaScriptAction = field.actions.validate;
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    get validate(): PdfJavaScriptAction {
+        if (!this._validate) {
+            this._validate = this._getFieldAction('V');
+        }
+        return this._validate;
+    }
+    /**
+     * set the Java script action to the field for keyPressed.
+     *
+     * @param {PdfJavaScriptAction} value The action to be executed when the field is KeyPressed.
+     *
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data);
+     * // Access text box field
+     * let field: PdfTextBoxField = document.form.fieldAt(0) as PdfTextBoxField;
+     * // Set the JavaScript action that validates the field value using the 'dd/mm/yyyy' date format.
+     * field.actions.validate = new PdfJavaScriptAction("AFDate_ValidateEx('dd/mm/yyyy')");
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    set validate(value: PdfJavaScriptAction) {
+        if (value) {
+            this._validate = value;
+            this._updateFieldAction(this._validate, 'V');
+        }
+    }
     _updateAction(action: PdfAction, key: string): void {
         let widget: PdfWidgetAnnotation;
         if (this._field._kidsCount > 0) {
@@ -649,6 +846,48 @@ export class PdfFieldActions {
                         }
                         const destinationHelper: _PdfDestinationHelper = new _PdfDestinationHelper(dictionary, 'D');
                         result = new PdfGoToAction(destinationHelper._obtainDestination());
+                    }
+                }
+            }
+        }
+        return result;
+    }
+    _updateFieldAction(action: PdfJavaScriptAction, key: string): void {
+        if (this._field && this._field._dictionary && action && key) {
+            const fieldDictionary: _PdfDictionary = this._field._dictionary;
+            let aaDictionary: _PdfDictionary = fieldDictionary.get('AA') as _PdfDictionary;
+            if (!aaDictionary || !(aaDictionary instanceof _PdfDictionary)) {
+                aaDictionary = new _PdfDictionary();
+                fieldDictionary.update('AA', aaDictionary);
+            }
+            const actionDictionary: _PdfDictionary = action._dictionary;
+            const script: string = action._script;
+            if (script && script !== '') {
+                actionDictionary.update('JS', script);
+            }
+            aaDictionary.set(key, actionDictionary);
+            actionDictionary._updated = true;
+            aaDictionary._updated = true;
+            fieldDictionary._updated = true;
+            fieldDictionary.update('AA', aaDictionary);
+        }
+    }
+    _getFieldAction(key: string): PdfJavaScriptAction {
+        let result: PdfJavaScriptAction;
+        if (this._field && this._field._dictionary && key) {
+            const fieldDictionary: _PdfDictionary = this._field._dictionary;
+            if (fieldDictionary.has('AA')) {
+                const aaDictionary: _PdfDictionary = fieldDictionary.get('AA') as _PdfDictionary;
+                if (aaDictionary && aaDictionary instanceof _PdfDictionary && aaDictionary.has(key)) {
+                    const actionDictionary: _PdfDictionary = aaDictionary.get(key) as _PdfDictionary;
+                    if (actionDictionary && actionDictionary instanceof _PdfDictionary && actionDictionary.has('S')) {
+                        const s: _PdfName = actionDictionary.get('S') as _PdfName;
+                        if (s && s.name === 'JavaScript' && actionDictionary.has('JS')) {
+                            const js: string = actionDictionary.get('JS');
+                            result = new PdfJavaScriptAction('');
+                            result._dictionary = actionDictionary;
+                            result._script = js;
+                        }
                     }
                 }
             }

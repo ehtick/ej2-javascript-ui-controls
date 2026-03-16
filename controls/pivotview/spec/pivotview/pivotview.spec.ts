@@ -353,7 +353,7 @@ describe('PivotView spec', () => {
             });
             it('filter testing03', () => {
                 expect((pivotGridObj.engineModule.pivotValues[3][1] as IDataSet).formattedText).toBe("-");
-                expect(pivotGridObj.engineModule.pivotValues.length === 8 && pivotGridObj.engineModule.pivotValues[2].length === 4).toBeTruthy();
+                expect(pivotGridObj.engineModule.pivotValues.length === 7 && pivotGridObj.engineModule.pivotValues[2].length === 3).toBeTruthy();
             });
             it('sort testing2', () => {
                 (document.querySelectorAll('.e-icons.e-sort')[0] as HTMLElement).click();
@@ -361,7 +361,7 @@ describe('PivotView spec', () => {
             });
             it('sort testing04', () => {
                 expect((pivotGridObj.engineModule.pivotValues[3][2] as IDataSet).formattedText).toBe("-");
-                expect(pivotGridObj.engineModule.pivotValues.length === 8 && pivotGridObj.engineModule.pivotValues[3].length === 4).toBeTruthy();
+                expect(pivotGridObj.engineModule.pivotValues.length === 7 && pivotGridObj.engineModule.pivotValues[3].length === 3).toBeTruthy();
                 pivotGridObj.setProperties({ dataSourceSettings: { valueIndex: -1 } });
             });
             it('filter testing3', () => {
@@ -728,7 +728,7 @@ describe('PivotView spec', () => {
             it('filter testing03', (done: Function) => {
                 setTimeout(() => {
                     expect((pivotGridObj.engineModule.pivotValues[3][1] as IDataSet).formattedText).toBe("-");
-                    expect(pivotGridObj.engineModule.pivotValues.length === 23 && pivotGridObj.engineModule.pivotValues[2].length === 17).toBeTruthy();
+                    expect(pivotGridObj.engineModule.pivotValues.length === 22 && pivotGridObj.engineModule.pivotValues[2].length === 3).toBeTruthy();
                     done();
                 }, 100);
             });
@@ -739,7 +739,7 @@ describe('PivotView spec', () => {
             it('sort testing04', (done: Function) => {
                 setTimeout(() => {
                     expect((pivotGridObj.engineModule.pivotValues[3][2] as IDataSet).formattedText).toBe("-");
-                    expect(pivotGridObj.engineModule.pivotValues.length === 23 && pivotGridObj.engineModule.pivotValues[3].length === 17).toBeTruthy();
+                    expect(pivotGridObj.engineModule.pivotValues.length === 22 && pivotGridObj.engineModule.pivotValues[3].length === 3).toBeTruthy();
                     done();
                 }, 100);
             });
@@ -759,7 +759,7 @@ describe('PivotView spec', () => {
                 (document.querySelectorAll('.e-ok-btn')[0] as HTMLElement).click();
             });
             it('filter testing4', () => {
-                expect(pivotGridObj.engineModule.pivotValues.length === 23 && pivotGridObj.engineModule.pivotValues[2].length === 17).toBeTruthy();
+                expect(pivotGridObj.engineModule.pivotValues.length === 22 && pivotGridObj.engineModule.pivotValues[2].length === 3).toBeTruthy();
                 (document.querySelectorAll('.e-btn-filter')[4] as HTMLElement).click();
             });
             it('filter testing06', () => {
@@ -770,8 +770,8 @@ describe('PivotView spec', () => {
             });
             it('filter testing07', (done: Function) => {
                 setTimeout(() => {
-                    expect((pivotGridObj.engineModule.pivotValues[5][0] as IDataSet).formattedText).toBe("Tamilnadu");
-                    expect(pivotGridObj.engineModule.pivotValues.length === 23 && pivotGridObj.engineModule.pivotValues[4].length === 17).toBeTruthy();
+                    expect((pivotGridObj.engineModule.pivotValues[5][0] as IDataSet).formattedText).toBe("balance");
+                    expect(pivotGridObj.engineModule.pivotValues.length === 22 && pivotGridObj.engineModule.pivotValues[4].length === 3).toBeTruthy();
                     done();
                 }, 100);
             });
@@ -1126,7 +1126,7 @@ describe('PivotView spec', () => {
             it('filter testing03', (done: Function) => {
                 setTimeout(() => {
                     expect((pivotGridObj.engineModule.pivotValues[3][1] as IDataSet).formattedText).toBe("-");
-                    expect(pivotGridObj.engineModule.pivotValues.length === 14 && pivotGridObj.engineModule.pivotValues[2].length === 7).toBeTruthy();
+                    expect(pivotGridObj.engineModule.pivotValues.length === 13 && pivotGridObj.engineModule.pivotValues[2].length === 3).toBeTruthy();
                     done();
                 }, 500);
             });
@@ -1142,8 +1142,8 @@ describe('PivotView spec', () => {
             it('sort testing3', (done: Function) => {
                 setTimeout(() => {
                     jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
-                    expect((pivotGridObj.engineModule.pivotValues[3][0] as IDataSet).formattedText).toBe("balance");
-                    expect(pivotGridObj.engineModule.pivotValues.length === 14 && pivotGridObj.engineModule.pivotValues[3].length === 7).toBeTruthy();
+                    expect((pivotGridObj.engineModule.pivotValues[3][0] as IDataSet).formattedText).toBe("quantity");
+                    expect(pivotGridObj.engineModule.pivotValues.length === 13 && pivotGridObj.engineModule.pivotValues[3].length === 3).toBeTruthy();
                     done();
                 }, 1000);
             });
@@ -1164,7 +1164,7 @@ describe('PivotView spec', () => {
             });
             it('filter testing4', (done: Function) => {
                 setTimeout(() => {
-                    expect(pivotGridObj.engineModule.pivotValues.length === 11 && pivotGridObj.engineModule.pivotValues[2].length === 6).toBeTruthy();
+                    expect(pivotGridObj.engineModule.pivotValues.length === 10 && pivotGridObj.engineModule.pivotValues[2].length === 3).toBeTruthy();
                     (document.querySelectorAll('.e-btn-filter')[4] as HTMLElement).click();
                     done();
                 }, 100);
@@ -1180,8 +1180,8 @@ describe('PivotView spec', () => {
             });
             it('filter testing07', (done: Function) => {
                 setTimeout(() => {
-                    expect((pivotGridObj.engineModule.pivotValues[5][0] as IDataSet).formattedText).toBe("Rajkot");
-                    expect(pivotGridObj.engineModule.pivotValues.length === 11 && pivotGridObj.engineModule.pivotValues[4].length === 5).toBeTruthy();
+                    expect((pivotGridObj.engineModule.pivotValues[5][0] as IDataSet).formattedText).toBe("balance");
+                    expect(pivotGridObj.engineModule.pivotValues.length === 10 && pivotGridObj.engineModule.pivotValues[4].length === 3).toBeTruthy();
                     done();
                 }, 200);
             });

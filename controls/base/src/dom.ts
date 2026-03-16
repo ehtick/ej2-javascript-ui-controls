@@ -321,7 +321,7 @@ export function selectAll(selector: string, context: Document | Element = docume
  * @returns {string} ?
  * @private
  */
-function querySelectId(selector: string): string { 
+function querySelectId(selector: string): string {
     if (selector.indexOf('\\#') !== -1) {
         return selector;
     }

@@ -2131,7 +2131,7 @@ describe ('left indent testing', () => {
                 keyBoardEvent.event.which = 13;
                 (editorObj as any).editorKeyDown(keyBoardEvent);
                 expect(editNode.querySelector('#firstli')).toBe(null);
-                innerValue = `<div id="content-edit"><ul><li>List Content 1</li><li id="imageList"><img src="blob:null/bc977338-2728-4625-b218-2099b4dfbf23" class="e-rte-image e-imginline e-img-focus" alt="Tiny_Image.PNG" width="auto" height="auto" style="min-width: 0px; max-width: 1233px; min-height: 0px;"> </li></ul></div>`;
+                innerValue = `<div id="content-edit"><ul><li>List Content 1</li><li id="imageList"><img src="blob:null/bc977338-2728-4625-b218-2099b4dfbf23" class="e-rte-image e-img-inline e-img-focus" alt="Tiny_Image.PNG" width="auto" height="auto" style="min-width: 0px; max-width: 1233px; min-height: 0px;"> </li></ul></div>`;
             });
 
             it(' enter key press inside list element with only image', () => {
@@ -2960,7 +2960,7 @@ describe ('left indent testing', () => {
         let startNode: HTMLElement;
         let endNode: HTMLElement;
         let keyBoardEvent: any = { callBack: function () { }, event: { action: null, preventDefault: () => { }, stopPropagation: () => { }, shiftKey: true, which: 9 } };
-        let innerValue: string = `<div id="content-edit" contenteditable="true"><ol> <li><img src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png" class="e-rte-image e-imginline e-img-focus" alt="test.png" width="auto" height="auto" style="min-width: 0px; max-width: 1455px; min-height: 0px;"></li> </ol> <div>`;
+        let innerValue: string = `<div id="content-edit" contenteditable="true"><ol> <li><img src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png" class="e-rte-image e-img-inline e-img-focus" alt="test.png" width="auto" height="auto" style="min-width: 0px; max-width: 1455px; min-height: 0px;"></li> </ol> <div>`;
         beforeAll( () => {
             elem = createElement( 'div', {
                 id: 'dom-node', innerHTML: innerValue
@@ -4013,7 +4013,7 @@ describe('964856 - When selecting two list items and pressing the Backspace key,
         keyBoardEvent.code = 'Backspace';
         (editorObj as any).keyDown(keyBoardEvent);
         setTimeout(() => {
-            expect(editorObj.inputElement.innerHTML === '<ul> <li>The toolbar has multi-row, expandable, and scrollable modes. The Editor supports an inline toolbar, a floating toolbar, and custom toolbar items.</li> <li>Integration with Syncfusion<sup>®</sup> Mention control lets users tag other users. To learn more, check out the <a class="e-rte-anchor" href="https://ej2.syncfusion.com/documentation/rich-text-editor/mention-integration" title="Mention Documentation" aria-label="Open in new window">documentation</a> and <a class="e-rte-anchor" href="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/mention-integration.html" title="Mention Demos" aria-label="Open in new window">demos</a>.</li> </ul><p><br></p>').toBe(true);
+            expect(editorObj.inputElement.innerHTML === '<ul><li>The toolbar has multi-row, expandable, and scrollable modes. The Editor supports an inline toolbar, a floating toolbar, and custom toolbar items.</li><li>Integration with Syncfusion<sup>®</sup> Mention control lets users tag other users. To learn more, check out the <a class="e-rte-anchor" href="https://ej2.syncfusion.com/documentation/rich-text-editor/mention-integration" title="Mention Documentation" aria-label="Open in new window">documentation</a> and <a class="e-rte-anchor" href="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/mention-integration.html" title="Mention Demos" aria-label="Open in new window">demos</a>.</li></ul><p><br></p>').toBe(true);
             done();
         }, 100);
     });
@@ -4825,7 +4825,7 @@ describe('978845 - List formatting fails when applied to indented checklist item
         let endNode = editorObj.inputElement.querySelector('.end');
         editorObj.formatter.editorManager.nodeSelection.setSelectionText(document, startNode.firstChild, endNode.lastChild, 0, 3);
         (editorObj.element.querySelectorAll(".e-toolbar .e-toolbar-item")[0] as HTMLElement).click();
-        expect(editorObj.inputElement.innerHTML === `<ul><li>text1 <ol><li class="start">text2</li></ol> </li></ul><ol><li class="end">text3</li></ol>`).toBe(true);
+        expect(editorObj.inputElement.innerHTML === `<ul><li>text1<ol><li class="start">text2</li></ol></li></ul><ol><li class="end">text3</li></ol>`).toBe(true);
         done();
     });
     it('Should convert the UnorderedList into an ordered list', (done) => {
@@ -4882,7 +4882,7 @@ describe('977409 - Deleting text breaks the nested bullet list with images in th
             toolbarSettings: {
                 items: ['BulletFormatList', 'NumberFormatList']
             },
-            value: `<p><img src="https://services.syncfusion.com/angular/production/RichTextEditor/rte_image_20.png" class="e-rte-image e-imginline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 1;" alt="rte_image_20.png"></p><ol><li>&nbsp;a<ol><li><img src="https://services.syncfusion.com/angular/production/RichTextEditor/rte_image_36.png" class="e-rte-image e-imginline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 1;" alt="rte_image_36.png"><ol><li>&nbsp;<img src="https://services.syncfusion.com/angular/production/RichTextEditor/rte_image_43.png" class="e-rte-image e-imginline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 1;" alt="rte_image_43.png"></li></ol></li></ol></li><li>b&nbsp;<img src="https://services.syncfusion.com/angular/production/RichTextEditor/rte_image_52.png" class="e-rte-image e-imginline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 1;" alt="rte_image_52.png"></li><li>c<ol><li>&nbsp;<img src="https://services.syncfusion.com/angular/production/RichTextEditor/rte_image_68.png" class="e-rte-image e-imginline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 1;" alt="rte_image_68.png"></li></ol></li><li class="focusNode">dgsgsgsdgsd</li><li>sdgsdgsdgsdgsdgsdg<ol><li><img src="https://services.syncfusion.com/angular/production/RichTextEditor/rte_image_86.png" class="e-rte-image e-imginline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 1;" alt="rte_image_86.png"></li></ol></li><li>&nbsp;ssdgdsg</li><li><img src="data:image/png;base64,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" class="e-rte-image e-imginline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 0.5;" alt="">&nbsp;</li></ol>`
+            value: `<p><img src="https://services.syncfusion.com/angular/production/RichTextEditor/rte_image_20.png" class="e-rte-image e-img-inline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 1;" alt="rte_image_20.png"></p><ol><li>&nbsp;a<ol><li><img src="https://services.syncfusion.com/angular/production/RichTextEditor/rte_image_36.png" class="e-rte-image e-img-inline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 1;" alt="rte_image_36.png"><ol><li>&nbsp;<img src="https://services.syncfusion.com/angular/production/RichTextEditor/rte_image_43.png" class="e-rte-image e-img-inline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 1;" alt="rte_image_43.png"></li></ol></li></ol></li><li>b&nbsp;<img src="https://services.syncfusion.com/angular/production/RichTextEditor/rte_image_52.png" class="e-rte-image e-img-inline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 1;" alt="rte_image_52.png"></li><li>c<ol><li>&nbsp;<img src="https://services.syncfusion.com/angular/production/RichTextEditor/rte_image_68.png" class="e-rte-image e-img-inline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 1;" alt="rte_image_68.png"></li></ol></li><li class="focusNode">dgsgsgsdgsd</li><li>sdgsdgsdgsdgsdgsdg<ol><li><img src="https://services.syncfusion.com/angular/production/RichTextEditor/rte_image_86.png" class="e-rte-image e-img-inline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 1;" alt="rte_image_86.png"></li></ol></li><li>&nbsp;ssdgdsg</li><li><img src="data:image/png;base64,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" class="e-rte-image e-img-inline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 0.5;" alt="">&nbsp;</li></ol>`
         });
     });
     afterAll((done) => {
@@ -4894,7 +4894,7 @@ describe('977409 - Deleting text breaks the nested bullet list with images in th
         editorObj.formatter.editorManager.nodeSelection.setSelectionText(document, startNode.firstChild, startNode.lastChild, 0, startNode.lastChild.textContent.length);
         const deleteKeyEvent: KeyboardEvent = new KeyboardEvent('keydown', DELETE_EVENT_INIT);
         editorObj.inputElement.dispatchEvent(deleteKeyEvent);
-        expect(editorObj.inputElement.innerHTML === '<p><img src="https://services.syncfusion.com/angular/production/RichTextEditor/rte_image_20.png" class="e-rte-image e-imginline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 1;" alt="rte_image_20.png"></p><ol><li>&nbsp;a<ol><li><img src="https://services.syncfusion.com/angular/production/RichTextEditor/rte_image_36.png" class="e-rte-image e-imginline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 1;" alt="rte_image_36.png"><ol><li>&nbsp;<img src="https://services.syncfusion.com/angular/production/RichTextEditor/rte_image_43.png" class="e-rte-image e-imginline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 1;" alt="rte_image_43.png"></li></ol></li></ol></li><li>b&nbsp;<img src="https://services.syncfusion.com/angular/production/RichTextEditor/rte_image_52.png" class="e-rte-image e-imginline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 1;" alt="rte_image_52.png"></li><li>c<ol><li>&nbsp;<img src="https://services.syncfusion.com/angular/production/RichTextEditor/rte_image_68.png" class="e-rte-image e-imginline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 1;" alt="rte_image_68.png"></li></ol></li><li>sdgsdgsdgsdgsdgsdg<ol><li><img src="https://services.syncfusion.com/angular/production/RichTextEditor/rte_image_86.png" class="e-rte-image e-imginline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 1;" alt="rte_image_86.png"></li></ol></li><li>&nbsp;ssdgdsg</li><li><img src="data:image/png;base64,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" class="e-rte-image e-imginline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 0.5;" alt="">&nbsp;</li></ol>').toBe(true);
+        expect(editorObj.inputElement.innerHTML === '<p><img src="https://services.syncfusion.com/angular/production/RichTextEditor/rte_image_20.png" class="e-rte-image e-img-inline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 1;" alt="rte_image_20.png"></p><ol><li>&nbsp;a<ol><li><img src="https://services.syncfusion.com/angular/production/RichTextEditor/rte_image_36.png" class="e-rte-image e-img-inline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 1;" alt="rte_image_36.png"><ol><li>&nbsp;<img src="https://services.syncfusion.com/angular/production/RichTextEditor/rte_image_43.png" class="e-rte-image e-img-inline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 1;" alt="rte_image_43.png"></li></ol></li></ol></li><li>b&nbsp;<img src="https://services.syncfusion.com/angular/production/RichTextEditor/rte_image_52.png" class="e-rte-image e-img-inline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 1;" alt="rte_image_52.png"></li><li>c<ol><li>&nbsp;<img src="https://services.syncfusion.com/angular/production/RichTextEditor/rte_image_68.png" class="e-rte-image e-img-inline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 1;" alt="rte_image_68.png"></li></ol></li><li>sdgsdgsdgsdgsdgsdg<ol><li><img src="https://services.syncfusion.com/angular/production/RichTextEditor/rte_image_86.png" class="e-rte-image e-img-inline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 1;" alt="rte_image_86.png"></li></ol></li><li>&nbsp;ssdgdsg</li><li><img src="data:image/png;base64,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" class="e-rte-image e-img-inline" width="auto" height="auto" style="min-width: 0px; max-width: 854px; min-height: 0px; opacity: 0.5;" alt="">&nbsp;</li></ol>').toBe(true);
         done();
     });
 });
@@ -4951,7 +4951,7 @@ describe('978392 - Image disappears when pressing backspace before image inside 
         editor = renderRTE({
             value: `<ul>
                     <li>The Editor can integrate with the Syncfusion Image Editor to crop, rotate, annotate, and apply filters to images.</li>
-                    <li class='focusNode'><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 50%" class="e-rte-image e-imginline"/></li>
+                    <li class='focusNode'><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 50%" class="e-rte-image e-img-inline"/></li>
                     </ul>`
         });
     });
@@ -4966,7 +4966,7 @@ describe('978392 - Image disappears when pressing backspace before image inside 
         const backspaceEvent: KeyboardEvent = new KeyboardEvent('keydown', BACKSPACE_EVENT_INIT);
         expect(editor.inputElement.querySelectorAll('li').length).toBe(2);
         editor.inputElement.dispatchEvent(backspaceEvent);
-        expect(editor.inputElement.innerHTML === `<ul> <li>The Editor can integrate with the Syncfusion Image Editor to crop, rotate, annotate, and apply filters to images.</li> <li class="focusNode"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 50%" class="e-rte-image e-imginline"></li> </ul`);
+        expect(editor.inputElement.innerHTML === `<ul> <li>The Editor can integrate with the Syncfusion Image Editor to crop, rotate, annotate, and apply filters to images.</li> <li class="focusNode"><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 50%" class="e-rte-image e-img-inline"></li> </ul`);
         done();
    });
 });
@@ -5180,3 +5180,206 @@ describe('979095 - Bullet list element comes with font color even after removing
         done();
     });
 });
+
+describe('979095 - Numbered List Format Continues Beyond Table When Cursor Is Placed at End', () => {
+    let editorObj: RichTextEditor;
+    beforeAll(() => {
+        editorObj = renderRTE({
+            toolbarSettings: {
+                items: ['OrderedList', 'UnorderedList']
+            },
+            value: `<h1>Welcome to the Syncfusion Rich Text Editor</h1>
+<p>The Rich Text Editor, a WYSIWYG (what you see is what you get) editor, is a user interface that allows you to create, edit, and format rich text content. You can try out a demo of this editor here.</p>
+<h2>Do you know the key features of the editor?</h2>
+<ul>
+   <li>Basic features include headings, block quotes, numbered lists, bullet lists, and support to insert images, tables, audio, and video.</li>
+   <li>Inline styles include <b>bold</b>, <em>italic</em>, <span style="text-decoration: underline">underline</span>, <span style="text-decoration: line-through">strikethrough</span>, <a class="e-rte-anchor" href="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/tools.html" title="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/tools.html" aria-label="Open in new window">hyperlinks</a>, 😀 and more.</li>
+   <li>The toolbar has multi-row, expandable, and scrollable modes. The Editor supports an inline toolbar, a floating toolbar, and custom toolbar items.</li>
+   <li>Integration with Syncfusion Mention control lets users tag other users. To learn more, check out the <a class="e-rte-anchor" href="https://ej2.syncfusion.com/documentation/rich-text-editor/mention-integration" title="Mention Documentation" aria-label="Open in new window">documentation</a> and <a class="e-rte-anchor" href="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/mention-integration.html" title="Mention Demos" aria-label="Open in new window">demos</a>.</li>
+   <li><b>Paste from MS Word</b> - helps to reduce the effort while converting the Microsoft Word content to HTML format with format and styles. To learn more, check out the documentation <a class="e-rte-anchor" href="https://ej2.syncfusion.com/documentation/rich-text-editor/paste-cleanup" title="Paste from MS Word Documentation" aria-label="Open in new window">here</a>.</li>
+   <li>Other features: placeholder text, character count, form validation, enter key configuration, resizable editor, IFrame rendering, tooltip, source code view, RTL mode, persistence, HTML Sanitizer, autosave, and <a class="e-rte-anchor" href="https://ej2.syncfusion.com/documentation/api/rich-text-editor/" title="Rich Text Editor API" aria-label="Open in new window">more</a>.</li>
+</ul>
+<blockquote>
+   <p><em>Easily access Audio, Image, Link, Video, and Table operations through the quick toolbar by right-clicking on the corresponding element with your mouse.</em></p>
+</blockquote>
+<h2>Unlock the Power of Tables</h2>
+<p>A table can be created in the editor using either a keyboard shortcut or the toolbar. With the quick toolbar, you can perform table cell insert, delete, split, and merge operations. You can style the table cells using background colours and borders.</p>
+<table class="e-rte-table" style="width: 100%; min-width: 0px; height: 151px">
+   <thead style="height: 16.5563%">
+      <tr style="height: 16.5563%">
+         <th style="width: 12.1813%"><span>S No</span><br/></th>
+         <th style="width: 23.2295%"><span>Name</span><br/></th>
+         <th style="width: 9.91501%"><span>Age</span><br/></th>
+         <th style="width: 15.5807%"><span>Gender</span><br/></th>
+         <th style="width: 17.9887%"><span>Occupation</span><br/></th>
+         <th style="width: 21.1048%">Mode of Transport</th>
+      </tr>
+   </thead>
+   <tbody>
+      <tr style="height: 16.5563%">
+         <td style="width: 12.1813%">1</td>
+         <td style="width: 23.2295%">Selma Rose</td>
+         <td style="width: 9.91501%">30</td>
+         <td style="width: 15.5807%">Female</td>
+         <td style="width: 17.9887%"><span>Engineer</span><br/></td>
+         <td style="width: 21.1048%"><span style="font-size: 14pt">🚴</span></td>
+      </tr>
+      <tr style="height: 16.5563%">
+         <td style="width: 12.1813%">2</td>
+         <td style="width: 23.2295%"><span>Robert</span><br/></td>
+         <td style="width: 9.91501%">28</td>
+         <td style="width: 15.5807%">Male</td>
+         <td style="width: 17.9887%"><span>Graphic Designer</span></td>
+         <td style="width: 21.1048%"><span style="font-size: 14pt">🚗</span></td>
+      </tr>
+      <tr style="height: 16.5563%">
+         <td style="width: 12.1813%">3</td>
+         <td style="width: 23.2295%"><span>William</span><br/></td>
+         <td style="width: 9.91501%">35</td>
+         <td style="width: 15.5807%">Male</td>
+         <td style="width: 17.9887%">Teacher</td>
+         <td style="width: 21.1048%"><span style="font-size: 14pt">🚗</span></td>
+      </tr>
+      <tr style="height: 16.5563%">
+         <td style="width: 12.1813%">4</td>
+         <td style="width: 23.2295%"><span>Laura Grace</span><br/></td>
+         <td style="width: 9.91501%">42</td>
+         <td style="width: 15.5807%">Female</td>
+         <td style="width: 17.9887%">Doctor</td>
+         <td style="width: 21.1048%"><span style="font-size: 14pt">🚌</span></td>
+      </tr>
+      <tr style="height: 16.5563%">
+         <td style="width: 12.1813%">5</td>
+         <td style="width: 23.2295%"><span>Andrew James</span><br/></td>
+         <td style="width: 9.91501%">45</td>
+         <td style="width: 15.5807%">Male</td>
+         <td style="width: 17.9887%">Lawyer</td>
+         <td style="width: 21.1048%"><span style="font-size: 14pt">🚕</span></td>
+      </tr>
+   </tbody>
+</table>
+<h2>Elevating Your Content with Images</h2>
+<p>Images can be added to the editor by pasting or dragging into the editing area, using the toolbar to insert one as a URL, or uploading directly from the File Browser. Easily manage your images on the server by configuring the <a class="e-rte-anchor" href="https://ej2.syncfusion.com/documentation/api/rich-text-editor/#insertimagesettings" title="Insert Image Settings API" aria-label="Open in new window">insertImageSettings</a> to upload, save, or remove them.</p>
+<p>The Editor can integrate with the Syncfusion Image Editor to crop, rotate, annotate, and apply filters to images. Check out the demos <a class="e-rte-anchor" href="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/image-editor-integration.html" title="Image Editor Demo" aria-label="Open in new window">here</a>.</p>
+<p><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 50%" class="e-rte-image e-img-inline"/></p>`
+        });
+    });
+    afterAll(() => {
+        destroy(editorObj);
+    });
+    it('Now, cursor is set to the end of the table and list is applied.', (done) => {
+        const range = document.createRange();
+        const selection = window.getSelection();
+        // Set cursor at specific position
+        range.setStart(editorObj.inputElement, 8);
+        range.setEnd(editorObj.inputElement, 8);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        (editorObj.element.querySelectorAll(".e-toolbar .e-toolbar-item")[1] as HTMLElement).click();
+        expect(editorObj.inputElement.innerHTML === '<h1>Welcome to the Syncfusion Rich Text Editor</h1><p>The Rich Text Editor, a WYSIWYG (what you see is what you get) editor, is a user interface that allows you to create, edit, and format rich text content. You can try out a demo of this editor here.</p><h2>Do you know the key features of the editor?</h2><ul><li>Basic features include headings, block quotes, numbered lists, bullet lists, and support to insert images, tables, audio, and video.</li><li>Inline styles include <b>bold</b>, <em>italic</em>, <span style="text-decoration: underline">underline</span>, <span style="text-decoration: line-through">strikethrough</span>, <a class="e-rte-anchor" href="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/tools.html" title="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/tools.html" aria-label="Open in new window">hyperlinks</a>, 😀 and more.</li><li>The toolbar has multi-row, expandable, and scrollable modes. The Editor supports an inline toolbar, a floating toolbar, and custom toolbar items.</li><li>Integration with Syncfusion Mention control lets users tag other users. To learn more, check out the <a class="e-rte-anchor" href="https://ej2.syncfusion.com/documentation/rich-text-editor/mention-integration" title="Mention Documentation" aria-label="Open in new window">documentation</a> and <a class="e-rte-anchor" href="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/mention-integration.html" title="Mention Demos" aria-label="Open in new window">demos</a>.</li><li><b>Paste from MS Word</b> - helps to reduce the effort while converting the Microsoft Word content to HTML format with format and styles. To learn more, check out the documentation <a class="e-rte-anchor" href="https://ej2.syncfusion.com/documentation/rich-text-editor/paste-cleanup" title="Paste from MS Word Documentation" aria-label="Open in new window">here</a>.</li><li>Other features: placeholder text, character count, form validation, enter key configuration, resizable editor, IFrame rendering, tooltip, source code view, RTL mode, persistence, HTML Sanitizer, autosave, and <a class="e-rte-anchor" href="https://ej2.syncfusion.com/documentation/api/rich-text-editor/" title="Rich Text Editor API" aria-label="Open in new window">more</a>.</li></ul><blockquote><p><em>Easily access Audio, Image, Link, Video, and Table operations through the quick toolbar by right-clicking on the corresponding element with your mouse.</em></p></blockquote><h2>Unlock the Power of Tables</h2><p>A table can be created in the editor using either a keyboard shortcut or the toolbar. With the quick toolbar, you can perform table cell insert, delete, split, and merge operations. You can style the table cells using background colours and borders.</p><table class="e-rte-table" style="width: 100%; min-width: 0px; height: 151px"><thead style="height: 16.5563%"><tr style="height: 16.5563%"><th style="width: 12.1813%"><span>S No</span><br></th><th style="width: 23.2295%"><span>Name</span><br></th><th style="width: 9.91501%"><span>Age</span><br></th><th style="width: 15.5807%"><span>Gender</span><br></th><th style="width: 17.9887%"><span>Occupation</span><br></th><th style="width: 21.1048%">Mode of Transport</th></tr></thead><tbody><tr style="height: 16.5563%"><td style="width: 12.1813%">1</td><td style="width: 23.2295%">Selma Rose</td><td style="width: 9.91501%">30</td><td style="width: 15.5807%">Female</td><td style="width: 17.9887%"><span>Engineer</span><br></td><td style="width: 21.1048%"><span style="font-size: 14pt">🚴</span></td></tr><tr style="height: 16.5563%"><td style="width: 12.1813%">2</td><td style="width: 23.2295%"><span>Robert</span><br></td><td style="width: 9.91501%">28</td><td style="width: 15.5807%">Male</td><td style="width: 17.9887%"><span>Graphic Designer</span></td><td style="width: 21.1048%"><span style="font-size: 14pt">🚗</span></td></tr><tr style="height: 16.5563%"><td style="width: 12.1813%">3</td><td style="width: 23.2295%"><span>William</span><br></td><td style="width: 9.91501%">35</td><td style="width: 15.5807%">Male</td><td style="width: 17.9887%">Teacher</td><td style="width: 21.1048%"><span style="font-size: 14pt">🚗</span></td></tr><tr style="height: 16.5563%"><td style="width: 12.1813%">4</td><td style="width: 23.2295%"><span>Laura Grace</span><br></td><td style="width: 9.91501%">42</td><td style="width: 15.5807%">Female</td><td style="width: 17.9887%">Doctor</td><td style="width: 21.1048%"><span style="font-size: 14pt">🚌</span></td></tr><tr style="height: 16.5563%"><td style="width: 12.1813%">5</td><td style="width: 23.2295%"><span>Andrew James</span><br></td><td style="width: 9.91501%">45</td><td style="width: 15.5807%">Male</td><td style="width: 17.9887%">Lawyer</td><td style="width: 21.1048%"><span style="font-size: 14pt">🚕</span></td></tr></tbody></table><ul><li><h2>Elevating Your Content with Images</h2></li></ul><p>Images can be added to the editor by pasting or dragging into the editing area, using the toolbar to insert one as a URL, or uploading directly from the File Browser. Easily manage your images on the server by configuring the <a class="e-rte-anchor" href="https://ej2.syncfusion.com/documentation/api/rich-text-editor/#insertimagesettings" title="Insert Image Settings API" aria-label="Open in new window">insertImageSettings</a> to upload, save, or remove them.</p><p>The Editor can integrate with the Syncfusion Image Editor to crop, rotate, annotate, and apply filters to images. Check out the demos <a class="e-rte-anchor" href="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/image-editor-integration.html" title="Image Editor Demo" aria-label="Open in new window">here</a>.</p><p><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 50%" class="e-rte-image e-img-inline"></p>').toBe(true);
+        done();
+    });
+});
+
+describe('1013589: Pasting ordered list from OneNote then pressing Enter produces incorrect numbering', () => {
+    let editorObj: RichTextEditor;
+    beforeEach(() => {
+        editorObj = renderRTE({
+            value: `<ol type="1" style="direction: ltr; unicode-bidi: embed; margin-top: 0in; margin-bottom: 0in; font-family: Calibri; font-size: 11pt;">
+   <li value="1" style="margin-top:0;margin-bottom:0;vertical-align:middle"><span style="font-size: 11pt;">Asdfghjk</span></li>
+   <li style="margin-top:0;margin-bottom:0;vertical-align:middle"><span style="font-size: 11pt;">Asdfghjk</span></li>
+   <li style="margin-top:0;margin-bottom:0;vertical-align:middle"><span style="font-size: 11pt;">Asdfghj</span></li>
+   </ol>`,
+            toolbarSettings: { items: ['OrderedList', 'UnorderedList'] }
+        });
+    });
+    afterEach(() => {
+        destroy(editorObj);
+    });
+
+    it('should remove explicit li value attributes from pasted OL when Enter is pressed', (done) => {
+        editorObj.focusIn();
+        const firstLi = editorObj.inputElement.querySelector('li') as HTMLElement;
+        const firstChild = firstLi.firstChild as Element;
+        setCursorPoint(firstChild.firstChild as Element, firstChild.textContent.length);
+        const ENTER_KEY_DOWN_EVENT: KeyboardEvent = new KeyboardEvent('keydown', ENTERKEY_EVENT_INIT);
+        const ENTER_KEY_UP_EVENT: KeyboardEvent = new KeyboardEvent('keyup', ENTERKEY_EVENT_INIT);
+        editorObj.inputElement.dispatchEvent(ENTER_KEY_DOWN_EVENT);
+        editorObj.inputElement.dispatchEvent(ENTER_KEY_UP_EVENT);
+        setTimeout(() => {
+            const lis = editorObj.inputElement.querySelectorAll('li')[1];
+            expect(lis.hasAttribute('value')).toBe(false);
+            done();
+        }, 100);
+    });
+});
+
+describe('1012056: Undo/Redo not working for Enter and Shift+Enter in list items', () => {
+    let rteObj: RichTextEditor;
+    beforeEach(() => {
+        rteObj = renderRTE({
+            toolbarSettings: {
+                items: ['Undo', 'Redo']
+            },
+            value: `<ul><li>one</li></ul>`
+        });
+    });
+    afterEach(() => {
+        destroy(rteObj);
+    });
+
+    it('Should undo work properly when pressing Enter inside a list item', (done: DoneFn) => {
+        rteObj.focusIn();
+        const li: HTMLElement = rteObj.inputElement.querySelector('li');
+        setCursorPoint(li.firstChild as Element, (li.firstChild as Text).textContent.length);
+        const keyDownEvent: KeyboardEvent = new KeyboardEvent('keydown', ENTERKEY_EVENT_INIT as KeyboardEventInit);
+        const keyUpEvent: KeyboardEvent = new KeyboardEvent('keyup', ENTERKEY_EVENT_INIT as KeyboardEventInit);
+        rteObj.inputElement.dispatchEvent(keyDownEvent);
+        rteObj.inputElement.dispatchEvent(keyUpEvent);
+        setTimeout(() => {
+            expect(rteObj.formatter.editorManager.undoRedoManager.undoRedoStack.length === 1).toBe(true);
+            const undoBtn = rteObj.element.querySelector('#' + rteObj.element.id + '_toolbar_Undo') as HTMLElement;
+            expect(undoBtn.classList.contains('e-overlay')).toBe(false);
+            done();
+        }, 200);
+    });
+});
+
+describe('1012056 - Enter split with inline image then Undo', () => {
+    let rte: RichTextEditor;
+    beforeEach(() => {
+        rte = renderRTE({
+            toolbarSettings: {
+                items: ['Undo', 'Redo']
+            },
+            value: `<ul><li>before <img src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" class="e-rte-image e-img-inline"> after</li></ul>`
+        });
+    });
+    afterEach(() => {
+        destroy(rte);
+    });
+
+    it('should restore inline image after splitting list with Enter and performing Undo (Ctrl+Z)', (done: DoneFn) => {
+        rte.focusIn();
+        const li: HTMLElement = rte.inputElement.querySelector('li');
+        const textNode = li.firstChild as Text;
+        const mid = Math.floor((textNode.textContent || '').length / 2);
+        setCursorPoint(textNode as any as Element, mid);
+        rte.inputElement.dispatchEvent(new KeyboardEvent('keydown', ENTERKEY_EVENT_INIT as KeyboardEventInit));
+        rte.inputElement.dispatchEvent(new KeyboardEvent('keyup', ENTERKEY_EVENT_INIT as KeyboardEventInit));
+        setTimeout(() => {
+            const lis = rte.inputElement.querySelectorAll('li');
+            expect(lis.length > 1).toBe(true);
+            const undoBtn = rte.element.querySelector('#' + rte.element.id + '_toolbar_Undo') as HTMLElement;
+            expect(undoBtn).not.toBeNull();
+            undoBtn.click();
+            setTimeout(() => {
+                const lisAfter = rte.inputElement.querySelectorAll('li');
+                expect(lisAfter.length === 1).toBe(true);
+                expect(rte.inputElement.querySelector('img')).not.toBeNull();
+                done();
+            }, 300);
+        }, 600);
+    });
+});
+

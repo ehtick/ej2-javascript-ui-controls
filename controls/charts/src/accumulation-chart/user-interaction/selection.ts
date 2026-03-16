@@ -537,8 +537,10 @@ export class AccumulationSelection extends BaseSelection {
                 if ((this.control as AccumulationChart).accumulationLegendModule &&
                 (this.control as AccumulationChart).legendSettings.visible) {
                     legendShape = document.getElementById(this.control.element.id + '_chart_legend_shape_' + index.point);
-                    this.removeSvgClass(legendShape, legendShape.getAttribute('class'));
-                    this.addSvgClass(legendShape, this.getSelectionClass(legendShape.id, index.point));
+                    if (legendShape) {
+                        this.removeSvgClass(legendShape, legendShape.getAttribute('class'));
+                        this.addSvgClass(legendShape, this.getSelectionClass(legendShape.id, index.point));
+                    }
                 }
                 this.removeSvgClass(<Element>element.parentNode, this.unselected);
                 this.removeSvgClass(element, this.unselected);
@@ -575,7 +577,9 @@ export class AccumulationSelection extends BaseSelection {
                 if ((this.control as AccumulationChart).accumulationLegendModule &&
                 (this.control as AccumulationChart).legendSettings.visible) {
                     legendShape = document.getElementById(this.control.element.id + '_chart_legend_shape_' + index.point);
-                    this.removeSvgClass(legendShape, this.getSelectionClass(legendShape.id, index.point));
+                    if (legendShape) {
+                        this.removeSvgClass(legendShape, this.getSelectionClass(legendShape.id, index.point));
+                    }
                 }
                 const opacity: number = accumulationTooltip && accumulationTooltip.previousPoints.length > 0
                     && (accumulationTooltip.previousPoints[0].point.index === index.point) ?

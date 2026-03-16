@@ -1,5 +1,5 @@
 import { IDataSet } from '../../src/base/engine';
-import { pivot_dataset, pivot_smalldata } from '../base/datasource.spec';
+import { employeeData, pivot_dataset, pivot_smalldata } from '../base/datasource.spec';
 import { PivotUtil } from '../../src/base/util';
 import * as util from '../utils.spec';
 import { profile, inMB, getMemoryProfile } from '../common.spec';
@@ -16,7 +16,7 @@ import { DrillThrough } from '../../src/pivotview/actions';
 import { FieldList } from '../../src/common/actions/field-list';
 import { Pager } from '../../src/pivotview/actions/pager';
 import { Grouping } from '../../src/common/popups/grouping';
-import { TreeView } from '@syncfusion/ej2-navigations';
+import { MenuEventArgs, TreeView } from '@syncfusion/ej2-navigations';
 import { DataManager, ODataV4Adaptor, Query } from '@syncfusion/ej2-data';
 import { ExcelHeaderQueryCellInfoEventArgs, ExcelQueryCellInfoEventArgs, PdfHeaderQueryCellInfoEventArgs, PdfQueryCellInfoEventArgs } from '@syncfusion/ej2-grids';
 
@@ -698,7 +698,6 @@ describe('PivotView spec', () => {
                 pivotGridObj.appendTo('#PivotGrid');
             });
             it('Export', () => {
-                debugger;
                 let li: HTMLElement = document.getElementById('PivotGridexport_menu').children[0] as HTMLElement;
                 expect(li.classList.contains('e-menu-caret-icon')).toBeTruthy();
                 util.triggerEvent(li, 'mouseover');
@@ -777,5 +776,75 @@ describe('PivotView spec', () => {
             });
         });
     });
-  
+
+    describe('Pivot Table - Changing Aggregation Type with Virtual Scrolling', () => {
+        let pivotGridObj: PivotView;
+        let elem: HTMLElement = createElement('div', { id: 'PivotGrid', styles: 'height:1000px; width:900px' });
+        beforeAll(() => {
+            const isDefined = (value: any): boolean => value !== undefined && value !== null;
+            if (!isDefined((window as any).performance)) {
+                console.log('Unsupported environment: window.performance.memory is unavailable');
+                pending();
+            }
+        });
+        beforeAll((done: Function) => {
+            if (!document.getElementById(elem.id)) {
+                document.body.style.height = '500px';
+                document.body.appendChild(elem);
+            }
+            let dataBound: EmitType<Object> = () => { done(); };
+            PivotView.Inject(GroupingBar, VirtualScroll);
+            pivotGridObj = new PivotView({
+                dataSourceSettings: {
+                    dataSource: employeeData as IDataSet[],
+                    rows: [{ name: 'FirstName' }, { name: 'EmployeeID', caption: 'Employee Image' }],
+                    columns: [{ name: 'Title' }],
+                    values: [{ name: 'Salary' }, { name: 'OrdersCount' }],
+                    filterSettings: [
+                        { name: 'Title', type: 'Include', items: ['Sales Representative'] }
+                    ],
+                    expandAll: true,
+                    showGrandTotals: false
+                },
+                width: '100%',
+                height: 300,
+                enableVirtualization: true,
+                showGroupingBar: true,
+                aggregateTypes: ['Count', 'Avg', 'Product', 'PercentageOfDifferenceFrom'],
+                dataBound: dataBound
+            });
+            pivotGridObj.appendTo('#PivotGrid');
+        });
+        it('change PercentageOfDifferenceFrom aggregation via grouping bar dropdown', (done: Function) => {
+            setTimeout(() => {
+                const click: MouseEvent = new MouseEvent('click', { view: window, bubbles: true, cancelable: true });
+                expect(document.querySelectorAll('.e-values .e-dropdown-icon').length).toBeGreaterThan(0);
+                document.querySelectorAll('.e-values .e-dropdown-icon')[0].dispatchEvent(click);
+                let menu: MenuEventArgs = {
+                    element: document.querySelectorAll('.e-menu-item')[1] as HTMLElement,
+                    item: { id: pivotGridObj.element.id + '_PercentageOfDifferenceFrom', text: '% of Difference From' }
+                };
+                (pivotGridObj.pivotButtonModule.menuOption as any).selectOptionInContextMenu(menu);
+                const ValueSettingsDialog: HTMLElement = document.getElementById(pivotGridObj.element.id + '_ValueDialog');
+                (ValueSettingsDialog.querySelector('.e-ok-btn') as HTMLElement).click();
+                setTimeout(() => {
+                    expect(pivotGridObj.dataSourceSettings.values[0].type).toBe('PercentageOfDifferenceFrom');
+                    done();
+                }, 500);
+            }, 500);
+        });
+        afterAll(() => {
+            if (pivotGridObj) {
+                pivotGridObj.destroy();
+            }
+            remove(elem);
+        });
+        it('memory leak check', () => {
+            profile.sample();
+            const average = inMB(profile.averageChange);
+            const memory = inMB(getMemoryProfile());
+            expect(memory).toBeLessThan(profile.samples[0] + 0.25);
+            expect(average).toBeLessThan(10);
+        });
+    });
 });

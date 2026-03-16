@@ -4,7 +4,7 @@ import { TextGlyph } from '../text-structure';
 import { _PdfContentParserHelper } from '../content-parser-helper';
 import { _TextProcessingMode } from '../enum';
 import { _FontStructure } from '../text-extraction';
-import { _addFontResources, _getXObjectResources } from '../utils';
+import { _addFontResources, _getXObjectResources, canvasRenderCallback } from '../utils';
 import { _TextGlyphMapper } from './text-glyph-mapper';
 import { _PdfRedactionProcessor } from './pdf-redaction-processor';
 import { PdfRedactionRegion } from './pdf-redaction-region';
@@ -21,7 +21,7 @@ import { PdfRedactionRegion } from './pdf-redaction-region';
  * redactions.push(new PdfRedactionRegion(2, {x: 10, y: 10, width: 100, height: 50}, true, {r: 255, g: 0, b: 0}));
  * redactor.add(redactions);
  * // Apply redactions on the PDF document
- * redactor.redact();
+ * redactor.redactSync();
  * // Save the document
  * document.save('output.pdf');
  * // Destroy the document
@@ -55,7 +55,7 @@ export class PdfRedactor {
      * // Add redactions with specified options.
      * redactor.add(redactions);
      * // Apply redactions on the PDF document
-     * redactor.redact();
+     * redactor.redactSync();
      * // Save the document
      * document.save('output.pdf');
      * // Destroy the document
@@ -83,7 +83,7 @@ export class PdfRedactor {
      * // Initialize a new instance of the `PdfRedactor` class with redactions
      * let redactor: PdfRedactor = new PdfRedactor(document, redactions);
      * // Apply redactions on the PDF document
-     * redactor.redact();
+     * redactor.redactSync();
      * // Save the document
      * document.save('output.pdf');
      * // Destroy the document
@@ -129,7 +129,7 @@ export class PdfRedactor {
      * // Add redactions with specified options.
      * redactor.add(redactions);
      * // Apply redactions on the PDF document
-     * redactor.redact();
+     * redactor.redactSync();
      * // Save the document
      * document.save('output.pdf');
      * // Destroy the document
@@ -150,7 +150,9 @@ export class PdfRedactor {
         }
     }
     /**
-     * Redact the PDF document
+     * Redacts all marked regions in the PDF document synchronously.
+     *
+     * This method removes text and vector content within the specified redaction regions. It does **not** support image redaction.To redact images inside the PDF, use the asynchronous `redact()` method instead.
      *
      * @returns {void} Nothing.
      *
@@ -169,14 +171,14 @@ export class PdfRedactor {
      * // Add redactions with specified options.
      * redactor.add(redactions);
      * // Apply redactions on the PDF document
-     * redactor.redact();
+     * redactor.redactSync();
      * // Save the document
      * document.save('output.pdf');
      * // Destroy the document
      * document.destroy();
      * ```
      */
-    redact(): void {
+    redactSync(): void {
         if (this._document && this._document.pageCount > 0) {
             for (let i: number = 0; i < this._document.pageCount; i++) {
                 const page: PdfPage = this._document.getPage(i);
@@ -206,6 +208,85 @@ export class PdfRedactor {
             page._needInitializeGraphics = true;
             this._object._updateContentStream(page, stream, option, this._document);
         });
+    }
+    /**
+     * Redacts all marked regions in the PDF document.
+     *
+     * @param {Function} callBack - A function that supplies a canvas element along with the current application platform.The canvas is used internally to render and redact image content.
+     * @returns {void} A promise that resolves once all redactions have been applied.
+     *
+     * ```typescript
+     * // Load an existing PDF document
+     * let doc: PdfDocument = new PdfDocument(data, password);
+     * // Add redactions to the collection
+     * let redactions: PdfRedactionRegion[] = [];
+     * // Initialize a new instance of the `PdfRedactor` class
+     * let redactor: PdfRedactor = new PdfRedactor(doc);
+     * // Initialize a new instance of the `PdfRedactionRegion` class.
+     * let redaction: PdfRedactionRegion = new PdfRedactionRegion(0, {x: 40, y: 41.809, width: 80, height: 90});
+     * // Sets the fill color used to fill the redacted area.
+     * redaction.fillColor = {r: 255, g: 0, b: 0};
+     * redactions.push(redaction);
+     * // Add redactions with specified options.
+     * redactor.add(redactions);
+     * // Define a canvas render callback that returns a canvas element and the application platform.
+     * const canvasRenderCallback = (): {canvas: any, applicationPlatform: ApplicationPlatform} => {
+     *     const canvas = document.createElement('canvas');
+     *     return { canvas: canvas, applicationPlatform: ApplicationPlatform.typescript };
+     * };
+     * // Apply redactions on the PDF document
+     * await redactor.redact(callBack: canvasRenderCallback);
+     * // Save the document
+     * doc.save('output.pdf');
+     * // Destroy the document
+     * doc.destroy();
+     * ```
+     */
+    async redact(callBack: canvasRenderCallback): Promise<void> {
+        if (this._document && this._document.pageCount > 0) {
+            this._document.fileStructure.isIncrementalUpdate = false;
+            for (let i: number = 0; i < this._document.pageCount; i++) {
+                const page: PdfPage = this._document.getPage(i);
+                if (page && page.annotations.count > 0) {
+                    this._applyRedaction(page);
+                }
+            }
+        }
+        let canvas: any; // eslint-disable-line
+        let isValidCanvas: boolean = false;
+        if (typeof(callBack) !== 'undefined') {
+            canvas = callBack();
+            if (typeof(canvas) !== 'undefined' && typeof(canvas.canvas) !== 'undefined') {
+                isValidCanvas = true;
+            }
+        }
+        const entries: any = Array.from(this._redaction.entries()); // eslint-disable-line
+        for (let i: number = 0; i < entries.length; i++) {
+            const [key, value] = entries[<number>i];
+            this._redactionRegion = [];
+            this._combineBounds(value);
+            const option: PdfRedactionRegion[] = value;
+            const page: PdfPage = this._document.getPage(key);
+            this._document._crossReference._isDecoderSupport = true;
+            const graphicState: _GraphicState = new _GraphicState();
+            const recordCollection: _PdfRecord[] = this._parser._getPageRecordCollection(page);
+            const resource: any = page._pageDictionary.get('Resources'); // eslint-disable-line
+            let fontCollection: Map<string, _FontStructure>;
+            let xObjectCollection: Map<string, _FontStructure>;
+            if (typeof(resource) !== 'undefined') {
+                fontCollection = _addFontResources(resource, page._pageDictionary._crossReference );
+                xObjectCollection = _getXObjectResources(resource, this._crossReference, _TextProcessingMode.imageRedaction, page);
+            }
+            let stream: any; // eslint-disable-line
+            let mode: _TextProcessingMode;
+            if (this._redactionRegion.length > 0) {
+                mode = _TextProcessingMode.imageRedaction;
+                stream = await this._parser._processImageRecordCollection(recordCollection, page, fontCollection, xObjectCollection,
+                                                                          graphicState, canvas, mode, option, isValidCanvas);
+            }
+            page._needInitializeGraphics = true;
+            this._object._updateContentStream(page, stream, option, this._document);
+        }
     }
     _applyRedaction(page: PdfPage): void {
         const redactRegions: PdfRedactionRegion[] = [];

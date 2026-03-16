@@ -2,7 +2,7 @@ import { createElement, L10n, remove } from "@syncfusion/ej2-base";
 import { createEditor } from "../common/util.spec";
 import { DropDownList } from "@syncfusion/ej2-dropdowns";
 import { BlockModel, CodeLanguageModel, ICodeBlockSettings} from "../../src/models/index";
-import { setCursorPosition, getBlockContentElement, decoupleReference, sanitizeBlock } from '../../src/common/utils/index';
+import { setCursorPosition, getBlockContentElement, decoupleReference } from '../../src/common/utils/index';
 import { BlockType, ContentType } from '../../src/models/enums';
 import { BlockEditor } from '../../src/index';
 
@@ -58,7 +58,6 @@ describe('Code Blocks', () => {
                     id: 'code-block',
                     blockType: BlockType.Code,
                     content: [{
-                        id: 'code-content',
                         contentType: ContentType.Text,
                         content: 'const editor = new BlockEditor();\neditor.appendTo("#element");'
                     }]
@@ -113,7 +112,6 @@ describe('Code Blocks', () => {
                     id: 'code-block',
                     blockType: BlockType.Code,
                     content: [{
-                        id: 'code-content',
                         contentType: ContentType.Text,
                         content: 'console.log("Hello World");'
                     }]
@@ -127,7 +125,7 @@ describe('Code Blocks', () => {
             // Model invariant
             expect(editor.blocks[0].blockType).toBe(BlockType.Code);
             expect(editor.blocks[0].content[0].content).toBe('console.log("Hello World");');
-            expect((editor.blocks[0].properties as ICodeBlockSettings).language).toBe('javascript');
+            expect((editor.blocks[0].properties as ICodeBlockSettings).language).toBe('plaintext');
         });
 
         it('should update language when dropdown selection changes', (done: DoneFn): void => {
@@ -136,7 +134,6 @@ describe('Code Blocks', () => {
                     id: 'code-block',
                     blockType: BlockType.Code,
                     content: [{
-                        id: 'code-content',
                         contentType: ContentType.Text,
                         content: 'const x = 5;'
                     }]
@@ -148,9 +145,9 @@ describe('Code Blocks', () => {
             const languageSelector: HTMLElement = editorElement.querySelector('.e-code-block-languages') as HTMLElement;
             const codeEle: HTMLElement = editorElement.querySelector('pre code') as HTMLElement;
 
-            // Initially should be javascript
+            // Initially should be plaintext
             expect(codeEle.classList).toContain('language-plaintext');
-            expect((editor.blocks[0].properties as ICodeBlockSettings).language).toBe('javascript');
+            expect((editor.blocks[0].properties as ICodeBlockSettings).language).toBe('plaintext');
 
             // Simulate dropdown change to typescript
             const dropdownInstance: DropDownList = (languageSelector as any).ej2_instances[0] as DropDownList;
@@ -175,7 +172,6 @@ describe('Code Blocks', () => {
                     id: 'code-block',
                     blockType: BlockType.Code,
                     content: [{
-                        id: 'code-content',
                         contentType: ContentType.Text,
                         content: codeContent
                     }]
@@ -205,7 +201,7 @@ describe('Code Blocks', () => {
                     expect(iconElement.classList).not.toContain('e-check-tick');
                     // Model invariant
                     expect(editor.blocks[0].content[0].content).toBe(codeContent);
-                    expect((editor.blocks[0].properties as ICodeBlockSettings).language).toBe("javascript");
+                    expect((editor.blocks[0].properties as ICodeBlockSettings).language).toBe("plaintext");
                     done();
                 }, 2100);
             }, 100);
@@ -226,7 +222,6 @@ describe('Code Blocks', () => {
                         language: 'cpp'
                     },
                     content: [{
-                        id: 'code-content',
                         contentType: ContentType.Text,
                         content: '#include <iostream>'
                     }]
@@ -263,7 +258,6 @@ describe('Code Blocks', () => {
                     id: 'code-block',
                     blockType: BlockType.Code,
                     content: [{
-                        id: 'code-content',
                         contentType: ContentType.Text,
                         content: 'test code'
                     }]
@@ -281,7 +275,7 @@ describe('Code Blocks', () => {
                 expect(consoleSpy).toHaveBeenCalledWith('Could not copy text: ', jasmine.any(Error));
                 // Model invariant
                 expect(editor.blocks[0].content[0].content).toBe('test code');
-                expect((editor.blocks[0].properties as ICodeBlockSettings).language).toBe("javascript");
+                expect((editor.blocks[0].properties as ICodeBlockSettings).language).toBe("plaintext");
                 done();
             }, 100);
         });
@@ -298,7 +292,7 @@ describe('Code Blocks', () => {
                 { 
                     id: 'code-block',
                     blockType: BlockType.Code,
-                    content: [{ id: 'code-content', contentType: ContentType.Text, content: '' }]
+                    content: [{ contentType: ContentType.Text, content: '' }]
                 }
             ];
             editor = createEditor({ blocks: blocks });
@@ -315,46 +309,45 @@ describe('Code Blocks', () => {
             expect(editor.locale).toBe('en-US');
         });
 
-        it('should render with single <br> when empty', () => {
+        it('should render with single newline when empty', () => {
             const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
             expect(codeElement).not.toBeNull();
-            expect(codeElement.innerHTML).toBe('<br>');
+            expect(codeElement.textContent).toBe('\n');
 
             //Model Assertion
-            expect((editor.blocks[0].properties as ICodeBlockSettings).language).toBe("javascript");
+            expect((editor.blocks[0].properties as ICodeBlockSettings).language).toBe("plaintext");
             expect(editor.blocks[0].content[0].content).toBe("");
 
         });
 
-        it('should remove placeholder <br> when user types content', (done) => {
+        it('should handle newline when user types content', (done) => {
             const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
             codeElement.textContent = 'console.log("hello");';
             const blockElement = codeElement.closest('.e-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
             editor.element.dispatchEvent(new Event('input', { bubbles: true }));
             setTimeout(() => {
-                expect(codeElement.innerHTML).not.toContain('<br>');
                 expect(codeElement.textContent).toBe('console.log("hello");');
 
                 //Model Assertion
-                expect((editor.blocks[0].properties as ICodeBlockSettings).language).toBe("javascript");
+                expect((editor.blocks[0].properties as ICodeBlockSettings).language).toBe("plaintext");
                 expect(editor.blocks[0].content[0].content).toBe('console.log("hello");');
                 done();
             }, 100);
         });
 
-        it('should restore <br> when content becomes empty', (done) => {
+        it('should restore newline when content becomes empty', (done) => {
             const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
             codeElement.textContent = '';
             const blockElement = codeElement.closest('.e-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
             editor.element.dispatchEvent(new Event('input', { bubbles: true }));
             setTimeout(() => {
-                expect(codeElement.innerHTML).toBe('<br>');
+                expect(codeElement.textContent).toBe('\n');
 
                 //Model Assertion
-                expect((editor.blocks[0].properties as ICodeBlockSettings).language).toBe("javascript");
-                // expect(editor.blocks[0].content[0].content).toBe("");
+                expect((editor.blocks[0].properties as ICodeBlockSettings).language).toBe("plaintext");
+                expect(editor.blocks[0].content[0].content).toBe("");
                 done();
             }, 100);
         });
@@ -393,7 +386,7 @@ describe('Code Blocks', () => {
                 { 
                     id: 'code-block', 
                     blockType: BlockType.Code,
-                    content: [{ id: 'code-content', contentType: ContentType.Text, content: 'console.log("test");' }] 
+                    content: [{ contentType: ContentType.Text, content: 'console.log("test");' }] 
                 }
             ];
             editor = createEditor({ blocks: blocks });
@@ -407,7 +400,7 @@ describe('Code Blocks', () => {
             document.body.removeChild(editorElement);
         });
 
-        it('should insert two <br> tags when pressing Enter on content line', () => {
+        it('should insert two newlines when pressing Enter on content line', () => {
             const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
             const blockElement = codeElement.closest('.e-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
@@ -420,16 +413,16 @@ describe('Code Blocks', () => {
             });
             editor.element.dispatchEvent(enterEvent);
             
-            expect(codeElement.innerHTML).toContain('<br><br>');
+            expect(codeElement.textContent).toContain('\n\n');
             expect(editor.blocks[0].content[0].content).toBe('console.log("test");');
         });
 
-        it('should insert single <br> when Enter pressed after two existing <br> tags', () => {
+        it('should insert single newline when Enter pressed after two existing newlines', () => {
             const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
-            codeElement.innerHTML = 'line1<br><br>';
+            codeElement.textContent = 'line1\n\n';
             const blockElement = codeElement.closest('.e-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
-            setCursorPosition(codeElement, codeElement.childNodes.length);
+            setCursorPosition(codeElement, codeElement.textContent.length);
             
             const enterEvent: KeyboardEvent = new KeyboardEvent('keydown', { 
                 key: 'Enter', 
@@ -439,16 +432,16 @@ describe('Code Blocks', () => {
             editor.element.dispatchEvent(enterEvent);
             
             /* 981091 */
-            // const brCount: number = (codeElement.innerHTML.match(/<br>/g) || []).length;
-            // expect(brCount).toBe(3);
+            // const newlineCount: number = (codeElement.textContent.match(/\n/g) || []).length;
+            // expect(newlineCount).toBe(3);
         });
 
-        it('should exit code block and create paragraph when 3 consecutive <br> tags detected', (done) => {
+        it('should exit code block and create paragraph when 3 consecutive newlines detected', (done) => {
             const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
-            codeElement.innerHTML = 'line1<br><br><br>';
+            codeElement.textContent = 'line1\n\n\n';
             const blockElement = codeElement.closest('.e-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
-            setCursorPosition(codeElement, codeElement.childNodes.length);
+            setCursorPosition(codeElement, codeElement.textContent.length);
             
             const enterEvent: KeyboardEvent = new KeyboardEvent('keydown', { 
                 key: 'Enter', 
@@ -475,14 +468,14 @@ describe('Code Blocks', () => {
                 editor.addBlock({
                     id: 'paragraph-block',
                     blockType: BlockType.Paragraph,
-                    content: [{ id: 'paragraph-content', contentType: ContentType.Text, content: 'test' }]
+                    content: [{ contentType: ContentType.Text, content: 'test' }]
                 }, 'code-block');
                 const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
-                codeElement.innerHTML = 'line1<br><br><br>';
+                codeElement.textContent = 'line1\n\n\n';
                 const blockElement = codeElement.closest('.e-block') as HTMLElement;
                 editor.blockManager.stateManager.updateContentOnUserTyping(blockElement);
                 editor.blockManager.setFocusToBlock(blockElement);
-                setCursorPosition(codeElement, codeElement.childNodes.length);
+                setCursorPosition(codeElement, codeElement.textContent.length);
                 
                 const enterEvent: KeyboardEvent = new KeyboardEvent('keydown', {
                     key: 'Enter', 
@@ -507,7 +500,7 @@ describe('Code Blocks', () => {
 
         it('should maintain indentation on new lines', () => {
             const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
-            codeElement.innerHTML = '    indented line';
+            codeElement.textContent = '    indented line';
             const blockElement = codeElement.closest('.e-block') as HTMLElement;
             editor.blockManager.stateManager.updateContentOnUserTyping(blockElement);
             editor.blockManager.setFocusToBlock(blockElement);
@@ -520,7 +513,7 @@ describe('Code Blocks', () => {
             });
             editor.element.dispatchEvent(enterEvent);
             
-            expect(codeElement.innerHTML).toContain('    ');
+            expect(codeElement.textContent).toContain('    ');
             // expect(editor.blocks[0].content[0].content).toBe('    indented line    ');
         });
     });
@@ -536,7 +529,7 @@ describe('Code Blocks', () => {
                 { 
                     id: 'code-block', 
                     blockType: BlockType.Code, 
-                    content: [{ id: 'code-content', contentType: ContentType.Text, content: 'test' }] 
+                    content: [{ contentType: ContentType.Text, content: 'test' }] 
                 }
             ];
             editor = createEditor({ blocks: blocks });
@@ -570,7 +563,7 @@ describe('Code Blocks', () => {
             expect(editor.blocks[0].content[0].content).toBe('test');
         });
 
-        it('should add default <br> when only one character remains and Backspace pressed', () => {
+        it('should add default newline when only one character remains and Backspace pressed', () => {
             const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
             const blockElement = codeElement.closest('.e-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
@@ -585,7 +578,7 @@ describe('Code Blocks', () => {
             });
             editorElement.dispatchEvent(backspaceEvent);
             
-            expect(codeElement.innerHTML).toBe('<br>');
+            expect(codeElement.textContent).toBe('\n');
             expect(editor.blocks[0].content[0].content).toBe('');
         });
     });
@@ -601,7 +594,7 @@ describe('Code Blocks', () => {
                 { 
                     id: 'code-block', 
                     blockType: BlockType.Code, 
-                    content: [{ id: 'code-content', contentType: ContentType.Text, content: 'test' }] 
+                    content: [{ contentType: ContentType.Text, content: 'test' }] 
                 }
             ];
             editor = createEditor({ blocks: blocks });
@@ -636,7 +629,7 @@ describe('Code Blocks', () => {
             expect(editor.blocks[0].content[0].content).toBe('test');
         });
 
-        it('should insert default <br> when only one character remains and Delete pressed', () => {
+        it('should insert default newline when only one character remains and Delete pressed', () => {
             const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
             const blockElement = codeElement.closest('.e-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
@@ -651,7 +644,7 @@ describe('Code Blocks', () => {
             });
             editorElement.dispatchEvent(deleteEvent);
             
-            expect(codeElement.innerHTML).toBe('<br>');
+            expect(codeElement.textContent).toBe('\n');
             expect(editor.blocks[0].content[0].content).toBe('');
         });
     });
@@ -667,7 +660,7 @@ describe('Code Blocks', () => {
                 { 
                     id: 'code-block', 
                     blockType: BlockType.Code, 
-                    content: [{ id: 'code-content', contentType: ContentType.Text, content: 'code' }] 
+                    content: [{ contentType: ContentType.Text, content: 'code' }] 
                 }
             ];
             editor = createEditor({ blocks: blocks });
@@ -717,7 +710,7 @@ describe('Code Blocks', () => {
             
             expect(codeElement.textContent).toBe('indented code');
 
-            //Shift tab again should remain same
+            //Shift tab again should remain same (no indentation to remove)
             setCursorPosition(codeElement, 0);
             
             const shiftTabEvent1: KeyboardEvent = new KeyboardEvent('keydown', {
@@ -729,7 +722,7 @@ describe('Code Blocks', () => {
             editorElement.dispatchEvent(shiftTabEvent1);
             
             expect(codeElement.textContent).toBe('indented code');
-            expect(editor.blocks[0].content[0].content).toBe('    indented code');
+            expect(editor.blocks[0].content[0].content).toBe('indented code');
         });
     });
 
@@ -744,12 +737,12 @@ describe('Code Blocks', () => {
                 { 
                     id: 'code-block', 
                     blockType: BlockType.Code, 
-                    content: [{ id: 'code-content', contentType: ContentType.Text, content: 'console.log("hello");' }] 
+                    content: [{ contentType: ContentType.Text, content: 'console.log("hello");' }] 
                 },
                 { 
                     id: 'paragraph', 
                     blockType: BlockType.Paragraph, 
-                    content: [{ id: 'para-content', contentType: ContentType.Text, content: 'paragraph text' }] 
+                    content: [{ contentType: ContentType.Text, content: 'paragraph text' }] 
                 }
             ];
             editor = createEditor({ blocks: blocks });
@@ -813,7 +806,7 @@ describe('Code Blocks', () => {
         it('should not display inline toolbar on text selection', (done) => {
             const blockElement = editorElement.querySelector('#code-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
-            editor.setSelection('code-content', 0, 4);
+            editor.setSelection(getBlockContentElement(blockElement).firstChild, 0, 4);
             const mouseUpEvent = new MouseEvent('mouseup', {
                 view: window,
                 bubbles: true,
@@ -837,7 +830,7 @@ describe('Code Blocks', () => {
                 { 
                     id: 'code-block', 
                     blockType: BlockType.Code, 
-                    content: [{ id: 'code-content', contentType: ContentType.Text, content: '' }] 
+                    content: [{ contentType: ContentType.Text, content: '' }] 
                 }
             ];
             editor = createEditor({ blocks: blocks });
@@ -859,7 +852,7 @@ describe('Code Blocks', () => {
             codeElement.textContent = 'const x = 5;';
             editor.blocks[0].content = [];
             editor.blockManager.blockService.replaceBlock(editor.blocks[0].id, {
-                ...decoupleReference(sanitizeBlock(editor.blocks[0])),
+                ...decoupleReference(editor.blocks[0]),
                 content: []
             });
             editor.blockManager.stateManager.updateManagerBlocks();
@@ -902,7 +895,7 @@ describe('Code Blocks', () => {
                 {
                     id: 'block1',
                     blockType: BlockType.Paragraph,
-                    content: [{ id: 'p-content', contentType: ContentType.Text, content: 'First paragraph.' }]
+                    content: [{ contentType: ContentType.Text, content: 'First paragraph.' }]
                 },
                 {
                     id: 'code-block-to-delete',
@@ -911,7 +904,6 @@ describe('Code Blocks', () => {
                         language: 'typescript'
                     },
                     content: [{
-                        id: 'code-content-to-delete',
                         contentType: ContentType.Text,
                         content: 'interface MyInterface {\n    prop: string;\n}'
                     }]
@@ -919,7 +911,7 @@ describe('Code Blocks', () => {
                 {
                     id: 'block2',
                     blockType: BlockType.Paragraph,
-                    content: [{ id: 'p2-content', contentType: ContentType.Text, content: 'Second paragraph.' }]
+                    content: [{ contentType: ContentType.Text, content: 'Second paragraph.' }]
                 }
             ];
             editor = createEditor({ blocks: blocks });
@@ -956,7 +948,7 @@ describe('Code Blocks', () => {
             deleteMenuItem.click();
             expect(editor.blocks.length).toBe(originalBlockCount - 1);
             expect(editorElement.querySelector('#code-block-to-delete')).toBeNull();
-            editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, code: 'KeyZ', bubbles: true }));
+            editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, code: 'KeyZ' }));
             expect(editor.blocks.length).toBe(originalBlockCount);
             const restoredBlockElement: HTMLElement = editorElement.querySelector('#code-block-to-delete') as HTMLElement;
             expect(restoredBlockElement).not.toBeNull();
@@ -978,6 +970,389 @@ describe('Code Blocks', () => {
             expect(editor.blocks[1].content[0].content).toBe("interface MyInterface {\n    prop: string;\n}");
             expect(editor.blocks[2].content[0].content).toBe("Second paragraph.");
             done();
+        });
+    });
+
+    describe('Undo/Redo During Input Actions', () => {
+        let editor: BlockEditor;
+        let editorElement: HTMLElement;
+
+        beforeEach(() => {
+            editorElement = createElement('div', { id: 'editor' });
+            document.body.appendChild(editorElement);
+            const blocks: BlockModel[] = [
+                { 
+                    id: 'code-block', 
+                    blockType: BlockType.Code, 
+                    content: [{ contentType: ContentType.Text, content: '' }] 
+                }
+            ];
+            editor = createEditor({ blocks: blocks });
+            editor.appendTo('#editor');
+        });
+
+        afterEach(() => {
+            if (editor) {
+                editor.destroy();
+            }
+            document.body.removeChild(editorElement);
+        });
+
+        it('should undo typed content and restore cursor position', (done) => {
+            const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
+            const blockElement = codeElement.closest('.e-block') as HTMLElement;
+            editor.blockManager.setFocusToBlock(blockElement);
+            setCursorPosition(codeElement, 0);
+
+            // Type some content
+            codeElement.textContent = 'console.log("test");';
+            editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+
+            setTimeout(() => {
+                // Verify content is typed
+                expect(codeElement.textContent).toBe('console.log("test");');
+                expect(editor.blocks[0].content[0].content).toBe('console.log("test");');
+
+                // Undo the typing
+                editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, code: 'KeyZ' }));
+
+                setTimeout(() => {
+                    // Verify content is restored to empty
+                    expect(codeElement.textContent).toBe('');
+                    expect(editor.blocks[0].content[0].content).toBe('');
+                    done();
+                }, 100);
+            }, 100);
+        });
+
+        it('should redo typed content and restore cursor position', (done) => {
+            const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
+            const blockElement = codeElement.closest('.e-block') as HTMLElement;
+            editor.blockManager.setFocusToBlock(blockElement);
+            setCursorPosition(codeElement, 0);
+
+            // Type some content
+            codeElement.textContent = 'const x = 5;';
+            editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+
+            setTimeout(() => {
+                expect(codeElement.textContent).toBe('const x = 5;');
+                
+                // Undo
+                editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, code: 'KeyZ' }));
+
+                setTimeout(() => {
+                    expect(codeElement.textContent).toBe('');
+                    
+                    // Redo
+                    editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'y', ctrlKey: true, code: 'KeyY' }));
+
+                    setTimeout(() => {
+                        expect(codeElement.textContent).toBe('const x = 5;');
+                        expect(editor.blocks[0].content[0].content).toBe('const x = 5;');
+                        done();
+                    }, 100);
+                }, 100);
+            }, 100);
+        });
+
+        it('should undo Enter key action and restore content with proper cursor position', (done) => {
+            const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
+            const blockElement = codeElement.closest('.e-block') as HTMLElement;
+            editor.blockManager.setFocusToBlock(blockElement);
+
+            // Initial content with one line
+            codeElement.textContent = 'function test() {';
+            editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+
+            setTimeout(() => {
+                const initialContent = codeElement.textContent;
+                const initialCursorPos = codeElement.textContent.length;
+                setCursorPosition(codeElement, initialCursorPos);
+
+                // Press Enter to add new line
+                const enterEvent: KeyboardEvent = new KeyboardEvent('keydown', { 
+                    key: 'Enter', 
+                    bubbles: true, 
+                    cancelable: true 
+                });
+                editor.element.dispatchEvent(enterEvent);
+
+                setTimeout(() => {
+                    // Verify new line was added
+                    expect(codeElement.textContent).toContain('\n');
+                    
+                    // Undo the Enter key action
+                    editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, code: 'KeyZ' }));
+
+                    setTimeout(() => {
+                        expect(codeElement.textContent).toBe(initialContent);
+                        done();
+                    }, 100);
+                }, 100);
+            }, 100);
+        });
+
+        it('should undo Tab key indentation action', (done) => {
+            const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
+            const blockElement = codeElement.closest('.e-block') as HTMLElement;
+            editor.blockManager.setFocusToBlock(blockElement);
+
+            codeElement.textContent = 'code';
+            editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+
+            setTimeout(() => {
+                const initialContent = codeElement.textContent;
+                setCursorPosition(codeElement, 0);
+
+                // Press Tab to add indentation
+                const tabEvent: KeyboardEvent = new KeyboardEvent('keydown', { 
+                    key: 'Tab', 
+                    bubbles: true, 
+                    cancelable: true 
+                });
+                editorElement.dispatchEvent(tabEvent);
+
+                setTimeout(() => {
+                    // Verify indentation was added
+                    expect(codeElement.textContent).toBe('    code');
+                    expect(codeElement.textContent).toContain('    ');
+
+                    // Undo the indentation
+                    editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, code: 'KeyZ' }));
+
+                    setTimeout(() => {
+                        expect(codeElement.textContent).toBe(initialContent);
+                        expect(editor.blocks[0].content[0].content).toBe('code');
+                        done();
+                    }, 100);
+                }, 100);
+            }, 100);
+        });
+
+        it('should redo Tab key indentation action', (done) => {
+            const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
+            const blockElement = codeElement.closest('.e-block') as HTMLElement;
+            editor.blockManager.setFocusToBlock(blockElement);
+
+            codeElement.textContent = 'myFunction();';
+            editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+
+            setTimeout(() => {
+                setCursorPosition(codeElement, 0);
+
+                // Add indentation
+                const tabEvent: KeyboardEvent = new KeyboardEvent('keydown', { 
+                    key: 'Tab', 
+                    bubbles: true, 
+                    cancelable: true 
+                });
+                editorElement.dispatchEvent(tabEvent);
+
+                setTimeout(() => {
+                    expect(codeElement.textContent).toBe('    myFunction();');
+                    
+                    // Undo
+                    editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, code: 'KeyZ' }));
+
+                    setTimeout(() => {
+                        expect(codeElement.textContent).toBe('myFunction();');
+                        
+                        // Redo
+                        editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'y', ctrlKey: true, code: 'KeyY' }));
+
+                        setTimeout(() => {
+                            expect(codeElement.textContent).toBe('    myFunction();');
+                            done();
+                        }, 100);
+                    }, 100);
+                }, 100);
+            }, 100);
+        });
+
+        it('should undo Shift+Tab remove indentation action', (done) => {
+            const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
+            const blockElement = codeElement.closest('.e-block') as HTMLElement;
+            editor.blockManager.setFocusToBlock(blockElement);
+
+            codeElement.textContent = '    indented line';
+            editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+
+            setTimeout(() => {
+                setCursorPosition(codeElement, 4);
+
+                // Press Shift+Tab to remove indentation
+                const shiftTabEvent: KeyboardEvent = new KeyboardEvent('keydown', {
+                    key: 'Tab', 
+                    shiftKey: true, 
+                    bubbles: true, 
+                    cancelable: true 
+                });
+                editorElement.dispatchEvent(shiftTabEvent);
+
+                setTimeout(() => {
+                    // Verify indentation was removed
+                    expect(codeElement.textContent).toBe('indented line');
+
+                    // Undo the removal
+                    editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, code: 'KeyZ' }));
+
+                    setTimeout(() => {
+                        expect(codeElement.textContent).toBe('    indented line');
+                        expect(editor.blocks[0].content[0].content).toBe('    indented line');
+                        done();
+                    }, 100);
+                }, 100);
+            }, 100);
+        });
+
+        it('should redo Shift+Tab remove indentation action', (done) => {
+            const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
+            const blockElement = codeElement.closest('.e-block') as HTMLElement;
+            editor.blockManager.setFocusToBlock(blockElement);
+
+            codeElement.textContent = '    const val = 5;';
+            editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+
+            setTimeout(() => {
+                setCursorPosition(codeElement, 4);
+
+                // Remove indentation
+                const shiftTabEvent: KeyboardEvent = new KeyboardEvent('keydown', {
+                    key: 'Tab', 
+                    shiftKey: true, 
+                    bubbles: true, 
+                    cancelable: true 
+                });
+                editorElement.dispatchEvent(shiftTabEvent);
+
+                setTimeout(() => {
+                    expect(codeElement.textContent).toBe('const val = 5;');
+                    
+                    // Undo
+                    editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, code: 'KeyZ' }));
+
+                    setTimeout(() => {
+                        expect(codeElement.textContent).toBe('    const val = 5;');
+                        
+                        // Redo
+                        editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'y', ctrlKey: true, code: 'KeyY' }));
+
+                        setTimeout(() => {
+                            expect(codeElement.textContent).toBe('const val = 5;');
+                            done();
+                        }, 100);
+                    }, 100);
+                }, 100);
+            }, 100);
+        });
+
+        it('should handle multiple undo/redo actions in sequence', (done) => {
+            const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
+            const blockElement = codeElement.closest('.e-block') as HTMLElement;
+            editor.blockManager.setFocusToBlock(blockElement);
+
+            // Action 1: Type content
+            codeElement.textContent = 'function test()';
+            editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+
+            setTimeout(() => {
+                expect(codeElement.textContent).toBe('function test()');
+
+                // Action 2: Add Tab indentation
+                setCursorPosition(codeElement, 0);
+                const tabEvent: KeyboardEvent = new KeyboardEvent('keydown', { 
+                    key: 'Tab', 
+                    bubbles: true, 
+                    cancelable: true 
+                });
+                editorElement.dispatchEvent(tabEvent);
+
+                setTimeout(() => {
+                    expect(codeElement.textContent).toBe('    function test()');
+
+                    // Undo last action (indentation)
+                    editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, code: 'KeyZ' }));
+
+                    setTimeout(() => {
+                        expect(codeElement.textContent).toBe('function test()');
+
+                        // Undo previous action (typing)
+                        editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, code: 'KeyZ' }));
+
+                        setTimeout(() => {
+                            expect(codeElement.textContent).toBe('');
+
+                            // Redo typing
+                            editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'y', ctrlKey: true, code: 'KeyY' }));
+
+                            setTimeout(() => {
+                                expect(codeElement.textContent).toBe('function test()');
+
+                                // Redo indentation
+                                editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'y', ctrlKey: true, code: 'KeyY' }));
+
+                                setTimeout(() => {
+                                    expect(codeElement.textContent).toBe('    function test()');
+                                    expect(editor.blocks[0].content[0].content).toBe('    function test()');
+                                    done();
+                                }, 100);
+                            }, 100);
+                        }, 100);
+                    }, 100);
+                }, 100);
+            }, 100);
+        });
+
+        it('should maintain proper model state during undo/redo operations', (done) => {
+            const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
+            const blockElement = codeElement.closest('.e-block') as HTMLElement;
+            editor.blockManager.setFocusToBlock(blockElement);
+
+            // Type first content
+            codeElement.textContent = 'line1';
+            editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+
+            setTimeout(() => {
+                expect(editor.blocks[0].content[0].content).toBe('line1');
+
+                // Press Enter to go to new line
+                setCursorPosition(codeElement, codeElement.textContent.length);
+                const enterEvent: KeyboardEvent = new KeyboardEvent('keydown', { 
+                    key: 'Enter', 
+                    bubbles: true, 
+                    cancelable: true 
+                });
+                editor.element.dispatchEvent(enterEvent);
+
+                setTimeout(() => {
+                    expect(codeElement.textContent).toContain('line1\n');
+
+                    // Type on new line
+                    codeElement.textContent = 'line1\nline2';
+                    editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+
+                    setTimeout(() => {
+                        expect(editor.blocks[0].content[0].content).toContain('line1\nline2');
+
+                        // Undo typing on new line
+                        editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, code: 'KeyZ' }));
+
+                        setTimeout(() => {
+                            expect(codeElement.textContent).toContain('line1');
+
+                            // Undo Enter key
+                            editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, code: 'KeyZ' }));
+
+                            setTimeout(() => {
+                                expect(codeElement.textContent).toBe('line1');
+                                expect(editor.blocks[0].content[0].content).toBe('line1');
+                                done();
+                            }, 100);
+                        }, 100);
+                    }, 100);
+                }, 100);
+            }, 100);
         });
     });
 
@@ -1024,7 +1399,6 @@ describe('Code Blocks', () => {
                         language: 'typescript' 
                     },
                     content: [{
-                        id: 'code-content-to-delete',
                         contentType: ContentType.Text,
                         content: 'interface MyInterface {\n    prop: string;\n}'
                     }]
@@ -1072,7 +1446,7 @@ describe('Code Blocks', () => {
                 {
                     id: 'code-block-empty',
                     blockType: BlockType.Code,
-                    content: [{ id: 'code-content-empty', contentType: ContentType.Text, content: '' }]
+                    content: [{ contentType: ContentType.Text, content: '' }]
                 }
             ];
         
@@ -1126,7 +1500,7 @@ describe('Code Blocks', () => {
                 {
                     id: 'code-block-empty',
                     blockType: BlockType.Code,
-                    content: [{ id: 'code-content-empty', contentType: ContentType.Text, content: '' }]
+                    content: [{ contentType: ContentType.Text, content: '' }]
                 }
             ];
             editor = createEditor({ blocks });
@@ -1177,12 +1551,12 @@ describe('Code Blocks', () => {
                     id: 'code-dnd',
                     blockType: BlockType.Code,
                     properties: { language: 'typescript' },
-                    content: [{ id: 'code-dnd-content', contentType: ContentType.Text, content: codeContent }]
+                    content: [{ contentType: ContentType.Text, content: codeContent }]
                 },
                 {
                     id: 'para-dnd',
                     blockType: BlockType.Paragraph,
-                    content: [{ id: 'para-dnd-content', contentType: ContentType.Text, content: 'Drop code below me' }]
+                    content: [{ contentType: ContentType.Text, content: 'Drop code below me' }]
                 }
             ];
         
@@ -1248,14 +1622,13 @@ describe('Code Blocks', () => {
                 {
                     id: 'code-block-link-paste',
                     blockType: BlockType.Code,
-                    content: [{ id: 'code-content-link-paste', contentType: ContentType.Text, content: '' }]
+                    content: [{ contentType: ContentType.Text, content: '' }]
                 },
                 {
                     id: 'para-link-source',
                     blockType: BlockType.Paragraph,
                     content: [
                         {
-                            id: 'para-link-source-content',
                             contentType: ContentType.Link,
                             content: 'linktxt',
                             properties: { url }

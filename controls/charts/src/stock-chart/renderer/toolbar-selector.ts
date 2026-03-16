@@ -78,7 +78,8 @@ export class ToolBarSelector {
                 for (let j: number = 0; j < result.length; j++) {
                     let text: string = result[j as number].text.replace('&nbsp;&nbsp;&nbsp;', '');
                     text = text.toLowerCase().replace(/(^\w|_\w)/g, (match: string) => match.toUpperCase()).replace(/_/g, '');
-                    text = text === 'Accumulation distribution' ? 'AccumulationDistribution' : text === 'Bollinger bands' ? 'BollingerBands' : text;
+                    text = (text === 'Accumulation distribution' || text === 'Accumulationdistribution') ?
+                        'AccumulationDistribution' : text === 'Bollinger bands' ? 'BollingerBands' : text;
                     if (text === this.stockChart.indicators[i as number].type) {
                         result[j as number].text = result[j as number].text.replace('&nbsp;&nbsp;&nbsp;', '&#10004&nbsp;');
                         this.indicators.push(text);

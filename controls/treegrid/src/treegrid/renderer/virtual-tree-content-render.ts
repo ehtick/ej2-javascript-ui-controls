@@ -1,4 +1,4 @@
-import { Cell, CellType, Column, getVisiblePage, ICell, NotifyArgs, Row, SentinelInfo, SentinelType } from '@syncfusion/ej2-grids';
+import { Cell, CellType, Column, getVisiblePage, ICell, NotifyArgs, Row, SentinelInfo, SentinelType, InterSection } from '@syncfusion/ej2-grids';
 import { Offsets, VirtualInfo, ServiceLocator, IGrid, IModelGenerator } from '@syncfusion/ej2-grids';
 import { VirtualContentRenderer } from '@syncfusion/ej2-grids';
 import { RowPosition } from '../enum';
@@ -189,7 +189,11 @@ export class VirtualTreeContentRenderer extends VirtualContentRenderer {
         && (this.parent.dataSource as DataManager).dataSource.offline && (this.parent.dataSource as DataManager).dataSource.url !== '') || !isCountRequired(this.parent)) {
             this.parent[`${action}`]('data-ready', this.onDataReady, this);
             this.parent[`${action}`]('refresh-virtual-block', this.refreshContentRows, this);
+            this.parent.on(events.destroy, this.destroy, this);
             this.fn = () => {
+                if (this.parent.root.enableSeamlessScrolling) {
+                    window.addEventListener('resize', this.updateScrollbar.bind(this));
+                }
                 this.observers.observes((scrollArgs: ScrollArg) => this.scrollListeners(scrollArgs), this.onEnteredAction(), this.parent);
                 const gObj: IGrid = this.parent;
                 if (gObj.root.enablePersistence && gObj.root.scrollPosition) {
@@ -240,6 +244,11 @@ export class VirtualTreeContentRenderer extends VirtualContentRenderer {
         super[`${virtualCellFocus}`](e);
     }
 
+    private updateScrollbar(): void {
+        const updateScrollbarOnResize: string = 'updateScrollbarOnResize';
+        super[`${updateScrollbarOnResize}`]();
+    }
+
     /**
      * Handles the data ready event for the virtual tree grid content renderer.
      *
@@ -281,9 +290,6 @@ export class VirtualTreeContentRenderer extends VirtualContentRenderer {
         super.renderTable();
         if (!(this.parent.dataSource instanceof DataManager && (this.parent.dataSource as DataManager).dataSource.url !== undefined
         && (this.parent.dataSource as DataManager).dataSource.offline && (this.parent.dataSource as DataManager).dataSource.url !== '') || !isCountRequired(this.parent)) {
-            if (this.observers) {
-                this.observers.disconnect();
-            }
             getValue('observer', this).options.debounceEvent = false;
             this.observers = new TreeInterSectionObserver(getValue('observer', this).element,
                                                           getValue('observer', this).options);
@@ -365,7 +371,7 @@ export class VirtualTreeContentRenderer extends VirtualContentRenderer {
         }
         const treeGridParent: any = this.parent.clipboardModule['treeGridParent'];
         if (isNullOrUndefined(treeGridParent.editModule) ||
-            isNullOrUndefined(treeGridParent.editModule['addRowIndex']) || args.selectedIndex !== 0) {
+            isNullOrUndefined(treeGridParent.editModule['addRowIndex']) || args.selectedIndex !== -1) {
             if (!isNullOrUndefined(treeGridParent.grid.sortModule) && treeGridParent.grid.sortModule['sortedColumns'].length > 0) {
                 const sortedData : any = treeGridParent.dataModule['sortedData'];
                 if (!isNullOrUndefined(sortedData) && sortedData.length > 0) {
@@ -684,14 +690,27 @@ export class VirtualTreeContentRenderer extends VirtualContentRenderer {
                     const maxLeft: number = this.vgenerator.cOffsets[idx - 1];
                     x = x > maxLeft ? maxLeft : x; //TODO: This fix horizontal scrollbar jumping issue in column virtualization.
                 }
-                let y: number = this.getTranslateY(e.top, height, xAxis && top === e.top ? this.prevInfo : undefined, true);
+                const isRowScrollAction: boolean = this.prevInfo && this.prevInfo.page === 1 &&
+                    (direction !== this.prevInfo.direction || direction !== this.prevInfo.direction);
+                let translateY: number = this.getTranslateY(e.top, height, xAxis && top === e.top ? this.prevInfo : undefined,
+                                                            isRowScrollAction ? false : true);
                 if (!this.parent.isFrozenGrid() || this.parent.enableVirtualMaskRow) {
                     if (this.parent.enableVirtualMaskRow) {
                         const upScroll: boolean = (e.top - this.translateY) < 0;
-                        y = (Math.round(this.translateY) > y && !upScroll) ? Math.round(this.translateY) : y;
-                        this.virtualEle.adjustTable(x, y);
+                        translateY = (Math.round(this.translateY) > translateY && !upScroll) ? Math.round(this.translateY) : translateY;
+                        this.virtualEle.adjustTable(x, translateY);
                     } else {
                         this.virtualEle.adjustTable(x, this.translateY);
+                    }
+                    const wrapperBottom: number = this.virtualEle.wrapper.getBoundingClientRect().bottom;
+                    const contentBottom: number = this.virtualEle.content.getBoundingClientRect().bottom;
+                    if (direction === 'up' && this.prevInfo.page === Math.ceil(this.getTotalBlocks() / 2) &&
+                        Math.round(wrapperBottom) < Math.round(contentBottom)) {
+                        const bottomGap: number = Math.round(contentBottom) - Math.round(wrapperBottom);
+                        const adjustedTranslateY: number = Math.min(translateY + bottomGap, this.offsets[this['maxBlock']]);
+                        if (adjustedTranslateY !== translateY) {
+                            this.virtualEle.adjustTable(x, adjustedTranslateY);
+                        }
                     }
                     if (this.parent.enableColumnVirtualization) {
                         this.header.virtualEle.adjustTable(x, 0);
@@ -808,6 +827,9 @@ export class VirtualTreeContentRenderer extends VirtualContentRenderer {
             if ((nextSetResIndex + this.parent.pageSettings.pageSize) > this.totalRecords && (this.endIndex - this.startIndex) <
             (this.parent.pageSettings.pageSize / 2) && (this.endIndex - nextSetResIndex) < (this.parent.pageSettings.pageSize / 2)) {
                 this.startIndex = lastIndex - (this.parent.pageSettings.pageSize / 2);
+            }
+            if (this.totalRecords < this.parent.pageSettings.pageSize) {
+                this.startIndex = 0;
             }
             if (scrollArgs.offset.top > (rowHeight * this.totalRecords)) {
                 this.translateY = this.getTranslateY(scrollArgs.offset.top, content.getBoundingClientRect().height);
@@ -1012,9 +1034,15 @@ export class VirtualTreeContentRenderer extends VirtualContentRenderer {
         this.parent.off('refresh-virtual-editform-cells', this.refreshCell);
         this.parent.off('virtaul-cell-focus', this.cellFocus);
         this.parent.off('virtual-scroll-edit', this.restoreEditState);
-        if (this.observers) {
-            this.observers.disconnect();
+        this.parent.off(events.destroy, this.destroy);
+        if (this.parent.root.enableSeamlessScrolling) {
+            window.removeEventListener('resize', this.updateScrollbar);
         }
+    }
+
+    public destroy(): void {
+        if (this.parent.isDestroyed) { return; }
+        this.removeEventListener();
     }
 
 }
@@ -1024,11 +1052,10 @@ export class TreeInterSectionObserver extends InterSectionObserver {
     private newPos: number = 0;
     private lastPos: number = 0;
     private timer: number = 0;
-    private containerEl: HTMLElement;
-    private movableContainerEl: HTMLElement;
-    private containerScrollHandler: Function;
-    private movableScrollHandler: Function;
 
+    private onWheelEvent(): void {
+        this.isWheeling = true;
+    }
     /**
      * Sets up observers to monitor scroll events on a given container
      * and its movable companion within a virtual grid setup.
@@ -1041,29 +1068,28 @@ export class TreeInterSectionObserver extends InterSectionObserver {
     public observes(callback: Function, onEnterCallback: Function, instance: IGrid): void {
         const containerRect: string = 'containerRect';
         super[`${containerRect}`] = getValue('options', this).container.getBoundingClientRect();
-        this.containerEl = getValue('options', this).container as HTMLElement;
-        this.containerScrollHandler = this.virtualScrollHandlers(callback, onEnterCallback, instance);
-        EventHandler.add(this.containerEl, 'scroll', this.containerScrollHandler, this);
-        if (getValue('options', this).movableContainer) {
-            const movableContainerRect: string = 'movableContainerRect';
-            super[`${movableContainerRect}`] = getValue('options', this).movableContainer.getBoundingClientRect();
-            this.movableContainerEl = getValue('options', this).movableContainer as HTMLElement;
-            this.movableScrollHandler = this.virtualScrollHandlers(callback, onEnterCallback, instance);
-            EventHandler.add(this.movableContainerEl, 'scroll', this.movableScrollHandler, this);
+        const options: InterSection = getValue('options', this);
+        EventHandler.add(options.container, 'wheel', this.onWheelEvent, this);
+        if (!isNullOrUndefined(options.horizontalScrollbar)) {
+            EventHandler.add(options.horizontalScrollbar, 'wheel', this.onWheelEvent, this);
+            EventHandler.add(options.horizontalScrollbar, 'scroll', this.onVirtualContentScrolling(), this);
         }
+        if (!isNullOrUndefined(options.verticalScrollbar)) {
+            EventHandler.add(options.verticalScrollbar, 'wheel', this.onWheelEvent, this);
+            EventHandler.add(options.verticalScrollbar, 'scroll', this.onVirtualContentScrolling(), this);
+        }
+        EventHandler.add(options.container, 'scroll', this.virtualScrollHandlers(callback, onEnterCallback, instance), this);
     }
 
-    public disconnect(): void {
-        if (this.containerEl && this.containerScrollHandler) {
-            EventHandler.remove(this.containerEl, 'scroll', this.containerScrollHandler);
-            this.containerScrollHandler = null;
-        }
-        if (this.movableContainerEl && this.movableScrollHandler) {
-            EventHandler.remove(this.movableContainerEl, 'scroll', this.movableScrollHandler);
-            this.movableScrollHandler = null;
-        }
-        this.containerEl = null;
-        this.movableContainerEl = null;
+    private onVirtualContentScrolling(): Function {
+        return (e: Event) => {
+            if ((<HTMLElement>e.target).classList.contains('e-virtual-vertical-scrollbar')) {
+                getValue('options', this).container.scrollTop = (<HTMLElement>e.target).scrollTop;
+            }
+            if ((<HTMLElement>e.target).classList.contains('e-virtual-horizontal-scrollbar')) {
+                getValue('options', this).container.scrollLeft = (<HTMLElement>e.target).scrollLeft;
+            }
+        };
     }
 
     /**
@@ -1107,7 +1133,12 @@ export class TreeInterSectionObserver extends InterSectionObserver {
             let direction: ScrollDirection = this[`${options}`].prevTop < top ? 'down' : 'up';
             direction = this[`${options}`].prevLeft === left ? direction : this[`${options}`].prevLeft < left ? 'right' : 'left';
             this[`${options}`].prevTop = top; this[`${options}`].prevLeft = left;
-
+            if (!isNullOrUndefined(this[`${options}`].verticalScrollbar)) {
+                this[`${options}`].verticalScrollbar.scrollTop = this[`${options}`].container.scrollTop;
+            }
+            if (!isNullOrUndefined(this[`${options}`].horizontalScrollbar)) {
+                this[`${options}`].horizontalScrollbar.scrollLeft = this[`${options}`].container.scrollLeft;
+            }
             const current: SentinelType = this.sentinelInfo[`${direction}`];
 
             let delta: number = 0;

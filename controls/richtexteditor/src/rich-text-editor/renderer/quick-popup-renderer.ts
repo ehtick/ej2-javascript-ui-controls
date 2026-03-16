@@ -40,23 +40,13 @@ export class QuickPopupRenderer {
         case 'Text':
         case 'Link':
         case 'Audio':
-            popup = new Popup(element, {
-                viewPortElement: this.parent.iframeSettings.enable ? null
-                    : this.parent.contentModule.getEditPanel() as HTMLElement,
-                zIndex: 9,
-                collision: { X: 'fit', Y: 'flip' },
-                position: { X: 'left', Y: 'top' },
-                actionOnScroll: 'none',
-                open: this.quickToolbarOpen.bind(this)
-            });
-            break;
         case 'Video':
         case 'Image':
         case 'Table':
             popup = new Popup(element, {
-                viewPortElement: this.parent.iframeSettings.enable ? null
+                viewPortElement: this.parent.iframeSettings.enable || this.parent.quickToolbarSettings.enableAppendToBody ? null
                     : this.parent.contentModule.getEditPanel() as HTMLElement,
-                zIndex: 9,
+                zIndex: this.parent.quickToolbarSettings.enableAppendToBody ? null : 9,
                 collision: { X: 'fit', Y: 'flip' },
                 position: { X: 'left', Y: 'top' },
                 actionOnScroll: 'none',

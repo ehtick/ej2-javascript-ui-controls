@@ -3,7 +3,7 @@ import { ITableBlockSettings, TableRowModel, TableColumnModel, BlockModel } from
 import { events } from '../../../common/constant';
 import { BlockManager } from '../../base/block-manager';
 import * as constants from '../../../common/constant';
-import { decoupleReference, extractBlockTypeFromElement, getBlockModelById } from '../../../common/utils/index';
+import { decoupleReference, extractBlockTypeFromElement, getBlockModelById, getColgroupChildren, setTableWidthMode } from '../../../common/utils/index';
 import { TableUIManager } from '../../plugins/table/ui-manager';
 import { TableContext } from '../../base/interface';
 
@@ -42,13 +42,16 @@ export class TableRenderer {
      *
      * @param {BlockModel} block - The data model of the block, used to determine available actions and state.
      * @param {HTMLElement} blockElement - The root DOM element representing the table block.
-     * @returns {HTMLTableElement} - The html table element
+     * @returns {HTMLElement} - The table container element
      * @hidden
      */
-    public renderTable(block: BlockModel, blockElement: HTMLElement): HTMLTableElement {
+    public renderTable(block: BlockModel, blockElement: HTMLElement): HTMLElement {
         blockElement.classList.add(constants.TABLE_BLOCK_CLS);
         const props: ITableBlockSettings = block.properties as ITableBlockSettings;
         const blockId: string = block.id;
+        const tableContainer: HTMLElement = createElement('div', {
+            className: 'e-table-container e-scrollable-block'
+        }) as HTMLElement;
         const table: HTMLTableElement = createElement('table', {
             className: 'e-table-element',
             attrs: {
@@ -58,6 +61,7 @@ export class TableRenderer {
                 'style': `width: ${formatUnit(props.width)}`
             }
         }) as HTMLTableElement;
+        tableContainer.appendChild(table);
         // Create colgroup for column width management
         const colgroup: HTMLTableColElement = createElement('colgroup') as HTMLTableColElement;
         table.appendChild(colgroup);
@@ -98,6 +102,7 @@ export class TableRenderer {
                 th.dataset.col = cIdx.toString();
                 th.tabIndex = 0;
                 th.setAttribute('role', 'columnheader');
+                th.setAttribute('title', c.headerText);
                 th.setAttribute('contenteditable', 'true');
                 headerRow.appendChild(th);
             });
@@ -118,7 +123,60 @@ export class TableRenderer {
         } else {
             this.updateTableReadyOnlyState(table, props.readOnly);
         }
-        return table;
+        return tableContainer;
+    }
+
+    /**
+     * Refreshes the column width and it's mode based on available container width
+     *
+     * @param {BlockModel} block - The data model of the block.
+     * @returns {void}
+     * @hidden
+     */
+    public refreshColWidths(block: BlockModel): void {
+        const blockElement: HTMLElement = this.parent.getBlockElementById(block.id);
+        const props: ITableBlockSettings = block.properties as ITableBlockSettings;
+        const colCount: number = props.columns.length;
+        const table: HTMLTableElement = blockElement.querySelector('table');
+
+        // === NEW: Decide width mode on initial render ===
+        let usePxMode: boolean = false;
+        let defaultWidthsPx: number[] = [];
+
+        if (colCount > 0) {
+            const containerWidth: number = table.clientWidth;
+
+            // Check if equal % would violate min width
+            const projectedPx: number = containerWidth / colCount;
+            if (projectedPx < constants.TABLE_NEW_COL_WIDTH) {
+                usePxMode = true;
+            }
+
+            // Pre-compute px widths if switching to px mode
+            if (usePxMode) {
+                const equalPx: number = Math.max(constants.TABLE_NEW_COL_WIDTH, Math.floor(containerWidth / colCount));
+                defaultWidthsPx = Array(colCount).fill(equalPx);
+                setTableWidthMode(table, 'px');
+            }
+        }
+
+        const dataCols: HTMLTableColElement[] = getColgroupChildren(table);
+
+        // Apply columns with correct width mode
+        dataCols.forEach((colEl: HTMLTableColElement, i: number) => {
+            // Respect the user provided width if any
+            if (props.columns[i as number].width) { return; }
+
+            if (usePxMode) {
+                const widthPx: number = defaultWidthsPx[i as number];
+                colEl.style.width = `${widthPx}px`;
+                props.columns[i as number].width = `${widthPx}px`; // sync model
+            } else {
+                const pct: string = (100 / colCount).toFixed(2) + '%';
+                colEl.style.width = pct;
+                props.columns[i as number].width = pct;
+            }
+        });
     }
 
     /**

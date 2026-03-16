@@ -1279,7 +1279,10 @@
 
               &:focus:not(.e-active) {
                 .e-btn-icon.e-icons:not(.e-caret) {
-                  @if $skin-name =='fluent2' {
+                  @if $theme-name == 'fluent2-highcontrast' {
+                    color: var(--color-sf-content-text-color-alt1);
+                  }
+                  @else if $skin-name == 'fluent2' {
                     color: var(--color-sf-toolbar-icon-color);
                   }
                 }

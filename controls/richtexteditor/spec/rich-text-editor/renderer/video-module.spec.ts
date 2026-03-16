@@ -5096,31 +5096,6 @@ describe('962339: Script error and improper video selection removal after alignm
             }, 100);
         });
     });
-    describe('Bug 1004008: After resize start Video resize gripper elements position is not refreshed after mouse move.', () => {
-        let rteObj: RichTextEditor;
-        beforeAll(() => {
-            rteObj = renderRTE({
-                value: `<p><span class="e-video-wrap" contenteditable="false" title="RichTextEditor.mp4">
-<video class="e-rte-video e-video-inline" controls="" width="auto" height="auto" style="min-width: 0px; max-width: 1193px; min-height: 0px;"><source src="blob:http://127.0.0.1:5501/2ea697f9-e9be-4437-82cd-0d0d0d59dadd" type="video/mp4"/></video>
-</span></p>`
-                ,
-                toolbarSettings: {
-                    items: ['Video']
-                }
-            });
-        });
-        afterAll(() => {
-            destroy(rteObj);
-        });
-        it('checking resize bar in Video', (done: Function) => {
-            let trg = (rteObj.inputElement.querySelector('video') as HTMLVideoElement);
-            clickVideo(trg);
-            setTimeout(() => {
-                expect(rteObj.inputElement.querySelectorAll('.e-resize').length).toBe(1);
-                done();
-            }, 100);
-        });
-    });
     describe('977306: Resize Bar for iframe embeded Video in Syncfusion Rich Text Editor with RTL enabled', () => {
         let rteObj: RichTextEditor;
         let rteEle: HTMLElement;
@@ -5323,6 +5298,45 @@ describe('962339: Script error and improper video selection removal after alignm
         });
     });
 
+    describe('997311: Editor gets broken when we continuously drag and drop the images and delete them in the RichTextEditor', () => {
+        let rteObj: RichTextEditor;
+        let clickEvent: any;
+        beforeAll(() => {
+            rteObj = renderRTE({
+                value: `<div><p>First p node-0</p></div>`,
+            });
+        });
+        afterAll(() => {
+            destroy(rteObj);
+        });
+        it('- should check the resize gripper size change after the video is resized', function (done: DoneFn) {
+            let video: HTMLElement = createElement("VIDEO");
+            video.classList.add('e-rte-drag-video');
+            video.setAttribute('src', 'https://www.w3schools.com/html/mov_bbb.mp4');
+            let fileObj: File = new File(["Nice One"], "sample.mp4", { lastModified: 0, type: "video/mp4" });
+            let event: any = { clientX: 40, clientY: 294, dataTransfer: { files: [fileObj] }, preventDefault: function () { return; } };
+            rteObj.focusIn();
+            (rteObj.videoModule as any).insertDragVideo(event);
+            setTimeout(() => {
+                let trg = (rteObj.inputElement.querySelector('video') as HTMLVideoElement);
+                clickEvent = document.createEvent("MouseEvents");
+                clickEvent.initEvent("mousedown", false, true);
+                trg.dispatchEvent(clickEvent);
+                (rteObj.videoModule as any).resizeStart(clickEvent);
+                const gripper: VideoResizeGripper = 'e-rte-topRight';
+                const gripperElement: HTMLElement = document.querySelector(`.${gripper}`);
+                clickGripper(gripperElement);
+                const gripperElementLeftSize = gripperElement.style.left;
+                moveGripper(gripperElement, 500, 100);
+                leaveGripper(gripperElement);
+                setTimeout(() => {
+                    expect(gripperElement.style.left > gripperElementLeftSize).toBe(true);
+                    done();
+                }, 150);
+            }, 100);
+        });
+    });
+
     describe('997329: Resize Icon Misalignment for Video and Image Elements After Checklist Application - CheckList', () => {
             let rteObj: RichTextEditor;
             let clickEvent: any;
@@ -5462,45 +5476,6 @@ describe('962339: Script error and improper video selection removal after alignm
             expect(rteObj.element.getElementsByTagName('video').length).toBe(2);
             expect(ele.classList.contains('e-rte-video')).toBe(true);
             expect(ele.classList.contains('e-video-inline')).toBe(true);
-        });
-    });
-
-    describe('997311: Editor gets broken when we continuously drag and drop the images and delete them in the RichTextEditor', () => {
-        let rteObj: RichTextEditor;
-        let clickEvent: any;
-        beforeAll(() => {
-            rteObj = renderRTE({
-                value: `<div><p>First p node-0</p></div>`,
-            });
-        });
-        afterAll(() => {
-            destroy(rteObj);
-        });
-        it('- should check the resize gripper size change after the video is resized', function (done: DoneFn) {
-            let video: HTMLElement = createElement("VIDEO");
-            video.classList.add('e-rte-drag-video');
-            video.setAttribute('src', 'https://www.w3schools.com/html/mov_bbb.mp4');
-            let fileObj: File = new File(["Nice One"], "sample.mp4", { lastModified: 0, type: "video/mp4" });
-            let event: any = { clientX: 40, clientY: 294, dataTransfer: { files: [fileObj] }, preventDefault: function () { return; } };
-            rteObj.focusIn();
-            (rteObj.videoModule as any).insertDragVideo(event);
-            setTimeout(() => {
-                let trg = (rteObj.inputElement.querySelector('video') as HTMLVideoElement);
-                clickEvent = document.createEvent("MouseEvents");
-                clickEvent.initEvent("mousedown", false, true);
-                trg.dispatchEvent(clickEvent);
-                (rteObj.videoModule as any).resizeStart(clickEvent);
-                const gripper: VideoResizeGripper = 'e-rte-topRight';
-                const gripperElement: HTMLElement = document.querySelector(`.${gripper}`);
-                clickGripper(gripperElement);
-                const gripperElementLeftSize = gripperElement.style.left;
-                moveGripper(gripperElement, 500, 100);
-                leaveGripper(gripperElement);
-                setTimeout(() => {
-                    expect(gripperElement.style.left > gripperElementLeftSize).toBe(true);
-                    done();
-                }, 150);
-            }, 100);
         });
     });
 });

@@ -1,4 +1,4 @@
-import { ChildProperty, Property, Complex, Collection, Browser } from '@syncfusion/ej2-base';import { DataManager, Query} from '@syncfusion/ej2-data';import { MarkerSettings, Series, Trendline, LastValueLabelSettings } from '../../chart/series/chart-series';import { MarkerSettingsModel, TrendlineModel, LastValueLabelSettingsModel } from '../../chart/series/chart-series-model';import { StockChart } from '../stock-chart';import { ChartSeriesType,  TechnicalIndicators, MacdType, FinancialDataFields,  ChartShape, TooltipPosition, FadeOutMode } from '../../chart/utils/enum';import { Anchor, ZIndex, SizeType, AxisPosition } from '../../chart/utils/enum';import { TrendlineTypes } from '../../chart/utils/enum';import { MajorGridLinesModel, MajorTickLinesModel, CrosshairTooltipModel, AxisLineModel } from '../../chart/axis/axis-model';import { MinorGridLinesModel, MinorTickLinesModel } from '../../chart/axis/axis-model';import { MajorGridLines, MajorTickLines, MinorTickLines, MinorGridLines, CrosshairTooltip, AxisLine } from '../../chart/axis/axis';import { ConnectorType } from '../../accumulation-chart/model/enum';import { TextOverflow, Alignment, Regions, Units, Position, FlagType, LabelPlacement, EmptyPointMode, LegendShape, ChartTheme, ValueType, EdgeLabelPlacement, ChartRangePadding, IntervalType, SkeletonType, LabelIntersectAction } from '../../common/utils/enum';import { AnimationModel, EmptyPointSettingsModel, IChartEventArgs, Font, FontModel, Border, BorderModel, ConnectorModel, CornerRadiusModel, MarginModel } from '../../chart/index';import { stockEventFont } from '../../common/model/theme';
+import { ChildProperty, Property, Complex, Collection, Browser } from '@syncfusion/ej2-base';import { DataManager, Query} from '@syncfusion/ej2-data';import { MarkerSettings, Series, Trendline, LastValueLabelSettings, SeriesLabelSettings } from '../../chart/series/chart-series';import { MarkerSettingsModel, TrendlineModel, LastValueLabelSettingsModel, SeriesLabelSettingsModel } from '../../chart/series/chart-series-model';import { StockChart } from '../stock-chart';import { ChartSeriesType,  TechnicalIndicators, MacdType, FinancialDataFields,  ChartShape, TooltipPosition, FadeOutMode } from '../../chart/utils/enum';import { Anchor, ZIndex, SizeType, AxisPosition } from '../../chart/utils/enum';import { TrendlineTypes } from '../../chart/utils/enum';import { MajorGridLinesModel, MajorTickLinesModel, CrosshairTooltipModel, AxisLineModel } from '../../chart/axis/axis-model';import { MinorGridLinesModel, MinorTickLinesModel } from '../../chart/axis/axis-model';import { MajorGridLines, MajorTickLines, MinorTickLines, MinorGridLines, CrosshairTooltip, AxisLine } from '../../chart/axis/axis';import { ConnectorType } from '../../accumulation-chart/model/enum';import { TextOverflow, Alignment, Regions, Units, Position, FlagType, LabelPlacement, EmptyPointMode, LegendShape, ChartTheme, ValueType, EdgeLabelPlacement, ChartRangePadding, IntervalType, SkeletonType, LabelIntersectAction } from '../../common/utils/enum';import { AnimationModel, EmptyPointSettingsModel, IChartEventArgs, Font, FontModel, Border, BorderModel, ConnectorModel, CornerRadiusModel, MarginModel, LinearGradientModel, RadialGradientModel } from '../../chart/index';import { stockEventFont } from '../../common/model/theme';
 
 /**
  * Interface for a class StockChartFont
@@ -648,6 +648,23 @@ export interface StockSeriesModel {
     trendlines?: TrendlineModel[];
 
     /**
+     * Applies a linear gradient fill to the series.
+     * The gradient transitions colors along a straight line.
+     * When both linearGradient and radialGradient are specified, linearGradient takes precedence.
+     *
+     * @default null
+     */
+    linearGradient?: LinearGradientModel;
+
+    /**
+     * Applies a radial gradient fill to the series.
+     * The gradient transitions colors outward from a central point.
+     *
+     * @default null
+     */
+    radialGradient?: RadialGradientModel;
+
+    /**
      * If set true, the Tooltip for series will be visible.
      *
      * @default true
@@ -712,6 +729,11 @@ export interface StockSeriesModel {
      * Options for customizing and displaying the last value in the series.
      */
     lastValueLabel?: LastValueLabelSettingsModel;
+
+    /**
+     * Configures the options for displaying series names as inline labels in the stock chart.
+     */
+    labelSettings?: SeriesLabelSettingsModel;
 
 }
 
@@ -1011,6 +1033,23 @@ export interface StockChartIndicatorModel {
      */
 
     dataSource?: Object | DataManager;
+
+    /**
+     * Applies a linear gradient fill to the series.
+     * The gradient transitions colors along a straight line.
+     * When both linearGradient and radialGradient are specified, linearGradient takes precedence.
+     *
+     * @default null
+     */
+    linearGradient?: LinearGradientModel;
+
+    /**
+     * Applies a radial gradient fill to the series.
+     * The gradient transitions colors outward from a central point.
+     *
+     * @default null
+     */
+    radialGradient?: RadialGradientModel;
 
 }
 

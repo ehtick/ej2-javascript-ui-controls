@@ -5,7 +5,7 @@ import { createElement, remove, L10n } from '@syncfusion/ej2-base';
 import { Gantt, Selection, Toolbar, DayMarkers, Edit, Filter, Reorder, Resize, ColumnMenu, VirtualScroll, Sort, RowDD, ContextMenu, ExcelExport, PdfExport } from '../../src/index';
 import { destroyGantt, createGantt, triggerMouseEvent } from './gantt-util.spec';
 import { ContextMenuClickEventArgs} from './../../src/gantt/base/interface';
-import { columnTemplateData, data15, editingData13, editingData14, editingData15, editingData16, editingData17, predData1, predData2, predData3, predData4, predData5, predData6, predData8,resourceResourcesUndo,localizationData, CR927012, dataCollection, cr969720, editingResources, cr786381 } from './data-source.spec';
+import { columnTemplateData, data15, editingData13, editingData14, editingData15, editingData16, editingData17, predData1, predData2, predData3, predData4, predData5, predData6, predData8,resourceResourcesUndo,localizationData, CR927012, dataCollection, cr969720, editingResources, cr786381, projectNewDataTimezone, emptyDataSource } from './data-source.spec';
 Gantt.Inject(Selection, Toolbar, DayMarkers, Edit, Filter, Reorder, Resize, ColumnMenu, VirtualScroll, Sort, RowDD, ContextMenu, ExcelExport, PdfExport);
 
 
@@ -2216,8 +2216,7 @@ describe('CR-969720', () => {
             destroyGantt(ganttObj);
         }
     });
-});
-describe('CR-786381', () => {
+});	describe('CR-786381', () => {
     let ganttObj: Gantt;
     beforeAll((done: Function) => {
         ganttObj = createGantt(
@@ -2345,7 +2344,6 @@ describe('CR-802590', () => {
                 includeWeekend: true,
                 actionBegin: function (args) {
                     if (args.requestType == "beforeOpenAddDialog") {
-
                     }
                 },
                 created: function () {
@@ -2369,7 +2367,6 @@ describe('CR-802590', () => {
                     { resourceId: 12, resourceName: 'Construction Supervisor' },
                     { resourceId: 13, resourceName: 'Nancy Davolio' },
                     { resourceId: 14, resourceName: 'Anne Dodsworth' },
-
                 ],
                 highlightWeekends: true,
                 timelineSettings: {
@@ -2421,6 +2418,267 @@ describe('CR-802590', () => {
             }
             done();
         }
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('Offest calculation on Load time', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: projectNewDataTimezone,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    progress: 'Progress',
+                    dependency:'Predecessor',
+                    baselineStartDate: "BaselineStartDate",
+                    baselineEndDate: "BaselineEndDate",
+                    child: 'subtasks',
+                    indicators: 'Indicators'
+                },
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true,
+                },
+                toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll', 'Indent', 'Outdent'],
+                allowSelection: true,
+                gridLines: 'Both',
+                height: '650px',
+                rowHeight: 46,
+                taskbarHeight: 25,
+                treeColumnIndex: 1,
+                highlightWeekends: true,
+                autoUpdatePredecessorOffset: true,
+                timelineSettings: {
+                    topTier: {
+                        unit: 'Week',
+                        format: 'MMM dd, y',
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                    },
+                },
+                columns: [
+                    { field: 'TaskID', headerText: 'Task ID' },
+                    { field: 'TaskName', headerText: 'Task Name', allowReordering: false  },
+                    { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+                    { field: 'Duration', headerText: 'Duration', allowEditing: false },
+                    { field: 'Predecessor', headerText: 'Predecessor' },
+                    { field: 'Progress', headerText: 'Progress', allowFiltering: false }, 
+                ],
+                labelSettings: {
+                    leftLabel: 'TaskName',
+                },
+                splitterSettings: {
+                    columnIndex: 3
+                },
+                eventMarkers: [
+                    {
+                        day: '04/10/2019',
+                        cssClass: 'e-custom-event-marker',
+                        label: 'Project approval and kick-off'
+                    }
+                ],
+                holidays: [{
+                    from: "04/04/2019",
+                    to: "04/05/2019",
+                    label: " Public holidays",
+                    cssClass: "e-custom-holiday"
+                
+                },
+                {
+                    from: "04/12/2019",
+                    to: "04/12/2019",
+                    label: " Public holiday",
+                    cssClass: "e-custom-holiday"
+                
+                }],
+            }, done);
+    });
+    it('Checking for offset', (done: Function) => {
+        expect(ganttObj.currentViewData[4].ganttProperties.predecessorsName).toBe('3FS+3 days,4FS');
+        done();
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('Offest calculation on dynamic change', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: projectNewDataTimezone,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    progress: 'Progress',
+                    dependency:'Predecessor',
+                    baselineStartDate: "BaselineStartDate",
+                    baselineEndDate: "BaselineEndDate",
+                    child: 'subtasks',
+                    indicators: 'Indicators'
+                },
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true,
+                },
+                toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll', 'Indent', 'Outdent'],
+                allowSelection: true,
+                gridLines: 'Both',
+                height: '650px',
+                rowHeight: 46,
+                taskbarHeight: 25,
+                treeColumnIndex: 1,
+                highlightWeekends: true,
+                autoUpdatePredecessorOffset: true,
+                timelineSettings: {
+                    topTier: {
+                        unit: 'Week',
+                        format: 'MMM dd, y',
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                    },
+                },
+                columns: [
+                    { field: 'TaskID', headerText: 'Task ID' },
+                    { field: 'TaskName', headerText: 'Task Name', allowReordering: false  },
+                    { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+                    { field: 'Duration', headerText: 'Duration', allowEditing: false },
+                    { field: 'Predecessor', headerText: 'Predecessor' },
+                    { field: 'Progress', headerText: 'Progress', allowFiltering: false }, 
+                ],
+                labelSettings: {
+                    leftLabel: 'TaskName',
+                },
+                splitterSettings: {
+                    columnIndex: 3
+                },
+                eventMarkers: [
+                    {
+                        day: '04/10/2019',
+                        cssClass: 'e-custom-event-marker',
+                        label: 'Project approval and kick-off'
+                    }
+                ],
+                holidays: [{
+                    from: "04/04/2019",
+                    to: "04/05/2019",
+                    label: " Public holidays",
+                    cssClass: "e-custom-holiday"
+                
+                },
+                {
+                    from: "04/12/2019",
+                    to: "04/12/2019",
+                    label: " Public holiday",
+                    cssClass: "e-custom-holiday"
+                
+                }],
+            }, done);
+    });
+    it('Changing includeWeekend true', (done: Function) => {
+        ganttObj.includeWeekend = true;
+        expect(ganttObj.currentViewData[4].ganttProperties.predecessorsName).toBe('3FS+3 days,4FS');
+        expect(ganttObj.currentViewData[3].ganttProperties.predecessorsName).toBe('2FS');
+        done();
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('Gantt incorrect predecessor value', () => {
+    let ganttObj: Gantt;
+    let datasource : any = [
+        { 
+            TaskID: 1, 
+            TaskName: 'Concept Approval', 
+            StartDate: new Date('04/02/2019'), 
+            Duration: 2, 
+            Predecessor: "1" 
+        }
+    ]
+    beforeAll((done) => {
+        ganttObj = createGantt(
+            {
+                dataSource: datasource,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    duration: 'Duration',
+                    dependency: 'Predecessor',
+                },
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                columns: [
+                    { field: 'TaskID', headerText: 'Task ID'},
+                    { field: 'TaskName', headerText: 'Task Name', allowReordering: false },
+                    { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+                    { field: 'EndDate', headerText: 'End Date', allowSorting: false },
+                    { field: 'Duration', headerText: 'Duration', allowEditing: false },
+                    { field: 'Predecessor', headerText: 'Predecessor' }
+                ],
+            }, done);
+    });
+    it('Check predecessor is undefined', () => {
+        expect(ganttObj.flatData[0].ganttProperties.predecessor).toBe(undefined);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('Dynamically empty Gantt when parent predecessor pressent', () => {
+    let ganttObj: Gantt;
+    beforeAll((done) => {
+        ganttObj = createGantt(
+            {
+                dataSource: emptyDataSource,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    duration: 'Duration',
+                    progress: 'Progress',
+                    child: 'subtasks',
+                    dependency: 'Predecessor'
+                },
+            }, done);
+    });
+    it('Check dynamically empty data source when parent predecessor present', () => {
+        ganttObj.dataSource = [];
+        expect((ganttObj.dataSource as Object[]).length).toBe(0);
     });
     afterAll(() => {
         if (ganttObj) {

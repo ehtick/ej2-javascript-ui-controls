@@ -1,4 +1,4 @@
-import { ChartLocation, getUnicodeText, textTrim, withInBounds } from '../../common/utils/helper';import { ILegendRegions } from '../../common/model/interface';import { ChartDrawType, ChartSeriesType, LegendMode } from '../../chart/utils/enum';import { Alignment, LegendPosition, LegendTitlePosition } from '../../common/utils/enum';import { Size, measureText, Rect } from '@syncfusion/ej2-svg-base';import { Series } from '../../chart/series/chart-series';import { legendClick, legendRender, regSub, regSup } from '../../common/model/constants';import { IStockLegendClickEventArgs, IStockLegendRenderEventArgs, StockChartBorder, StockChartFont, StockMargin } from '../model/base';import { Browser } from '@syncfusion/ej2-base';import { StockChart } from '../../stock-chart/index';import { Axis } from '../../chart/axis/axis';import { Property, Complex, ChildProperty} from '@syncfusion/ej2-base';import { ContainerPadding, Location } from '../../common/model/base';import { StockChartFontModel, StockChartBorderModel, StockMarginModel } from '../model/base-model';import { LocationModel } from '../../common';import { ContainerPaddingModel } from '../../common/model/base-model';
+import { ChartLocation, getUnicodeText, textTrim, withInBounds } from '../../common/utils/helper';import { ILegendRegions } from '../../common/model/interface';import { ChartDrawType, ChartSeriesType, LegendMode } from '../../chart/utils/enum';import { Alignment, LegendPosition, LegendTitlePosition } from '../../common/utils/enum';import { Size, measureText, Rect } from '@syncfusion/ej2-svg-base';import { Series } from '../../chart/series/chart-series';import { legendClick, legendRender, regSub, regSup } from '../../common/model/constants';import { measureLegendTemplateSize } from '../../common/utils/helper';import { IStockLegendClickEventArgs, IStockLegendRenderEventArgs, StockChartBorder, StockChartFont, StockMargin } from '../model/base';import { Browser, isNullOrUndefined } from '@syncfusion/ej2-base';import { StockChart } from '../../stock-chart/index';import { Axis } from '../../chart/axis/axis';import { Property, Complex, ChildProperty} from '@syncfusion/ej2-base';import { ContainerPadding, Location } from '../../common/model/base';import { StockChartFontModel, StockChartBorderModel, StockMarginModel } from '../model/base-model';import { LocationModel } from '../../common';import { ContainerPaddingModel } from '../../common/model/base-model';
 
 /**
  * Interface for a class StockChartLegendSettings
@@ -231,6 +231,15 @@ export interface StockChartLegendSettingsModel {
      */
 
     isInversed?: boolean;
+
+    /**
+     * Specifies the custom template used to render the content of the legend item for the current series.
+     * The template can contain any valid HTML element or layout. When set, the provided template replaces the default legend text for the series.
+     *
+     * @default null.
+     */
+
+    template?: string | Function;
 
 }
 

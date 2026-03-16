@@ -128,6 +128,7 @@ export class HtmlEditor {
         this.parent.on(events.paste, this.onPaste, this);
         this.parent.on(events.tableclass, this.isTableClassAdded, this);
         this.parent.on(events.onHandleFontsizeChange, this.onHandleFontsizeChange, this);
+        this.parent.on(events.afterKeyDown, this.afterKeyDown, this);
     }
     private onSlashMenuOpen(): void {
         this.isSlashMenuOpen = true;
@@ -358,6 +359,54 @@ export class HtmlEditor {
             this.removeZeroWidthSpaces(child, regex);
         });
     }
+
+    private enterWithSpace(): void {
+        const range: Range = this.parent.getRange();
+        const isCursor: boolean = range.startContainer === range.endContainer && range.startOffset === range.endOffset;
+        const cursorpointer: number = range.startOffset;
+        const currentText: HTMLElement = this.parent.formatter.editorManager.nodeSelection
+            .findFirstTextNode(range.startContainer) as HTMLElement;
+        const startNode: HTMLElement = range.startContainer.nodeName === '#text' ? (range.startContainer.parentElement !== this.parent.inputElement) ? range.startContainer.parentElement : range.startContainer as HTMLElement :
+            range.startContainer as HTMLElement;
+        const preventedSelectors: string = 'table, tbody, td, th, .e-img-caption-text, pre, pre code, blockquote';
+        let isAllowed: boolean ;
+        if (startNode.nodeType !== Node.TEXT_NODE) {
+            isAllowed = startNode && isNOU(startNode.querySelector(preventedSelectors))
+                && isNOU(closest(startNode, preventedSelectors));
+            if (startNode.closest('table, tbody, td, th')) {
+                const closestBlockParent: HTMLElement = this.parent.formatter.editorManager.domTree.getParentBlockNode(startNode);
+                const notAllowedTableElemTags: string[] = ['td', 'th', 'tbody'];
+                if (notAllowedTableElemTags.indexOf(closestBlockParent.nodeName.toLowerCase()) > - 1) {
+                    isAllowed = false;
+                } else {
+                    isAllowed = true;
+                }
+            }
+            // Edge case: Prevent space replacement when cursor is positioned at a text node within startNode's children
+            if (isCursor && startNode.nodeType !== Node.TEXT_NODE) {
+                if (isCursor && currentText && currentText.previousSibling && currentText.previousSibling.nodeName !== 'BR') {
+                    isAllowed = false;
+                }
+            }
+        } else {
+            if (isCursor && startNode.textContent[range.startOffset] === ' ') {
+                isAllowed = true;
+            }
+        }
+        if (currentText && isCursor && currentText.textContent[range.startOffset] === ' ' && isAllowed) {
+            const textContentArray: string[] = Array.from(currentText.textContent);
+            textContentArray[range.startOffset] = textContentArray[range.startOffset].replace(/^\s/, '\u00A0');
+            currentText.textContent = textContentArray.join('');
+            this.parent.formatter.editorManager.nodeSelection.setCursorPoint(
+                this.parent.contentModule.getDocument(), currentText, cursorpointer
+            );
+        }
+    }
+    private afterKeyDown(e: NotifyArgs): void {
+        if ((e.args as KeyboardEvent).which === 13) {
+            this.enterWithSpace();
+        }
+    }
     private onKeyDown(e: NotifyArgs): void {
         if ((e.args as KeyboardEventArgs).ctrlKey && (e.args as KeyboardEventArgs).keyCode === 65) {
             this.isCopyAll = true;
@@ -403,7 +452,6 @@ export class HtmlEditor {
                 this.processInlineElementDeletion(range, args, rootInlineContainer, isIsolatedSingleChar);
             }
         }
-
         if (args.keyCode === 9 && this.parent.enableTabKey && !isCodeBlock) {
             this.parent.formatter.saveData(e);
             if (!this.indentTab()) {
@@ -432,11 +480,22 @@ export class HtmlEditor {
                             this.rangeCollection.push(this.nodeSelectionObj.getRange(this.contentRenderer.getDocument()));
                         }
                     } else {
-                        if (selection.startOffset !== selection.endOffset && selection.startOffset === 0) {
+                        const isSelStartZeroNotCollapsed: boolean =
+                            selection.startOffset === 0 && selection.endOffset !== selection.startOffset;
+                        const startContainer: Node = selection.startContainer;
+                        const isImageNodeAtOffset: boolean = (
+                            selection.startOffset !== selection.endOffset &&
+                            startContainer &&
+                            startContainer.hasChildNodes() &&
+                            startContainer.childNodes &&
+                            startContainer.childNodes.length > selection.startOffset &&
+                            (startContainer.childNodes[selection.startOffset] as Node).nodeName === 'IMG'
+                        );
+                        const shouldAddMarginTab: boolean = isSelStartZeroNotCollapsed || isImageNodeAtOffset;
+                        if (shouldAddMarginTab) {
                             this.marginTabAdd(args.shiftKey, alignmentNodes);
-                        }
-                        else {
-                            InsertHtml.Insert(this.contentRenderer.getDocument(), '&nbsp;&nbsp;&nbsp;&nbsp;', this.parent.element);
+                        } else {
+                            InsertHtml.Insert(this.contentRenderer.getDocument(), '&nbsp;&nbsp;&nbsp;&nbsp;', this.parent.inputElement);
                             this.rangeCollection.push(this.nodeSelectionObj.getRange(this.contentRenderer.getDocument()));
                         }
                     }
@@ -550,6 +609,18 @@ export class HtmlEditor {
         }
         return false;
     }
+    private isUnOrderedList(editorValue: string): boolean {
+        editorValue = editorValue.replace(/\u200B/g, '');
+        const ulListStartRegex: RegExp[] = [/^[*]$/, /^[-]$/ ];
+        if (!isNullOrUndefined(editorValue)) {
+            for (let i: number = 0; i < ulListStartRegex.length; i++) {
+                if (ulListStartRegex[i as number].test(editorValue)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
     private isInlineProtectionNeeded(range: Range, isDeleteOrBackspace: boolean): boolean {
         if (!range || !isDeleteOrBackspace) { return false; }
         const collapsed: boolean = range.startContainer === range.endContainer && range.startOffset === range.endOffset;
@@ -604,18 +675,6 @@ export class HtmlEditor {
             this.insertZeroWidthSpace(inlineElement);
         }
         args.preventDefault();
-    }
-    private isUnOrderedList(editorValue: string): boolean {
-        editorValue = editorValue.replace(/\u200B/g, '');
-        const ulListStartRegex: RegExp[] = [/^[*]$/, /^[-]$/ ];
-        if (!isNullOrUndefined(editorValue)) {
-            for (let i: number = 0; i < ulListStartRegex.length; i++) {
-                if (ulListStartRegex[i as number].test(editorValue)) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
     private isCheckList(editorValue: string): boolean {
         editorValue = editorValue.replace(/\u200B/g, '');
@@ -811,7 +870,7 @@ export class HtmlEditor {
                         currentParent = tempParent;
                     }
                     (e.args as KeyboardEventArgs).preventDefault();
-                } else if (prevSibling.querySelectorAll('img, video, audio').length === 0){
+                } else if (prevSibling.querySelectorAll('img, video, audio').length === 0) {
                     prevSibling.parentNode.removeChild(prevSibling);
                     (e.args as KeyboardEventArgs).preventDefault();
                 }
@@ -1444,6 +1503,7 @@ export class HtmlEditor {
         this.parent.off(events.readOnlyMode, this.updateReadOnly);
         this.parent.off(events.paste, this.onPaste);
         this.parent.off(events.tableclass, this.isTableClassAdded);
+        this.parent.off(events.afterKeyDown, this.afterKeyDown);
     }
 
     private render(): void {

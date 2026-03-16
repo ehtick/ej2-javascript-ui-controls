@@ -4,6 +4,7 @@
 import { createElement, addClass, detach, EventHandler, L10n, Browser, isNullOrUndefined } from '@syncfusion/ej2-base'
 import '../../node_modules/es6-promise/dist/es6-promise';
 import { Dialog, DialogUtility, BeforeCloseEventArgs, BeforeSanitizeHtmlArgs } from '../../src/dialog/dialog';
+import { Tooltip } from '../../src/tooltip/tooltip';
 
 function copyObject(source: any, destination: any): Object {
     for (let prop in source) {
@@ -5309,6 +5310,39 @@ describe('EJ2-Tab Navigation with Hidden/Disabled Footer Buttons in Modal Dialog
             expect(visibleFocusable).toContain(button2);
             done();
         }, 200);
+    });
+    describe('EJ2-998113 - Button width not proper when rendered inside dialogs footer', () => {
+        let ele: HTMLElement;
+        let dialog: Dialog;
+        beforeEach(() => {
+            ele = createElement('div', { id: 'dialog' });
+            document.body.appendChild(ele);
+            dialog = new Dialog({
+                header: "Draggable dialogAbout SYNCFUSION Succinctly Series About SYNCFUSION Succinctly Series",
+                content: "Dialog content",
+                animationSettings: { effect: 'None' },
+                width: '200px',
+                cssClass: 'e-dlg-tooltip',
+                buttons: [
+                    { buttonModel: { content: 'Very very very very very very very long text', isPrimary: true, }, },
+                    { buttonModel: { content: 'Very very very very very very very long text', }, },
+                ]
+            }, '#dialog');
+        });
+        it('code coverage', () => {
+            (dialog as any).attachEllipsisTooltip((dialog as any).headerEle, (dialog as any).headerEle.textContent, 'BottomCenter', 300);
+            const tip: Tooltip = new Tooltip({ content: 'content', position: 'BottomCenter', opensOn: 'Hover', width: 300 }, (dialog as any).headerEle);
+            (dialog as any).headerEle.dlgTooltip = tip;
+            (dialog as any).closeOverflowTooltips();
+        });
+        afterEach(() => {
+            if (dialog) {
+                destroyDialog(dialog);
+            }
+            if (ele && ele.parentElement) {
+                detach(ele);
+            }
+        });
     });
     describe('Replication: nested fullscreen modals keep body locked', () => {
         it('should keep body/target locked until last modal closes', (done: Function) => {

@@ -1,5 +1,5 @@
 import { IDataSet } from '../../src/base/engine';
-import { pivot_smalldata } from '../base/datasource.spec';
+import { pivot_smalldata, employeeData} from '../base/datasource.spec';
 import * as util from '../utils.spec';
 import { profile, inMB, getMemoryProfile } from '../common.spec';
 import { PivotView } from '../../src/pivotview/base/pivotview';
@@ -9,10 +9,11 @@ import { PDFExport } from '../../src/pivotview/actions/pdf-export';
 import { ExcelExport } from '../../src/pivotview/actions/excel-export';
 import { Toolbar } from '../../src/common/popups/toolbar';
 import { FieldList } from '../../src/common/actions/field-list';
-import { BeforeExportEventArgs, ColumnRenderEventArgs, ExcelExportProperties, ExcelImage, ExportCompleteEventArgs, PdfCellRenderArgs, PivotActionBeginEventArgs } from '../../src/common/base/interface';
-import { ExcelQueryCellInfoEventArgs, PdfExportProperties } from '@syncfusion/ej2-grids';
+import { BeforeExportEventArgs, ColumnRenderEventArgs, ExcelExportProperties, ExcelImage, ExportCompleteEventArgs, PdfCellRenderArgs, PivotActionBeginEventArgs, PdfExportProperties} from '../../src/common/base/interface';
+import { ExcelQueryCellInfoEventArgs, PdfQueryCellInfoEventArgs } from '@syncfusion/ej2-grids';
 import { PdfFontFamily, PdfFontStyle, PdfPageOrientation, PdfPageSize, PdfStandardFont, PdfStringFormat } from '@syncfusion/ej2-pdf-export';
 import { ILoadedEventArgs } from '@syncfusion/ej2-charts';
+import { ConditionalFormatting } from '../../src/common/conditionalformatting/conditional-formatting';
 
 let image: string = '/9j/4AAQSkZJRgABAQAAAQABAAD/9k=';
 
@@ -3080,6 +3081,424 @@ describe('PDF Export', () => {
                 (document.querySelectorAll('.e-menu-popup li')[0] as HTMLElement).click();
                 done();
             }, 100);
+        });
+        it('memory leak', () => {
+            profile.sample();
+            let average: any = inMB(profile.averageChange);
+            //Check average change in memory samples to not be over 10MB
+            let memory: any = inMB(getMemoryProfile());
+            //Check the final memory usage against the first usage, there should be little change if everything was properly deallocated
+            expect(memory).toBeLessThan(profile.samples[0] + 0.25);
+        });
+    });
+
+    describe('- Export Multiple Pivot Tables to PDF - AppendToPage', () => {
+        let pivotGridObj: PivotView;
+        let pivotGridObj1: PivotView;
+        let pdfExportProperties: PdfExportProperties = {
+            multipleExport: { type: 'AppendToPage', blankSpace: 100 },
+            pivotTableIds: ['PivotTable', 'PivotTable1']
+        };
+
+        let elem: HTMLElement = createElement('div', { id: 'PivotTable' });
+        if (document.getElementById(elem.id)) {
+            remove(document.getElementById(elem.id));
+        }
+        document.body.appendChild(elem);
+        let elem1: HTMLElement = createElement('div', { id: 'PivotTable1' });
+        if (document.getElementById(elem1.id)) {
+            remove(document.getElementById(elem1.id));
+        }
+        document.body.appendChild(elem1);
+
+        afterAll(() => {
+            if (pivotGridObj) {
+                pivotGridObj.destroy();
+            }
+            if (pivotGridObj1) {
+                pivotGridObj1.destroy();
+            }
+            remove(elem);
+        });
+        beforeAll(() => {
+            const isDef = (o: any) => o !== undefined && o !== null;
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                pending(); //Skips test (in Chai)
+                return;
+            }
+            if (document.getElementById(elem.id)) {
+                remove(document.getElementById(elem.id));
+            }
+            document.body.appendChild(elem);
+            PivotView.Inject(Toolbar, PDFExport, FieldList, ConditionalFormatting);
+            pivotGridObj = new PivotView({
+                dataSourceSettings: {
+                    dataSource: employeeData as IDataSet[],
+                    rows: [{ name: 'FirstName' }],
+                    columns: [{ name: 'Title' }],
+                    values: [{ name: 'EmployeeID', caption: 'Employee Image' }, { name: 'Salary' }],
+                    filters: [],
+                    filterSettings: [
+                        { name: 'Title', type: 'Include', items: ['Sales Representative'] }
+                    ]
+                },
+                actionBegin: function (args: PivotActionBeginEventArgs) {
+                    if (args.actionName === 'PDF export') {
+                        args.cancel = true;
+                        pivotGridObj.pdfExport(pdfExportProperties, true);
+                    }
+                },
+                width: '100%',
+                height: 300,
+                allowPdfExport: true,
+                showFieldList: true,
+                toolbar: ['Export'],
+                showToolbar: true,
+                gridSettings: {
+                    pdfHeaderQueryCellInfo: function (args: any) {
+                        if (args.gridCell && (args.gridCell).formattedText === '') {
+                            args.image = {
+                                base64: employeeData[5].EmployeeImage,
+                                height: 50,
+                                width: 50
+                            };
+                        }
+                        else if (args.gridCell && args.gridCell.valueSort && args.gridCell.valueSort.levelName === 'Sales Representative') {
+                            args.hyperLink = {
+                                target: 'https://en.wikipedia.org/?title=Sales_representative&redirect=no',
+                                displayText: args.value
+                            };
+                            args.style = {
+                                fontFamily: 'TimesRoman',
+                                fontSize: 16,
+                            };
+                        }
+                        else if (args.gridCell && args.gridCell.valueSort && args.gridCell.valueSort.levelName === 'Sales Representative.Employee Image') {
+                            args.image = {
+                                base64: employeeData[3].EmployeeImage
+                            };
+                        }
+                    },
+                    pdfQueryCellInfo: (args: any) => {
+                        if (args.data) {
+                            if (args.data.axis === 'row' && args.data.valueSort
+                                && args.data.valueSort.axis === 'FirstName') {
+                                args.hyperLink = {
+                                    target: 'mailto:' + employeeData[args.data.index[0]].EmailID,
+                                };
+                            }
+                            if (args.data.actualText === 'EmployeeID' && !args.data.isGrandSum) {
+                                args.image = {
+                                    base64: employeeData[Number(args.data.actualValue) - 1].EmployeeImage,
+                                    height: 50,
+                                    width: 50
+                                };
+                            }
+                            if (args.data.actualText === 'EmployeeID' && args.data.isGrandSum) {
+                                args.style = {
+                                    textAlignment: 'Right',
+                                    textBrushColor: '#0D47A1',
+                                    textPenColor: '#004D40',
+                                    fontFamily: 'Courier',
+                                    fontSize: 16,
+                                    bold: true,
+                                    italic: true,
+                                    underline: true,
+                                    strikeout: true,
+                                    verticalAlignment: 'Bottom',
+                                    backgroundColor: '#BBDEFB',
+                                    border: { color: '#6A1B9A', lineStyle: 'Thin', dashStyle: 'DashDot' },
+                                };
+                            }
+                            if (args.data.actualText === 'Salary' && !args.data.isGrandSum) {
+                                args.style = {
+                                    textAlignment: 'Left',
+                                    textBrushColor: '#0D47A1',
+                                    textPenColor: '#004D40',
+                                    fontFamily: 'Symbol',
+                                    fontSize: 16,
+                                    bold: false,
+                                    italic: false,
+                                    underline: false,
+                                    strikeout: false,
+                                    verticalAlignment: 'Top',
+                                    backgroundColor: '#BBDEFB',
+                                    border: { color: '#6A1B9A', lineStyle: 'Thin', dashStyle: 'DashDot' },
+                                };
+                            }
+                            if (args.data.actualText === 'Salary' && args.data.isGrandSum) {
+                                args.style = {
+                                    textAlignment: 'Left',
+                                    textBrushColor: '#0D47A1',
+                                    textPenColor: '#004D40',
+                                    fontFamily: 'ZapfDingbats',
+                                    fontSize: 16,
+                                    bold: false,
+                                    italic: false,
+                                    underline: false,
+                                    strikeout: false,
+                                    verticalAlignment: 'Middle',
+                                    backgroundColor: '#BBDEFB',
+                                    border: { color: '#6A1B9A', lineStyle: 'Thin', dashStyle: 'DashDot' },
+                                };
+                            }
+                        }
+                    }
+                }
+            });
+            pivotGridObj.appendTo('#PivotTable');
+            pivotGridObj1 = new PivotView({
+                dataSourceSettings: {
+                    dataSource: pivot_smalldata as IDataSet[],
+                    expandAll: false,
+                    columns: [{ name: 'Date' }, { name: 'Product' }],
+                    rows: [{ name: 'Country' }, { name: 'State' }],
+                    values: [{ name: 'Amount' }, { name: 'Quantity' }], filters: [],
+                    conditionalFormatSettings: [
+                        {
+                            measure: 'Amount',
+                            value1: 100000,
+                            conditions: 'LessThan',
+                            style: {
+                                backgroundColor: '#80cbc4',
+                                color: 'black',
+                                fontFamily: 'Tahoma',
+                                fontSize: '12px'
+                            }
+                        },
+                    ]
+                },
+                width: '100%',
+                height: 300,
+                allowPdfExport: true,
+                showFieldList: true,
+                toolbar: ['Export'],
+                showToolbar: true,
+                allowConditionalFormatting: true
+            });
+            pivotGridObj1.appendTo('#PivotTable1');
+
+        });
+        it('For sample render - PDF AppendToPage', (done: Function) => {
+            setTimeout(() => {
+                expect(1).toBe(1);
+                done();
+            }, 500);
+        });
+        it('PDF Export - AppendToPage', (done: Function) => {
+            setTimeout(() => {
+                let li: HTMLElement = document.getElementById('PivotTableexport_menu').children[0] as HTMLElement;
+                expect(li.classList.contains('e-menu-caret-icon')).toBeTruthy();
+                util.triggerEvent(li, 'mouseover');
+                (document.querySelectorAll('.e-menu-popup li')[0] as HTMLElement).click();
+                done();
+            }, 2000);
+        });
+        it('memory leak', () => {
+            profile.sample();
+            let average: any = inMB(profile.averageChange);
+            //Check average change in memory samples to not be over 10MB
+            let memory: any = inMB(getMemoryProfile());
+            //Check the final memory usage against the first usage, there should be little change if everything was properly deallocated
+            expect(memory).toBeLessThan(profile.samples[0] + 0.25);
+        });
+    });
+
+    describe('- Export Multiple Pivot Tables to PDF - NewPage', () => {
+        let pivotGridObj: PivotView;
+        let pivotGridObj1: PivotView;
+        let pdfExportProperties: PdfExportProperties = {
+            multipleExport: { type: 'NewPage' },
+            pivotTableIds: ['PivotTable', 'PivotTable1'],
+            allowHorizontalOverflow: true,
+            theme: {
+                header: {
+                    fontName: 'Calibri',
+                    fontSize: 17
+                },
+                record: {
+                    fontName: 'Courier',
+                    fontSize: 17
+                },
+            }
+        };
+
+        let elem: HTMLElement = createElement('div', { id: 'PivotTable' });
+        if (document.getElementById(elem.id)) {
+            remove(document.getElementById(elem.id));
+        }
+        document.body.appendChild(elem);
+        let elem1: HTMLElement = createElement('div', { id: 'PivotTable1' });
+        if (document.getElementById(elem1.id)) {
+            remove(document.getElementById(elem1.id));
+        }
+        document.body.appendChild(elem1);
+
+        afterAll(() => {
+            if (pivotGridObj) {
+                pivotGridObj.destroy();
+            }
+            if (pivotGridObj1) {
+                pivotGridObj1.destroy();
+            }
+            remove(elem);
+        });
+        beforeAll(() => {
+            const isDef = (o: any) => o !== undefined && o !== null;
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                pending(); //Skips test (in Chai)
+                return;
+            }
+            if (document.getElementById(elem.id)) {
+                remove(document.getElementById(elem.id));
+            }
+            document.body.appendChild(elem);
+            PivotView.Inject(Toolbar, PDFExport, FieldList, ConditionalFormatting);
+            pivotGridObj = new PivotView({
+                dataSourceSettings: {
+                    dataSource: employeeData as IDataSet[],
+                    rows: [{ name: 'FirstName' }],
+                    columns: [{ name: 'Title' }],
+                    values: [{ name: 'EmployeeID', caption: 'Employee Image' }, { name: 'Salary' }],
+                    filters: [],
+                    filterSettings: [
+                        { name: 'Title', type: 'Include', items: ['Sales Representative'] }
+                    ]
+                },
+                actionBegin: function (args: PivotActionBeginEventArgs) {
+                    if (args.actionName === 'PDF export') {
+                        args.cancel = true;
+                        pivotGridObj.pdfExport(pdfExportProperties, true);
+                    }
+                },
+                width: '100%',
+                height: 300,
+                allowPdfExport: true,
+                showFieldList: true,
+                gridSettings: {
+                    pdfQueryCellInfo: (args: any) => {
+                        if (args.data) {
+                            if (args.data.axis === 'row' && args.data.valueSort
+                                && args.data.valueSort.axis === 'FirstName') {
+                                args.style = {
+                                    font: new PdfStandardFont(PdfFontFamily.TimesRoman, 6, PdfFontStyle.Strikeout),
+                                };
+                            }
+                        }
+                    }
+                },
+                toolbar: ['Export'],
+                showToolbar: true
+            });
+            pivotGridObj.appendTo('#PivotTable');
+            pivotGridObj1 = new PivotView({
+                dataSourceSettings: {
+                    dataSource: pivot_smalldata as IDataSet[],
+                    expandAll: false,
+                    columns: [{ name: 'Date' }, { name: 'Product' }],
+                    rows: [{ name: 'Country' }, { name: 'State' }],
+                    values: [{ name: 'Amount' }, { name: 'Quantity' }], filters: []
+                },
+                width: '100%',
+                height: 300,
+                allowPdfExport: true,
+                showFieldList: true,
+                toolbar: ['Export'],
+                showToolbar: true,
+            });
+            pivotGridObj1.appendTo('#PivotTable1');
+
+        });
+        it('For sample render - PDF NewPage', (done: Function) => {
+            setTimeout(() => {
+                expect(1).toBe(1);
+                done();
+            }, 500);
+        });
+        it('PDF Export - NewPage', (done: Function) => {
+            setTimeout(() => {
+                let li: HTMLElement = document.getElementById('PivotTableexport_menu').children[0] as HTMLElement;
+                expect(li.classList.contains('e-menu-caret-icon')).toBeTruthy();
+                util.triggerEvent(li, 'mouseover');
+                (document.querySelectorAll('.e-menu-popup li')[0] as HTMLElement).click();
+                done();
+            }, 2000);
+        });
+        it('memory leak', () => {
+            profile.sample();
+            let average: any = inMB(profile.averageChange);
+            //Check average change in memory samples to not be over 10MB
+            let memory: any = inMB(getMemoryProfile());
+            //Check the final memory usage against the first usage, there should be little change if everything was properly deallocated
+            expect(memory).toBeLessThan(profile.samples[0] + 0.25);
+        });
+    });
+
+    describe('- Exporting an empty pivot table to PDF', () => {
+        let pivotGridObj: PivotView;
+        let elem: HTMLElement = createElement('div', { id: 'PivotTable' });
+        if (document.getElementById(elem.id)) {
+            remove(document.getElementById(elem.id));
+        }
+        document.body.appendChild(elem);
+        afterAll(() => {
+            if (pivotGridObj) {
+                pivotGridObj.destroy();
+            }
+            remove(elem);
+        });
+        beforeAll(() => {
+            const isDef = (o: any) => o !== undefined && o !== null;
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                pending(); //Skips test (in Chai)
+                return;
+            }
+            if (document.getElementById(elem.id)) {
+                remove(document.getElementById(elem.id));
+            }
+            document.body.appendChild(elem);
+            PivotView.Inject(Toolbar, PDFExport, FieldList, ConditionalFormatting);
+            pivotGridObj = new PivotView({
+                dataSourceSettings: {
+                    dataSource: employeeData as IDataSet[],
+                    rows: [],
+                    columns: [],
+                    values: [],
+                    filters: []
+                },
+                actionBegin: function (args: PivotActionBeginEventArgs) {
+                    if (args.actionName === 'PDF export') {
+                        args.cancel = true;
+                        pivotGridObj.pdfExport({}, false, null, true);
+                    }
+                },
+                width: '100%',
+                height: 300,
+                allowPdfExport: true,
+                showFieldList: true,
+                toolbar: ['Export'],
+                showToolbar: true
+            });
+            pivotGridObj.appendTo('#PivotTable');
+
+        });
+        it('For sample render - 16', (done: Function) => {
+            setTimeout(() => {
+                expect(1).toBe(1);
+                done();
+            }, 500);
+        });
+        it('PDF Export', (done: Function) => {
+            setTimeout(() => {
+                let li: HTMLElement = document.getElementById('PivotTableexport_menu').children[0] as HTMLElement;
+                expect(li.classList.contains('e-menu-caret-icon')).toBeTruthy();
+                util.triggerEvent(li, 'mouseover');
+                (document.querySelectorAll('.e-menu-popup li')[0] as HTMLElement).click();
+                done();
+            }, 2000);
         });
         it('memory leak', () => {
             profile.sample();

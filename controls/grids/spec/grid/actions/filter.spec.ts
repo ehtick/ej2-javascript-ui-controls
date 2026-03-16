@@ -2299,7 +2299,6 @@ describe('Check for case sensitive ', ()=>{
             actionComplete = null;
         });
     });
-
     describe('EJ2-1006528: filterSettings.columns shows duplicate date values instead of the different date values defined initially => ', () => {
         let gridObj: Grid;
         beforeAll((done: Function) => {

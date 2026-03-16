@@ -7,6 +7,34 @@ import { SaveFormat } from '../types';
 export class ImageBlockSettings extends ChildProperty<ImageBlockSettings> {
 
     /**
+     * Specifies the server endpoint URL for uploading images.
+     * If empty, server upload functionality is disabled.
+     *
+     * @default ''
+     */
+    @Property('')
+    public saveUrl: string;
+
+    /**
+     * Specifies the maximum file size allowed for image uploads in bytes.
+     * Files exceeding this size will be rejected during validation.
+     * Default is 30000000 bytes.
+     *
+     * @default 30000000
+     */
+    @Property(30000000)
+    public maxFileSize: number;
+
+    /**
+     * Specifies the base path for storing and displaying images on the server.
+     * This path is appended to the server URL for image storage organization.
+     *
+     * @default ''
+     */
+    @Property('')
+    public path: string;
+
+    /**
      * Specifies the format to save the image.
      * Accepts either 'base64' for inline image encoding or 'blob' for binary object representation.
      *

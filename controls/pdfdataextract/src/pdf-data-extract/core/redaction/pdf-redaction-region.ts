@@ -17,7 +17,7 @@ import { PdfAppearance, PdfTemplate, Rectangle, PdfColor } from '@syncfusion/ej2
  * // Add redactions with specified options.
  * redactor.add(redactions);
  * // Apply redactions on the PDF document
- * redactor.redact();
+ * redactor.redactSync();
  * // Save the document
  * document.save('output.pdf');
  * // Destroy the document
@@ -49,7 +49,7 @@ export class PdfRedactionRegion {
      * redactions.push(redaction);
      * redactor.add(redactions);
      * // Apply redactions on the PDF document
-     * redactor.redact();
+     * redactor.redactSync();
      * // Save the document
      * document.save('output.pdf');
      * // Destroy the document
@@ -86,7 +86,7 @@ export class PdfRedactionRegion {
      * // Add redactions with specified options.
      * redactor.add(redactions);
      * // Apply redactions on the PDF document
-     * redactor.redact();
+     * redactor.redactSync();
      * // Save the document
      * document.save('output.pdf');
      * // Destroy the document
@@ -113,7 +113,7 @@ export class PdfRedactionRegion {
      * redactions.push(redaction);
      * redactor.add(redactions);
      * // Apply redactions on the PDF document
-     * redactor.redact();
+     * redactor.redactSync();
      * // Save the document
      * document.save('output.pdf');
      * // Destroy the document
@@ -143,7 +143,7 @@ export class PdfRedactionRegion {
      * // Add redactions with specified options.
      * redactor.add(redactions);
      * // Apply redactions on the PDF document
-     * redactor.redact();
+     * redactor.redactSync();
      * // Save the document
      * document.save('output.pdf');
      * // Destroy the document
@@ -172,7 +172,7 @@ export class PdfRedactionRegion {
      * // Add redactions with specified options.
      * redactor.add(redactions);
      * // Apply redactions on the PDF document
-     * redactor.redact();
+     * redactor.redactSync();
      * // Save the document
      * document.save('output.pdf');
      * // Destroy the document
@@ -203,7 +203,7 @@ export class PdfRedactionRegion {
      * // Add redactions with specified options.
      * redactor.add(redactions);
      * // Apply redactions on the PDF document
-     * redactor.redact();
+     * redactor.redactSync();
      * // Save the document
      * document.save('output.pdf');
      * // Destroy the document
@@ -232,7 +232,7 @@ export class PdfRedactionRegion {
      * // Add redactions with specified options.
      * redactor.add(redactions);
      * // Apply redactions on the PDF document
-     * redactor.redact();
+     * redactor.redactSync();
      * // Save the document
      * document.save('output.pdf');
      * // Destroy the document
@@ -262,7 +262,7 @@ export class PdfRedactionRegion {
      * // Add redactions with specified options.
      * redactor.add(redactions);
      * // Apply redactions on the PDF document
-     * redactor.redact();
+     * redactor.redactSync();
      * // Save the document
      * document.save('output.pdf');
      * // Destroy the document
@@ -291,7 +291,7 @@ export class PdfRedactionRegion {
      * // Add redactions with specified options.
      * redactor.add(redactions);
      * // Apply redactions on the PDF document
-     * redactor.redact();
+     * redactor.redactSync();
      * // Save the document
      * document.save('output.pdf');
      * // Destroy the document
@@ -324,7 +324,7 @@ export class PdfRedactionRegion {
      * // Add redactions with specified options.
      * redactor.add(redactions);
      * // Apply redactions on the PDF document
-     * redactor.redact();
+     * redactor.redactSync();
      * // Save the document
      * document.save('output.pdf');
      * // Destroy the document

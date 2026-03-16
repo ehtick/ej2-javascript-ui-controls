@@ -3,10 +3,13 @@ import {
     PdfDocument, PdfBitmap, SizeF, PointF, RectangleF, PdfPageTemplateElement,
     PdfFont, PdfSolidBrush, PdfPen, PdfColor, PdfStringFormat, PdfPageNumberField,
     PdfCompositeField, PdfPageCountField, PdfFontFamily, PdfFontStyle, PdfStandardFont,
-    PdfTextAlignment, PdfVerticalAlignment
+    PdfTextAlignment, PdfVerticalAlignment, PdfTextWebLink, PdfGridCell,
+    PdfGridRow
 } from '@syncfusion/ej2-pdf-export';
-import { PdfExportProperties, PdfFooter, PdfHeader, PdfHeaderFooterContent, PdfPageNumberType } from '@syncfusion/ej2-grids';
+import { PdfExportProperties, PdfFooter, PdfHeader, PdfHeaderFooterContent, PdfHeaderQueryCellInfoEventArgs, PdfPageNumberType, PdfQueryCellInfoEventArgs, PdfTheme } from '@syncfusion/ej2-grids';
 import { PdfBorderStyle } from '../../common/base/enum';
+import { IAxisSet } from '../../base/engine';
+import { PivotView } from '../base/pivotview';
 
 /**
  * `PDFExportHelper` module is used to add header and footer in PDF document
@@ -343,5 +346,112 @@ export class PDFExportHelper {
         const g: number = (bigint >> 8) & 255;
         const b: number = bigint & 255;
         return { r: r, g: g, b: b };
+    }
+
+    /**
+     * Converts the supplied base64 image data into a `PdfBitmap`, applies any optional sizing, and assigns it to the
+     * specified PDF grid cell so the image is rendered when exporting to PDF.
+     *
+     * @param {PdfGridCell} cell - Holds the current cell for customization.
+     * @param {Object} image - Holds the image data to insert.
+     * @param {string} image.base64 - Base64-encoded image string used to create the bitmap.
+     * @param {number} [image.height] - Height to assign to the image when provided.
+     * @param {number} [image.width] - Width to assign to the image when provided.
+     * @param {PdfGridRow} pdfGridRow - The current PDF grid row;
+     * @returns {void}
+     * @hidden
+     */
+    public configureCellImage(
+        cell: PdfGridCell, image: { base64: string; height?: number; width?: number }, pdfGridRow: PdfGridRow
+    ): void {
+        const pdfImage: PdfBitmap = new PdfBitmap(image.base64);
+        pdfImage.height = image.height || pdfImage.height;
+        pdfImage.width = image.width || pdfImage.width;
+        cell.value = pdfImage;
+        if (pdfGridRow && pdfGridRow.height < pdfImage.height) {
+            pdfGridRow.height = pdfImage.height;
+        }
+    }
+
+    /**
+     * Applies hyperlink formatting to the supplied PDF grid cell when hyperlink metadata is available, ensuring the exported
+     * PDF displays a clickable link with consistent styling.
+     *
+     * @param {PdfGridCell} cell - The PDF grid cell to render as a hyperlink when hyperlink metadata is provided.
+     * @param {PdfHeaderQueryCellInfoEventArgs | PdfQueryCellInfoEventArgs} args - Provides hyperlink metadata (target URL and optional display text). When not set, the cell is rendered as plain text.
+     * @param {PdfGridRow} pdfGridRow - The current PDF grid row; used to identify header rows for default text styling.
+     * @param {IAxisSet} pivotCell - The current pivot cell; used to identify row header/summary regions for default text styling.
+     * @param {PivotView} currentPivotInstance - The current PivotView instance; used with pivotCell to determine the row header levels.
+     * @returns {void}
+     * @hidden
+     */
+    public setHyperLink(
+        cell: PdfGridCell, args: PdfHeaderQueryCellInfoEventArgs | PdfQueryCellInfoEventArgs, pdfGridRow?: PdfGridRow,
+        pivotCell?: IAxisSet, currentPivotInstance?: PivotView
+    ): void {
+        const isHeader: boolean = (pdfGridRow && pdfGridRow.isHeaderRow) || (pivotCell && pivotCell.axis === 'row');
+        let headerFontColorApplied: boolean = false;
+        let recordFontColorApplied: boolean = false;
+        if (currentPivotInstance && currentPivotInstance.pdfExportModule && currentPivotInstance.pdfExportModule.exportProperties &&
+            currentPivotInstance.pdfExportModule.exportProperties.pdfExportProperties &&
+            currentPivotInstance.pdfExportModule.exportProperties.pdfExportProperties.theme) {
+            const theme: PdfTheme = currentPivotInstance.pdfExportModule.exportProperties.pdfExportProperties.theme;
+            headerFontColorApplied = theme.header && theme.header.fontColor ? true : false;
+            recordFontColorApplied = theme.record && theme.record.fontColor ? true : false;
+        }
+        if (!isNullOrUndefined(args.hyperLink)) {
+            const textLink: PdfTextWebLink = new PdfTextWebLink();
+            textLink.url = args.hyperLink.target;
+            textLink.text = args.hyperLink.displayText || args.hyperLink.target;
+            const fontSize: number = (args && args.style && args.style.fontSize) ? (args.style.fontSize * 0.80) :
+                (cell && cell.style && cell.style.font && cell.style.font['fontSize']) ? cell.style.font['fontSize'] : 11;
+            const fontFamily: PdfFontFamily | string | number = (args && args.style && args.style.fontFamily) ?
+                this.getFontFamily(args.style.fontFamily) : (cell && cell.style && cell.style.font &&
+                    (cell.style.font as PdfStandardFont).fontFamily) ? (cell.style.font as PdfStandardFont).fontFamily :
+                    PdfFontFamily.Helvetica;
+            textLink.font = new PdfStandardFont(fontFamily, fontSize);
+            textLink.brush = new PdfSolidBrush(new PdfColor(51, 102, 187));
+            cell.value = textLink;
+        } else if (isHeader && ((pivotCell.axis === 'row' && !recordFontColorApplied)
+            || (pivotCell.axis === 'column' && !headerFontColorApplied))) {
+            cell.style.textBrush = new PdfSolidBrush(new PdfColor(102, 102, 102));
+        } else if (!isHeader && !recordFontColorApplied && !isNullOrUndefined(pivotCell) && (isNullOrUndefined(pivotCell.style) ||
+            (!isNullOrUndefined(pivotCell.style) && isNullOrUndefined(pivotCell.style.backgroundColor)))) {
+            cell.style.textBrush = new PdfSolidBrush(new PdfColor(0, 0, 0));
+        }
+    }
+
+    /**
+     * Applies the default header background color to the provided PDF grid cell.
+     *
+     * @param {PdfGridCell} cell - The PDF grid cell to style.
+     * @returns {void}
+     * @hidden
+     */
+    public applyHeaderBackground(cell: PdfGridCell): void {
+        const { r, g, b } = this.hexDecToRgb('#f5f5f5');
+        cell.style.backgroundBrush = new PdfSolidBrush(new PdfColor(r, g, b));
+    }
+
+    /**
+     * Converts a font family name string to its corresponding PdfFontFamily enumeration value.
+     *
+     * @param {string} family - The font family name to convert (e.g., 'TimesRoman', 'Courier', 'Symbol', 'ZapfDingbats').
+     * @returns {number} - The PdfFontFamily enumeration value corresponding to the specified font family name.
+     * @hidden
+     */
+    public getFontFamily(family: string): number {
+        switch (family) {
+        case 'TimesRoman':
+            return 2;
+        case 'Courier':
+            return 1;
+        case 'Symbol':
+            return 3;
+        case 'ZapfDingbats':
+            return 4;
+        default:
+            return 0;
+        }
     }
 }

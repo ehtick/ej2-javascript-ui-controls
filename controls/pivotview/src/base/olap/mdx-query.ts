@@ -673,7 +673,18 @@ export class MDXQuery {
         if (calcMembers.length > 0) {
             calcQuery = '\nWITH';
             for (const member of calcMembers) {
-                const prefixName: string = (member.formula.indexOf('Measure') > -1 ? '[Measures].' : member.hierarchyUniqueName + '.');
+                const olapField: IOlapField = this.fieldList[member.name];
+                const engineCalcInfo: { [Key: string]: Object } = this.engine ? this.engine.currentCalcFieldInfo : null;
+                const explicitMemberIsMeasure: boolean = (engineCalcInfo && engineCalcInfo.fieldName === member.name &&
+                    engineCalcInfo.fieldType === 'Measure');
+                const olapFieldIsMeasure: boolean = (olapField && olapField.fieldType === 'Measure');
+                const hierarchyIsMeasures: boolean = (member && member.hierarchyUniqueName &&
+                    member.hierarchyUniqueName.toLowerCase().indexOf('[measures]') === 0);
+                const formulaReferencesMeasures: boolean = (member && member.formula &&
+                    member.formula.toLowerCase().indexOf('[measures]') !== -1);
+                const isMeasure: boolean = explicitMemberIsMeasure || olapFieldIsMeasure || hierarchyIsMeasures
+                    || formulaReferencesMeasures;
+                const prefixName: string = isMeasure ? '[Measures].' : (member.hierarchyUniqueName ? member.hierarchyUniqueName + '.' : '');
                 const aliasName: string = prefixName + '[' + member.name + ']';
                 const formatString: string = (!isNullOrUndefined(member.formatString) ? member.formatString : null);
                 calcQuery += ('\nMEMBER ' + aliasName + 'as (' + member.formula + ') ' + (!isNullOrUndefined(formatString) ? ', FORMAT_STRING ="' + formatString.trim() + '"' : ''));

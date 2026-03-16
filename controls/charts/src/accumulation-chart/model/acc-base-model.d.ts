@@ -1,4 +1,4 @@
-import { Property, ChildProperty, Complex, createElement, Browser, animationMode, extend } from '@syncfusion/ej2-base';import { isNullOrUndefined, getValue } from '@syncfusion/ej2-base';import { DataManager, Query } from '@syncfusion/ej2-data';import { Border, Font, Animation, EmptyPointSettings, Connector, Accessibility } from '../../common/model/base';import { Rect, Size, PathOption, measureText } from '@syncfusion/ej2-svg-base';import { ChartLocation, stringToNumber, appendChildElement, subtractRect } from '../../common/utils/helper';import { AccumulationType, AccumulationLabelPosition, PyramidModes, FunnelModes } from '../model/enum';import { IAccSeriesRenderEventArgs, IAccPointRenderEventArgs, IAccTextRenderEventArgs } from '../model/pie-interface';import { LegendShape, SelectionPattern } from '../../common/utils/enum';import { Data } from '../../common/model/data';import { seriesRender, pointRender } from '../../common/model/constants';import { getSeriesColor } from '../../common/model/theme';import { FontModel, BorderModel, AnimationModel, ConnectorModel, EmptyPointSettingsModel, AccessibilityModel } from '../../common/model/base-model';import { AccumulationChart } from '../accumulation';import { getElement, firstToLowerCase } from '../../common/utils/helper';import { Units, Alignment, Regions, Position, SeriesCategories, LabelOverflow, TextWrap } from '../../common/utils/enum';import { GroupModes } from './enum';import { BaseSelection } from '../../common/user-interaction/selection';import { LegendOptions } from '../../common/legend/legend';
+import { Property, ChildProperty, Complex, createElement, Browser, animationMode, extend } from '@syncfusion/ej2-base';import { isNullOrUndefined, getValue } from '@syncfusion/ej2-base';import { DataManager, Query } from '@syncfusion/ej2-data';import { Border, Font, Animation, EmptyPointSettings, Connector, Accessibility, LinearGradient, RadialGradient } from '../../common/model/base';import { Rect, Size, PathOption, measureText } from '@syncfusion/ej2-svg-base';import { ChartLocation, stringToNumber, appendChildElement, subtractRect } from '../../common/utils/helper';import { AccumulationType, AccumulationLabelPosition, PyramidModes, FunnelModes } from '../model/enum';import { IAccSeriesRenderEventArgs, IAccPointRenderEventArgs, IAccTextRenderEventArgs } from '../model/pie-interface';import { LegendShape, SelectionPattern } from '../../common/utils/enum';import { Data } from '../../common/model/data';import { seriesRender, pointRender } from '../../common/model/constants';import { getSeriesColor } from '../../common/model/theme';import { FontModel, BorderModel, AnimationModel, ConnectorModel, EmptyPointSettingsModel, AccessibilityModel, LinearGradientModel, RadialGradientModel } from '../../common/model/base-model';import { AccumulationChart } from '../accumulation';import { getElement, firstToLowerCase } from '../../common/utils/helper';import { Units, Alignment, Regions, Position, SeriesCategories, LabelOverflow, TextWrap } from '../../common/utils/enum';import { GroupModes } from './enum';import { BaseSelection } from '../../common/user-interaction/selection';import { LegendOptions } from '../../common/legend/legend';
 
 /**
  * Interface for a class AccumulationAnnotationSettings
@@ -588,6 +588,23 @@ export interface AccumulationSeriesModel {
      * Options to improve accessibility for series elements.
      */
     accessibility?: AccessibilityModel;
+
+    /**
+     * Applies a linear gradient fill to the series.
+     * The gradient transitions colors along a straight line.
+     * When both linearGradient and radialGradient are specified, linearGradient takes precedence.
+     *
+     * @default null
+     */
+    linearGradient?: LinearGradientModel;
+
+    /**
+     * Applies a radial gradient fill to the series.
+     * The gradient transitions colors outward from a central point.
+     *
+     * @default null
+     */
+    radialGradient?: RadialGradientModel;
 
     /**
      * Option for customizing the border radius.
