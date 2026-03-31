@@ -912,19 +912,19 @@ export class EmojiPicker {
         }
         const range: Range = selection.getRangeAt(0);
         const cursorPos: number = range.startOffset;
+        const textContent: string = selection.focusNode.textContent;
         // eslint-disable-next-line
         let selectedValue;
-        let count: number = 0;
-        for (let i: number = cursorPos - 1; i >= (cursorPos - selection.focusNode.textContent.length); i--) {
-            const prevChar: string = selection.focusNode.textContent.substring(i - 1, i);
-            const isPrevSpace: boolean = /:$/.test(prevChar);
-            if (isPrevSpace && !isNOU(this.popDiv) && count === 0) {
-                selectedValue = range.startContainer.textContent.substring(i - 1, cursorPos);
+        const lastColonIndex: number = textContent.lastIndexOf(':', cursorPos - 1);
+        if (lastColonIndex >= 0 && !isNOU(this.popDiv)) {
+            const prevChar: string = textContent.substring(lastColonIndex - 1, lastColonIndex);
+            const isAtStartOrAfterSpace: boolean = lastColonIndex === 0 || /\s/.test(prevChar);
+            if (isAtStartOrAfterSpace) {
+                selectedValue = textContent.substring(lastColonIndex, cursorPos);
                 this.searchFilter(originalEvent, selectedValue, true);
-                count = 1;
             }
         }
-        const colon: string = selection.focusNode.textContent.substring(cursorPos - 1, cursorPos);
+        const colon: string = textContent.substring(cursorPos - 1, cursorPos);
         if (colon === ':' && !isNOU(this.popupObj)) {
             selectedValue = colon;
             this.searchFilter(originalEvent, selectedValue, true);

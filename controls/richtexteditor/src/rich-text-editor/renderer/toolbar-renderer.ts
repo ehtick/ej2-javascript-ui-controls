@@ -42,6 +42,19 @@ export class ToolbarRenderer implements IRenderer {
     public isDestroyed: boolean;
     public isEscapeKey: boolean = false;
     private rangeStore: boolean = false;
+    // Mapping of item names to their display labels for accessibility
+    private itemNameMap: { [key: string]: string } = {
+        'fontcolor': 'Font Color',
+        'backgroundcolor': 'Background Color',
+        'codeblock': 'Code Block',
+        'lineheight': 'Line Height',
+        'alignments': 'Alignments',
+        'bulletformatlist': 'Bullet Format List',
+        'numberformatlist': 'Number Format List',
+        'aicommands': 'Ai Commands',
+        'fontname': 'Font Name',
+        'fontsize': 'Font Size'
+    };
 
     /**
      * Constructor for toolbar renderer module
@@ -559,8 +572,41 @@ export class ToolbarRenderer implements IRenderer {
         dropDown.appendTo(args.element);
         args.element.tabIndex = -1;
         const popupElement: Element = document.getElementById(dropDown.element.id + '-popup');
+        this.setAriaLabel(dropDown.element, args.itemName, popupElement);
         popupElement.setAttribute('aria-owns', this.parent.getID());
         return dropDown;
+    }
+
+    private setAriaLabel(dropDownElement: Element, itemName: string, popupElement?: Element): void {
+        const displayLabel: string = this.itemNameMap[itemName.toLowerCase()] || itemName;
+        if (dropDownElement) {
+            const currentLabel: string = dropDownElement.getAttribute('aria-label') || '';
+            const dropdownPlaceholders: string[] = ['', 'dropdownbutton'];
+            const splitPlaceholders: string[] = ['', 'splitbutton', 'colorpicker'];
+            if (dropdownPlaceholders.indexOf(currentLabel) !== -1) {
+                const specialDropdownItems: Set<string> = new Set([
+                    'backgroundcolor',
+                    'fontcolor',
+                    'bulletformatlist',
+                    'numberformatlist',
+                    'codeblock'
+                ]);
+                const ariaLabel: string = specialDropdownItems.has(itemName.toLowerCase())
+                    ? `More ${displayLabel} Options`
+                    : `${displayLabel}`;
+                dropDownElement.setAttribute('aria-label', ariaLabel);
+            } else if (splitPlaceholders.indexOf(currentLabel) !== -1) {
+                dropDownElement.setAttribute('aria-label', `${displayLabel}`);
+            }
+        }
+        if (popupElement) {
+            const currentPopupLabel: string = popupElement.getAttribute('aria-label') || '';
+            const popupPlaceholders: string[] = ['', 'dropdown menu'];
+
+            if (popupPlaceholders.indexOf(currentPopupLabel) !== -1) {
+                popupElement.setAttribute('aria-label', `${displayLabel} Menu`);
+            }
+        }
     }
     private findFirstBlockElement(): HTMLElement | null {
         const range: Range = this.parent.getRange();
@@ -732,6 +778,13 @@ export class ToolbarRenderer implements IRenderer {
         splitButton.isAngular = this.parent.isModalDialog;
         splitButton.appendTo(args.element);
         const popupElement: Element = document.getElementById(splitButton.element.id + '_dropdownbtn-popup');
+        if (splitButton.element && splitButton.element.parentElement) {
+            const dropdownElement: HTMLElement = splitButton.element.parentElement.querySelectorAll('button')[1];
+            if (dropdownElement) {
+                this.setAriaLabel(dropdownElement, args.itemName);
+            }
+        }
+        this.setAriaLabel(splitButton.element, args.itemName, popupElement);
         popupElement.setAttribute('aria-owns', this.parent.getID());
         return splitButton;
     }
@@ -853,6 +906,18 @@ export class ToolbarRenderer implements IRenderer {
         colorPicker.isStringTemplate = true;
         colorPicker.createElement = this.parent.createElement;
         colorPicker.appendTo(args.element);
+        if (colorPicker.element && colorPicker.element.parentElement) {
+            const splitButton: Element = colorPicker.element.parentElement.querySelectorAll('button')[0];
+            const dropDownButton: Element = colorPicker.element.parentElement.querySelectorAll('button')[1];
+            if (splitButton) {
+                this.setAriaLabel(splitButton, item);
+            }
+            if (dropDownButton) {
+                const popupElement: Element = document.getElementById(dropDownButton.id + '-popup');
+                this.setAriaLabel(dropDownButton, item, popupElement);
+            }
+        }
+        this.setAriaLabel(colorPicker.element, item);
         args.element.setAttribute('role', 'button');
         return colorPicker;
     }
@@ -886,6 +951,8 @@ export class ToolbarRenderer implements IRenderer {
         }
         menu.isAngular = this.parent.isModalDialog;
         menu.appendTo(args.menuRoot);
+        const popupElement: Element = document.getElementById(dropDown.element.id + '-popup');
+        this.setAriaLabel(dropDown.element, args.name, popupElement);
         return { menu: menu, dropDownButton : dropDown};
     }
 

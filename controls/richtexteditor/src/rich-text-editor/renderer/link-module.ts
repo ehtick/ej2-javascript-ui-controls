@@ -157,18 +157,21 @@ export class Link {
                 pageX = (this.parent.iframeSettings.enable) ? parentLeft + linkLeft : target.getBoundingClientRect().left;
                 pageY = window.pageYOffset + ((this.parent.iframeSettings.enable) ?
                     (parentTop + tbHeight + linkTop) : (parentTop + linkPos));
+                let timeOutValue: number;
+                if (this.parent.element.dataset.rteUnitTesting === 'true') {
+                    timeOutValue = 0;
+                } else {
+                    timeOutValue = 400;
+                }
                 this.linkQTPopupTime = setTimeout(() => {
                     this.showLinkPopup(pageX, pageY, range, e.args as MouseEvent );
-                }, 400);
+                }, timeOutValue);
             } else {
                 let args: Touch | MouseEvent;
                 args = (e.args as TouchEvent).touches ? (e.args as TouchEvent).changedTouches[0] : args = e.args as MouseEvent;
                 pageX = (this.parent.iframeSettings.enable) ? window.pageXOffset + parentLeft + args.clientX : args.pageX;
                 pageY = (this.parent.iframeSettings.enable) ? window.pageYOffset + parentTop + args.clientY : args.pageY;
                 this.showLinkPopup(pageX, pageY, range, e.args as MouseEvent);
-            }
-            if (this.quickToolObj.linkQTBar) {
-                this.quickToolObj.linkQTBar.showPopup(range.endContainer as Element, e.args as MouseEvent);
             }
         }
     }

@@ -1766,6 +1766,9 @@ export class Tab extends Component<HTMLElement> implements INotifyPropertyChange
         }
         this.element.classList.add(CLS_FOCUS);
         const trg: HTEle = <HTEle>e.target;
+        if (!trg || !(trg as any).isConnected) {
+            return;
+        }
         const tabHeader: HTMLElement = this.getTabHeader();
         const actEle: HTEle = <HTEle>select('.' + CLS_ACTIVE, tabHeader);
         this.popEle = <DomElements>select('.' + CLS_TB_POP, tabHeader);
@@ -1777,7 +1780,7 @@ export class Tab extends Component<HTMLElement> implements INotifyPropertyChange
         switch (e.action) {
             case 'space':
             case 'enter':
-                if (trg.parentElement.classList.contains(CLS_DISABLE)) {
+                if (trg.parentElement && trg.parentElement.classList.contains(CLS_DISABLE)) {
                     return;
                 }
                 if (e.action === 'enter' && trg.classList.contains('e-hor-nav')) {
@@ -1919,12 +1922,20 @@ export class Tab extends Component<HTMLElement> implements INotifyPropertyChange
                     }
                     if (properties[j] === 'cssClass') {
                         if (!isNOU(hdrItem)) {
-                            hdrItem.classList.remove(oldVal);
-                            hdrItem.classList.add(<Str>newVal);
+                            if (!isNOU(oldVal) && oldVal !== '') {
+                                hdrItem.classList.remove(oldVal);
+                            }
+                            if (!isNOU(newVal) && newVal !== '') {
+                                hdrItem.classList.add(<Str>newVal);
+                            }
                         }
                         if (!isNOU(cntItem)) {
-                            cntItem.classList.remove(oldVal);
-                            cntItem.classList.add(<Str>newVal);
+                            if (!isNOU(oldVal) && oldVal !== '') {
+                                cntItem.classList.remove(oldVal);
+                            }
+                            if (!isNOU(newVal) && newVal !== '') {
+                                cntItem.classList.add(<Str>newVal);
+                            }
                         }
                     }
                     if (properties[j] === 'disabled') {

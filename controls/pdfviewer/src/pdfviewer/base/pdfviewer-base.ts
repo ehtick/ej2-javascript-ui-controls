@@ -4174,6 +4174,7 @@ export class PdfViewerBase {
             window.removeEventListener('mouseup', this.onWindowMouseUp);
             window.removeEventListener('touchend', this.onWindowTouchEnd);
             window.removeEventListener('unload', this.unload);
+            window.removeEventListener('beforeunload', this.clearSessionStorage);
             window.removeEventListener('resize', this.onWindowResize);
             if (navigator.userAgent.indexOf('MSIE') !== -1 || navigator.userAgent.indexOf('Edge') !== -1 || navigator.userAgent.indexOf('Trident') !== -1) {
                 this.viewerContainer.removeEventListener('pointerdown', this.viewerContainerOnPointerDown);
@@ -5494,8 +5495,8 @@ export class PdfViewerBase {
                     }
                     break;
                 case 80: // p key
+                    event.preventDefault();
                     if (this.pdfViewer.printModule && this.pdfViewer.enablePrint) {
-                        event.preventDefault();
                         this.pdfViewer.firePrintStart();
                     }
                     break;
@@ -11630,7 +11631,7 @@ export class PdfViewerBase {
                 }
             } else {
                 this.diagramMouseActionHelper(evt as MouseEvent);
-                if (this.tool && this.action !== 'Drag' && this.pdfViewer.tool !== 'Stamp' && (this.tool.currentElement as PdfAnnotationBaseModel) && (this.tool.currentElement as PdfAnnotationBaseModel).shapeAnnotationType !== 'Stamp') {
+                if (this.tool && this.action !== 'Drag' && this.pdfViewer.tool !== 'Stamp' && (this.tool.currentElement as PdfAnnotationBaseModel) && (this.tool.currentElement as PdfAnnotationBaseModel).shapeAnnotationType !== 'Stamp' && (this.tool.currentElement as Selector).annotations && (this.tool.currentElement as Selector).annotations[0] && (this.tool.currentElement as Selector).annotations[0].shapeAnnotationType !== 'Stamp') {
                     this.tool.mouseLeave(this.eventArgs);
                     this.tool = null;
                     if (this.pdfViewer.annotation) {
@@ -12012,6 +12013,12 @@ export class PdfViewerBase {
         }
         if (!cursorType) {
             cursorType = this.pdfViewer.annotationSelectorSettings.resizerCursorType;
+        }
+        // Normalize common alias formats (e.g., 'n_resize' -> 'n-resize') so
+        // user-provided values map to valid CSS cursor names.
+        if (cursorType && typeof cursorType === 'string') {
+            cursorType = cursorType.replace(/_/g, '-').trim();
+            cursorType = cursorType.toLowerCase();
         }
         return cursorType;
     }

@@ -12,7 +12,7 @@ import {
 } from '../format/index';
 import { DocumentHelper, HelperMethods, PageLayoutViewer } from '../index';
 import { isNullOrUndefined } from '@syncfusion/ej2-base';
-import { TableWidget, ImageElementBox, ListTextElementBox, HeaderFooterWidget, HeaderFooters, TableCellWidget } from '../viewer/page';
+import { TableWidget, ImageElementBox, ListTextElementBox, HeaderFooterWidget, HeaderFooters, TableCellWidget, TextElementBox } from '../viewer/page';
 import { Editor } from '../index';
 import { EditorHistory } from '../editor-history/index';
 import { ModifiedLevel } from '../editor-history/history-helper';
@@ -360,7 +360,9 @@ export class SelectionCharacterFormat {
         if (!isNullOrUndefined(this.italic) && this.italic !== format.italic) {
             this.italic = undefined;
         }
-        if (this.fontSize !== 0 && this.fontSize !== format.fontSize) {
+        if (this.fontSize !== 0 && this.fontSize !== ((
+            !isNullOrUndefined((format as any).ownerBase) && (format as any).ownerBase instanceof TextElementBox
+            && (format as any).ownerBase.isCheckBoxElement && !isNullOrUndefined(format.fontSize)) ? (format.fontSize / 1.35) : format.fontSize)) {
             this.fontSize = 0;
         }
         if (!isNullOrUndefined(this.renderedFontFamily) && this.renderedFontFamily !== renderFontFamily) {
@@ -1296,7 +1298,7 @@ export class SelectionParagraphFormat {
         this.notifyPropertyChanged('contextualSpacing');
     }
     private validateLineSpacing(): boolean {
-        if (this.lineSpacingType !== 'Multiple' && this.lineSpacingIn < 12) {
+        if (((this.lineSpacingType === 'Exactly' || this.lineSpacingType === 'AtLeast') && (this.lineSpacingIn <= 0 || this.lineSpacingIn > 1584)) || (this.lineSpacingType === 'Multiple' && (this.lineSpacingIn < 1.0 || this.lineSpacingIn > 132.0)) || this.lineSpacingType === 'Single' || this.lineSpacingType === 'Double') {
             return true;
         }
         return false;
@@ -1397,13 +1399,41 @@ export class SelectionParagraphFormat {
                 if (!(editorHistory && (editorHistory.isUndoing || editorHistory.isRedoing)) && this.validateLineSpacing()) {
                     this.selection.owner.editorHistoryModule.initComplexHistory(this.selection, 'LineSpacing');
                     if (propertyName === 'lineSpacing') {
-                        this.lineSpacingTypeIn = 'Multiple';
+                        switch (this.lineSpacingType) {
+                            case 'Single':
+                                this.lineSpacingIn = 1;
+                                break;
+                            case 'Double':
+                                this.lineSpacingIn = 2;
+                                break;
+                            case 'Multiple':
+                                this.lineSpacingIn = 1.0;
+                                break;
+                            case 'Exactly':
+                            case 'AtLeast':
+                                this.lineSpacingIn = 12;
+                                break;
+                        }
                         const value: Object = this.getPropertyValue('lineSpacingType');
                         editorModule.onApplyParagraphFormat('lineSpacingType', value, false, false);
                         editorModule.onApplyParagraphFormat(propertyName, this.getPropertyValue(propertyName), false, false);
                     } else {
                         editorModule.onApplyParagraphFormat(propertyName, this.getPropertyValue(propertyName), false, false);
-                        this.lineSpacingIn = 12;
+                        switch (this.lineSpacingType) {
+                            case 'Single':
+                                this.lineSpacingIn = 1;
+                                break;
+                            case 'Double':
+                                this.lineSpacingIn = 2;
+                                break;
+                            case 'Multiple':
+                                this.lineSpacingIn = 1.0;
+                                break;
+                            case 'Exactly':
+                            case 'AtLeast':
+                                this.lineSpacingIn = 12;
+                                break;
+                        }
                         editorModule.onApplyParagraphFormat('lineSpacing', this.getPropertyValue('lineSpacing'), false, false);
                     }
                     this.selection.owner.editorHistoryModule.updateComplexHistory();

@@ -13012,4 +13012,37 @@ describe('Tab Control', () => {
         //Check the final memory usage against the first usage, there should be little change if everything was properly deallocated
         expect(memory).toBeLessThan(profile.samples[0] + 0.25);
     })
+
+
+    describe('Tab cssClass toggle', () => {
+        let tabObj: Tab;
+        let element: HTMLElement;
+        beforeEach(() => {
+            element = document.createElement('div');
+            element.id = 'ej2Tab';
+            document.body.appendChild(element);
+            tabObj = new Tab({
+                heightAdjustMode: 'Auto',
+                items: [
+                    { header: { text: 'Twitter' }, content: 'tab 0', cssClass: '' },
+                    { header: { text: 'Facebook' }, content: 'tab 1' },
+                    { header: { text: 'WhatsApp' }, content: 'tab 2' }
+                ]
+            });
+            tabObj.appendTo('#ej2Tab');
+        });
+        afterEach(() => {
+            tabObj.destroy();
+            document.body.innerHTML = '';
+        });
+        it('should toggle cssClass without throwing error', () => {
+            expect(tabObj.items[0].cssClass).toBe('');
+            tabObj.items[0].cssClass = 'some-class';
+            expect(() => tabObj.dataBind()).not.toThrow();
+            expect(tabObj.items[0].cssClass).toBe('some-class');
+            tabObj.items[0].cssClass = '';
+            expect(() => tabObj.dataBind()).not.toThrow();
+            expect(tabObj.items[0].cssClass).toBe('');
+        });
+    });
 });

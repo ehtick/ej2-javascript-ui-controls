@@ -890,6 +890,12 @@ export class DropDownBase extends Component<HTMLElement> implements INotifyPrope
         translateY = translateY - (this.skeletonCount * this.listItemHeight);
         translateY = ((this.viewPortInfo.startIndex === 0 && this.listData && this.listData.length === 0) ||
          this.skeletonCount === 0) ? 0 : translateY;
+        const virtualElement: Element =  this.list.getElementsByClassName('e-virtual-ddl')[0];
+        const style: string = virtualElement && (virtualElement as HTMLElement).style && (virtualElement as HTMLElement).style.height;
+        if (this.getModuleName() === 'multiselect' && !isNullOrUndefined(style) && style === '' &&
+        this.dataSource instanceof DataManager) {
+            translateY = 0;
+        }
         const styleText: string = `transform: translate(0px, ${translateY}px);`;
         return styleText;
     }

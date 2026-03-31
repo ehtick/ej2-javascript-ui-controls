@@ -1,9 +1,9 @@
 import { createElement } from "@syncfusion/ej2-base";
 import {
     PdfViewer, Toolbar, Magnification, Navigation, LinkAnnotation, ThumbnailView, BookmarkView,
-    TextSelection, TextSearch, Print, Annotation, FormFields, AnnotationDataFormat, FormDesigner, PageOrganizer
+    TextSelection, TextSearch, Print, Annotation, FormFields, AnnotationDataFormat, FormDesigner, PageOrganizer, InitialFieldSettings
 } from "../../../../src/index";
-import { mouseDownEvent, mouseMoveEvent, mouseUpEvent } from "../../utils.spec";
+import { mouseDownEvent, mouseMoveEvent, mouseUpEvent, mouseClickEvent, waitFor  } from "../../utils.spec";
 import { EMPTY_PDF_B64 } from "../../Data/pdf-data.spec";
 
 /**
@@ -104,6 +104,90 @@ describe('PDF_Viewer_Initial', () => {
         ) as HTMLElement | null;
         expect(formFieldElement).toBeTruthy();
         expect(formFieldElement.style.pointerEvents).toBe("none");
+        done();
+      } catch (e) {
+        done.fail(e as Error);
+      }
+    });
+
+    it("1013075- InitialField ( programmatic ): no null crash and indicator rendered", async (done: DoneFn) => {
+      try {
+        // Page text layer
+        const textLayerEl = document.querySelector(
+          "#pdfviewer_initial_textLayer_0",
+        ) as HTMLElement | null;
+        if (!textLayerEl) {
+          throw new Error(`Could not find #pdfviewer_initial_textLayer_0`);
+        }
+        // Toggle Designer mode
+        const designerBtn = document.querySelector(
+          "#pdfviewer_initial_formdesignerIcon",
+        ) as HTMLElement | null;
+        if (!designerBtn) {
+          throw new Error(
+            `Form Designer button not found: #pdfviewer_initial_formdesignerIcon`,
+          );
+        }
+        mouseClickEvent(designerBtn);
+        // Resolve viewer instance
+        const viewerHost = document.querySelector("#pdfviewer_initial") as any;
+        const viewer = viewerHost.ej2_instances[0];
+        if (!viewer) {
+          throw new Error(
+            "pdfviewer_initial instance not found (viewer or #pdfviewer_initial.ej2_instances[0])",
+          );
+        }
+        // Add Initial field programmatically
+        const prevCount = (viewer.formFieldCollection || []).length;
+        viewer.formDesignerModule.addFormField("InitialField", {
+          name: "Initial1",
+          pageNumber: 1,
+          bounds: { X: 100, Y: 200, Width: 200, Height: 63 },
+          isReadOnly: false,
+          visibility: "visible",
+          isRequired: false,
+          thickness: 3,
+        } as InitialFieldSettings);
+        // Wait for registration
+        await waitFor(
+          () => (viewer.formFieldCollection || []).length === prevCount + 1,
+        );
+        // Find indicator and host
+        const textLayerDom = document.querySelector(
+          "#pdfviewer_initial_textLayer_0",
+        ) as HTMLElement;
+        const badgeEl = textLayerDom.querySelector(
+          'span[id^="initialIcon_"]',
+        ) as HTMLElement | null;
+        if (!badgeEl) {
+          throw new Error("Initial indicator span not found");
+        }
+        const hostEl = (badgeEl.closest(".foreign-object") as HTMLElement)
+          .parentElement as HTMLElement | null;
+        if (!hostEl) {
+          throw new Error("Initial field host not found");
+        }
+        // Ensure host is measurable
+        await waitFor(() => hostEl.getBoundingClientRect().width > 0);
+        const beforeRect = hostEl.getBoundingClientRect();
+        // Initial select
+        const x = Math.round(beforeRect.left + beforeRect.width / 2);
+        const y = Math.round(beforeRect.top + beforeRect.height / 2);
+        mouseDownEvent(textLayerEl, x, y, false, false);
+        // Enable pointer-events (test-only) on wrapper to accept drag
+        const innerWrapEl = hostEl.firstElementChild as HTMLElement;
+        const prevHostPE = hostEl.style.pointerEvents;
+        const prevInnerPE = innerWrapEl.style.pointerEvents;
+        hostEl.style.pointerEvents = "auto";
+        innerWrapEl.style.pointerEvents = "auto";
+        // Confirm selection click
+        mouseDownEvent(textLayerEl, x, y, false, false);
+        // Drag to the right on the inner wrapper
+        mouseMoveEvent(innerWrapEl, x + 300, y, false, false);
+        mouseDownEvent(innerWrapEl, x + 300, y, false, false);
+        // Restore pointer-events
+        hostEl.style.pointerEvents = prevHostPE;
+        innerWrapEl.style.pointerEvents = prevInnerPE;
         done();
       } catch (e) {
         done.fail(e as Error);

@@ -49,7 +49,9 @@ export class TableResizer {
 
     //Table Resizing implementation starts
     public isInRowResizerArea(touchPoint: Point): boolean {
+        this.documentHelper.resizerBoundaryWidth = 3 / this.documentHelper.zoomFactor;
         const position: number = this.getRowReSizerPosition(undefined, touchPoint);
+        this.documentHelper.resizerBoundaryWidth = 0;
         if (position === -1) {
             return false;
         } else {
@@ -59,7 +61,9 @@ export class TableResizer {
         }
     }
     public isInCellResizerArea(touchPoint: Point): boolean {
+        this.documentHelper.resizerBoundaryWidth = 3 / this.documentHelper.zoomFactor;
         const position: number = this.getCellReSizerPosition(touchPoint);
+        this.documentHelper.resizerBoundaryWidth = 0;
         if (position === -1) {
             this.isResizerEnabled = false;
             return false;
@@ -196,13 +200,16 @@ export class TableResizer {
             if (cellWidget) {
                 const rowWidget: TableRowWidget = cellWidget.containerWidget as TableRowWidget;
                 let height: number = 0;
+                let rowHeight: number = 0;
                 if (rowWidget.rowIndex === rowWidget.ownerTable.childWidgets.length - 1) {
-                    height = rowWidget.bottomBorderWidth + 2;
+                    height = rowWidget.bottomBorderWidth + this.documentHelper.resizerBoundaryWidth;
+                    rowHeight = rowWidget.y + rowWidget.height - height;
                 } else {
-                    height = (rowWidget.nextRenderedWidget as TableRowWidget).topBorderWidth + 2;
+                    height = (rowWidget.nextRenderedWidget as TableRowWidget).topBorderWidth + this.documentHelper.resizerBoundaryWidth;
+                    rowHeight = rowWidget.y + rowWidget.height;
                 }
                 /* eslint-disable-next-line max-len */
-                if (this.owner.documentHelper.isInsideRect(rowWidget.x, rowWidget.y + rowWidget.height - height, rowWidget.width, height * 2, touchPoint)) {
+                if (this.owner.documentHelper.isInsideRect(rowWidget.x, rowHeight, rowWidget.width, height, touchPoint)) {
                     this.currentResizingTable = rowWidget.ownerTable;
                     return rowWidget.rowIndex;
                 } else {

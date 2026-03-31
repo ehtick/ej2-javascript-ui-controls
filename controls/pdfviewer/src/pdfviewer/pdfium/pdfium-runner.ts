@@ -445,7 +445,7 @@ export function PdfiumRunner(): void {
                     try {
                         const firstPage: Page = documentDetails.getPage(event.data.pageIndex);
                         if (firstPage.processor !== null && firstPage.processor !== undefined) {
-                            const data: object = firstPage.render('thumbnail', null, event.data.isTextNeed, null, null, null, null, null, null, null, event.data.isSkipCharacterBounds, event.data.imageSize);
+                            const data: object = firstPage.render('thumbnail', null, event.data.isTextNeed, null, null, null, null, event.data.cropBoxRect, event.data.mediaBoxRect, null, event.data.isSkipCharacterBounds, event.data.imageSize);
                             (data as any).isRenderText = event.data.isRenderText;
                             (data as any).jsonObject = event.data.jsonObject;
                             (data as any).requestType = event.data.requestType;
@@ -677,7 +677,7 @@ export function PdfiumRunner(): void {
                         const character: string = String.fromCharCode(result);
                         let [charLeft, charRight, charBottom, charTop] = this.getCharBounds(textPage, charCount);
                         let X: number = this.pointerToPixelConverter(charLeft) -
-                        this.pointerToPixelConverter(mediaBoxRect ? mediaBoxRect.x : (cropBoxRect ? cropBoxRect.x : 0));
+                        this.pointerToPixelConverter(mediaBoxRect && mediaBoxRect.x ? mediaBoxRect.x : (cropBoxRect ? cropBoxRect.x : 0));
                         let Y: number = (pageHeight + this.pointerToPixelConverter(cropBoxRect && cropBoxRect.y ? cropBoxRect.y : 0)) -
                         this.pointerToPixelConverter(charTop);
                         let Width: number = this.pointerToPixelConverter(charRight - charLeft);
@@ -1386,7 +1386,8 @@ export function PdfiumRunner(): void {
             if (message === 'thumbnail') {
                 const newWidth: number = Math.round(thumbnailWidth * scaleFactor * (imageSize ? imageSize : 1));
                 const newHeight: number = Math.round(thumbnailHeight * scaleFactor * (imageSize ? imageSize : 1));
-                const data: any = this.getPageRender(n, newWidth, newHeight, isTextNeed, null, null, null, isSkipCharacterBounds);
+                const data: any = this.getPageRender(n, newWidth, newHeight, isTextNeed, null, cropBoxRect, mediaBoxRect,
+                                                     isSkipCharacterBounds);
                 return { value: data, width: newWidth, height: newHeight, pageIndex: n, message: 'renderThumbnail', textBounds: this.TextBounds, textContent: this.TextContent, rotation: this.Rotation, pageText: this.PageText, characterBounds: this.CharacterBounds, zoomFactor: zoomFactor, isTextNeed: isTextNeed, textDetailsId: textDetailsId, imageSize: imageSize };
             }
             else if (message === 'print') {

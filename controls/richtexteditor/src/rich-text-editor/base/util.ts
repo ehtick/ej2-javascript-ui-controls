@@ -441,44 +441,48 @@ export function formatRTEContent(value: string, rteObj?: IRichTextEditor): strin
     tempNode.innerHTML = value.trim();
     tempNode.setAttribute('class', 'tempDiv');
     if (childNodes.length > 0) {
+        // Pre-handling: Update all empty block and inline nodes once before processing top-level elements
+        const emptyBlockElem: NodeListOf<Element> = tempNode.querySelectorAll(CONSTANT.blockEmptyNodes);
+        for (let i: number = 0; i < emptyBlockElem.length; i++) {
+            emptyBlockElem[i as number].innerHTML = '<br>';
+        }
+        // To handle the Empty block node with \n
+        const allPNodes: NodeListOf<Element> = tempNode.querySelectorAll('p');
+        for (let i: number = 0; i < allPNodes.length; i++) {
+            const pNode: Element = allPNodes[i as number];
+            if (pNode.textContent.trim().length === 0 && pNode.childNodes.length === 1
+                && pNode.childNodes[0].nodeType === 3 && // #text node
+                isNOU(pNode.childNodes[0].textContent.match(/\u00a0/g))) {
+                pNode.innerHTML = '<br>';
+            }
+        }
+        const emptyInlineElem: NodeListOf<Element> = tempNode.querySelectorAll(CONSTANT.inlineEmptyNodes);
+        for (let i: number = 0; i < emptyInlineElem.length; i++) {
+            emptyInlineElem[i as number].innerHTML = '&ZeroWidthSpace;';
+        }
         let isPreviousInlineElem: boolean;
         let previousParent: HTMLElement;
         let insertElem: HTMLElement;
         while (tempNode.firstChild) {
-            const emptyBlockElem: NodeListOf<Element> = tempNode.querySelectorAll(CONSTANT.blockEmptyNodes);
             let isEmptySpace: boolean = false;
-            for (let i: number = 0; i < emptyBlockElem.length; i++) {
-                emptyBlockElem[i as number].innerHTML = '<br>';
-            }
-            // To handle the Empty block node with \n
-            const allPNodes: NodeListOf<Element> = tempNode.querySelectorAll('p');
-            for (let i: number = 0; i < allPNodes.length; i++) {
-                if (allPNodes[i as number].textContent.trim().length === 0 && allPNodes[i as number].childNodes.length === 1
-                    && allPNodes[i as number].childNodes[0].nodeName === '#text' &&
-                    isNOU(allPNodes[i as number].childNodes[0].textContent.match(/\u00a0/g))) {
-                    allPNodes[i as number].innerHTML = '<br>';
-                }
-            }
-            const emptyInlineElem: NodeListOf<Element> = tempNode.querySelectorAll(CONSTANT.inlineEmptyNodes);
-            for (let i: number = 0; i < emptyInlineElem.length; i++) {
-                emptyInlineElem[i as number].innerHTML = '&ZeroWidthSpace;';
-            }
-            if (tempNode.firstChild.nodeName === '#text' && tempNode.firstChild.textContent === ' ') {
+            const firstChild: Node = tempNode.firstChild;
+            if (firstChild.nodeType === 3 && firstChild.textContent === ' ') { // #text
                 const inlineElements: string[] = [
                     'A', 'ABBR', 'ACRONYM', 'B', 'BDO', 'BIG', 'BR', 'BUTTON', 'CITE', 'CODE', 'DFN', 'EM', 'I', 'INPUT',
                     'KBD', 'LABEL', 'MAP', 'OBJECT', 'Q', 'SAMP', 'SCRIPT', 'SELECT', 'SMALL', 'SPAN', 'STRONG', 'SUB', 'SUP',
                     'TEXTAREA', 'TIME', 'TT', 'U', 'VAR', 'WBR'
                 ];
-                if (!isNullOrUndefined(tempNode.firstChild.nextSibling)
-                    && inlineElements.indexOf(tempNode.firstChild.nextSibling.nodeName) !== -1) {
+                if (!isNullOrUndefined(firstChild.nextSibling)
+                    && inlineElements.indexOf(firstChild.nextSibling.nodeName) !== -1) {
                     isEmptySpace = false;
                 } else {
                     isEmptySpace = true;
                 }
             }
-            if (rteObj.enterKey !== 'BR' && ((tempNode.firstChild.nodeName === '#text' &&
-                (tempNode.firstChild.textContent.indexOf('\n') < 0 || tempNode.firstChild.textContent.trim() !== '')) ||
-                inlineNode.indexOf(tempNode.firstChild.nodeName.toLocaleLowerCase()) >= 0) && !isEmptySpace) {
+            const nodeName: string = firstChild.nodeName.toLocaleLowerCase();
+            if (rteObj.enterKey !== 'BR' && ((firstChild.nodeType === 3 &&
+                (firstChild.textContent.indexOf('\n') < 0 || firstChild.textContent.trim() !== '')) ||
+                inlineNode.indexOf(nodeName) >= 0) && !isEmptySpace) {
                 if (!isPreviousInlineElem) {
                     if (rteObj.enterKey === 'DIV') {
                         insertElem = createElement('div');
@@ -486,17 +490,17 @@ export function formatRTEContent(value: string, rteObj?: IRichTextEditor): strin
                         insertElem = createElement('p');
                     }
                     resultElm.appendChild(insertElem);
-                    insertElem.appendChild(tempNode.firstChild);
+                    insertElem.appendChild(firstChild);
                 } else {
-                    previousParent.appendChild(tempNode.firstChild);
+                    previousParent.appendChild(firstChild);
                 }
                 previousParent = insertElem;
                 isPreviousInlineElem = true;
-            } else if (tempNode.firstChild.nodeName === '#text' && (tempNode.firstChild.textContent === '\n' ||
-                (tempNode.firstChild.textContent.indexOf('\n') >= 0 && tempNode.firstChild.textContent.trim() === '') || isEmptySpace) && (isNOU(rteObj.sourceCodeModule) || (!isNOU(rteObj.sourceCodeModule)))) {
-                detach(tempNode.firstChild);
+            } else if (firstChild.nodeType === 3 && (firstChild.textContent === '\n' ||
+                (firstChild.textContent.indexOf('\n') >= 0 && firstChild.textContent.trim() === '') || isEmptySpace) && (isNOU(rteObj.sourceCodeModule) || (!isNOU(rteObj.sourceCodeModule)))) {
+                detach(firstChild);
             } else {
-                resultElm.appendChild(tempNode.firstChild);
+                resultElm.appendChild(firstChild);
                 isPreviousInlineElem = false;
             }
         }

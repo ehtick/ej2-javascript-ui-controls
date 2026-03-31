@@ -122,10 +122,24 @@ export class TextPosition {
         let isParagraphEnd: boolean = false;
         if (isNullOrUndefined(element)) {
             this.currentWidget = line;
+            if (!(this.selection.start.paragraph.containerWidget instanceof TableCellWidget) &&
+                line.paragraph.containerWidget instanceof TableCellWidget && this.selection.isForward) {
+                let row: TableRowWidget = ((line.paragraph.containerWidget as TableCellWidget).containerWidget as TableRowWidget);
+                let lastCell: TableCellWidget = (row.childWidgets[row.childWidgets.length - 1] as TableCellWidget);
+                this.currentWidget = (((lastCell as any).childWidgets[(lastCell as any).childWidgets.length - 1]
+                    .childWidgets[(lastCell as any).childWidgets[(lastCell as any).childWidgets.length - 1].childWidgets.length - 1]) as LineWidget);
+            }
         } else {
             this.currentWidget = element.line as LineWidget;
             if (element.nextNode instanceof FieldElementBox && index > element.length) {
                 isParagraphEnd = this.selection.isLastRenderedInline(element, element.length);
+            }
+            if (!(this.selection.start.paragraph.containerWidget instanceof TableCellWidget) &&
+                element.line.paragraph.containerWidget instanceof TableCellWidget && this.selection.isForward) {
+                let row: TableRowWidget = (((element.line.paragraph.containerWidget as TableCellWidget).containerWidget) as TableRowWidget);
+                let lastCell: TableCellWidget = (row.childWidgets[row.childWidgets.length - 1] as TableCellWidget);
+                this.currentWidget = (((lastCell as any).childWidgets[(lastCell as any).childWidgets.length - 1]
+                    .childWidgets[(lastCell as any).childWidgets[(lastCell as any).childWidgets.length - 1].childWidgets.length - 1]) as LineWidget);
             }
         }
         this.location = physicalLocation;

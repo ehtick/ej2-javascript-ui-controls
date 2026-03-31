@@ -186,7 +186,8 @@ export class ViewSource {
                     removeClass([this.parent.getToolbar()], [CLS_EXPAND_OPEN]);
                 }
                 removeClass(tbItems, [CLS_ACTIVE]);
-                this.wireEvent(this.previewElement);
+                const previewElement: HTMLElement = this.parent.element.querySelector('.e-source-content');
+                this.wireEvent(previewElement);
                 this.unWireBaseKeyDown();
                 this.previewElement.focus();
                 this.parent.inputElement.innerHTML =

@@ -3,7 +3,7 @@ import { Spreadsheet } from '../base/index';
 import { extend, isNullOrUndefined, remove } from '@syncfusion/ej2-base';
 import { CellModel, SheetModel, getSheetName, getRowsHeight, getColumnsWidth, getData, Workbook, getSheetIndexFromId } from '../../workbook/index';
 import { getCellAddress, getCellIndexes, workbookFormulaOperation, moveOrDuplicateSheet, skipHiddenIdx } from '../../workbook/index';
-import { RefreshArgs, sheetTabs, onContentScroll, deInitProperties, beforeDataBound, updateTranslate, showCommentsPane } from '../common/index';
+import { RefreshArgs, sheetTabs, onContentScroll, deInitProperties, beforeDataBound, updateTranslate, showCommentsPane, getHashPassword } from '../common/index';
 import { spreadsheetDestroyed, isFormulaBarEdit, editOperation, FormulaBarEdit } from '../common/index';
 import { getSiblingsHeight, refreshSheetTabs, ScrollEventArgs, focus, getUpdatedScrollPosition } from '../common/index';
 import { ribbon, formulaBar, IRenderer, beforeVirtualContentLoaded, setAriaOptions, JsonData } from '../common/index';
@@ -45,6 +45,10 @@ export class Render {
         }
         if (this.parent.password && (this.parent.password.length > 0 || this.parent.isProtected)) {
             this.parent.isProtected = true;
+            if (this.parent.password.length > 0 && !(this.parent as unknown as { refreshing?: boolean }).refreshing) {
+                const hashPassword: string = getHashPassword(this.parent.password);
+                this.parent.setProperties({ 'password': hashPassword }, true);
+            }
             if (this.parent.showSheetTabs) {
                 this.parent.element.querySelector('.e-add-sheet-tab').setAttribute('disabled', 'true');
                 this.parent.element.querySelector('.e-add-sheet-tab').classList.add('e-disabled');

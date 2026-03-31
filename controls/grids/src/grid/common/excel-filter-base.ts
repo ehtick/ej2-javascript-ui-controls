@@ -7,7 +7,8 @@ import { NumericTextBox } from '@syncfusion/ej2-inputs';
 import { RadioButton, CheckBox } from '@syncfusion/ej2-buttons';
 import {
     distinctStringValues, isComplexField, getComplexFieldID, getCustomDateFormat, applyBiggerTheme,
-    performComplexDataOperation, registerEventHandlers, removeEventHandlers, clearReactVueTemplates
+    performComplexDataOperation, registerEventHandlers, removeEventHandlers, clearReactVueTemplates,
+    isMatDialogContainer, isAngularMatContainer
 } from '../base/util';
 import { Column } from '../models/column';
 import { DatePicker, DateTimePicker } from '@syncfusion/ej2-calendars';
@@ -304,7 +305,9 @@ export class ExcelFilterBase extends CheckBoxFilterBase {
                         'e-res-contextmenu-wrapper' : this.parent.cssClass ? this.parent.cssClass : ''
             };
             this.parent.element.appendChild(this.cmenu);
-            this.menuObj = new ContextMenu(menuOptions, this.cmenu);
+            this.menuObj = new ContextMenu(menuOptions);
+            this.menuObj.isAngular = isAngularMatContainer(this.parent as IGrid);
+            this.menuObj.appendTo(this.cmenu);
             EventHandler.add(this.menuObj.element, 'keydown', this.contextKeyDownHandler, this);
             const client: ClientRect = this.menu.querySelector('.e-submenu').getBoundingClientRect();
             const pos: OffsetPosition = { top: 0, left: 0 };
@@ -544,6 +547,7 @@ export class ExcelFilterBase extends CheckBoxFilterBase {
         const isStringTemplate: string = 'isStringTemplate';
         this.dlgObj[`${isStringTemplate}`] = true;
         this.renderResponsiveDialog();
+        isMatDialogContainer(this.parent as IGrid, this.dlgObj);
         this.dlgDiv.setAttribute('aria-label', this.getLocalizedLabel('CustomFilterDialogARIA'));
         this.childRefs.unshift(this.dlgObj);
         this.dlgObj.appendTo(this.dlgDiv);
@@ -767,6 +771,7 @@ export class ExcelFilterBase extends CheckBoxFilterBase {
                 cssClass: this.parent.cssClass ? this.parent.cssClass : null
             },
             col.filter.params));
+        dropOptr.isAngular = isAngularMatContainer(this.parent as IGrid);
         this.childRefs.unshift(dropOptr);
         const evt: object = { 'open': this.dropDownOpen.bind(this), 'change': this.dropDownValueChange.bind(this) };
         registerEventHandlers(optrInput.id, [literals.open, literals.change], evt, this);

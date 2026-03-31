@@ -324,8 +324,12 @@ export class SpellChecker {
             if (this.handleErrorElements.indexOf(dialogElement) === -1) {
                 this.handleErrorElements.push(dialogElement);
             }
-            const start: TextPosition = this.documentHelper.selection.start;
-            const end: TextPosition = this.documentHelper.selection.end;
+            let start: TextPosition = this.documentHelper.selection.start;
+            let end: TextPosition = this.documentHelper.selection.end;
+            if (!this.documentHelper.selection.isForward) {
+                start = this.documentHelper.selection.end;
+                end = this.documentHelper.selection.start;
+            }
             let startElement: ElementBox = (start.currentWidget as LineWidget).getInline(start.offset, 0, false, true).element;
             const endElement: ElementBox = (end.currentWidget as LineWidget).getInline(end.offset, 0, false, true).element;
             while (true) {
@@ -1667,8 +1671,8 @@ export class SpellChecker {
      */
     public getMatchedResultsFromElement(errorElement: ElementBox, currentText?: string): MatchResults {
         const line: LineWidget = (errorElement as TextElementBox).line;
-
-        const pattern: RegExp = this.documentHelper.owner.searchModule.textSearch.stringToRegex((isNullOrUndefined(currentText)) ? (errorElement as TextElementBox).text : currentText, 'CaseSensitive');
+        const searchText: string = (isNullOrUndefined(currentText)) ? (errorElement as TextElementBox).text : currentText;
+        const pattern: RegExp = this.documentHelper.owner.searchModule.textSearch.stringToRegex(searchText, 'CaseSensitive');
         this.textSearchResults.clearResults();
         const results: TextSearchResults = this.textSearchResults;
         const textLineInfo: TextInLineInfo = this.documentHelper.owner.searchModule.textSearch.getElementInfo(line.children[0], 0, false, pattern, undefined, undefined, undefined, undefined, true);
@@ -1676,8 +1680,17 @@ export class SpellChecker {
         const matches: RegExpExecArray[] = [];
         const spans: any = textLineInfo.elementsWithOffset;
         let matchObject: RegExpExecArray;
+        // Guard: skip matching if the search text is empty to prevent infinite loop
+        if (isNullOrUndefined(searchText) || searchText.length === 0) {
+            return { 'matches': matches, 'elementInfo': spans, 'textResults': results };
+        }
         // eslint-disable  no-cond-assign
         while (!isNullOrUndefined(matchObject = pattern.exec(text))) {
+            // Prevent infinite loop on zero-length matches by manually advancing lastIndex
+            if (matchObject[0].length === 0) {
+                pattern.lastIndex++;
+                continue;
+            }
             const hasWhitespace: boolean = /\s/.test((errorElement as TextElementBox).text);
             if (this.isChangeAll  && !(errorElement instanceof ErrorTextElementBox) && !hasWhitespace) {
                 matchObject.index = spans.get(errorElement);

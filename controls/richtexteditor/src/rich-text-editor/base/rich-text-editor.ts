@@ -4247,7 +4247,12 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
         if (this.readonly) {
             return;
         }
-        this.notify(events.sourceCode, {});
+        const preview: HTMLElement = this.element.querySelector('.e-rte-container.e-source-code-enabled');
+        if (preview) {
+            this.notify(events.updateSource, {});
+        } else {
+            this.notify(events.sourceCode, {});
+        }
     }
 
     /**

@@ -4,7 +4,7 @@
 import { createElement } from '@syncfusion/ej2-base';
 import { Gantt, Selection, Toolbar, DayMarkers, Edit, Filter, Reorder, Resize, ColumnMenu, VirtualScroll, Sort, RowDD, ContextMenu, ExcelExport, PdfExport, IQueryTaskbarInfoEventArgs } from '../../src/index';
 import * as cls from '../../src/gantt/base/css-constants';
-import { baselineData, resourceData, projectData, projectNewData18, projectNewData19, projectNewData20, splitData, projectNewData21, taskModeData4, taskModeData5, projectNewData22, CR899690, addDependency, manualParentdata, CR991733, CR1005919, CRres1005919 } from './data-source.spec';
+import { baselineData, resourceData, projectData, projectNewData18, projectNewData19, projectNewData20, splitData, projectNewData21, taskModeData4, taskModeData5, projectNewData22, CR899690, addDependency, manualParentdata, CR991733, CR1005919, CRres1005919, CR1017044 } from './data-source.spec';
 import { createGantt, destroyGantt, triggerMouseEvent } from './gantt-util.spec';
 Gantt.Inject(Selection, Toolbar, DayMarkers, Edit, Filter, Reorder, Resize, ColumnMenu, VirtualScroll, Sort, RowDD, ContextMenu, ExcelExport, PdfExport);
 describe('Gantt taskbar rendering', () => {
@@ -1726,6 +1726,47 @@ describe('CR-1005919: Dynamically changing values are not reflected in actionBeg
         expect(ganttObj.getFormatedDate(ganttObj.flatData[1].ganttProperties.endDate, 'M/dd/yyyy HH:mm')).toBe('4/02/2025 17:00');
         expect(ganttObj.flatData[1].ganttProperties.duration).toBe(1);
         expect(ganttObj.flatData[1].ganttProperties.isMilestone).toBe(false);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('CR-1017044: While using queryTaskbarInfo with enableMultiTaskbar taskbar customization is not applied while record collapse', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: CR1017044,
+                treeColumnIndex: 1,
+                allowTaskbarOverlap: false,
+                queryTaskbarInfo(e) {
+                    e.taskbarBgColor = '#ffff00';
+                    e.taskbarBorderColor = '#cccc00';
+                    e.progressBarBgColor = '#cccc00';
+                },
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    progress: 'Progress',
+                    parentID: 'ParentID',
+                },
+                allowSelection: true,
+                gridLines: "Both",
+                height: '550px',
+                enableMultiTaskbar: true,
+            }, done);
+    });
+    beforeEach((done: Function) => {
+        setTimeout(done, 500);
+    });
+    it('Style not applied for the collapsed row when the multi-taskbar is enabled', () => {
+        ganttObj.ganttChartModule.expandCollapseAll('collapse');
+        let childTaskbar: HTMLElement = ganttObj.element.querySelectorAll('.' + cls.traceChildTaskBar)[1] as HTMLElement;
+        expect(childTaskbar.style.backgroundColor).toBe('rgb(255, 255, 0)');
     });
     afterAll(() => {
         if (ganttObj) {

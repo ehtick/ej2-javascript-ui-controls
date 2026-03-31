@@ -58,7 +58,8 @@ export class Pager extends Component<HTMLElement> implements INotifyPropertyChan
     private averageDetailWidth: number;
     private defaultConstants: Object;
     private pageRefresh: string = 'pager-refresh';
-    private parent: object;
+    /** @hidden */
+    public parent: object;
     private firstPagerFocus: boolean = false;
     /** @hidden */
     public isCancel: boolean = false;

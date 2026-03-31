@@ -3,7 +3,7 @@ import { IGrid, EJ2Intance, IEditCell } from '../base/interface';
 import { Column } from '../models/column';
 import { DropDownList, DropDownListModel, FilteringEventArgs, PopupEventArgs } from '@syncfusion/ej2-dropdowns';
 import { Query, DataManager, DataUtil, Predicate } from '@syncfusion/ej2-data';
-import { isEditable, getComplexFieldID, getObject, isCellHaveWidth } from '../base/util';
+import { isEditable, getComplexFieldID, getObject, isCellHaveWidth, isAngularMatContainer } from '../base/util';
 import { Dialog, Popup } from '@syncfusion/ej2-popups';
 import { parentsUntil } from '../base/util';
 import { EditCellBase } from './edit-cell-base';
@@ -63,6 +63,7 @@ export class DropDownEditCell extends EditCellBase implements IEditCell {
                 close: this.dropDownClose.bind(this)
             },
             params));
+        this.obj.isAngular = isAngularMatContainer(this.parent);
         if (this.parent.enableVirtualization) {
             if (params.dataSource) {
                 this.obj.dataSource = params.dataSource;

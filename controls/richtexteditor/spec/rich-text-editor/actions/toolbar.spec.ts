@@ -2445,7 +2445,7 @@ describe('849075 - The screen reader does not read the toolbar items in the Rich
         sourceCodeButton.click();
         const sourceCodeTextArea: HTMLElement = editorObj.element.querySelector('.e-rte-srctextarea');
         sourceCodeTextArea.focus();
-        sourceCodeTextArea.dispatchEvent(toolbarFocusShortCutEvent);
+        sourceCodeTextArea.parentElement.dispatchEvent(toolbarFocusShortCutEvent);
         const toolbarItems: NodeListOf<Element> = document.querySelectorAll('.e-toolbar-item');
         for (let i: number = 0; i < toolbarItems.length; i++) {
             // Source code view toolbar items are focusable.

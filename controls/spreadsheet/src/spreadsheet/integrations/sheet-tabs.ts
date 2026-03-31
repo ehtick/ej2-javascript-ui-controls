@@ -72,7 +72,7 @@ export class SheetTabs {
             },
             select: (args: MenuEventArgs): void => this.updateSheetTab({ idx: this.dropDownInstance.items.indexOf(args.item) }),
             beforeOpen: (args: BeforeOpenCloseMenuEventArgs): void => this.beforeOpenHandler(
-                this.dropDownInstance, args.element, l10n.getConstant('ListAllSheets')),
+                this.dropDownInstance, args.element, l10n.getConstant('ListAllSheets'), true),
             open: (args: OpenCloseMenuEventArgs): void => this.openHandler(
                 this.dropDownInstance, args.element, this.parent.enableRtl ? 'right' : 'left', Browser.isDevice),
             cssClass: 'e-sheets-list e-flat e-caret-hide',
@@ -174,10 +174,17 @@ export class SheetTabs {
         this.dropDownInstance.setProperties({ 'items': this.dropDownInstance.items }, true);
     }
 
-    private beforeOpenHandler(instance: DropDownButton, element: HTMLElement, localeText?: string): void {
+    private beforeOpenHandler(instance: DropDownButton, element: HTMLElement, localeText?: string, isSheetList?: boolean): void {
         const viewportHeight: number = this.parent.viewport.height;
-        const actualHeight: number = (parseInt(getComputedStyle(element.firstElementChild).height, 10) *
-            instance.items.length) + (parseInt(getComputedStyle(element).paddingTop, 10) * 2);
+        let actualHeight: number;
+        if (isSheetList) {
+            const veryHiddenSheetCount: number = this.parent.sheets.filter((sheet: SheetModel) => sheet && sheet.state === 'VeryHidden').length;
+            actualHeight = (parseInt(getComputedStyle(element.firstElementChild).height, 10) *
+                (instance.items.length - veryHiddenSheetCount)) + (parseInt(getComputedStyle(element).paddingTop, 10) * 2);
+        } else {
+            actualHeight = (parseInt(getComputedStyle(element.firstElementChild).height, 10) *
+                instance.items.length) + (parseInt(getComputedStyle(element).paddingTop, 10) * 2);
+        }
         if (actualHeight > viewportHeight) {
             element.style.height = `${viewportHeight}px`; element.style.overflowY = 'auto';
         }

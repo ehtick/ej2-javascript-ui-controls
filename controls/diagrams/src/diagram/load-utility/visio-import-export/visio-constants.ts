@@ -345,42 +345,6 @@ export const LOOP_TYPE_MAP: Readonly<Record<string, string>> = {
     'sequentialmultiinstance': 'SequenceMultiInstance'
 };
 
-/**
- * Type definition for annotation orientation values.
- * Defines the valid positions where annotations can be placed relative to a shape.
- *
- * @typedef {string} Orientation
- * @private
- */
-type Orientation = 'Top' | 'Bottom' | 'Left' | 'Right';
-
-/**
- * Maps Visio's numeric orientation codes to human-readable orientation strings.
- * Used to interpret Visio's binary orientation flags and convert them to
- * directional values that describe where annotations are positioned.
- *
- * @constant {Object} ORIENTATION_MAP
- * @property {string} '1' - Right orientation
- * @property {string} '2' - Top orientation
- * @property {string} '3' - Left orientation
- * @property {string} '4' - Bottom orientation
- * @readonly
- * @example
- * // Maps Visio numeric codes to orientation strings
- * const orientation = ORIENTATION_MAP['2'];
- * // Result: 'Top'
- */
-export const ORIENTATION_MAP: Readonly<Record<string, Orientation>> = {
-    /** Right orientation (numeric code 1) */
-    '1': 'Right',
-    /** Top orientation (numeric code 2) */
-    '2': 'Top',
-    /** Left orientation (numeric code 3) */
-    '3': 'Left',
-    /** Bottom orientation (numeric code 4) */
-    '4': 'Bottom'
-};
-
 // ============================================================================
 // SECTION 4: SHAPE CATEGORIZATION
 // ============================================================================

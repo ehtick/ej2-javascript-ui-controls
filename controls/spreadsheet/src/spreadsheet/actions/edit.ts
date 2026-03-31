@@ -35,6 +35,7 @@ export class Edit {
     private uniqueActCell: string = '';
     private isSpill: boolean = false;
     private tapedTwice: boolean;
+    private isImeComposing: boolean;
     private keyCodes: { [key: string]: number } = {
         BACKSPACE: 8,
         SPACE: 32,
@@ -121,6 +122,9 @@ export class Edit {
         this.parent.on(activeSheetChanged, this.sheetChangeHandler, this);
         this.parent.on(readonlyAlert, this.readOnlyAlertHandler, this);
         this.parent.on(finiteAlert, this.finiteAlertHandler, this);
+        // IME candidate selection on mobile (e.g. on-screen keyboards)
+        EventHandler.add(this.parent.element, 'compositionstart', this.imeCompositionStartHandler, this);
+        EventHandler.add(this.parent.element, 'compositionend', this.imeCompositionEndHandler, this);
     }
 
     private removeEventListener(): void {
@@ -145,6 +149,58 @@ export class Edit {
             this.parent.off(readonlyAlert, this.readOnlyAlertHandler);
             this.parent.off(finiteAlert, this.finiteAlertHandler);
         }
+        EventHandler.remove(this.parent.element, 'compositionstart', this.imeCompositionStartHandler);
+        EventHandler.remove(this.parent.element, 'compositionend', this.imeCompositionEndHandler);
+    }
+
+    private getImeEditorTarget(target: EventTarget): HTMLElement {
+        const editEle: HTMLElement = this.getEditElement(this.parent.getActiveSheet());
+        if (!editEle) {
+            return null;
+        }
+        const targetEle: Element = target as Element;
+        if (!targetEle) {
+            return null;
+        }
+        const clickedEdit: HTMLElement = closest(targetEle, '.e-spreadsheet-edit') as HTMLElement;
+        return clickedEdit && (editEle.contains(clickedEdit) || editEle === clickedEdit) ? editEle : null;
+    }
+
+    private syncEditModelFromEditor(): void {
+        if (!this.parent) {
+            return;
+        }
+        const sheet: SheetModel = this.parent.getActiveSheet();
+        const editorElem: HTMLElement = this.getEditElement(sheet);
+        if (!editorElem) {
+            return;
+        }
+        const newValue: string = editorElem.textContent;
+        if (newValue !== this.editCellData.value) {
+            this.refreshEditor(newValue, true, false, false, false);
+        }
+    }
+
+    private imeCompositionStartHandler(e: CompositionEvent): void {
+        if (!this.isEdit) {
+            return;
+        }
+        const target: HTMLElement = this.getImeEditorTarget(e.target);
+        if (target) {
+            this.isImeComposing = true;
+        }
+    }
+
+    private imeCompositionEndHandler(e: CompositionEvent): void {
+        if (!this.isEdit) {
+            return;
+        }
+        const target: HTMLElement = this.getImeEditorTarget(e.target);
+        if (!target) {
+            return;
+        }
+        this.isImeComposing = false;
+        this.syncEditModelFromEditor();
     }
 
     /**
@@ -586,10 +642,12 @@ export class Edit {
     private getCurPosition(): { start?: number, end?: number } {
         const cursorOffset: { start?: number, end?: number } = {};
         const selection: Selection = window.getSelection();
-        if (selection && selection.focusNode && (selection.focusNode as Element).classList &&
-            (selection.focusNode as Element).classList.contains('e-formula-bar-panel')) {
-            const formulaBar: HTMLTextAreaElement =
-                (selection.focusNode as Element).getElementsByClassName('e-formula-bar e-css')[0] as HTMLTextAreaElement;
+        const focusElem: Element = selection && (selection.focusNode as Element);
+        if (focusElem && focusElem.classList && (
+            focusElem.classList.contains('e-formula-bar-panel') || focusElem.classList.contains('e-formula-bar'))) {
+            const formulaBar: HTMLTextAreaElement = focusElem.classList.contains('e-formula-bar')
+                ? (focusElem as HTMLTextAreaElement)
+                : (focusElem.getElementsByClassName('e-formula-bar e-css')[0] as HTMLTextAreaElement);
             if (formulaBar.value === this.editCellData.value) {
                 cursorOffset.start = formulaBar.selectionStart;
                 cursorOffset.end = formulaBar.selectionEnd;

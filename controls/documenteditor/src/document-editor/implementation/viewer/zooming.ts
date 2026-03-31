@@ -48,7 +48,8 @@ export class Zoom {
     public onMouseWheelInternal = (event: WheelEvent): void => {
         if (event.ctrlKey === true) {
             event.preventDefault();
-            const pageX: number = event.pageX - this.documentHelper.viewerContainer.offsetLeft;
+            const viewerLeft: number = this.documentHelper.viewerContainer.getBoundingClientRect().left;
+            const pageX: number = event.pageX - viewerLeft;
             if (pageX < this.documentHelper.pageContainer.offsetWidth) {
                 let isFirefFox: RegExpMatchArray;
                 if (navigator !== undefined) {

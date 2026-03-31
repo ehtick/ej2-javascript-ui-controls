@@ -2169,11 +2169,25 @@ export class ChartRows extends DateProcessor {
             segmentRowElement = trElement.parentElement.parentElement.parentElement;
         }
         let triggerTaskbarElement: Element;
+        let taskbarType: string = data.hasChildRecords ? 'ParentTask' : data.ganttProperties.isMilestone ? 'Milestone' : 'ChildTask';
+        if (!isNullOrUndefined(taskbarElement)) {
+            if ((taskbarElement.classList && taskbarElement.classList.contains(cls.traceParentTaskBar)) ||
+                taskbarElement.querySelector('.' + cls.traceParentTaskBar)) {
+                taskbarType = 'ParentTask';
+            }
+            else if ((taskbarElement.classList && taskbarElement.classList.contains(cls.traceMilestone))
+                || data.ganttProperties.isMilestone) {
+                taskbarType = 'Milestone';
+            }
+            else {
+                taskbarType = 'ChildTask';
+            }
+        }
         const args: IQueryTaskbarInfoEventArgs = {
             data: data,
             rowElement: trElement,
             taskbarElement: taskbarElement,
-            taskbarType: data.hasChildRecords ? 'ParentTask' : data.ganttProperties.isMilestone ? 'Milestone' : 'ChildTask'
+            taskbarType: taskbarType
         };
         const classCollections: string[] = this.getClassName(args);
         if (args.taskbarType === 'Milestone') {

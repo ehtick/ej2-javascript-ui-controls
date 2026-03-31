@@ -2864,4 +2864,19 @@ describe('Viewer Reported Issues', () => {
         expect(importCB2_item3._dictionary.get('AS').name).toEqual('Off');
         document.destroy();
     });
+    it('1015816 - drawString with mixed special chars (backslash, newLine)', () => {
+        let document: PdfDocument = new PdfDocument();
+        let page = document.addPage(0) as PdfPage;
+        page.graphics.drawString('(Hello\rWorld\\\\\\\\\\Text)', new PdfStandardFont(PdfFontFamily.helvetica, 12, PdfFontStyle.regular), { x: 50, y: 110, width: 400, height: 200 }, new PdfPen({ r: 0, g: 0, b: 0 }, 1));
+        let save = document.save();
+        let reloaded: PdfDocument = new PdfDocument(save);
+        page = document.getPage(0) as PdfPage;
+        let contents: any = page._pageDictionary.getArray('Contents');
+        let parser: _ContentParser = new _ContentParser(contents[2]._bytes);
+        let result: _PdfRecord[] = parser._readContent();
+        expect(result[21]._operands).toEqual(['(\\(Hello)']);
+        expect(result[23]._operands).toEqual(['(World\\\\\\\\\\\\\\\\\\\\Text\\))']);
+        reloaded.destroy();
+        document.destroy();
+    });
 });

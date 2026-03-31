@@ -296,6 +296,60 @@ describe('Editing ->', () => {
             spreadsheet.dataBind();
             done();
         });
+        it('IME candidate selection commit on tap preserves candidate', (done: Function) => {
+            helper.invoke('selectRange', ['A1']);
+            helper.invoke('startEdit');
+            const editor: HTMLElement = helper.getCellEditorElement();
+            editor.textContent = 'pre';
+            (helper.getInstance() as any).editModule.editCellData.value = 'pre';
+            editor.textContent = 'Candidate';
+            EventHandler.trigger(helper.getElement(), 'compositionstart', { target: editor, isComposing: true });
+            const inputEvt: any = document.createEvent('Event');
+            inputEvt.initEvent('input', true, true);
+            inputEvt.isComposing = false;
+            editor.dispatchEvent(inputEvt);
+            EventHandler.trigger(helper.getElement(), 'compositionend', { target: editor, isComposing: false });
+            const td: HTMLElement = helper.invoke('getCell', [1, 1]); // B2
+            const coords: ClientRect = td.getBoundingClientRect();
+            helper.triggerMouseAction('mousedown', { x: coords.left + 1, y: coords.top + 1 }, null, td);
+            helper.triggerMouseAction('mouseup', { x: coords.left + 1, y: coords.top + 1 }, document, td);
+            setTimeout(() => {
+                const cellA1: any = helper.getInstance().sheets[0].rows[0].cells[0];
+                expect(cellA1.value).toBe('Candidate');
+                done();
+            }, 20);
+        });
+        it('IME candidate selection commit on Enter preserves candidate', (done: Function) => {
+            helper.invoke('selectRange', ['A1']);
+            helper.invoke('startEdit');
+            const editor: HTMLElement = helper.getCellEditorElement();
+            editor.textContent = 'pre';
+            (helper.getInstance() as any).editModule.editCellData.value = 'pre';
+            editor.textContent = 'Candidate';
+            EventHandler.trigger(helper.getElement(), 'compositionstart', { target: editor, isComposing: true });
+            EventHandler.trigger(helper.getElement(), 'compositionend', { target: editor, isComposing: false });
+            helper.triggerKeyNativeEvent(13);
+            setTimeout(() => {
+                const cellA1: any = helper.getInstance().sheets[0].rows[0].cells[0];
+                expect(cellA1.value).toBe('Candidate');
+                done();
+            }, 20);
+        });
+        it('IME input event commit on Enter preserves candidate', (done: Function) => {
+            helper.invoke('selectRange', ['A1']);
+            helper.invoke('startEdit');
+            const editor: HTMLElement = helper.getCellEditorElement();
+            editor.textContent = 'pre';
+            (helper.getInstance() as any).editModule.editCellData.value = 'pre';
+            editor.textContent = 'Candidate';
+            EventHandler.trigger(helper.getElement(), 'input', { target: editor, isComposing: false });
+            helper.triggerKeyNativeEvent(13);
+            setTimeout(() => {
+                const cellA1: any = helper.getInstance().sheets[0].rows[0].cells[0];
+                expect(cellA1.value).toBe('Candidate');
+                done();
+            }, 20);
+        });
     });
 
     describe('Rtl ->', () => {

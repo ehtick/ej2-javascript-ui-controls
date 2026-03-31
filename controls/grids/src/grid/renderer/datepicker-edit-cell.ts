@@ -2,7 +2,7 @@ import { extend, KeyboardEventArgs } from '@syncfusion/ej2-base';
 import { Column } from '../models/column';
 import { IEditCell, IGrid } from '../base/interface';
 import { DatePicker, DateTimePicker, PopupEventArgs, MaskedDateTime } from '@syncfusion/ej2-calendars';
-import { isEditable, getObject, getCustomDateFormat, parentsUntil, isCellHaveWidth } from '../base/util';
+import { isEditable, getObject, getCustomDateFormat, parentsUntil, isCellHaveWidth, isAngularMatContainer } from '../base/util';
 import { EditCellBase } from './edit-cell-base';
 import { Edit } from '../actions/edit';
 
@@ -39,6 +39,7 @@ export class DatePickerEditCell extends EditCellBase implements IEditCell {
                 extend(dateanddatetimerender(args, this.parent.editSettings.mode, this.parent.enableRtl, this.parent.cssClass, this),
                        args.column.edit.params));
         }
+        this.obj.isAngular = isAngularMatContainer(this.parent);
         this.obj.appendTo(args.element as HTMLElement);
     }
 }

@@ -313,7 +313,9 @@ export class WParagraphFormat {
     public getPropertyValue(property: string): Object {
         if (!this.hasValue(property)) {
             const formatInList: object = this.getListFormatParagraphFormat(property);
-            if (this.baseStyle instanceof WParagraphStyle) {
+            const hasInvalidListForIndent = this.listFormat.hasValue('listId') && this.listFormat.listId === -1
+                        && (property === 'leftIndent' || property === 'firstLineIndent')
+            if (this.baseStyle instanceof WParagraphStyle && !hasInvalidListForIndent) {
                 let currentFormat: WParagraphFormat = this;
                 let baseStyle: any = this.baseStyle;
                 while (!isNullOrUndefined(baseStyle)) {
@@ -371,7 +373,6 @@ export class WParagraphFormat {
         if (isNullOrUndefined(docParagraphFormat) || isNullOrUndefined(docParagraphFormat.uniqueParagraphFormat)) {
             return !isNullOrUndefined(editorFormat) && editorFormat.hasOwnProperty(property) ? (editorFormat as any)[property] : WParagraphFormat.getPropertyDefaultValue(property);
         }
-        const isPaste: boolean = paragraphFormatInfo.isPaste;
         const ownerBase = this.ownerBase;
         let isInsideBodyWidget = false;
         if (ownerBase && ownerBase instanceof ParagraphWidget) {
@@ -379,7 +380,7 @@ export class WParagraphFormat {
             isInsideBodyWidget = containerWidget instanceof BlockContainer || containerWidget instanceof TextFrame || containerWidget instanceof TableCellWidget;
         }
         // Check and return property value early
-        if (isInsideBodyWidget && !isPaste) {
+        if (isInsideBodyWidget) {
             const propValue = docParagraphFormat.uniqueParagraphFormat.propertiesHash.get(propertyType);
             if (!isNullOrUndefined(propValue)) {
                 return propValue;

@@ -120,7 +120,7 @@ export class AudioCommand {
             InsertHtml.Insert(this.parent.currentDocument, wrapElement, this.parent.editableElement);
             if (!isNOU(e.item.selection)) {
                 const range: Range = e.item.selection.getRange(this.parent.currentDocument);
-                const focusNode: Node = document.createTextNode(' ');
+                const focusNode: Node = document.createTextNode('\u00A0');
                 const node: Node = this.parent.nodeSelection.getSelectedNodes(this.parent.currentDocument)[0];
                 wrapElement.parentNode.insertBefore(focusNode, node.nextSibling);
                 e.item.selection.save(range, this.parent.currentDocument);

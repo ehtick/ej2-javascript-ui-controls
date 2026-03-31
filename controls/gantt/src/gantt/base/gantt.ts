@@ -444,6 +444,7 @@ export class Gantt extends Component<HTMLElement>
     public enableHeaderFocus: boolean = true;
     /** @hidden */
     public enableValidation: boolean = true;
+    private isOnAddOrDelete: boolean = false;
     /**
      * Determines whether to automatically validate and update predecessor offsets in the IPredecessor collection and columns during initial load.
      * When true, ensures data consistency with rendering validations.
@@ -3267,7 +3268,9 @@ export class Gantt extends Component<HTMLElement>
                 this.updatedRecords = this.flatData;
             }
         }
+        const prevExpandedRecords: IGanttData[] = this.expandedRecords;
         this.expandedRecords = this.getExpandedRecords(this.currentViewData);
+        this.isOnAddOrDelete = prevExpandedRecords.length !== this.expandedRecords.length && !this.isLoad;
     }
     /**
      * @param {IGanttData} records -Defines the delete record collections.
@@ -3287,7 +3290,8 @@ export class Gantt extends Component<HTMLElement>
      * @private
      */
     public updateContentHeight(args?: object): void {
-        if ((!this.allowTaskbarOverlap && !this.ganttChartModule.isCollapseAll && !this.ganttChartModule.isExpandAll) && !this.isLoad) {
+        if ((!this.allowTaskbarOverlap && !this.ganttChartModule.isCollapseAll && !this.ganttChartModule.isExpandAll
+            && !this.isOnAddOrDelete) && !this.isLoad) {
             return;
         }
         else {
@@ -3307,6 +3311,7 @@ export class Gantt extends Component<HTMLElement>
                     height = this.rowHeight;
                 }
                 this.contentHeight = expandedRecords.length * height;
+                this.isOnAddOrDelete = false;
             }
         }
     }
@@ -3809,6 +3814,7 @@ export class Gantt extends Component<HTMLElement>
         if (this.undoRedoModule && this.undoRedoModule['isUndoRedoPerformed']) {
             this.undoRedoModule['isUndoRedoPerformed'] = false;
         }
+        this.isOnAddOrDelete = false;
         this.trigger('dataBound', args);
     }
     /**

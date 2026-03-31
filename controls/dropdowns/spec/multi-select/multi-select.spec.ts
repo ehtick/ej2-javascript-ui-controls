@@ -12330,6 +12330,102 @@ describe('MultiSelect', () => {
             done();
         });
     });
+
+
+    describe('Float label accessibility — Angular EJS-MULTISELECT path', () => {
+        let listObj: MultiSelect;
+        afterEach(() => {
+            if (listObj) {
+                listObj.destroy();
+            }
+        });
+        
+        it('Float label Auto - Angular path: inputElement.id set to id + "_input"', () => {
+            let element = createElement('EJS-MULTISELECT', { id: 'msd' });
+            document.body.appendChild(element);
+            listObj = new MultiSelect({
+                dataSource: datasource2,
+                floatLabelType: 'Auto',
+                placeholder: 'Select an item'
+            });
+            listObj.appendTo(element);
+            
+            expect((<any>listObj).inputElement.id).toBe('msd_input');
+            element.remove();
+        });
+
+        it('Float label Auto - Angular path: label.for set to inputElement.id', () => {
+            let element = createElement('EJS-MULTISELECT', { id: 'msd' });
+            document.body.appendChild(element);
+            listObj = new MultiSelect({
+                dataSource: datasource2,
+                floatLabelType: 'Auto',
+                placeholder: 'Select an item'
+            });
+            listObj.appendTo(element);
+            
+            let floatLabel = (<any>listObj).componentWrapper.querySelector('.e-float-text');
+            expect(floatLabel.getAttribute('for')).toBe('msd_input');
+            element.remove();
+        });
+
+        it('Float label Auto - Angular path: aria-labelledby set correctly', () => {
+            let element = createElement('EJS-MULTISELECT', { id: 'msd' });
+            document.body.appendChild(element);
+            listObj = new MultiSelect({
+                dataSource: datasource2,
+                floatLabelType: 'Auto',
+                placeholder: 'Select an item'
+            });
+            listObj.appendTo(element);
+            
+            expect((<any>listObj).inputElement.getAttribute('aria-labelledby')).toBe('label_msd_input');
+            element.remove();
+        });
+
+        it('Float label Always - Angular path: inputElement.id set to id + "_input"', () => {
+            let element = createElement('EJS-MULTISELECT', { id: 'msd' });
+            document.body.appendChild(element);
+            listObj = new MultiSelect({
+                dataSource: datasource2,
+                floatLabelType: 'Always',
+                placeholder: 'Select an item'
+            });
+            listObj.appendTo(element);
+            
+            expect((<any>listObj).inputElement.id).toBe('msd_input');
+            element.remove();
+        });
+
+        it('Float label Always - Angular path: label.for set to inputElement.id', () => {
+            let element = createElement('EJS-MULTISELECT', { id: 'msd' });
+            document.body.appendChild(element);
+            listObj = new MultiSelect({
+                dataSource: datasource2,
+                floatLabelType: 'Always',
+                placeholder: 'Select an item'
+            });
+            listObj.appendTo(element);
+            
+            let floatLabel = (<any>listObj).componentWrapper.querySelector('.e-float-text');
+            expect(floatLabel.getAttribute('for')).toBe('msd_input');
+            element.remove();
+        });
+
+        it('Float label Auto - Plain HTML path: no _input suffix for plain input element', () => {
+            let element = <HTMLInputElement>createElement('input', { id: 'plain', attrs: { 'type': 'text' } });
+            document.body.appendChild(element);
+            listObj = new MultiSelect({
+                dataSource: datasource2,
+                floatLabelType: 'Auto',
+                placeholder: 'Select an item'
+            });
+            listObj.appendTo(element);
+            
+            expect((<any>listObj).inputElement.id).toBe('');
+            element.remove();
+        });
+    });
 });
 function commonFun(arg0: string) {
     throw new Error('Function not implemented.');

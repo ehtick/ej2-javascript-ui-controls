@@ -1357,10 +1357,10 @@ function inflateRaw(data: Uint8Array): Uint8Array {
  * Properties are validated to prevent prototype pollution attacks.
  * Unsafe property names like __proto__, constructor, prototype are rejected.
  *
- * @typedef {Object} ParsedXmlObject
+ * @typedef {Object} XmlNodeObject
  * @property {Record<string, string>} [$] - Element attributes as key-value pairs
- * @property {string | ParsedXmlObject | Array<string | ParsedXmlObject>} [value] - Element content
- * @property {ParsedXmlObject} [key] - Child element or other dynamic properties
+ * @property {string | XmlNodeObject | Array<string | XmlNodeObject>} [value] - Element content
+ * @property {XmlNodeObject} [key] - Child element or other dynamic properties
  *
  * @example
  * // XML: <root attr="value"><child>text</child></root>
@@ -1369,9 +1369,9 @@ function inflateRaw(data: Uint8Array): Uint8Array {
  * //   child: { value: "text" }
  * // }
  */
-type ParsedXmlObject = {
+type XmlNodeObject = {
     $?: Record<string, string>;
-    value?: string | ParsedXmlObject | (string | ParsedXmlObject)[];
+    value?: string | XmlNodeObject | (string | XmlNodeObject)[];
     [key: string]: any;
 };
 
@@ -1384,7 +1384,7 @@ type ParsedXmlObject = {
  *
  * @interface OrderedElement
  * @property {string} name - Element tag name
- * @property {ParsedXmlObject | string | undefined} value - Element value or content
+ * @property {XmlNodeObject  | string | undefined} value - Element value or content
  *
  * @private
  */
@@ -1392,8 +1392,8 @@ interface OrderedElement {
     /** @type {string} Element tag name */
     name: string;
 
-    /** @type {ParsedXmlObject | string | undefined} Element value or parsed content */
-    value: ParsedXmlObject | string | undefined;
+    /** @type {XmlNodeObject | string | undefined} Element value or parsed content */
+    value: XmlNodeObject | string | undefined;
 }
 
 
@@ -1467,7 +1467,7 @@ const UNSAFE_PROPERTY_NAMES: ReadonlySet<string> = new Set<string>([
  * @private
  * @param {Node} node - The XML DOM Node to convert
  * @param {boolean} [shouldTrackOrder=false] - Whether to preserve child element order
- * @returns {ParsedXmlObject | string | undefined} Parsed JavaScript object,
+ * @returns {XmlNodeObject | string | undefined} Parsed JavaScript object,
  *          string (for text nodes), or undefined (for empty text nodes)
  *
  * @example
@@ -1482,7 +1482,7 @@ const UNSAFE_PROPERTY_NAMES: ReadonlySet<string> = new Set<string>([
 export function xmlToJsObject(
     node: Node,
     shouldTrackOrder?: boolean
-): ParsedXmlObject | string | undefined {
+): XmlNodeObject | string | undefined {
     // Handle text nodes
     // Text nodes contain only text content, no child elements
     if (node.nodeType === Node.TEXT_NODE) {
@@ -1535,7 +1535,7 @@ export function xmlToJsObject(
         const child: Node = node.childNodes[parseInt(i.toString(), 10)];
 
         // Recursively convert child node
-        const childObj: ParsedXmlObject | string | undefined = xmlToJsObject(child, shouldTrackOrder);
+        const childObj: XmlNodeObject | string | undefined = xmlToJsObject(child, shouldTrackOrder);
 
         // Skip empty text nodes
         if (child.nodeType === Node.TEXT_NODE && childObj === undefined) {
@@ -1589,7 +1589,7 @@ export function xmlToJsObject(
         });
     }
 
-    return obj as ParsedXmlObject;
+    return obj as XmlNodeObject;
 }
 
 /**
@@ -1605,7 +1605,7 @@ export function xmlToJsObject(
  * - Text content is stored in a `_` property
  * - Child elements are stored as properties with their tag names as keys
  *
- * @param {ParsedXmlObject | string} jsonObject - The JavaScript object or string to convert to XML.
+ * @param {XmlNodeObject | string} jsonObject - The JavaScript object or string to convert to XML.
  *                                         If a string is provided, it becomes the text content of the element.
  * @param {string} tagName - The XML tag name for the root element being created.
  * @param {Document} [doc=document] - The DOM Document object to use for creating elements.
@@ -1616,7 +1616,7 @@ export function xmlToJsObject(
  * @private
  */
 export function jsObjectToXml(
-    jsonObject: ParsedXmlObject | string,
+    jsonObject: XmlNodeObject | string,
     tagName: string,
     doc: Document = document
 ): Element {
@@ -1645,7 +1645,7 @@ export function jsObjectToXml(
 
         if (Array.isArray(value)) {
             for (const item of value) {
-                element.appendChild(jsObjectToXml(item as ParsedXmlObject | string, name, doc));
+                element.appendChild(jsObjectToXml(item as XmlNodeObject | string, name, doc));
             }
             return;
         }
@@ -1657,7 +1657,7 @@ export function jsObjectToXml(
             return;
         }
 
-        element.appendChild(jsObjectToXml(value as ParsedXmlObject, name, doc));
+        element.appendChild(jsObjectToXml(value as XmlNodeObject, name, doc));
     }
 
     // Prefer explicit order if provided (mixed content support)
@@ -1706,7 +1706,7 @@ export function jsObjectToXml(
  * - Recursive conversion of nested objects and arrays
  * - Proper attribute and element formatting
  *
- * @param {ParsedXmlObject | string} jsonObject - The JavaScript object or string to serialize.
+ * @param {XmlNodeObject | string} jsonObject - The JavaScript object or string to serialize.
  *                                         Should follow xml2js parsing conventions with
  *                                         `$` for attributes and nested elements as properties.
  * @param {string} rootTag - The root XML element tag name for the serialized output.
@@ -1718,7 +1718,7 @@ export function jsObjectToXml(
  * @private
  */
 export function serializeJsToXmlString(
-    jsonObject: ParsedXmlObject | string,
+    jsonObject: XmlNodeObject | string,
     rootTag: string,
     namespaceUri?: string
 ): string {

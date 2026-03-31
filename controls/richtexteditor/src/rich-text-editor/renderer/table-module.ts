@@ -2723,7 +2723,6 @@ export class Table {
         this.cleanupAlignmentButtons();
         this.createTablePopupBoundFn = null;
         if (this.tableObj) {
-            this.tableObj.removeResizeElement();
             this.tableObj.removeResizeEventHandlers();
         }
         this.isDestroyed = true;

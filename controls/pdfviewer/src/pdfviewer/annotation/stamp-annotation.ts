@@ -1264,17 +1264,15 @@ export class StampAnnotation {
                             let iconSize: number =
                             this.pdfViewer.annotationModule.calculateFontSize(pageAnnotationObject.
                                 annotations[parseInt(z.toString(), 10)].icon.toUpperCase(), bounds, true);
+                            iconSize = Math.max(1, Browser.isDevice && Browser.isAndroid ? iconSize - 2 : iconSize - 2);
                             if (!pageAnnotationObject.annotations[parseInt(z.toString(), 10)].isDynamicStamp) {
-                                iconSize = iconSize - 6;
-                            }
-                            else {
-                                iconSize = Browser.isDevice && Browser.isAndroid ? iconSize - 2 : iconSize - 2;
+                                iconSize = Math.max(1, iconSize - 6);
                             }
                             pageAnnotationObject.annotations[parseInt(z.toString(), 10)].iconFontSize = iconSize;
                             let textSize: number = 10;
                             const dynamicText: string = pageAnnotationObject.annotations[parseInt(z.toString(), 10)].dynamicText;
                             if (dynamicText.trim().length !== 0) {
-                                textSize = this.pdfViewer.annotationModule.calculateFontSize(dynamicText, bounds) - 2;
+                                textSize = Math.max(1, this.pdfViewer.annotationModule.calculateFontSize(dynamicText, bounds) - 2);
                             }
                             pageAnnotationObject.annotations[parseInt(z.toString(), 10)].textFontSize = textSize;
                         }
@@ -1399,6 +1397,11 @@ export class StampAnnotation {
         }
     }
 
+    private isImageData(Appearance: any): boolean {
+        if (!Array.isArray(Appearance)) { return false; }
+        return Appearance.some((item: any) => (item && item.imagedata));
+    }
+
     /**
      * @param {any} annotation - It describes about the annotation
      * @param {number} pageNumber - It describes about the page number
@@ -1410,19 +1413,38 @@ export class StampAnnotation {
         let isDynamic: boolean = false;
         let stampAnnotation: any;
         const stampName: any = annotation['IsDynamic'];
+        const stampType: any = annotation.StampType ? annotation.StampType : annotation.StampAnnotationtype;
+        const isImageType: boolean = !!(annotation.StampByteArray && this.isImageData(annotation.Apperarance));
         annotation.AnnotationSettings = annotation.AnnotationSettings ? annotation.AnnotationSettings :
             this.pdfViewer.annotationModule.updateSettings(this.pdfViewer.stampSettings);
         annotation.allowedInteractions = this.pdfViewer.annotationModule.updateAnnotationAllowedInteractions(annotation);
-        if (annotation.IconName && stampName) {
+        if (annotation.IconName && stampName && stampType === 'Stamp' && !isImageType) {
             stampAnnotation = this.retrieveDynamicStampAnnotation(annotation.IconName);
             isDynamic = true;
-        } else if (annotation.IconName) {
+        } else if (annotation.IconName && stampType === 'Stamp' && !isImageType) {
             stampAnnotation = this.retrievestampAnnotation(annotation.IconName);
             if (annotation.IconName === 'Accepted' || annotation.IconName === 'Rejected') {
                 const collectionData: Object[] = processPathData(stampAnnotation.pathdata);
                 stampAnnotation.pathdata = splitArrayCollection(collectionData);
                 isDynamic = true;
             }
+        }
+        else {
+            annotation.AnnotationSettings = annotation.AnnotationSettings ? annotation.AnnotationSettings :
+                this.pdfViewer.annotationModule.updateSettings(this.pdfViewer.customStampSettings);
+            annotationObject = {
+                stampAnnotationType: 'image', author: annotation.Author, modifiedDate: annotation.ModifiedDate, subject: annotation.Subject, allowedInteractions: annotation.allowedInteractions,
+                note: annotation.Note, strokeColor: annotation.StrokeColor, fillColor: annotation.FillColor,
+                opacity: annotation.Opacity, stampFillcolor: annotation.FillColor,
+                rotateAngle: annotation.RotateAngle, creationDate: annotation.ModifiedDate, pageNumber: pageNumber, icon: '', stampAnnotationPath: this.findImageData(annotation.Apperarance), randomId: 'image', isDynamicStamp: this.pdfViewerBase.isDynamicStamp, dynamicText: ' ',
+                bounds: this.calculateImagePosition(annotation.Rect, true), annotName: annotation.AnnotName, comments: this.pdfViewer.annotationModule.getAnnotationComments(annotation.Comments, annotation, annotation.Author), review: { state: annotation.State, stateModel: annotation.StateModel, author: annotation.Author, modifiedDate: annotation.ModifiedDate }, shapeAnnotationType: 'stamp',
+                annotationSelectorSettings: this.getSettings(annotation), annotationSettings: annotation.annotationSettings,
+                customData: this.pdfViewer.annotation.getCustomData(annotation), isPrint: annotation.isPrint,
+                isCommentLock: annotation.IsCommentLock, isMaskedImage: annotation.IsMaskedImage,
+                customStampName: annotation.CustomStampName, template : annotation ? annotation.template : null,
+                templateSize: annotation ? annotation.templateSize : 0
+            };
+            this.pdfViewer.annotationModule.storeAnnotations(pageNumber, annotationObject, '_annotations_stamp');
         }
         if (stampAnnotation) {
             annotationObject = {
@@ -1440,23 +1462,6 @@ export class StampAnnotation {
                 }
                 annotationObject.isDynamicStamp = true;
             }
-            this.pdfViewer.annotationModule.storeAnnotations(pageNumber, annotationObject, '_annotations_stamp');
-        }
-        else {
-            annotation.AnnotationSettings = annotation.AnnotationSettings ? annotation.AnnotationSettings :
-                this.pdfViewer.annotationModule.updateSettings(this.pdfViewer.customStampSettings);
-            annotationObject = {
-                stampAnnotationType: 'image', author: annotation.Author, modifiedDate: annotation.ModifiedDate, subject: annotation.Subject, allowedInteractions: annotation.allowedInteractions,
-                note: annotation.Note, strokeColor: annotation.StrokeColor, fillColor: annotation.FillColor,
-                opacity: annotation.Opacity, stampFillcolor: annotation.FillColor,
-                rotateAngle: annotation.RotateAngle, creationDate: annotation.ModifiedDate, pageNumber: pageNumber, icon: '', stampAnnotationPath: this.findImageData(annotation.Apperarance), randomId: 'image', isDynamicStamp: this.pdfViewerBase.isDynamicStamp, dynamicText: ' ',
-                bounds: this.calculateImagePosition(annotation.Rect, true), annotName: annotation.AnnotName, comments: this.pdfViewer.annotationModule.getAnnotationComments(annotation.Comments, annotation, annotation.Author), review: { state: annotation.State, stateModel: annotation.StateModel, author: annotation.Author, modifiedDate: annotation.ModifiedDate }, shapeAnnotationType: 'stamp',
-                annotationSelectorSettings: this.getSettings(annotation), annotationSettings: annotation.annotationSettings,
-                customData: this.pdfViewer.annotation.getCustomData(annotation), isPrint: annotation.isPrint,
-                isCommentLock: annotation.IsCommentLock, isMaskedImage: annotation.IsMaskedImage,
-                customStampName: annotation.CustomStampName, template : annotation ? annotation.template : null,
-                templateSize: annotation ? annotation.templateSize : 0
-            };
             this.pdfViewer.annotationModule.storeAnnotations(pageNumber, annotationObject, '_annotations_stamp');
         }
     }

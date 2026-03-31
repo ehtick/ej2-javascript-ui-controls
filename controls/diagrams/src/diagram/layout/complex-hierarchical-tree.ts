@@ -146,7 +146,7 @@ class HierarchicalLayoutUtil {
     private minEdgeJetty: number = 12;
     //Defines a vertex that is equivalent to a node object
     private createVertex(node: INode, value: string, x: number, y: number, width: number, height: number): Vertex {
-        const geometry: Rect = { x: x, y: y, width: width, height: height };
+        const geometry: LayoutRect = { x: x, y: y, width: width, height: height };
         const vertex: Vertex = {
             value: value, geometry: geometry, name: value, vertex: true,
             inEdges: node.inEdges.slice(), outEdges: node.outEdges.slice(),
@@ -311,9 +311,9 @@ class HierarchicalLayoutUtil {
     }
 
     //Returns the bounds of the given vertices
-    private getModelBounds(nodes: Vertex[]): Rect {
+    private getModelBounds(nodes: Vertex[]): LayoutRect {
         nodes = nodes.slice();
-        let rect: Rect = null; let rect1: Rect = null;
+        let rect: LayoutRect = null; let rect1: LayoutRect = null;
         for (let i: number = 0; i < nodes.length; i++) {
             rect = nodes[parseInt(i.toString(), 10)].geometry;
             if (rect1) {
@@ -455,7 +455,7 @@ class HierarchicalLayoutUtil {
                 }
             }
         }
-        const modelBounds: Rect = this.getModelBounds(this.vertices);
+        const modelBounds: LayoutRect = this.getModelBounds(this.vertices);
         this.updateMargin(layoutProp, layout, modelBounds, viewPort);
         for (let i: number = 0; i < this.vertices.length; i++) {
             const clnode: Vertex = this.vertices[parseInt(i.toString(), 10)];
@@ -1099,8 +1099,8 @@ class HierarchicalLayoutUtil {
             this.rankBottomY[parseInt(i.toString(), 10)] = -Number.MAX_VALUE;
         }
     }
-    private setVertexLocationValue(cell: IVertex, orientation: LayoutOrientation, modelBounds: Rect): void {
-        const cellGeomtry: Rect = cell.cell.geometry;
+    private setVertexLocationValue(cell: IVertex, orientation: LayoutOrientation, modelBounds: LayoutRect): void {
+        const cellGeomtry: LayoutRect = cell.cell.geometry;
         let positionX: number;
         let positionY: number;
         if (orientation === 'TopToBottom' || orientation === 'BottomToTop') {
@@ -1122,8 +1122,8 @@ class HierarchicalLayoutUtil {
         }
     }
 
-    private calculateRectValue(dnode: INode): Rect {
-        const rect: Rect = { x: 0, y: 0, right: 0, bottom: 0, height: 0, width: 0 };
+    private calculateRectValue(dnode: INode): LayoutRect {
+        const rect: LayoutRect = { x: 0, y: 0, right: 0, bottom: 0, height: 0, width: 0 };
         rect.x = dnode.offsetX - dnode.actualSize.width / 2;
         rect.right = dnode.offsetX + dnode.actualSize.width / 2;
         rect.y = dnode.offsetY - dnode.actualSize.height / 2;
@@ -1132,9 +1132,9 @@ class HierarchicalLayoutUtil {
     }
 
     private isNodeOverLap(dnode: INode, layoutProp: Layout): void {
-        let nodeRect: Rect = { x: 0, y: 0, right: 0, bottom: 0, height: 0, width: 0 };
+        let nodeRect: LayoutRect = { x: 0, y: 0, right: 0, bottom: 0, height: 0, width: 0 };
         for (let i: number = 0; i < this.vertices.length; i++) {
-            let rect: Rect = { x: 0, y: 0, width: 0, height: 0 };
+            let rect: LayoutRect = { x: 0, y: 0, width: 0, height: 0 };
             //let tempnode1: INode;
             const tempnode1: INode = this.nameTable[this.vertices[parseInt(i.toString(), 10)].value];
             if (dnode.id !== tempnode1.id && tempnode1.offsetX !== 0 && tempnode1.offsetY !== 0) {
@@ -1152,7 +1152,7 @@ class HierarchicalLayoutUtil {
         }
     }
 
-    private isIntersect(rect: Rect, nodeRect: Rect, layoutProp: Layout): boolean {
+    private isIntersect(rect: LayoutRect, nodeRect: LayoutRect, layoutProp: Layout): boolean {
         if (!(Math.floor(rect.right + layoutProp.horizontalSpacing) <= Math.floor(nodeRect.x) ||
             Math.floor(rect.x - layoutProp.horizontalSpacing) >= Math.floor(nodeRect.right)
             || Math.floor(rect.y - layoutProp.verticalSpacing) >= Math.floor(nodeRect.bottom)
@@ -1164,15 +1164,15 @@ class HierarchicalLayoutUtil {
     }
 
     /* eslint-disable */
-    private updateMargin(layoutProp: Layout, layout: LayoutProp, modelBounds: Rect, viewPort: PointModel): void {
-        const viewPortBounds: Rect = { x: 0, y: 0, width: viewPort.x, height: viewPort.y };
+    private updateMargin(layoutProp: Layout, layout: LayoutProp, modelBounds: LayoutRect, viewPort: PointModel): void {
+        const viewPortBounds: LayoutRect = { x: 0, y: 0, width: viewPort.x, height: viewPort.y };
         //let layoutBounds: Rect;
         let bounds: Bounds = {
             x: modelBounds.x, y: modelBounds.y,
             right: modelBounds.x + modelBounds.width,
             bottom: modelBounds.y + modelBounds.height
         };
-        const layoutBounds: Rect = layoutProp.bounds ? layoutProp.bounds : viewPortBounds;
+        const layoutBounds: LayoutRect = layoutProp.bounds ? layoutProp.bounds : viewPortBounds;
         if (layout.orientation === 'TopToBottom' || layout.orientation === 'BottomToTop') {
             switch (layoutProp.horizontalAlignment) {
                 case 'Auto':
@@ -1654,10 +1654,10 @@ class HierarchicalLayoutUtil {
 
 
     //used to specify the geometrical position of the layout model cell
-    private garphModelsetVertexLocation(plalementChange: PlacementStage, cell: Vertex, x: number, y: number): Rect {
+    private garphModelsetVertexLocation(plalementChange: PlacementStage, cell: Vertex, x: number, y: number): LayoutRect {
         //let model: MultiParentModel = plalementChange.model;
-        const geometry: Rect = cell.geometry;
-        let result: Rect = null;
+        const geometry: LayoutRect = cell.geometry;
+        let result: LayoutRect = null;
         if (geometry != null) {
             result = { x: x, y: y, width: geometry.width, height: geometry.height };
             if (geometry.x !== x || geometry.y !== y) {
@@ -2705,7 +2705,7 @@ class CrossReduction {
  */
 export interface Vertex {
     value: string;
-    geometry: Rect;
+    geometry: LayoutRect;
     name: string;
     vertex: boolean;
     inEdges: string[];
@@ -2854,7 +2854,7 @@ export interface LayoutProp {
     enableLayoutRouting: boolean;
 }
 
-interface Rect {
+interface LayoutRect {
     x: number;
     y: number;
     width: number;

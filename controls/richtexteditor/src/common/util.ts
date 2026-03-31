@@ -1063,28 +1063,42 @@ export function cleanHTMLString(htmlString: string, editNode: Element): string {
         }
         let child: Node | null = node.firstChild;
         while (child != null) {
-            if (child.nodeType === 3) {
+            const nodeType: number = child.nodeType;
+            if (nodeType === 3) { // Node.TEXT_NODE
+                let nodeValue: string = child.nodeValue;
                 if (hasPreLine) {
-                    child.nodeValue = child.nodeValue.replace(/[\t]/g, ' ');
-                    child.nodeValue = child.nodeValue.replace(/[ ]{2,}/g, ' ');
+                    nodeValue = nodeValue.replace(/[\t]/g, ' ').replace(/[ ]{2,}/g, ' ');
                 } else {
-                    child.nodeValue = child.nodeValue.replace(/[\n\r\t]/g, ' ');
-                    child.nodeValue = child.nodeValue.replace(/[ ]{2,}/g, ' ');
+                    nodeValue = nodeValue.replace(/[\n\r\t]/g, ' ').replace(/[ ]{2,}/g, ' ');
                 }
-                if ((child.nodeValue === ' ' || child.textContent.indexOf(' ') === 0 || child.textContent.lastIndexOf(' ') === child.textContent.length - 1) && child.parentElement.innerHTML !== ' ') {
-                    const isEmptyText: boolean = child.nodeValue === ' ';
-                    const isTrimStart: boolean = child.textContent.indexOf(' ') === 0;
-                    const isTrimend: boolean = child.textContent.lastIndexOf(' ') === child.textContent.length - 1;
-                    if (child.nextSibling && isBlockNode(child.nextSibling as Element) && isEmptyText) {
-                        child.nodeValue = child.nodeValue.replace(/[ ]/g, '');
-                    } else if (child.previousSibling && isBlockNode(child.previousSibling as Element) && isEmptyText) {
-                        child.nodeValue = child.nodeValue.replace(/[ ]/g, '');
+                if (child.nodeValue !== nodeValue) {
+                    child.nodeValue = nodeValue;
+                }
+                const textContent: string = nodeValue;
+                const textLength: number = textContent.length;
+                // Avoid expensive serialization via `innerHTML` by checking whether
+                // the parent contains exactly one text node whose value is a single space.
+                const parentEl: HTMLElement = child.parentElement as HTMLElement;
+                const parentIsSingleSpace: boolean = !!(parentEl && parentEl.childNodes.length === 1 &&
+                    parentEl.firstChild.nodeType === Node.TEXT_NODE && parentEl.firstChild.nodeValue === ' ');
+                if (textLength > 0 && (textContent === ' ' || textContent[0] === ' ' || textContent[textLength - 1] === ' ') && !parentIsSingleSpace) {
+                    const isEmptyText: boolean = textContent === ' ';
+                    const isTrimStart: boolean = textContent[0] === ' ';
+                    const isTrimend: boolean = textContent[textLength - 1] === ' ';
+
+                    const nextSibling: Node = child.nextSibling;
+                    const prevSibling: Node = child.previousSibling;
+
+                    if (nextSibling && isBlockNode(nextSibling as Element) && isEmptyText) {
+                        child.nodeValue = '';
+                    } else if (prevSibling && isBlockNode(prevSibling as Element) && isEmptyText) {
+                        child.nodeValue = '';
                     } else {
                         let element: HTMLElement = child as HTMLElement;
                         let hasNextSibling: boolean = false;
                         let hasPreviousSibling: boolean = false;
                         let nextElement: HTMLElement;
-                        while (!isBlockNode(element)) {
+                        while (element && !isBlockNode(element)) {
                             if (element.previousSibling && !hasPreviousSibling) {
                                 hasPreviousSibling = true;
                             }
@@ -1096,31 +1110,36 @@ export function cleanHTMLString(htmlString: string, editNode: Element): string {
                         }
                         if (isEmptyText) {
                             if (!hasPreviousSibling && hasNextSibling) {
-                                child.nodeValue = child.nodeValue.replace(/[ ]/g, '');
+                                child.nodeValue = '';
                             } else if (hasPreviousSibling && !hasNextSibling) {
-                                child.nodeValue = child.nodeValue.replace(/[ ]/g, '');
-                            } else if (hasPreviousSibling && hasNextSibling && nextElement.nodeType === 3 && nextElement.textContent.trim() === '') {
-                                child.nodeValue = child.nodeValue.replace(/[ ]/g, '');
+                                child.nodeValue = '';
+                            } else if (hasPreviousSibling && hasNextSibling && nextElement && nextElement.nodeType === 3 && nextElement.textContent.trim() === '') {
+                                child.nodeValue = '';
                             }
                         }
                         if (isTrimStart || isTrimend) {
-                            if (!hasPreviousSibling && child.textContent.indexOf(' ') === 0) {
-                                child.textContent = child.textContent.substring(child.textContent.indexOf(' ') + 1);
+                            let updatedText: string = child.textContent;
+                            if (!hasPreviousSibling && updatedText[0] === ' ') {
+                                updatedText = updatedText.substring(1);
                             }
-                            if (!hasNextSibling && child.textContent.lastIndexOf(' ') === child.textContent.length - 1 && isBlockNode(child.parentElement)) {
-                                child.textContent = child.textContent.substring(0, child.textContent.lastIndexOf(' '));
+                            if (!hasNextSibling && updatedText.length > 0 && updatedText[updatedText.length - 1] === ' ' && isBlockNode(child.parentElement)) {
+                                updatedText = updatedText.substring(0, updatedText.length - 1);
                             }
-                            if (hasNextSibling && isBlockNode(nextElement) && child.textContent.lastIndexOf(' ') === child.textContent.length - 1) {
-                                child.textContent = child.textContent.substring(0, child.textContent.lastIndexOf(' '));
+                            if (hasNextSibling && nextElement && isBlockNode(nextElement) && updatedText.length > 0 && updatedText[updatedText.length - 1] === ' ') {
+                                updatedText = updatedText.substring(0, updatedText.length - 1);
+                            }
+                            if (child.textContent !== updatedText) {
+                                child.textContent = updatedText;
                             }
                         }
                     }
                 }
-            } else if (child.nodeType === 1) {
-                if (!hasPre(child as HTMLElement) && !hasPreLineStyle(child as HTMLElement)) {
+            } else if (nodeType === 1) { // Node.ELEMENT_NODE
+                const element: HTMLElement = child as HTMLElement;
+                if (!hasPre(element) && !hasPreLineStyle(element)) {
                     cleanTextContent(child, hasPreLine);
                 }
-                if (hasPreLineStyle(child as HTMLElement)) {
+                if (hasPreLineStyle(element)) {
                     cleanTextContent(child, true);
                 }
             }

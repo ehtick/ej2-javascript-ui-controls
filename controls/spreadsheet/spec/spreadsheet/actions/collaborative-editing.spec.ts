@@ -886,7 +886,7 @@ describe('Collaborative Editing ->', () => {
                 helper.click('.e-protectworkbook-dlg .e-primary');
                 setTimeout(() => {
                     expect(helper2.getInstance().isProtected).toBeTruthy();
-                    expect(helper2.getInstance().password).toBe('1');
+                    expect(helper2.getInstance().password).not.toBe('1');
                     expect(helper2.getInstance().activeSheetIndex).toBe(1);
                     done();
                 });

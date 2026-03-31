@@ -25951,4 +25951,29 @@ describe('Spreadsheet formula module ->', () => {
             done();
         });
     });
+    describe('EJ2-1015176 Cross-sheet COUNTIFS circular reference fix ->', () => {
+        beforeAll((done: Function) => {
+            helper.initializeSpreadsheet({ sheets: [ { name: 'SheetOne' } ] }, done);
+        });
+        afterAll(() => {
+            helper.invoke('destroy');
+        });
+        it('Paste COUNTIFS cross-sheet formula in SheetOne!B2, add new sheet, paste in B2 and B3, dependent formula cell size must be 2', (done: Function) => {
+            const spreadsheet: any = helper.getInstance();
+            helper.invoke('updateCell', [{ formula: '=COUNTIFS(SheetOne!B2:B79,"1000",SheetOne!F2:F79,A2)' }, 'SheetOne!B2']);
+            setTimeout(() => {
+                helper.invoke('insertSheet');
+                setTimeout(() => {
+                    helper.edit('Sheet1!B2', '=COUNTIFS(SheetOne!B2:B79,"1000",SheetOne!F2:F79,A2)');
+                    helper.edit('Sheet1!B3', '=COUNTIFS(SheetOne!B2:B79,"1000",SheetOne!F2:F79,A2)');
+                    setTimeout(() => {
+                        expect(spreadsheet.sheets[1].rows[1].cells[1].value).toBe(0);
+                        const calcInstance: any = spreadsheet.workbookFormulaModule.calculateInstance;
+                        expect(calcInstance.dependentCells.size).toBe(80);
+                        done();
+                    });
+                });
+            });
+        });
+    });
 });

@@ -13,6 +13,7 @@ export class WCellFormat {
     private uniqueCellFormat: WUniqueFormat = undefined;
     private static uniqueCellFormats: WUniqueFormats = new WUniqueFormats();
     private static uniqueFormatType: number = 4;
+    public initialCellWidth: number = 0;
     public borders: WBorders = new WBorders(this);
     public shading: WShading = new WShading(this);
     public ownerBase: Object;

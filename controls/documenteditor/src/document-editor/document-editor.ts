@@ -1852,6 +1852,7 @@ export class DocumentEditor extends Component<HTMLElement> implements INotifyPro
                     }
                     this.viewer = new WebLayoutViewer(this);
                 }
+                this.documentHelper.layout.isLayoutSwitch = true;
                 /* eslint-disable */
                     if (this.selectionModule) {
                         const paragraph: ParagraphWidget = this.selectionModule.start.paragraph;
@@ -1861,6 +1862,7 @@ export class DocumentEditor extends Component<HTMLElement> implements INotifyPro
                         }
                     }
                     this.documentHelper.layout.layoutWholeDocument(true);
+                    this.documentHelper.layout.isLayoutSwitch = false;
                     if (this.selectionModule) {
                         this.selectionModule.onHighlight();
                     }
@@ -1882,6 +1884,7 @@ export class DocumentEditor extends Component<HTMLElement> implements INotifyPro
                     this.commentReviewPane.enableDisableItems();
                     this.trackChangesPane.enableDisableButton(!this.isReadOnly && !this.documentHelper.isDocumentProtected);
                     this.showHideRulers();
+                    this.fireSelectionChange();
                     break;
                 case 'currentUser':
                     // Reset spell checker collections when switching users with user dictionary enabled
@@ -2347,12 +2350,15 @@ export class DocumentEditor extends Component<HTMLElement> implements INotifyPro
                         eventArgs.operations = this.editorHistoryModule.currentHistoryInfo.getActionInfo();
                     } else if (!isNullOrUndefined(this.editorHistoryModule.lastOperation)) {
                         let history: BaseHistoryInfo = this.editorHistoryModule.lastOperation;
-                        if (history.action === 'IMEInput') {
-                            eventArgs.operations = history.getActionInfo(true);
-                        } else {
-                            eventArgs.operations = history.getActionInfo();
+                        // If a comment is being edited in the comment pane not yet posted, skip processing
+                        if (!(this.commentReviewPane && this.commentReviewPane.commentPane && this.commentReviewPane.commentPane.isEditMode && history.action === 'InsertComment')) {
+                            if (history.action === 'IMEInput') {
+                                eventArgs.operations = history.getActionInfo(true);
+                            } else {
+                                eventArgs.operations = history.getActionInfo();
+                            }
+                            this.editorHistoryModule.lastOperation = undefined;
                         }
-                        this.editorHistoryModule.lastOperation = undefined;
                     }
                     if (this.enableTrackChanges && eventArgs.operations.length > 0) {
                         for (let i: number = 0; i < eventArgs.operations.length; i++) {
@@ -4997,10 +5003,12 @@ export class DocumentEditor extends Component<HTMLElement> implements INotifyPro
             return;
         }
         externalFonts.forEach((externalFonts: ExternalFontInfo) => {
-            this.externalFonts.push({
-                fontFamily: externalFonts.fontFamily,
-                src: externalFonts.src
-            });
+            if (externalFonts.fontFamily && externalFonts.src && !this.parser.isFontInstalled(externalFonts.fontFamily)) {
+                this.externalFonts.push({
+                    fontFamily: externalFonts.fontFamily,
+                    src: externalFonts.src
+                });
+            }
         });
         this.updateExternalStyle();
     }

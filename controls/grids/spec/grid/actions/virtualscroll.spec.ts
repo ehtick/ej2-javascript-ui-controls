@@ -2424,3 +2424,51 @@ describe('Coverage for enableVirtualization', function () {
         gridObj = null;
     });
 });
+
+describe('EJ2-1017579-Edit dialog fails to close when virtualization is enabled with a rowHeight in EJ2 Grid.', () => {
+    let gridObj: Grid;
+    let actionComplete: () => void;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: filterData,
+                editSettings: { 
+                    allowEditing: true, 
+                    allowAdding: true, 
+                    allowDeleting: true, 
+                    mode: 'Dialog',
+                },
+                enableVirtualization: true,
+                rowHeight: 36,
+                height: 300,
+                toolbar: ['Edit', 'Delete'],
+                columns: [
+                    { field: 'OrderID', isPrimaryKey: true, validationRules: { required: true } },
+                    { field: 'CustomerID' },
+                    { field: 'Freight', format: 'C2' }
+                ]
+            },
+            done
+        );
+    });
+
+    it('open dialog', () => {
+        (gridObj as any).dblClickHandler({ target: gridObj.element.querySelectorAll('.e-row')[1].firstElementChild });
+    });
+    it('save the data', (done: Function) => {
+        actionComplete = (args?: any): void => {
+            if (args.requestType === 'save') {
+                expect(gridObj.isEdit).toBeFalsy();
+                expect(document.querySelectorAll('.e-edit-dialog').length).toBe(0);
+                done();
+            }               
+        };
+        gridObj.actionComplete = actionComplete;
+        (select('#'+ gridObj.element.id +'_dialogEdit_wrapper', document).querySelectorAll('button') as any)[1].click();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = actionComplete = null;
+    });
+});

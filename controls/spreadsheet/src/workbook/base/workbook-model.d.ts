@@ -441,4 +441,28 @@ export interface WorkbookModel extends ComponentModel{
      */
     listSeparator?: string;
 
+    /**
+     * Specifies the hashed password value for the workbook protection.
+     *
+     * @default null
+     * @hidden
+     */
+    hashValue?: string;
+
+    /**
+     * Specifies the salt value used when deriving the password hash for the sheet protection.
+     *
+     * @default null
+     * @hidden
+     */
+    saltValue?: string;
+
+    /**
+     * Specifies the iteration (spin) count used when hashing the password.
+     *
+     * @default null
+     * @hidden
+     */
+    spinCount?: number;
+
 }

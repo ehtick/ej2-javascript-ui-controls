@@ -1,4 +1,4 @@
-import { AnnotationConstraints, FlipDirection, NodeConstraints } from '../../enum/enum';
+import { AnnotationConstraints, Direction, FlipDirection, NodeConstraints } from '../../enum/enum';
 import { PointModel } from '../../primitives/point-model';
 import { VisioMarginModel, VisioTextAlignmentModel, VisioTextDecorationModel } from './visio-annotations';
 import { ParsingContext } from './visio-import-export';
@@ -2156,17 +2156,6 @@ export interface PointWithType extends Point {
     type?: string;
 }
 
-/**
- * Cardinal directions for routing and positioning.
- * Used for annotation directions, connector routing, etc.
- *
- * @typedef Direction
- * @type {('Top' | 'Bottom' | 'Left' | 'Right')}
- *
- * @private
- */
-export type Direction = 'Top' | 'Bottom' | 'Left' | 'Right';
-
 // ============================================================================
 // SECTION 4: GRADIENT & STYLING TYPES
 // ============================================================================
@@ -2462,26 +2451,6 @@ export interface VisioShapeData {
  * @private
  */
 export type ConnectorType = 'Straight' | 'Orthogonal' | 'Bezier';
-
-/**
- * Represents the available shapes for connector decorators (arrowheads).
- * Defines the visual style of endpoints on connectors.
- *
- * - None: No decorator
- * - Arrow/OpenArrow: Standard arrow styles
- * - Square/Circle/Diamond: Geometric decorators
- * - Fletch: Various fletching styles
- * - Custom: Custom decorator shape
- *
- * @typedef DecoratorShapes
- * @type {string}
- *
- * @private
- */
-export type DecoratorShapes =
-    | 'None' | 'Arrow' | 'OpenArrow' | 'Square' | 'Circle'
-    | 'Diamond' | 'Fletch' | 'OpenFetch' | 'IndentedArrow'
-    | 'OutdentedArrow' | 'DoubleArrow' | 'Custom';
 
 // ============================================================================
 // Diagram Input Models

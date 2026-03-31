@@ -2,7 +2,7 @@ import { L10n, EventHandler, closest, Browser, isNullOrUndefined, KeyboardEventA
 import { remove } from '@syncfusion/ej2-base';
 import { ContextMenu as Menu, MenuEventArgs, OpenCloseMenuEventArgs } from '@syncfusion/ej2-navigations';
 import { IGrid, IAction, ColumnMenuItemModel, NotifyArgs, ColumnMenuOpenEventArgs, ColumnMenuClickEventArgs } from '../base/interface';
-import { parentsUntil, applyBiggerTheme } from '../base/util';
+import { parentsUntil, applyBiggerTheme, isAngularMatContainer } from '../base/util';
 import { Column } from '../models/column';
 import { ServiceLocator } from '../services/service-locator';
 import * as events from '../base/constant';
@@ -279,6 +279,7 @@ export class ColumnMenu implements IAction {
             beforeItemRender: this.beforeMenuItemRender.bind(this),
             beforeClose: this.columnMenuBeforeClose.bind(this)
         });
+        this.columnMenu.isAngular = isAngularMatContainer(this.parent);
         if (this.element && parentsUntil(this.element, 'e-popup')) {
             this.element.classList.add(this.COL_POP);
         }

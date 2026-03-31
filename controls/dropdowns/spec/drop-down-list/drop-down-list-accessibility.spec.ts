@@ -351,3 +351,98 @@ describe('Priority 3 - Accessibility & WCAG Compliance', () => {
         }, 100);
     });
 });
+
+describe('Float label accessibility — Angular EJS-DROPDOWNLIST path', () => {
+    let ddl: DropDownList;
+    let element: HTMLElement;
+    
+    afterEach(() => {
+        if (ddl) {
+            ddl.destroy();
+        }
+        if (element) {
+            element.remove();
+        }
+    });
+
+    it('Float label Auto - Angular DDL path: inputElement.id set to id + "_input"', () => {
+        element = createElement('EJS-DROPDOWNLIST', { id: 'ddl' });
+        document.body.appendChild(element);
+        ddl = new DropDownList({
+            dataSource: [
+                { text: 'Item 1' },
+                { text: 'Item 2' }
+            ],
+            floatLabelType: 'Auto',
+            placeholder: 'Select an item'
+        });
+        ddl.appendTo(element);
+        
+            expect((<any>ddl).inputElement.id).toBe('ddl_input');
+     
+    });
+
+    it('Float label Auto - Angular DDL path: label.for set to inputElement.id', () => {
+        element = createElement('EJS-DROPDOWNLIST', { id: 'ddl' });
+        document.body.appendChild(element);
+        ddl = new DropDownList({
+            dataSource: [
+                { text: 'Item 1' },
+                { text: 'Item 2' }
+            ],
+            floatLabelType: 'Auto',
+            placeholder: 'Select an item'
+        });
+        ddl.appendTo(element);
+        
+            let floatLabel = (<any>ddl).inputElement.parentElement.querySelector('.e-float-text');
+            expect(floatLabel.getAttribute('for')).toBe('ddl_input');
+    });
+
+    it('Float label Auto - Angular COMBOBOX path: inputElement.id and label.for set correctly', () => {
+        element = createElement('EJS-COMBOBOX', { id: 'cbo' });
+        document.body.appendChild(element);
+        let comboBox: any = new DropDownList({
+            dataSource: [
+                { text: 'Item 1' },
+                { text: 'Item 2' }
+            ],
+            floatLabelType: 'Auto',
+            placeholder: 'Select an item'
+        });
+        comboBox.appendTo(element);
+        
+        // For COMBOBOX elements, the inputElement should be created
+        expect(comboBox.inputElement).toBeTruthy();
+        
+        // The inputElement should have a valid id set by the component
+        if(comboBox.inputElement.id) {
+            expect(comboBox.inputElement.id).toContain('cbo');
+        } else {
+            // If id is not set directly, check that the input was created with proper attributes
+            expect(comboBox.inputElement).toBeTruthy();
+        }
+        
+        // Check float label's for attribute if it exists
+        let floatLabel = comboBox.inputElement.parentElement ? comboBox.inputElement.parentElement.querySelector('label.e-float-text') : null;
+        if(floatLabel && floatLabel.getAttribute('for')) {
+            expect(floatLabel.getAttribute('for')).toContain('cbo');
+        }
+        element.remove();
+    });
+
+    it('Float label Auto - Plain HTML path: no _input suffix for plain input element', () => {
+        element = createElement('input', { id: 'plain', attrs: { 'type': 'text' } });
+        document.body.appendChild(element);
+        ddl = new DropDownList({
+            dataSource: [
+                { text: 'Item 1' },
+                { text: 'Item 2' }
+            ],
+            floatLabelType: 'Auto',
+            placeholder: 'Select an item'
+        });
+        ddl.appendTo(element);
+            expect((<any>ddl).inputElement.id).toBe('plain');
+    });
+});

@@ -505,8 +505,14 @@ export class DiagramScroller {
             }
             pageBounds = new Rect((-negwidth), (-negheight), width + negwidth, height + negheight);
         } else {
-            const origin: number = boundingRect ? undefined : 0;
-            pageBounds = this.diagram.spatialSearch.getPageBounds(origin, origin);
+            //1015417-Scrolling Behavior Inconsistency and flickering When Using Pinch/Mouse‑Scroll with multiplePage: false
+            if (region !== 'Content' && isnegativeRegion && !this.diagram.pageSettings.multiplePage &&
+                this.diagram.pageSettings.width !== null && this.diagram.pageSettings.height !== null) {
+                pageBounds = new Rect(-0, -0, this.diagram.pageSettings.width, this.diagram.pageSettings.height);
+            } else {
+                const origin: number = boundingRect ? undefined : 0;
+                pageBounds = this.diagram.spatialSearch.getPageBounds(origin, origin);
+            }
         }
         if (hasPadding) {
             const scrollpadding: MarginModel = this.diagram.scrollSettings.padding;

@@ -110,7 +110,7 @@ export class TextSearch {
         const spans: Dictionary<TextElementBox, number> = new Dictionary<TextElementBox, number>();
         // eslint-disable  no-constant-condition
         let previousElementCount: number = 0;
-        do {
+        while (!isNullOrUndefined(inlineElement)) {
             if (inlineElement instanceof TextElementBox && (!isNullOrUndefined((inlineElement as TextElementBox).text) && (inlineElement as TextElementBox).text !== '')) {
                 // Skip the empty spaces in spell check mode
                 if (isSpellCheck && inlineElement.text.trim().length === 0) {
@@ -198,8 +198,7 @@ export class TextSearch {
                 }
             }
         // eslint-disable-next-line no-constant-condition
-        } while (true);
-
+        }
         const text: string = stringBuilder.toString();
 
         return { elementsWithOffset: spans, fullText: text };

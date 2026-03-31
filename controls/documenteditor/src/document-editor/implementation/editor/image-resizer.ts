@@ -807,43 +807,51 @@ export class ImageResizer {
             let prevX: number = parseFloat(this.selectedResizeElement.style.left);
             let prevY: number = parseFloat(this.selectedResizeElement.style.top);
             let cursorPoint: Point = new Point(event.offsetX, event.offsetY);
-            let touchPoint: Point = this.viewer.findFocusedPage(cursorPoint, true);
+            let touchPoint: Point = this.getImageResizePoint(cursorPoint);
             this.handleImageResizing(touchPoint, prevX, prevY);
             this.viewer.updateScrollBars();
         }
     }
-    private topMiddleResizing(touchPoint: Point): number {
-        let prevY: number;
-        if (this.topValue >= touchPoint.y) {
-            prevY = this.topValue / touchPoint.y;
-            this.topValue = touchPoint.y;
-            if (this.viewer instanceof PageLayoutViewer) {
-                if (this.topValue <= this.viewer.pageGap) {
-                    prevY = 1;
-                }
-            }
-        } else {
-            prevY = -(touchPoint.y / this.topValue);
-            this.topValue = touchPoint.y;
-            if (this.topValue === 0) {
-                prevY = -1;
-            }
+    /**
+     * Gets the page-relative point for image resizing without clamping to page boundaries.
+     * This allows images to be resized beyond the visible page width/height.
+     *
+     * @private
+     * @param {Point} cursorPoint - Viewer-relative cursor position
+     * @returns {Point} - Page-relative point for resizing
+     */
+    private getImageResizePoint(cursorPoint: Point): Point {
+        let point: Point = new Point(cursorPoint.x, cursorPoint.y);
+        point.x += this.documentHelper.viewerContainer.scrollLeft;
+        point.y += this.documentHelper.viewerContainer.scrollTop;
+        
+        // Find the page containing the current image
+        let page: Page = this.currentPage;
+        if (isNullOrUndefined(page)) {
+            // Fallback to finding focused page
+            return this.viewer.findFocusedPage(cursorPoint, true);
         }
+        
+        let pageIndex: number = this.documentHelper.pages.indexOf(page);
+        let pageTop: number = (page.boundingRectangle.y - this.viewer.pageGap * (pageIndex + 1)) * 
+                              this.documentHelper.zoomFactor + this.viewer.pageGap * (pageIndex + 1);
+        let pageLeft: number = page.boundingRectangle.x;
+        
+        // Convert to page-relative coordinates WITHOUT clamping
+        // This allows the resize to continue beyond page boundaries
+        point.y = (point.y - pageTop) / this.documentHelper.zoomFactor;
+        point.x = (point.x - pageLeft) / this.documentHelper.zoomFactor;
+        
+        return point;
+    }
+    private topMiddleResizing(touchPoint: Point): number {
+        let prevY: number = this.topValue - touchPoint.y;
+        this.topValue = touchPoint.y;
         return prevY;
     }
     private leftMiddleResizing(touchPoint: Point): number {
-        let prevX: number;
-        if (this.leftValue >= touchPoint.x) {
-            prevX = this.leftValue / touchPoint.x;
-            this.leftValue = touchPoint.x;
-            if (this.leftValue === 0) {
-                prevX = 1;
-                this.leftValue = parseFloat(this.selectedResizeElement.style.left);
-            }
-        } else {
-            prevX = -(touchPoint.x / this.leftValue);
-            this.leftValue = touchPoint.x;
-        }
+        let prevX: number = this.leftValue - touchPoint.x;
+        this.leftValue = touchPoint.x;
         return prevX;
     }
     private topRightResizing(touchPoint: Point): LeftTopInfo {
@@ -911,7 +919,7 @@ export class ImageResizer {
             let prevY: number = parseFloat(this.selectedResizeElement.style.top) + 24;
             let touch: TouchList = touchEvent.touches;
             let cursorPoint: Point = new Point(touch[0].clientX, touch[0].clientY);
-            let touchPoint: Point = this.viewer.findFocusedPage(cursorPoint, true);
+            let touchPoint: Point = this.getImageResizePoint(cursorPoint);
             if (isNullOrUndefined(this.currentImageElementBox) || isNullOrUndefined(this.currentImageElementBox)) {
                 return;
             }

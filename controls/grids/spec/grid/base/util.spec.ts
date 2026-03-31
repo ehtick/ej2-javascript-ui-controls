@@ -1,7 +1,7 @@
 /**
  * Util spec
  */
-import { doesImplementInterface, prepareColumns, setCssInGridPopUp, calculateAggregate } from '../../../src/grid/base/util';
+import { doesImplementInterface, prepareColumns, setCssInGridPopUp, calculateAggregate, resetDialogAppend, getCollapsedRowsCount, headerValueAccessor } from '../../../src/grid/base/util';
 import { createElement, EmitType } from '@syncfusion/ej2-base';
 import '../../../node_modules/es6-promise/dist/es6-promise';
 import { DatePicker } from '@syncfusion/ej2-calendars';
@@ -104,6 +104,74 @@ describe('Util module', () => {
             gridObj.aggregates = [];
             gridObj = elem = actionComplete = actionBegin = datePickerObj = null;
         });
-    });    
+    });
+    
+    describe('Util additional coverage', () => {
+        it('headerValueAccessor returns empty for null/empty and value for valid field', () => {
+            const args1: any = { a: 1 };
+            const args2: any = { a: 42 };
+            expect(headerValueAccessor(null, args1)).toBe('');
+            expect(headerValueAccessor('', args1)).toBe('');
+            expect(headerValueAccessor('a', args2)).toBe(42);
+        });
 
+        it('resetDialogAppend inserts popup into sbPanel when .sb-demo-section exists', () => {
+            // cleanup any previous panel
+            const existing = document.querySelector('.sb-demo-section');
+            if (existing) { existing.parentElement.removeChild(existing); }
+
+            const gDiv = document.createElement('div');
+            gDiv.id = 'testgrid';
+            document.body.appendChild(gDiv);
+            const gObj: any = {
+                element: gDiv,
+                createElement: (tag: string, opts: any) => {
+                    const el = document.createElement(tag);
+                    if (opts && opts.className) { el.className = opts.className; }
+                    if (opts && opts.id) { el.id = opts.id; }
+                    return el;
+                }
+            };
+            const dlgEl = document.createElement('div');
+            dlgEl.style.width = '100px';
+            const dlgObj: any = { element: dlgEl, zIndex: 1000 };
+
+            // create sbPanel container
+            const sb = document.createElement('div');
+            sb.className = 'sb-demo-section';
+            document.body.appendChild(sb);
+
+            resetDialogAppend(gObj, dlgObj, undefined);
+        });
+
+        it('getCollapsedRowsCount else branch with nested items and aggregatesCount', () => {
+            const val: any = {
+                gSummary: 0,
+                data: {
+                    count: 5,
+                    items: [
+                        {
+                            items: [
+                                { count: 2, items: [] },
+                                { count: 3, items: [] }
+                            ]
+                        }
+                    ]
+                },
+                indent: 0,
+                aggregatesCount: 1
+            };
+            // attach properties on the inner gLevel.items array as used in code
+            const gLevelItems = val.data.items[0].items;
+            (gLevelItems as any).records = [1, 2];
+            (gLevelItems as any).GroupGuid = 'g';
+            (gLevelItems as any).childLevels = 1;
+
+            const grid: any = {
+                groupSettings: { columns: ['g'] },
+                columns: [1, 2]
+            };
+            getCollapsedRowsCount(val, grid);
+        });
+    });
 });

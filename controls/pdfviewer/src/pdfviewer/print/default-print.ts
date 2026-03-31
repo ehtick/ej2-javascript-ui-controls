@@ -64,14 +64,15 @@ export class DefaultPrint {
             hasPrinted = true;
             try {
                 const contentWindow: Window | null = iframe.contentWindow;
-                if (!contentWindow) {
+                if (!contentWindow || typeof contentWindow.print !== 'function') {
                     throw new Error('Unable to access iframe content');
                 }
                 this.pdfViewerBase.showPrintLoadingIndicator(false);
                 contentWindow.focus();
                 contentWindow.print();
             } catch (error) {
-                console.error('Error while trying to print:', error);
+                this.pdfViewer.print.printDocumentLegacy();
+                this.pdfViewerBase.showPrintLoadingIndicator(false);
             }
         };
         iframe.onload = (): void => {

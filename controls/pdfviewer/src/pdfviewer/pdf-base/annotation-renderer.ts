@@ -1470,8 +1470,9 @@ export class AnnotationRenderer {
                 appearance.graphics.setTransparency(opacity);
                 const isVectorStamp: boolean = icon.trim() === 'Accepted' || icon.trim() === 'Rejected';
                 if (!isVectorStamp) {
+                    const cornerRadius: number = Math.min(10, (rectangle.width - 1) / 2, (rectangle.height - 1) / 2);
                     appearance.graphics.drawRoundedRectangle({x: 0.5, y: 0.5, width: rectangle.width - 1,
-                        height: rectangle.height - 1}, 10, pens, stampBrush);
+                        height: rectangle.height - 1}, cornerRadius, pens, stampBrush);
                 }
                 if (isDynamic === 'true') {
                     const text: string = stampAnnotation.dynamicText.toString();
@@ -2148,19 +2149,14 @@ export class AnnotationRenderer {
     PdfBrush, page: PdfPage, pens: PdfPen, graphicsPath: PdfPath): void {
         const stringFormat: PdfStringFormat = new PdfStringFormat();
         const font: PdfFont = new PdfStandardFont(PdfFontFamily.helvetica,
-                                                  this.pdfViewer.annotationModule.calculateFontSize(icon.toUpperCase(), rectangle) - 6,
+                                                  Math.max(1, this.pdfViewer.annotationModule.calculateFontSize(icon.toUpperCase(),
+                                                                                                                rectangle) - 6),
                                                   PdfFontStyle.bold | PdfFontStyle.italic);
         stringFormat.alignment = PdfTextAlignment.center;
         stringFormat.lineAlignment = PdfVerticalAlignment.middle;
-        let point1: number[] = [0, 0];
-        let point2: number[] = [0, 0];
-        const drawingPath: PdfPath = new PdfPath();
         const appearance: PdfTemplate = rubberStampAnnotation.appearance.normal;
-        point1 = [(rectangle.width / 2), (rectangle.height / 2), 0, 0];
-        point2 = [0, 0];
-        drawingPath.addLine({x: point1[0], y: point1[1]}, {x: point2[0], y: point2[1]});
-        const pointValues: number[] = [drawingPath._points[0].x, drawingPath._points[0].y, 0, 0];
-        const pointsval: Rectangle = this.convertNumberToRectangle(pointValues);
+        const padding: number = Math.min(5, rectangle.width * 0.05);
+        const pointsval: Rectangle = { x: padding, y: 0, width: rectangle.width - padding * 2, height: rectangle.height };
         if (graphicsPath) {
             this.scalePathToBounds(
                 graphicsPath,
@@ -2228,36 +2224,32 @@ export class AnnotationRenderer {
         }
         if (hasUniCode) {
             stampFont = new PdfTrueTypeFont(getArialFontData(),
-                                            Browser.isDevice && Browser.isAndroid ?
+                                            Math.max(1, Browser.isDevice && Browser.isAndroid ?
                                                 this.pdfViewer.annotationModule.calculateFontSize(icon.toUpperCase(), rectangle, true) - 2 :
-                                                this.pdfViewer.annotationModule.calculateFontSize(icon.toUpperCase(), rectangle, true) - 2,
+                                                this.pdfViewer.annotationModule.calculateFontSize(icon.toUpperCase(), rectangle, true) - 2),
                                             PdfFontStyle.bold | PdfFontStyle.italic);
             detailsFont =  new PdfTrueTypeFont(getArialFontData(),
-                                               this.pdfViewer.annotationModule.calculateFontSize(text.toUpperCase(), rectangle) - 2,
+                                               Math.max(1, this.pdfViewer.annotationModule.calculateFontSize(text.toUpperCase(), rectangle)
+                                               - 2),
                                                PdfFontStyle.bold | PdfFontStyle.italic);
         }
         else {
             stampFont = new PdfStandardFont(PdfFontFamily.helvetica,
-                                            Browser.isDevice && Browser.isAndroid ?
+                                            Math.max(1, Browser.isDevice && Browser.isAndroid ?
                                                 this.pdfViewer.annotationModule.calculateFontSize(icon.toUpperCase(), rectangle, true) - 2 :
-                                                this.pdfViewer.annotationModule.calculateFontSize(icon.toUpperCase(), rectangle, true) - 2,
+                                                this.pdfViewer.annotationModule.calculateFontSize(icon.toUpperCase(), rectangle, true) - 2),
                                             PdfFontStyle.bold | PdfFontStyle.italic);
             detailsFont = new PdfStandardFont(PdfFontFamily.helvetica,
-                                              this.pdfViewer.annotationModule.calculateFontSize(text, rectangle) - 2,
+                                              Math.max(1, this.pdfViewer.annotationModule.calculateFontSize(text, rectangle) - 2),
                                               PdfFontStyle.bold | PdfFontStyle.italic);
         }
         const appearance: PdfTemplate = rubberStampAnnotation.appearance.normal;
-        let point1: number[] = [0, 0];
-        let point2: number[] = [0, 0];
-        const drawingPath: PdfPath = new PdfPath();
-        point1 = [5, (rectangle.height / 3)];
-        point2 = [5, (rectangle.height - (detailsFont.size * 3))];
-        drawingPath.addLine({x: point1[0], y: point1[1]}, {x: point2[0], y: point2[1]});
-        const stampTypeBounds: number[] = [drawingPath._points[0].x, drawingPath._points[0].y, 0, 0];
-        const stampTypeBoundsVal: Rectangle = this.convertNumberToRectangle(stampTypeBounds);
-        const stampTimeStampbounds: number[] = [drawingPath._points[1].x, drawingPath._points[1].y,
-            (rectangle.width + drawingPath._points[1].x), (rectangle.height - drawingPath._points[1].y)];
-        const stampTimeStampboundsVal: Rectangle = this.convertNumberToRectangle(stampTimeStampbounds);
+        const padding: number = Math.min(5, rectangle.width * 0.1);
+        const contentWidth: number = rectangle.width - padding * 2;
+        const iconRowHeight: number = rectangle.height * 0.60;
+        const detailRowHeight: number = rectangle.height - iconRowHeight;
+        const stampTypeBoundsVal: Rectangle = { x: padding, y: 0, width: contentWidth, height: iconRowHeight };
+        const stampTimeStampboundsVal: Rectangle = { x: padding, y: iconRowHeight, width: contentWidth, height: detailRowHeight };
         appearance.graphics.drawString(icon.toUpperCase(), stampFont, stampTypeBoundsVal, null, textBrush, stringFormat);
         appearance.graphics.drawString(text, detailsFont, stampTimeStampboundsVal, null, textBrush, stringFormat);
     }
@@ -3399,11 +3391,7 @@ export class AnnotationRenderer {
     }
 
     private getTransparentValue(color: PdfColor): number {
-        if (color.isTransparent && color.isTransparent === true) {
-            return 0;
-        } else {
-            return 1;
-        }
+        return (color && color.isTransparent === true) ? 0 : 1;
     }
 
     private getLinePoints(points: Point[], pageHeight: number, pageWidth: number, pageRotation: number, page: PdfPage): AnnotPoint[] {

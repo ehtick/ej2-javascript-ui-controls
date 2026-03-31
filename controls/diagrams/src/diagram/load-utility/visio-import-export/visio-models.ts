@@ -1,8 +1,9 @@
 import { VisioAnnotation } from './visio-annotations';
 import { VisioConnector } from './visio-connectors';
 import { shapeIndex } from './visio-nodes';
-import { ConnectorType, DecoratorShapes, DetermineShapeResult, FontProps, FormattedColors, GradientStop, GradientVector, LineStyleList, NormalizedVisioData, OrderEntry, RadialGradientConfig, ShapeAddInfo, VarientStyle, VisioMedia, VisioPort, VisioRow } from './visio-types';
+import { ConnectorType, DetermineShapeResult, FontProps, FormattedColors, GradientStop, GradientVector, LineStyleList, NormalizedVisioData, OrderEntry, RadialGradientConfig, ShapeAddInfo, VarientStyle, VisioMedia, VisioPort, VisioRow } from './visio-types';
 import { ColorReferenceArray, ProcessedColor, LineStyleRef, TransformedColorRef, LineStyleEntry, SchemeLineStyle, ConnectorLineStyle } from './visio-types';
+import { DecoratorShapes } from '../../enum/enum';
 /**
  * Represents the styling properties of a Visio shape (colors, gradients, strokes).
  * This class encapsulates all visual styling applied to a shape including fill, stroke,

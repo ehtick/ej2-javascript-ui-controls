@@ -1804,6 +1804,27 @@ export function sliceElements(row: Element, start: number, end: number): void {
 
 /**
  * @param {IGrid} gObj - Defines the grid
+ * @param {Dialog} dialogObj - Defines the dialog
+ * @returns {void}
+ * @hidden
+ */
+export function isMatDialogContainer(gObj: IGrid, dialogObj: Dialog): void {
+    if (isAngularMatContainer(gObj)) {
+        dialogObj.target = gObj.element.closest('mat-dialog-container') as HTMLElement;
+    }
+}
+
+/**
+ * @param {IGrid} gObj - Defines the grid
+ * @returns {boolean} Returns true if the Grid is inside a MatDialog container
+ * @hidden
+ */
+export function isAngularMatContainer(gObj: IGrid): boolean {
+    return gObj && gObj.isAngular && gObj.element && !isNullOrUndefined(gObj.element.closest('mat-dialog-container'));
+}
+
+/**
+ * @param {IGrid} gObj - Defines the grid
  * @param {Dialog} dlgObj - Defines the dialog
  * @param {Dialog} dlgWidth - Defines the dialog width
  * @returns {void}
@@ -1827,7 +1848,14 @@ export function resetDialogAppend(gObj: IGrid, dlgObj: Dialog, dlgWidth?: number
         element.style.left = sbPos.left + 'px';
         sbPanel.insertBefore(element, sbPanel.firstChild);
     } else {
-        document.body.insertBefore(element, document.body.firstChild);
+        if (isAngularMatContainer(gObj)) {
+            const targetOverlayPane: Element | null = gObj.element.closest('mat-dialog-container') as Element;
+            if (targetOverlayPane) {
+                targetOverlayPane.insertBefore(element, targetOverlayPane.firstChild);
+            }
+        } else {
+            document.body.insertBefore(element, document.body.firstChild);
+        }
     }
 }
 

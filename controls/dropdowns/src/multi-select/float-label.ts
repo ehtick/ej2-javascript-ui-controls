@@ -33,9 +33,15 @@ export function createFloatLabel(
     const floatLabelElement: HTMLElement = createElement('label', { className: FLOATTEXT });
     const id: string = element.getAttribute('id') ? element.getAttribute('id') : getUniqueID('ej2_multiselect');
     element.id = id;
+    let isAngularComponent: boolean = false;
+    if (element.tagName && (element.tagName as string).indexOf('EJS-') === 0  && inputElement.id === '' && element !== (inputElement as HTMLElement)) {
+        inputElement.id = id + '_input';
+        isAngularComponent = true;
+    }
     if (!isNullOrUndefined(element.id) && element.id !== '') {
-        floatLabelElement.id = 'label_' + element.id.replace(/ /g, '_');
-        floatLabelElement.setAttribute('for', element.id);
+        const labelTarget: string = isAngularComponent ? inputElement.id || element.id : element.id;
+        floatLabelElement.id = 'label_' + labelTarget.replace(/ /g, '_');
+        floatLabelElement.setAttribute('for', labelTarget);
         attributes(inputElement, { 'aria-labelledby': floatLabelElement.id });
     }
     if (!isNullOrUndefined(inputElement.placeholder) && inputElement.placeholder !== '') {

@@ -175,6 +175,35 @@ describe('Toolbar - Renderer', () => {
         });
     });
 
+    describe('1015156: ToolbarRenderer with proper - Aria Labels', () => {
+        let rte: RichTextEditor;
+        const allItems = [
+            'Undo', 'Redo', '|', 'ImportWord', 'ExportWord', 'ExportPdf', '|',
+            'Bold', 'Italic', 'Underline', 'StrikeThrough', 'InlineCode', '|', 'CreateLink', 'Image', 'CreateTable', 'CodeBlock',
+            'HorizontalLine', 'Blockquote', '|', 'LineHeight', 'Formats', 'Alignments', '|', 'BulletFormatList', 'NumberFormatList', 'Checklist', '|', 'Outdent', 'Indent', '|',
+            'FontColor', 'BackgroundColor', 'FontName', 'FontSize', '|', 'LowerCase', 'UpperCase', '|', 'SuperScript', 'SubScript', '|',
+            'EmojiPicker', 'FileManager', 'Video', 'Audio', '|', 'FormatPainter', 'ClearFormat',
+            '|', 'Print', 'FullScreen', '|', 'SourceCode'
+        ];
+        beforeAll(() => {
+            rte = renderRTE({
+                toolbarSettings: {
+                    items: allItems
+                },
+                value: '<p>Test content</p>'
+            });
+        });
+        afterAll(() => {
+            destroy(rte);
+        });
+        it('should set unique aria-label for all the dropdown buttons', () => {
+            const toolbar: Element = rte.getToolbarElement();
+            const alignmentsButton: HTMLElement = toolbar.querySelector('#' + rte.getID() + '_toolbar_Alignments') as HTMLElement;
+            const ariaLabel: string = alignmentsButton.getAttribute('aria-label');
+            expect(ariaLabel).toBe('Alignments');
+        });
+    });
+
     describe('870342 - Need to remove "e-control" class added to the body when using RichTextEditor', () => {
         let rteObj: any;
         beforeAll((done) => {

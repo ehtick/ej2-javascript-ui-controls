@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## 33.1.46 (2026-03-31)
+
+### PDF
+
+#### Bug Fixes
+
+- Fixed an issue where free text annotation content was not preserved when using backslashes.
+- Fixed an issue where the destination page index of a document link annotation was not returned correctly.
+
 ## 33.1.45 (2026-03-24)
 
 ### PDF

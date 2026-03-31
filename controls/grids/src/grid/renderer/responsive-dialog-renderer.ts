@@ -2,7 +2,7 @@ import { IAction, IGrid, ResponsiveDialogArgs, KeyboardEventArgs, NotifyArgs } f
 import { ServiceLocator } from '../services/service-locator';
 import { Dialog } from '@syncfusion/ej2-popups';
 import { EventHandler, isNullOrUndefined, remove, Browser } from '@syncfusion/ej2-base';
-import { parentsUntil, addBiggerDialog, addRemoveEventListener } from '../base/util';
+import { parentsUntil, addBiggerDialog, addRemoveEventListener, isMatDialogContainer } from '../base/util';
 import { Column } from '../models/column';
 import * as events from '../base/constant';
 import { Button } from '@syncfusion/ej2-buttons';
@@ -483,6 +483,7 @@ export class ResponsiveDialogRenderer implements IAction {
         );
         this.parent.element.appendChild(outerDiv);
         this.customResponsiveDlg = this.getDialogOptions(col, false, id);
+        isMatDialogContainer(gObj, this.customResponsiveDlg);
         this.customResponsiveDlg.appendTo(outerDiv);
     }
 

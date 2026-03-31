@@ -5,7 +5,7 @@ import { remove, extend, updateBlazorTemplate, initializeCSPTemplate } from '@sy
 import { L10n } from '@syncfusion/ej2-base';
 import { ServiceLocator } from '../services/service-locator';
 import * as events from '../base/constant';
-import { appendChildren, applyBiggerTheme, addBiggerDialog } from '../base/util';
+import { appendChildren, applyBiggerTheme, addBiggerDialog, isMatDialogContainer } from '../base/util';
 import { ResponsiveDialogRenderer } from './responsive-dialog-renderer';
 import { ResponsiveDialogAction } from '../base/enum';
 import * as literals from '../base/string-literals';
@@ -123,6 +123,7 @@ export class DialogEditRender {
         const isStringTemplate: string = 'isStringTemplate';
         this.dialogObj[`${isStringTemplate}`] = true;
         this.renderResponsiveDialog();
+        isMatDialogContainer(this.parent, this.dialogObj);
         this.dialogObj.appendTo(this.dialog);
         applyBiggerTheme(this.parent.element, this.dialogObj.element.parentElement);
         if (gObj.enableAdaptiveUI) {

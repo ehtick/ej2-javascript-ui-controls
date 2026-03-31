@@ -617,6 +617,8 @@ export class ContextMenu implements IContextMenu {
         this.defaultPropertiesId = null;
         this.copyShowCustomContextMenuBottom = null;
         this.currentTarget = null;
+        this.pdfViewer = null;
+        this.pdfViewerBase = null;
     }
 
     /**

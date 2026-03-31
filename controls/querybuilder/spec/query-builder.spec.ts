@@ -2095,6 +2095,56 @@ describe('QueryBuilder', () => {
             queryBuilder.rule.rules[0].value = [null, '22/11/2024'];
             queryBuilder.validateFields();
         });
+        it('Validation - Null-Value Operators (isnull, isnotnull, isempty, isnotempty)', () => {
+            queryBuilder = new QueryBuilder({
+                columns: columnData,
+                allowValidation: true
+            }, '#querybuilder');
+            // Test isnull operator with null value - should NOT show tooltip
+            queryBuilder.setRules({condition: 'and', rules: [{field: 'EmployeeName', type: 'string', operator: 'isnull', value: null}]});
+            let isValid = queryBuilder.validateFields();
+            expect(isValid).toBe(true);
+            let tooltip = queryBuilder.element.querySelector('.e-querybuilder-error');
+            expect(tooltip).toBeNull();
+
+            // Test isnotnull operator with null value - should NOT show tooltip
+            queryBuilder.setRules({condition: 'and', rules: [{field: 'EmployeeName', type: 'string', operator: 'isnotnull', value: null}]});
+            isValid = queryBuilder.validateFields();
+            expect(isValid).toBe(true);
+            tooltip = queryBuilder.element.querySelector('.e-querybuilder-error');
+            expect(tooltip).toBeNull();
+
+            // Test isempty operator with empty string - should NOT show tooltip
+            queryBuilder.setRules({condition: 'and', rules: [{field: 'EmployeeName', type: 'string', operator: 'isempty', value: ''}]});
+            isValid = queryBuilder.validateFields();
+            expect(isValid).toBe(true);
+            tooltip = queryBuilder.element.querySelector('.e-querybuilder-error');
+            expect(tooltip).toBeNull();
+
+            // Test isnotempty operator with empty string - should NOT show tooltip
+            queryBuilder.setRules({condition: 'and', rules: [{field: 'EmployeeName', type: 'string', operator: 'isnotempty', value: ''}]});
+            isValid = queryBuilder.validateFields();
+            expect(isValid).toBe(true);
+            tooltip = queryBuilder.element.querySelector('.e-querybuilder-error');
+            expect(tooltip).toBeNull();
+
+            // Test isnull on date type with null value - should NOT show tooltip
+            queryBuilder.setRules({condition: 'and', rules: [{field: 'JoiningDate', type: 'date', operator: 'isnull', value: null}]});
+            isValid = queryBuilder.validateFields();
+            expect(isValid).toBe(true);
+            tooltip = queryBuilder.element.querySelector('.e-querybuilder-error');
+            expect(tooltip).toBeNull();
+
+            // Test regular operator (equal) with null value - SHOULD show tooltip
+            queryBuilder.setRules({condition: 'and', rules: [{field: 'EmployeeName', type: 'string', operator: 'equal', value: null}]});
+            isValid = queryBuilder.validateFields();
+            expect(isValid).toBe(false);
+
+            // Test regular operator (equal) with empty string - SHOULD show tooltip
+            queryBuilder.setRules({condition: 'and', rules: [{field: 'EmployeeName', type: 'string', operator: 'equal', value: ''}]});
+            isValid = queryBuilder.validateFields();
+            expect(isValid).toBe(false);
+        });
         it('Date Value changes', () => {
             queryBuilder = new QueryBuilder({
                 columns: columnData,

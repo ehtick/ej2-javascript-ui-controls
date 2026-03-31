@@ -1,5 +1,5 @@
 import { Workbook, SheetModel, setColumn, ColumnModel, getSheet, setCell } from '../base/index';
-import { ExtendedSheet, ProtectSettings, UnprotectArgs } from '../common/index';
+import { generateHashSaltValue, ProtectSettings, UnprotectArgs } from '../common/index';
 import { protectsheetHandler, protectSheetWorkBook, updateToggle, setLockCells } from '../common/index';
 import { unprotectsheetHandler } from '../common/index';
 import { getSwapRange } from '../common/index';
@@ -30,9 +30,14 @@ export class WorkbookProtectSheet {
             formatColumns: args.protectSettings.formatColumns, formatRows: args.protectSettings.formatRows,
             insertLink: args.protectSettings.insertLink, selectUnLockedCells: args.protectSettings.selectUnLockedCells
         });
+        if (args.password && args.password.length > 0) {
+            generateHashSaltValue(args.password).then((res: { saltValue: string, hashValue: string }) => {
+                this.parent.setSheetPropertyOnMute(sheet, 'hashValue', res.hashValue);
+                this.parent.setSheetPropertyOnMute(sheet, 'saltValue', res.saltValue);
+            });
+        }
         this.parent.notify(protectSheetWorkBook, { sheetIndex: sheetIndex, triggerEvent: args.triggerEvent });
         this.parent.notify(updateToggle, { props: 'Protect' });
-        sheet.password = args.password ? args.password : '';
         sheet.columns.forEach((column: ColumnModel) => {
             if (column && isUndefined(column.isLocked)) {
                 column.isLocked = true;
@@ -44,9 +49,6 @@ export class WorkbookProtectSheet {
         let sheet: SheetModel = this.parent.getActiveSheet();
         if (!isNullOrUndefined(args.sheet)) {
             sheet = this.parent.sheets[args.sheet];
-        }
-        if ((sheet as ExtendedSheet).isImportProtected) {
-            (sheet as ExtendedSheet).isImportProtected = false;
         }
         sheet.protectSettings.formatCells = sheet.protectSettings.formatColumns = false;
         sheet.protectSettings.formatRows = sheet.protectSettings.selectCells = false;
@@ -76,7 +78,7 @@ export class WorkbookProtectSheet {
         if (!this.parent.isDestroyed) {
             this.parent.off(protectsheetHandler, this.protectsheetHandler);
             this.parent.off(setLockCells, this.lockCells);
-            this.parent.off(protectsheetHandler, this.unprotectsheetHandler);
+            this.parent.off(unprotectsheetHandler, this.unprotectsheetHandler);
 
         }
     }

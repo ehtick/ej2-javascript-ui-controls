@@ -2436,7 +2436,10 @@ private calculatePathBounds(data: string): Rect {
                 doHighLight = false;
             }
         }
-        if (format.highlightColor !== 'NoColor' && doHighLight) {
+        let isInEditableRegion = !this.isPrinting && this.documentHelper.selection &&
+            !isNullOrUndefined(this.documentHelper.selection.editRegionHighlighters) &&
+            this.documentHelper.selection.editRegionHighlighters.containsKey(elementBox.line);
+        if (format.highlightColor !== 'NoColor' && doHighLight && !isInEditableRegion) {
             if (format.highlightColor.substring(0, 1) !== '#') {
                 this.pageContext.fillStyle = HelperMethods.getHighlightColorCode(format.highlightColor);
             } else {

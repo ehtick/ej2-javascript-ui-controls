@@ -3238,6 +3238,9 @@ export class MultiSelect extends DropDownBase implements IInput {
                 selectedChips[0].removeAttribute('id');
                 if (!isNullOrUndefined(this.inputElement) && this.inputElement.hasAttribute('aria-activedescendant')) {
                     this.inputElement.removeAttribute('aria-activedescendant');
+                    if (!this.inputElement.hasAttribute('aria-describedby') && this.chipCollectionWrapper.id) {
+                        this.inputElement.setAttribute('aria-describedby', this.chipCollectionWrapper.id);
+                    }
                 }
             }
             this.removeChipFocus();
@@ -3249,6 +3252,9 @@ export class MultiSelect extends DropDownBase implements IInput {
             element.setAttribute('id', this.element.id + '_chip_item');
             if (!isNullOrUndefined(this.inputElement) && element.id) {
                 this.inputElement.setAttribute('aria-activedescendant', element.id);
+                if (this.inputElement.hasAttribute('aria-describedby')) {
+                    this.inputElement.removeAttribute('aria-describedby');
+                }
             }
             const chipClose: HTMLElement = <HTMLElement>element.querySelector('span.' + CHIP_CLOSE.split(' ')[0]);
             if (chipClose) {
@@ -5796,9 +5802,11 @@ export class MultiSelect extends DropDownBase implements IInput {
             firstItems.forEach((node: HTMLElement) => {
                 fragment.appendChild(node.cloneNode(true));
             });
-            li.forEach((node: HTMLElement) => {
-                fragment.appendChild(node.cloneNode(true));
-            });
+            if ((this.totalItemCount >= (this.itemCount * 2) && this.dataSource instanceof DataManager)) {
+                li.forEach((node: HTMLElement) => {
+                    fragment.appendChild(node.cloneNode(true));
+                });
+            }
             const concatenatedNodeList: NodeListOf<HTMLElement>| HTMLElement[] = fragment.childNodes as NodeListOf<HTMLElement>;
 
             if (this.virtualSelectAllData instanceof Array) {
@@ -6692,7 +6700,8 @@ export class MultiSelect extends DropDownBase implements IInput {
                         this.renderItems(this.mainData as any[], this.fields);
                     }
                     this.virtualCustomData = null;
-                    this.isVirtualTrackHeight = this.totalItemCount >= (this.itemCount * 2) ? false : true;
+                    this.isVirtualTrackHeight = (this.totalItemCount >= (this.itemCount * 2) ||
+                    this.dataSource instanceof DataManager) ? false : true;
                 }
             });
         }
@@ -6908,7 +6917,7 @@ export class MultiSelect extends DropDownBase implements IInput {
             this.componentWrapper.appendChild(this.delimiterWrapper);
         } else {
             this.chipCollectionWrapper = this.createElement('span', {
-                className: CHIP_WRAPPER, attrs: { role: 'listbox' }
+                className: CHIP_WRAPPER
             });
             this.chipCollectionWrapper.style.display = 'none';
             if (this.mode === 'Default') {

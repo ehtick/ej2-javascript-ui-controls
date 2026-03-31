@@ -6859,8 +6859,8 @@ export class TreeView extends Component<HTMLElement> implements INotifyPropertyC
 
     private escapeHashInUid(uid: string): string {
         if (isNOU(uid)) { return uid; }
-        if (typeof uid === 'string' && uid.indexOf(' #') !== -1) {
-            return uid.split(' #').join(' \\#');
+        if (typeof uid === 'string') {
+            return uid.replace(/[#:.[\]!~^$*() ]/g, '\\$&');
         }
         return uid;
     }

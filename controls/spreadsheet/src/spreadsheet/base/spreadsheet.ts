@@ -4,7 +4,7 @@ import { Property, NotifyPropertyChanges, INotifyPropertyChanged, ModuleDeclarat
 import { addClass, removeClass, EmitType, Complex, formatUnit, L10n, isNullOrUndefined, Browser } from '@syncfusion/ej2-base';
 import { detach, select, closest, setStyleAttribute, EventHandler } from '@syncfusion/ej2-base';
 import { MenuItemModel, BeforeOpenCloseMenuEventArgs, ItemModel } from '@syncfusion/ej2-navigations';
-import { mouseDown, spreadsheetDestroyed, keyUp, BeforeOpenEventArgs, clearViewer, refreshSheetTabs, positionAutoFillElement, readonlyAlert, deInitProperties, UndoRedoEventArgs, isColumnRange, isRowRange, findDlg, refreshCommentsPane } from '../common/index';
+import { mouseDown, spreadsheetDestroyed, keyUp, BeforeOpenEventArgs, clearViewer, refreshSheetTabs, positionAutoFillElement, readonlyAlert, deInitProperties, UndoRedoEventArgs, isColumnRange, isRowRange, findDlg, refreshCommentsPane, unProtectSheetPassword, removeWorkbookProtection, getHashPassword } from '../common/index';
 import { performUndoRedo, overlay, DialogBeforeOpenEventArgs, createImageElement, deleteImage, removeHyperlink } from '../common/index';
 import { HideShowEventArgs, sheetNameUpdate, updateUndoRedoCollection, getUpdateUsingRaf, setAutoFit } from '../common/index';
 import { actionEvents, CollaborativeEditArgs, keyDown, enableFileMenuItems, hideToolbarItems, updateAction } from '../common/index';
@@ -1943,6 +1943,8 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
             this.notify(clearUndoRedoCollection, null);
             this.createSheet();
             this.activeSheetIndex = this.sheets.length - 1;
+            this.notify(unProtectSheetPassword, null);
+            this.notify(removeWorkbookProtection, null);
             this.notify(refreshSheetTabs, null);
             this.notify(workbookFormulaOperation, { action: 'initSheetInfo' });
             this.renderModule.refreshSheet();
@@ -3139,6 +3141,7 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
                 break;
             case 'password':
                 if (this.password.length > 0) {
+                    this.setProperties({ password: getHashPassword(this.password) }, true);
                     if (this.showSheetTabs) {
                         this.element.querySelector('.e-add-sheet-tab').setAttribute('disabled', 'true');
                         this.element.querySelector('.e-add-sheet-tab').classList.add('e-disabled');

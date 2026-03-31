@@ -143,6 +143,10 @@ export class HelperMethods {
         if (isNullOrUndefined(value)) {
             return '';
         }
+        const openingTagsOnly: RegExp = /<[^>]*>|&lt[^&gt]*&gt|&amp|&nbsp|&lt|&gt/;
+        if (openingTagsOnly.test(value)) {
+            return value;
+        }
         const sanitizedContent: string = SanitizeHtmlHelper.sanitize(value)
             .replace(/&amp;/g, '&')
             .replace(/&nbsp;/g, String.fromCharCode(160))
@@ -792,6 +796,10 @@ export class HelperMethods {
                 return 1;
             case 'Exactly':
                 return 2;
+            case 'Single':
+                return 3;
+            case 'Double':
+                return 4;
         }
     }
 

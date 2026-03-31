@@ -1,4 +1,4 @@
-import { Workbook } from './workbook';import { Query, DataManager } from '@syncfusion/ej2-data';import { RowModel } from './row-model';import { ColumnModel } from './column-model';import { processIdx } from './data';import { SheetState, ProtectSettingsModel, ConditionalFormat, ConditionalFormatModel, ExtendedRange, getCellIndexes, moveOrDuplicateSheet, workbookFormulaOperation, duplicateSheetFilterHandler, ExtendedSheet, moveSheetHandler, updateSortCollection, ImageModel, ChartModel, ExtendedThreadedCommentModel, ExtendedNoteModel } from '../common/index';import { ProtectSettings, getCellAddress, getISOTime } from '../common/index';import { isUndefined, ChildProperty, Property, Complex, Collection, extend, getUniqueID } from '@syncfusion/ej2-base';import { WorkbookModel } from './workbook-model';import { CellModel } from './cell-model';                // Process cell indexes in ascending order when the import operation is performed.
+import { Workbook } from './workbook';import { Query, DataManager } from '@syncfusion/ej2-data';import { RowModel } from './row-model';import { ColumnModel } from './column-model';import { processIdx } from './data';import { SheetState, ProtectSettingsModel, ConditionalFormat, ConditionalFormatModel, ExtendedRange, getCellIndexes, moveOrDuplicateSheet, workbookFormulaOperation, duplicateSheetFilterHandler, ExtendedSheet, moveSheetHandler, updateSortCollection, ImageModel, ChartModel, ExtendedThreadedCommentModel, ExtendedNoteModel, generateHashSaltValue } from '../common/index';import { ProtectSettings, getCellAddress, getISOTime } from '../common/index';import { isUndefined, ChildProperty, Property, Complex, Collection, extend, getUniqueID } from '@syncfusion/ej2-base';import { WorkbookModel } from './workbook-model';import { CellModel } from './cell-model';                // Process cell indexes in ascending order when the import operation is performed.
 
 /**
  * Interface for a class Range
@@ -284,5 +284,29 @@ export interface SheetModel {
      * @hidden
      */
     isSheetCalculated?: boolean;
+
+    /**
+     * Specifies the hashed password value for the sheet protection.
+     *
+     * @default null
+     * @hidden
+     */
+    hashValue?: string;
+
+    /**
+     * Specifies the salt value used when deriving the password hash for the sheet protection.
+     *
+     * @default null
+     * @hidden
+     */
+    saltValue?: string;
+
+    /**
+     * Specifies the iteration (spin) count used when hashing the password.
+     *
+     * @default null
+     * @hidden
+     */
+    spinCount?: number;
 
 }

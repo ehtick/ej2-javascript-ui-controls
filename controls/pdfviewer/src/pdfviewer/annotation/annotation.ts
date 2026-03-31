@@ -2539,10 +2539,36 @@ export class Annotation {
                     break;
                 }
                 case 'Checkbox': {
-                    const checkboxDivElement: Element = document.getElementById(annotation.id.split('_')[0] + '_content_html_element').firstElementChild.firstElementChild.lastElementChild;
-                    formFieldModel.isChecked = value;
-                    this.pdfViewer.formDesigner.updateIsCheckedPropertyChange(formFieldModel, checkboxDivElement,
-                                                                              true, index, formFieldsData);
+                    if (Array.isArray(value)) {
+                        for (let s: number = 0; s < value.length; s++) {
+                            const fieldItem: any = value[parseInt(s.toString(), 10)];
+                            const fieldIndex: number = formFieldsData.findIndex((f: any) => f.Key === fieldItem.Key);
+                            if (fieldIndex > -1) {
+                                const fieldModel: PdfFormFieldBaseModel = this.pdfViewer.formDesigner.getFormField(fieldItem.id);
+                                const checkboxDivElement: any = document.getElementById(fieldItem.id + '_input');
+                                if (fieldModel) {
+                                    fieldModel.isChecked = fieldItem.isChecked;
+                                    this.pdfViewer.formDesigner.updateIsCheckedPropertyChange(
+                                        fieldModel,
+                                        checkboxDivElement,
+                                        true,
+                                        fieldIndex,
+                                        formFieldsData
+                                    );
+                                }
+                            }
+                        }
+                    } else {
+                        const checkboxDivElement: Element = document.getElementById(annotation.id.split('_')[0] + '_content_html_element').firstElementChild.firstElementChild.lastElementChild;
+                        formFieldModel.isChecked = value;
+                        this.pdfViewer.formDesigner.updateIsCheckedPropertyChange(
+                            formFieldModel,
+                            checkboxDivElement,
+                            true,
+                            index,
+                            formFieldsData
+                        );
+                    }
                     break;
                 }
                 }
@@ -5832,6 +5858,10 @@ export class Annotation {
                     const height: number = annotation.bounds.height;
                     annotation.bounds.height = height >= currentAnnotation.bounds.height ? height : currentAnnotation.bounds.height;
                 }
+                if (currentAnnotation.bounds.left !== annotation.bounds.left || currentAnnotation.bounds.top !== annotation.bounds.top) {
+                    annotation.bounds.x = annotation.bounds.left;
+                    annotation.bounds.y = annotation.bounds.top;
+                }
                 this.calculateAnnotationBounds(currentAnnotation, annotation);
                 if (annotation.opacity && currentAnnotation.opacity !== annotation.opacity) {
                     this.triggerAnnotationPropChange(currentAnnotation, false, false, false, true);
@@ -6069,7 +6099,15 @@ export class Annotation {
                 const annotationBounds: IRect = { x: (annotBounds as IRectBounds).X + ((annotBounds as IRectBounds).Width / 2),
                     y: (annotBounds as IRectBounds).Y + ((annotBounds as IRectBounds).Height / 2),
                     width: newWidth, height: newHeight };
+                if (annotation.bounds.left !== (annotBounds as IRectBounds).X) {
+                    annotation.bounds.left = (annotBounds as IRectBounds).X;
+                }
+                if (annotation.bounds.top !== (annotBounds as IRectBounds).Y) {
+                    annotation.bounds.top = (annotBounds as IRectBounds).Y;
+                }
                 this.pdfViewer.nodePropertyChange(currentAnnotation, { bounds: annotationBounds });
+                annotation.bounds.width = newWidth;
+                annotation.bounds.height = newHeight;
                 if (currentAnnotation.shapeAnnotationType === 'HandWrittenSignature' || currentAnnotation.shapeAnnotationType === 'SignatureText' || currentAnnotation.shapeAnnotationType === 'SignatureImage') {
                     this.pdfViewer.fireSignaturePropertiesChange(currentAnnotation.pageIndex, currentAnnotation.signatureName,
                                                                  currentAnnotation.shapeAnnotationType as AnnotationType, false, false,

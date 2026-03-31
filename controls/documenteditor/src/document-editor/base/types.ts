@@ -302,7 +302,15 @@ export type LineSpacingType =
      * The line spacing is specified in the LineSpacing property as the number of lines.
      * Single line spacing equals 12 points.
      */
-    'Multiple';
+    'Multiple' |
+    /**
+     * Single line spacing (default).
+     */
+    'Single' |
+    /**
+     * Double line spacing.
+     */
+    'Double';
 /**
  * Enum TextAlignment For Paragraph Format Preservation
  */

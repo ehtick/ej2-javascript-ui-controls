@@ -1275,3 +1275,86 @@ export function getISOTime(createdTime?: string | Date): string {
     }
     return new Date().toISOString().slice(0, -1);
 }
+
+/**
+ * Generates a SHA-512 based hash and salt for the given password using iterative hashing (spin count).
+ *
+ * @param {string} password - The password to hash.
+ * @param {Uint8Array} [saltValue] - Optional salt value; if not provided a random 16-byte salt will be generated.
+ * @param {number} [spinCount] - Number of iterations to apply when deriving the final hash.
+ * @returns {Promise<{ hashValue: string, saltValue: string }>} - Promise resolving to an object containing base64 encoded hashValue and saltValue.
+ * @hidden
+ */
+export function generateHashSaltValue(
+    password: string,
+    saltValue?: Uint8Array,
+    spinCount?: number
+): Promise<{ hashValue: string; saltValue: string; }> {
+    if (!spinCount) {
+        spinCount = 500;
+    }
+    const createSalt: Function = (length: number): Uint8Array => {
+        const salt: Uint8Array = new Uint8Array(length);
+        window.crypto.getRandomValues(salt);
+        return salt;
+    };
+    const utf16leBytes: Function = (str: string): Uint8Array => {
+        const codeUnits: Uint16Array = new Uint16Array(str.length);
+        for (let i: number = 0; i < str.length; i++) {
+            codeUnits[i as number] = str.charCodeAt(i as number);
+        }
+        return new Uint8Array(codeUnits.buffer);
+    };
+    const concatBytes: Function = (...arrays: Uint8Array[]): Uint8Array => {
+        const total: number = arrays.reduce((n: number, a: Uint8Array) => n + a.length, 0);
+        const out: Uint8Array = new Uint8Array(total);
+        let off: number = 0;
+        for (const a of arrays) {
+            out.set(a, off);
+            off += a.length;
+        }
+        return out;
+    };
+
+    const sha512: Function = (bytes: Uint8Array): Promise<Uint8Array> => {
+        return (window.crypto.subtle.digest('SHA-512', bytes) as Promise<ArrayBuffer>)
+            .then((digest: ArrayBuffer) => new Uint8Array(digest));
+    };
+
+    const toBase64: Function = (uint8: Uint8Array): string => {
+        let binary: string = '';
+        const chunkSize: number = 0x8000;
+        for (let i: number = 0; i < uint8.length; i += chunkSize) {
+            const sub: Uint8Array = uint8.subarray(i as number, i + chunkSize);
+            // Use apply on chunks to avoid spreading the entire array.
+            binary += String.fromCharCode.apply(null, Array.from(sub) as unknown as number[]);
+        }
+        return btoa(binary);
+    };
+    const salt: Uint8Array = saltValue instanceof Uint8Array ? saltValue : createSalt(16);
+    const pwdBytes: Uint8Array = utf16leBytes(password);
+
+    return sha512(concatBytes(salt, pwdBytes)).then((initialH: Uint8Array) => {
+        const buf: Uint8Array = new Uint8Array(68);
+        buf.set(initialH, 0);
+        const view: DataView = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+
+        const iterate: Function = (i: number, h: Uint8Array): Promise<Uint8Array> => {
+            if (i >= spinCount) {
+                return Promise.resolve(h);
+            }
+            view.setUint32(64, i as number, true);
+            return sha512(buf).then((newH: Uint8Array) => {
+                buf.set(newH, 0);
+                return iterate(i + 1, newH);
+            });
+        };
+
+        return iterate(0, initialH).then((finalH: Uint8Array) => {
+            return {
+                hashValue: toBase64(finalH),
+                saltValue: toBase64(salt)
+            };
+        });
+    });
+}

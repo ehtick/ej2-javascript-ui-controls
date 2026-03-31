@@ -3948,7 +3948,8 @@ export class Drawing {
             this.copiedElementID = (this.pdfViewer.clipboardData.clipObject as any[])[0].id;
         }
         let isSearchboxDialogOpen: boolean;
-        const searchBoxId: HTMLElement = document.getElementById(this.pdfViewer.element.id + '_search_box');
+        const viewerElement: HTMLElement = document.getElementById(this.pdfViewer.element.id);
+        const searchBoxId: HTMLElement = viewerElement.querySelector('#' + this.pdfViewer.element.id + '_search_box');
         if (searchBoxId) {
             isSearchboxDialogOpen = searchBoxId.style.display !== 'none';
         }
@@ -4357,7 +4358,8 @@ export class Drawing {
             this.copiedElementID = (this.pdfViewer.clipboardData.clipObject as any[])[0].id;
         }
         let isSearchboxDialogOpen: boolean;
-        const searchBoxId: HTMLElement = document.getElementById(this.pdfViewer.element.id + '_search_box');
+        const viewerElement: HTMLElement = document.getElementById(this.pdfViewer.element.id);
+        const searchBoxId: HTMLElement = viewerElement.querySelector('#' + this.pdfViewer.element.id + '_search_box');
         if (searchBoxId) {
             isSearchboxDialogOpen = searchBoxId.style.display !== 'none';
         }

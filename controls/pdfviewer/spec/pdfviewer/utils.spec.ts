@@ -1,6 +1,7 @@
 /**
  * Shared utility functions for PDF Viewer tests
  */
+import { AnnotationDataFormat } from '../../src/index';
 
 /**
  * Opens annotation toolbar by clicking the annotation button
@@ -139,4 +140,110 @@ export function Keydown(
         cancelable: true
     });
     return t.dispatchEvent(evt);
+}
+
+export function rightClickEvent(element: HTMLElement, cx: number, cy: number): void {
+    const contextmenu = new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        clientX: cx,
+        clientY: cy,
+        button: 2,
+        buttons: 2
+    });
+    element.dispatchEvent(contextmenu);
+}
+
+// Helper to export all annotations as an object from the viewer
+export async function exportAnnotationsHelper(viewer: any): Promise<any> {
+    return await viewer.exportAnnotationsAsObject();
+}
+
+
+// Helper to import annotations using JSON format
+export function importAnnotationsHelper(viewer: any, exportedData: any): void {
+    viewer.importAnnotation(exportedData, AnnotationDataFormat.Json);
+}
+
+// Helper to remove all annotations from the viewer
+export function deleteAllAnnotationsHelper(viewer: any): void {
+    while (viewer.annotationCollection && viewer.annotationCollection.length > 0) {
+        viewer.annotation.selectAnnotation(viewer.annotationCollection[0].annotationId);
+        viewer.annotation.deleteAnnotation();
+    }
+}
+
+// Helper utility to draw a closed triangle using three connected line segments
+export function threePointCalibrate() {
+    const target = getTarget('#pdfviewer_lineType_textLayer_0');
+    const rect = target.getBoundingClientRect();
+    const aX = Math.round(rect.left + 100);
+    const aY = Math.round(rect.top + 50);
+
+    const bX = Math.round(rect.left + 200);
+    const bY = Math.round(rect.top + 150);
+
+    const cX = Math.round(rect.left + 50);
+    const cY = Math.round(rect.top + 150);
+
+    // Draw AB
+    mouseMoveEvent(target, aX, aY);
+    mouseDownEvent(target, aX, aY);
+    mouseMoveEvent(target, bX, bY);
+    mouseUpEvent(target, bX, bY);
+
+    // Draw BC
+    mouseMoveEvent(target, bX, bY);
+    mouseDownEvent(target, bX, bY);
+    mouseMoveEvent(target, cX, cY);
+    mouseUpEvent(target, cX, cY);
+
+    // Draw CA (closing triangle)
+    mouseMoveEvent(target, cX, cY);
+    mouseDownEvent(target, cX, cY);
+    mouseMoveEvent(target, aX, aY);
+    mouseUpEvent(target, aX, aY);
+}
+
+// Helper assertion to ensure geometry has changed after an operation
+export function assertGeometryChanged(initial: any, updated: any, propertyName: string): void {
+    const normalizedInitial = normalizeForComparison(initial);
+    const normalizedUpdated = normalizeForComparison(updated);
+    expect(JSON.stringify(normalizedInitial)).not.toBe(
+        JSON.stringify(normalizedUpdated),
+        `${propertyName} should change after resize`
+    );
+}
+
+// Helper assertion to ensure geometry matches expected values
+export function assertGeometryMatches(expected: any, actual: any, propertyName: string): void {
+    const normalizedExpected = normalizeForComparison(expected);
+    const normalizedActual = normalizeForComparison(actual);
+    expect(JSON.stringify(normalizedExpected)).toBe(
+        JSON.stringify(normalizedActual),
+        `${propertyName} should match`
+    );
+}
+
+// Helper to normalize geometry values for stable comparison
+// - Rounds numbers to 2 decimal places
+// - Recursively processes arrays and objects
+// - Removes undefined properties
+function normalizeForComparison(obj: any): any {
+    if (typeof obj === 'number') {
+        return Math.round(obj * 100) / 100;
+    }
+    if (Array.isArray(obj)) {
+        return obj.map(normalizeForComparison);
+    }
+    if (typeof obj === 'object' && obj !== null) {
+        const result: any = {};
+        for (const key in obj) {
+            if (obj[key] !== undefined) {
+                result[key] = normalizeForComparison(obj[key]);
+            }
+        }
+        return result;
+    }
+    return obj;
 }

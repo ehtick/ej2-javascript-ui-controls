@@ -1519,10 +1519,8 @@ export class PdfRenderer {
                 else {
                     pageText += characterDetails[parseInt(i.toString(), 10)].Text;
                 }
-                const cropBox: number[] = this.loadedDocument.getPage(event.data.pageIndex).cropBox;
                 const bound: AnnotBounds = new AnnotBounds(this.convertPixelToPoint(characterDetails[parseInt(i.toString(), 10)].X),
-                                                           this.convertPixelToPoint(characterDetails[parseInt(i.toString(), 10)].Y +
-                                                           cropBox[1]),
+                                                           this.convertPixelToPoint(characterDetails[parseInt(i.toString(), 10)].Y),
                                                            this.convertPixelToPoint(characterDetails[parseInt(i.toString(), 10)].Width),
                                                            this.convertPixelToPoint(characterDetails[parseInt(i.toString(), 10)].Height));
                 textData.push(new TextData(characterDetails[parseInt(i.toString(), 10)].Text, bound));

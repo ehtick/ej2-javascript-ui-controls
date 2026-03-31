@@ -43,6 +43,7 @@ export class DatePickerDialog {
         const calendar: Calendar = new Calendar({
             change: this.valueChange.bind(this)
         });
+        this.calendar = calendar;
         if (this.documentHelper.owner.editor.dateValue){
             calendar.value = new Date(this.documentHelper.owner.editor.dateValue);
         }
@@ -60,6 +61,9 @@ export class DatePickerDialog {
             const contenControl : ContentControl = this.documentHelper.owner.selection.currentContentControl;
             this.documentHelper.owner.editor.dropDownChange(contenControl, value);
             this.documentHelper.hideDialog();
+            if (this.calendar) {
+                this.calendar.value = null;
+            }
         }
     }
     /**

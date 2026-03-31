@@ -1880,4 +1880,157 @@ describe('Protect sheet ->', () => {
             done();
         });
     });
+
+    describe('Workbook Protection ->', () => {
+        beforeAll((done: Function) => {
+            helper.initializeSpreadsheet({
+                sheets: [{ ranges: [{ dataSource: defaultData }] }],
+                isProtected: true,
+                password: 'Spreadsheet'
+            }, done);
+        });
+        afterAll(() => {
+            helper.invoke('destroy');
+        });
+
+        it('Unprotect workbook using Unprotect workbook in Data ribbon tab', (done: Function) => {
+            helper.switchRibbonTab(4);
+            helper.click('#' + helper.id + '_protectworkbook');
+            setTimeout(() => {
+                (helper.getElements('.e-unprotectworkbook-dlg input')[0] as HTMLInputElement).value = 'Spreadsheet';
+                (helper.getElements('.e-unprotectworkbook-dlg .e-primary')[0] as HTMLInputElement).disabled = false;
+                (document.getElementsByClassName('e-primary')[1] as HTMLElement).click();
+                setTimeout(() => {
+                    expect(helper.getInstance().isProtected).toBeFalsy();
+                    const btnText: string =  (document.getElementsByClassName('e-tbar-btn-text')[1] as HTMLElement).textContent;
+                    expect(btnText).toBe('Protect Workbook');
+                    done();
+                }, 50);
+            }, 10);
+        });
+        it('Protect workbook via UI and then Unprotect it', (done: Function) => {
+            helper.switchRibbonTab(4);
+            helper.click('#' + helper.id + '_protectworkbook');
+            setTimeout(() => {
+                helper.setAnimationToNone('.e-protectworkbook-dlg.e-dialog');
+                (helper.getElements('.e-protectworkbook-dlg input')[0] as HTMLInputElement).value = 'Spreadsheet';
+                (helper.getElements('.e-protectworkbook-dlg input')[1] as HTMLInputElement).value = 'Spreadsheet';
+                helper.click('.e-protectworkbook-dlg .e-primary');
+                setTimeout(() => {
+                    expect(helper.getInstance().isProtected).toBeTruthy();
+                    expect(helper.getInstance().password).not.toBe('Spreadsheet');
+                    helper.click('#' + helper.id + '_protectworkbook');
+                    setTimeout(() => {
+                        helper.setAnimationToNone('.e-unprotectworkbook-dlg.e-dialog');
+                        (helper.getElements('.e-unprotectworkbook-dlg input')[0] as HTMLInputElement).value = 'Spreadsheet';
+                        (helper.getElements('.e-unprotectworkbook-dlg .e-primary')[0] as HTMLInputElement).disabled = false;
+                        (document.getElementsByClassName('e-primary')[1] as HTMLElement).click();
+                        setTimeout(() => {
+                            expect(helper.getInstance().isProtected).toBeFalsy();
+                            expect(helper.getInstance().password).toBe('');
+                            done();
+                        }, 50);
+                    }, 10);
+                }, 50);
+            }, 10);
+        });
+        it('Checking workbook protection while loading JSON data with the openFromJson method ->', function (done) {
+            var json = { Workbook: { sheets: [{ standardHeight: 22 }], isProtected: true, password: '52776' } };
+            const spreadsheet: any = helper.getInstance();
+            spreadsheet.openFromJson({ file: json });
+            setTimeout(function () {
+                expect(spreadsheet.isProtected).toBeTruthy();
+                expect(spreadsheet.password).toBe('52776');
+                helper.click('#' + helper.id + '_protectworkbook');
+                setTimeout(() => {
+                    helper.setAnimationToNone('.e-unprotectworkbook-dlg.e-dialog');
+                    (helper.getElements('.e-unprotectworkbook-dlg input')[0] as HTMLInputElement).value = '1';
+                    (helper.getElements('.e-unprotectworkbook-dlg .e-primary')[0] as HTMLInputElement).disabled = false;
+                    (document.getElementsByClassName('e-primary')[1] as HTMLElement).click();
+                    setTimeout(() => {
+                        expect(helper.getInstance().isProtected).toBeFalsy();
+                        expect(helper.getInstance().password).toBe('');
+                        done();
+                    }, 50);
+                }, 10);
+            });
+        });
+        it('Checking workbook protection with hashValue ->', function (done) {
+            var json = { Workbook: { sheets: [{ standardHeight: 22 }], isProtected: true, hashValue: 'vE5b6/bbYqegs+gEmsKcOctj26ztShCU32tnDRPh28E7FQTzv/1Hi5vQk1LPABv5cwH62RAcM6ouBDcmn61HrA==', saltValue: 'jSkNKx4Z1TWF+p1HTpihcQ==', spinCount: 500 } };
+            const spreadsheet: any = helper.getInstance();
+            spreadsheet.openFromJson({ file: json });
+            setTimeout(function () {
+                expect(spreadsheet.isProtected).toBeTruthy();
+                expect(spreadsheet.password).toBe('');
+                helper.click('#' + helper.id + '_protectworkbook');
+                setTimeout(() => {
+                    helper.setAnimationToNone('.e-unprotectworkbook-dlg.e-dialog');
+                    (helper.getElements('.e-unprotectworkbook-dlg input')[0] as HTMLInputElement).value = '1';
+                    (helper.getElements('.e-unprotectworkbook-dlg .e-primary')[0] as HTMLInputElement).disabled = false;
+                    (document.getElementsByClassName('e-primary')[1] as HTMLElement).click();
+                    setTimeout(() => {
+                        expect(spreadsheet.isProtected).toBeFalsy();
+                        expect(spreadsheet.password).toBe('');
+                        expect(spreadsheet.hashValue).toBeNull();
+                        expect(spreadsheet.saltValue).toBeNull();
+                        expect(spreadsheet.spinCount).toBeNull();
+                        done();
+                    }, 50);
+                }, 10);
+            });
+        });
+    });
+
+    describe('Worksheet Protection->', () => {
+        beforeAll((done: Function) => {
+            helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] }, done);
+        });
+        afterAll(() => {
+            helper.invoke('destroy');
+        });
+
+        it('Protects sheet via UI and verifies password/hash/salt/spinCount', (done: Function) => {
+            helper.switchRibbonTab(4);
+            helper.click('#' + helper.id + '_protect');
+            setTimeout(() => {
+                helper.setAnimationToNone('.e-protect-dlg.e-dialog');
+                (helper.getElements('.e-protect-dlg input')[0] as HTMLInputElement).value = 'syncfusion';
+                helper.triggerKeyEvent('keyup', 88, null, null, null, (helper.getElements('.e-protect-dlg input')[0] as HTMLInputElement));
+                helper.click('.e-protect-dlg .e-primary');
+                setTimeout(() => {
+                    helper.setAnimationToNone('.e-reenterpwd-dlg.e-dialog');
+                    (helper.getElements('.e-reenterpwd-dlg input')[0] as HTMLInputElement).value = 'syncfusion';
+                    helper.triggerKeyEvent('keyup', 88, null, null, null, (helper.getElements('.e-reenterpwd-dlg input')[0] as HTMLInputElement));
+                    helper.click('.e-reenterpwd-dlg .e-primary');
+                    setTimeout(() => {
+                        const sheet: SheetModel = helper.getInstance().getActiveSheet();
+                        expect(sheet.isProtected).toBeTruthy();
+                        expect(sheet.password).toBe('');
+                        expect(sheet.hashValue).not.toBeNull();
+                        expect(sheet.saltValue).not.toBeNull();
+                        done();
+                    }, 50);
+                }, 50);
+            }, 10);
+        });
+
+        it('Unprotects sheet via UI and verifies password/hash/salt/spinCount cleared', (done: Function) => {
+            helper.click('#' + helper.id + '_protect');
+            setTimeout(() => {
+                helper.setAnimationToNone('.e-unprotectworksheet-dlg.e-dialog');
+                (helper.getElements('.e-unprotectworksheet-dlg input')[0] as HTMLInputElement).value = 'syncfusion';
+                helper.triggerKeyEvent('keyup', 88, null, null, null, (helper.getElements('.e-unprotectworksheet-dlg input')[0] as HTMLInputElement));
+                helper.click('.e-unprotectworksheet-dlg .e-primary');
+                setTimeout(() => {
+                    const sheet: SheetModel = helper.getInstance().getActiveSheet();
+                    expect(sheet.isProtected).toBeFalsy();
+                    expect(sheet.password).toBe('');
+                    expect(sheet.hashValue).toBeNull();
+                    expect(sheet.saltValue).toBeNull();
+                    expect(sheet.spinCount).toBeNull();
+                    done();
+                }, 50);
+            }, 10);
+        });
+    });
 });

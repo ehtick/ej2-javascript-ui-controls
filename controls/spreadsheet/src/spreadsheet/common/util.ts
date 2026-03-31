@@ -2602,3 +2602,24 @@ export function isValidUrl(url: string): boolean {
     // eslint-disable-next-line no-useless-escape, security/detect-unsafe-regex
     return /(ftp|http|https):\/\/(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%@!\-\/]))?/.test(url);
 }
+
+/**
+ * Generates a encrypted hash value for the given password.
+ *
+ * @hidden
+ * @param {string} password - The workbook password string.
+ * @returns {boolean} - Returns the encrypted password value.
+ */
+export function getHashPassword(password: string): string {
+    let usHash: number = 0; let c: number; let k: number;
+    let rot: number;
+    for (let i: number = 0; i < password.length; i++) {
+        c = password.charCodeAt(i) & 0x7FFF;
+        k = (i + 1) & 0x0F;
+        rot = ((c << k) | (c >>> (16 - k))) & 0xFFFF;
+        usHash ^= rot;
+    }
+    usHash ^= password.length;
+    usHash ^= 0xCE4B;
+    return (usHash & 0xFFFF).toString();
+}

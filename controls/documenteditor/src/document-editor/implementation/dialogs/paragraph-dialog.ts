@@ -347,7 +347,7 @@ export class ParagraphDialog {
         });
         this.special = new DropDownList({ change: this.changeByValue, enableRtl: isRtl, floatLabelType:'Always', placeholder:locale.getConstant('Special')});
         this.special.appendTo(special);
-        this.lineSpacing = new DropDownList({ change: this.changeBySpacing, enableRtl: isRtl, floatLabelType: 'Always', placeholder: locale.getConstant('Line Spacing'),htmlAttributes:{'aria-labelledby':locale.getConstant('Line Spacing')}});
+        this.lineSpacing = new DropDownList({ change: this.changeBySpacing.bind(this), enableRtl: isRtl, floatLabelType: 'Always', placeholder: locale.getConstant('Line Spacing'),htmlAttributes:{'aria-labelledby':locale.getConstant('Line Spacing')}});
         this.lineSpacing.appendTo(lineSpacing);
         this.alignment = new DropDownList({ change: this.changeByTextAlignment, enableRtl: isRtl ,floatLabelType: 'Always', placeholder: locale.getConstant('Alignment'),htmlAttributes:{'aria-labelledby':locale.getConstant('Alignment')}});
         this.alignment.appendTo(alignment);
@@ -721,8 +721,8 @@ export class ParagraphDialog {
      * @private
      * @returns {void}
      */
-    public changeBySpacing = (): void => {
-        if (isNullOrUndefined(this.lineSpacing)) {
+    public changeBySpacing = (args?: DropDownChangeArgs): void => {
+        if (isNullOrUndefined(this.lineSpacing) || (!isNullOrUndefined(args) && !args.isInteracted)) {
             return;
         }
         switch (this.lineSpacing.index) {

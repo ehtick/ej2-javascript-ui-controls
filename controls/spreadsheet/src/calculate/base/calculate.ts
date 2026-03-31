@@ -2614,6 +2614,7 @@ export class Calculate extends Base<HTMLElement> implements INotifyPropertyChang
     }
 
     public computeCountIfsFormulas(range: string[]): string | number {
+        const prevGrid: Object = this.grid;
         if (isNullOrUndefined(range) || range[0] === '' || range.length < 2 || range.length > 127 ||
             range.length % 2 !== 0) {
             return this.formulaErrorStrings[FormulasErrorsStrings.WrongNumberArguments];
@@ -2633,7 +2634,7 @@ export class Calculate extends Base<HTMLElement> implements INotifyPropertyChang
             return this.getErrorStrings()[CommonErrors.Value];
         }
         const rangeIndexesArr: { startRow: number, startCol: number, endRow: number, endCol: number,
-            getCellValue: (row: number, col: number, curCell: string) => string }[] = [];
+            getCellValue: (row: number, col: number, curCell: string) => string, grid: Object }[] = [];
         let grid: Object = this.grid;
         for (let i: number = 0; i < cellRanges.length; i++) {
             const [startRow, startCol, endRow, endCol] = getRangeIndexes(cellRanges[i as number]);
@@ -2647,11 +2648,13 @@ export class Calculate extends Base<HTMLElement> implements INotifyPropertyChang
             }  else if (family.parentObjectToToken !== null) {
                 sheetToken = family.parentObjectToToken.get(grid);
             }
+            this.grid = grid;
             const sheetId: number = this.getSheetId(grid);
             const sheetInfoArgs: { action: string, sheetInfo: { visibleName: string, sheet: string, index: number }[] } = {
                 action: 'getSheetInfo', sheetInfo: [] };
             (this.parentObject as { notify?: Function }).notify(workbookFormulaOperation, sheetInfoArgs);
             if (getSheetIndexByName(this.parentObject, 'Sheet' + sheetId, sheetInfoArgs.sheetInfo) === -1) {
+                this.grid = prevGrid;
                 return this.getErrorStrings()[CommonErrors.Ref];
             }
             const getCellValue: (row: number, col: number, curCell: string) => string = this.getCellValueFn(grid, this.cell, sheetId, true);
@@ -2664,15 +2667,18 @@ export class Calculate extends Base<HTMLElement> implements INotifyPropertyChang
                     return this.getErrorStrings()[CommonErrors.Value];
                 }
             }
-            rangeIndexesArr.push({ startRow, startCol, endRow, endCol, getCellValue });
+            rangeIndexesArr.push({ startRow, startCol, endRow, endCol, getCellValue, grid });
         }
+        this.grid = prevGrid;
         for (let k: number = 0; k < criterias.length; k++) {
             if (criterias[k as number] === '') {
+                this.grid = prevGrid;
                 return 0;
             }
         }
         let filteredCells: {rowIdx: number, colIdx: number}[] = [];
         for (let i: number = 0; i < rangeIndexesArr.length; i++) {
+            this.grid = prevGrid;
             let criteria: string = criterias[i as number];
             const isStringVal: boolean = criteria.startsWith(this.tic) && criteria.endsWith(this.tic);
             criteria = this.getANDComputedValue(criteria.trim());
@@ -2702,6 +2708,8 @@ export class Calculate extends Base<HTMLElement> implements INotifyPropertyChang
             }
             const hasWildCards: boolean = criteria.indexOf('*') > -1 || criteria.indexOf('?') > -1;
             const { startRow, startCol, endRow, endCol, getCellValue } = rangeIndexesArr[i as number];
+            const rangeGrid: Object = rangeIndexesArr[i as number].grid;
+            this.grid = rangeGrid;
             let cellVal: string;
             if (i === 0) {
                 for (let r: number = startRow; r <= endRow; r++) {
@@ -2735,9 +2743,11 @@ export class Calculate extends Base<HTMLElement> implements INotifyPropertyChang
                 }
             }
             if (filteredCells.length === 0) {
+                this.grid = prevGrid;
                 return 0;
             }
         }
+        this.grid = prevGrid;
         return filteredCells.length;
     }
 

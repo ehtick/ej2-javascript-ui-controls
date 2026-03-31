@@ -9,7 +9,7 @@ import { Query, DataManager } from '@syncfusion/ej2-data';
 import { Dialog, Popup } from '@syncfusion/ej2-popups';
 import * as events from '../base/constant';
 import * as literals from '../base/string-literals';
-import { toggleFilterUI } from '../base/util';
+import { isAngularMatContainer, toggleFilterUI } from '../base/util';
 
 /**
  * `filter operators` render boolean column.
@@ -86,6 +86,7 @@ export class FlMenuOptrUI {
                 toggleFilterUI(this.dropOptr.value as string, column.uid, column, column.type, dlgObj, this.dropOptr['previousValue'] as string);
             }
         });
+        this.dropOptr.isAngular = isAngularMatContainer(this.parent);
         this.dropOptr.addEventListener(literals['open'], this.ddOpen);
         this.dropOptr.appendTo('#' + column.uid + '-floptr');
     }

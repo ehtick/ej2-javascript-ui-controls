@@ -65,6 +65,10 @@ export class SfdtExport {
     private isWriteInlinesFootNote = false;
     private isWriteEndFootNote = false;
     public bookmarkCollection: BookmarkElementBox[] = [];
+    /**
+     * @private
+     */
+    public editRangeCollection: EditRangeStartElementBox[] = [];
     private inlineContentControls: { inlines: any[]; props: ContentControlProperties }[] = [];
     /**
      * @private
@@ -1465,6 +1469,8 @@ private hasSameContentControlProperties(props1: any, props2: any): boolean {
             inline[textFrameProperty[this.keywordIndex]][topMarginProperty[this.keywordIndex]] = HelperMethods.convertPixelToPoint(element.textFrame.marginTop);
             inline[textFrameProperty[this.keywordIndex]][bottomMarginProperty[this.keywordIndex]] = HelperMethods.convertPixelToPoint(element.textFrame.marginBottom);
             inline[textFrameProperty[this.keywordIndex]][blocksProperty[this.keywordIndex]] = [];
+            var previousInline = this.inlineContentControls;
+            this.inlineContentControls = [];
             for (let j: number = 0; j < element.textFrame.childWidgets.length; j++) {
                 let textFrameBlock: BlockWidget = element.textFrame.childWidgets[j] as BlockWidget;
                 if (textFrameBlock.hasOwnProperty('contentControlProperties') && !isNullOrUndefined(element.paragraph) && (element.paragraph.hasOwnProperty('contentControlProperties'))) {
@@ -1474,6 +1480,7 @@ private hasSameContentControlProperties(props1: any, props2: any): boolean {
                     this.writeBlock(textFrameBlock, 0, inline[textFrameProperty[this.keywordIndex]][blocksProperty[this.keywordIndex]]);
                 }
             }
+            this.inlineContentControls = previousInline;
         }
         return inline;
     }
@@ -1744,6 +1751,10 @@ private hasSameContentControlProperties(props1: any, props2: any): boolean {
             if (element instanceof BookmarkElementBox && !isNullOrUndefined(this.bookmarkCollection) &&
                 ((element.bookmarkType === 0 && this.bookmarkCollection.indexOf(element) === -1) ||
                     (element.bookmarkType === 1 && this.bookmarkCollection.indexOf(element.reference) === -1))) {
+                continue;
+            }
+            if (element instanceof EditRangeStartElementBox && this.editRangeCollection.length > 0 &&
+                this.editRangeCollection.indexOf(element) === -1) {
                 continue;
             }
 
@@ -2204,9 +2215,23 @@ private hasSameContentControlProperties(props1: any, props2: any): boolean {
         rowFormat[gridBeforeProperty[keyIndex]] = wRowFormat.gridBefore;
         rowFormat[gridBeforeWidthProperty[keyIndex]] = wRowFormat.hasValue('gridBeforeWidth') ? wRowFormat.gridBeforeWidth : undefined;
         rowFormat[gridBeforeWidthTypeProperty[keyIndex]] = wRowFormat.hasValue('gridBeforeWidthType') ? this.keywordIndex == 1 ? this.getWidthTypeEnumValue(wRowFormat.gridBeforeWidthType) : wRowFormat.gridBeforeWidthType : undefined;
+        if (wRowFormat.hasValue('gridBeforeWidth') && !wRowFormat.hasValue('gridBeforeWidthType')) {
+            if (this.keywordIndex === 0) {
+                rowFormat[gridBeforeWidthTypeProperty[keyIndex]] = "Point";
+            } else {
+                rowFormat[gridBeforeWidthTypeProperty[keyIndex]] = 2;
+            }
+        }
         rowFormat[gridAfterProperty[keyIndex]] = wRowFormat.gridAfter;
         rowFormat[gridAfterWidthProperty[keyIndex]] = wRowFormat.hasValue('gridAfterWidth') ? wRowFormat.gridAfterWidth : undefined;
         rowFormat[gridAfterWidthTypeProperty[keyIndex]] = wRowFormat.hasValue('gridAfterWidthType') ? this.keywordIndex == 1 ? this.getWidthTypeEnumValue(wRowFormat.gridAfterWidthType) : wRowFormat.gridAfterWidthType : undefined;
+        if (wRowFormat.hasValue('gridAfterWidth') && !wRowFormat.hasValue('gridAfterWidthType')) {
+            if (this.keywordIndex === 0) {
+                rowFormat[gridAfterWidthTypeProperty[keyIndex]] = "Point";
+            } else {
+                rowFormat[gridAfterWidthTypeProperty[keyIndex]] = 2;
+            }
+        }
         rowFormat[leftMarginProperty[keyIndex]] = wRowFormat.hasValue('leftMargin') ? wRowFormat.leftMargin : undefined;
         rowFormat[topMarginProperty[keyIndex]] = wRowFormat.hasValue('topMargin') ? wRowFormat.topMargin : undefined;
         rowFormat[rightMarginProperty[keyIndex]] = wRowFormat.hasValue('rightMargin') ? wRowFormat.rightMargin : undefined;

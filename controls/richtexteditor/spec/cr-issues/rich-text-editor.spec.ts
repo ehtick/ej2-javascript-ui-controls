@@ -456,7 +456,7 @@ describe('RTE CR issues ', () => {
                 const toolbarElems:NodeListOf<HTMLElement> = rteObj.element.querySelectorAll('.e-toolbar-item');
                 toolbarElems[1].click();
                 let textarea: HTMLTextAreaElement = (rteObj as any).element.querySelector('.e-rte-srctextarea');
-                textarea.dispatchEvent(new KeyboardEvent('keydown', keyboardEventArgs));
+                textarea.parentElement.dispatchEvent(new KeyboardEvent('keydown', keyboardEventArgs));
                 expect(rteObj.element.classList.contains('e-rte-full-screen')).toBe(true);
                 const escapeKeyDownEvent: KeyboardEvent = new KeyboardEvent('keydown', ESCAPE_KEY_EVENT_INIT);
                 textarea.dispatchEvent(escapeKeyDownEvent);

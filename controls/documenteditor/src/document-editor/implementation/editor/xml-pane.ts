@@ -56,7 +56,7 @@ export class XmlPane {
     /**
      * To set Drop Down List Data.
      *
-     * @param {Object} key.
+     * @param {Object} key - The key for the drop down list data.
      * @private
      * @returns {void}
      */

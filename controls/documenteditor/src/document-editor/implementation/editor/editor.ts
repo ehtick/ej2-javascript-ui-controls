@@ -1,4 +1,4 @@
-/* eslint-disable */
+/* eslint-disable */ 
 import { LayoutViewer, SelectionSectionFormat } from '../index';
 import { Selection } from '../index';
 import { TextPosition, ImageSizeInfo } from '../selection/selection-helper';
@@ -675,6 +675,12 @@ export class Editor {
     public cut(): void {
         if (this.owner.isReadOnlyMode || this.selection.isEmpty || !this.canEditContentControl) {
             return;
+        }
+        if (!this.selection.isEmpty) {
+            const selectionBookmark: string[] = this.selection.bookmarks;
+            if (selectionBookmark.length > 0) {
+                this.extendSelectionToBookmarkStart(selectionBookmark);
+            }
         }
         // As per MSWord behaviour, when we select the bookmark whole content except bookmark start & end and cut those content, then bookmark should be removed.
         let startPosition: TextPosition = this.selection.start;
@@ -1924,7 +1930,9 @@ export class Editor {
         }
         this.documentHelper.prefix = '@' + String.fromCharCode(160) + this.documentHelper.prefix; // &nbsp;
         this.documentHelper.editableDiv.innerText = this.documentHelper.prefix;
-        this.documentHelper.selection.setEditableDivCaretPosition(this.documentHelper.prefix.length);
+        if (this.owner.enableAutoFocus || !this.documentHelper.layout.isInitialLoad) {
+            this.documentHelper.selection.setEditableDivCaretPosition(this.documentHelper.prefix.length);
+        }
     }
 
     /* eslint-disable  */
@@ -3665,6 +3673,70 @@ export class Editor {
             this.documentHelper.customXmlData.set(itemId, xmlString);
         }
     }
+    private updateInsertPositionForRtl(text: string): void {
+        const selection: Selection = this.documentHelper.selection;
+        let line: LineWidget = selection.start.currentWidget as LineWidget;
+        if (isNullOrUndefined(selection) || !selection.isEmpty || this.documentHelper.textHelper.getRtlLanguage(text).isRtl || isNullOrUndefined(line)) {
+            return;
+        }
+        let indexInInline: number = 0;
+        let inlineInfo: ElementInfo = line.getInline(selection.start.offset, indexInInline, false, true);
+        let currentElement: ElementBox = inlineInfo.element;
+        let elementStartOffset: number = line.getOffset(currentElement, 0);
+        indexInInline = inlineInfo.index;
+        if (!(currentElement instanceof TextElementBox) || !this.documentHelper.textHelper.isRTLText(currentElement.text)) {
+            return;
+        }
+        let currentElementEndOffset: number = elementStartOffset + currentElement.length;
+        if (selection.start.offset !== currentElementEndOffset) {
+            return;
+        }
+        if (currentElement.previousElement instanceof TextElementBox) {
+            let prevText = currentElement.previousElement.text;
+            if (this.documentHelper.textHelper.isRTLText(prevText)) {
+                return;
+            }
+        }
+        let currentIndex: number = currentElement.indexInOwner;
+        let isAtWordStart: boolean = false;
+        let nextEle: ElementInfo = line.getInline(selection.start.offset + 1, 0, false, true);
+        if (currentElement.previousElement instanceof TextElementBox) {
+            let prevText: string = currentElement.previousElement.text;
+            if (!this.documentHelper.textHelper.isRTLText(prevText) || !this.documentHelper.textHelper.isWordSplitChar(prevText.charAt(prevText.length - 1))) {
+                isAtWordStart = true;
+            }
+        }
+        if (!isAtWordStart) {
+            if (nextEle.element == currentElement || (nextEle.element instanceof TextElementBox && this.documentHelper.textHelper.isRTLText(nextEle.element.text) && currentElement !== nextEle.element)) {
+                return;
+            } else if (nextEle.element instanceof TextElementBox && nextEle.element.text.trim().length == 0 && isNullOrUndefined(nextEle.element.nextElement)) {
+                return;
+            }
+        }
+
+        while (currentIndex + 1 < line.children.length) {
+            let nextElement: ElementBox = line.children[currentIndex + 1];
+            if (!(nextElement instanceof TextElementBox)) {
+                break;
+            }
+
+            let nextText: string = nextElement.text;
+            let beginsWithNeutral: boolean = (nextText.length === 0) ? true : (nextText.charAt(0) === '\u00A0' || this.documentHelper.textHelper.isWordSplitChar(nextText.charAt(0)));
+            let nextIsRtl: boolean = this.documentHelper.textHelper.isRTLText(nextText);
+
+            if (nextIsRtl || beginsWithNeutral) {
+                currentIndex++;
+                continue;
+            }
+            break;
+        }
+        if (currentIndex !== currentElement.indexInOwner) {
+            let lastRTLElement: TextElementBox = line.children[currentIndex] as TextElementBox;
+            let updatedOffset: number = line.getOffset(lastRTLElement, lastRTLElement.length);
+            this.setPositionParagraph(line.paragraph, updatedOffset, true);
+            selection.editPosition = selection.getHierarchicalIndex(line.paragraph, updatedOffset.toString());
+        }
+    }
     /**
      * Inserts the specified text at cursor position
      * @param {string} text Specify the text to insert.
@@ -3774,6 +3846,7 @@ export class Editor {
             this.documentHelper.isDoubleTap = false;
             selection.end.offset -= spaceCount;
         }
+        this.updateInsertPositionForRtl(text);
         if (isNullOrUndefined(revisionType) || revisionType === 'Insertion') {
             this.initHistory('Insert');
             if (!isNullOrUndefined(this.editorHistory) && !isNullOrUndefined(this.editorHistory.currentBaseHistoryInfo)) {
@@ -5595,11 +5668,22 @@ export class Editor {
             span = inline as TextElementBox;
             text = span.text.substring(0, indexInInline);
         }
+        let endSpan: TextElementBox = span;
         let index: number = 0;
         let tabCharIndex: number = text.lastIndexOf('\t');
         index = (tabCharIndex >= 0) ? tabCharIndex + 1 : text.lastIndexOf(' ') + 1;
-        while (span.previousElement instanceof TextElementBox && index === 0) {
-            span = span.previousNode as TextElementBox;
+        while (index === 0) {
+            let previousElement: ElementBox = span.previousElement as ElementBox;
+            if (isNullOrUndefined(previousElement)) {
+                const previousLine: LineWidget = span.line.previousLine;
+                if (previousLine && previousLine.children.length > 0) {
+                    previousElement = previousLine.children[previousLine.children.length - 1];
+                }
+            }
+            if (!(previousElement instanceof TextElementBox)) {
+                break;
+            }
+            span = previousElement as TextElementBox;
             let previousText: string = span.text;
             tabCharIndex = previousText.lastIndexOf('\t');
             index = (tabCharIndex >= 0) ? tabCharIndex + 1 : previousText.lastIndexOf(' ') + 1;
@@ -5631,7 +5715,7 @@ export class Editor {
             startPos.setPositionParagraph(span.line, span.line.getOffset(span, index));
             let endPos: TextPosition = new TextPosition(this.documentHelper.owner);
             if (isEnter) {
-                endPos.setPositionParagraph(span.line, span.line.getEndOffset());
+                endPos.setPositionParagraph(endSpan.line, endSpan.line.getEndOffset());
             } else {
                 if (selection.end.currentWidget.children.length === 0 && selection.end.offset === 0) {
                     let prevLine: LineWidget = selection.end.currentWidget.previousLine;
@@ -15488,6 +15572,7 @@ export class Editor {
                 if (deleteCells.indexOf(row.childWidgets[0] as TableCellWidget) >= 0) {
                     this.removeFieldInWidget(row.childWidgets[0] as Widget);
                     this.removeFieldInWidget(row.childWidgets[0] as Widget, true);
+                    this.removeFieldInWidget(row.childWidgets[0] as Widget, undefined, true);
                     table.childWidgets.splice(table.childWidgets.indexOf(row), 1);
                     row.destroy();
                     length += 1;
@@ -15499,6 +15584,7 @@ export class Editor {
                     if (deleteCells.indexOf(tableCell) >= 0) {
                         this.removeFieldInWidget(tableCell as Widget);
                         this.removeFieldInWidget(tableCell as Widget, true);
+                        this.removeFieldInWidget(tableCell as Widget, undefined, true);
                         this.removeDeletedCellRevision(row, false, tableCell.columnIndex, tableCell.columnIndex + tableCell.cellFormat.columnSpan - 1);
                         row.childWidgets.splice(j, 1);
                         tableCell.destroy();
@@ -16453,6 +16539,10 @@ export class Editor {
         let index: number;
         let blockCollection: IWidget[];
         let containerWidget: Widget;
+        let isSkipClientPosition: boolean = false;
+        if (block instanceof ParagraphWidget && block.indexInOwner === 0 && block.containerWidget.indexInOwner === 0 && !block.isInsideTable && !isNullOrUndefined(this.editorHistory) && !isNullOrUndefined(this.editorHistory.currentBaseHistoryInfo) && this.editorHistory.currentBaseHistoryInfo.action === "Delete") {
+            isSkipClientPosition = true;
+        }
         if (!skipElementRemoval) {
             this.removeFieldInBlock(block);
             this.removeFieldInBlock(block, true);
@@ -16488,7 +16578,7 @@ export class Editor {
             if (!isNullOrUndefined(containerWidget.containerWidget) && containerWidget.containerWidget instanceof FootNoteWidget) {
                 containerWidget.containerWidget.height -= block.height;
             }
-            this.documentHelper.layout.layoutBodyWidgetCollection(block.index, containerWidget, block, false, isSkipShifting, isSelectionInsideTable);
+            this.documentHelper.layout.layoutBodyWidgetCollection(block.index, containerWidget, block, false, isSkipShifting, isSelectionInsideTable, isSkipClientPosition);
         }
     }
     private checkToCombineRevisionsInPane(block: BlockWidget): void {
@@ -17475,6 +17565,9 @@ export class Editor {
                             nextRenderedRow.childWidgets.splice(cellWidget.columnIndex, 0, cellWidget);
                         }
                     }
+                    let tableCell: TableCellWidget = row.childWidgets[j] as TableCellWidget;
+                    this.removeFieldInWidget(tableCell as Widget, true);
+                    this.removeFieldInWidget(tableCell as Widget, undefined, true);
                     row.childWidgets.splice(j, 1);
                     j--;
                 } else if (editAction < 4) {
@@ -18866,6 +18959,7 @@ export class Editor {
             }
         }
         let commentStartToInsert = this.checkAndRemoveComments();
+        this.updateInsertPositionForRtl('\n');
         this.initHistory('Enter');
         let isRemoved: boolean = true;
         if (!selection.isEmpty && !selection.isImageSelected) {
@@ -22353,7 +22447,7 @@ export class Editor {
             let endOffset: number = 0;
             if (!isNullOrUndefined(bookmarkEnd.properties)) {
                 if (bookmarkEnd.properties['isAfterParagraphMark']) {
-                    this.selection.start.setPositionForSelection(bookmark.line, bookmark, 0, this.selection.start.location);
+                    //this.selection.start.setPositionForSelection(bookmark.line, bookmark, 0, this.selection.start.location);
                     endOffset = 2;
                 }
             }

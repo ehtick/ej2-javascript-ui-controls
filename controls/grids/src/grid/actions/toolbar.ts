@@ -5,7 +5,7 @@ import { IGrid, NotifyArgs, FocusInfo, ColumnMenuClickEventArgs, RefreshToolbarI
 import * as events from '../base/constant';
 import { ServiceLocator } from '../services/service-locator';
 import { EditSettingsModel } from '../base/grid-model';
-import { templateCompiler, appendChildren, parentsUntil, addRemoveEventListener, applyBiggerTheme } from '../base/util';
+import { templateCompiler, appendChildren, parentsUntil, addRemoveEventListener, applyBiggerTheme, isAngularMatContainer } from '../base/util';
 import { ToolbarItems, ToolbarItem, ResponsiveToolbarAction } from '../base/enum';
 import { ContextMenu as Menu } from '@syncfusion/ej2-navigations';
 import { OffsetPosition, calculatePosition } from '@syncfusion/ej2-popups';
@@ -675,6 +675,7 @@ export class Toolbar {
             items: this.getMenuItems(),
             select: this.ResponsiveToolbarMenuItemClick.bind(this)
         });
+        this.responsiveToolbarMenu.isAngular = isAngularMatContainer(this.parent);
         this.responsiveToolbarMenu.appendTo(this.toolbarMenuElement);
     }
 

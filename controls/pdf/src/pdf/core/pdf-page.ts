@@ -1703,40 +1703,26 @@ export class _PdfDestinationHelper {
      *
      * @private
      * @param {_PdfDictionary} current Dictionary containing a 'Names' array.
-     * @param {string} name Name to search for.
+     * @param {string} target Name to search for.
      * @returns {_PdfReference} Reference associated with the found name.
      */
-    _findName(current: _PdfDictionary, name: string): _PdfReference {
+    _findName(current: _PdfDictionary, target: string): _PdfReference {
+        let reference: _PdfReference;
         const names: any[] = current.get('Names'); // eslint-disable-line
-        const halfLength: number = names.length / 2;
-        let lowerIndex: number = 0;
-        let topIndex: number = halfLength - 1;
-        let half: number = 0;
-        let found: boolean = false;
-        let destinationReference: _PdfReference;
-        while (!found) {
-            half = Math.floor((lowerIndex + topIndex) / 2);
-            if (lowerIndex > topIndex) {
-                break;
+        if (!Array.isArray(names) || names.length === 0) {
+            return reference;
+        }
+        for (let i: number = 0; i < names.length; i += 2) {
+            let key: any = names[i]; // eslint-disable-line
+            if (key instanceof _PdfReference) {
+                key = current._crossReference._fetch(key);
             }
-            let result: any = names[Number.parseInt(half.toString(), 10) * 2]; // eslint-disable-line
-            if (result && result instanceof _PdfReference) {
-                result = current._crossReference._fetch(result);
-            }
-            const cmp: number = this._stringCompare(name, result);
-            if (cmp > 0) {
-                lowerIndex = half + 1;
-            } else if (cmp < 0) {
-                topIndex = half - 1;
-            } else {
-                found = true;
-                break;
+            if (this._stringCompare(target, key) === 0) {
+                reference = names[i + 1] as _PdfReference;
+                return reference;
             }
         }
-        if (found) {
-            destinationReference = names[half * 2 + 1];
-        }
-        return destinationReference;
+        return reference;
     }
     /**
      * Selects the child dictionary whose Limits bracket the specified name.
@@ -1754,7 +1740,7 @@ export class _PdfDestinationHelper {
         }
         if (kidsArray && Array.isArray(kidsArray) && kidsArray.length !== 0) {
             kidsArray = kids.getArray('Kids');
-            for (let i: number = 0; i < kidsArray.length; i++) {
+            for (let i: number = kidsArray.length - 1; i >= 0; i--) {
                 kid = kidsArray[Number.parseInt(i.toString(), 10)];
                 if (this._checkLimits(kid, name)) {
                     break;

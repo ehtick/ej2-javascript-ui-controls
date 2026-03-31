@@ -1761,13 +1761,16 @@ describe('Spreadsheet base module ->', () => {
                     dialogName = 'Re-enterPassword';
                     dlgEle = helper.getElementFromSpreadsheet('.e-dialog.e-protect-dlg');
                     (dlgEle.querySelector('.e-footer-content .e-btn.e-primary') as HTMLButtonElement).click();
-                    expect(helper.getElementFromSpreadsheet('.e-dialog.e-reenterpwd-dlg')).toBeNull();
-                    expect(helper.getElementFromSpreadsheet('.e-dialog.e-protect-dlg')).toBeNull();
-                    expect(dlgObj.dialogInstance).toBeNull();
-                    expect(document.activeElement).toBe(spreadsheet.element);
-                    expect(sheet.isProtected).toBeTruthy();
-                    expect(sheet.password).toBe('test');
-                    done();
+                    setTimeout((): void => {
+                        expect(helper.getElementFromSpreadsheet('.e-dialog.e-reenterpwd-dlg')).toBeNull();
+                        expect(helper.getElementFromSpreadsheet('.e-dialog.e-protect-dlg')).toBeNull();
+                        expect(dlgObj.dialogInstance).toBeNull();
+                        expect(document.activeElement).toBe(spreadsheet.element);
+                        expect(sheet.isProtected).toBeTruthy();
+                        expect(sheet.password).toBe('');
+                        expect(sheet.hashValue).not.toBeNull();
+                        done();
+                    }, 30)
                 }, 30);
             }, 30);
         });

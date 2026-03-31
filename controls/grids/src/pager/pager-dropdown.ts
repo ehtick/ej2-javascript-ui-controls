@@ -1,6 +1,8 @@
 import { createElement, remove } from '@syncfusion/ej2-base';
 import { Pager } from './pager';
 import { DropDownList, ChangeEventArgs } from '@syncfusion/ej2-dropdowns';
+import { isAngularMatContainer } from '../grid/base/util';
+import { IGrid } from '../grid/base/interface';
 
 /**
  * IPager interface
@@ -77,6 +79,7 @@ export class PagerDropDown {
             placeholder: this.pagerModule.getLocalizedLabel('pagerDropDown'),
             cssClass: this.pagerModule.cssClass ? 'e-alldrop' + ' ' + this.pagerModule.cssClass : 'e-alldrop'
         });
+        this.dropDownListObject.isAngular = isAngularMatContainer(pagerObj.parent as IGrid);
         this.dropDownListObject.appendTo(input);
         if ((<string[]>pageSizesModule).length) {
             (<HTMLInputElement>this.dropDownListObject.element).value = this.pagerModule.pageSize.toString();

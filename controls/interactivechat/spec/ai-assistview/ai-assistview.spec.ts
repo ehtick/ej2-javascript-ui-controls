@@ -5338,3 +5338,67 @@ describe('Attachment Min-Height Adjustment -', () => {
         }, 200);
     });
 });
+
+describe('AIAssistView - suggestion click/keyboard regression', () => {
+
+    let aiAssistView: AIAssistView;
+    const aiAssistViewElem: HTMLElement = createElement('div', { id: 'aiAssistViewCompForSuggestionTest' });
+    document.body.appendChild(aiAssistViewElem);
+
+    afterEach(() => {
+        if (aiAssistView) {
+            aiAssistView.destroy();
+            aiAssistView = null;
+        }
+    });
+
+    it('Clicking nested child element should send full suggestion', () => {
+        const suggestion = 'Write a short summary about your work life balance';
+        const sTag: HTMLElement = createElement('script', { id: 'suggTemplate', attrs: { type: 'text/x-template' } });
+        sTag.innerHTML = '<span class="sugg-wrap"><b>${promptSuggestion}</b></span>';
+        document.body.appendChild(sTag);
+
+        aiAssistView = new AIAssistView({
+            promptSuggestions: [ suggestion ],
+            promptSuggestionItemTemplate: '#suggTemplate'
+        });
+        aiAssistView.appendTo('#aiAssistViewCompForSuggestionTest');
+
+        const suggestionElem: HTMLLIElement = aiAssistViewElem.querySelectorAll('.e-suggestion-list li')[0] as HTMLLIElement;
+        expect(suggestionElem).not.toBeNull();
+        const nestedChild: HTMLElement = suggestionElem.querySelector('b') as HTMLElement;
+        expect(nestedChild).not.toBeNull();
+
+        // Click the nested child (this used to only send the child text)
+        nestedChild.click();
+
+        const promptElem: HTMLElement = aiAssistViewElem.querySelector('.e-prompt-text');
+        expect(promptElem).not.toBeNull();
+        expect(promptElem.textContent).toEqual(suggestion);
+    });
+
+    it('Pressing Enter on a focused suggestion should send full suggestion', (done: DoneFn) => {
+        const suggestion = 'Describe a productive work routine';
+        aiAssistView = new AIAssistView({
+            promptSuggestions: [ suggestion ]
+        });
+        aiAssistView.appendTo('#aiAssistViewCompForSuggestionTest');
+
+        const suggestionElem: HTMLLIElement = aiAssistViewElem.querySelectorAll('.e-suggestion-list li')[0] as HTMLLIElement;
+        expect(suggestionElem).not.toBeNull();
+
+        // Focus the suggestion and dispatch Enter key
+        (suggestionElem as HTMLElement).focus();
+        const enterEvent = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
+        suggestionElem.dispatchEvent(enterEvent);
+
+        // some handlers may process asynchronously; wait a tick
+        setTimeout(() => {
+            const promptElem: HTMLElement = aiAssistViewElem.querySelector('.e-prompt-text');
+            expect(promptElem).not.toBeNull();
+            expect(promptElem.textContent).toEqual(suggestion);
+            done();
+        }, 0);
+    });
+
+});

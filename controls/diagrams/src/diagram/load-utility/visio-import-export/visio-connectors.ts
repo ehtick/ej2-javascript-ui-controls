@@ -1,4 +1,4 @@
-import { AnnotationConstraints, ConnectorConstraints, Segments } from '../../enum/enum';
+import { AnnotationConstraints, ConnectorConstraints, DecoratorShapes, Direction, Segments } from '../../enum/enum';
 import { DiagramConnectorSegmentModel } from '../../objects/connector-model';
 import { VisioConnectorAnnotation, VisioTextAlignmentModel, VisioTextStyleModel } from './visio-annotations';
 import { LINE_PATTERN_MAP } from './visio-constants';
@@ -20,9 +20,7 @@ import {
     VisioPort,
     VisioSegmentsModel,
     WCP,
-    Direction,
     ExtractedNurbsData,
-    DecoratorShapes,
     ConnectorType,
     AnnotationStyle,
     VisioRow,

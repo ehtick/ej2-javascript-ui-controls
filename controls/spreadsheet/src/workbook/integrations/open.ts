@@ -6,7 +6,7 @@ import { OpenFailureArgs, BeforeOpenEventArgs, OpenArgs } from '../../spreadshee
 import { workbookOpen, openSuccess, openFailure, sheetsDestroyed, workbookFormulaOperation, getRangeIndexes } from '../common/index';
 import { sheetCreated, getRangeAddress, beginAction, importModelUpdate } from '../common/index';
 import { WorkbookModel, Workbook, initSheet, SheetModel, RangeModel, getSheet } from '../base/index';
-import { clearUndoRedoCollection } from '../../spreadsheet/common/event';
+import { clearUndoRedoCollection, removeWorkbookProtection, updateToggleItem } from '../../spreadsheet/common/event';
 
 export class WorkbookOpen {
     private parent: Workbook;
@@ -289,11 +289,15 @@ export class WorkbookOpen {
         this.parent.sheets = [];
         this.parent.notify(sheetsDestroyed, {});
         this.parent.notify(clearUndoRedoCollection, null);
+        this.parent.notify(removeWorkbookProtection, null);
         workbookModel.activeSheetIndex = workbookModel.activeSheetIndex || workbookModel.sheets.findIndex((sheet: SheetModel) => sheet.state !== 'Hidden');
         this.parent.setProperties(
             {
                 'isProtected': workbookModel.isProtected || false,
                 'password': workbookModel.password || '',
+                'hashValue': workbookModel.hashValue || null,
+                'saltValue': workbookModel.saltValue || null,
+                'spinCount': workbookModel.spinCount || null,
                 'sheets': workbookModel.sheets,
                 'activeSheetIndex': workbookModel.activeSheetIndex,
                 'definedNames': workbookModel.definedNames || [],
@@ -305,6 +309,13 @@ export class WorkbookOpen {
         );
         if (!isNullOrUndefined(workbookModel.showSheetTabs)) {
             this.parent.showSheetTabs = workbookModel.showSheetTabs;
+        }
+        if (workbookModel.isProtected && ((workbookModel.password && workbookModel.password.length > 0) || workbookModel.hashValue)) {
+            if (this.parent.showSheetTabs) {
+                this.parent.element.querySelector('.e-add-sheet-tab').setAttribute('disabled', 'true');
+                this.parent.element.querySelector('.e-add-sheet-tab').classList.add('e-disabled');
+            }
+            this.parent.notify(updateToggleItem, { props: 'Protectworkbook' });
         }
         initSheet(this.parent, undefined, isImport);
         this.parent.notify(sheetCreated, null);

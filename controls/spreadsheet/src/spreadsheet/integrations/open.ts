@@ -13,7 +13,6 @@ import { BeforeOpenEventArgs } from '@syncfusion/ej2-popups';
 export class Open {
     private parent: Spreadsheet;
     public isImportedFile: boolean = false;
-    public unProtectSheetIdx: number[] = [];
     constructor(parent: Spreadsheet) {
         this.parent = parent;
         this.addEventListener();
@@ -196,7 +195,6 @@ export class Open {
             this.isImportedFile = true;
             response.context.preventFormatCheck = response.eventArgs && response.eventArgs.file && (response.eventArgs.file as File).name &&
                 !(response.eventArgs.file as File).name.includes('.csv');
-            this.unProtectSheetIdx = [];
             this.parent.hideSpinner();
         }
     }
@@ -216,7 +214,6 @@ export class Open {
     private sheetsDestroyHandler(args: { sheetIndex?: number }): void {
         if (isNullOrUndefined(args.sheetIndex)) {
             this.isImportedFile = false;
-            this.unProtectSheetIdx = [];
         }
     }
 
@@ -234,7 +231,6 @@ export class Open {
             detach(uploadBox);
         }
         this.isImportedFile = null;
-        this.unProtectSheetIdx = null;
         this.parent = null;
     }
 

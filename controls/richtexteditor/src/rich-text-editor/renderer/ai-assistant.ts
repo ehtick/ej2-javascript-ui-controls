@@ -620,6 +620,9 @@ export class AIAssistant {
         });
         dropDownButton.isAngular = this.parent.isModalDialog;
         dropDownButton.appendTo(dropdownMenuRoot);
+        dropdownMenuRoot.setAttribute('aria-label', 'Ai-Assistant History Dropdown Button');
+        const popupElement: HTMLElement = document.getElementById(dropDownButton.element.id + '-popup');
+        popupElement.setAttribute('aria-label', 'Ai-Assistant History Menu');
         if (this.parent.element.dataset.rteUnitTesting === 'true') {
             dropDownButton.animationSettings = { effect: 'None', duration: 0 };
         }

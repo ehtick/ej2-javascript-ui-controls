@@ -437,13 +437,13 @@ export class InterActiveChatBase extends Component<HTMLElement> implements INoti
 
     private renderSuggestionList(suggestionsArray: string[], suggestionWrapper: HTMLElement, isSuggestionTemplate: boolean,
                                  contextName: string, suggestionTemplate: string | Function, templateName: string,
-                                 onSuggestionClick: (e: Event) => void): void {
+                                 onSuggestionClick: (e: Event, suggestion?: string) => void): void {
         const suggestionsListElement: HTMLElement = this.createElement('ul', { attrs: { 'tabindex': '-1' } }) as HTMLElement;
         suggestionsArray.forEach((suggestion: string, i: number) => {
             const suggestionList: HTMLLIElement = this.createElement('li');
             attributes(suggestionList, { 'tabindex': '0' });
-            EventHandler.add(suggestionList, 'click', onSuggestionClick, this);
-            EventHandler.add(suggestionList, 'keydown', this.suggestionItemHandler, this);
+            EventHandler.add(suggestionList, 'click', (event: Event) => { onSuggestionClick.call(this, event, suggestion); }, this);
+            EventHandler.add(suggestionList, 'keydown', (event: KeyboardEvent) => this.suggestionItemHandler(event, suggestion), this);
             if (isSuggestionTemplate) {
                 const suggestionContext: object = { index: i, [contextName]: suggestionsArray[parseInt(i.toString(), 10)] };
                 this.updateContent(suggestionTemplate, suggestionList, suggestionContext, templateName);
@@ -455,10 +455,10 @@ export class InterActiveChatBase extends Component<HTMLElement> implements INoti
         suggestionWrapper.appendChild(suggestionsListElement);
     }
 
-    private suggestionItemHandler(event: KeyboardEvent): void {
+    private suggestionItemHandler(event: KeyboardEvent, suggestionText: string): void {
         if (event.key === 'Enter' && !event.shiftKey) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (this as any).onSuggestionClick(event);
+            (this as any).onSuggestionClick(event, suggestionText);
         }
     }
 

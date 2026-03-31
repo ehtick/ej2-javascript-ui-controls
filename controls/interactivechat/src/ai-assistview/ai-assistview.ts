@@ -2045,11 +2045,12 @@ export class AIAssistView extends AIAssistBase implements INotifyPropertyChanged
         }
     }
 
-    private onSuggestionClick(e: Event): void {
+    private onSuggestionClick(e: Event, suggestion?: string): void {
         this.suggestionsElement.hidden = true;
         const prevOnChange: boolean = this.isProtectedOnChange;
         this.isProtectedOnChange = true;
-        this.prompt = (e.target as HTMLElement).innerText;
+        // Prefer the passed-in canonical suggestion; fall back to event target text if absent
+        this.prompt = !isNOU(suggestion) ? suggestion : (e.target as HTMLElement).innerText;
         this.isProtectedOnChange = prevOnChange;
         this.onSendIconClick();
     }

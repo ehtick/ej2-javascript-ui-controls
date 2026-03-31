@@ -2973,7 +2973,7 @@ export class Ribbon {
                     sheet.activeCell)[1] - getCellIndexes(sheet.topLeftCell)[1], triggerEvent: true });
                 break;
             case parentId + '_protectworkbook':
-                if (this.parent.password.length > 0) {
+                if (this.parent.password.length > 0 || this.parent.hashValue) {
                     this.parent.notify(unProtectWorkbook, null);
                 } else {
                     if (this.parent.isProtected) {

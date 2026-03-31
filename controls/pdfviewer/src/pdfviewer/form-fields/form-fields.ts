@@ -1603,6 +1603,31 @@ export class FormFields {
 
     private changeFormFields(event: MouseEvent): void {
         const currentTarget: any = event.target;
+        if (currentTarget.type === 'checkbox') {
+            const data: any = this.pdfViewerBase.getItemFromSessionStorage('_formfields');
+            if (data && !this.pdfViewer.formDesignerModule) {
+                const FormFieldsData: any = JSON.parse(data);
+                const groupCheckBoxSameName: any = FormFieldsData.filter((sameNameCheckboxField: any) => (sameNameCheckboxField.GroupName === currentTarget.name) && sameNameCheckboxField.Name === 'CheckBox');
+                if (groupCheckBoxSameName.length > 1) {
+                    const isChecked: boolean = currentTarget.checked;
+                    for (let i: number = 0; i < groupCheckBoxSameName.length; i++) {
+                        const currentCheckbox: any = groupCheckBoxSameName[parseInt(i.toString(), 10)];
+                        const targetCheckBox: any = document.getElementById(currentCheckbox.uniqueID);
+                        if (targetCheckBox) {
+                            let shouldCheck: boolean = isChecked;
+                            if (isChecked && currentCheckbox.Value !== currentTarget.value) {
+                                shouldCheck = false;
+                            }
+                            if (currentCheckbox.uniqueID === currentTarget.id) {
+                                shouldCheck = currentTarget.checked;
+                            }
+                            targetCheckBox.checked = shouldCheck;
+                            targetCheckBox.style.webkitAppearance = shouldCheck ? 'auto' : 'none';
+                        }
+                    }
+                }
+            }
+        }
         this.updateDataInSession(currentTarget);
     }
 
@@ -1702,23 +1727,19 @@ export class FormFields {
                         const filterCheckBoxSameName : any = FormFieldsData.filter((sameNameCheckboxField: any) => (sameNameCheckboxField.GroupName === target.name) && sameNameCheckboxField.Name === 'CheckBox');
                         for (let l: number = 0; l < filterCheckBoxSameName.length; l++) {
                             const currentType: any = filterCheckBoxSameName[parseInt(l.toString(), 10)];
-                            if (currentType.uniqueID !== targetCheckBox) {
-                                currentType.Selected = false;
-                                currentType.checked = false;
-                            }
                             const currentTarget: any = document.getElementById(currentType.uniqueID);
-                            if (currentTarget) {
-                                if (targetCheckBox !== currentTarget.id) {
-                                    currentTarget.Selected = false;
-                                    currentTarget.checked = false;
-                                    currentTarget.style.webkitAppearance = 'none';
+                            if (currentTarget && currentTarget.id === currentData.uniqueID) {
+                                currentData.Selected = currentTarget.checked ? true : false;
+                            } else if (!currentTarget) {
+                                if (target.value === currentData.Value && target.name === currentData.GroupName) {
+                                    currentData.Selected = target.checked ? true : false;
+                                } else {
+                                    currentData.Selected = false;
                                 }
                             }
                         }
-                        if (target.checked && target.id === currentData.uniqueID) {
-                            currentData.Selected = true;
-                        } else {
-                            currentData.Selected = false;
+                        if (target.id === currentData.uniqueID) {
+                            currentData.Selected = target.checked ? true : false;
                         }
                         if (currentData.Value === ''){
                             currentData.Value = target.value;

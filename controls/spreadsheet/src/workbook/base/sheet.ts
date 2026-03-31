@@ -4,7 +4,7 @@ import { RangeModel, SheetModel, UsedRangeModel } from './sheet-model';
 import { RowModel } from './row-model';
 import { ColumnModel } from './column-model';
 import { processIdx } from './data';
-import { SheetState, ProtectSettingsModel, ConditionalFormat, ConditionalFormatModel, ExtendedRange, getCellIndexes, moveOrDuplicateSheet, workbookFormulaOperation, duplicateSheetFilterHandler, ExtendedSheet, moveSheetHandler, updateSortCollection, ImageModel, ChartModel, ExtendedThreadedCommentModel, ExtendedNoteModel } from '../common/index';
+import { SheetState, ProtectSettingsModel, ConditionalFormat, ConditionalFormatModel, ExtendedRange, getCellIndexes, moveOrDuplicateSheet, workbookFormulaOperation, duplicateSheetFilterHandler, ExtendedSheet, moveSheetHandler, updateSortCollection, ImageModel, ChartModel, ExtendedThreadedCommentModel, ExtendedNoteModel, generateHashSaltValue } from '../common/index';
 import { ProtectSettings, getCellAddress, getISOTime } from '../common/index';
 import { isUndefined, ChildProperty, Property, Complex, Collection, extend, getUniqueID } from '@syncfusion/ej2-base';
 import { WorkbookModel } from './workbook-model';
@@ -383,6 +383,33 @@ export class Sheet extends ChildProperty<WorkbookModel> {
      */
     @Property(false)
     public isSheetCalculated: boolean;
+
+    /**
+     * Specifies the hashed password value for the sheet protection.
+     *
+     * @default null
+     * @hidden
+     */
+    @Property(null)
+    public hashValue: string;
+
+    /**
+     * Specifies the salt value used when deriving the password hash for the sheet protection.
+     *
+     * @default null
+     * @hidden
+     */
+    @Property(null)
+    public saltValue: string;
+
+    /**
+     * Specifies the iteration (spin) count used when hashing the password.
+     *
+     * @default null
+     * @hidden
+     */
+    @Property(null)
+    public spinCount: number;
 }
 
 /**
@@ -558,6 +585,13 @@ export function initSheet(context: Workbook, sheet?: SheetModel[], isImport?: bo
         sheet.protectSettings = sheet.protectSettings || { selectCells: false, formatCells: false, formatRows: false, formatColumns: false,
             insertLink: false };
         sheet.isProtected = sheet.isProtected || false;
+        if (sheet.password && sheet.password.length > 0) {
+            generateHashSaltValue(sheet.password).then((result: { hashValue: string, saltValue: string }) => {
+                context.setSheetPropertyOnMute(sheet, 'hashValue', result.hashValue);
+                context.setSheetPropertyOnMute(sheet, 'saltValue', result.saltValue);
+                context.setSheetPropertyOnMute(sheet, 'password', '');
+            });
+        }
         if (!sheet.paneTopLeftCell || sheet.paneTopLeftCell === 'A1') {
             sheet.frozenRows = sheet.frozenRows ? sheet.frozenRows : 0;
             sheet.frozenColumns = sheet.frozenColumns ? sheet.frozenColumns : 0;

@@ -1867,10 +1867,10 @@ export class QueryBuilder extends Component<HTMLDivElement> implements INotifyPr
                     if (rule.rules[index as number].value instanceof Array) {
                         valArray = rule.rules[index as number].value as string[] | number[];
                     }
-                    if (excludeOprs.indexOf(rule.rules[index as number].operator) < -1 &&
+                    if (excludeOprs.indexOf(rule.rules[index as number].operator) < 0 && (
                         (isNullOrUndefined(rule.rules[index as number].value) &&
                             rule.rules[index as number].type !== 'date') || rule.rules[index as number].value === '' || rule.rules[index as number].value === null ||
-                        (rule.rules[index as number].value instanceof Array && valArray.length < 1)) {
+                        (rule.rules[index as number].value instanceof Array && valArray.length < 1))) {
                         const valElem: NodeListOf<Element> = tempElem.querySelectorAll('.e-rule-value .e-control');
                         if (excludeOprs.indexOf(rule.rules[index as number].operator) < 0) {
                             isValid = false;
@@ -4404,31 +4404,33 @@ export class QueryBuilder extends Component<HTMLDivElement> implements INotifyPr
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if ((this as any).portals && (this as any).portals.length) { this.clearQBTemplate(); }
 
-        let qbDdlElems: NodeListOf<HTMLElement> = this.element.querySelectorAll('.qb-dropdownlist') as NodeListOf<HTMLElement>;
-        if (!qbDdlElems || qbDdlElems.length === 0) {
-            qbDdlElems = document.querySelectorAll('.qb-dropdownlist') as NodeListOf<HTMLElement>;
-        }
-        for (i = 0; i < qbDdlElems.length; i++) {
-            const ddlElem: HTMLElement = qbDdlElems[i as number];
-            const targetInput: HTMLInputElement = ddlElem.tagName === 'INPUT' ? ddlElem as HTMLInputElement : (ddlElem.querySelector('input') as HTMLInputElement);
-            if (targetInput) {
-                const ddlInst: DropDownList = getComponent(targetInput as HTMLElement, 'dropdownlist') as DropDownList;
-                if (ddlInst) {
-                    if (ddlInst.close) {
-                        ddlInst.close = null;
+        const qbDdlElems: NodeListOf<HTMLElement> = this.element.querySelectorAll('.qb-dropdownlist') as NodeListOf<HTMLElement>;
+        if (qbDdlElems && qbDdlElems.length > 0) {
+            for (i = 0; i < qbDdlElems.length; i++) {
+                const ddlElem: HTMLElement = qbDdlElems[i as number];
+                if (this.element.contains(ddlElem)) {
+                    const targetInput: HTMLInputElement = ddlElem.tagName === 'INPUT' ? ddlElem as HTMLInputElement : (ddlElem.querySelector('input') as HTMLInputElement);
+                    if (targetInput) {
+                        const ddlInst: DropDownList = getComponent(targetInput as HTMLElement, 'dropdownlist') as DropDownList;
+                        if (ddlInst) {
+                            if (ddlInst.close) {
+                                ddlInst.close = null;
+                            }
+                            if (ddlInst.open) {
+                                ddlInst.open = null;
+                            }
+                            if (ddlInst.change) {
+                                ddlInst.change = null;
+                            }
+                            ddlInst.destroy();
+                        }
                     }
-                    if (ddlInst.open) {
-                        ddlInst.open = null;
-                    }
-                    if (ddlInst.change) {
-                        ddlInst.change = null;
-                    }
-                    ddlInst.destroy();
                 }
             }
         }
-        const popupElement: NodeListOf<HTMLElement> = document.querySelectorAll('.qb-dropdownlist.e-popup') as NodeListOf<HTMLElement>;
-        if (popupElement) {
+        // Cleanup orphaned popup elements
+        const popupElement: NodeListOf<HTMLElement> = this.element.querySelectorAll('.e-popup.e-dropdownlist') as NodeListOf<HTMLElement>;
+        if (popupElement && popupElement.length > 0) {
             for (i = 0; i < popupElement.length; i++) {
                 popupElement[i as number].remove();
             }

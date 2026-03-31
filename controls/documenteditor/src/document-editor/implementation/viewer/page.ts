@@ -2334,7 +2334,8 @@ export class TableWidget extends BlockWidget {
         let tableCellWidget: TableCellWidget = undefined;
         for (let i: number = 0; i < this.childWidgets.length; i++) {
             if ((this.childWidgets[i] as TableRowWidget).y <= point.y
-                && ((this.childWidgets[i] as TableRowWidget).y + (this.childWidgets[i] as TableRowWidget).height) >= point.y) {
+                && ((this.childWidgets[i] as TableRowWidget).y + (this.childWidgets[i] as TableRowWidget).height +
+                    (this.childWidgets[i] as TableRowWidget).topBorderWidth) >= point.y - this.bodyWidget.page.documentHelper.resizerBoundaryWidth) {
                 tableCellWidget = (this.childWidgets[i] as TableRowWidget).getTableCellWidget(point);
                 break;
             }
@@ -2611,7 +2612,9 @@ export class TableWidget extends BlockWidget {
         if (!isNullOrUndefined(this.bodyWidget.page) && this.bodyWidget.page.documentHelper && this.bodyWidget.page.documentHelper.layout) {
             this.bodyWidget.page.documentHelper.layout.isAllColumnHasAutoWidthType = this.bodyWidget.page.documentHelper.layout.isAuto(this);
         }
-        containerWidth = (this.tableFormat.preferredWidth > containerWidth) ? this.tableFormat.preferredWidth : containerWidth;
+        if (this.tableFormat.preferredWidthType !== 'Percent') {
+            containerWidth = (this.tableFormat.preferredWidth > containerWidth) ? this.tableFormat.preferredWidth : containerWidth;
+        }
         let isZeroWidth: boolean = (isAutoWidth && this.tableFormat.preferredWidth === 0 && !isAutoFit);
         tableWidth = this.getTableClientWidth(containerWidth);
         let pageContainerWidth = this.getContainerWidth();
@@ -2740,6 +2743,9 @@ export class TableWidget extends BlockWidget {
             }
             for (let j: number = 0; j < rw.childWidgets.length; j++) {
                 let cell: TableCellWidget = rw.childWidgets[j] as TableCellWidget;
+                if (cell.cellFormat.preferredWidthType === "Auto") {
+                    cell.cellFormat.initialCellWidth = cell.cellFormat.cellWidth;
+                }
                 cell.cellFormat.cellWidth =
                     this.tableHolder.getCellWidth(cell.columnIndex, cell.cellFormat.columnSpan, tableWidth, isTableResizing);
                 //By default, if cell preferred widthType is auto , width set based on table width and type is changed to 'Point'
@@ -3436,6 +3442,9 @@ export class TableRowWidget extends BlockWidget {
         for (let i: number = 0; i < this.childWidgets.length; i++) {
             let cell: TableCellWidget = this.childWidgets[i] as TableCellWidget;
             if (cell.cellFormat.preferredWidthType !== "Point") {
+                if (cell.cellFormat.preferredWidthType === "Auto") {
+                    cell.cellFormat.cellWidth = cell.cellFormat.initialCellWidth;
+                }
                 cell.cellFormat.preferredWidthType = "Point";
                 if (isSetMinwidth) {
                     cell.cellFormat.preferredWidth = cell.getMinimumPreferredWidth();
@@ -3451,7 +3460,8 @@ export class TableRowWidget extends BlockWidget {
     public getTableCellWidget(point: Point): TableCellWidget {
         const isBidiTable : boolean = this.ownerTable.isBidiTable;
         for (let i: number = 0; i < this.childWidgets.length; i++) {
-            let x: number = Math.round((this.childWidgets[i] as TableCellWidget).x);
+            let x: number = Math.round((this.childWidgets[i] as TableCellWidget).x)
+                - this.bodyWidget.page.documentHelper.resizerBoundaryWidth;
             if (x - (this.childWidgets[i] as TableCellWidget).margin.left - 1 <= point.x
                 && (isBidiTable ? x + (this.childWidgets[i] as TableCellWidget).width + (this.childWidgets[i] as TableCellWidget).margin.left
                     + (this.childWidgets[i] as TableCellWidget).margin.right >= point.x

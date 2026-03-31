@@ -1222,15 +1222,17 @@ describe('Link testing', ()=>{
             range.setEnd(textNode, 30);
             editor.inputElement.ownerDocument.getSelection().removeAllRanges();
             editor.inputElement.ownerDocument.getSelection().addRange(range);
-            const linkQuikToolbar: HTMLElement = document.querySelectorAll('.e-rte-quick-toolbar')[0] as HTMLElement;
-            const removeBtn: HTMLButtonElement = linkQuikToolbar.querySelector('.e-remove-link');
-            removeBtn.click();
-            const currentRange = document.getSelection().getRangeAt(0);
-            expect(currentRange.startContainer.nodeName === '#text').toBe(true);
-            expect(currentRange.endContainer.nodeName === '#text').toBe(true);
-            expect(currentRange.startOffset).toBe(10);
-            expect(currentRange.endOffset).toBe(30);
-            done();
+            setTimeout(() => {
+                const linkQuikToolbar: HTMLElement = document.querySelectorAll('.e-rte-quick-toolbar')[0] as HTMLElement;
+                const removeBtn: HTMLButtonElement = linkQuikToolbar.querySelector('.e-remove-link');
+                removeBtn.click();
+                const currentRange = document.getSelection().getRangeAt(0);
+                expect(currentRange.startContainer.nodeName === '#text').toBe(true);
+                expect(currentRange.endContainer.nodeName === '#text').toBe(true);
+                expect(currentRange.startOffset).toBe(10);
+                expect(currentRange.endOffset).toBe(30);
+                done();
+            }, 0);
         });
     });
     describe('Copy and Paste a Hyperlink in Rich Text Editor', function () {

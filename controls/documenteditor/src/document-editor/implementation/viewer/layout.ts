@@ -176,6 +176,10 @@ export class Layout {
      * @private
      */
     public isAllColumnHasAutoWidthType: boolean = false;
+    /**
+     * @private
+     */
+    public isLayoutSwitch: boolean = false;
     private get owner(): DocumentEditor {
         if (this.documentHelper) {
             return this.documentHelper.owner;
@@ -2538,6 +2542,16 @@ export class Layout {
                 !isNullOrUndefined(textElement.errorCollection) && textElement.errorCollection.length > 0) {
                     textElement.isChangeDetected = true;
                 }
+                if (isSpellCheck && !isNullOrUndefined(textElement.errorCollection) && textElement.errorCollection.length > 0) {
+                    for (let i: number = 0; i < textElement.errorCollection.length; i++) {
+                        if (textElement.errorCollection[i].start.currentWidget.indexInOwner === -1) {
+                            textElement.errorCollection[i].start.currentWidget = line;
+                        }
+                        if (textElement.errorCollection[i].end.currentWidget.indexInOwner === -1) {
+                            textElement.errorCollection[i].end.currentWidget = line;
+                        }
+                    }
+                }
             }
             if (!this.isRTLLayout) {
                 const lineIndex: number = paragraph.childWidgets.indexOf(element.line);
@@ -3007,7 +3021,7 @@ export class Layout {
                 }
             }
         }
-        if (parseFloat(width.toFixed(4)) <= parseFloat(this.viewer.clientActiveArea.width.toFixed(4)) || !this.viewer.textWrap) {
+        if (parseFloat(width.toFixed(4)) <= parseFloat(this.viewer.clientActiveArea.width.toFixed(4)) || !this.viewer.textWrap || (element instanceof TextElementBox && element.text === '\v')) {
             //Fits the text in current line.
             this.addElementToLine(paragraph, element);
             if (isNullOrUndefined(element.nextElement) && !element.line.isLastLine()) {
@@ -4272,6 +4286,10 @@ export class Layout {
             && this.viewer.clientActiveArea.height < element.height &&
             this.viewer.clientActiveArea.y !== this.viewer.clientArea.y) {
             this.moveToNextPage(this.viewer, element.line);
+            if (this.viewer.clientActiveArea.height < element.height &&
+                this.viewer.clientActiveArea.y !== this.viewer.clientArea.y) {
+                this.moveToNextPage(this.viewer, element.line);
+            }
         } else if (moveToNextPage && isNullOrUndefined(element.nextElement) && element.line.paragraph.paragraphFormat.lineSpacingType === 'Exactly'
             && !isNullOrUndefined(element.line.nextLine) && this.viewer.clientActiveArea.height < element.line.height
             && this.viewer instanceof PageLayoutViewer && this.viewer.clientActiveArea.y !== this.viewer.clientArea.y) {
@@ -5160,9 +5178,17 @@ export class Layout {
         if (!(text.substring(0, 1) === ' ') && !this.isSplitByHyphen(element, text)) {
             let textWidth: number = width;
             let characterUptoWS: number = 0;
-            characterUptoWS = HelperMethods.trimEnd(text).indexOf(' ') + 1;
-            if (characterUptoWS == 0) {
-                characterUptoWS = HelperMethods.trimEnd(text).indexOf('-') + 1;
+            const trimmedText: string = HelperMethods.trimEnd(text);
+            const spaceIndex: number = trimmedText.indexOf(' ');
+            const hyphenIndex: number = trimmedText.indexOf('-');
+            if (spaceIndex !== -1 && hyphenIndex !== -1) {
+                characterUptoWS = Math.min(spaceIndex, hyphenIndex) + 1;
+            } else if (spaceIndex !== -1) {
+                characterUptoWS = spaceIndex + 1;
+            } else if (hyphenIndex !== -1) {
+                characterUptoWS = hyphenIndex + 1;
+            } else {
+                characterUptoWS = 0;
             }
             index = characterUptoWS;
             //Checks whether text not starts with white space. If starts with white space, no need to check previous text blocks.
@@ -6042,7 +6068,7 @@ export class Layout {
                 paragraphWidget = nextParagraph;
                 this.viewer.clientActiveArea.height -= this.getFootNoteHeight(footWidget);
             } else if (!isPageBreak && isMove) {
-                if (paragraphWidget.containerWidget instanceof BodyWidget && paragraphWidget instanceof ParagraphWidget && !this.isImagePresent(paragraphWidget) && isNullOrUndefined(paragraphWidget.bodyWidget.containerWidget) &&
+                if (paragraphWidget.containerWidget instanceof BodyWidget && paragraphWidget instanceof ParagraphWidget && !this.isImagePresent(paragraphWidget, false) && isNullOrUndefined(paragraphWidget.bodyWidget.containerWidget) &&
                     paragraphWidget === paragraphWidget.containerWidget.lastChild && paragraphWidget.bodyWidget.getSplitWidgets()[0].previousRenderedWidget &&
                     (paragraphWidget.bodyWidget.getSplitWidgets()[0] as BodyWidget).sectionIndex !== (paragraphWidget.bodyWidget.getSplitWidgets()[0].previousRenderedWidget as BodyWidget).sectionIndex
                 ) {
@@ -6097,7 +6123,7 @@ export class Layout {
                     if (paragraphWidget.bodyWidget.page.footnoteWidget) {
                         this.layoutfootNote(paragraphWidget.bodyWidget.page.footnoteWidget);
                     }
-                    if (line.paragraph !== paragraphWidget || (paragraphWidget.paragraphFormat.widowControl && this.isImagePresent(paragraphWidget))) {
+                    if (line.paragraph !== paragraphWidget || (paragraphWidget.paragraphFormat.widowControl && this.isImagePresent(paragraphWidget, true))) {
                         if (paragraphWidget instanceof TableWidget) {
                             this.clearTableWidget(paragraphWidget, true, true, false);
                         }
@@ -6159,12 +6185,14 @@ export class Layout {
             this.viewer.clientActiveArea.y = this.endOverlapWidget.y;
         }
     }
-    private isImagePresent(paragraph: ParagraphWidget): boolean {
+    private isImagePresent(paragraph: ParagraphWidget, isInlineImage: boolean): boolean {
         for (let i = 0; i < paragraph.childWidgets.length; i++) {
             let line: LineWidget = paragraph.childWidgets[i] as LineWidget;
             for (let j = 0; j < line.children.length; j++) {
                 if (line.children[j] instanceof ImageElementBox) {
-                    return true;
+                    if (!isInlineImage || (line.children[j] as ImageElementBox).textWrappingStyle !== "Inline") {
+                        return true
+                    }
                 }
             }
         }
@@ -8031,6 +8059,9 @@ export class Layout {
         hyphenIndex = text.indexOf('-', startIndex) + 1;
         if(hyphenIndex == 1){
             hyphenIndex = text.indexOf('-', (hyphenIndex + 1)) + 1;
+            if (text[0] == '-' && (hyphenIndex == 0 || (index > 0 && hyphenIndex > index))) {
+                hyphenIndex = 1;
+            }
         }
         if(hyphenIndex > 0 && index > 0){
         index = Math.min(index, hyphenIndex);
@@ -10779,6 +10810,9 @@ export class Layout {
      */
     public clearTableWidget(table: TableWidget, clearPosition: boolean, clearHeight: boolean, clearGrid?: boolean, updateClientHeight?: boolean, skipToClearPara?: boolean): void {
         table.height = 0;
+        if (this.isLayoutSwitch) {
+            table.width = 0;
+        }
         if (clearGrid) {
             table.isGridUpdated = false;
         }
@@ -10803,6 +10837,9 @@ export class Layout {
      */
     public clearRowWidget(row: TableRowWidget, clearPosition: boolean, clearHeight: boolean, clearGrid: boolean, skipToClearPara?: boolean): void {
         row.height = 0;
+        if (this.isLayoutSwitch) {
+            row.width = 0;
+        }
         if (clearPosition) {
             row.y = 0;
             row.x = 0;
@@ -10819,6 +10856,9 @@ export class Layout {
      */
     public clearCellWidget(cell: TableCellWidget, clearPosition: boolean, clearHeight: boolean, clearGrid: boolean, skipToClearPara?: boolean): void {
         cell.height = 0;
+        if (this.isLayoutSwitch) {
+            cell.width = 0;
+        }
         if (clearPosition) {
             cell.y = 0;
             cell.x = 0;
@@ -10848,7 +10888,7 @@ export class Layout {
     }
 
     /* eslint-disable-next-line max-len */
-    public layoutBodyWidgetCollection(blockIndex: number, bodyWidget: Widget, block: BlockWidget, shiftNextWidget: boolean, isSkipShifting?: boolean, isSelectionInsideTable?: boolean): void {
+    public layoutBodyWidgetCollection(blockIndex: number, bodyWidget: Widget, block: BlockWidget, shiftNextWidget: boolean, isSkipShifting?: boolean, isSelectionInsideTable?: boolean, isSkipClientPosition?: boolean): void {
         if ((!isNullOrUndefined(block) && block.isFieldCodeBlock)) {
             return;
         }
@@ -10962,7 +11002,9 @@ export class Layout {
                                 this.layoutParagraph(prevPara, 0);
                                 this.viewer.updateClientArea(prevPara.bodyWidget, prevPara.bodyWidget.page, true);
                             }
-                            this.viewer.cutFromTop(prevWidget.y + prevWidget.height);
+                            if (!isSkipClientPosition) {
+                                this.viewer.cutFromTop(prevWidget.y + prevWidget.height);
+                            } 
                         }
                     } else if (prevWidget instanceof ParagraphWidget && (prevWidget.isEndsWithPageBreak || prevWidget.isEndsWithColumnBreak) &&
                         prevWidget.containerWidget === curretBlock.containerWidget) {
@@ -13460,7 +13502,7 @@ export class Layout {
         if (isNullOrUndefined(lineToLayout)) {
             lineToLayout = lineWidget;
         }
-        if (this.allowLayout) {
+        if (this.allowLayout && !(this.owner.spellCheckerModule && this.owner.spellCheckerModule.skipChangeDetection)) {
             lineToLayout.paragraph.splitTextRangeByScriptType(lineToLayout.indexInOwner);
             lineToLayout.paragraph.splitLtrAndRtlText(lineToLayout.indexInOwner);
             lineToLayout.paragraph.combineconsecutiveRTL(lineToLayout.indexInOwner);

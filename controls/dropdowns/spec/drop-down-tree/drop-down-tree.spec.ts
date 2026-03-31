@@ -1711,6 +1711,70 @@ describe('Dropdown Tree with Filter', () => {
             done();
         }, 100);
     });
+
+ it('should not throw error when expanding tree and filtering with hash symbol in node IDs - hierarchical data demo scenario', (done) => {
+        const hierarchicalDataWithHash = [
+            {
+                field: '0_Evaluation - Entity#',
+                label: 'Evaluation - Entity',
+                columns: [
+                    {
+                        field: '1_10257',
+                        label: 'Entity is SEC Affiliate',
+                        type: 'string'
+                    },
+                    {
+                        field: '1_10256',
+                        label: 'Entity is SEC Issuer',
+                        type: 'string'
+                    }
+                ]
+            }
+        ];
+        spyOn(console, 'error');
+        ddtreeObj = new DropDownTree({
+            fields: { 
+                dataSource: hierarchicalDataWithHash, 
+                value: 'field', 
+                text: 'label', 
+                child: 'columns'
+            },
+            allowFiltering: true,
+            filterBarPlaceholder: 'Search',
+            filtering: function(e: any) {
+                ddtreeObj.treeObj.refresh();
+            }
+        }, '#ddtree');
+        ddtreeObj.showPopup();
+        setTimeout(() => {
+            expect(ddtreeObj.treeObj.element).not.toBeNull();
+            const treeItems = ddtreeObj.treeObj.element.querySelectorAll('.e-list-item');
+            expect(treeItems.length).toBeGreaterThan(0);
+            ddtreeObj.treeObj.expandAll(['0_Evaluation - Entity#']);
+            setTimeout(() => {
+                const expandedItems = ddtreeObj.treeObj.element.querySelectorAll('.e-level-1');
+                expect(expandedItems.length).toBeGreaterThan(0);
+                const filterEle = ddtreeObj.popupObj.element.querySelector('#' + ddtreeObj.element.id + "_filter");
+                if (filterEle && filterEle.ej2_instances) {
+                    const filterObj = filterEle.ej2_instances[0];
+                    filterEle.value = 'Evaluation';
+                    filterObj.value = 'Evaluation';
+                    filterObj.input({ value: 'Evaluation', container: filterEle });
+                    setTimeout(() => {
+                        expect(console.error).not.toHaveBeenCalled();
+                        const filteredItems = ddtreeObj.treeObj.element.querySelectorAll('.e-list-item');
+                        expect(filteredItems.length).toBeGreaterThan(0);
+                        ddtreeObj.hidePopup();
+                        done();
+                    }, 350);
+                } else {
+                    expect(console.error).not.toHaveBeenCalled();
+                    ddtreeObj.hidePopup();
+                    done();
+                }
+            }, 100);
+        }, 100);
+    });    
 });
 describe('Remote Data Filtering', () => {
     let ddtreeObj: DropDownTree;

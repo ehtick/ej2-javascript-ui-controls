@@ -347,9 +347,7 @@ export class FormFieldsBase {
                             const fields: boolean = field['isSelected'];
                             const fieldValueString: string = fields.toString();
                             const fieldValue: string = field['fieldValue'];
-                            if (!isNullOrUndefined(fieldValue)){
-                                (currentField as PdfCheckBoxField)._dictionary.set('ExportValue', fieldValue);
-                            }
+                            currentField.exportValue = fieldValue;
                             if (fieldValueString.toLowerCase() === 'true' || fieldValueString.toLowerCase() === 'false') {
                                 (currentField as PdfCheckBoxField).checked = fields;
                                 if (!isNullOrUndefined(field) && Object.prototype.hasOwnProperty.call(field, 'isReadOnly')) {
@@ -732,7 +730,7 @@ export class FormFieldsBase {
         checkBoxField.required = formFieldAttributes.isRequired;
         checkBoxField.checked = formFieldAttributes.isChecked;
         checkBoxField.visibility = this.getFormFieldsVisibility(formFieldAttributes.visibility);
-        checkBoxField._dictionary.set('ExportValue', formFieldAttributes.value);
+        checkBoxField.exportValue = formFieldAttributes.value;
         checkBoxField.backColor = {r: formFieldAttributes.backgroundColor.r, g: formFieldAttributes.backgroundColor.g,
             b: formFieldAttributes.backgroundColor.b};
         if (formFieldAttributes.backgroundColor.r === 0 && formFieldAttributes.backgroundColor.g === 0 &&
@@ -1494,7 +1492,7 @@ export class FormFieldsBase {
                         if (checkbox.itemsCount > 1) {
                             this.addCheckBoxFieldItems(checkbox);
                         } else {
-                            this.addCheckBoxField(checkbox, pageNumber, checkbox.bounds, null);
+                            this.addCheckBoxField(checkbox, pageNumber, checkbox, null);
                         }
                     } else if (field instanceof PdfListBoxField) {
                         const listBoxField: PdfListBoxField = field as PdfListBoxField;
@@ -1700,40 +1698,42 @@ export class FormFieldsBase {
                             }
                             j++;
                         }
-                        this.addCheckBoxField(checkBoxField, j, checkBoxField.itemAt(i).bounds, i.toString());
+                        this.addCheckBoxField(checkBoxField, j, checkBoxField.itemAt(i), i.toString());
                     }
-
                 }
             }
         }
     }
 
-    private addCheckBoxField(chkField: PdfCheckBoxField, index: number, bounds: any, checkBoxIndex: string): void {
+    private addCheckBoxField(chkField: PdfCheckBoxField, index: number, chkitem: any, checkBoxIndex: string): void {
         const formFields: PdfRenderedFields = new PdfRenderedFields();
+        const bounds: any = chkitem.bounds;
         formFields.Name = 'CheckBox';
         formFields.ToolTip = chkField.toolTip;
         if (!bounds.IsEmpty) {
             formFields.LineBounds = { X: bounds.x, Y: bounds.y, Width: bounds.width, Height: bounds.height };
         }
         else {
-            formFields.LineBounds = { X: chkField.bounds.x, Y: chkField.bounds.y, Width: chkField.bounds.width,
-                Height: chkField.bounds.height };
+            formFields.LineBounds = {
+                X: chkField.bounds.x, Y: chkField.bounds.y, Width: chkField.bounds.width,
+                Height: chkField.bounds.height
+            };
         }
-        formFields.Selected = chkField.checked;
+        formFields.Selected = chkitem.checked;
         formFields.TabIndex = chkField.tabIndex;
         formFields.GroupName = chkField.name.replace(/[^0-9a-zA-Z]+/g, '');
         formFields.ActualFieldName = chkField.name;
         formFields.PageIndex = index;
-        formFields.BorderWidth = chkField.border.width;
-        if (!isNullOrUndefined(chkField.backColor)) {
-            formFields.BackColor = { R: chkField.backColor.r, G: chkField.backColor.g, B: chkField.backColor.b };
+        formFields.BorderWidth = chkitem.border.width;
+        if (!isNullOrUndefined(chkitem.backColor)) {
+            formFields.BackColor = { R: chkitem.backColor.r, G: chkitem.backColor.g, B: chkitem.backColor.b };
         }
         else {
             formFields.IsTransparent = true;
         }
-        formFields.BorderStyle = chkField.border.style;
-        if (!isNullOrUndefined(chkField.borderColor)) {
-            formFields.BorderColor = { R: chkField.borderColor.r, G: chkField.borderColor.g, B: chkField.borderColor.b };
+        formFields.BorderStyle = chkitem.border.style;
+        if (!isNullOrUndefined(chkitem.borderColor)) {
+            formFields.BorderColor = { R: chkitem.borderColor.r, G: chkitem.borderColor.g, B: chkitem.borderColor.b };
         }
         else {
             formFields.IsTransparent = true;
@@ -1742,11 +1742,8 @@ export class FormFieldsBase {
         formFields.Rotation = chkField.rotationAngle;
         formFields.IsReadonly = chkField.readOnly;
         formFields.IsRequired = chkField.required;
-        formFields.Visible = chkField.visibility;
-        const value: string = chkField._dictionary._get('ExportValue');
-        if (chkField._dictionary._get('ExportValue') && !isNullOrUndefined(value)) {
-            formFields.Value = value;
-        }
+        formFields.Visible = chkitem.visibility;
+        formFields.Value = chkitem.exportValue;
         if (!isNullOrUndefined(checkBoxIndex)) {
             formFields.CheckBoxIndex = checkBoxIndex;
             const chekckboxField: any = chkField.itemAt(parseInt(checkBoxIndex, 10));

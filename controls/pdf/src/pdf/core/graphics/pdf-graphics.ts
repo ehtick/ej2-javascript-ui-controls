@@ -2961,12 +2961,17 @@ export class PdfGraphics {
     _drawAsciiLine(lineInfo: _LineInfo, width: number, format: PdfStringFormat, font: PdfFont): void {
         this._justifyLine(lineInfo, width, format, font);
         let value: string = '';
-        if (lineInfo._text.indexOf('(') !== -1 || lineInfo._text.indexOf(')') !== -1) {
+        if (lineInfo._text.indexOf('(') !== -1 || lineInfo._text.indexOf(')') !== -1 ||
+            lineInfo._text.indexOf('\\') !== -1 || lineInfo._text.indexOf('\r') !== -1) {
             Array.from(lineInfo._text).forEach((char: string) => {
                 if (char === '(') {
                     value += '\\(';
                 } else if (char === ')') {
                     value += '\\)';
+                } else if (char === '\\') {
+                    value += '\\\\';
+                } else if (char === '\r') {
+                    value += '\\r';
                 } else {
                     value += char;
                 }

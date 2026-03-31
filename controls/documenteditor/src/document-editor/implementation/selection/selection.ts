@@ -3668,28 +3668,32 @@ export class Selection {
                     }
                 }
             } else {
-                if (inline instanceof ElementBox && inline.nextNode instanceof ElementBox) {
-                    text = text + this.getTextInline(inline.nextNode as ElementBox, endPosition.paragraph, endInline, endIndex, includeObject);
-                } else {
-
-                    let nextParagraphWidget: ParagraphWidget = this.documentHelper.selection.getNextParagraphBlock(startPosition.paragraph) as ParagraphWidget;
-                    if (!isNullOrUndefined(startPosition.paragraph.nextSplitWidget) && !isNullOrUndefined(nextParagraphWidget) && (startPosition.paragraph.nextSplitWidget.index === nextParagraphWidget.index) && startPosition.paragraph.nextSplitWidget.equals(nextParagraphWidget)) {
-                            text = text;
+                let currentParagraph: ParagraphWidget = startPosition.paragraph as ParagraphWidget;
+                let isFirstParagraph: boolean = true;
+                while (!isNullOrUndefined(currentParagraph)) {
+                    if (isFirstParagraph) {
+                        if (inline instanceof ElementBox && inline.nextNode instanceof ElementBox) {
+                            text += this.getTextInline(inline.nextNode as ElementBox, endPosition.paragraph, endInline, endIndex, includeObject);
                         }
-                        else {
-                            text = text + '\r';
-                        }
-                    while (!isNullOrUndefined(nextParagraphWidget) && nextParagraphWidget.isEmpty()) {
-                        text = text + '\r';
-                        if (nextParagraphWidget === endPosition.paragraph) {
-                            return text;
-                        }
-                        nextParagraphWidget = this.documentHelper.selection.getNextParagraphBlock(nextParagraphWidget) as ParagraphWidget;
+                        isFirstParagraph = false;
+                    } 
+                    else if (currentParagraph.isEmpty() && currentParagraph !== endPosition.paragraph) {
+                        text += '\r';
+                    } 
+                    else {
+                        const firstInline: ElementBox = (currentParagraph.childWidgets[0] as LineWidget).children[0] as ElementBox;
+                        text += this.getTextInline(firstInline, endPosition.paragraph, endInline, endIndex, includeObject);
                     }
-                    if (!isNullOrUndefined(nextParagraphWidget) && !nextParagraphWidget.isEmpty()) {
-
-                        text = text + this.getTextInline((nextParagraphWidget.childWidgets[0] as LineWidget).children[0] as ElementBox, endPosition.paragraph, endInline, endIndex, includeObject);
+                    if (currentParagraph === endPosition.paragraph) { break; }
+                    const nextParagraph: ParagraphWidget = this.documentHelper.selection.getNextParagraphBlock(currentParagraph) as ParagraphWidget;
+                    if (!currentParagraph.isEmpty()) {
+                        if (!(nextParagraph && currentParagraph.nextSplitWidget &&
+                            currentParagraph.nextSplitWidget.index === nextParagraph.index &&
+                            currentParagraph.nextSplitWidget.equals(nextParagraph))) {
+                            text += '\r';
+                        }
                     }
+                    currentParagraph = nextParagraph;
                 }
             }
             // If the selection includes end paragraph mark.
@@ -4523,26 +4527,6 @@ export class Selection {
             }
             inlineElement = inlineElement.nextNode as ElementBox;
         } while (!isNullOrUndefined(inlineElement));
-        if (endParagraphWidget as ParagraphWidget === inlineElement.line.paragraph) {
-            return text;
-        }
-
-        let nextParagraphWidget: ParagraphWidget = this.documentHelper.selection.getNextParagraphBlock(inlineElement.line.paragraph) as ParagraphWidget;
-        while (!isNullOrUndefined(nextParagraphWidget) && nextParagraphWidget.isEmpty()) {
-            text = text + '\r';
-            if (nextParagraphWidget === endParagraphWidget) {
-                return text;
-            }
-            nextParagraphWidget = this.documentHelper.selection.getNextParagraphBlock(nextParagraphWidget) as ParagraphWidget;
-        }
-        if (!isNullOrUndefined(nextParagraphWidget) && !nextParagraphWidget.isEmpty()) {
-            const lineWidget: LineWidget = nextParagraphWidget.childWidgets[0] as LineWidget;
-
-            if (isNullOrUndefined(nextParagraphWidget.previousSplitWidget)) {
-                text = text + '\r';
-            }
-            text = text + this.getTextInline(lineWidget.children[0] as ElementBox, endParagraphWidget, endInline, endIndex, includeObject);
-        }
         return text;
     }
     /**
@@ -8634,7 +8618,7 @@ export class Selection {
                 this.contextTypeInternal = contextIsinImage ? 'Image' : 'Text';
             }
         }
-        if (!isNullOrUndefined(this.owner.editor) && !isNullOrUndefined(this.owner.editor.documentHelper) &&
+        if (!contextIsinTable && !isNullOrUndefined(this.owner.editor) && !isNullOrUndefined(this.owner.editor.documentHelper) &&
             this.owner.editor.documentHelper.contentControlCollection &&
             this.owner.editor.documentHelper.contentControlCollection.length > 0) {
             let contentControl: ContentControl = this.currentContentControl;
@@ -9521,6 +9505,7 @@ export class Selection {
                         inline = previousNode;
                     }
                     this.characterFormat.copyFormat(inline.characterFormat, this.documentHelper.textHelper.getFontNameToRender((inline as TextElementBox).scriptType, inline.characterFormat));
+                    this.normalizeCheckboxFontSize(inline);
                     let nextNodeInfo: ElementInfo = startPos.currentWidget.getInline(startOffset + 1, index);
                     let paraInfo: ParagraphInfo = this.getParagraphInfo(this.start);
                     let lineInfo: LineInfo = this.getLineInfoBasedOnParagraph(paraInfo.paragraph, paraInfo.offset);
@@ -9541,6 +9526,7 @@ export class Selection {
                         }
                         if (!isNullOrUndefined(element)) {
                             this.characterFormat.copyFormat(element.characterFormat, this.documentHelper.textHelper.getFontNameToRender((element as TextElementBox).scriptType, inline.characterFormat));
+                            this.normalizeCheckboxFontSize(element);
                         }
                         if (inline instanceof EditRangeStartElementBox) {    
                             this.characterFormat.highlightColor = inline.characterFormat.highlightColor;
@@ -9573,6 +9559,8 @@ export class Selection {
             } else {
                 if (index === inline.length && !isNullOrUndefined(inline.nextNode) || (inline instanceof ContentControl && inline.contentControlProperties.type == "RichText")) {
                     this.characterFormat.copyFormat(this.getNextValidCharacterFormat(inline), this.documentHelper.textHelper.getFontNameToRender((inline as TextElementBox).scriptType, inline.characterFormat));
+                    let element: ElementBox = this.getNextTextElement(inline);
+                    this.normalizeCheckboxFontSize(element);
                 } else if (inline instanceof TextElementBox) {
                     this.characterFormat.copyFormat(inline.characterFormat, this.documentHelper.textHelper.getFontNameToRender((inline as TextElementBox).scriptType, inline.characterFormat));
                 } else if (inline instanceof FieldElementBox) {
@@ -9595,6 +9583,7 @@ export class Selection {
                     }
                     if (!isNullOrUndefined(inline)) {
                         this.characterFormat.copyFormat(inline.characterFormat, this.documentHelper.textHelper.getFontNameToRender((inline as TextElementBox).scriptType, inline.characterFormat));
+                        this.normalizeCheckboxFontSize(inline);
                     }
                     if (isBookmark) {
                         this.characterFormat.highlightColor = para.characterFormat.highlightColor;
@@ -9606,6 +9595,17 @@ export class Selection {
             }
         }
         return false;
+    }
+    /**
+     * Normalize checkbox font-size scaled for rendering when copying formats for UI.
+     * This reverses the render-only scale (1.35) so the selection/toolbar show
+     * the logical font size stored in the model.
+     */
+    private normalizeCheckboxFontSize(element: ElementBox): void {
+        const RENDER_SCALE: number = 1.35;
+        if (!isNullOrUndefined(element) && element instanceof TextElementBox && (element as TextElementBox).isCheckBoxElement) {
+            this.characterFormat.fontSize = this.characterFormat.fontSize / RENDER_SCALE;
+        }
     }
     /**
      * @private
@@ -10849,8 +10849,21 @@ export class Selection {
                 this.owner.sfdtExportModule.bookmarkCollection.push(bookmrkStart);
             }
         }
+        let editRanges: Dictionary<string, EditRangeStartElementBox[]> = this.documentHelper.editRanges;
+        for (let i: number = 0; i < editRanges.keys.length; i++) {
+            const editRangeStarts: EditRangeStartElementBox[] = editRanges.get(editRanges.keys[i]);
+            for (let j: number = 0; j < editRangeStarts.length; j++) {
+                const editRangeStart: EditRangeStartElementBox = editRangeStarts[j];
+                if (!isNullOrUndefined(editRangeStart.editRangeEnd) &&
+                    this.isElementInSelection(editRangeStart, false) &&
+                    this.isElementInSelection(editRangeStart.editRangeEnd, true)) {
+                    this.owner.sfdtExportModule.editRangeCollection.push(editRangeStart);
+                }
+            }
+        }
         let returnSfdt: any = this.owner.sfdtExportModule.write((this.owner.documentEditorSettings.optimizeSfdt ? 1 : 0), startPosition.currentWidget, startPosition.offset, endPosition.currentWidget, endPosition.offset, true, false);
         this.owner.sfdtExportModule.bookmarkCollection = [];
+        this.owner.sfdtExportModule.editRangeCollection = [];
         return returnSfdt;
     }
     /**
@@ -10862,7 +10875,7 @@ export class Selection {
         if (!this.isForward) {
             endPosition = this.start;
         }
-        if (this.start.paragraph === this.end.paragraph && endPosition.offset <= this.getLineLength(endPosition.currentWidget as LineWidget)) {
+        if (this.start.paragraph.equals(this.end.paragraph) && endPosition.offset <= this.getLineLength(endPosition.currentWidget as LineWidget)) {
             isInlineOnlySelected = true;
         }
         let documentContent: any = this.writeSfdt();

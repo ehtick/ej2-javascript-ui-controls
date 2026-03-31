@@ -563,6 +563,33 @@ export class Workbook extends Component<HTMLElement> implements INotifyPropertyC
     public customFormulaCollection: Map<string, IFormulaColl> = new Map<string, IFormulaColl>();
 
     /**
+     * Specifies the hashed password value for the workbook protection.
+     *
+     * @default null
+     * @hidden
+     */
+    @Property(null)
+    public hashValue: string;
+
+    /**
+     * Specifies the salt value used when deriving the password hash for the sheet protection.
+     *
+     * @default null
+     * @hidden
+     */
+    @Property(null)
+    public saltValue: string;
+
+    /**
+     * Specifies the iteration (spin) count used when hashing the password.
+     *
+     * @default null
+     * @hidden
+     */
+    @Property(null)
+    public spinCount: number;
+
+    /**
      * Constructor for initializing the library.
      *
      * @param {WorkbookModel} options - Configures Workbook model.

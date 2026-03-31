@@ -7204,4 +7204,59 @@ describe('DDList', () => {
                 }
             });
         });
+    
+    describe('Debounce Blur - ensure pending debounce is cancelled on blur', () => {
+        let ddl: any;
+        let element: HTMLInputElement;
+        let keyEventArgs: any = { preventDefault: function () { }, target: null };
+
+
+        beforeEach(() => {
+
+            element = createElement('input', { id: 'ddl-debounce-blur' }) as HTMLInputElement;
+            document.body.appendChild(element);
+        });
+
+        afterEach(() => {
+
+            if (ddl) {
+                ddl.destroy();
+                ddl = null;
+            }
+            if (element) {
+                element.remove();
+            }
+            document.body.innerHTML = '';
+        });
+
+        it('should NOT call filtering after blur when debounce is pending', () => {
+            let filterCount = 0;
+            ddl = new DropDownList({
+                dataSource: [{ text: 'One' }, { text: 'Two' }, { text: 'Three' }],
+                allowFiltering: true,
+                debounceDelay: 250,
+                filtering: () => {
+                    filterCount++;
+                }
+            });
+            ddl.appendTo(element);
+
+            ddl.showPopup();
+
+            const filterInput = (ddl as any).filterInput as HTMLInputElement;
+            expect(filterInput).toBeDefined();
+
+            filterInput.value = 'T';
+            keyEventArgs.keyCode = 84;
+            ddl.onInput();
+            ddl.onFilterUp(keyEventArgs);
+
+            // Immediately simulate blur (user tabs away) - this should cancel the pending debounce
+            const blurEvent: any = { relatedTarget: null, target: filterInput };
+            ddl.onBlurHandler(blurEvent);
+
+            // Verify filtering callback was not invoked
+            expect(filterCount).toBe(0);
+        });
     });
+});

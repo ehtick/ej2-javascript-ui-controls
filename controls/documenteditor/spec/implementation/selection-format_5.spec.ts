@@ -38,7 +38,7 @@ console.log('Linespacing Double apply validation');
         editor.selection.paragraphFormat.lineSpacingType = 'AtLeast';
         editor.selection.paragraphFormat.lineSpacing = 15;
         editor.selection.paragraphFormat.lineSpacing = 2;
-        expect(editor.selection.paragraphFormat.lineSpacingType).toBe('Multiple');
+        expect(editor.selection.paragraphFormat.lineSpacingType).toBe('AtLeast');
         expect(editor.selection.paragraphFormat.lineSpacing).toBe(2);
     });
     it('undo after Linespacing Double apply validation', () => {
@@ -50,7 +50,7 @@ console.log('undo after Linespacing Double apply validation');
     it('redo after Linespacing Double apply validation', () => {
 console.log('redo after Linespacing Double apply validation');
         editor.editorHistory.redo();
-        expect(editor.selection.paragraphFormat.lineSpacingType).toBe('Multiple');
+        expect(editor.selection.paragraphFormat.lineSpacingType).toBe('AtLeast');
         expect(editor.selection.paragraphFormat.lineSpacing).toBe(2);
     });
 });
@@ -89,7 +89,7 @@ console.log('LinespacingType atleast apply validation');
         editor.selection.paragraphFormat.lineSpacing = 2;
         editor.selection.paragraphFormat.lineSpacingType = 'AtLeast';
         expect(editor.selection.paragraphFormat.lineSpacingType).toBe('AtLeast');
-        expect(editor.selection.paragraphFormat.lineSpacing).toBe(12);
+        expect(editor.selection.paragraphFormat.lineSpacing).toBe(2);
     });
     it('undo after LinespacingType atleast apply validation', () => {
 console.log('undo after LinespacingType atleast apply validation');
@@ -101,7 +101,18 @@ console.log('undo after LinespacingType atleast apply validation');
 console.log('redo after LinespacingType atleast apply validation');
         editor.editorHistory.redo();
         expect(editor.selection.paragraphFormat.lineSpacingType).toBe('AtLeast');
-        expect(editor.selection.paragraphFormat.lineSpacing).toBe(12);
+        expect(editor.selection.paragraphFormat.lineSpacing).toBe(2);
+    });
+    it('Validate lineSpacing value is automatically set to 2.0 when lineSpacingType is Double', function (): void {
+        console.log('Validate lineSpacing value is automatically set to 2.0 when lineSpacingType is Double');
+        editor.selection.paragraphFormat.lineSpacingType = 'Double';
+        expect(editor.selection.paragraphFormat.lineSpacing).toBe(2.0);
+    });
+
+    it('Validate lineSpacingType is Double when set to Double', function (): void {
+        console.log('Validate lineSpacingType is Double when set to Double');
+        editor.selection.paragraphFormat.lineSpacingType = 'Double';
+        expect(editor.selection.paragraphFormat.lineSpacingType).toBe('Double');
     });
 });
 

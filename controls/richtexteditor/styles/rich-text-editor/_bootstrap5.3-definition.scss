@@ -164,7 +164,7 @@ $rte-table-popup-box: $shadow !default;
 $rte-table-border-color: $border-light !default;
 $rte-table-alternate-color: $content-bg-color-alt1 !default;
 $rte-table-header-bg: $content-bg-color-alt1 !default;
-$rte-table-multicell-select-bg-color: rgba(from var(--color-sf-primary) r g b / .08) !default;
+$rte-table-multicell-select-bg-color: rgba($primary-shadow, .08) !default;
 $rte-insert-icon-color: $primary !default;
 $rte-toolbar-hor-nav-border-width: 0 0 0 0 !default;
 

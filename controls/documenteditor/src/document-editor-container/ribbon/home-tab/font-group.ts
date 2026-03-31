@@ -322,8 +322,7 @@ export class FontGroup extends RibbonGroupBase implements IRibbonGroup {
             const fontSize: string = characterFormat.fontSize.toString();
             const fontSizeElement: HTMLElement = document.getElementById(id + FONT_SIZE_ID);
             if (fontSizeElement) {
-                const fontSizeInstance: object = getInstance(fontSizeElement, ComboBox);
-                (fontSizeInstance as any).value = fontSize;
+                (fontSizeElement as HTMLInputElement).value = fontSize;
             }
         }
         else {
@@ -331,6 +330,7 @@ export class FontGroup extends RibbonGroupBase implements IRibbonGroup {
             if (fontSizeElement) {
                 const fontSizeInstance: object = getInstance(fontSizeElement, ComboBox);
                 (fontSizeInstance as any).value = null;
+                (fontSizeElement as HTMLInputElement).value = null;
             }
         }
 

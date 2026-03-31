@@ -1,13 +1,13 @@
 import { Spreadsheet, DialogBeforeOpenEventArgs } from '../index';
 import { applyProtect, protectSheet, protectCellFormat, editAlert, enableFormulaInput, protectWorkbook, keyUp, unProtectSheetPassword, completeAction, setProtectWorkbook, removeWorkbookProtection } from '../common/event';
 import { unProtectWorkbook, importProtectWorkbook, hideAutoFillElement } from '../common/event';
-import { clearCopy, protectSelection, clearUndoRedoCollection, focus, isLockedCells, toggleProtect } from '../common/index';
+import { clearCopy, protectSelection, clearUndoRedoCollection, focus, isLockedCells, toggleProtect, getHashPassword } from '../common/index';
 import { Dialog } from '../services/dialog';
 import { ListView, SelectedCollection, SelectEventArgs } from '@syncfusion/ej2-lists';
 import { L10n, EventHandler, closest, isNullOrUndefined, getInstance } from '@syncfusion/ej2-base';
 import { locale, updateToggleItem, dialog } from '../common/index';
 import { CheckBox } from '@syncfusion/ej2-buttons';
-import { ExtendedSheet, SheetModel } from '../../workbook';
+import { ExtendedSheet, generateHashSaltValue, SheetModel } from '../../workbook/index';
 import { CellModel, getSheet, protectsheetHandler, getRangeIndexes, importModelUpdate } from '../../workbook/index';
 import { BeforeOpenEventArgs } from '@syncfusion/ej2-popups';
 import { OpenOptions } from '../common/interface';
@@ -211,7 +211,6 @@ export class ProtectSheet {
     private applySheetPwd(pwd: string): void {
         const actSheet: SheetModel = this.parent.getActiveSheet();
         this.parent.setSheetPropertyOnMute(actSheet, 'isProtected', true);
-        this.parent.setSheetPropertyOnMute(actSheet, 'password', pwd);
         this.updateProtectSheet(pwd);
         if (!actSheet.protectSettings.selectCells && !actSheet.protectSettings.selectUnLockedCells) {
             this.parent.notify(hideAutoFillElement, null);
@@ -269,9 +268,6 @@ export class ProtectSheet {
                     sheetElement.classList.add('e-protected');
                 }
             } else {
-                sheetElement.classList.add('e-protected');
-            }
-            if (!sheet.isProtected) {
                 sheetElement.classList.remove('e-protected');
             }
         }
@@ -538,7 +534,7 @@ export class ProtectSheet {
         });
     }
 
-    private unProtectsheet(isImportedSheet?: boolean): void {
+    private unProtectsheet(): void {
         const l10n: L10n = this.parent.serviceLocator.getService(locale);
         const dialogInst: Dialog = (this.parent.serviceLocator.getService(dialog) as Dialog);
         dialogInst.show({
@@ -560,12 +556,11 @@ export class ProtectSheet {
             },
             buttons: [{
                 buttonModel: {
-                    content: l10n.getConstant('Ok'), isPrimary: true, disabled: this.parent.allowOpen && this.parent.openModule.isImportedFile &&
-                        (this.parent.openModule.unProtectSheetIdx.indexOf(this.parent.activeSheetIndex) === -1) ? false : true
+                    content: l10n.getConstant('Ok'), isPrimary: true, disabled: true
                 },
                 click: (): void => {
                     this.alertMessage();
-                    this.unprotectSheetdlgOkClick(dialogInst, isImportedSheet);
+                    this.unprotectSheetdlgOkClick(dialogInst);
                 }
             }]
         });
@@ -666,23 +661,32 @@ export class ProtectSheet {
         return dialogCnt;
     }
     private unprotectdlgOkClick(dialogInst: Dialog): void {
-        const l10n: L10n = this.parent.serviceLocator.getService(locale);
         const pwd: HTMLElement = this.parent.element.querySelector('.e-unprotectpwd-dialog').
             getElementsByClassName('e-unprotectpwd-content')[0].querySelector('.e-input');
-        if (this.parent.password === (pwd as CellModel).value) {
+        if (this.parent.password.length > 0 && this.parent.password === getHashPassword((pwd as HTMLInputElement).value)) {
             dialogInst.hide();
             this.removeWorkbookProtection();
             this.parent.notify(completeAction, { action: 'protectWorkbook', eventArgs: { isProtected: false } });
+        } else if (this.parent.hashValue && this.parent.saltValue) {
+            const salt: Uint8Array = Uint8Array.from(atob(this.parent.saltValue), (c: string) => c.charCodeAt(0));
+            generateHashSaltValue((pwd as HTMLInputElement).value, salt, this.parent.spinCount)
+                .then((result: { saltValue: string, hashValue: string }) => {
+                    if (this.parent.hashValue === result.hashValue) {
+                        dialogInst.hide();
+                        this.parent.setProperties({ 'hashValue': null, 'saltValue': null, 'spinCount': null }, true);
+                        this.removeWorkbookProtection();
+                        this.parent.notify(completeAction, { action: 'protectWorkbook', eventArgs: { isProtected: false } });
+                    } else {
+                        this.workbookAlertMessage();
+                    }
+                });
         } else {
-            const pwdSpan: HTMLElement = this.parent.createElement('span', { className: 'e-unprotectpwd-alert-span' });
-            pwdSpan.innerText = l10n.getConstant('UnprotectPasswordAlert');
-            (this.parent.element.querySelector('.e-unprotectworkbook-dlg').querySelector('.e-dlg-content')).appendChild(pwdSpan);
+            this.workbookAlertMessage();
         }
     }
 
     private removeWorkbookProtection(): void {
-        this.parent.password = '';
-        this.parent.isProtected = false;
+        this.parent.setProperties({ password: '', isProtected: false }, true);
         if (this.parent.showSheetTabs) {
             this.parent.element.querySelector('.e-add-sheet-tab').removeAttribute('disabled');
             this.parent.element.querySelector('.e-add-sheet-tab').classList.remove('e-disabled');
@@ -694,41 +698,37 @@ export class ProtectSheet {
         this.parent.notify(updateToggleItem, { props: 'Protectworkbook' });
     }
 
-    private unprotectSheetdlgOkClick(dialogInst: Dialog, isImportedSheet?: boolean): void {
+    private unprotectSheetdlgOkClick(dialogInst: Dialog): void {
         const l10n: L10n = this.parent.serviceLocator.getService(locale);
         const sheet: SheetModel = this.parent.getActiveSheet();
         const pwd: HTMLElement = this.parent.element.querySelector('.e-unprotectsheetpwd-dialog').
             getElementsByClassName('e-unprotectsheetpwd-content')[0].querySelector('.e-input');
-        if (isImportedSheet && sheet.password.length === 0) {
-            const impArgs: OpenOptions = {
-                sheetPassword: (pwd as CellModel).value,
-                sheetIndex: this.parent.activeSheetIndex
-            };
-            this.parent.open(impArgs);
-        }
-        else {
-            if (sheet.password === (pwd as CellModel).value) {
-                dialogInst.hide();
-                this.unProtectSheetPassword();
-            } else {
-                const pwdSpan: HTMLElement = this.parent.createElement('span', { className: 'e-unprotectsheetpwd-alert-span' });
-                pwdSpan.innerText = l10n.getConstant('UnprotectPasswordAlert');
-                (this.parent.element.querySelector('.e-unprotectworksheet-dlg').querySelector('.e-dlg-content')).appendChild(pwdSpan);
-            }
+        if (sheet.hashValue && sheet.saltValue) {
+            const salt: Uint8Array = Uint8Array.from(atob(sheet.saltValue), (c: string) => c.charCodeAt(0));
+            generateHashSaltValue((pwd as HTMLInputElement).value, salt, sheet.spinCount)
+                .then((result: { saltValue: string, hashValue: string }) => {
+                    if (sheet.hashValue === result.hashValue) {
+                        dialogInst.hide();
+                        this.unProtectSheetPassword();
+                    } else {
+                        const pwdSpan: HTMLElement = this.parent.createElement('span', { className: 'e-unprotectsheetpwd-alert-span' });
+                        pwdSpan.innerText = l10n.getConstant('UnprotectPasswordAlert');
+                        (this.parent.element.querySelector('.e-unprotectworksheet-dlg').querySelector('.e-dlg-content')).appendChild(pwdSpan);
+                    }
+                });
         }
     }
 
     private unProtectSheetPassword(): void {
         const sheet: SheetModel = this.parent.getActiveSheet();
         const sheetIdx: number = this.parent.activeSheetIndex;
-        this.parent.setSheetPropertyOnMute(sheet, 'isProtected', !sheet.isProtected);
+        this.parent.setSheetPropertyOnMute(sheet, 'isProtected', false);
         this.parent.setSheetPropertyOnMute(sheet, 'password', '');
+        this.parent.setSheetPropertyOnMute(sheet, 'hashValue', null);
+        this.parent.setSheetPropertyOnMute(sheet, 'saltValue', null);
+        this.parent.setSheetPropertyOnMute(sheet, 'spinCount', null);
         const isActive: boolean = sheet.isProtected ? false : true;
         this.parent.notify(applyProtect, { isActive: isActive, id: this.parent.element.id + '_protect', sheetIndex: sheetIdx, triggerEvent: true });
-        if (this.parent.allowOpen && this.parent.openModule.isImportedFile &&
-            this.parent.openModule.unProtectSheetIdx.indexOf(sheetIdx) === -1) {
-            this.parent.openModule.unProtectSheetIdx.push(sheetIdx);
-        }
     }
 
     private importProtectWorkbook(fileArgs: OpenOptions): void {
@@ -780,7 +780,6 @@ export class ProtectSheet {
     private importOkClick(args: OpenOptions): void {
         const pwd: HTMLElement = this.parent.element.querySelector('.e-importprotectpwd-dialog').
             getElementsByClassName('e-importprotectpwd-content')[0].querySelector('.e-input');
-        this.parent.password = (pwd as CellModel).value;
         const impArgs: OpenOptions = {
             file: args.file,
             password: (pwd as CellModel).value
@@ -792,17 +791,20 @@ export class ProtectSheet {
         let isActive: boolean;
         const parentId: string = this.parent.element.id;
         const sheet: ExtendedSheet = this.parent.getActiveSheet() as ExtendedSheet;
-        if (sheet.isProtected && this.parent.allowOpen &&  sheet.isImportProtected && this.parent.openModule.isImportedFile &&
-            this.parent.openModule.unProtectSheetIdx.indexOf(this.parent.activeSheetIndex) === -1) {
-            this.unProtectsheet(true);
-        }
-        else if (sheet.password && sheet.password.length > 0) {
+        if (sheet.hashValue && sheet.saltValue) {
             this.unProtectsheet();
         } else {
             this.parent.setSheetPropertyOnMute(sheet, 'isProtected', !sheet.isProtected);
             isActive = sheet.isProtected ? false : true;
             this.parent.notify(applyProtect, { isActive: isActive, id: parentId + '_protect', sheetIndex: this.parent.activeSheetIndex, triggerEvent: true });
         }
+    }
+
+    private workbookAlertMessage(): void {
+        const l10n: L10n = this.parent.serviceLocator.getService(locale);
+        const pwdSpan: HTMLElement = this.parent.createElement('span', { className: 'e-unprotectpwd-alert-span' });
+        pwdSpan.innerText = l10n.getConstant('UnprotectPasswordAlert');
+        (this.parent.element.querySelector('.e-unprotectworkbook-dlg').querySelector('.e-dlg-content')).appendChild(pwdSpan);
     }
 
     /**

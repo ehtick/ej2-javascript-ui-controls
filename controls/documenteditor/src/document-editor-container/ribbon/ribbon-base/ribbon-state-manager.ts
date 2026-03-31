@@ -32,13 +32,12 @@ export class RibbonStateManager {
         if (!ribbon) {
             return;
         }
-
-        const isProtectedDocument: boolean = this.container.documentEditor.documentHelper.protectionType !== 'NoProtection';
+        const isProtectedDocument: boolean = this.container.documentEditor.documentHelper.protectionType !== 'NoProtection' || this.container.documentEditor.isReadOnly;
         const isSelectionInProtectedRegion: boolean = this.container.documentEditor.editorModule.restrictEditing;
-
         if (isProtectedDocument) {
-            this.enableDisableRibbonItem(ribbon, !isSelectionInProtectedRegion);
+            this.enableDisableRibbonItem(ribbon, !isSelectionInProtectedRegion && !this.container.documentEditor.isReadOnly);
         } else {
+
             this.enableDisableRibbonItem(ribbon, !isProtectedDocument);
         }
     }

@@ -636,25 +636,26 @@ export class PdfForm {
      *
      * @private
      * @param {PdfCheckBoxField} field The checkbox field to query.
-     * @returns {string | undefined} The selected export value, or `undefined` if none.
+     * @returns {string} The selected export value, or `undefined` if none.
      */
-    _getSelectedExportValue(field: PdfCheckBoxField): string | undefined {
+    _getSelectedExportValue(field: PdfCheckBoxField): string {
+        let exportValue: string;
         if (!field) {
             return undefined;
         }
         if (field._dictionary && field._dictionary.has('V')) {
             const v: _PdfName = field._dictionary.get('V');
             if (v && typeof v.name === 'string') {
-                return v.name;
+                exportValue = v.name;
             }
         }
         for (let i: number = 0; i < field.itemsCount; i++) {
             const item: PdfStateItem = field.itemAt(i) as PdfStateItem;
             if (item && item.checked) {
-                return item.exportValue;
+                exportValue = item.exportValue;
             }
         }
-        return undefined;
+        return exportValue;
     }
     /**
      * Converts a standalone field into a parent with `Kids` by creating a new parent dictionary,

@@ -372,7 +372,7 @@ export class SpreadsheetNote {
         const scroller: HTMLElement = this.parent.element.getElementsByClassName('e-scroller')[0] as HTMLElement;
         if (!isNullOrUndefined(selectAllCell) && !isNullOrUndefined(scroller) &&
             cellRect.top >= selectAllCell.getBoundingClientRect().bottom &&
-            cellRect.bottom <= scroller.getBoundingClientRect().top) {
+            cellRect.top <= scroller.getBoundingClientRect().top) {
             const isViewableArea : boolean = this.parent.enableRtl ?
                 cellRect.left <= selectAllCell.getBoundingClientRect().left &&
                 cellRect.left >= scroller.getBoundingClientRect().left :

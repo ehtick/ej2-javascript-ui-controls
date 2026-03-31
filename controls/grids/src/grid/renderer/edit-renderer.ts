@@ -138,7 +138,7 @@ export class EditRender {
                 && parentsUntil(elem, literals.addedRow))) && (!this.parent.editSettings.showAddNewRow ||
                     (this.parent.editSettings.showAddNewRow && (!parentsUntil(elem, literals.addedRow)) || this.parent.addNewRowFocus))) {
                 focusElement.focus();
-                if (this.parent.enableVirtualization && this.parent.contentModule &&
+                if (this.parent.enableVirtualization && this.parent.editSettings.mode === 'Normal' && this.parent.contentModule &&
                     (this.parent.contentModule as VirtualContentRenderer).content) {
                     (this.parent.contentModule as VirtualContentRenderer).content.scrollTop += this.parent.getRowHeight();
                 }

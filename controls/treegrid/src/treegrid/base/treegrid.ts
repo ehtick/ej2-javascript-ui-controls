@@ -4289,7 +4289,7 @@ export class TreeGrid extends Component<HTMLElement> implements INotifyPropertyC
         let temp: string | Function;
         let field: string;
         const gridColumns: GridColumn[] = isNullOrUndefined(column) ? this.grid.getColumns() : column;
-        if (this.treeColumnIndex !== -1 && this.columnModel[this.treeColumnIndex] &&
+        if (this.treeColumnIndex !== -1 && !isNullOrUndefined(this.columnModel) && this.columnModel[this.treeColumnIndex] &&
                     !isNullOrUndefined((this.columnModel[this.treeColumnIndex] as Column).template)) {
             temp = (this.columnModel[this.treeColumnIndex] as Column).template;
             field = (this.columnModel[this.treeColumnIndex] as Column).field;
@@ -5746,9 +5746,12 @@ export class TreeGrid extends Component<HTMLElement> implements INotifyPropertyC
         }
     }
 
-    private partialFilterUpdate(args: any) : void {
-        const gridFiltered : Object[] = args.gridFiltered;
-        this.notify('updateFilterRecs', { data: gridFiltered });
+    private partialFilterUpdate(args: any): void {
+        const gridFiltered: Object[] = args.gridFiltered;
+        if ((this.allowFiltering && this.filterModule && this.grid.filterSettings.columns.length) ||
+            (this.grid.searchSettings.key.length > 0)) {
+            this.notify('updateFilterRecs', { data: gridFiltered });
+        }
     }
     /**
      * Filters the TreeGrid rows based on a specified column and filter criteria.

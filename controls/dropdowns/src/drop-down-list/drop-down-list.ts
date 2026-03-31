@@ -937,6 +937,11 @@ export class DropDownList extends DropDownBase implements IInput {
             this.isActive = false;
             this.beforePopupOpen = false;
         }
+        // Cancel any pending debounced filtering when focus leaves the component.
+        if (this.debounceTimer !== null) {
+            clearTimeout(this.debounceTimer as ReturnType<typeof setTimeout>);
+            this.debounceTimer = null;
+        }
         this.isFocused = false;
     }
 
@@ -4075,6 +4080,12 @@ export class DropDownList extends DropDownBase implements IInput {
             this.inputElement.setAttribute('aria-expanded', 'false');
         } else {
             this.inputElement = this.createElement('input', { attrs: { role: 'combobox', type: 'text' } }) as HTMLInputElement;
+            if (this.element.tagName === this.getNgDirective()) {
+                // Pre-populate id so Input.createInput/createFloatingInput can wire label.for correctly
+                const ngId: string = this.element.getAttribute('id') ? this.element.getAttribute('id') : getUniqueID('ej2_dropdownlist');
+                this.element.id = ngId;
+                this.inputElement.id = ngId + '_input';
+            }
             if (this.element.tagName !== this.getNgDirective()) {
                 this.element.style.display = 'none';
             }
@@ -4140,6 +4151,9 @@ export class DropDownList extends DropDownBase implements IInput {
         const id: string = this.element.getAttribute('id') ? this.element.getAttribute('id') : getUniqueID('ej2_dropdownlist');
         this.element.id = id;
         this.hiddenElement.id = id + '_hidden';
+        if (this.element.tagName === this.getNgDirective() && !this.inputElement.id) {
+            this.inputElement.id = id + '_input';
+        }
         this.targetElement().setAttribute('tabindex', this.tabIndex);
         if ((this.getModuleName() === 'autocomplete' || this.getModuleName() === 'combobox') && !this.readonly){
             if (!this.inputElement.hasAttribute('aria-label')) {

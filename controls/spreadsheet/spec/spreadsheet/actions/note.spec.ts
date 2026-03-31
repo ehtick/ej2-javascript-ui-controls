@@ -1,5 +1,5 @@
 import { SpreadsheetHelper } from '../util/spreadsheethelper.spec';
-import { defaultData } from '../util/datasource.spec';
+import { defaultData, ipeSurveyData } from '../util/datasource.spec';
 import { NoteModel, ExtendedSheet, ExtendedNoteModel, getCell, CellModel, setCell, focus } from '../../../src/index';
 
 describe('Note ->', () => {
@@ -996,6 +996,35 @@ describe('Note ->', () => {
                     done();
                 });
             });
+        });
+    });
+    describe('EJ2-1017610 ->', () => {
+        beforeAll((done: Function) => {
+            helper.initializeSpreadsheet({
+                sheets: [{
+                    ranges: [{ dataSource: ipeSurveyData, startCell: 'A2' }],
+                    columns: [{ width: 100 }, { width: 300 }, { width: 600 }],
+                    rows: [{ index: 0, cells: [{ index: 0, value: 'IPE Global Equities Survey 2018', colSpan: 3 }] }]
+                }]
+            }, done);
+        });
+        afterAll(() => {
+            helper.invoke('destroy');
+        });
+        it('Note not visible when the row height is beyond the viewport', (done: Function) => {
+            helper.invoke('selectRange', ['C3']);
+            helper.click('#spreadsheet_wrap');
+            const td: Element = helper.invoke('getCell', [2, 2]);
+            expect(td.classList).toContain('e-wraptext');
+            const inst: any = helper.getInstance();
+            inst.updateCell({ notes: { text: 'WrapNote', isVisible: true } }, 'C3');
+            const sheet: any = inst.getActiveSheet();
+            const note: any = sheet.notes[sheet.notes.length - 1];
+            const noteModule: any = inst.spreadsheetNoteModule;
+            noteModule.mouseOver.call([noteModule, 2, 2]);
+            const noteContainer: HTMLElement = document.getElementById(noteModule.getNoteId(note));
+            expect(noteContainer).not.toBeNull();
+            done();
         });
     });
 });

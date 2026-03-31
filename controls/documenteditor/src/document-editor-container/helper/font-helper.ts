@@ -226,8 +226,11 @@ export class FontHelper {
      */
     public static changeFontSize(documentEditor: DocumentEditor, fontSize: string | number): void {
         if (!documentEditor.isReadOnly && documentEditor.selection) {
-            documentEditor.selection.characterFormat.fontSize = typeof fontSize === 'string' ?
-                parseInt(fontSize, 10) : fontSize;
+            const size: number = typeof fontSize === 'string' ?
+                parseFloat(fontSize) : fontSize;
+            if (size % 0.5 === 0){
+                documentEditor.selection.characterFormat.fontSize = size;
+            }
         }
     }
 

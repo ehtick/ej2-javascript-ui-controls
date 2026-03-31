@@ -244,7 +244,7 @@ export class VirtualScroll {
             this.parent.totalItemsCount();
         }
         if (isListUpdated) {
-            if (this.component === 'multiselect' && this.parent.itemCount * 2 > this.parent.totalItemCount) {
+            if (this.component === 'multiselect' && this.parent.itemCount * 2 > this.parent.totalItemCount && !((this.parent.dataSource as any) instanceof DataManager)) {
                 this.parent.viewPortInfo.endIndex = endIndex = this.parent.totalItemCount;
                 this.parent.isVirtualTrackHeight = true;
             }

@@ -694,6 +694,10 @@ export class DocumentHelper {
      */
     public isDocumentLoadAsynchronously: boolean = false;
     /**
+    * @private
+    */
+    public resizerBoundaryWidth: number = 0;
+    /**
      * Gets visible bounds.
      *
      * @private
@@ -1952,11 +1956,10 @@ export class DocumentHelper {
             drawImage.onload = (): void => {
                 const displayPixelRatio: number = Math.max(1, window.devicePixelRatio || 1);
                 const draw: HTMLCanvasElement = document.createElement('canvas');
-                draw.width = width * displayPixelRatio;
-                draw.height = height * displayPixelRatio;
+                draw.width = drawImage.naturalWidth;
+                draw.height = drawImage.naturalHeight;
                 const context = draw.getContext('2d');
-                context.scale(displayPixelRatio, displayPixelRatio);
-                context.drawImage(drawImage, 0, 0, width, height);
+                context.drawImage(drawImage, 0, 0, drawImage.naturalWidth, drawImage.naturalHeight);
                 const imageString = draw.toDataURL('image/png', 1);
                 resolve(imageString);
             };
@@ -2964,12 +2967,17 @@ export class DocumentHelper {
                         if (this.owner.documentEditorSettings.formFieldSettings.formFillingMode === 'Popup' && !(formField.formFieldData instanceof CheckBoxFormField)
                             || (formField.formFieldData instanceof TextFormField && !(formField.formFieldData.type === 'Text'))
                             || formField.formFieldData instanceof DropDownFormField) {
-                            this.formFillPopup.showPopUp(formField);
+                            const currentFormField: FieldElementBox = this.selection.getCurrentFormField(true);
+                            if (this.selection.isEmpty || !isNullOrUndefined(currentFormField)) {
+                                this.formFillPopup.showPopUp(formField);
+                            }
                         } else {
-                            this.owner.editorModule.toggleCheckBoxFormField(formField);
-                            data.value = (formField.formFieldData as CheckBoxFormField).checked;
-                            data.isCanceled = false;
-                            this.owner.trigger(afterFormFieldFillEvent, data);
+                            if (this.selection.isEmpty) {
+                                this.owner.editorModule.toggleCheckBoxFormField(formField);
+                                data.value = (formField.formFieldData as CheckBoxFormField).checked;
+                                data.isCanceled = false;
+                                this.owner.trigger(afterFormFieldFillEvent, data);
+                            }
                         }
                     }      
                 }
@@ -3125,26 +3133,43 @@ export class DocumentHelper {
                 || !this.dragStartParaInfo.paragraph.equals(this.dragEndParaInfo.paragraph)) {
                 hasNewLineChar = true;
             }
-            this.owner.editorModule.cut();
-            if (this.dragEndParaInfo.paragraph.equals(dropSelectionStartParaInfo.paragraph)
-                && this.dragEndParaInfo.offset < dropSelectionStartParaInfo.offset
-                && !this.owner.enableTrackChanges) {
-                dropExtraOffset -= this.dragEndParaInfo.paragraph.getLength();
-                dropSelectionStartParaInfo.offset -= dropExtraOffset;
-                dropSelectionEndParaInfo.offset -= dropExtraOffset;
-                dropSelectionStartParaIndex = this.selection.getHierarchicalIndex(dropSelectionStartParaInfo.paragraph, dropSelectionStartParaInfo.offset.toString());
-                dropSelectionEndParaIndex = this.selection.getHierarchicalIndex(dropSelectionEndParaInfo.paragraph, dropSelectionEndParaInfo.offset.toString());
+            const hasEditRegions: boolean = this.isDocumentProtected && this.editRanges && this.editRanges.keys.length > 0;
+            let sourceEditable: boolean = true;
+            let targetEditable: boolean = true;
+            let shouldCut: boolean = true;
+            if (hasEditRegions) {
+                sourceEditable = this.selection.checkSelectionIsAtEditRegion(dragOnSelectionStartPos, dragOnSelectionEndPos);
+                targetEditable = this.selection.checkSelectionIsAtEditRegion(dropSelectionStartPos, dropSelectionEndPos);
+                shouldCut = sourceEditable && targetEditable;
             }
-            if (!hasNewLineChar || !this.dragEndParaInfo.paragraph.equals(dropSelectionEndParaInfo.paragraph) && !isDraggedInSamePara) {
-                dropSelectionStartParaIndex = this.selection.getHierarchicalIndex(dropSelectionStartParaInfo.paragraph, dropSelectionStartParaInfo.offset.toString());
-                dropSelectionEndParaIndex = this.selection.getHierarchicalIndex(dropSelectionEndParaInfo.paragraph, dropSelectionEndParaInfo.offset.toString());
+            if (shouldCut) {
+                this.owner.editorModule.cut();
+            } else if (targetEditable) {
+                this.owner.selection.copy();
+            }
+            if (shouldCut) {
+                if (this.dragEndParaInfo.paragraph.equals(dropSelectionStartParaInfo.paragraph)
+                    && this.dragEndParaInfo.offset < dropSelectionStartParaInfo.offset
+                    && !this.owner.enableTrackChanges) {
+                    dropExtraOffset -= this.dragEndParaInfo.paragraph.getLength();
+                    dropSelectionStartParaInfo.offset -= dropExtraOffset;
+                    dropSelectionEndParaInfo.offset -= dropExtraOffset;
+                    dropSelectionStartParaIndex = this.selection.getHierarchicalIndex(dropSelectionStartParaInfo.paragraph, dropSelectionStartParaInfo.offset.toString());
+                    dropSelectionEndParaIndex = this.selection.getHierarchicalIndex(dropSelectionEndParaInfo.paragraph, dropSelectionEndParaInfo.offset.toString());
+                }
+                if (!hasNewLineChar || !this.dragEndParaInfo.paragraph.equals(dropSelectionEndParaInfo.paragraph) && !isDraggedInSamePara) {
+                    dropSelectionStartParaIndex = this.selection.getHierarchicalIndex(dropSelectionStartParaInfo.paragraph, dropSelectionStartParaInfo.offset.toString());
+                    dropSelectionEndParaIndex = this.selection.getHierarchicalIndex(dropSelectionEndParaInfo.paragraph, dropSelectionEndParaInfo.offset.toString());
+                }
             }
             dropSelectionStartPos = this.selection.getTextPosBasedOnLogicalIndex(dropSelectionStartParaIndex);
             dropSelectionEndPos = this.selection.getTextPosBasedOnLogicalIndex(dropSelectionEndParaIndex);
             this.selection.start = dropSelectionStartPos;
             this.selection.end = dropSelectionEndPos;
-            this.owner.editorModule.copiedTextContent = '';
-            this.owner.editorModule.paste();
+            if (targetEditable) {
+                this.owner.editorModule.copiedTextContent = '';
+                this.owner.editorModule.paste();
+            }
             if (!isEnableLocalPasteTrue) {
                 this.owner.enableLocalPaste = false;
             }
@@ -3228,7 +3253,8 @@ export class DocumentHelper {
      * @returns {boolean} - Return true if points intersect.
      */
     public isInsideRect(x: number, y: number, width: number, height: number, touchPoint: Point): boolean {
-        if ((touchPoint.x > x && touchPoint.x <= x + width) && (touchPoint.y > y && touchPoint.y <= y + height)) {
+        if ((touchPoint.x > (x - this.resizerBoundaryWidth) && touchPoint.x <= x + width)
+            && (touchPoint.y > y && touchPoint.y <= y + height)) {
             return true;
         }
         return false;
@@ -3802,6 +3828,10 @@ export class DocumentHelper {
      * @returns {void}
      */
     public insertPage(index: number, page: Page): void {
+        let isPageMoved: boolean = false;
+        if (this.pages.indexOf(page) !== index) {
+            isPageMoved = true;
+        }
         if (this.pages.indexOf(page) > -1) {
             this.pages.splice(this.pages.indexOf(page), 1);
         }
@@ -3813,6 +3843,9 @@ export class DocumentHelper {
         for (let i: number = index; i < this.pages.length; i++) {
             //Update bounding rectangle of next pages in collection.
             page = this.pages[i];
+            if (isPageMoved) {
+                page.currentPageNum = 1;
+            }
             page.boundingRectangle = new Rect(page.boundingRectangle.x, top, page.boundingRectangle.width, page.boundingRectangle.height);
             top = page.boundingRectangle.bottom + 20;
         }
@@ -4535,14 +4568,43 @@ export class DocumentHelper {
                     }
                     if (pageStartIndex >= 0 && page.previousPage.bodyWidgets[0].sectionFormat.pageStartingNumber + (page.previousPage.index - pageStartIndex) !== page.previousPage.currentPageNum) {
                         page.currentPageNum = page.index + 1;
-                    } else if (!isNullOrUndefined(page.previousPage) && ((page.previousPage.bodyWidgets[0].sectionFormat.restartPageNumbering && page.previousPage.currentPageNum >= 1)
+                    } else if (!isNullOrUndefined(page.previousPage) && ((page.previousPage.bodyWidgets[0].sectionFormat.restartPageNumbering && page.previousPage.currentPageNum !== 1)
                         || (this.isRestartNumbering && page.previousPage.currentPageNum !== 1))) {
                         if (page.previousPage.bodyWidgets[0].sectionFormat.restartPageNumbering) {
                             this.isRestartNumbering = true;
                         }
                         page.currentPageNum = page.previousPage.currentPageNum + 1;
                     } else {
-                        page.currentPageNum = page.index + 1;
+                        if (!isNullOrUndefined(previousPage)) {
+                            // Traverse backwards to locate the correct anchor page for numbering.
+                            while (previousPage.previousPage) {
+                                //If the previous page currentPageNum is 1 and the previous page's page number is not restarted. 
+                                if (previousPage && previousPage.currentPageNum === 1 && !previousPage.bodyWidgets[0].sectionFormat.restartPageNumbering) {
+                                    previousPage = previousPage.previousPage;
+                                }
+                                //If the the current page's page number is restarted. But, the current page section format is equal to previous page section format.
+                                else if (previousPage.bodyWidgets[0].sectionFormat.restartPageNumbering && previousPage.bodyWidgets[0].sectionFormat === previousPage.previousPage.bodyWidgets[0].sectionFormat) {
+                                    previousPage = previousPage.previousPage;
+                                }
+                                else {
+                                    break;
+                                }
+                            }
+                            //If previousPage exists, the previous page's page number is restarted and its currentPageNum is 1. 
+                            if (previousPage && previousPage.bodyWidgets[0].sectionFormat.restartPageNumbering && previousPage.currentPageNum === 1) {
+                                page.currentPageNum = previousPage.bodyWidgets[0].sectionFormat.pageStartingNumber + (page.index - previousPage.index);
+                            }
+                            //If previousPage exists, the previous page's currentPageNumber is not equal to 1.  
+                            else if (previousPage && previousPage.currentPageNum !== 1) {
+                                page.currentPageNum = previousPage.currentPageNum + (page.index - previousPage.index);
+                            }
+                            else {
+                                page.currentPageNum = page.index + 1;
+                            }
+                        }
+                        else {
+                            page.currentPageNum = page.index + 1;
+                        }
                     }
                     return this.getFieldText(fieldPattern, page.currentPageNum);
                 case 'numpages':

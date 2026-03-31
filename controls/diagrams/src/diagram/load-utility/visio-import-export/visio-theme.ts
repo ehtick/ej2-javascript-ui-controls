@@ -5,9 +5,10 @@ import { getDecoratorShape, inchToPoint, inchToPx, isObject } from './visio-core
 import { ParsingContext } from './visio-import-export';
 import { VisioTheme } from './visio-models';
 import { getTextAlign, getTextDecoration } from './visio-nodes';
-import { ConnectorInput, ConnectorResolvedStyle, ConnectorStrokeList, FlatTransform, FormattedColors, ParsedXmlObject, ResolvedAnnotationStyle, Transform, VarientStyle, VisioNode, ColorEntry, FaceNameEntry } from './visio-types';
+import { ConnectorInput, ConnectorResolvedStyle, ConnectorStrokeList, FlatTransform, FormattedColors, ParsedXmlObject, ResolvedAnnotationStyle, Transform, VarientStyle, VisioNode, ColorEntry, FaceNameEntry, SchemeColor, GradientStop, SolidFillValue } from './visio-types';
 import { ensureArray } from './visio-core';
 import { VisioStyleModel } from './visio-connectors';
+import { GradientType } from '../../enum/enum';
 
 // ==================== Configuration ====================
 
@@ -1626,7 +1627,7 @@ function convertVisioGradientToEJ2(gradFillValue: AccentColorDefinition): VisioL
     }
 
     // ==================== Extract Gradient Stops ====================
-    const gradStopLst: GradientStopList = (gradFillValue.value as GradientFillValue)['a:gsLst'];
+    const gradStopLst: ThemeGradientStopList = (gradFillValue.value as GradientFillValue)['a:gsLst'];
 
     // ==================== Extract Gradient Angle ====================
     const linElement: VisioLinearGradientAngle = (gradFillValue.value as any)['a:lin'];
@@ -2094,12 +2095,12 @@ function extractGradientAngle(linElement: VisioLinearGradientAngle): number {
  *
  * Processes position and color information for each stop.
  *
- * @param {GradientStopList} gsLst - The a:gsLst containing a:gs elements.
+ * @param {ThemeGradientStopList} gsLst - The a:gsLst containing a:gs elements.
  * @returns {ProcessedGradientStop[]} Array of processed gradient stops.
  *
  * @private
  */
-function extractGradientStops(gsLst: GradientStopList): ProcessedGradientStop[] {
+function extractGradientStops(gsLst: ThemeGradientStopList): ProcessedGradientStop[] {
     // ==================== Validate Input ====================
     // if (!gsLst || !gsLst['a:gs']) {
     //     return [];
@@ -2410,27 +2411,6 @@ interface GradientCoordinatesRadial {
 }
 
 /**
- * Gradient type discriminator.
- *
- * @typedef {('Linear' | 'Radial')} GradientType
- */
-type GradientType = 'Linear' | 'Radial';
-
-/**
- * Gradient color stop definition.
- *
- * @interface GradientStop
- */
-interface GradientStop {
-    /** Position in gradient (0-100) */
-    offset: number;
-    /** Hex color at this stop */
-    color: string;
-    /** Opacity (0-1) */
-    opacity?: number;
-}
-
-/**
  * Resolved node style output.
  * All values normalized and converted to EJ2 units.
  *
@@ -2684,26 +2664,7 @@ interface FillColorElement {
     /** Element value (color or gradient data) */
     value: SolidFillValue | PatternFillValue | GradientFillValue;
     /** Order metadata */
-    order?: OrderEntry[];
-}
-
-/**
- * Solid fill value object.
- * Contains color definition (srgb, scheme, system, or preset).
- *
- * @interface SolidFillValue
- */
-interface SolidFillValue {
-    /** Recursive value property */
-    value: SolidFillValue;
-    /** sRGB color */
-    'a:srgbClr'?: SrgbColor
-    /** Scheme/theme color */
-    'a:schemeClr'?: SchemeColor
-    /** System color */
-    'a:sysClr'?: SystemColor
-    /** Preset color */
-    'a:prstClr'?: SystemColor
+    order?: ThemeOrderEntry[];
 }
 
 /**
@@ -2727,7 +2688,7 @@ interface PatternFillValue {
  */
 interface GradientFillValue {
     /** Gradient stop list */
-    'a:gsLst': GradientStopList
+    'a:gsLst': ThemeGradientStopList
     /** Linear gradient angle element */
     'a:lin': {
         $: { ang: string; flip?: string };
@@ -2737,9 +2698,9 @@ interface GradientFillValue {
 /**
  * Gradient stop list container.
  *
- * @interface GradientStopList
+ * @interface ThemeGradientStopList
  */
-interface GradientStopList {
+interface ThemeGradientStopList {
     /** Array of gradient stop elements */
     'a:gs': FillColorElement[]
 }
@@ -2755,52 +2716,6 @@ interface GradientStopAttributes {
 }
 
 /**
- * Scheme/theme color with optional modifiers.
- *
- * @interface SchemeColor
- */
-interface SchemeColor {
-    /** Color attributes (color name like 'accent1') */
-    $: SchemeColorAttributes;
-    /** Tint (lighten) modifier */
-    'a:tint'?: ColorModifier;
-    /** Shade (darken) modifier */
-    'a:shade'?: ColorModifier;
-    /** Luminance multiply modifier */
-    'a:lumMod'?: ColorModifier;
-    /** Luminance offset modifier */
-    'a:lumOff'?: ColorModifier;
-    /** Saturation multiply modifier */
-    'a:satMod'?: ColorModifier;
-    /** Saturation offset modifier */
-    'a:satOff'?: ColorModifier;
-    /** Hue multiply modifier */
-    'a:hueMod'?: ColorModifier;
-    /** Hue offset modifier */
-    'a:hueOff'?: ColorModifier;
-    /** Alpha/opacity modifier */
-    'a:alpha'?: ColorModifier;
-    /** Alpha multiply modifier */
-    'a:alphaMod'?: ColorModifier;
-    /** Alpha offset modifier */
-    'a:alphaOff'?: ColorModifier;
-    /** Hue shift modifier */
-    'a:hueShift'?: ColorModifier;
-    /** Order metadata */
-    order?: OrderEntry[];
-}
-
-/**
- * Scheme color attributes.
- *
- * @interface SchemeColorAttributes
- */
-interface SchemeColorAttributes {
-    /** Color role name like 'phClr', 'lt1', 'dk1', 'accent1'-'accent6' */
-    val: string;
-}
-
-/**
  * sRGB color definition from OOXML.
  *
  * @interface SrgbColor
@@ -2813,21 +2728,7 @@ export interface SrgbColor {
     /** Optional alpha modifier */
     'a:alpha'?: ColorModifier;
     /** Order metadata */
-    order?: OrderEntry[];
-}
-
-/**
- * System or preset color definition.
- *
- * @interface SystemColor
- */
-interface SystemColor {
-    /** System/preset color name */
-    $: {
-        val: string;
-    };
-    /** Order metadata */
-    order?: OrderEntry[];
+    order?: ThemeOrderEntry[];
 }
 
 /**
@@ -2845,9 +2746,9 @@ interface ColorModifier {
 /**
  * Order entry for XML element sequencing metadata.
  *
- * @interface OrderEntry
+ * @interface ThemeOrderEntry
  */
-interface OrderEntry {
+interface ThemeOrderEntry {
     /** Element name */
     name: string;
     /** Element value */
@@ -2918,16 +2819,16 @@ interface VisioLinearGradientAngle {
 /**
  * Extension list type alias.
  *
- * @typedef {ThemeExtension[]} ExtLst
+ * @typedef {VisioThemeExtension[]} ExtLst
  */
-export type ExtLst = ThemeExtension[];
+export type ExtLst = VisioThemeExtension[];
 
 /**
  * Theme extension element.
  *
- * @interface ThemeExtension
+ * @interface VisioThemeExtension
  */
-interface ThemeExtension {
+interface VisioThemeExtension {
     /** Extension attributes */
     $: {
         uri: string;

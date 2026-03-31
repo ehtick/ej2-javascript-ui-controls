@@ -2173,40 +2173,73 @@ export class FormDesigner {
                 }
                 const data: string = this.pdfViewerBase.getItemFromSessionStorage('_formDesigner');
                 const formFieldsData: any = JSON.parse(data);
+                const targetId: string = (event.target as Element).id.split('_')[0];
+                const table: any = this.pdfViewer.nameTable;
+                let entryName: any | undefined;
+                if (table && Object.prototype.hasOwnProperty.call(table, targetId)) {
+                    // Safe access: key existence verified by hasOwnProperty check above
+                    // eslint-disable-next-line security/detect-object-injection
+                    entryName = (table as any)[targetId];
+                }
+                const groupName: string | undefined = entryName ? entryName.name : undefined;
+                const preSnapshot: any[] = this.pdfViewerBase.formFieldCollection
+                    .filter((f: any) => f.FormField.name === groupName && f.FormField.formFieldAnnotationType === 'Checkbox')
+                    .map((f: any) => ({ Key: f.Key, id: f.Key.split('_')[0], value: f.FormField.value, isChecked: !!f.FormField.isChecked }));
+                let targetIndexForAction: number = -1;
                 for (let i: number = 0; i < formFieldsData.length; i++) {
                     if (formFieldsData[parseInt(i.toString(), 10)].Key.split('_')[0] === (event.target as Element).id.split('_')[0] ||
                         (this.pdfViewer.nameTable as any)[(event.target as Element).id.split('_')[0]].name === formFieldsData[parseInt(i.toString(), 10)].FormField.name) {
-                        (this.pdfViewer.nameTable as any)[formFieldsData[parseInt(i.toString(), 10)].Key.split('_')[0]].isChecked = isChecked;
-                        (this.pdfViewer.nameTable as any)[formFieldsData[parseInt(i.toString(), 10)].Key.split('_')[0]].isSelected = isChecked;
+                        let targetChecked: boolean = isChecked;
+                        if (formFieldsData[parseInt(i.toString(), 10)].Key.split('_')[0] !== (event.target as Element).id.split('_')[0] &&
+                            (this.pdfViewer.nameTable as any)[(event.target as Element).id.split('_')[0]].name === formFieldsData[parseInt(i.toString(), 10)].FormField.name) {
+                            if (isChecked && (this.pdfViewer.nameTable as any)[(event.target as Element).id.split('_')[0]].value !== formFieldsData[parseInt(i.toString(), 10)].FormField.value) {
+                                targetChecked = false;
+                            }
+                        }
+                        (this.pdfViewer.nameTable as any)[formFieldsData[parseInt(i.toString(), 10)].Key.split('_')[0]].isChecked = targetChecked;
+                        (this.pdfViewer.nameTable as any)[formFieldsData[parseInt(i.toString(), 10)].Key.split('_')[0]].isSelected = targetChecked;
                         const oldValue: any = this.pdfViewerBase.formFieldCollection[parseInt(i.toString(), 10)].FormField.isChecked;
-                        formFieldsData[parseInt(i.toString(), 10)].FormField.isChecked = isChecked;
-                        formFieldsData[parseInt(i.toString(), 10)].FormField.isSelected = isChecked;
+                        formFieldsData[parseInt(i.toString(), 10)].FormField.isChecked = targetChecked;
+                        formFieldsData[parseInt(i.toString(), 10)].FormField.isSelected = targetChecked;
                         this.pdfViewerBase.formFieldCollection[parseInt(i.toString(), 10)].FormField.isChecked =
                          formFieldsData[parseInt(i.toString(), 10)].FormField.isChecked;
                         this.pdfViewerBase.formFieldCollection[parseInt(i.toString(), 10)].FormField.isSelected =
                          formFieldsData[parseInt(i.toString(), 10)].FormField.isChecked;
                         if (formFieldsData[parseInt(i.toString(), 10)].Key.split('_')[0] !== (event.target as Element).id.split('_')[0]) {
-                            const checkboxElement: Element = document.getElementById(formFieldsData[parseInt(i.toString(), 10)].Key.split('_')[0] + '_input').firstElementChild;
-                            if (isChecked) {
-                                if (checkboxElement.classList.contains('e-pv-cb-uncheck'))
-                                {checkboxElement.classList.remove('e-pv-cb-uncheck'); }
-                                checkboxElement.classList.add('e-pv-cb-check');
-                                (checkboxElement.querySelector('.e-pv-checkbox-tick-svg') as any).style.display = 'block';
-                            } else {
-                                if (checkboxElement.classList.contains('e-pv-cb-check'))
-                                {checkboxElement.classList.remove('e-pv-cb-check'); }
-                                checkboxElement.classList.add('e-pv-cb-uncheck');
-                                (checkboxElement.querySelector('.e-pv-checkbox-tick-svg') as any).style.display = 'none';
+                            const checkboxDivElement: Element = document.getElementById(formFieldsData[parseInt(i.toString(), 10)].Key.split('_')[0] + '_input');
+                            if (checkboxDivElement) {
+                                const checkboxElement: Element = checkboxDivElement.firstElementChild;
+                                if (targetChecked) {
+                                    if (checkboxElement.classList.contains('e-pv-cb-uncheck')) { checkboxElement.classList.remove('e-pv-cb-uncheck'); }
+                                    checkboxElement.classList.add('e-pv-cb-check');
+                                    (checkboxElement.querySelector('.e-pv-checkbox-tick-svg') as any).style.display = 'block';
+                                } else {
+                                    if (checkboxElement.classList.contains('e-pv-cb-check')) { checkboxElement.classList.remove('e-pv-cb-check'); }
+                                    checkboxElement.classList.add('e-pv-cb-uncheck');
+                                    (checkboxElement.querySelector('.e-pv-checkbox-tick-svg') as any).style.display = 'none';
+                                }
                             }
                         }
                         this.updateFormFieldCollections(this.pdfViewerBase.formFieldCollection[parseInt(i.toString(), 10)].FormField);
-                        targetField = this.pdfViewer.formFieldCollections[this.pdfViewer.formFieldCollections.findIndex(function (el: any): any { return (el.id + '_content' === formFieldsData[parseInt(i.toString(), 10)].FormField.id); })];
+                        if (formFieldsData[parseInt(i.toString(), 10)].Key.split('_')[0] === (event.target as Element).id.split('_')[0]) {
+                            targetField = this.pdfViewer.formFieldCollections[this.pdfViewer.formFieldCollections.findIndex(function (el: any): any { return (el.id + '_content' === formFieldsData[parseInt(i.toString(), 10)].FormField.id); })];
+                            targetIndexForAction = parseInt(i.toString(), 10);
+                        }
                         this.pdfViewer.fireFormFieldPropertiesChangeEvent('formFieldPropertiesChange', formFieldsData[parseInt(i.toString(), 10)].FormField, this.pdfViewerBase.formFieldCollection[parseInt(i.toString(), 10)].FormField.pageNumber, true, false, false,
                                                                           false, false, false, false, false, false, false, false,
-                                                                          false, false, false, false, oldValue, isChecked);
-                        if (this.pdfViewer.annotation) {
-                            this.pdfViewer.annotation.addAction(this.pdfViewerBase.formFieldCollection[parseInt(i.toString(), 10)].FormField.pageNumber, null, this.pdfViewerBase.formFieldCollection[parseInt(i.toString(), 10)].FormField, 'FormField Value Change', '', oldValue, isChecked);
-                        }
+                                                                          false, false, false, false, oldValue, targetChecked);
+                    }
+                }
+                const postSnapshot: any[] = this.pdfViewerBase.formFieldCollection
+                    .filter((f: any) => f.FormField.name === groupName && f.FormField.formFieldAnnotationType === 'Checkbox')
+                    .map((f: any) => ({ Key: f.Key, id: f.Key.split('_')[0], value: f.FormField.value, isChecked: !!f.FormField.isChecked }));
+                if (this.pdfViewer.annotation && targetIndexForAction > -1) {
+                    const collectionItem: any = this.pdfViewerBase.formFieldCollection.find(function (_f: any, idx: number): boolean {
+                        return idx === targetIndexForAction;
+                    });
+                    if (collectionItem && collectionItem.FormField) {
+                        const actionAnnotation: any = collectionItem.FormField;
+                        this.pdfViewer.annotation.addAction(actionAnnotation.pageNumber, null, actionAnnotation, 'FormField Value Change', '', preSnapshot, postSnapshot);
                     }
                 }
                 this.pdfViewerBase.setItemInSessionStorage(this.pdfViewerBase.formFieldCollection, '_formDesigner');
@@ -2506,8 +2539,21 @@ export class FormDesigner {
                     if (field.type === 'Textbox' || field.type === 'PasswordField') {
                         formFieldsDatas[parseInt(x.toString(), 10)].Value = field.value;
                     }
-                    else if (field.type === 'Checkbox') {
-                        formFieldsDatas[parseInt(x.toString(), 10)].Selected = field.isChecked;
+                    else if (field.type === 'Checkbox' || field.formFieldAnnotationType === 'Checkbox') {
+                        const groupedCheckbox: any = formFieldsDatas.filter((sameNameCheckboxField: any) => (sameNameCheckboxField.ActualFieldName === field.name) && sameNameCheckboxField.Name === 'CheckBox');
+                        if (groupedCheckbox.length > 1) {
+                            for (let i: number = 0; i < groupedCheckbox.length; i++) {
+                                const currentFieldData: any = groupedCheckbox[parseInt(i.toString(), 10)];
+                                let currentChecked: boolean = field.isChecked;
+                                if (field.isChecked && currentFieldData.Value !== field.value) {
+                                    currentChecked = false;
+                                }
+                                currentFieldData.Selected = currentChecked;
+                            }
+                        }
+                        else {
+                            formFieldsDatas[parseInt(x.toString(), 10)].Selected = field.isChecked;
+                        }
                     }
                     else if (field.type === 'RadioButton') {
                         formFieldsDatas[parseInt(x.toString(), 10)].Selected = field.isSelected;
@@ -2735,7 +2781,9 @@ export class FormDesigner {
             obj.thickness = !isNullOrUndefined((options as any).thickness) ? (options as any).thickness : 1;
             const indicatorSettings: any = (options as SignatureFieldSettings).signatureIndicatorSettings ?
                 (options as SignatureFieldSettings).signatureIndicatorSettings :
-                (options as InitialFieldSettings).initialIndicatorSettings;
+                ((options as InitialFieldSettings).initialIndicatorSettings ?
+                    (options as InitialFieldSettings).initialIndicatorSettings : this.pdfViewer.signatureFieldSettings.
+                        signatureIndicatorSettings);
             obj.signatureIndicatorSettings = indicatorSettings ? {opacity: indicatorSettings.opacity ? indicatorSettings.opacity : 1 ,
                 backgroundColor: indicatorSettings.backgroundColor ? indicatorSettings.backgroundColor : 'orange',
                 width: indicatorSettings.width ? indicatorSettings.width : 19,
@@ -2765,7 +2813,9 @@ export class FormDesigner {
             (obj as any).isInitialField = true;
             const indicatorSettingsInitial: any = (options as InitialFieldSettings).initialIndicatorSettings ?
                 (options as InitialFieldSettings).initialIndicatorSettings :
-                (options as SignatureFieldSettings).signatureIndicatorSettings;
+                ((options as SignatureFieldSettings).signatureIndicatorSettings ?
+                    (options as SignatureFieldSettings).signatureIndicatorSettings : this.pdfViewer.initialFieldSettings.
+                        initialIndicatorSettings);
             obj.signatureIndicatorSettings = indicatorSettingsInitial ? {
                 opacity: indicatorSettingsInitial.opacity ?
                     indicatorSettingsInitial.opacity : 1,
@@ -6141,27 +6191,101 @@ export class FormDesigner {
             }
             if (index > -1) {
                 formFieldsData[parseInt(index.toString(), 10)].FormField.isChecked = selectedItem.isChecked;
+                formFieldsData[parseInt(index.toString(), 10)].FormField.isSelected = selectedItem.isChecked;
                 this.pdfViewerBase.formFieldCollection[parseInt(index.toString(), 10)].FormField.isChecked = selectedItem.isChecked;
+                this.pdfViewerBase.formFieldCollection[parseInt(index.toString(), 10)].FormField.isSelected = selectedItem.isChecked;
             }
             (this.pdfViewer.nameTable as any)[selectedItem.id.split('_')[0]].isChecked = selectedItem.isChecked;
+            (this.pdfViewer.nameTable as any)[selectedItem.id.split('_')[0]].isSelected = selectedItem.isChecked;
             if (isValueChanged) {
-                this.updateFormFieldPropertiesChanges('formFieldPropertiesChange', selectedItem, isValueChanged, false, false,
-                                                      false, false, false, false, false, false, false, false,
-                                                      false, false, false, false, false, oldValue, newValue);
+                this.updateFormFieldPropertiesChanges('formFieldPropertiesChange', selectedItem, isValueChanged, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, oldValue, newValue);
             }
-        }
-        if (!this.pdfViewer.designerMode || isUndoRedo) {
-            const checkboxElement: any = document.getElementById(selectedItem.id + '_input').firstElementChild;
-            if (selectedItem.isChecked) {
-                if (checkboxElement.classList.contains('e-pv-cb-uncheck'))
-                {checkboxElement.classList.remove('e-pv-cb-uncheck'); }
-                checkboxElement.classList.add('e-pv-cb-check');
-                (checkboxElement.querySelector('.e-pv-checkbox-tick-svg') as any).style.display = 'block';
-            } else {
-                if (checkboxElement.classList.contains('e-pv-cb-check'))
-                {checkboxElement.classList.remove('e-pv-cb-check'); }
-                checkboxElement.classList.add('e-pv-cb-uncheck');
-                (checkboxElement.querySelector('.e-pv-checkbox-tick-svg') as any).style.display = 'none';
+            if (isUndoRedo) {
+                const groupedCheckbox: any = formFieldsData.filter((sameNameCheckboxField: any) => (sameNameCheckboxField.FormField.name === selectedItem.name) && sameNameCheckboxField.FormField.formFieldAnnotationType === 'Checkbox' && sameNameCheckboxField.FormField.value === selectedItem.value);
+                for (let i: number = 0; i < groupedCheckbox.length; i++) {
+                    const currentFieldData: any = groupedCheckbox[parseInt(i.toString(), 10)];
+                    const currentChecked: boolean = selectedItem.isChecked;
+                    (this.pdfViewer.nameTable as any)[currentFieldData.Key.split('_')[0]].isChecked = currentChecked;
+                    (this.pdfViewer.nameTable as any)[currentFieldData.Key.split('_')[0]].isSelected = currentChecked;
+                    currentFieldData.FormField.isChecked = currentChecked;
+                    currentFieldData.FormField.isSelected = currentChecked;
+                    const FormFieldIndex: number = formFieldsData.findIndex(function (f: any): boolean {
+                        return f.Key === currentFieldData.Key;
+                    });
+                    if (FormFieldIndex > -1) {
+                        const collectionItem: any = this.pdfViewerBase.formFieldCollection.find(function (col: any): boolean {
+                            return col && col.Key === currentFieldData.Key;
+                        });
+                        if (collectionItem && collectionItem.FormField) {
+                            collectionItem.FormField.isChecked = currentChecked;
+                            collectionItem.FormField.isSelected = currentChecked;
+                        }
+                    }
+                    const currentDivCheckbox: HTMLElement = document.getElementById(currentFieldData.Key.split('_')[0] + '_input');
+                    if (currentDivCheckbox) {
+                        const currentCheckbox: any = currentDivCheckbox.firstElementChild;
+                        if (currentChecked) {
+                            if (currentCheckbox.classList.contains('e-pv-cb-uncheck')) {
+                                currentCheckbox.classList.remove('e-pv-cb-uncheck');
+                            }
+                            currentCheckbox.classList.add('e-pv-cb-check');
+                            (currentCheckbox.querySelector('.e-pv-checkbox-tick-svg') as any).style.display = 'block';
+                        } else {
+                            if (currentCheckbox.classList.contains('e-pv-cb-check')) {
+                                currentCheckbox.classList.remove('e-pv-cb-check');
+                            }
+                            currentCheckbox.classList.add('e-pv-cb-uncheck');
+                            (currentCheckbox.querySelector('.e-pv-checkbox-tick-svg') as any).style.display = 'none';
+                        }
+                    }
+                }
+                this.pdfViewerBase.setItemInSessionStorage(this.pdfViewerBase.formFieldCollection, '_formDesigner');
+                this.updateFormFieldSessions(selectedItem);
+            }
+            else {
+                const groupedCheckbox: any = formFieldsData.filter((sameNameCheckboxField: any) => (sameNameCheckboxField.FormField.name === selectedItem.name) && sameNameCheckboxField.FormField.formFieldAnnotationType === 'Checkbox');
+                for (let i: number = 0; i < groupedCheckbox.length; i++) {
+                    const currentFieldData: any = groupedCheckbox[parseInt(i.toString(), 10)];
+                    let currentChecked: boolean = selectedItem.isChecked;
+                    if (selectedItem.isChecked && selectedItem.value !== currentFieldData.FormField.value) {
+                        currentChecked = false;
+                    }
+                    (this.pdfViewer.nameTable as any)[currentFieldData.Key.split('_')[0]].isChecked = currentChecked;
+                    (this.pdfViewer.nameTable as any)[currentFieldData.Key.split('_')[0]].isSelected = currentChecked;
+                    currentFieldData.FormField.isChecked = currentChecked;
+                    currentFieldData.FormField.isSelected = currentChecked;
+                    const FormFieldIndex: number = formFieldsData.findIndex(function (f: any): boolean {
+                        return f.Key === currentFieldData.Key;
+                    });
+                    if (FormFieldIndex > -1) {
+                        const collectionItem: any = this.pdfViewerBase.formFieldCollection.find(function (col: any): boolean {
+                            return col && col.Key === currentFieldData.Key;
+                        });
+                        if (collectionItem && collectionItem.FormField) {
+                            collectionItem.FormField.isChecked = currentChecked;
+                            collectionItem.FormField.isSelected = currentChecked;
+                        }
+                    }
+                    const currentDivCheckbox: HTMLElement = document.getElementById(currentFieldData.Key.split('_')[0] + '_input');
+                    if (currentDivCheckbox) {
+                        const currentCheckbox: any = currentDivCheckbox.firstElementChild;
+                        if (currentChecked) {
+                            if (currentCheckbox.classList.contains('e-pv-cb-uncheck')) {
+                                currentCheckbox.classList.remove('e-pv-cb-uncheck');
+                            }
+                            currentCheckbox.classList.add('e-pv-cb-check');
+                            (currentCheckbox.querySelector('.e-pv-checkbox-tick-svg') as any).style.display = 'block';
+                        } else {
+                            if (currentCheckbox.classList.contains('e-pv-cb-check')) {
+                                currentCheckbox.classList.remove('e-pv-cb-check');
+                            }
+                            currentCheckbox.classList.add('e-pv-cb-uncheck');
+                            (currentCheckbox.querySelector('.e-pv-checkbox-tick-svg') as any).style.display = 'none';
+                        }
+                    }
+                }
+                this.pdfViewerBase.setItemInSessionStorage(this.pdfViewerBase.formFieldCollection, '_formDesigner');
+                this.updateFormFieldSessions(selectedItem);
             }
         }
     }
@@ -7989,6 +8113,9 @@ export class FormDesigner {
         }
         if (!isReadOnly && (inputElement as any).disabled) {
             (inputElement as any).disabled = false;
+        }
+        if (isReadOnly) {
+            (inputElement as any).disabled = true;
         }
         if (isReadOnly) {
             if (selectedItem.formFieldAnnotationType === 'RadioButton') {
