@@ -2181,3 +2181,45 @@ describe('Aggregates Functionality testing', () => {
         });
     });
 });
+
+describe('EJ2-1018894 - Aggregate Height incorrect when rowHeight Is used with Virtualization enabled', () => {
+    let grid: Grid;
+    beforeAll((done: Function) => {
+        grid = createGrid(
+            {
+                dataSource: data.slice(0, 50),
+                enableVirtualization: true,
+                height: 500,
+                allowSorting: true,
+                rowHeight: 100,
+                columns: [
+                    { field: 'OrderID', headerText: 'Order ID', isPrimaryKey: true },
+                    { field: 'CustomerID', headerText: 'Customer ID' },
+                    { field: 'Freight', format: 'C2' },
+                    { field: 'ShipCountry', headerText: 'Ship Country' }
+                ],
+                aggregates: [
+                    {
+                        columns: [
+                            {
+                                field: 'Freight',
+                                type: 'Sum',
+                                format: 'C2',
+                                footerTemplate: 'Total: ${Sum}',
+                            },
+                        ],
+                    },
+                ],
+            }, done);
+    });
+
+    it('should the aggregates rowheight not be 100px', (done: Function) => {
+        expect((grid as any).element.querySelector('.e-summaryrow').getBoundingClientRect().height).not.toBe(100);
+        done();
+    });
+
+    afterAll(() => {
+        destroy(grid);
+        grid = null;
+    });
+});

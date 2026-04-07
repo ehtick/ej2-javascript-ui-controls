@@ -233,7 +233,7 @@ export class PdfGoToAction extends PdfAction {
      * // Destroy the document
      * document.destroy();
      */
-    constructor(destination: PdfDestination)
+    public constructor(destination: PdfDestination)
     /**
      * Initializes a new instance of the `PdfGoToAction` class.
      *
@@ -257,8 +257,8 @@ export class PdfGoToAction extends PdfAction {
      * // Destroy the document
      * document.destroy();
      */
-    constructor(page: PdfPage)
-    constructor(arg: PdfDestination | PdfPage) {
+    public constructor(page: PdfPage)
+    public constructor(arg: PdfDestination | PdfPage) {
         super();
         this._initialize();
         if (arg instanceof PdfDestination) {
@@ -429,7 +429,7 @@ export class PdfFieldActions {
      * // Destroy the document
      * document.destroy();
      */
-    constructor(field: PdfField) {
+    public constructor(field: PdfField) {
         this._field = field;
     }
     /**

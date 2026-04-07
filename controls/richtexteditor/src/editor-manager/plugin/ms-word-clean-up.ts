@@ -79,7 +79,8 @@ export class MsWordPaste {
         const wordPasteStyleConfig: string[] = !isNOU(notifyArgs.allowedStylePropertiesArray) ?
             notifyArgs.allowedStylePropertiesArray : [];
         let listNodes: Element[] = [];
-        let clipboardHtmlContent: string = (notifyArgs.args as ClipboardEvent).clipboardData.getData('text/HTML');
+        let clipboardHtmlContent: string = !isNOU(notifyArgs.text) ? notifyArgs.text :
+            (notifyArgs.args as ClipboardEvent).clipboardData.getData('text/HTML');
         const rtfData: string = (notifyArgs.args as ClipboardEvent).clipboardData.getData('text/rtf');
 
         const clipboardDataElement: HTMLElement = createElement('p') as HTMLElement;

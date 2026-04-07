@@ -19,6 +19,12 @@ describe('Conditional Formatting', () => {
     describe(' - Code Behind', () => {
         let pivotGridObj: PivotView;
         let elem: HTMLElement = createElement('div', { id: 'PivotGrid', styles: 'height:500px; width:100%' });
+        afterAll(() => {
+            if (pivotGridObj) {
+                pivotGridObj.destroy();
+            }
+            remove(elem);
+        });
         beforeAll((done: Function) => {
             document.body.appendChild(elem);
             let dataBound: EmitType<Object> = () => { done(); };
@@ -349,22 +355,17 @@ describe('Conditional Formatting', () => {
         it('Check empty cell', () => {
             expect((pivotGridObj.pivotValues[5][1] as any).cssClass === 'formatPivotGrid0').toBeTruthy();
         });
-        afterAll(() => {
-            if (pivotGridObj) {
-                pivotGridObj.destroy();
-            }
-            remove(elem);
-            let element = document.querySelector('#' + pivotGridObj.element.id)
-            while(element) {
-                remove(elem);
-                element = document.querySelector('#' + pivotGridObj.element.id)
-            }
-        });
     });
     describe(' - UI', () => {
         let pivotGridObj: PivotView;
         let elem: HTMLElement = createElement('div', { id: 'PivotGrid', styles: 'height:500px; width:100%' });
         PivotView.Inject(ConditionalFormatting);
+        afterAll(() => {
+            if (pivotGridObj) {
+                pivotGridObj.destroy();
+            }
+            remove(elem);
+        });
         beforeAll((done: Function) => {
             document.body.appendChild(elem);
             let dataBound: EmitType<Object> = () => { done(); };
@@ -548,17 +549,17 @@ describe('Conditional Formatting', () => {
                 ]
             };
         });
+    });
+    describe(' - Mobile', () => {
+        let pivotGridObj: PivotView;
+        let elem: HTMLElement = createElement('div', { id: 'PivotGrid', styles: 'height:500px; width:100%' });
+        PivotView.Inject(ConditionalFormatting);
         afterAll(() => {
             if (pivotGridObj) {
                 pivotGridObj.destroy();
             }
             remove(elem);
         });
-    });
-    describe(' - Mobile', () => {
-        let pivotGridObj: PivotView;
-        let elem: HTMLElement = createElement('div', { id: 'PivotGrid', styles: 'height:500px; width:100%' });
-        PivotView.Inject(ConditionalFormatting);
         beforeAll((done: Function) => {
             document.body.appendChild(elem);
             let dataBound: EmitType<Object> = () => { done(); };
@@ -740,16 +741,16 @@ describe('Conditional Formatting', () => {
             expect(true).toBeTruthy();
             (document.querySelector('.e-format-cancel-button') as HTMLElement).click();
         });
+    });
+    describe(' - Opening the conditional formatting dialog', () => {
+        let pivotGridObj: PivotView;
+        let elem: HTMLElement = createElement('div', { id: 'PivotGrid', styles: 'height:500px; width:100%' });
         afterAll(() => {
             if (pivotGridObj) {
                 pivotGridObj.destroy();
             }
             remove(elem);
         });
-    });
-    describe(' - Opening the conditional formatting dialog', () => {
-        let pivotGridObj: PivotView;
-        let elem: HTMLElement = createElement('div', { id: 'PivotGrid', styles: 'height:500px; width:100%' });
         beforeAll((done: Function) => {
             document.body.appendChild(elem);
             let dataBound: EmitType<Object> = () => { done(); };
@@ -805,22 +806,16 @@ describe('Conditional Formatting', () => {
                 done();
             }, 1000);
         });
-
+    });
+    describe(' - Conditional formatting value empty', () => {
+        let pivotGridObj: PivotView;
+        let elem: HTMLElement = createElement('div', { id: 'PivotGrid', styles: 'height:500px; width:100%' });
         afterAll(() => {
             if (pivotGridObj) {
                 pivotGridObj.destroy();
             }
             remove(elem);
-            let element = document.querySelector('#' + pivotGridObj.element.id)
-            while(element) {
-                remove(elem);
-                element = document.querySelector('#' + pivotGridObj.element.id)
-            }
         });
-    });
-    describe(' - Conditional formatting value empty', () => {
-        let pivotGridObj: PivotView;
-        let elem: HTMLElement = createElement('div', { id: 'PivotGrid', styles: 'height:500px; width:100%' });
         beforeAll((done: Function) => {
             document.body.appendChild(elem);
             let dataBound: EmitType<Object> = () => { done(); };
@@ -904,96 +899,80 @@ describe('Conditional Formatting', () => {
             expect(true).toBeTruthy();
             (document.querySelector('.e-format-apply-button') as HTMLElement).click();
         });
+        it('memory leak', () => {
+            profile.sample();
+            let average: any = inMB(profile.averageChange);
+            //Check average change in memory samples to not be over 10MB
+            let memory: any = inMB(getMemoryProfile());
+            //Check the final memory usage against the first usage, there should be little change if everything was properly deallocated
+            expect(memory).toBeLessThan(profile.samples[0] + 0.25);
+        });
+    });
+    describe(' - Opening the conditional formatting dialog and checking rgba,rgb', () => {
+        let pivotGridObj: PivotView;
+        let elem: HTMLElement = createElement('div', { id: 'PivotGrid', styles: 'height:500px; width:100%' });
         afterAll(() => {
             if (pivotGridObj) {
                 pivotGridObj.destroy();
             }
             remove(elem);
-            let element = document.querySelector('#' + pivotGridObj.element.id)
-            while(element) {
-                remove(elem);
-                element = document.querySelector('#' + pivotGridObj.element.id)
-            }
         });
-        describe(' - Opening the conditional formatting dialog and checking rgba,rgb', () => {
-            let pivotGridObj: PivotView;
-            let elem: HTMLElement = createElement('div', { id: 'PivotGrid', styles: 'height:500px; width:100%' });
-            beforeAll((done: Function) => {
-                document.body.appendChild(elem);
-                let dataBound: EmitType<Object> = () => { done(); };
-                pivotGridObj = new PivotView({
-                    dataSourceSettings: {
-                        dataSource: pivot_dataset as IDataSet[],
-                        expandAll: true,
-                        rows: [{ name: 'product', caption: 'Items' }, { name: 'eyeColor' }],
-                        columns: [{ name: 'gender', caption: 'Population' }, { name: 'isActive' }],
-                        values: [{ name: 'balance' }, { name: 'quantity' }],
-                        filters: [],
-                        conditionalFormatSettings: [
-                            {
-                                measure: 'balance',
-                                value1: 100000,
-                                conditions: 'LessThan',
-                                style: {
-                                    backgroundColor: 'rgba(255, 99, 71, 0.5)',
-                                    color: 'black',
-                                    fontFamily: 'Tahoma',
-                                    fontSize: '12px'
-                                }
-                            },
-                            {
-                                value1: 500,
-                                value2: 1000,
-                                measure: 'quantity',
-                                conditions: 'Between',
-                                style: {
-                                    backgroundColor: 'rgb(255, 99, 71, 0.5)',
-                                    color: 'black',
-                                    fontFamily: 'Tahoma',
-                                    fontSize: '12px'
-                                }
+        beforeAll((done: Function) => {
+            document.body.appendChild(elem);
+            let dataBound: EmitType<Object> = () => { done(); };
+            pivotGridObj = new PivotView({
+                dataSourceSettings: {
+                    dataSource: pivot_dataset as IDataSet[],
+                    expandAll: true,
+                    rows: [{ name: 'product', caption: 'Items' }, { name: 'eyeColor' }],
+                    columns: [{ name: 'gender', caption: 'Population' }, { name: 'isActive' }],
+                    values: [{ name: 'balance' }, { name: 'quantity' }],
+                    filters: [],
+                    conditionalFormatSettings: [
+                        {
+                            measure: 'balance',
+                            value1: 100000,
+                            conditions: 'LessThan',
+                            style: {
+                                backgroundColor: 'rgba(255, 99, 71, 0.5)',
+                                color: 'black',
+                                fontFamily: 'Tahoma',
+                                fontSize: '12px'
                             }
-                        ]
-                    },
-                    height: 300,
-                    allowConditionalFormatting: true,
-                    dataBound: dataBound
-                });
-                pivotGridObj.appendTo('#PivotGrid');
+                        },
+                        {
+                            value1: 500,
+                            value2: 1000,
+                            measure: 'quantity',
+                            conditions: 'Between',
+                            style: {
+                                backgroundColor: 'rgb(255, 99, 71, 0.5)',
+                                color: 'black',
+                                fontFamily: 'Tahoma',
+                                fontSize: '12px'
+                            }
+                        }
+                    ]
+                },
+                height: 300,
+                allowConditionalFormatting: true,
+                dataBound: dataBound
             });
-            beforeEach((done: Function) => {
-                setTimeout(() => { done(); }, 100);
-            });
-            it('Check applied format', () => {
-                pivotGridObj.conditionalFormattingModule.showConditionalFormattingDialog();
-            });
-            it('Click apply button', () => {
-                expect(true).toBeTruthy();
-                (document.querySelector('.e-format-apply-button') as HTMLElement).click();
-            });
-            it('Invoke remove method',  () => {
-                expect(true).toBeTruthy();
-                (pivotGridObj.conditionalFormattingModule as any).removeDialog();
-            });
-            afterAll(() => {
-                if (pivotGridObj) {
-                    pivotGridObj.destroy();
-                }
-                remove(elem);
-                let element = document.querySelector('#' + pivotGridObj.element.id)
-                while (element) {
-                    remove(elem);
-                    element = document.querySelector('#' + pivotGridObj.element.id)
-                }
-            });
+            pivotGridObj.appendTo('#PivotGrid');
         });
-    it('memory leak', () => {
-        profile.sample();
-        let average: any = inMB(profile.averageChange);
-        //Check average change in memory samples to not be over 10MB
-        let memory: any = inMB(getMemoryProfile());
-        //Check the final memory usage against the first usage, there should be little change if everything was properly deallocated
-        expect(memory).toBeLessThan(profile.samples[0] + 0.25);
+        beforeEach((done: Function) => {
+            setTimeout(() => { done(); }, 100);
+        });
+        it('Check applied format', () => {
+            pivotGridObj.conditionalFormattingModule.showConditionalFormattingDialog();
+        });
+        it('Click apply button', () => {
+            expect(true).toBeTruthy();
+            (document.querySelector('.e-format-apply-button') as HTMLElement).click();
+        });
+        it('Invoke remove method', () => {
+            expect(true).toBeTruthy();
+            (pivotGridObj.conditionalFormattingModule as any).removeDialog();
+        });
     });
-});
 });

@@ -550,17 +550,17 @@ export class _PdfSimpleSegmentVisitor {
             bitmapSizeSelector: boolean;
             aggregationInstancesSelector: boolean;
         },
-        referredTo: any, // eslint-disable-line
-        customTables: any // eslint-disable-line
+        referredTo: any,
+        customTables: any
     ): {
             tableDeltaHeight: number;
             tableDeltaWidth: number;
             tableBitmapSize: number;
-            tableAggregateInstances: any; //eslint-disable-line
+            tableAggregateInstances: any;
         } {
         let customIndex: number = 0;
-        let tableDeltaHeight: any; // eslint-disable-line
-        let tableDeltaWidth: any; // eslint-disable-line
+        let tableDeltaHeight: any;
+        let tableDeltaWidth: any;
         switch (dictionary.huffmanDHSelector) {
         case 0:
         case 1:
@@ -585,8 +585,8 @@ export class _PdfSimpleSegmentVisitor {
         default:
             throw new Error('Invalid Huffman Dictionary Word selector: failed during decoding process.');
         }
-        let tableBitmapSize: any; // eslint-disable-line
-        let tableAggregateInstances: any; // eslint-disable-line
+        let tableBitmapSize: any;
+        let tableAggregateInstances: any;
         if (dictionary.bitmapSizeSelector) {
             tableBitmapSize = this._getCustomHuffmanTable(customIndex, referredTo, customTables);
             customIndex++;
@@ -946,8 +946,8 @@ export class _PdfSimpleSegmentVisitor {
             return this._decodeBitmapTemplate0(width, height, decodingContext);
         }
         const useskip: boolean = !!skip;
-        const template:  {x: number; y: number}[] = this._codingTemplates[templateIndex].concat(at); // eslint-disable-line
-        template.sort((a, b) => a.y - b.y || a.x - b.x); // eslint-disable-line
+        const template:  {x: number; y: number}[] = this._codingTemplates[templateIndex].concat(at);
+        template.sort((a, b) => a.y - b.y || a.x - b.x);
         const templateLength: number = template.length;
         const templateX: Int8Array = new Int8Array(templateLength);
         const templateY: Int8Array = new Int8Array(templateLength);
@@ -990,8 +990,8 @@ export class _PdfSimpleSegmentVisitor {
         const pseudoPixelContext: number = this._reusedContexts[<number>templateIndex];
         let row: Uint8Array = new Uint8Array(width);
         const bitmap: Uint8Array[] = [];
-        const decoder: any = decodingContext.decoder; // eslint-disable-line
-        const contexts: any = decodingContext.contextCache.getContexts('GB'); // eslint-disable-line
+        const decoder: any = decodingContext.decoder;
+        const contexts: any = decodingContext.contextCache.getContexts('GB');
         let ltp: number = 0;
         let j: number;
         let i0: number;
@@ -1042,7 +1042,7 @@ export class _PdfSimpleSegmentVisitor {
                         }
                     }
                 }
-                const pixel: any = decoder._readBit(contexts, contextLabel); // eslint-disable-line
+                const pixel: any = decoder._readBit(contexts, contextLabel);
                 row[<number>j] = pixel;
             }
         }
@@ -1941,7 +1941,7 @@ export class _PdfJbig2Image {
      * @param {_PdfSimpleSegmentVisitor} visitor The visitor handling segment types.
      * @returns {any} as process segment.
      */
-    _processSegments(segments: any, visitor: _PdfSimpleSegmentVisitor): any { // eslint-disable-line
+    _processSegments(segments: any, visitor: _PdfSimpleSegmentVisitor): any {
         for (let i: number = 0, ii: number = segments.length; i < ii; i++) {
             this._processSegment(segments[<number>i], visitor);
         }
@@ -2085,8 +2085,8 @@ export class _PdfJbig2Image {
         position += 4;
         if (segmentHeader.length === 0xffffffff) {
             if (segmentType === 38) {
-                const genericRegionInfo: any = this._readRegionSegmentInformation(data, position); // eslint-disable-line
-                const genericRegionSegmentFlags: any = data[position + this._regionSegmentInformationFieldLength]; // eslint-disable-line
+                const genericRegionInfo: any = this._readRegionSegmentInformation(data, position);
+                const genericRegionSegmentFlags: any = data[position + this._regionSegmentInformationFieldLength];
                 const genericRegionMmr: boolean = !!(genericRegionSegmentFlags & 1);
                 const searchPatternLength: number = 6;
                 const searchPattern: Uint8Array = new Uint8Array(searchPatternLength);
@@ -2168,24 +2168,24 @@ export class _PdfJbig2Image {
      * @param {any} visitor The segment visitor instance.
      * @returns {void}
      */
-    _processSegment(segment: { header: { type: number; number: number; referredTo: number }; data: Uint8Array; start: number; end: number }, visitor: any) { // eslint-disable-line
-        const header: any = segment.header; // eslint-disable-line
-        const data: any = segment.data; // eslint-disable-line
+    _processSegment(segment: { header: { type: number; number: number; referredTo: number }; data: Uint8Array; start: number; end: number }, visitor: any) {
+        const header: any = segment.header;
+        const data: any = segment.data;
         const end: number = segment.end;
         let position: number = segment.start;
-        let dictionary: { [key: string]: any}; // eslint-disable-line
+        let dictionary: { [key: string]: any};
         let dictionaryFlags: number;
-        let textRegion: { [key: string]: any};//eslint-disable-line
-        let patternDictionary: { [key: string]: any }; // eslint-disable-line
+        let textRegion: { [key: string]: any};
+        let patternDictionary: { [key: string]: any };
         let patternDictionaryFlags: number;
-        let halftoneRegion: { [key: string]: any }; // eslint-disable-line
+        let halftoneRegion: { [key: string]: any };
         let halftoneRegionFlags: number;
-        let genericRegion: { [key: string]: any }; // eslint-disable-line
+        let genericRegion: { [key: string]: any };
         let genericRegionSegmentFlags: number;
-        let pageInfo: { [key: string]: any }; // eslint-disable-line
+        let pageInfo: { [key: string]: any };
         let pageSegmentFlags: number;
         let textRegionSegmentFlags: number;
-        let args: any[], at: { x: number; y: number }[], i: number, atLength: number;  // eslint-disable-line
+        let args: any[], at: { x: number; y: number }[], i: number, atLength: number;
         switch (header.type) {
         case 0:
             dictionary = {};

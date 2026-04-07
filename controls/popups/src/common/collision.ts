@@ -269,7 +269,7 @@ function setPopup(element: HTMLElement, pos: PositionLocation, elementRect: Clie
             element.style.left = leftPos - requiredWidth + 'px';
         }
     }
-    if (element.classList.contains('e-filter-popup') && element.offsetParent) {
+    if ((element.classList.contains('e-filter-popup') || element.classList.contains('e-ccdlg')) && element.offsetParent) {
         const currentLeftPos: number = parseFloat(element.style.left);
         const gridWidth: number = element.offsetParent.clientWidth;
         const dlgWidth: number = element.clientWidth;

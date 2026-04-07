@@ -479,7 +479,7 @@ export class RowRenderer<T> implements IRowRenderer<T> {
                 }
             }
         }
-        if (this.parent.enableVirtualization) {
+        if (this.parent.enableVirtualization && !(row.isAggregateRow && !row.parentUid)) {
             rowArgs.rowHeight = this.parent.rowHeight;
         }
         if (rowArgs.rowHeight) {

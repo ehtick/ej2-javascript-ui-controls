@@ -2832,7 +2832,7 @@ describe('Chart ->', () => {
                 }, 10);
             });
         });
-        describe('EJ2-896138 ->', () => {
+        describe('EJ2-896138, EJ2-1016956 ->', () => {
             beforeAll((done: Function) => {
                 helper.initializeSpreadsheet({
                     sheets: [{
@@ -2857,6 +2857,31 @@ describe('Chart ->', () => {
                 expect(spreadsheet.sheets[0].rows[3].cells[0].chart.length).toBe(2);
                 expect(spreadsheet.sheets[0].rows[4].cells[1].chart.length).toBe(1);
                 done();
+            });
+            it('EJ2-1016956: Pie Chart renders empty when Y-range contains string values ->', (done: Function) => {
+                const json: object = {
+                    Workbook: { sheets: [{ chartColl: [{ address: [5, 6], height: 284, id: "e_spreadsheet_chart_8", left: 396, theme: "Material",
+                            title: "Chart Title", top: 82, type: "Pie", width: 471, range: 'A1:C4'}, { address: [5, 0], id: "e_spreadsheet_chart_9", theme: "Material",
+                            title: "Chart Title", type: "Doughnut", width: 471, range: 'A1:C4'}, { address: [10, 6], height: 284, id: "e_spreadsheet_chart_10", theme: "Material",
+                            title: "Chart Title", type: "Pie", width: 471, range: 'A1:C4', isSeriesInRows: true}],
+                            rows: [{ cells: [{ index: 0, value: 'Description', colSpan: 2 }, { index: 2, value: 'Total' }] },
+                            { cells: [{ index: 0, value: 'one' }, { index: 1, value: 'aaa' }, { index: 2, value: 1 }] },
+                            { cells: [{ index: 0, value: 'two' }, { index: 1, value: 'bbb' }, { index: 2, value: 4 }] },
+                            { cells: [{ index: 0, value: 'three' }, { index: 1, value: 'ccc' }, { index: 2, value: 2 }] }]}]}
+                };
+                const spreadsheet: Spreadsheet = helper.getInstance();
+                spreadsheet.openFromJson({ file: json });
+                setTimeout(() => {
+                    expect(spreadsheet.sheets[0].rows[4].cells[6].chart[0]).toBeDefined();
+                    expect(spreadsheet.sheets[0].rows[5].cells[0].chart[0]).toBeDefined();
+                    expect(spreadsheet.sheets[0].rows[10].cells[6].chart[0]).toBeDefined();
+                    helper.invoke('insertChart', [[{ type: 'Pie', range: 'A2:C4', id: 'chart_7' }]]);
+                    setTimeout(() => {
+                        const chart: HTMLElement = helper.getInstance().element.querySelector('#chart_7');
+                        expect(chart).not.toBeNull();
+                        done();
+                    })
+                });
             });
         });
         describe('EJ2-947846 ->', () => {

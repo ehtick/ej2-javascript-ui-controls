@@ -1860,8 +1860,46 @@ export class ParagraphWidget extends BlockWidget {
                         lineWidget.children.splice(i + 1, 1);
                         i--;
                         currentTxtRange.isWidthUpdated =  false;
+                    } else if (documentHelper.compatibilityMode !== 'Word2013' && currentTxtRange.characterFormat.bidi &&
+                        !textHelper.isRightToLeftLanguage(currentTxtRange.characterFormat.localeIdBidi) && currentTxtRange.characterRange === CharacterRangeType.Number) {
+                        this.combineConsecutiveRTLDateFormatText(lineWidget, i);
                     }
                 }
+            }
+        }
+    }
+    
+    private combineConsecutiveRTLDateFormatText(lineWidget: LineWidget, startIndex: number): void {
+        const currentText: TextElementBox = lineWidget.children[startIndex] as TextElementBox;
+        let nextElement: TextElementBox = lineWidget.children[startIndex + 1] as TextElementBox;
+        if (nextElement && currentText.characterFormat.isEqualFormat(nextElement.characterFormat) && (nextElement.text === '/' || nextElement.text === '.')) {
+            let combinedText: string = currentText.text + nextElement.text;
+            let removeCount: number = 1;
+            let k: number = startIndex + 2;
+            let isSeperator: boolean = true;
+            while (k < lineWidget.children.length) {
+                nextElement = lineWidget.children[k] as TextElementBox;
+                if (currentText.characterFormat.isEqualFormat(nextElement.characterFormat) && (nextElement.characterRange === CharacterRangeType.Number
+                    || ((nextElement.text === '/' || nextElement.text === '.') && !isSeperator))) {
+                    isSeperator = nextElement.characterRange === CharacterRangeType.WordSplit ? true : false;
+                    const thirdElement: TextElementBox  = lineWidget.children[k+1] as TextElementBox ;
+                    const canCombine: boolean = !isSeperator || (thirdElement && currentText.characterFormat.isEqualFormat(thirdElement.characterFormat)&& (thirdElement.characterRange === CharacterRangeType.Number));
+                    if (canCombine) {
+                        combinedText += nextElement.text;
+                        removeCount++;
+                        k++;
+                    }
+                    else {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+            if (removeCount > 1) {
+                currentText.text = combinedText;
+                lineWidget.children.splice(startIndex + 1, removeCount);
+                currentText.isWidthUpdated = false;
             }
         }
     }

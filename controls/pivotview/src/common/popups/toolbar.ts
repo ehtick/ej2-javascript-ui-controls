@@ -15,6 +15,7 @@ import { ChartSettingsModel } from '../../pivotview/model/chartsettings-model';
 import { ChartSettings } from '../../pivotview/model/chartsettings';
 import { GridSettings } from '../../pivotview/model/gridsettings';
 import { AccumulationChart, Chart } from '@syncfusion/ej2-charts';
+import { PivotUtil } from '../../base/util';
 
 /**
  * Module for Toolbar
@@ -57,8 +58,8 @@ export class Toolbar {
     private createToolbar(): void {
         this.parent.isModified = false;
         this.renderDialog();
-        if (select('#' + this.parent.element.id + 'pivot-toolbar', this.parent.element) !== null) {
-            remove(select('#' + this.parent.element.id + 'pivot-toolbar', this.parent.element));
+        if (select('#' + this.parent.element.id + 'pivot-toolbar', document) !== null) {
+            remove(select('#' + this.parent.element.id + 'pivot-toolbar', document));
         }
         const element: HTMLElement = createElement( 'div', {
             id: this.parent.element.id + 'pivot-toolbar',
@@ -492,7 +493,7 @@ export class Toolbar {
             height: 'auto',
             zIndex: 1000001,
             closeOnEscape: true,
-            target: document.body,
+            target: PivotUtil.getAppendToElement(this.parent.element, this.parent.isAngular),
             cssClass: this.parent.cssClass
         });
         dialog.isStringTemplate = true;
@@ -533,7 +534,7 @@ export class Toolbar {
             height: 'auto',
             zIndex: 1000001,
             closeOnEscape: true,
-            target: document.body,
+            target: PivotUtil.getAppendToElement(this.parent.element, this.parent.isAngular),
             cssClass: this.parent.cssClass
         });
         mdxDialog.isStringTemplate = true;
@@ -703,7 +704,7 @@ export class Toolbar {
             isModal: true,
             visible: true,
             closeOnEscape: true,
-            target: document.body,
+            target: PivotUtil.getAppendToElement(this.parent.element, this.parent.isAngular),
             cssClass: this.parent.cssClass,
             width: 'auto',
             height: 'auto',

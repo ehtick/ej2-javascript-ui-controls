@@ -343,7 +343,7 @@ export abstract class PdfField {
                 if (names.length === 1) {
                     this._name = names[0];
                 } else {
-                    this._name = names.join('.');
+                    this._name = names.slice().reverse().join('.');
                 }
             }
         }
@@ -1638,7 +1638,7 @@ export abstract class PdfField {
      * document.destroy();
      * ```
      */
-    itemAt(index: number): PdfWidgetAnnotation {
+    public itemAt(index: number): PdfWidgetAnnotation {
         let item: PdfWidgetAnnotation;
         if (index >= 0 && index < this._kidsCount) {
             if (this._parsedItems.has(index)) {
@@ -1675,7 +1675,7 @@ export abstract class PdfField {
      * document.destroy();
      * ```
      */
-    setAppearance(value: boolean): void {
+    public setAppearance(value: boolean): void {
         this._setAppearance = value;
     }
     /**
@@ -1695,7 +1695,7 @@ export abstract class PdfField {
      * document.destroy();
      * ```
      */
-    getValue(name: string): string {
+    public getValue(name: string): string {
         let value: string;
         if (this._dictionary && this._dictionary.has(name)) {
             const element: any = this._dictionary.get(name);// eslint-disable-line
@@ -1731,7 +1731,7 @@ export abstract class PdfField {
      * document.destroy();
      * ```
      */
-    setValue(name: string, value: string): void {
+    public setValue(name: string, value: string): void {
         if (name && name !== '' && value && value !== '') {
             this._dictionary.update(name, value);
         }
@@ -1755,7 +1755,7 @@ export abstract class PdfField {
      * document.destroy();
      * ```
      */
-    removeItemAt(index: number): void {
+    public removeItemAt(index: number): void {
         if (this._dictionary !== null && typeof this._dictionary !== 'undefined' && this._dictionary.has('Kids') && this.itemsCount > 0) {
             const item: PdfWidgetAnnotation = this.itemAt(index);
             if (item && item._ref) {
@@ -1800,7 +1800,7 @@ export abstract class PdfField {
      * document.destroy();
      * ```
      */
-    removeItem(item: PdfWidgetAnnotation): void {
+    public removeItem(item: PdfWidgetAnnotation): void {
         if (item && item._ref) {
             const index: number = this._kids.indexOf(item._ref);
             if (index !== -1) {
@@ -2683,7 +2683,7 @@ export class PdfTextBoxField extends PdfField {
      *
      * @private
      */
-    constructor()
+    public constructor()
     /**
      * Represents a text box field of the PDF document.
      *
@@ -2707,7 +2707,7 @@ export class PdfTextBoxField extends PdfField {
      * document.destroy();
      * ```
      */
-    constructor(page: PdfPage, name: string, bounds: Rectangle)
+    public constructor(page: PdfPage, name: string, bounds: Rectangle)
     /**
      * Represents a text box field of the PDF document.
      *
@@ -2749,7 +2749,7 @@ export class PdfTextBoxField extends PdfField {
      * document.destroy();
      * ```
      */
-    constructor(page: PdfPage, name: string, bounds: Rectangle, properties: {
+    public constructor(page: PdfPage, name: string, bounds: Rectangle, properties: {
         toolTip?: string,
         color?: PdfColor,
         backColor?: PdfColor,
@@ -2758,7 +2758,7 @@ export class PdfTextBoxField extends PdfField {
         text?: string,
         font?: PdfFont
     })
-    constructor(page?: PdfPage, name?: string, bounds?: Rectangle, properties?: {
+    public constructor(page?: PdfPage, name?: string, bounds?: Rectangle, properties?: {
         toolTip?: string,
         color?: PdfColor,
         backColor?: PdfColor,
@@ -4112,7 +4112,7 @@ export class PdfButtonField extends PdfField {
      *
      * @private
      */
-    constructor()
+    public constructor()
     /**
      * Represents a button box field of the PDF document.
      *
@@ -4180,7 +4180,7 @@ export class PdfButtonField extends PdfField {
      * document.destroy();
      * ```
      */
-    constructor(page: PdfPage, name: string, bounds: Rectangle, properties: {
+    public constructor(page: PdfPage, name: string, bounds: Rectangle, properties: {
         toolTip?: string,
         color?: PdfColor,
         backColor?: PdfColor,
@@ -4189,7 +4189,7 @@ export class PdfButtonField extends PdfField {
         text?: string,
         highlightMode?: PdfHighlightMode
     })
-    constructor(page?: PdfPage, name?: string, bounds?: Rectangle, properties?: {
+    public constructor(page?: PdfPage, name?: string, bounds?: Rectangle, properties?: {
         toolTip?: string,
         color?: PdfColor,
         backColor?: PdfColor,
@@ -5019,7 +5019,7 @@ export class PdfCheckBoxField extends PdfField {
      * document.destroy();
      * ```
      */
-    constructor(name: string, bounds: Rectangle, page: PdfPage)
+    public constructor(name: string, bounds: Rectangle, page: PdfPage)
     /**
      * Represents a check box field of the PDF document.
      *
@@ -5058,7 +5058,7 @@ export class PdfCheckBoxField extends PdfField {
      * document.destroy();
      * ```
      */
-    constructor(name: string, bounds: Rectangle, page: PdfPage, properties: {
+    public constructor(name: string, bounds: Rectangle, page: PdfPage, properties: {
         toolTip?: string,
         color?: PdfColor,
         backColor?: PdfColor,
@@ -5066,7 +5066,7 @@ export class PdfCheckBoxField extends PdfField {
         border?: PdfInteractiveBorder,
         checked?: boolean
     })
-    constructor(name?: string, bounds?: Rectangle, page?: PdfPage, properties?: {
+    public constructor(name?: string, bounds?: Rectangle, page?: PdfPage, properties?: {
         toolTip?: string,
         color?: PdfColor,
         backColor?: PdfColor,
@@ -5153,7 +5153,7 @@ export class PdfCheckBoxField extends PdfField {
      * document.destroy();
      * ```
      */
-    itemAt(index: number): PdfStateItem {
+    public itemAt(index: number): PdfStateItem {
         if (index < 0 || (index !== 0 && index >= this._kidsCount)) {
             throw Error('Index out of range.');
         }
@@ -5363,7 +5363,7 @@ export class PdfCheckBoxField extends PdfField {
         if (this.itemAt(this._defaultIndex)) {
             this.itemAt(this._defaultIndex).exportValue = value;
         }
-        if (!(this._dictionary.has('V'))) {
+        if (!(this._dictionary.has('V')) && value !== '') {
             this._exportValue = value;
         }
     }
@@ -5560,7 +5560,13 @@ export class PdfCheckBoxField extends PdfField {
                         const template: PdfTemplate = this._createAppearance(item, state);
                         this._drawTemplate(template, item._getPage(), item.bounds);
                     } else {
-                        this._drawAppearance(item, item.exportValue);
+                        let exportValue: string;
+                        if (item.exportValue === '') {
+                            exportValue = 'Yes';
+                        } else {
+                            exportValue = item.exportValue;
+                        }
+                        this._drawAppearance(item, exportValue);
                     }
                     item._dictionary._updated = !isFlatten;
                 }
@@ -5794,7 +5800,7 @@ export class PdfRadioButtonListField extends PdfField {
      * document.destroy();
      * ```
      */
-    constructor(page: PdfPage, name: string)
+    public constructor(page: PdfPage, name: string)
     /**
      * Represents a radio button list field (group of mutually exclusive options).
      *
@@ -5836,7 +5842,7 @@ export class PdfRadioButtonListField extends PdfField {
      * document.destroy();
      * ```
      */
-    constructor(page: PdfPage, name: string, properties: {
+    public constructor(page: PdfPage, name: string, properties: {
         items: { name: string, bounds: Rectangle }[],
         toolTip?: string,
         color?: PdfColor,
@@ -5846,7 +5852,7 @@ export class PdfRadioButtonListField extends PdfField {
         selectedIndex?: number,
         allowUnisonSelection?: boolean
     })
-    constructor(page?: PdfPage, name?: string, properties?: {
+    public constructor(page?: PdfPage, name?: string, properties?: {
         items: { name: string, bounds: Rectangle }[],
         toolTip?: string,
         color?: PdfColor,
@@ -6184,7 +6190,7 @@ export class PdfRadioButtonListField extends PdfField {
      * document.destroy();
      * ```
      */
-    itemAt(index: number): PdfRadioButtonListItem {
+    public itemAt(index: number): PdfRadioButtonListItem {
         if (index < 0 || (index !== 0 && index >= this._kidsCount)) {
             throw Error('Index out of range.');
         }
@@ -6238,7 +6244,7 @@ export class PdfRadioButtonListField extends PdfField {
      * document.destroy();
      * ```
      */
-    add(item: PdfRadioButtonListItem): number
+    public add(item: PdfRadioButtonListItem): number
     /**
      * Add list item to the field.
      *
@@ -6270,9 +6276,9 @@ export class PdfRadioButtonListField extends PdfField {
      * document.destroy();
      * ```
      */
-    add(value: string, bounds: Rectangle): PdfRadioButtonListItem
-    add(value?: string | PdfRadioButtonListItem,
-        bounds?: Rectangle): PdfRadioButtonListItem | number {
+    public add(value: string, bounds: Rectangle): PdfRadioButtonListItem
+    public add(value?: string | PdfRadioButtonListItem,
+               bounds?: Rectangle): PdfRadioButtonListItem | number {
         if (value instanceof PdfRadioButtonListItem) {
             value._field = this;
             value._dictionary.update('Parent', this._ref);
@@ -6301,7 +6307,7 @@ export class PdfRadioButtonListField extends PdfField {
      * document.destroy();
      * ```
      */
-    removeItemAt(index: number): void {
+    public removeItemAt(index: number): void {
         const item: PdfRadioButtonListItem = this.itemAt(index);
         if (item && item._ref) {
             const page: PdfPage = item._getPage();
@@ -6351,7 +6357,7 @@ export class PdfRadioButtonListField extends PdfField {
      * document.destroy();
      * ```
      */
-    removeItem(item: PdfRadioButtonListItem): void {
+    public removeItem(item: PdfRadioButtonListItem): void {
         if (item && item._ref) {
             const index: number = this._kids.indexOf(item._ref);
             if (index !== -1) {
@@ -7351,7 +7357,7 @@ export abstract class PdfListField extends PdfField {
      * document.destroy();
      * ```
      */
-    itemAt(index: number): PdfListFieldItem {
+    public itemAt(index: number): PdfListFieldItem {
         let item: PdfListFieldItem;
         if (index < this._kidsCount) {
             if (this._parsedItems.has(index)) {
@@ -7445,7 +7451,7 @@ export abstract class PdfListField extends PdfField {
      * document.destroy();
      * ```
      */
-    addItem(item: PdfListFieldItem): number {
+    public addItem(item: PdfListFieldItem): number {
         this._addToOptions(item, this);
         return this._listValues.length - 1;
     }
@@ -7475,7 +7481,7 @@ export abstract class PdfListField extends PdfField {
      * document.destroy();
      * ```
      */
-    removeItemAt(index: number): void {
+    public removeItemAt(index: number): void {
         const item: PdfListFieldItem = this.itemAt(index);
         if (item && item._ref) {
             this._parsedItems.delete(index);
@@ -7527,7 +7533,7 @@ export abstract class PdfListField extends PdfField {
      * document.destroy();
      * ```
      */
-    removeItem(item: PdfListFieldItem): void {
+    public removeItem(item: PdfListFieldItem): void {
         if (item && item.text) {
             let index: number;
             for (let i: number = 0; i < this.itemsCount; i++) {
@@ -7903,7 +7909,7 @@ export class PdfComboBoxField extends PdfListField {
      *
      * @private
      */
-    constructor()
+    public constructor()
     /**
      * Represents a combo box field of the PDF document.
      *
@@ -7935,7 +7941,7 @@ export class PdfComboBoxField extends PdfListField {
      * document.destroy();
      * ```
      */
-    constructor(page: PdfPage, name: string, bounds: Rectangle)
+    public constructor(page: PdfPage, name: string, bounds: Rectangle)
     /**
      * Represents a combo box (drop-down) field of the PDF document.
      *
@@ -7984,7 +7990,7 @@ export class PdfComboBoxField extends PdfListField {
      * document.destroy();
      * ```
      */
-    constructor(page: PdfPage, name: string, bounds: Rectangle, properties: {
+    public constructor(page: PdfPage, name: string, bounds: Rectangle, properties: {
         items: { text: string, value: string }[],
         toolTip?: string,
         color?: PdfColor,
@@ -7994,7 +8000,7 @@ export class PdfComboBoxField extends PdfListField {
         selectedIndex?: number,
         font?: PdfFont
     })
-    constructor(page?: PdfPage, name?: string, bounds?: Rectangle, properties?: {
+    public constructor(page?: PdfPage, name?: string, bounds?: Rectangle, properties?: {
         items: { text: string, value: string }[],
         toolTip?: string,
         color?: PdfColor,
@@ -8191,7 +8197,7 @@ export class PdfComboBoxField extends PdfListField {
             if (backcolor && !backcolor.isTransparent) {
                 parameter.backBrush = new PdfBrush(backcolor);
             }
-            parameter.foreBrush = new PdfBrush(item.color);
+            parameter.foreBrush = new PdfBrush(item.color ? item.color : this.color);
             const border: PdfInteractiveBorder = item.border;
             if (item.borderColor) {
                 parameter.borderPen = new PdfPen(item.borderColor, border.width);
@@ -8339,7 +8345,7 @@ export class PdfComboBoxField extends PdfListField {
                 if (padding) {
                     width -= doubleBorderWidth;
                 }
-                brush = new PdfBrush({r: 0, g: 0, b: 0});
+                brush = new PdfBrush(this.color ? this.color : {r: 0, g: 0, b: 0});
             }
             let value: string;
             if (item && Array.isArray(item)) {
@@ -8517,7 +8523,7 @@ export class PdfListBoxField extends PdfListField {
      *
      * @private
      */
-    constructor()
+    public constructor()
     /**
      * Represents a list box field of the PDF document.
      *
@@ -8549,7 +8555,7 @@ export class PdfListBoxField extends PdfListField {
      * document.destroy();
      * ```
      */
-    constructor(page: PdfPage, name: string, bounds: Rectangle)
+    public constructor(page: PdfPage, name: string, bounds: Rectangle)
     /**
      * Represents a list box field of the PDF document.
      *
@@ -8600,7 +8606,7 @@ export class PdfListBoxField extends PdfListField {
      * document.destroy();
      * ```
      */
-    constructor(page: PdfPage, name: string, bounds: Rectangle, properties: {
+    public constructor(page: PdfPage, name: string, bounds: Rectangle, properties: {
         items: { text: string, value: string }[],
         toolTip?: string,
         color?: PdfColor,
@@ -8611,7 +8617,7 @@ export class PdfListBoxField extends PdfListField {
         multiSelect?: boolean,
         font?: PdfFont
     })
-    constructor(page?: PdfPage, name?: string, bounds?: Rectangle, properties?: {
+    public constructor(page?: PdfPage, name?: string, bounds?: Rectangle, properties?: {
         items: { text: string, value: string }[],
         toolTip?: string,
         color?: PdfColor,
@@ -8752,7 +8758,7 @@ export class PdfListBoxField extends PdfListField {
             if (backcolor && !backcolor.isTransparent) {
                 parameter.backBrush = new PdfBrush(backcolor);
             }
-            parameter.foreBrush = new PdfBrush(item.color);
+            parameter.foreBrush = new PdfBrush(item.color ? item.color : this.color);
             const border: PdfInteractiveBorder = item.border;
             if (item.borderColor) {
                 parameter.borderPen = new PdfPen(item.borderColor, border.width);
@@ -8901,7 +8907,7 @@ export class PdfListBoxField extends PdfListField {
                     }
                     brush = new PdfBrush({r: 153, g: 193, b: 218});
                     graphics.drawRectangle({x: x, y: location[1], width: width, height: font._getHeight()}, brush);
-                    brush = new PdfBrush({r: 0, g: 0, b: 0});
+                    brush = new PdfBrush(this.color ? this.color : {r: 0, g: 0, b: 0});
                 }
             }
             let value: string;
@@ -8940,7 +8946,7 @@ export class PdfListBoxField extends PdfListField {
                     }
                     brush = new PdfBrush({r: 153, g: 193, b: 218});
                     graphics.drawRectangle({x: x, y: location[1], width: width, height: font._getHeight()}, brush);
-                    brush = new PdfBrush({r: 0, g: 0, b: 0});
+                    brush = new PdfBrush(this.color ? this.color : {r: 0, g: 0, b: 0});
                 }
                 graphics.drawString(value, font, itemTextBound, null, brush, stringFormat);
                 graphics.restore(state);
@@ -9029,7 +9035,7 @@ export class PdfSignatureField extends PdfField {
      *
      * @private
      */
-    constructor()
+    public constructor()
     /**
      * Represents a signature field of the PDF document.
      *
@@ -9054,7 +9060,7 @@ export class PdfSignatureField extends PdfField {
      * document.destroy();
      * ```
      */
-    constructor(page: PdfPage, name: string, bounds: Rectangle)
+    public constructor(page: PdfPage, name: string, bounds: Rectangle)
     /**
      * Represents a signature field of the PDF document.
      *
@@ -9092,14 +9098,14 @@ export class PdfSignatureField extends PdfField {
      * document.destroy();
      * ```
      */
-    constructor(page: PdfPage, name: string, bounds: Rectangle, properties: {
+    public constructor(page: PdfPage, name: string, bounds: Rectangle, properties: {
         toolTip?: string,
         color?: PdfColor,
         backColor?: PdfColor,
         borderColor?: PdfColor,
         border?: PdfInteractiveBorder
     })
-    constructor(page?: PdfPage, name?: string, bounds?: Rectangle, properties?: {
+    public constructor(page?: PdfPage, name?: string, bounds?: Rectangle, properties?: {
         toolTip?: string,
         color?: PdfColor,
         backColor?: PdfColor,
@@ -9246,7 +9252,7 @@ export class PdfSignatureField extends PdfField {
      * document.destroy();
      * ```
      */
-    getSignature(): PdfSignature {
+    public getSignature(): PdfSignature {
         if (!this._signature && this._dictionary.has('V')) {
             this._signature = this._crossReference._document._getSignature(this._dictionary.get('V'), this);
         }
@@ -9279,7 +9285,7 @@ export class PdfSignatureField extends PdfField {
      * document.destroy();
      * ```
      */
-    setSignature(signature: PdfSignature): void {
+    public setSignature(signature: PdfSignature): void {
         if (this._crossReference) {
             const form: PdfForm = this._crossReference._document.form;
             form._signatureFlag = _SignatureFlag.signatureExists | _SignatureFlag.appendOnly;
@@ -9324,7 +9330,7 @@ export class PdfSignatureField extends PdfField {
      * document.destroy();
      * ```
      */
-    getAppearance(): PdfAppearance {
+    public getAppearance(): PdfAppearance {
         if (this._isLoaded) {
             return null;
         }
@@ -9353,7 +9359,7 @@ export class PdfSignatureField extends PdfField {
      * document.destroy();
      * ```
      */
-    getRevision(): number {
+    public getRevision(): number {
         if (this.isSigned && this._revision === -1) {
             this._revision = this._getSignedRevision();
         }

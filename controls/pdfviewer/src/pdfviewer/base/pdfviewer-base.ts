@@ -698,6 +698,10 @@ export class PdfViewerBase {
     /**
      * @private
      */
+    public isPropertySliderChanging: boolean = false;
+    /**
+     * @private
+     */
     public formFieldCollection: any[] = [];
     /**
      * @private
@@ -4971,6 +4975,9 @@ export class PdfViewerBase {
      */
     private viewerContainerOnMouseup = (event: MouseEvent): void => {
         if (!this.getPopupNoteVisibleStatus()) {
+            if (this.isPropertySliderChanging) {
+                return;
+            }
             if (this.isViewerMouseDown) {
                 if (this.scrollHoldTimer) {
                     clearTimeout(this.scrollHoldTimer);

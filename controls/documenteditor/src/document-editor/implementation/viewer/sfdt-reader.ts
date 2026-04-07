@@ -1668,7 +1668,7 @@ export class SfdtReader {
                     }
                 }
                 hasValidElmts = true;
-            } else if (inline.hasOwnProperty([commentIdProperty[this.keywordIndex]])) {
+            } else if (inline.hasOwnProperty([commentIdProperty[this.keywordIndex]]) && !this.isParseHeader) {
                 let commentID: string = inline[commentIdProperty[this.keywordIndex]];
                 let commentStart: CommentCharacterElementBox = undefined;
                 let comment: CommentElementBox;

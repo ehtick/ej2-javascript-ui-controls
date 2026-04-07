@@ -523,7 +523,7 @@ export class PdfLayer {
      * document.destroy();
      * ```
      */
-    createGraphics(page: PdfPage): PdfGraphics {
+    public createGraphics(page: PdfPage): PdfGraphics {
         if (!this._graphics || this._needInitializeGraphics) {
             this._page = page;
             this._crossReference = page._crossReference;

@@ -12,6 +12,7 @@ import { CheckBox } from '@syncfusion/ej2-buttons';
 import * as cls from '../../common/base/css-constant';
 import * as events from '../../common/base/constant';
 import { PivotActionInfo } from '../base/interface';
+import { PivotUtil } from '../../base/util';
 
 /**
  * Module to render Conditional Formatting Dialog
@@ -97,7 +98,8 @@ export class ConditionalFormatting {
                 enableHtmlSanitizer: this.parent.enableHtmlSanitizer,
                 position: { X: 'center', Y: 'center' }, allowDragging: true, buttons: buttonModel,
                 beforeOpen: this.beforeOpen.bind(this), close: this.removeDialog.bind(this),
-                cssClass: this.parent.cssClass, header: this.parent.localeObj.getConstant('conditionalFormatting'), target: document.body
+                cssClass: this.parent.cssClass, header: this.parent.localeObj.getConstant('conditionalFormatting'),
+                target: PivotUtil.getAppendToElement(this.parent.element, this.parent.isAngular)
             });
         } else {
             dialog = new Dialog({

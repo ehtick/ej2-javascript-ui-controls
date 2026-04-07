@@ -1322,18 +1322,23 @@ export class ChatUI extends InterActiveChatBase implements INotifyPropertyChange
         return messageOptionsToolbar;
     }
 
-    private handleMessageToolbarClick(args: ClickEventArgs, messageToolbar: Toolbar, messageItem: HTMLElement): void {
-        const messageID: string = messageItem.id;
-        const message: MessageModel = this.messages.find((msg: MessageModel) => msg.id === messageID);
+    private triggerMsgClickedEvent(item: ItemModel, event: Event, message: MessageModel): MessageToolbarItemClickedEventArgs {
         const eventArgs: MessageToolbarItemClickedEventArgs = {
-            item: args.item,
-            event: args.originalEvent,
+            item: item,
+            event: event,
             cancel: false,
             message: message
         };
         if (this.messageToolbarSettings.itemClicked) {
             this.messageToolbarSettings.itemClicked.call(this, eventArgs);
         }
+        return eventArgs;
+    }
+
+    private handleMessageToolbarClick(args: ClickEventArgs, messageToolbar: Toolbar, messageItem: HTMLElement): void {
+        const messageID: string = messageItem.id;
+        const message: MessageModel = this.messages.find((msg: MessageModel) => msg.id === messageID);
+        const eventArgs: MessageToolbarItemClickedEventArgs = this.triggerMsgClickedEvent(args.item, args.originalEvent, message);
         if (!eventArgs.cancel) {
             switch (args.item.prefixIcon){
             case 'e-icons e-chat-copy':
@@ -1590,10 +1595,27 @@ export class ChatUI extends InterActiveChatBase implements INotifyPropertyChange
             iconCss: 'e-icons e-more-vertical-1',
             select: (args: MenuEventArgs) => {
                 const messageId: string = this.pinnedMessageWrapper.querySelector('.e-pinned-message-text').getAttribute('data-index');
-                if (args.item.text === this.l10n.getConstant('viewChat')) {
-                    this.scrollToMessage(messageId);
-                } else if (args.item.text === this.l10n.getConstant('unpin')) {
-                    this.unpinMessage(messageId);
+                const message: MessageModel = this.messages.find((msg: MessageModel) => msg.id === messageId);
+
+                // Normalize MenuItem from DropDownButton to ItemModel for consistent event args type
+                // This ensures event args always contain ItemModel (matching toolbar item type)
+                // and maintains type consistency with handleMessageToolbarClick pattern
+                const toolbarItemModel: ItemModel = {
+                    text: args.item.text || '',
+                    prefixIcon: args.item.iconCss || '',  // Map dropdown iconCss to toolbar prefixIcon
+                    id: args.item.id || ''
+                };
+
+                // Fire itemClicked event with normalized ItemModel for consistent event-driven tracking
+                const eventArgs: MessageToolbarItemClickedEventArgs = this.triggerMsgClickedEvent(toolbarItemModel, args.event, message);
+
+                // Only execute action if event was not cancelled
+                if (!eventArgs.cancel) {
+                    if (args.item.text === this.l10n.getConstant('viewChat')) {
+                        this.scrollToMessage(messageId);
+                    } else if (args.item.text === this.l10n.getConstant('unpin')) {
+                        this.unpinMessage(messageId);
+                    }
                 }
             }
         });

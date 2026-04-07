@@ -737,7 +737,7 @@ export abstract class PdfList {
      * document.destroy();
      * ````
      */
-    draw(graphics: PdfGraphics, location: Point): void
+    public draw(graphics: PdfGraphics, location: Point): void
     /**
      * Draws the content on the specified `PdfPage` at the given coordinates.
      *
@@ -761,7 +761,7 @@ export abstract class PdfList {
      * document.destroy();
      * ````
      */
-    draw(page: PdfPage, location: Point): PdfLayoutResult
+    public draw(page: PdfPage, location: Point): PdfLayoutResult
     /**
      * Draws the content on the specified `PdfPage` at the given coordinates with the specified layout format.
      *
@@ -791,7 +791,7 @@ export abstract class PdfList {
      * document.destroy();
      * ````
      */
-    draw(page: PdfPage, location: Point, format: PdfLayoutFormat): PdfLayoutResult
+    public draw(page: PdfPage, location: Point, format: PdfLayoutFormat): PdfLayoutResult
     /**
      * Draws the content on the specified `PdfPage` within the specified bounds.
      *
@@ -815,7 +815,7 @@ export abstract class PdfList {
      * document.destroy();
      * ````
      */
-    draw(page: PdfPage, bounds: Rectangle): PdfLayoutResult
+    public draw(page: PdfPage, bounds: Rectangle): PdfLayoutResult
     /**
      * Draws the content on the specified `PdfPage` at the given bounds with the specified layout format.
      *
@@ -845,10 +845,10 @@ export abstract class PdfList {
      * document.destroy();
      * ````
      */
-    draw(page: PdfPage, bounds: Rectangle, format: PdfLayoutFormat): PdfLayoutResult
-    draw(arg1: PdfPage | PdfGraphics,
-         arg2: Point | Rectangle,
-         arg3 ?: PdfLayoutFormat): PdfLayoutResult | void {
+    public draw(page: PdfPage, bounds: Rectangle, format: PdfLayoutFormat): PdfLayoutResult
+    public draw(arg1: PdfPage | PdfGraphics,
+                arg2: Point | Rectangle,
+                arg3 ?: PdfLayoutFormat): PdfLayoutResult | void {
         if (arg1 instanceof PdfPage) {
             if (arg1._isNew) {
                 if ('width' in arg2 && typeof arg2.width !== 'undefined' && 'height' in arg2 && typeof arg2.height !== 'undefined') {
@@ -956,7 +956,7 @@ export class PdfOrderedList extends PdfList {
      * document.destroy();
      * ```
      */
-    constructor()
+    public constructor()
     /**
      * Initialize a new `PdfOrderedlist` instance with item collection.
      *
@@ -981,7 +981,7 @@ export class PdfOrderedList extends PdfList {
      * document.destroy();
      * ```
      */
-    constructor(items: PdfListItemCollection)
+    public constructor(items: PdfListItemCollection)
     /**
      * Creates a new `PdfOrderedList` instance with the specified array of string
      * items and optional settings for font, format, pen, brush, intent, style, and
@@ -1031,7 +1031,7 @@ export class PdfOrderedList extends PdfList {
      * document.destroy();
      * ```
      */
-    constructor(items: PdfListItemCollection,
+    public constructor(items: PdfListItemCollection,
         settings: {font?: PdfFont,
             format?: PdfStringFormat,
             pen?: PdfPen,
@@ -1042,17 +1042,17 @@ export class PdfOrderedList extends PdfList {
             delimiter?: string,
             suffix?: string,
             alignment?: PdfListMarkerAlignment})
-    constructor(items?: PdfListItemCollection,
-                settings?: {font?: PdfFont,
-                    format?: PdfStringFormat,
-                    pen?: PdfPen,
-                    brush?: PdfBrush,
-                    indent?: number,
-                    textIndent?: number,
-                    style?: PdfNumberStyle,
-                    delimiter?: string,
-                    suffix?: string,
-                    alignment?: PdfListMarkerAlignment}) {
+    public constructor(items?: PdfListItemCollection,
+                       settings?: {font?: PdfFont,
+                           format?: PdfStringFormat,
+                           pen?: PdfPen,
+                           brush?: PdfBrush,
+                           indent?: number,
+                           textIndent?: number,
+                           style?: PdfNumberStyle,
+                           delimiter?: string,
+                           suffix?: string,
+                           alignment?: PdfListMarkerAlignment}) {
         super();
         if (items) {
             this._itemCollection = items;
@@ -1244,8 +1244,12 @@ export class PdfOrderedList extends PdfList {
  * ````
  */
 export class PdfUnorderedList extends PdfList {
+    /** Initialize a style for unordered list.
+     *
+     * @private
+     */
     _style: PdfUnorderedListStyle;
-    constructor()
+    public constructor()
     /** Initialize a new `PdfUnorderedList` instance with item collection.
      *
      * @param {PdfListItemCollection} items that are added in the item collection.
@@ -1268,7 +1272,7 @@ export class PdfUnorderedList extends PdfList {
      * document.destroy();
      * ```
      */
-    constructor(items: PdfListItemCollection)
+    public constructor(items: PdfListItemCollection)
     /**
      * Initialize a new `PdfUnorderedList` instance with the specified array of string items and optional settings
      * for font, format, pen, brush, intent, style, and delimiter.
@@ -1315,7 +1319,7 @@ export class PdfUnorderedList extends PdfList {
      * document.destroy();
      * ```
      */
-    constructor(items?: PdfListItemCollection,
+    public constructor(items?: PdfListItemCollection,
         settings?: {font?: PdfFont,
             format?: PdfStringFormat,
             pen?: PdfPen,
@@ -1326,17 +1330,17 @@ export class PdfUnorderedList extends PdfList {
             delimiter?: string,
             suffix?: string,
             alignment?: PdfListMarkerAlignment})
-    constructor(items?: PdfListItemCollection,
-                settings?: {font?: PdfFont,
-                    format?: PdfStringFormat,
-                    pen?: PdfPen,
-                    brush?: PdfBrush,
-                    indent?: number,
-                    textIndent?: number,
-                    style?: PdfUnorderedListStyle,
-                    delimiter?: string,
-                    suffix?: string,
-                    alignment?: PdfListMarkerAlignment}) {
+    public constructor(items?: PdfListItemCollection,
+                       settings?: {font?: PdfFont,
+                           format?: PdfStringFormat,
+                           pen?: PdfPen,
+                           brush?: PdfBrush,
+                           indent?: number,
+                           textIndent?: number,
+                           style?: PdfUnorderedListStyle,
+                           delimiter?: string,
+                           suffix?: string,
+                           alignment?: PdfListMarkerAlignment}) {
         super();
         if (items) {
             this._itemCollection = items;

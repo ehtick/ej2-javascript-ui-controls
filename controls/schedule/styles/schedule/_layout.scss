@@ -540,6 +540,10 @@
       overflow: hidden;
       position: absolute;
 
+      &.e-hidden-event {
+        display: none;
+      }
+
       .e-subject {
         overflow: hidden;
         overflow-wrap: break-word;
@@ -554,6 +558,10 @@
       float: right;
       padding: $schedule-spacing-0 $schedule-spacing-5;
       z-index: 1;
+
+      &.e-hidden-event {
+        display: none;
+      }
     }
 
     #{if(&, '&', '*')}.e-rtl .e-block-indicator {
@@ -569,6 +577,10 @@
     .e-appointment {
       opacity: 1;
       transition: opacity 100ms linear;
+
+      &.e-hidden-event {
+        display: none;
+      }
 
       .e-subject.e-disable {
         display: none;
@@ -742,6 +754,10 @@
           height: $schedule-timescale-appointment-height;
           margin-bottom: $schedule-spacing-2;
 
+          &.e-hidden-event {
+            display: none;
+          }
+
           .e-appointment-details {
             display: flex;
             flex: auto;
@@ -809,6 +825,10 @@
 
         .e-more-indicator {
           @include schedule-more-appointment-styles;
+
+          &.e-hidden-event {
+            display: none;
+          }
 
           &:focus {
             text-decoration: underline;
@@ -895,6 +915,10 @@
           position: absolute;
           text-overflow: ellipsis;
           width: 100%;
+
+          &.e-hidden-event {
+            display: none;
+          }
 
           &:focus {
             text-decoration: underline;
@@ -1060,6 +1084,10 @@
       .e-all-day-appointment-wrapper .e-appointment {
         @include schedule-appointments-styles;
         height: $schedule-month-appointment-height;
+
+        &.e-hidden-event {
+          display: none;
+        }
 
         .e-appointment-details {
           display: flex;
@@ -1442,6 +1470,10 @@
           display: none;
         }
 
+        &.e-hidden-event {
+          display: none;
+        }
+
         .e-appointment-details {
           display: flex;
           flex: auto;
@@ -1494,6 +1526,10 @@
 
       .e-more-indicator {
         @include schedule-more-appointment-styles;
+        
+        &.e-hidden-event {
+          display: none;
+        }
 
         &:focus {
           text-decoration: underline;
@@ -1822,6 +1858,10 @@
             display: none;
           }
 
+          &.e-hidden-event {
+            display: none;
+          }
+
           .e-appointment-details {
             display: flex;
             flex: auto;
@@ -1875,6 +1915,10 @@
 
         .e-more-indicator {
           @include schedule-more-appointment-styles;
+
+          &.e-hidden-event {
+            display: none;
+          }
 
           &.e-hidden {
             display: none;
@@ -2052,6 +2096,10 @@
         cursor: default;
         height: $schedule-timeline-appointment-height;
 
+        &.e-hidden-event {
+          display: none;
+        }
+
         .e-appointment-details {
           display: flex;
           flex: auto;
@@ -2121,6 +2169,10 @@
 
       .e-more-indicator {
         @include schedule-more-appointment-styles;
+        
+        &.e-hidden-event {
+          display: none;
+        }
 
         &:focus {
           text-decoration: underline;
@@ -2983,7 +3035,8 @@
     }
 
     .e-repeat-container,
-    .e-input-group .e-input-group-icon.e-icon-disable {
+    .e-input-group .e-input-group-icon.e-icon-disable,
+    .e-b-form-container .e-datetime-wrapper.disable-time .e-input-group-icon.e-time-icon {
       display: none;
     }
 

@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## 33.1.47 (2026-04-07)
+
+### PDF
+
+#### Bug Fixes
+
+- Fixed a return type mismatch error that caused a compile-time interface violation.
+- Fixed an issue where PDF corruption occurred during the redaction process for a specific document.
+- Fixed an issue where combo box field color is not visible in chrome and edge browsers.
+- Fixed an issue where form field names were not retrieved correctly in a specific PDF document.
+- Fixed an issue where the checkbox form field state was not returned correctly.
+- Fixed an issue where signature is not preserved correctly after flattening the PDF document.
+
 ## 33.1.46 (2026-03-31)
 
 ### PDF
@@ -10,6 +23,7 @@
 
 - Fixed an issue where free text annotation content was not preserved when using backslashes.
 - Fixed an issue where the destination page index of a document link annotation was not returned correctly.
+- Fixed an issue where grouped checkbox fields act as radio buttons when the export value was empty
 
 ## 33.1.45 (2026-03-24)
 

@@ -102,7 +102,7 @@ export class PdfAnnotationCollection {
      * document.destroy();
      * ```
      */
-    at(index: number): PdfAnnotation {
+    public at(index: number): PdfAnnotation {
         if (index < 0 || index >= this._annotations.length) {
             throw Error('Index out of range.');
         }
@@ -140,7 +140,7 @@ export class PdfAnnotationCollection {
      * document.destroy();
      * ```
      */
-    add(annotation: PdfAnnotation): number {
+    public add(annotation: PdfAnnotation): number {
         if (typeof annotation === 'undefined' || annotation === null) {
             throw Error('annotation cannot be null or undefined');
         }
@@ -210,7 +210,7 @@ export class PdfAnnotationCollection {
      * document.destroy();
      * ```
      */
-    remove(annotation: PdfAnnotation): void {
+    public remove(annotation: PdfAnnotation): void {
         if (annotation && annotation._ref) {
             const index: number = this._annotations.lastIndexOf(annotation._ref);
             if (index > -1) {
@@ -237,7 +237,7 @@ export class PdfAnnotationCollection {
      * document.destroy();
      * ```
      */
-    removeAt(index: number): void {
+    public removeAt(index: number): void {
         if (index < 0 || index >= this._annotations.length) {
             throw Error('Index out of range.');
         }
@@ -831,7 +831,7 @@ export class PdfPopupAnnotationCollection {
      * document.destroy();
      * ```
      */
-    at(index: number): PdfPopupAnnotation {
+    public at(index: number): PdfPopupAnnotation {
         if (index < 0 || index >= this._collection.length) {
             throw Error('Index out of range.');
         }
@@ -859,7 +859,7 @@ export class PdfPopupAnnotationCollection {
      * document.destroy();
      * ```
      */
-    add(annotation: PdfPopupAnnotation): void {
+    public add(annotation: PdfPopupAnnotation): void {
         if (this._annotation._dictionary.get('F') === 30) {
             throw new Error('Could not add comments/reviews to the review');
         }
@@ -903,7 +903,7 @@ export class PdfPopupAnnotationCollection {
      * document.destroy();
      * ```
      */
-    remove(annotation: PdfPopupAnnotation): void {
+    public remove(annotation: PdfPopupAnnotation): void {
         const index: number = this._collection.indexOf(annotation);
         if (index > -1) {
             this.removeAt(index);
@@ -930,7 +930,7 @@ export class PdfPopupAnnotationCollection {
      * document.destroy();
      * ```
      */
-    removeAt(index: number): void {
+    public removeAt(index: number): void {
         if (index > -1 && index < this._collection.length) {
             const annotation: PdfPopupAnnotation = this._collection[<number>index];
             if (this._isReview && index < this._collection.length - 1) {

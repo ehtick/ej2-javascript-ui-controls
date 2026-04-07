@@ -75,7 +75,7 @@ export class PdfLayoutFormat {
      * document.destroy();
      * ````
      */
-    constructor(format?: PdfLayoutFormat) {
+    public constructor(format?: PdfLayoutFormat) {
         if (format) {
             this.break = format.break;
             this.layout = format.layout;
@@ -341,7 +341,7 @@ export class PdfLayoutResult {
      * document.destroy();
      * ```
      */
-    constructor(page: PdfPage, bounds: Rectangle) {
+    public constructor(page: PdfPage, bounds: Rectangle) {
         this._page = page;
         this._bounds = bounds;
     }

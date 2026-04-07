@@ -92,7 +92,7 @@ export class _XmlDocument extends _ExportHelper {
      */
     _writeFormFieldData(writer: _XmlWriter, isAcrobat: boolean = false): void {
         if (isAcrobat) {
-            this._table.forEach((value: any, key: any) => { // eslint-disable-line
+            this._table.forEach((value: any, key: any) => {
                 if (key.includes(' ')) {
                     const text: string = key.replace(/ /g, '');
                     writer._writeStartElement(text.toString());
@@ -104,7 +104,7 @@ export class _XmlDocument extends _ExportHelper {
                 writer._writeEndElement();
             });
         } else {
-            this._table.forEach((value: any, key: any) => { // eslint-disable-line
+            this._table.forEach((value: any, key: any) => {
                 if (key.includes(' ')) {
                     key = key.replace(/ /g, '_x0020_');
                 }
@@ -153,7 +153,7 @@ export class _XmlDocument extends _ExportHelper {
                     const element: Element = childNode as Element;
                     let text: string = '';
                     if (element.attributes !== null && typeof element.attributes !== 'undefined' && element.attributes.length > 0) {
-                        const attribute: any = element.attributes.item(0); // eslint-disable-line
+                        const attribute: any = element.attributes.item(0);
                         if (attribute !== null && typeof attribute !== 'undefined' && attribute.name === 'xfdf:original') {
                             text = attribute.value;
                         }
@@ -179,7 +179,7 @@ export class _XmlDocument extends _ExportHelper {
         const form: PdfForm = this._document.form;
         const count: number = form.count;
         if (count) {
-            this._table.forEach((value: any, key: any) => { // eslint-disable-line
+            this._table.forEach((value: any, key: any) => {
                 let textValue: string;
                 if (this._table.size > 0 && this._table.has(key)) {
                     textValue = this._table.get(key);

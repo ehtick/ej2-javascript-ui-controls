@@ -834,7 +834,7 @@ export class PivotButton implements IAction {
         });
         contentElement.innerText = this.parent.enableHtmlSanitizer ? SanitizeHtmlHelper.sanitize(element.textContent) : element.textContent;
         cloneElement.appendChild(contentElement);
-        document.body.appendChild(cloneElement);
+        PivotUtil.getAppendToElement(this.parentElement, this.parent.isAngular).appendChild(cloneElement);
         return cloneElement;
     }
     private onDragStart(e: DragEventArgs): void {

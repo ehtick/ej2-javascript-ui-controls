@@ -331,7 +331,7 @@ export class PdfGraphics {
      * @param {PdfPage | PdfTemplate} source Source object of the graphics.
      * @private
      */
-    constructor(size: Size, content: _PdfContentStream, xref: _PdfCrossReference, source: PdfPage | PdfTemplate) {
+    public constructor(size: Size, content: _PdfContentStream, xref: _PdfCrossReference, source: PdfPage | PdfTemplate) {
         this._hasResourceReference = false;
         if (source instanceof PdfPage) {
             this._source = source._pageDictionary;
@@ -396,7 +396,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    save(): PdfGraphicsState {
+    public save(): PdfGraphicsState {
         const state: PdfGraphicsState = new PdfGraphicsState(this, this._matrix);
         state._textRenderingMode = this._textRenderingMode;
         state._charSpacing = this._characterSpacing;
@@ -437,7 +437,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    restore(state?: PdfGraphicsState): void {
+    public restore(state?: PdfGraphicsState): void {
         if (this._graphicsState.length > 0) {
             if (typeof state === 'undefined') {
                 this._doRestore();
@@ -482,7 +482,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    scaleTransform(scaleX: number, scaleY: number): void {
+    public scaleTransform(scaleX: number, scaleY: number): void {
         const matrix: _PdfTransformationMatrix = new _PdfTransformationMatrix();
         matrix._scale(scaleX, scaleY);
         this._sw._modifyCtm(matrix);
@@ -517,7 +517,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    translateTransform(location: Point): void {
+    public translateTransform(location: Point): void {
         const matrix: _PdfTransformationMatrix = new _PdfTransformationMatrix();
         matrix._translate(location.x, -location.y);
         this._sw._modifyCtm(matrix);
@@ -552,7 +552,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    rotateTransform(angle: number): void {
+    public rotateTransform(angle: number): void {
         const matrix: _PdfTransformationMatrix = new _PdfTransformationMatrix();
         matrix._rotate(-angle);
         this._sw._modifyCtm(matrix);
@@ -584,7 +584,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    setClip(bounds: Rectangle, mode?: PdfFillMode): void {
+    public setClip(bounds: Rectangle, mode?: PdfFillMode): void {
         if (typeof mode === 'undefined') {
             mode = PdfFillMode.winding;
         }
@@ -616,7 +616,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    setTransparency(stroke: number): void
+    public setTransparency(stroke: number): void
     /**
      * Represents a transparency setting for the graphics.
      *
@@ -644,7 +644,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    setTransparency(stroke: number, fill: number, mode: PdfBlendMode): void
+    public setTransparency(stroke: number, fill: number, mode: PdfBlendMode): void
     /**
      * Sets the transparency for the graphics.
      *
@@ -672,7 +672,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    setTransparency(stroke: number, fill?: number, mode?: PdfBlendMode): void {
+    public setTransparency(stroke: number, fill?: number, mode?: PdfBlendMode): void {
         if (typeof fill === 'undefined') {
             fill = stroke;
         }
@@ -758,7 +758,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawLine(pen: PdfPen, start: Point, end: Point): void {
+    public drawLine(pen: PdfPen, start: Point, end: Point): void {
         this._beginMarkContent();
         this._stateControl(pen);
         this._sw._beginPath(start.x, start.y);
@@ -790,7 +790,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawRectangle(bounds: Rectangle, pen: PdfPen): void
+    public drawRectangle(bounds: Rectangle, pen: PdfPen): void
     /**
      * Draw a rectangle on the page graphics.
      *
@@ -815,7 +815,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawRectangle(bounds: Rectangle, brush: PdfBrush): void
+    public drawRectangle(bounds: Rectangle, brush: PdfBrush): void
     /**
      * Draw a rectangle on the page graphics.
      *
@@ -843,8 +843,8 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawRectangle(bounds: Rectangle, pen: PdfPen, brush: PdfBrush): void
-    drawRectangle(bounds?: Rectangle, first?: PdfPen| PdfBrush, second?: PdfBrush): void {
+    public drawRectangle(bounds: Rectangle, pen: PdfPen, brush: PdfBrush): void
+    public drawRectangle(bounds?: Rectangle, first?: PdfPen| PdfBrush, second?: PdfBrush): void {
         this._beginMarkContent();
         const result: {pen: PdfPen, brush: PdfBrush} = this._setPenBrush(first, second);
         this._sw._appendRectangle(bounds.x, bounds.y, bounds.width, bounds.height);
@@ -878,7 +878,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawBezier(start: Point, first: Point, second: Point, end: Point, pen: PdfPen): void {
+    public drawBezier(start: Point, first: Point, second: Point, end: Point, pen: PdfPen): void {
         this._beginMarkContent();
         this._stateControl(pen, null, null);
         this._sw._beginPath(start.x, start.y);
@@ -912,7 +912,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawPie(bounds: Rectangle, startAngle: number, sweepAngle: number, pen: PdfPen): void
+    public drawPie(bounds: Rectangle, startAngle: number, sweepAngle: number, pen: PdfPen): void
     /**
      * Draws a pie slice on PDF graphics.
      *
@@ -939,7 +939,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawPie(bounds: Rectangle, startAngle: number, sweepAngle: number, brush: PdfBrush): void
+    public drawPie(bounds: Rectangle, startAngle: number, sweepAngle: number, brush: PdfBrush): void
     /**
      * Draws a pie slice on PDF graphics.
      *
@@ -969,8 +969,8 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawPie(bounds: Rectangle, startAngle: number, sweepAngle: number, pen: PdfPen, brush: PdfBrush): void
-    drawPie(bounds: Rectangle, startAngle: number, sweepAngle: number, first?: PdfPen | PdfBrush, second?: PdfBrush): void {
+    public drawPie(bounds: Rectangle, startAngle: number, sweepAngle: number, pen: PdfPen, brush: PdfBrush): void
+    public drawPie(bounds: Rectangle, startAngle: number, sweepAngle: number, first?: PdfPen | PdfBrush, second?: PdfBrush): void {
         this._beginMarkContent();
         const result: {pen: PdfPen, brush: PdfBrush} = this._setPenBrush(first, second);
         this._constructPiePath(bounds.x, bounds.y, bounds.x + bounds.width, bounds.y + bounds.height, startAngle, sweepAngle);
@@ -1004,7 +1004,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawPolygon(points: Point[], pen: PdfPen): void
+    public drawPolygon(points: Point[], pen: PdfPen): void
     /**
      * Draw polygon on the page graphics.
      *
@@ -1031,7 +1031,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawPolygon(points: Point[], brush: PdfBrush): void
+    public drawPolygon(points: Point[], brush: PdfBrush): void
     /**
      * Draw polygon on the page graphics.
      *
@@ -1061,8 +1061,8 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawPolygon(points: Point[], pen: PdfPen, brush: PdfBrush): void
-    drawPolygon(points: Point[], first?: PdfPen| PdfBrush, second?: PdfBrush): void {
+    public drawPolygon(points: Point[], pen: PdfPen, brush: PdfBrush): void
+    public drawPolygon(points: Point[], first?: PdfPen| PdfBrush, second?: PdfBrush): void {
         this._beginMarkContent();
         if (points.length > 0) {
             const result: {pen: PdfPen, brush: PdfBrush} = this._setPenBrush(first, second);
@@ -1100,7 +1100,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawEllipse(bounds: Rectangle, pen: PdfPen): void
+    public drawEllipse(bounds: Rectangle, pen: PdfPen): void
     /**
      * Draw ellipse on the page graphics.
      *
@@ -1125,7 +1125,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawEllipse(bounds: Rectangle, brush: PdfBrush): void
+    public drawEllipse(bounds: Rectangle, brush: PdfBrush): void
     /**
      * Draw ellipse on the page graphics.
      *
@@ -1153,8 +1153,8 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawEllipse(bounds: Rectangle, pen: PdfPen, brush: PdfBrush): void
-    drawEllipse(bounds: Rectangle, first?: PdfPen| PdfBrush, second?: PdfBrush): void {
+    public drawEllipse(bounds: Rectangle, pen: PdfPen, brush: PdfBrush): void
+    public drawEllipse(bounds: Rectangle, first?: PdfPen| PdfBrush, second?: PdfBrush): void {
         this._beginMarkContent();
         const result: {pen: PdfPen, brush: PdfBrush} = this._setPenBrush(first, second);
         this._constructArcPath(bounds.x, bounds.y, bounds.x + bounds.width, bounds.y + bounds.height, 0, 360);
@@ -1187,7 +1187,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawArc(bounds: Rectangle, startAngle: number, sweepAngle: number, pen: PdfPen): void {
+    public drawArc(bounds: Rectangle, startAngle: number, sweepAngle: number, pen: PdfPen): void {
         if (sweepAngle !== 0) {
             this._beginMarkContent();
             this._stateControl(pen);
@@ -1220,7 +1220,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawImage(image: PdfImage, location: Point) : void
+    public drawImage(image: PdfImage, location: Point) : void
     /**
      * Draws an image on the page graphics.
      *
@@ -1245,8 +1245,8 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawImage(image: PdfImage, bounds: Rectangle) : void
-    drawImage(arg1: PdfImage, arg2: Point | Rectangle) : void {
+    public drawImage(image: PdfImage, bounds: Rectangle) : void
+    public drawImage(arg1: PdfImage, arg2: Point | Rectangle) : void {
         this._beginMarkContent();
         if (arg2 && this._isRectangle(arg2)) {
             arg1._save();
@@ -1325,7 +1325,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawTemplate(template: PdfTemplate, bounds: Rectangle): void {
+    public drawTemplate(template: PdfTemplate, bounds: Rectangle): void {
         this._beginMarkContent();
         let hasPendingTemplate: boolean = true;
         if (typeof template !== 'undefined') {
@@ -1375,7 +1375,18 @@ export class PdfGraphics {
                     this._page._pageDictionary.has('MediaBox') && cropBox && mediaBox &&
                     cropBox[0] === mediaBox[0] && cropBox[1] === mediaBox[1] && cropBox[2] === mediaBox[2] && cropBox[3] === mediaBox[3]) ||
                     (this._page._pageDictionary.has('MediaBox') && mediaBox && mediaBox[3] === 0);
-                matrix._translate(bounds.x, -(bounds.y + ((this._page._origin[0] >= 0 || needTransform) ? bounds.height : 0)));
+                const yAxis: number = (bounds.y + ((this._page._origin[0] >= 0 || needTransform) ? bounds.height : 0));
+                if (template && template._isSignature &&
+                    template._content && template._content.dictionary &&
+                    template._content.dictionary.has('BBox')) {
+                    const bbox: number[] = template._content.dictionary.get('BBox');
+                    const hasValidBBoxSize: boolean = bbox[2] !== 0 && bbox[3] !== 0;
+                    const xTranslate: number = (bbox[0] > 0 && hasValidBBoxSize) ? 0 : bounds.x;
+                    const yTranslate: number = (bbox[1] > 0 && hasValidBBoxSize) ? this._page.size.height : yAxis;
+                    matrix._translate(xTranslate, -yTranslate);
+                } else {
+                    matrix._translate(bounds.x, -yAxis);
+                }
             } else {
                 matrix._translate(bounds.x, -(bounds.y + bounds.height));
             }
@@ -1516,7 +1527,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawPath(path: PdfPath, pen: PdfPen): void
+    public drawPath(path: PdfPath, pen: PdfPen): void
     /**
      * Draws a graphics path defined by a brush and path.
      *
@@ -1545,7 +1556,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawPath(path: PdfPath, brush: PdfBrush): void
+    public drawPath(path: PdfPath, brush: PdfBrush): void
     /**
      * Draws a graphics path defined by a pen, brush, and path.
      *
@@ -1577,8 +1588,8 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawPath(path: PdfPath, pen: PdfPen, brush: PdfBrush): void
-    drawPath(path: PdfPath, first?: PdfPen | PdfBrush, second?: PdfBrush): void {
+    public drawPath(path: PdfPath, pen: PdfPen, brush: PdfBrush): void
+    public drawPath(path: PdfPath, first?: PdfPen | PdfBrush, second?: PdfBrush): void {
         this._beginMarkContent();
         const result: {pen: PdfPen, brush: PdfBrush} = this._setPenBrush(first, second);
         if (result.pen || result.brush) {
@@ -1615,7 +1626,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawRoundedRectangle(bounds: Rectangle, radius: number, pen: PdfPen, brush: PdfBrush): void {
+    public drawRoundedRectangle(bounds: Rectangle, radius: number, pen: PdfPen, brush: PdfBrush): void {
         if (pen === null || typeof pen === 'undefined') {
             throw new Error('Pen cannot be null or undefined');
         }
@@ -1668,7 +1679,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawString(value: string, font: PdfFont, bounds: Rectangle, brush: PdfBrush): void;
+    public drawString(value: string, font: PdfFont, bounds: Rectangle, brush: PdfBrush): void;
     /**
      * Draw text on the page graphics.
      *
@@ -1699,7 +1710,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawString(value: string, font: PdfFont, bounds: Rectangle, brush: PdfBrush, format: PdfStringFormat): void
+    public drawString(value: string, font: PdfFont, bounds: Rectangle, brush: PdfBrush, format: PdfStringFormat): void
     /**
      * Draw text on the page graphics.
      *
@@ -1728,7 +1739,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawString(value: string, font: PdfFont, bounds: Rectangle, pen: PdfPen): void
+    public drawString(value: string, font: PdfFont, bounds: Rectangle, pen: PdfPen): void
     /**
      * Draw text on the page graphics.
      *
@@ -1761,7 +1772,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawString(value: string, font: PdfFont, bounds: Rectangle, pen: PdfPen, format: PdfStringFormat): void
+    public drawString(value: string, font: PdfFont, bounds: Rectangle, pen: PdfPen, format: PdfStringFormat): void
     /**
      * Draw text on the page graphics.
      *
@@ -1791,7 +1802,7 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawString(value: string, font: PdfFont, bounds: Rectangle, pen: PdfPen, brush: PdfBrush): void
+    public drawString(value: string, font: PdfFont, bounds: Rectangle, pen: PdfPen, brush: PdfBrush): void
     /**
      * Draw text on the page graphics.
      *
@@ -1825,13 +1836,13 @@ export class PdfGraphics {
      * document.destroy();
      * ```
      */
-    drawString(value: string, font: PdfFont, bounds: Rectangle, pen: PdfPen, brush: PdfBrush, format: PdfStringFormat): void
-    drawString(value: string,
-               font: PdfFont,
-               bounds: Rectangle,
-               arg1?: PdfPen | PdfBrush,
-               arg2?: PdfBrush | PdfStringFormat,
-               arg3?: PdfStringFormat): void {
+    public drawString(value: string, font: PdfFont, bounds: Rectangle, pen: PdfPen, brush: PdfBrush, format: PdfStringFormat): void
+    public drawString(value: string,
+                      font: PdfFont,
+                      bounds: Rectangle,
+                      arg1?: PdfPen | PdfBrush,
+                      arg2?: PdfBrush | PdfStringFormat,
+                      arg3?: PdfStringFormat): void {
         let pen: PdfPen;
         let brush: PdfBrush;
         let format: PdfStringFormat;
@@ -3753,7 +3764,7 @@ export class PdfBrush {
      * document.destroy();
      * ```
      */
-    constructor()
+    public constructor()
     /**
      * Initializes a new instance of the `PdfBrush` class.
      *
@@ -3776,8 +3787,8 @@ export class PdfBrush {
      * document.destroy();
      * ```
      */
-    constructor(color: PdfColor)
-    constructor(color?: PdfColor) {
+    public constructor(color: PdfColor)
+    public constructor(color?: PdfColor) {
         this._color = typeof color !== 'undefined' ? color : {r: 0, g: 0, b: 0};
     }
 }
@@ -3880,7 +3891,7 @@ export class PdfPen {
      * document.destroy();
      * ```
      */
-    constructor(color: PdfColor, width: number)
+    public constructor(color: PdfColor, width: number)
     /**
      * Initializes a new instance of the `PdfPen` class with customization properties.
      *
@@ -3920,11 +3931,11 @@ export class PdfPen {
      * document.destroy();
      * ```
      */
-    constructor(color: PdfColor, width: number, properties: {
+    public constructor(color: PdfColor, width: number, properties: {
         dashOffset?: number, dashPattern?: number[], dashStyle?: PdfDashStyle,
         miterLimit?: number, lineCap?: PdfLineCap, lineJoin?: PdfLineJoin
     })
-    constructor(color: PdfColor, width: number, properties?: {
+    public constructor(color: PdfColor, width: number, properties?: {
         dashOffset?: number, dashPattern?: number[], dashStyle?: PdfDashStyle,
         miterLimit?: number, lineCap?: PdfLineCap, lineJoin?: PdfLineJoin
     }) {

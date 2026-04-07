@@ -243,7 +243,7 @@ export class PdfLayerCollection {
      * document.destroy();
      * ```
      */
-    at(index: number): PdfLayer {
+    public at(index: number): PdfLayer {
         return this._list[<number>index];
     }
     /**
@@ -266,7 +266,7 @@ export class PdfLayerCollection {
      * document.destroy();
      * ```
      */
-    add(name: string): PdfLayer
+    public add(name: string): PdfLayer
     /**
      * Create a new `PdfLayer` with name and Boolean flag to set the visibility of layer
      * add it to the end of the collection.
@@ -288,8 +288,8 @@ export class PdfLayerCollection {
      * document.destroy();
      * ```
      */
-    add(name: string, visible: boolean): PdfLayer
-    add(name: string, visible?: boolean): PdfLayer {
+    public add(name: string, visible: boolean): PdfLayer
+    public add(name: string, visible?: boolean): PdfLayer {
         const newLayer: PdfLayer = new PdfLayer();
         newLayer._document = this._document;
         newLayer._crossReference = this._document._crossReference;
@@ -324,7 +324,7 @@ export class PdfLayerCollection {
      * document.destroy();
      * ```
      */
-    contains(layer: PdfLayer): boolean
+    public contains(layer: PdfLayer): boolean
     /**
      * Boolean indicating whether the specified layer name exists or not.
      *
@@ -346,8 +346,8 @@ export class PdfLayerCollection {
      * document.destroy();
      * ```
      */
-    contains(name: string): boolean
-    contains(arg: PdfLayer | string): boolean {
+    public contains(name: string): boolean
+    public contains(arg: PdfLayer | string): boolean {
         if (!arg) {
             throw new Error('Layer cannot be null or undefined');
         }
@@ -378,7 +378,7 @@ export class PdfLayerCollection {
      * document.destroy();
      * ```
      */
-    clear(): void {
+    public clear(): void {
         for (let i: number = this._list.length - 1; i > -1; i--) {
             const layer: PdfLayer = this._list[<number>i];
             this._removeLayer(layer, true);
@@ -406,7 +406,7 @@ export class PdfLayerCollection {
      * document.destroy();
      * ```
      */
-    indexOf(layer: PdfLayer): number {
+    public indexOf(layer: PdfLayer): number {
         if (!layer) {
             throw new Error('Layer cannot be null or undefined');
         }
@@ -436,7 +436,7 @@ export class PdfLayerCollection {
      * document.destroy();
      * ```
      */
-    move(index: number, layer: PdfLayer): void {
+    public move(index: number, layer: PdfLayer): void {
         if (index < 0 || index >= this._list.length) {
             throw new Error('Index cannot be less than 0 or greater than array length');
         }
@@ -475,7 +475,7 @@ export class PdfLayerCollection {
      * document.destroy();
      * ```
      */
-    removeAt(index: number): void
+    public removeAt(index: number): void
     /**
      * Remove the `PdfLayer` at the specified index from the collection.
      *
@@ -496,8 +496,8 @@ export class PdfLayerCollection {
      * document.destroy();
      * ```
      */
-    removeAt(index: number, removeGraphicalContent: boolean): void
-    removeAt(arg1: number, arg2?: boolean): void {
+    public removeAt(index: number, removeGraphicalContent: boolean): void
+    public removeAt(arg1: number, arg2?: boolean): void {
         if (arg1 < 0 || arg1 >= this._list.length) {
             throw new Error('Index cannot be less than 0 or greater than array length');
         }
@@ -537,7 +537,7 @@ export class PdfLayerCollection {
      * document.destroy();
      * ```
      */
-    remove(layer: PdfLayer): void
+    public remove(layer: PdfLayer): void
     /**
      * Remove the `PdfLayer` with layer instance from the collection.
      *
@@ -560,7 +560,7 @@ export class PdfLayerCollection {
      * document.destroy();
      * ```
      */
-    remove(layer: PdfLayer, removeGraphicalContent: boolean): void
+    public remove(layer: PdfLayer, removeGraphicalContent: boolean): void
     /**
      * Remove the `PdfLayer` at the layer name from the collection.
      *
@@ -582,7 +582,7 @@ export class PdfLayerCollection {
      * document.destroy();
      * ```
      */
-    remove(name: string): void
+    public remove(name: string): void
     /**
      * Remove the `PdfLayer` at the layer name from the collection.
      *
@@ -605,8 +605,8 @@ export class PdfLayerCollection {
      * document.destroy();
      * ```
      */
-    remove(name: string, removeGraphicalContent: boolean): void
-    remove(arg1: PdfLayer | string, arg2?: boolean): void {
+    public remove(name: string, removeGraphicalContent: boolean): void
+    public remove(arg1: PdfLayer | string, arg2?: boolean): void {
         if (arg1 instanceof PdfLayer) {
             const layer: PdfLayer = arg1;
             const index: number = this._list.indexOf(layer);

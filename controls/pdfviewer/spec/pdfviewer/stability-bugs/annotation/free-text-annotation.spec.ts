@@ -65,6 +65,4 @@ describe('PDF_Viewer_FreeText_Opacity_Zero_Placement', () => {
     expect(last).toBeDefined();
     expect(last.opacity).toBe(0);
   });
-
-
 });

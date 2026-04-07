@@ -207,7 +207,7 @@ export class PdfSignature {
      *
      * @private
      */
-    constructor() {
+    public constructor() {
         this._digestAlgorithm = DigestAlgorithm.sha256;
         this._cryptographicStandard = CryptographicStandard.cms;
         this._documentPermissions = PdfCertificationFlags.forbidChanges;
@@ -253,7 +253,7 @@ export class PdfSignature {
      * document.destroy();
      * ```
      */
-    static create(callBack: ExternalSignatureCallback, options: PdfSignatureOptions): PdfSignature
+    public static create(callBack: ExternalSignatureCallback, options: PdfSignatureOptions): PdfSignature
     /**
      * Creates a new PDF signature using a callback function for external signing.
      *
@@ -296,7 +296,7 @@ export class PdfSignature {
      * document.destroy();
      * ```
      */
-    static create(callBack: ExternalSignatureCallback,
+    public static create(callBack: ExternalSignatureCallback,
         publicCertificates: Uint8Array[],
         options: PdfSignatureOptions): PdfSignature
     /**
@@ -329,7 +329,7 @@ export class PdfSignature {
      * document.destroy();
      * ```
      */
-    static create(pfxData: Uint8Array | string, password: string, options: PdfSignatureOptions): PdfSignature;
+    public static create(pfxData: Uint8Array | string, password: string, options: PdfSignatureOptions): PdfSignature;
     /**
      * Creates a new PDF signature with timestamp using a PFX certificate and timestamp callback.
      *
@@ -366,7 +366,7 @@ export class PdfSignature {
      * document.destroy();
      * ```
      */
-    static create(pfxData: Uint8Array | string, password: string, options: PdfSignatureOptions,
+    public static create(pfxData: Uint8Array | string, password: string, options: PdfSignatureOptions,
         timestamp: TimestampCallback): PdfSignature;
     /**
      * Creates a new PDF timestamp signature using the provided signature and timestamp callback.
@@ -406,10 +406,10 @@ export class PdfSignature {
      * document.destroy();
      * ```
      */
-    static create(options: PdfSignatureOptions, timestampCallback: TimestampCallback): PdfSignature;
-    static create(arg1: Uint8Array | string | ExternalSignatureCallback | PdfSignatureOptions,
-                  arg2: string | Uint8Array[] | PdfSignatureOptions | TimestampCallback,
-                  arg3?: PdfSignatureOptions, arg4?: TimestampCallback): PdfSignature {
+    public static create(options: PdfSignatureOptions, timestampCallback: TimestampCallback): PdfSignature;
+    public static create(arg1: Uint8Array | string | ExternalSignatureCallback | PdfSignatureOptions,
+                         arg2: string | Uint8Array[] | PdfSignatureOptions | TimestampCallback,
+                         arg3?: PdfSignatureOptions, arg4?: TimestampCallback): PdfSignature {
         const signature: PdfSignature = new PdfSignature();
         if (arg1 instanceof Uint8Array || typeof arg1 === 'string') {
             const data: Uint8Array = arg1 instanceof Uint8Array ? arg1 : (_decode(arg1 as string) as Uint8Array);
@@ -509,7 +509,7 @@ export class PdfSignature {
      * document.destroy();
      * ```
      */
-    getSignedDate(): Date {
+    public getSignedDate(): Date {
         return this._signedDate;
     }
     /**
@@ -540,7 +540,7 @@ export class PdfSignature {
      * document.destroy();
      * ```
      */
-    getCertificateInformation() : PdfCertificateInformation {
+    public getCertificateInformation() : PdfCertificateInformation {
         return this._certificateInfo;
     }
     /**
@@ -567,7 +567,7 @@ export class PdfSignature {
      * document.destroy();
      * ```
      */
-    getSignatureOptions(): PdfSignatureOptions {
+    public getSignatureOptions(): PdfSignatureOptions {
         const options: PdfSignatureOptions = {
             cryptographicStandard: this._cryptographicStandard,
             digestAlgorithm: this._digestAlgorithm,
@@ -639,7 +639,7 @@ export class PdfSignature {
      * document.destroy();
      * ```
      */
-    static replaceEmptySignature(
+    public static replaceEmptySignature(
         inputPdfData: Uint8Array,
         signatureName: string,
         signedData: Uint8Array,
@@ -707,7 +707,7 @@ export class PdfSignature {
      *                                    publicCertificates);
      * ```
      */
-    static replaceEmptySignature(
+    public static replaceEmptySignature(
         inputPdfData: Uint8Array,
         signatureName: string,
         signedData: Uint8Array,
@@ -718,7 +718,7 @@ export class PdfSignature {
             timestampData?: Uint8Array,
             skipSignatureEncoding?: boolean}
     ): void;
-    static replaceEmptySignature(
+    public static replaceEmptySignature(
         inputPdfData: Uint8Array,
         signatureName: string,
         signedData: Uint8Array,

@@ -47,6 +47,7 @@ export class TableCommand {
     private selectEntireTableBoundFn: (tableElement: HTMLElement) => void;
     // Store dynamic args as class properties
     private currentRowTarget: HTMLElement = null;
+    private currentRowIndex: number = -1;
     private currentColIndex: number = -1;
     private currentColTable: HTMLElement = null;
     private currentEntireTable: HTMLElement = null;
@@ -1298,7 +1299,9 @@ export class TableCommand {
             e.item.selection.restore();
             this.focusAfterTableDeletion(elementNextSibling);
         }
-        this.executeCallback(e);
+        if (e.event && (e.event as KeyboardEvent).type && (e.event as KeyboardEvent).type !== 'keydown') {
+            this.executeCallback(e);
+        }
     }
     /*
      * Manages cursor positioning after a table has been deleted
@@ -3792,26 +3795,48 @@ export class TableCommand {
         if (!e || !this.parent || !this.parent.undoRedoManager) {
             return;
         }
-
-        e.preventDefault();
-        e.stopPropagation();
-
-        this.removeResizeElement();
-        this.parent.undoRedoManager.saveData();
-
+        this.setCurrentRowAndColIndexValue();
         const isColumn: boolean = dataAttr === 'data-col';
-        const attrValue: string | null = insertIcon.getAttribute(dataAttr);
-        const indexValue: number = attrValue ? parseInt(attrValue, 10) : -1;
-
-        if (indexValue < 0 || !allCells) {
+        const iconAttrValue: number = insertIcon.getAttribute(dataAttr) ? parseInt(insertIcon.getAttribute(dataAttr), 10) : -1;
+        const indexValue: number = isColumn ? this.currentColIndex : this.currentRowIndex;
+        if (indexValue < 0 || !allCells || iconAttrValue < 0) {
             return;
         }
-
+        e.preventDefault();
+        e.stopPropagation();
+        this.removeResizeElement();
+        this.parent.undoRedoManager.saveData();
         const cellType: string = isColumn ? 'column' : 'row';
-        this.insertTableElement(cellType, indexValue, allCells);
+        let subCommand: string;
+        if (cellType === 'column') {
+            subCommand = 'InsertColumnLeft';
+            if (iconAttrValue > this.currentColIndex) {
+                subCommand = 'InsertColumnRight';
+            }
+        } else { // row
+            subCommand = 'InsertRowBefore';
+            if (iconAttrValue === this.currentRowIndex) {
+                subCommand = 'InsertRowAfter';
+            }
+        }
+        this.insertTableElement(cellType, indexValue, allCells, subCommand);
         if (this.tableModel.tableSelectionFeature) {
             this.removeSelectionWrappers(true);
         }
+    }
+
+    /*
+     * It sets the current target row or column index value
+     */
+    private setCurrentRowAndColIndexValue(): void {
+        const allRowInsertIcons: NodeListOf<Element> = (this.tableModel.getEditPanel() as HTMLElement).querySelectorAll('.e-tb-row-insert');
+        const allColInsertIcons: NodeListOf<Element> = (this.tableModel.getEditPanel() as HTMLElement).querySelectorAll('.e-tb-col-insert');
+        const resizeGripperElementsRow: Element[] = Array.from(allRowInsertIcons).filter((el: Element) => el.querySelector('.e-circle, .e-circle-add'));
+        const resizeGripperElementsCol: Element[] = Array.from(allColInsertIcons).filter((el: Element) => el.querySelector('.e-circle, .e-circle-add'));
+        this.currentRowIndex = resizeGripperElementsRow.length === 1 ? Number(resizeGripperElementsRow[0].getAttribute('data-row')) :
+            Number(resizeGripperElementsRow[1].getAttribute('data-row'));
+        this.currentColIndex = resizeGripperElementsCol.length === 1 ? Number(resizeGripperElementsCol[0].getAttribute('data-col')) - 1 :
+            Number(resizeGripperElementsCol[1].getAttribute('data-col')) - 1;
     }
 
     private resetInsertIconState(insertIcon: HTMLElement, dataAttr: string): void {
@@ -3980,34 +4005,19 @@ export class TableCommand {
     /*
      * Generic method to insert a row or column at a specified index.
      */
-    private insertTableElement(cellType: string, index: number, allCells: HTMLElement[][]): void {
+    private insertTableElement(cellType: string, index: number, allCells: HTMLElement[][], subCommand: string): void {
         if (!this.curTable || index < 0) {
             return;
         }
-
-        let subCommand: string;
-        if (cellType === 'column') {
-            subCommand = 'InsertColumnLeft';
-            if (index === allCells[0].length) {
-                subCommand = 'InsertColumnRight';
-                index = index - 1;
-            }
-        } else { // row
-            subCommand = 'InsertRowAfter';
-        }
-
         const docElement: Document = this.tableModel.getDocument();
         const targetCell: Element = cellType === 'column' ? allCells[0][index as number] : allCells[index as number][0];
         this.parent.nodeSelection.setCursorPoint(docElement, targetCell, 0);
-
         if (cellType === 'row') {
             this.clearTableSelections();
             addClass([targetCell], CLS_TABLE_SEL);
         }
-
         const range: Range = this.parent.nodeSelection.getRange(docElement);
         const selection: NodeSelection = this.parent.nodeSelection.save(range, docElement);
-
         const event: IHtmlItem = {
             item: {
                 selection: selection,
@@ -4019,16 +4029,15 @@ export class TableCommand {
             value: '',
             selector: ''
         };
-
         if (cellType === 'column') {
             this.insertColumn(event);
         } else {
             this.insertRow(event);
         }
-
         this.parent.undoRedoManager.saveData();
         this.tableModel.enableUndo();
     }
+
     private createSpan(classNames: string[] = []): HTMLElement {
         const el: HTMLElement = createElement('span');
         el.contentEditable = 'false';

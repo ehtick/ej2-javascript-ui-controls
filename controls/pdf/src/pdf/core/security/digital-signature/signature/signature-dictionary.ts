@@ -16,6 +16,9 @@ import { _bytesToHex, _padStart} from '../../../utils';
  * @private
  */
 export class _PdfSignatureDictionary {
+    /**
+     * @private
+     */
     _dictionary: _PdfDictionary = new _PdfDictionary();
     private _document: PdfDocument;
     private _signature: PdfSignature;
@@ -68,9 +71,9 @@ export class _PdfSignatureDictionary {
      * @type {_PdfCryptographicMessageSyntaxSigner}
      */
     _cmsSigner: _PdfCryptographicMessageSyntaxSigner;
-    constructor(dictionary: _PdfDictionary, signature: PdfSignature)
-    constructor(document: PdfDocument, signature: PdfSignature)
-    constructor(arg1?: PdfDocument | _PdfDictionary, arg2?: PdfSignature) {
+    public constructor(dictionary: _PdfDictionary, signature: PdfSignature)
+    public constructor(document: PdfDocument, signature: PdfSignature)
+    public constructor(arg1?: PdfDocument | _PdfDictionary, arg2?: PdfSignature) {
         if (!arg1) {
             throw new Error('A valid argument must be provided.');
         }

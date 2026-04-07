@@ -819,6 +819,7 @@ export class FormFieldsBase {
             listBox.borderColor = {r: formFieldAttributes.borderColor.r, g: formFieldAttributes.borderColor.g,
                 b: formFieldAttributes.borderColor.b, isTransparent: true};
         }
+        listBox.color = {r: formFieldAttributes.fontColor.r, g: formFieldAttributes.fontColor.g, b: formFieldAttributes.fontColor.b};
         listBox.border.width = formFieldAttributes.thickness;
         const pdfFontStyle: PdfFontStyle = this.getFontStyle(formFieldAttributes);
         listBox._dictionary.set('FontStyle', pdfFontStyle);

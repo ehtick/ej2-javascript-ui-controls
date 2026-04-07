@@ -67,6 +67,10 @@ export interface ITreeData {
      * Specifies the Primary data
      */
     primaryParent?: ITreeData;
+    /**
+     * Specifies the child record collapsed state
+     */
+    isCollapsedChild?: ITreeData
 }
 
 /** Specifies the Tree Grid ExcelExport properties */

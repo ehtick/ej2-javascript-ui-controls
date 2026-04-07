@@ -7424,14 +7424,14 @@ export class Editor {
         commentStartToInsert = this.checkAndRemoveComments();
         //}
 
-        this.defaultPaste(widgets as BodyWidget[], currentFormat, pastedComments);
+        this.defaultPaste(widgets as BodyWidget[], currentFormat, pastedComments, pasteOptions);
 
         //if (!this.isSkipHistory) {
         this.updateHistoryForComments(commentStartToInsert);
         //}
     }
 
-    private defaultPaste(widgets: BodyWidget[], currentFormat?: WParagraphFormat, pastedComments?: CommentElementBox[]): void {
+    private defaultPaste(widgets: BodyWidget[], currentFormat?: WParagraphFormat, pastedComments?: CommentElementBox[], pasteOptions?: PasteOptions | TablePasteOptions): void {
         let selection: Selection = this.documentHelper.selection;
         let isRemoved: boolean = true;
         let layoutWholeDocument: boolean = false;
@@ -7449,6 +7449,10 @@ export class Editor {
         //}
         if ((!selection.isEmpty && (!this.owner.documentHelper.isDragging || !this.owner.selection.isImageSelected)) || this.documentHelper.isListTextSelected) {
             isRemoved = this.removeSelectedContentInternal(selection, selection.start, selection.end);
+        }
+        if (isNullOrUndefined(currentFormat) && !isNullOrUndefined(pasteOptions) && pasteOptions === 'MergeWithExistingFormatting') {
+            let start: TextPosition = this.selection.isForward ? this.selection.start : this.selection.end;
+            currentFormat = start.paragraph.paragraphFormat;
         }
         if (isRemoved) {
             layoutWholeDocument = this.pasteContent(widgets, currentFormat);
@@ -10955,6 +10959,9 @@ export class Editor {
             this.documentHelper.layout.layoutBodyWidgetCollection(previousBlock.index, previousBlock.bodyWidget, previousBlock, false, false);
             this.previousBlockToLayout = undefined;
         }
+        if (!isNullOrUndefined(selection.editRegionHighlighters)) {
+            selection.editRegionHighlighters.clear();
+        }
         if (!this.documentHelper.isComposingIME && this.editorHistory && this.editorHistory.isHandledComplexHistory() && !isFromGroupAcceptReject) {
             if (this.editorHistory.currentHistoryInfo && this.editorHistory.currentHistoryInfo.action !== 'ClearFormat') {
                 if (this.editorHistory.currentHistoryInfo.action !== 'ApplyStyle') {
@@ -10973,9 +10980,6 @@ export class Editor {
                 this.selection.updateContentControlHighlightSelection();
                 return;
             }
-        }
-        if (!isNullOrUndefined(selection.editRegionHighlighters)) {
-            selection.editRegionHighlighters.clear();
         }
         if (isNullOrUndefined(this.documentHelper.blockToShift) || isNullOrUndefined(this.documentHelper.blockToShift.containerWidget)) {
             this.documentHelper.removeEmptyPages();
@@ -14818,7 +14822,9 @@ export class Editor {
         if (selection.isEmpty && property !== 'preferredWidthType' && property !== 'preferredWidth') {
             this.initHistory(action);
             this.applyCellPropertyValue(selection, property, value, selection.start.paragraph.associatedCell.cellFormat);
-            table.calculateGrid();
+            if (property !== 'shading') {
+                table.calculateGrid();
+            }
             this.selection.owner.isLayoutEnabled = true;
             this.documentHelper.layout.reLayoutTable(table);
         } else {

@@ -9,7 +9,7 @@ import { Save } from '@syncfusion/ej2-file-utils';
 import { DataFormat, PdfPermissionFlag, PdfTextAlignment, PdfPageOrientation, PdfRotationAngle, _PdfWordWrapType } from './enumerator';
 import { PdfForm } from './form/form';
 import { PdfField } from './form/field';
-import { PdfBrush, PdfGraphics, PdfPen } from './graphics/pdf-graphics';
+import { PdfBrush, PdfGraphics} from './graphics/pdf-graphics';
 import { _FontData, _PdfCjkStandardFontMetricsFactory, _PdfFontPrimitive, _PdfStandardFontMetricsFactory, PdfCjkFontFamily, PdfCjkStandardFont, PdfFont, PdfFontFamily, PdfFontStyle, PdfStandardFont, PdfTrueTypeFont } from './fonts/pdf-standard-font';
 import { PdfStringFormat, PdfVerticalAlignment } from './fonts/pdf-string-format';
 import { _ExportHelper, _XfdfDocument } from './import-export/xfdf-document';
@@ -261,7 +261,7 @@ export class PdfDocument {
      * // Destroy the document
      * document.destroy();
      */
-    splitEvent: Function;
+    public splitEvent: Function;
     /**
      * Creates a new PDF document
      *
@@ -282,7 +282,7 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    constructor()
+    public constructor()
     /**
      * Initializes a new instance of the `PdfDocument` class.
      *
@@ -301,7 +301,7 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    constructor(data: string)
+    public constructor(data: string)
     /**
      * Initializes a new instance of the `PdfDocument` class with password.
      *
@@ -321,7 +321,7 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    constructor(data: string, password: string)
+    public constructor(data: string, password: string)
     /**
      * Initializes a new instance of the `PdfDocument` class.
      *
@@ -340,7 +340,7 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    constructor(data: Uint8Array)
+    public constructor(data: Uint8Array)
     /**
      * Initializes a new instance of the `PdfDocument` class with password.
      *
@@ -360,8 +360,8 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    constructor(data: Uint8Array, password: string)
-    constructor(data?: string | Uint8Array, password?: string) {
+    public constructor(data: Uint8Array, password: string)
+    public constructor(data?: string | Uint8Array, password?: string) {
         this._fontCollection = new Map();
         if (data) {
             this._stream = new _PdfStream(typeof data === 'string' ? _decode(data) : data);
@@ -721,7 +721,7 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    getRevisions(): number[] {
+    public getRevisions(): number[] {
         if (!this._isLoaded) {
             return undefined;
         }
@@ -781,7 +781,7 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    embedFont(fontFamily: PdfFontFamily, size: number, style: PdfFontStyle): PdfStandardFont;
+    public embedFont(fontFamily: PdfFontFamily, size: number, style: PdfFontStyle): PdfStandardFont;
     /**
      * Embed a Cjk font into the PDF document.
      *
@@ -804,7 +804,7 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    embedFont(fontFamily: PdfCjkFontFamily, size: number, style: PdfFontStyle, isCjk: true): PdfCjkStandardFont;
+    public embedFont(fontFamily: PdfCjkFontFamily, size: number, style: PdfFontStyle, isCjk: true): PdfCjkStandardFont;
     /**
      * Embed a true type font into the PDF document.
      *
@@ -828,7 +828,7 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    embedFont(fontData: Uint8Array, size: number, options?: {shouldUnderline?: boolean, shouldStrikeout?: boolean}): PdfTrueTypeFont;
+    public embedFont(fontData: Uint8Array, size: number, options?: {shouldUnderline?: boolean, shouldStrikeout?: boolean}): PdfTrueTypeFont;
     /**
      * Embed a true type font into the PDF document.
      *
@@ -852,11 +852,11 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    embedFont(fontData: string, size: number, options?: {shouldUnderline?: boolean, shouldStrikeout?: boolean}): PdfTrueTypeFont;
-    embedFont(arg1: PdfFontFamily | PdfCjkFontFamily | Uint8Array | string,
-              arg2: PdfFontStyle | number,
-              arg3: number | boolean | { shouldUnderline?: boolean; shouldStrikeout?: boolean },
-              arg4?: number | boolean): PdfFont {
+    public embedFont(fontData: string, size: number, options?: {shouldUnderline?: boolean, shouldStrikeout?: boolean}): PdfTrueTypeFont;
+    public embedFont(arg1: PdfFontFamily | PdfCjkFontFamily | Uint8Array | string,
+                     arg2: PdfFontStyle | number,
+                     arg3: number | boolean | { shouldUnderline?: boolean; shouldStrikeout?: boolean },
+                     arg4?: number | boolean): PdfFont {
         let key: string;
         let primitive: _PdfFontPrimitive;
         if (typeof arg1 === 'string' || arg1 instanceof Uint8Array) {
@@ -1006,7 +1006,7 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    getPage(pageIndex: number): PdfPage {
+    public getPage(pageIndex: number): PdfPage {
         if (pageIndex < 0 || pageIndex >= this.pageCount) {
             throw new Error('Invalid page index');
         }
@@ -1046,7 +1046,7 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    addPage(): PdfPage
+    public addPage(): PdfPage
     /**
      * Creates a new page with default settings and inserts it into the collection at the specified page index.
      *
@@ -1064,7 +1064,7 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    addPage(index: number): PdfPage
+    public addPage(index: number): PdfPage
     /**
      * Creates a new page with specified page settings and adds it to the collection.
      *
@@ -1090,7 +1090,7 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    addPage(pageSettings: PdfPageSettings): PdfPage
+    public addPage(pageSettings: PdfPageSettings): PdfPage
     /**
      * Creates a new page with specified page settings and inserts it into the collection at the specified page index.
      *
@@ -1117,8 +1117,8 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    addPage(index: number, pageSettings: PdfPageSettings): PdfPage
-    addPage(arg1?: number | PdfPageSettings, arg2?: PdfPageSettings): PdfPage {
+    public addPage(index: number, pageSettings: PdfPageSettings): PdfPage
+    public addPage(arg1?: number | PdfPageSettings, arg2?: PdfPageSettings): PdfPage {
         let settings: PdfPageSettings;
         let pageIndex: number;
         if (typeof arg2 !== 'undefined') {
@@ -1231,7 +1231,7 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    addSection(): PdfSection
+    public addSection(): PdfSection
     /**
      * Creates a new section with custom page settings.
      *
@@ -1265,8 +1265,8 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    addSection(settings: PdfPageSettings): PdfSection
-    addSection(settings ?: PdfPageSettings): PdfSection {
+    public addSection(settings: PdfPageSettings): PdfSection
+    public addSection(settings ?: PdfPageSettings): PdfSection {
         let result: PdfSection;
         if (!this._isLoaded) {
             const pageSettings: PdfPageSettings = settings ? settings : new PdfPageSettings();
@@ -1292,7 +1292,7 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    removePage(page: PdfPage): void
+    public removePage(page: PdfPage): void
     /**
      * Removes the page from the specified index.
      *
@@ -1309,8 +1309,8 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    removePage(index: number): void
-    removePage(argument: PdfPage | number): void {
+    public removePage(index: number): void
+    public removePage(argument: PdfPage | number): void {
         const targetPage: PdfPage = (argument instanceof PdfPage) ? argument : this.getPage(argument);
         this._removePage(targetPage);
     }
@@ -1880,7 +1880,7 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    save(): Uint8Array
+    public save(): Uint8Array
     /**
      * Saves the modified document to the specified filename.
      *
@@ -1900,8 +1900,8 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    save(filename: string): void
-    save(filename?: string): Uint8Array | void {
+    public save(filename: string): void
+    public save(filename?: string): Uint8Array | void {
         if (!this._isLoaded && this.pageCount === 0) {
             this.addSection().addPage();
         }
@@ -1947,7 +1947,7 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    async saveAsync(): Promise<Uint8Array>
+    public async saveAsync(): Promise<Uint8Array>
     /**
      * Saves the PDF document asynchronously to the specified filename.
      *
@@ -1981,8 +1981,8 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    async saveAsync(filename: string): Promise<void>
-    async saveAsync(filename?: string): Promise<void | Uint8Array> {
+    public async saveAsync(filename: string): Promise<void>
+    public async saveAsync(filename?: string): Promise<void | Uint8Array> {
         if (!this._isLoaded && this.pageCount === 0) {
             this.addSection().addPage();
         }
@@ -2030,7 +2030,7 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    exportAnnotations(): Uint8Array
+    public exportAnnotations(): Uint8Array
     /**
      * Exports the annotations from the PDF document.
      *
@@ -2051,7 +2051,7 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    exportAnnotations(settings: PdfAnnotationExportSettings): Uint8Array
+    public exportAnnotations(settings: PdfAnnotationExportSettings): Uint8Array
     /**
      * Exports the annotations from the PDF document.
      *
@@ -2067,7 +2067,7 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    exportAnnotations(filename: string): void
+    public exportAnnotations(filename: string): void
     /**
      * Exports the annotations from the PDF document.
      *
@@ -2089,8 +2089,8 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    exportAnnotations(filename: string, settings: PdfAnnotationExportSettings): void
-    exportAnnotations(arg1?: string | PdfAnnotationExportSettings, arg2?: PdfAnnotationExportSettings): Uint8Array | void {
+    public exportAnnotations(filename: string, settings: PdfAnnotationExportSettings): void
+    public exportAnnotations(arg1?: string | PdfAnnotationExportSettings, arg2?: PdfAnnotationExportSettings): Uint8Array | void {
         this._isExport = true;
         this._doPostProcessOnAnnotations();
         let helper: _ExportHelper;
@@ -2135,7 +2135,7 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    exportFormData(): Uint8Array
+    public exportFormData(): Uint8Array
     /**
      * Exports the form data from the PDF document.
      *
@@ -2156,7 +2156,7 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    exportFormData(settings: PdfFormFieldExportSettings): Uint8Array
+    public exportFormData(settings: PdfFormFieldExportSettings): Uint8Array
     /**
      * Exports the form data from the PDF document.
      *
@@ -2174,7 +2174,7 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    exportFormData(filename: string): void
+    public exportFormData(filename: string): void
     /**
      * Exports the form data from the PDF document.
      *
@@ -2196,8 +2196,8 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    exportFormData(filename: string, settings: PdfFormFieldExportSettings): void
-    exportFormData(arg1?: string | PdfFormFieldExportSettings, arg2?: PdfFormFieldExportSettings): Uint8Array | void {
+    public exportFormData(filename: string, settings: PdfFormFieldExportSettings): void
+    public exportFormData(arg1?: string | PdfFormFieldExportSettings, arg2?: PdfFormFieldExportSettings): Uint8Array | void {
         this._doPostProcessOnFormFields();
         let helper: _ExportHelper;
         let settings: PdfFormFieldExportSettings;
@@ -2247,7 +2247,7 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    importAnnotations(data: string, dataFormat: DataFormat): void
+    public importAnnotations(data: string, dataFormat: DataFormat): void
     /**
      * Imports the annotations from the PDF document.
      *
@@ -2266,8 +2266,8 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    importAnnotations(data: Uint8Array, dataFormat: DataFormat): void
-    importAnnotations(data: string | Uint8Array, dataFormat: DataFormat): void {
+    public importAnnotations(data: Uint8Array, dataFormat: DataFormat): void
+    public importAnnotations(data: string | Uint8Array, dataFormat: DataFormat): void {
         if (dataFormat === DataFormat.xfdf) {
             const xfdf: _XfdfDocument = new _XfdfDocument();
             xfdf._importAnnotations(this, (typeof data === 'string') ? _decode(data) as Uint8Array : data);
@@ -2297,7 +2297,7 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    importFormData(data: string, dataFormat: DataFormat): void
+    public importFormData(data: string, dataFormat: DataFormat): void
     /**
      * Imports the form data from the PDF document.
      *
@@ -2316,8 +2316,11 @@ export class PdfDocument {
      * document.destroy();
      * ```
      */
-    importFormData(data: Uint8Array, dataFormat: DataFormat): void
-    importFormData(data: string | Uint8Array, dataFormat: DataFormat): void {
+    public importFormData(data: Uint8Array, dataFormat: DataFormat): void
+    public importFormData(data: string | Uint8Array, dataFormat: DataFormat): void {
+        if (this._form && this._form._requiresPostProcessing) {
+            this._doPostProcessOnFormFields();
+        }
         this._isFormImport = true;
         if (this.form.count > 0) {
             if (dataFormat === DataFormat.xfdf) {
@@ -2545,6 +2548,7 @@ export class PdfDocument {
     _doPostProcessOnFormFields(isFlatten: boolean = false) : void {
         if (this._catalog._catalogDictionary.has('AcroForm')) {
             this.form._doPostProcess(isFlatten);
+            this.form._requiresPostProcessing = false;
             if (isFlatten) {
                 const formObject: _PdfReference | _PdfDictionary = this._catalog._catalogDictionary.getRaw('AcroForm');
                 const dictionary: _PdfDictionary = new _PdfDictionary(this._crossReference);
@@ -2612,6 +2616,7 @@ export class PdfDocument {
         const formatCenter: PdfStringFormat = new PdfStringFormat(PdfTextAlignment.center, PdfVerticalAlignment.middle);
         let fontSize: number = 14;
         const graphics: PdfGraphics = page.graphics;
+        graphics.save();
         const clientSize: Size = graphics.clientSize;
         if (page.size.width < 400) {
             fontSize = page.size.width * 0.035;
@@ -2625,6 +2630,7 @@ export class PdfDocument {
         const textSize: Size = font.measureString(diagonalText, clientSize.width);
         const centerX: number = clientSize.width / 2;
         const centerY: number = clientSize.height / 2;
+        graphics.restore();
         graphics.save();
         if (!page._isNew && (page.rotation === PdfRotationAngle.angle90)) {
             graphics.translateTransform({ x: centerY, y: centerX });
@@ -2877,7 +2883,7 @@ export class PdfDocument {
      * sourceDocument.destroy();
      * ```
      */
-    importPageRange(sourceDocument: PdfDocument, startIndex: number, endIndex: number): void
+    public importPageRange(sourceDocument: PdfDocument, startIndex: number, endIndex: number): void
     /**
      * Import the pages specified by start and end index into the current document's pages collection.
      *
@@ -2905,8 +2911,8 @@ export class PdfDocument {
      * sourceDocument.destroy();
      * ```
      */
-    importPageRange(sourceDocument: PdfDocument, startIndex: number, endIndex: number, options?: PdfPageImportOptions): void
-    importPageRange(sourceDocument: PdfDocument, startIndex: number, endIndex: number, options?: PdfPageImportOptions): void {
+    public importPageRange(sourceDocument: PdfDocument, startIndex: number, endIndex: number, options?: PdfPageImportOptions): void
+    public importPageRange(sourceDocument: PdfDocument, startIndex: number, endIndex: number, options?: PdfPageImportOptions): void {
         if (startIndex > endIndex || startIndex >= sourceDocument.pageCount) {
             throw new Error('The start index is greater then the end index, which might indicate the error in the program.');
         }
@@ -3012,7 +3018,7 @@ export class PdfDocument {
      * sourceDocument.destroy();
      * ```
      */
-    importPage(index: number): void
+    public importPage(index: number): void
     /**
      * Copy the specific page and insert it at the specified target page index and page rotation.
      *
@@ -3037,7 +3043,7 @@ export class PdfDocument {
      * sourceDocument.destroy();
      * ```
      */
-    importPage(index: number, options: PdfPageImportOptions): void
+    public importPage(index: number, options: PdfPageImportOptions): void
     /**
      * Import the specified page into the current document pages collection as the last page
      *
@@ -3061,7 +3067,7 @@ export class PdfDocument {
      * sourceDocument.destroy();
      * ```
      */
-    importPage(page: PdfPage, sourceDocument: PdfDocument): void
+    public importPage(page: PdfPage, sourceDocument: PdfDocument): void
     /**
      * Create a new page with default settings and insert it into the collection at the specified page index.
      *
@@ -3090,8 +3096,8 @@ export class PdfDocument {
      * sourceDocument.destroy();
      * ```
      */
-    importPage(page: PdfPage, sourceDocument: PdfDocument, options?: PdfPageImportOptions): void
-    importPage(arg1?: PdfPage | number, arg2?: PdfDocument | PdfPageImportOptions, options?: PdfPageImportOptions): void {
+    public importPage(page: PdfPage, sourceDocument: PdfDocument, options?: PdfPageImportOptions): void
+    public importPage(arg1?: PdfPage | number, arg2?: PdfDocument | PdfPageImportOptions, options?: PdfPageImportOptions): void {
         if (typeof arg1 === 'number') {
             this._isDuplicatePage = true;
             if (arg2 instanceof PdfPageImportOptions) {
@@ -3121,7 +3127,7 @@ export class PdfDocument {
      * // Destroy the document
      * document.destroy();
      */
-    split(): void {
+    public split(): void {
         this.splitByFixedNumber(1);
     }
     /**
@@ -3142,7 +3148,7 @@ export class PdfDocument {
      * // Destroy the document
      * document.destroy();
      */
-    splitByFixedNumber(fixedNumber: number): void {
+    public splitByFixedNumber(fixedNumber: number): void {
         const pageCount: number = this.pageCount;
         if (this.splitEvent && pageCount >= fixedNumber && fixedNumber > 0) {
             let splitIndex: number = 0;
@@ -3175,7 +3181,7 @@ export class PdfDocument {
      * // Destroy the document
      * document.destroy();
      */
-    splitByPageRanges(ranges: number[][]): void {
+    public splitByPageRanges(ranges: number[][]): void {
         const pageCount: number = this.pageCount;
         if (this.splitEvent) {
             let splitIndex: number = 0;
@@ -3241,6 +3247,9 @@ export class PdfDocument {
  * ```
  */
 export class PdfAnnotationExportSettings {
+    /**
+     * @private
+     */
     _format: DataFormat = DataFormat.xfdf;
     _exportAppearance: boolean = false;
     /**
@@ -3350,8 +3359,17 @@ export class PdfAnnotationExportSettings {
  * ```
  */
 export class PdfFormFieldExportSettings {
+    /**
+     * @private
+     */
     _format: DataFormat = DataFormat.xfdf;
+    /**
+     * @private
+     */
     _exportName: string = '';
+    /**
+     * @private
+     */
     _asPerSpecification: boolean = true;
     /**
      * Gets the data format defined in form field export settings.
@@ -3509,9 +3527,21 @@ export class PdfFormFieldExportSettings {
  */
 export class PdfPageSettings {
     _orientation: PdfPageOrientation ;
+    /**
+     * @private
+     */
     _size: Size = {width: 595, height: 842};
+    /**
+     * @private
+     */
     _isOrientation: boolean = false;
+    /**
+     * @private
+     */
     _margins: PdfMargins;
+    /**
+     * @private
+     */
     _rotation: PdfRotationAngle;
     /**
      * Initializes a new instance of the `PdfPageSettings` class
@@ -3534,7 +3564,7 @@ export class PdfPageSettings {
      * document.destroy();
      * ```
      */
-    constructor()
+    public constructor()
     /**
      * Initializes a new instance of the `PdfPageSettings` class.
      *
@@ -3560,7 +3590,7 @@ export class PdfPageSettings {
      * document.destroy();
      * ```
      */
-    constructor(options: {orientation?: PdfPageOrientation, size?: Size, margins?: PdfMargins, rotation?: PdfRotationAngle})
+    public constructor(options: {orientation?: PdfPageOrientation, size?: Size, margins?: PdfMargins, rotation?: PdfRotationAngle})
     /**
      * Initializes a new instance of the `PdfPageSettings` class.
      *
@@ -3586,7 +3616,7 @@ export class PdfPageSettings {
      * document.destroy();
      * ```
      */
-    constructor(options?: {orientation?: PdfPageOrientation, size?: Size, margins?: PdfMargins, rotation?: PdfRotationAngle})
+    public constructor(options?: {orientation?: PdfPageOrientation, size?: Size, margins?: PdfMargins, rotation?: PdfRotationAngle})
     {
         if (options && 'orientation' in options && options.orientation !== null && typeof options.orientation !== 'undefined') {
             this.orientation = options.orientation;
@@ -3918,7 +3948,7 @@ export class PdfMargins {
      * document.destroy();
      * ```
      */
-    constructor()
+    public constructor()
     /**
      * Initializes a new instance with specified margin values for each page side.
      *
@@ -3942,8 +3972,8 @@ export class PdfMargins {
      * document.destroy();
      * ```
      */
-    constructor(all: number)
-    constructor(all?: number) {
+    public constructor(all: number)
+    public constructor(all?: number) {
         if (typeof all === 'undefined') {
             this._left = this._right = this._top = this._bottom = 40;
         } else {

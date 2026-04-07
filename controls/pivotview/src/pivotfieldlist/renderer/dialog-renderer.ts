@@ -353,7 +353,7 @@ export class DialogRenderer {
                 height: '100%',
                 position: { X: 'center', Y: 'center' },
                 buttons: buttons,
-                target: document.body,
+                target: PivotUtil.getAppendToElement(this.parent.element, this.parent.isAngular),
                 cssClass: this.parent.cssClass,
                 close: this.removeFieldListIcon.bind(this),
                 open: this.dialogOpen.bind(this)
@@ -391,7 +391,8 @@ export class DialogRenderer {
                 closeOnEscape: false,
                 cssClass: this.parent.cssClass,
                 target: !isNullOrUndefined(this.parent.target) ? ((typeof this.parent.target) === 'string') ?
-                    <HTMLElement>document.querySelector(<string>this.parent.target) : <HTMLElement>this.parent.target : document.body,
+                    <HTMLElement>document.querySelector(<string>this.parent.target) : <HTMLElement>this.parent.target
+                    : PivotUtil.getAppendToElement(this.parent.element, this.parent.isAngular),
                 close: this.removeFieldListIcon.bind(this),
                 beforeOpen: this.beforeOpen.bind(this)
             });

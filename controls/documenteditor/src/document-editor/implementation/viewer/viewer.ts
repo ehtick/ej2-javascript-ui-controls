@@ -2571,7 +2571,10 @@ export class DocumentHelper {
                 }
                 this.selection.checkForCursorVisibility();
             }
-            if (!this.isRowOrCellResizing && !this.isSelectionChangedOnMouseMoved) {
+            if (this.isDragStarted && this.isLeftButtonPressed(event) && this.owner.isReadOnlyMode) {
+                const div = this.viewerContainer;
+                div.style.cursor = 'not-allowed';
+            } else if (!this.isRowOrCellResizing && !this.isSelectionChangedOnMouseMoved) {
                 this.updateCursor(event);
             }
             if (this.isRowOrCellResizing) {
@@ -2656,10 +2659,12 @@ export class DocumentHelper {
                     this.scrollBackwardOnSelection(cursorPoint);
                 }, 100);
             }
-            else if (event.y + this.viewerContainer.scrollTop > viewerTop + hRulerHeight + textYPosition + textHeight + this.viewerContainer.scrollTop) {
+            else if (event.y + this.viewerContainer.scrollTop > viewerTop + hRulerHeight + textYPosition + textHeight + this.viewerContainer.scrollTop
+                && !this.isRowOrCellResizing) {
                 this.scrollForwardOnSelection(cursorPoint);
             }
-            else if (event.y + this.viewerContainer.scrollTop < viewerTop + hRulerHeight + textYPosition + this.viewerContainer.scrollTop) {
+            else if (event.y + this.viewerContainer.scrollTop < viewerTop + hRulerHeight + textYPosition + this.viewerContainer.scrollTop
+                && !this.isRowOrCellResizing) {
                 this.scrollBackwardOnSelection(cursorPoint);
             }
             if (this.isMouseEntered) {
@@ -6124,7 +6129,10 @@ export abstract class LayoutViewer {
             }
         }
     }
-    private updateParagraphXPositionBasedOnTextWrap(block: BlockWidget): void {
+    /**
+     * @private
+     */
+    public updateParagraphXPositionBasedOnTextWrap(block: BlockWidget): void {
         // #region textwrap
         let yValue: number = 0;
         let isFirstItem: boolean = false;
@@ -6236,9 +6244,11 @@ export abstract class LayoutViewer {
                                     clientLayoutArea.width = this.clientActiveArea.right - textWrappingBounds.right - rightIndent;
 
                                     if (clientLayoutArea.width < minimumWidthRequired) {
+                                        const remainingHeightOfFloatingItem: number = textWrappingBounds.bottom > clientLayoutArea.y ? textWrappingBounds.bottom - clientLayoutArea.y : 0;
+                                        const updatedHeight: number = clientLayoutArea.height - remainingHeightOfFloatingItem;
                                         paragraph.x = clientLayoutArea.x;
-                                        clientLayoutArea.width = clientLayoutArea.width;
-                                        clientLayoutArea.height = textWrappingBounds.bottom - clientLayoutArea.x;
+                                        clientLayoutArea.width = this.clientArea.width;
+                                        clientLayoutArea.height = updatedHeight < 0 ? 0 : updatedHeight;
                                         clientLayoutArea.y = textWrappingBounds.bottom;
                                     } else {
                                         clientLayoutArea.x = textWrappingBounds.right;
@@ -6311,7 +6321,10 @@ export abstract class LayoutViewer {
             // }
         }
     }
-    private updateTableXPositionBasedOnTextWrap(block: TableWidget): void {
+    /**
+     * @private
+     */
+    public updateTableXPositionBasedOnTextWrap(block: TableWidget): void {
         // Get the first row width
         let firstRowWidth: number = HelperMethods.convertPointToPixel((block.childWidgets[0] as TableRowWidget).getFirstRowWidth());
         let bodyWidget: BlockContainer = block.bodyWidget as BlockContainer;

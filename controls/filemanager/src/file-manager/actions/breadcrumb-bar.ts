@@ -81,13 +81,16 @@ export class BreadCrumbBar {
                     const icon: HTMLElement = createElement('span', { className: CLS.ICONS });
                     addressbarLI.appendChild(icon);
                 }
-                if (pathNamesLen - i !== 1) {
-                    addressATag = createElement('a', { className: CLS.LIST_TEXT });
-                    addressbarLI.setAttribute('tabindex', '0');
-                } else {
-                    addressATag = createElement('span', { className: CLS.LIST_TEXT });
+                addressbarLI.setAttribute('tabindex', '0');
+                addressbarLI.setAttribute('role', 'link');
+                const pathLabel: string = pathNames.slice(0, i + 1).join(' / ');
+                addressbarLI.setAttribute('aria-label', pathLabel);
+                if (pathNamesLen - i === 1) {
+                    addressbarLI.setAttribute('aria-current', 'page');
                 }
                 id = '';
+                addressATag = createElement('a', { className: CLS.LIST_TEXT });
+                addressATag.setAttribute('role', 'presentation');
                 addressATag.innerText = pathNames[i as number];
                 addressbarLI.appendChild(addressATag);
                 addressbarUL.appendChild(addressbarLI);

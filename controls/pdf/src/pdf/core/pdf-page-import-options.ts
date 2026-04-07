@@ -69,7 +69,8 @@ export class PdfPageImportOptions {
      * // Destroy the document
      * document.destroy();
      */
-    constructor(options?: { targetIndex?: number, rotation?: PdfRotationAngle, optimizeResources?: boolean, groupFormFields?: boolean }) {
+    public constructor(options?: { targetIndex?: number, rotation?: PdfRotationAngle, optimizeResources?: boolean,
+        groupFormFields?: boolean }) {
         if (options && 'targetIndex' in options && options.targetIndex !== null && typeof options.targetIndex !== 'undefined') {
             this._targetIndex = options.targetIndex;
         }

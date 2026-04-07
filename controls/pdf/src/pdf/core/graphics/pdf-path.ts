@@ -25,6 +25,7 @@ import { Point, Rectangle } from './../pdf-type';
  * // Destroy the document
  * document.destroy();
  * ```
+ *
  */
 export class PdfPath {
     /**
@@ -100,8 +101,9 @@ export class PdfPath {
      * // Destroy the document
      * document.destroy();
      * ```
+     *
      */
-    constructor()
+    public constructor()
     /**
      * Initializes a new instance of the `PdfPath` class using a series of points and path types.
      *
@@ -125,9 +127,10 @@ export class PdfPath {
      * // Destroy the document
      * document.destroy();
      * ```
+     *
      */
-    constructor(points: Array<Point>, pathTypes: PathPointType[])
-    constructor(points?: Array<Point>, pathTypes?: PathPointType[]) {
+    public constructor(points: Array<Point>, pathTypes: PathPointType[])
+    public constructor(points?: Array<Point>, pathTypes?: PathPointType[]) {
         this._fillMode = PdfFillMode.winding;
         this._isStart = true;
         this._isXps = false;
@@ -172,6 +175,7 @@ export class PdfPath {
      * // Destroy the document
      * document.destroy();
      * ```
+     *
      */
     get lastPoint(): Point {
         const value: Point = {x: 0, y: 0};
@@ -209,6 +213,7 @@ export class PdfPath {
      * // Destroy the document
      * document.destroy();
      * ```
+     *
      */
     get pathPoints(): Array<Point> {
         return this._points;
@@ -240,6 +245,7 @@ export class PdfPath {
      * // Destroy the document
      * document.destroy();
      * ```
+     *
      */
     get pathTypes(): PathPointType[] {
         return this._pathTypes;
@@ -271,6 +277,7 @@ export class PdfPath {
      * // Destroy the document
      * document.destroy();
      * ```
+     *
      */
     get fillMode(): PdfFillMode {
         return this._fillMode;
@@ -302,6 +309,7 @@ export class PdfPath {
      * // Destroy the document
      * document.destroy();
      * ```
+     *
      */
     set fillMode(mode: PdfFillMode) {
         this._fillMode = mode;
@@ -332,8 +340,9 @@ export class PdfPath {
      * // Destroy the document
      * document.destroy();
      * ```
+     *
      */
-    addPath(path: PdfPath): void;
+    public addPath(path: PdfPath): void;
     /**
      * Appends the specified path points and their types to this path.
      *
@@ -361,9 +370,10 @@ export class PdfPath {
      * // Destroy the document
      * document.destroy();
      * ```
+     *
      */
-    addPath(pathPoints: Array<Point>, pathPointTypes: PathPointType[]): void;
-    addPath(arg1: PdfPath | Array<Point>, arg2?: PathPointType[]): void {
+    public addPath(pathPoints: Array<Point>, pathPointTypes: PathPointType[]): void;
+    public addPath(arg1: PdfPath | Array<Point>, arg2?: PathPointType[]): void {
         if (arg1 instanceof PdfPath) {
             this._addPath(arg1._points, arg1._pathTypes);
         } else if (Array.isArray(arg1) && Array.isArray(arg2)) {
@@ -429,8 +439,9 @@ export class PdfPath {
      * // Destroy the document
      * document.destroy();
      * ```
+     *
      */
-    addLine(start: Point, end: Point): void {
+    public addLine(start: Point, end: Point): void {
         this._addPoints([start.x, start.y, end.x, end.y], PathPointType.line);
     }
     /**
@@ -522,8 +533,9 @@ export class PdfPath {
      * // Destroy the document
      * document.destroy();
      * ```
+     *
      */
-    addArc(bounds: Rectangle, startAngle: number, sweepAngle: number): void {
+    public addArc(bounds: Rectangle, startAngle: number, sweepAngle: number): void {
         const points: number[] = _getBezierArc(bounds.x, bounds.y, bounds.x + bounds.width,
                                                bounds.y + bounds.height, startAngle, sweepAngle);
         for (let i: number = 0; i < points.length; ++i) {
@@ -566,8 +578,9 @@ export class PdfPath {
      * // Destroy the document
      * document.destroy();
      * ```
+     *
      */
-    addRectangle(bounds: Rectangle): void {
+    public addRectangle(bounds: Rectangle): void {
         this.startFigure();
         this._addPoints([bounds.x, bounds.y, bounds.x + bounds.width, bounds.y, bounds.x + bounds.width,
             bounds.y + bounds.height, bounds.x, bounds.y + bounds.height], PathPointType.line);
@@ -601,8 +614,9 @@ export class PdfPath {
      * // Destroy the document
      * document.destroy();
      * ```
+     *
      */
-    addPolygon(points: Array<Point>): void {
+    public addPolygon(points: Array<Point>): void {
         const newPoints: number[] = [];
         for (let i: number = 0; i < points.length; i++) {
             const element: Point = points[<number>i];
@@ -640,8 +654,9 @@ export class PdfPath {
      * // Destroy the document
      * document.destroy();
      * ```
+     *
      */
-    addEllipse(bounds: Rectangle): void {
+    public addEllipse(bounds: Rectangle): void {
         this.startFigure();
         this.addArc(bounds, 0, 360);
         this.closeFigure();
@@ -677,11 +692,12 @@ export class PdfPath {
      * // Destroy the document
      * document.destroy();
      * ```
+     *
      */
-    addBezier(start: Point,
-              first: Point,
-              second: Point,
-              end: Point): void {
+    public addBezier(start: Point,
+                     first: Point,
+                     second: Point,
+                     end: Point): void {
         const points: number[] = [start.x, start.y, first.x, first.y, second.x, second.y, end.x, end.y];
         this._addPoints(points, PathPointType.bezier);
     }
@@ -742,8 +758,9 @@ export class PdfPath {
      * // Destroy the document
      * document.destroy();
      * ```
+     *
      */
-    addPie(bounds: Rectangle, startAngle: number, sweepAngle: number): void {
+    public addPie(bounds: Rectangle, startAngle: number, sweepAngle: number): void {
         this.startFigure();
         this.addArc(bounds, startAngle, sweepAngle);
         this._addPoint({x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2}, PathPointType.line);
@@ -778,8 +795,9 @@ export class PdfPath {
      * // Destroy the document
      * document.destroy();
      * ```
+     *
      */
-    startFigure(): void {
+    public startFigure(): void {
         this._isStart = true;
     }
     /**
@@ -809,8 +827,9 @@ export class PdfPath {
      * // Destroy the document
      * document.destroy();
      * ```
+     *
      */
-    closeFigure(): void;
+    public closeFigure(): void;
     /**
      * Closes all non-closed figures in the path.
      *
@@ -839,9 +858,10 @@ export class PdfPath {
      * // Destroy the document
      * document.destroy();
      * ```
+     *
      */
-    closeFigure(index: number): void;
-    closeFigure(index?: number): void {
+    public closeFigure(index: number): void;
+    public closeFigure(index?: number): void {
         if (typeof index !== 'undefined') {
             let type: PathPointType = this._pathTypes[<number>index];
             type |= PathPointType.closePath;
@@ -880,8 +900,9 @@ export class PdfPath {
      * // Destroy the document
      * document.destroy();
      * ```
+     *
      */
-    closeAllFigures(): void {
+    public closeAllFigures(): void {
         for (let i: number = 0; i < this._points.length; ++i) {
             const pointType: PathPointType = this._pathTypes[<number>i];
             let flag: boolean = false;

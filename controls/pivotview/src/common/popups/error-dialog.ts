@@ -2,6 +2,7 @@ import { createElement, remove } from '@syncfusion/ej2-base';
 import { PivotCommon } from '../base/pivot-common';
 import * as cls from '../base/css-constant';
 import { Dialog } from '@syncfusion/ej2-popups';
+import { PivotUtil } from '../../base/util';
 
 /**
  * `ErrorDialog` module to create error dialog.
@@ -59,7 +60,7 @@ export class ErrorDialog {
             ],
             cssClass: this.parent.cssClass,
             closeOnEscape: true,
-            target: document.body,
+            target: PivotUtil.getAppendToElement(this.parent.control.element, this.parent.control.isAngular),
             close: this.removeErrorDialog.bind(this)
         });
         this.errorPopUp.isStringTemplate = true;

@@ -155,6 +155,7 @@ export class Breadcrumb extends Component<HTMLElement> implements INotifyPropert
     private _maxItems: number;
     private popupObj: Popup;
     private popupUl: HTMLElement;
+    private resizeHandler: EventListener;
     private delegateClickHanlder: Function;
     private isPopupCreated: boolean = false;
     /**
@@ -790,7 +791,7 @@ export class Breadcrumb extends Component<HTMLElement> implements INotifyPropert
         }
     }
 
-    private resize(): void {
+    private resize(e?: Event): void {
         this._maxItems = this.maxItems;
         this.initPvtProps();
         this.reRenderItems();
@@ -883,7 +884,8 @@ export class Breadcrumb extends Component<HTMLElement> implements INotifyPropert
         this.delegateClickHanlder = this.documentClickHandler.bind(this);
         EventHandler.add(document, 'click', this.delegateClickHanlder, this);
         EventHandler.add(this.element, 'click', this.clickHandler, this);
-        window.addEventListener('resize', this.resize.bind(this));
+        this.resizeHandler = this.resize.bind(this);
+        window.addEventListener('resize', this.resizeHandler);
     }
 
     private popupWireEvents(): void {
@@ -894,7 +896,8 @@ export class Breadcrumb extends Component<HTMLElement> implements INotifyPropert
     private unWireEvents(): void {
         EventHandler.remove(document, 'click', this.delegateClickHanlder);
         EventHandler.remove(this.element, 'click', this.clickHandler);
-        window.removeEventListener('resize', this.resize.bind(this));
+        window.removeEventListener('resize', this.resizeHandler);
+        this.resizeHandler = null;
         if (this.popupObj) {
             EventHandler.remove(this.popupObj.element, 'click', this.clickHandler);
             EventHandler.remove(this.popupObj.element, 'keydown', this.popupKeyDownHandler);

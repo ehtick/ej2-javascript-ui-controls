@@ -246,9 +246,12 @@ export class MenuAnimationSettings extends ChildProperty<MenuAnimationSettings> 
 export abstract class MenuBase extends Component<HTMLUListElement> implements INotifyPropertyChanged {
     private clonedElement: HTMLElement;
     private targetElement: HTMLElement;
-    private delegateClickHandler: Function;
-    private delegateMoverHandler: Function;
-    private delegateMouseDownHandler: Function;
+    private delegateClickHandler: () => void;
+    private delegateMoverHandler: () => void;
+    private delegateDomKeyHandler: () => void;
+    private delegateScrollHandler: () => void;
+    private delegateMouseDownHandler: () => void;
+    private delegateTouchOutsideHandler: () => void;
     private navIdx: number[] = [];
     private animation: Animation = new Animation({});
     private isTapHold: boolean = false;
@@ -643,11 +646,13 @@ export abstract class MenuBase extends Component<HTMLUListElement> implements IN
         if (!Browser.isDevice) {
             this.delegateMoverHandler = this.moverHandler.bind(this);
             this.delegateMouseDownHandler = this.mouseDownHandler.bind(this);
+            this.delegateDomKeyHandler = this.domKeyHandler.bind(this);
             EventHandler.add(this.isMenu ? document : wrapper, 'mouseover', this.delegateMoverHandler, this);
             EventHandler.add(document, 'mousedown', this.delegateMouseDownHandler, this);
-            EventHandler.add(document, 'keydown', this.domKeyHandler, this);
+            EventHandler.add(document, 'keydown', this.delegateDomKeyHandler, this);
             if (!this.isMenu && !this.target) {
-                EventHandler.add(document, 'scroll', this.scrollHandler, this);
+                this.delegateScrollHandler = this.scrollHandler.bind(this);
+                EventHandler.add(document, 'scroll', this.delegateScrollHandler, this);
             }
         }
         this.delegateClickHandler = this.clickHandler.bind(this);
@@ -656,7 +661,8 @@ export abstract class MenuBase extends Component<HTMLUListElement> implements IN
         this.rippleFn = rippleEffect(wrapper, { selector: '.' + ITEM });
         if (!this.isMenu && this.enableScrolling) {
             this.enableTouchScroll(wrapper);
-            document.addEventListener('touchstart', this.touchOutsideHandler.bind(this), { passive: true });
+            this.delegateTouchOutsideHandler = this.touchOutsideHandler.bind(this);
+            document.addEventListener('touchstart', this.delegateTouchOutsideHandler, { passive: true });
         }
     }
 
@@ -2263,20 +2269,38 @@ export abstract class MenuBase extends Component<HTMLUListElement> implements IN
             }
         }
         if (!Browser.isDevice) {
-            EventHandler.remove(this.isMenu ? document : wrapper, 'mouseover', this.delegateMoverHandler);
-            EventHandler.remove(document, 'mousedown', this.delegateMouseDownHandler);
-            EventHandler.remove(document, 'keydown', this.domKeyHandler);
+            if (this.delegateMoverHandler) {
+                EventHandler.remove(this.isMenu ? document : wrapper, 'mouseover', this.delegateMoverHandler);
+                this.delegateMoverHandler = null;
+            }
+            if (this.delegateMouseDownHandler) {
+                EventHandler.remove(document, 'mousedown', this.delegateMouseDownHandler);
+                this.delegateMouseDownHandler = null;
+            }
+            if (this.delegateDomKeyHandler) {
+                EventHandler.remove(document, 'keydown', this.delegateDomKeyHandler);
+                this.delegateDomKeyHandler = null;
+            }
             if (!this.isMenu && !this.target) {
-                EventHandler.remove(document, 'scroll', this.scrollHandler);
+                if (this.delegateScrollHandler) {
+                    EventHandler.remove(document, 'scroll', this.delegateScrollHandler);
+                    this.delegateScrollHandler = null;
+                }
             }
         }
-        EventHandler.remove(document, 'click', this.delegateClickHandler);
+        if (this.delegateClickHandler) {
+            EventHandler.remove(document, 'click', this.delegateClickHandler);
+            this.delegateClickHandler = null;
+        }
         this.unWireKeyboardEvent(wrapper);
         this.rippleFn();
         if (!this.isMenu && this.enableScrolling) {
             wrapper.removeEventListener('touchstart', this.touchStartFn);
             wrapper.removeEventListener('touchmove', this.touchMoveFn);
-            document.removeEventListener('touchstart', this.touchOutsideHandler);
+            if (this.delegateTouchOutsideHandler) {
+                document.removeEventListener('touchstart', this.delegateTouchOutsideHandler);
+                this.delegateTouchOutsideHandler = null;
+            }
         }
     }
 

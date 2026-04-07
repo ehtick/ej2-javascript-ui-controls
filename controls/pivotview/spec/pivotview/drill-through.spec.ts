@@ -418,7 +418,7 @@ describe('- Drill Through', () => {
                 },
                 showGroupingBar: true,
                 allowDataCompression: true,
-                dataBound: dataBound,
+                dataBound: dataBound
             });
             pivotGridObj.appendTo('#PivotGrid');
         });
@@ -426,6 +426,9 @@ describe('- Drill Through', () => {
             'view': window,
             'bubbles': true,
             'cancelable': true
+        });
+        beforeEach((done: Function) => {
+            setTimeout(() => { done(); }, 1000);
         });
         it('render testing', (done: Function) => {
             setTimeout(() => {

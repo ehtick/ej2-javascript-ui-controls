@@ -181,7 +181,7 @@ export class DrillThroughDialog {
                     width: this.parent.isAdaptive ? '100%' : '60%',
                     position: { X: 'center', Y: 'center' },
                     closeOnEscape: !this.parent.editSettings.allowEditing,
-                    target: document.body,
+                    target: PivotUtil.getAppendToElement(this.parent.element, this.parent.isAngular),
                     close: this.removeDrillThroughDialog.bind(this)
                 });
                 this.dialogPopUp.isStringTemplate = true;
@@ -451,7 +451,7 @@ export class DrillThroughDialog {
         } else {
             Grid.Inject(VirtualScroll);
         }
-        document.body.appendChild(drillThroughGrid);
+        PivotUtil.getAppendToElement(this.parent.element, this.parent.isAngular).appendChild(drillThroughGrid);
         this.drillThroughGrid.isStringTemplate = true;
         this.drillThroughGrid.appendTo(drillThroughGrid);
         drillThroughBody.appendChild(drillThroughBodyHeader);

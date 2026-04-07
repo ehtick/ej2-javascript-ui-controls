@@ -860,8 +860,8 @@ export class Table {
             let target: HTMLElement = args.target as HTMLElement;
             this.contentModule = this.rendererFactory.getRenderer(RenderType.Content);
             let range: Range = this.parent.formatter.editorManager.nodeSelection.getRange(this.contentModule.getDocument());
-            const stringArray: string[] = [ 'e-icons e-drag-and-drop e-active', 'e-icons e-move e-active'  ];
-            const gripper: boolean = stringArray.some((cls: string) => target.className.includes(cls));
+            const gripper: boolean = target.classList.length > 0 && (target.className.includes('e-icons e-drag-and-drop e-active')
+                || target.className.includes('e-icons e-move e-active'));
             if (gripper) {
                 target = this.contentModule.getDocument().querySelector('.e-cell-select-end');
                 const domMethods: DOMMethods = new DOMMethods(this.parent.inputElement as HTMLDivElement);
@@ -896,10 +896,9 @@ export class Table {
         const showOnRightClick: boolean = this.parent.quickToolbarSettings.showOnRightClick;
         // Right-click / left-click logic
         // Custom condition: only skip on right-click if a certain class exists in DOM
-        const stringArray: string[] = [ 'e-icons e-drag-and-drop e-active', 'e-icons e-move e-active'  ];
         if (((e.args as MouseEvent).target as HTMLElement).nodeType === Node.ELEMENT_NODE) {
-            const gripper: boolean = stringArray.some((cls: string) =>
-                ((e.args as MouseEvent).target as HTMLElement).className.includes(cls));
+            const gripper: boolean = target.classList.length > 0 && (target.className.includes('e-icons e-drag-and-drop e-active')
+                || target.className.includes('e-icons e-move e-active'));
             if (showOnRightClick && gripper) { return false; }
         }
         return (args.which === 2 || (showOnRightClick && args.which === 1) || (!showOnRightClick && args.which === 3));

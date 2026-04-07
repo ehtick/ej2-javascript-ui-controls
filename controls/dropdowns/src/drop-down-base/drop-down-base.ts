@@ -1193,11 +1193,24 @@ export class DropDownBase extends Component<HTMLElement> implements INotifyPrope
                             this.isPreventChange = this.isAngular && this.preventChange ? true : this.isPreventChange;
                             let isReOrder: boolean = true;
                             if (!this.virtualSelectAll) {
+                                let newQueryWhereCount: number;
+                                let queryWhereCount: number;
                                 const newQuery: Query = query.clone();
                                 for (let queryElements: number = 0; queryElements < newQuery.queries.length; queryElements++) {
                                     if (newQuery.queries[queryElements as number].fn === 'onWhere') {
                                         isWhereExist = true;
+                                        newQueryWhereCount++;
                                     }
+                                }
+                                for (let queryElements: number = 0; !isNullOrUndefined(this.query) &&
+                                    queryElements < this.query.queries.length; queryElements++) {
+                                    if (this.query.queries[queryElements as number].fn === 'onWhere') {
+                                        isWhereExist = true;
+                                        queryWhereCount++;
+                                    }
+                                }
+                                if (queryWhereCount === newQueryWhereCount){
+                                    isWhereExist = false;
                                 }
                                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 if (this.isVirtualizationEnabled && ((e as any).count !== 0 && (e as any).count < (this.itemCount * 2))) {

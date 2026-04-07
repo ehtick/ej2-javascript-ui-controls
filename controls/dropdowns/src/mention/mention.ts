@@ -740,6 +740,12 @@ export class Mention extends DropDownBase {
             }
         }
         const currentRange: string = this.getTextRange();
+        // Pre-flight guard: close popup if mention character is no longer present
+        if (this.isPopupOpen && currentRange !== undefined && currentRange.indexOf(this.mentionChar) === -1) {
+            this.queryString = '';
+            this.hidePopup();
+            return;
+        }
         // eslint-disable-next-line security/detect-non-literal-regexp
         const mentionRegex: RegExp = new RegExp(this.mentionChar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s');
         const isValid: boolean = currentRange && mentionRegex.test(currentRange) ? false : true;

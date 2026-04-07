@@ -130,7 +130,7 @@ export class PdfTemplate {
      *
      * @private
      */
-    constructor()
+    public constructor()
     /**
      * Initializes a new instance of the `PdfTemplate` class.
      *
@@ -138,7 +138,7 @@ export class PdfTemplate {
      * @param {_PdfCrossReference} crossReference - The cross reference object.
      * @private
      */
-    constructor(appearance: _PdfBaseStream, crossReference: _PdfCrossReference)
+    public constructor(appearance: _PdfBaseStream, crossReference: _PdfCrossReference)
     /**
      * Initializes a new instance of the `PdfTemplate` class.
      *
@@ -146,7 +146,7 @@ export class PdfTemplate {
      * @param {_PdfCrossReference} crossReference - The cross reference object.
      * @private
      */
-    constructor(bounds: number[], crossReference: _PdfCrossReference)
+    public constructor(bounds: number[], crossReference: _PdfCrossReference)
     /**
      * Initializes a new instance of the `PdfTemplate` class.
      *
@@ -170,7 +170,7 @@ export class PdfTemplate {
      * document.destroy();
      * ```
      */
-    constructor(size: Size)
+    public constructor(size: Size)
     /**
      * Initializes a new instance of the `PdfTemplate` class.
      *
@@ -194,9 +194,9 @@ export class PdfTemplate {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle)
-    constructor(bounds: Rectangle, crossReference: _PdfCrossReference)
-    constructor(
+    public constructor(bounds: Rectangle)
+    public constructor(bounds: Rectangle, crossReference: _PdfCrossReference)
+    public constructor(
         value?: number[] | _PdfBaseStream | Size | Rectangle,
         crossReference?: _PdfCrossReference
     ) {

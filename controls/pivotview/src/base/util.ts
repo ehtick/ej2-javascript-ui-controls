@@ -1292,4 +1292,23 @@ export class PivotUtil {
             colSpan: 1
         };
     }
+
+    /**
+     * Determines the appropriate parent element for appending content.
+     *
+     * @param {HTMLElement} pElement - The reference element to check for parent containers.
+     * @param {boolean} isAngular - Optional flag to enable Angular CDK overlay pane detection.
+     * @returns {HTMLElement} - The CDK overlay pane if found and conditions are met, otherwise document.body.
+     * @hidden
+     */
+    public static getAppendToElement(pElement: HTMLElement, isAngular?: boolean): HTMLElement {
+        if (isAngular) {
+            const cdkPane: HTMLElement = pElement.closest('.cdk-overlay-pane') as HTMLElement;
+            const popoverEl: HTMLElement = pElement.closest('[popover]') as HTMLElement;
+            if (cdkPane && popoverEl) {
+                return cdkPane;
+            }
+        }
+        return document.body;
+    }
 }

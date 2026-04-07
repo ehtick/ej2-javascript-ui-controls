@@ -2877,6 +2877,71 @@ describe('ChatUI Component', () => {
             expect(pinnedMessage.querySelector('.e-pinned-message-text').textContent).toBe('Pin this message!');
         });
 
+        it('should fire itemClicked event when unpinning from pinned message dropdown - REQ-CHAT-MSG-009 checking', () => {
+            const toolbarClickSpy = jasmine.createSpy('messageToolbarItemClicked');
+            
+            const pinnedMessage: MessageModel = {
+                id: 'msg1',
+                text: 'This is a pinned message!',
+                author: { id: 'user1', user: 'John Doe' },
+                timeStamp: new Date(),
+                isPinned: true
+            };
+
+            chatUI = new ChatUI({
+                user: { id: 'user2', user: 'Jane Doe' },
+                messages: [pinnedMessage],
+                messageToolbarSettings: {
+                    items: [
+                        { iconCss: 'e-icons e-chat-copy', tooltip: 'Copy' },
+                        { iconCss: 'e-icons e-chat-pin', tooltip: 'Pin' }
+                    ],
+                    itemClicked: toolbarClickSpy
+                }
+            });
+            chatUI.appendTo('#chatUI');
+
+            // Verify pinned message is displayed
+            const pinnedWrapper: HTMLElement = chatUIElem.querySelector('.e-pinned-message-wrapper');
+            expect(pinnedWrapper).not.toBeNull();
+            expect(pinnedWrapper.style.display).not.toBe('none');
+
+            // Click the three-dot dropdown button on pinned message
+            const dropDownButton: HTMLElement = pinnedWrapper.querySelector('.e-dropdown-btn');
+            expect(dropDownButton).not.toBeNull();
+            dropDownButton.click();
+
+            // Get the dropdown popup
+            const pinnedDropdown: HTMLElement = document.querySelector('.e-dropdown-popup.e-pinned-dropdown-popup');
+            expect(pinnedDropdown).not.toBeNull();
+
+            // Click the unpin button (second item in dropdown)
+            const unpinButton: HTMLElement = pinnedDropdown.querySelectorAll('.e-item')[1] as HTMLElement;
+            expect(unpinButton).not.toBeNull();
+            unpinButton.click();
+
+            // Verify message is unpinned (functionality works)
+            expect(pinnedWrapper.style.display).toBe('none');
+            expect(chatUI.messages[0].isPinned).toBe(false);
+
+            // Verify itemClicked event is fired with correct ItemModel properties
+            expect(toolbarClickSpy).toHaveBeenCalled();
+            
+            // Verify event args and all 8 ItemModel properties are correctly mapped
+            if (toolbarClickSpy.calls.any()) {
+                const eventArgs = toolbarClickSpy.calls.mostRecent().args[0];
+                expect(eventArgs.message).toBeDefined();
+                expect(eventArgs.message.id).toBe('msg1');
+                expect(eventArgs.item).toBeDefined();
+                
+                // Verify all 8 ItemModel properties are available in the event args
+                const item = eventArgs.item;
+                expect(item.text).toBeDefined();  // text from MenuItem
+                expect(item.prefixIcon).toBeDefined();  // iconCss mapped to prefixIcon
+                expect(item.id).toBeDefined();  // id from MenuItem
+            }
+        });
+
         it('should pin a message, then pin another message, then unpin that message', (done: DoneFn) => {
               const initialMessage: MessageModel = {
                 id: 'msg1',

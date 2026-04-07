@@ -19,25 +19,25 @@ import { PdfTextAlignment, PdfTextDirection, PdfSubSuperScript, _PdfWordWrapType
  * ```
  */
 export class PdfStringFormat {
-    alignment: PdfTextAlignment;
-    lineLimit: boolean;
-    lineAlignment: PdfVerticalAlignment;
-    characterSpacing: number;
-    wordSpacing: number;
-    lineSpacing: number;
-    clipPath: boolean;
-    horizontalScalingFactor: number = 100.0;
-    firstLineIndent: number;
-    measureTrailingSpaces: boolean;
-    noClip: boolean;
+    public alignment: PdfTextAlignment;
+    public lineLimit: boolean;
+    public lineAlignment: PdfVerticalAlignment;
+    public characterSpacing: number;
+    public wordSpacing: number;
+    public lineSpacing: number;
+    public clipPath: boolean;
+    public horizontalScalingFactor: number = 100.0;
+    public firstLineIndent: number;
+    public measureTrailingSpaces: boolean;
+    public noClip: boolean;
     /**
      * Internal paragraph indentation value used during layout.
      *
      * @private
      */
     _internalParagraphIndent: number;
-    textDirection: PdfTextDirection;
-    rightToLeft: boolean = false;
+    public textDirection: PdfTextDirection;
+    public rightToLeft: boolean = false;
     /**
      * Tracks whether subscript or superscript formatting is applied.
      *

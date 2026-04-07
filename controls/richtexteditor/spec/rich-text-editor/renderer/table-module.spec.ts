@@ -16,6 +16,8 @@ const MOUSEUP_EVENT: MouseEvent = new MouseEvent('mouseup', BASIC_MOUSE_EVENT_IN
 
 const INIT_MOUSEDOWN_EVENT: MouseEvent = new MouseEvent('mousedown', BASIC_MOUSE_EVENT_INIT);
 
+const INIT_MOUSE_OVER_EVENT = new MouseEvent('mouseover', { 'view': window, 'bubbles': true, 'cancelable': true });
+
 describe('Table Module', () => {
 
     describe('CSS property change testing, Coverage improvement ', () => {
@@ -13639,6 +13641,117 @@ the tool bar support, it�s also customiza</p><table class="e-rte-table" style=
                 expect(undoBtn.classList.contains('e-overlay')).toBe(false);
                 done();
             }, 200);
+        });
+    });
+
+    describe('1017191: Row insert (+) icon inherits hovered row background color', () => {
+        let rteObj: RichTextEditor;
+        const styledTableValue: string = `<table class="e-rte-table" style="width: 100%;">` +
+            `<tbody>` +
+            `<tr><td style="width: 50%;"><br></td><td style="width: 50%;"><br></td></tr>` +
+            `<tr>` +
+            `<td style="width: 50%; background-color: rgb(255, 0, 0);"><br></td>` +
+            `<td style="width: 50%; background-color: rgb(255, 0, 0);"><br></td>` +
+            `</tr>` +
+            `<tr><td style="width: 50%;"><br></td><td style="width: 50%;"><br></td></tr>` +
+            `</tbody></table>`;
+        beforeEach(() => {
+            rteObj = renderRTE({
+                value: styledTableValue
+            });
+        });
+        afterEach(() => {
+            destroy(rteObj);
+        });
+        it('TOP icon: new row inserted before hovered row (row 1) should inherit background-color', (done: DoneFn) => {
+            rteObj.focusIn();
+            const table: HTMLTableElement = rteObj.contentModule.getEditPanel().querySelector('table') as HTMLTableElement;
+            const initialRowCount: number = table.rows.length;
+            const styledRowTd: HTMLElement = table.rows[1].cells[0] as HTMLElement;
+            styledRowTd.dispatchEvent(INIT_MOUSE_OVER_EVENT);
+            setTimeout(() => {
+                const topInsertIcon: HTMLElement = rteObj.contentModule.getEditPanel().querySelector('.e-tb-row-insert[data-row="0"]') as HTMLElement;
+                styledRowTd.dispatchEvent(INIT_MOUSE_OVER_EVENT);
+                setTimeout(() => {
+                    topInsertIcon.dispatchEvent(INIT_MOUSE_OVER_EVENT);
+                    setTimeout(() => {
+                        const circleAdd: HTMLElement = topInsertIcon.querySelector('.e-circle-add') as HTMLElement;
+                        circleAdd.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                        setTimeout(() => {
+                            const updatedTable: HTMLTableElement = rteObj.contentModule.getEditPanel().querySelector('table') as HTMLTableElement;
+                            // Row count must increase by 1
+                            expect(updatedTable.rows.length).toBe(initialRowCount + 1);
+                            // New row is at index 1 (inserted before old row 1)
+                            const newRowCell: HTMLTableCellElement = updatedTable.rows[1].cells[0];
+                            // Must inherit background-color from the hovered row (old row 1)
+                            expect(newRowCell.style.backgroundColor).toBe('rgb(255, 0, 0)');
+                            done();
+                        }, 100);
+                    }, 100);
+                }, 100);
+            }, 100);
+        });
+        it('BOTTOM icon: new row inserted after hovered row (row 1) should inherit background-color', (done: DoneFn) => {
+            rteObj.focusIn();
+            const table: HTMLTableElement = rteObj.contentModule.getEditPanel().querySelector('table') as HTMLTableElement;
+            const initialRowCount: number = table.rows.length;
+            const styledRowTd: HTMLElement = table.rows[1].cells[0] as HTMLElement;
+            styledRowTd.dispatchEvent(INIT_MOUSE_OVER_EVENT);
+            setTimeout(() => {
+                const bottomInsertIcon: HTMLElement = rteObj.contentModule.getEditPanel().querySelector('.e-tb-row-insert[data-row="1"]') as HTMLElement;
+                styledRowTd.dispatchEvent(INIT_MOUSE_OVER_EVENT);
+                setTimeout(() => {
+                    bottomInsertIcon.dispatchEvent(INIT_MOUSE_OVER_EVENT);
+                    setTimeout(() => {
+                        const circleAdd: HTMLElement = bottomInsertIcon.querySelector('.e-circle-add') as HTMLElement;
+                        circleAdd.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                        setTimeout(() => {
+                            const updatedTable: HTMLTableElement = rteObj.contentModule.getEditPanel().querySelector('table') as HTMLTableElement;
+                            // Row count must increase by 1
+                            expect(updatedTable.rows.length).toBe(initialRowCount + 1);
+                            // New row is at index 2 (inserted after old row 1)
+                            const newRowCell: HTMLTableCellElement = updatedTable.rows[2].cells[0];
+                            // Must inherit background-color from the hovered row (old row 1)
+                            expect(newRowCell.style.backgroundColor).toBe('rgb(255, 0, 0)');
+                            done();
+                        }, 100);
+                    }, 100);
+                }, 100);
+            }, 100);
+        });
+    });
+
+    describe('1017191: fix-table-select-all-backspace', () => {
+        let editor: RichTextEditor;
+        const allCellsSelectedValue: string = `<table class="e-rte-table" style="width: 100%; min-width: 0px;"><tbody><tr><td class="e-cell-select e-multi-cells-select" style="width: 50%;"><br></td><td class="e-cell-select e-multi-cells-select e-cell-select-end" style="width: 50%;"><br></td></tr><tr><td class="e-cell-select e-multi-cells-select" style="width: 50%;"><br></td><td class="e-cell-select e-multi-cells-select e-cell-select-end" style="width: 50%;"><br></td></tr></tbody></table><p><br></p>`;
+        const partialCellsSelectedValue: string = `<table class="e-rte-table" style="width: 100%; min-width: 0px;"><tbody><tr><td class="e-cell-select e-multi-cells-select" style="width: 50%;"><br></td><td class="e-cell-select e-multi-cells-select e-cell-select-end" style="width: 50%;"><br></td></tr><tr><td style="width: 50%;"><br></td><td style="width: 50%;"><br></td></tr></tbody></table><p><br></p>`;
+        beforeEach(() => {
+            editor = renderRTE({});
+        });
+        afterEach(() => {
+            destroy(editor);
+        });
+        it('should remove entire table when all cells are selected via Select All icon and Backspace is pressed', (done: DoneFn) => {
+            editor.inputElement.innerHTML = allCellsSelectedValue;
+            editor.focusIn();
+            const firstCell: HTMLElement = editor.inputElement.querySelector('td.e-cell-select');
+            setCursorPoint(firstCell as Element, 0);
+            editor.inputElement.dispatchEvent(new KeyboardEvent('keydown', BACKSPACE_EVENT_INIT));
+            setTimeout(() => {
+                expect(editor.inputElement.querySelector('table')).toBeNull();
+                done();
+            }, 100);
+        });
+        it('should only clear cell content (not remove table) when partial cells are selected and Backspace is pressed', (done: DoneFn) => {
+            editor.inputElement.innerHTML = partialCellsSelectedValue;
+            editor.focusIn();
+            const firstCell: HTMLElement = editor.inputElement.querySelector('td.e-cell-select');
+            setCursorPoint(firstCell as Element, 0);
+            editor.inputElement.dispatchEvent(new KeyboardEvent('keydown', BACKSPACE_EVENT_INIT));
+            setTimeout(() => {
+                expect(editor.inputElement.querySelector('table')).not.toBeNull();
+                done();
+            }, 100);
         });
     });
 });

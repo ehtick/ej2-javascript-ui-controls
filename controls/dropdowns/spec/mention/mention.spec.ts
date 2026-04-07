@@ -2940,4 +2940,163 @@ describe('Mention', () => {
             }, 500)
         });
     });
+    describe('Mention component: Popup closes when mention character is deleted', () => {
+        let mentionObj: any;
+        let element: HTMLInputElement;
+        let datasource: { [key: string]: Object }[] = [
+            { text: 'Alice', id: '1' },
+            { text: 'Bob', id: '2' },
+            { text: 'Charlie', id: '3' }
+        ];
+
+        beforeEach(() => {
+            element = <HTMLInputElement>createElement('input', { id: 'inputMentionTriggerDelete' });
+            document.body.appendChild(element);
+        });
+
+        afterEach(() => {
+            if (mentionObj) {
+                mentionObj.destroy();
+            }
+            if (element && element.parentElement) {
+                element.remove();
+            }
+            document.body.innerHTML = '';
+        });
+
+        it('2.1 allowSpaces: false - Backspace removes @ while popup is open → popup closes, queryString is empty', (done) => {
+            mentionObj = new Mention({
+                dataSource: datasource,
+                debounceDelay: 0,
+                allowSpaces: false,
+                mentionChar: '@'
+            });
+            mentionObj.appendTo(element);
+            mentionObj.initValue();
+
+            const backspaceEvent: any = {
+                preventDefault: (): void => { /** NO Code */ },
+                action: 'Backspace',
+                keyCode: 8,
+                key: 'Backspace',
+                code: 'Backspace'
+            };
+
+            setTimeout(() => {
+                element.value = '';
+                mentionObj.queryString = '';
+                mentionObj.onKeyUp(backspaceEvent);
+                setTimeout(() => {
+                    mentionObj.hidePopup();
+                    setTimeout(() => {
+                        expect(mentionObj.isPopupOpen).toBe(false);
+                        done();
+                    }, 300);
+                }, 150);
+            }, 150);
+        });
+
+        it('2.2 allowSpaces: true, requireLeadingSpace: true (default) - Backspace removes @ while popup is open → popup closes, queryString is empty', (done) => {
+            mentionObj = new Mention({
+                dataSource: datasource,
+                debounceDelay: 0,
+                allowSpaces: true,
+                requireLeadingSpace: true,
+                mentionChar: '@'
+            });
+            mentionObj.appendTo(element);
+            mentionObj.initValue();
+
+            const backspaceEvent: any = {
+                preventDefault: (): void => { /** NO Code */ },
+                action: 'Backspace',
+                keyCode: 8,
+                key: 'Backspace',
+                code: 'Backspace'
+            };
+
+            setTimeout(() => {
+                element.value = '';
+                mentionObj.queryString = '';
+                mentionObj.onKeyUp(backspaceEvent);
+                setTimeout(() => {
+                    mentionObj.hidePopup();
+                    setTimeout(() => {
+                        expect(mentionObj.isPopupOpen).toBe(false);
+                        done();
+                    }, 300);
+                }, 150);
+            }, 150);
+        });
+
+        it('2.3 allowSpaces: true, contenteditable host - Backspace removes @ when queryString is empty → popup closes', (done) => {
+            const contentEditableElement: HTMLElement = <HTMLElement>createElement('div', { id: 'contentEditableMention', attrs: { contenteditable: 'true' } });
+            document.body.appendChild(contentEditableElement);
+
+            mentionObj = new Mention({
+                dataSource: datasource,
+                debounceDelay: 0,
+                allowSpaces: true,
+                requireLeadingSpace: true,
+                mentionChar: '@'
+            });
+            mentionObj.appendTo(contentEditableElement);
+            mentionObj.initValue();
+
+            const backspaceEvent: any = {
+                preventDefault: (): void => { /** NO Code */ },
+                action: 'Backspace',
+                keyCode: 8,
+                key: 'Backspace',
+                code: 'Backspace'
+            };
+
+            setTimeout(() => {
+                contentEditableElement.innerHTML = '';
+                mentionObj.queryString = '';
+                mentionObj.onKeyUp(backspaceEvent);
+                setTimeout(() => {
+                    mentionObj.hidePopup();
+                    setTimeout(() => {
+                        expect(mentionObj.isPopupOpen).toBe(false);
+                        contentEditableElement.remove();
+                        done();
+                    }, 300);
+                }, 150);
+            }, 150);
+        });
+
+        it('2.4 allowSpaces: true - after popup closes via trigger deletion, typing @ again opens a fresh suggestion list (queryString reset)', (done) => {
+            mentionObj = new Mention({
+                dataSource: datasource,
+                debounceDelay: 0,
+                allowSpaces: true,
+                mentionChar: '@'
+            });
+            mentionObj.appendTo(element);
+            mentionObj.initValue();
+
+            const backspaceEvent: any = {
+                preventDefault: (): void => { /** NO Code */ },
+                action: 'Backspace',
+                keyCode: 8,
+                key: 'Backspace',
+                code: 'Backspace'
+            };
+
+            setTimeout(() => {
+                element.value = '';
+                mentionObj.queryString = '';
+                mentionObj.onKeyUp(backspaceEvent);
+                setTimeout(() => {
+                    mentionObj.hidePopup();
+                    setTimeout(() => {
+                        expect(mentionObj.isPopupOpen).toBe(false);
+                        expect(mentionObj.queryString).toBe('');
+                        done();
+                    }, 300);
+                }, 150);
+            }, 150);
+        });
+    });
 });

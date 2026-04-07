@@ -2268,6 +2268,9 @@ export class TextMarkupAnnotation {
     }
 
     private getRgbCode(colorString: string): any {
+        if (isNullOrUndefined(colorString)) {
+            return { a: 0, r: 0, g: 0, b: 0 };
+        }
         // eslint-disable-next-line
         if (!colorString.match(/#([a-z0-9]+)/gi) && !colorString.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d+)?))?\)$/)) {
             colorString = this.pdfViewer.annotationModule.nameToHash(colorString);

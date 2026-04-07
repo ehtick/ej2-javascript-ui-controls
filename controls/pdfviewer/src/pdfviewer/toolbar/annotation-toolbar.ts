@@ -2383,7 +2383,7 @@ export class AnnotationToolbar {
                 selectedAnnotation.fontSize !== parseFloat(previousItemData))) {
                 this.pdfViewer.annotation.modifyFontSize(fontSize, isInteracted);
             }
-        } else {
+        } else if (isInteracted) {
             this.pdfViewer.freeTextSettings.fontSize = fontSize;
             this.pdfViewer.annotationModule.freeTextAnnotationModule.updateTextProperties();
         }
@@ -2524,6 +2524,11 @@ export class AnnotationToolbar {
     }
 
     private opacityChange(args: any): void {
+        if (args && args.name === 'change') {
+            this.pdfViewerBase.isPropertySliderChanging = true;
+        } else if (args && args.name === 'changed') {
+            this.pdfViewerBase.isPropertySliderChanging = false;
+        }
         let opacityValue: number = 1;
         if (args && args.length === 1) {
             opacityValue = (args[0] as number);
@@ -2727,6 +2732,11 @@ export class AnnotationToolbar {
     }
 
     private thicknessChange(args: ChangeEventArgs): void {
+        if (args && args.name === 'change') {
+            this.pdfViewerBase.isPropertySliderChanging = true;
+        } else if (args && args.name === 'changed') {
+            this.pdfViewerBase.isPropertySliderChanging = false;
+        }
         if (this.pdfViewer.selectedItems.annotations.length === 1) {
             if (args.name === 'changed') {
                 this.pdfViewer.annotation.modifyThickness(args.value);

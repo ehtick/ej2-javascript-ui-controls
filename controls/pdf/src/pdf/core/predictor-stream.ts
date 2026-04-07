@@ -2,15 +2,15 @@ import { _PdfDecodeStream } from './decode-stream';
 import { _PdfDictionary } from './pdf-primitives';
 import { FormatError } from './utils';
 export class PdfPredictorStream extends _PdfDecodeStream {
-    predictor: number;
-    dictionary: _PdfDictionary;
-    pixBytes: number;
-    rowBytes: number;
-    colors: number;
-    bits: number;
-    columns: number;
-    readBlock: any; // eslint-disable-line
-    constructor(stream: any, maybeLength: number, params: _PdfDictionary) { // eslint-disable-line
+    public predictor: number;
+    public dictionary: _PdfDictionary;
+    public pixBytes: number;
+    public rowBytes: number;
+    public colors: number;
+    public bits: number;
+    public columns: number;
+    public readBlock: any; // eslint-disable-line
+    public constructor(stream: any, maybeLength: number, params: _PdfDictionary) { // eslint-disable-line
         super(maybeLength);
         if (!(params instanceof _PdfDictionary)) {
             return stream;
@@ -36,7 +36,7 @@ export class PdfPredictorStream extends _PdfDecodeStream {
         this.rowBytes = (columns * colors * bits + 7) >> 3;
         return this;
     }
-    readBlockTiff(): void {
+    public readBlockTiff(): void {
         const rowBytes: number = this.rowBytes;
         const bufferLength: number = this.bufferLength;
         const buffer: Uint8Array = this.ensureBuffer(bufferLength + rowBytes);
@@ -111,7 +111,7 @@ export class PdfPredictorStream extends _PdfDecodeStream {
         }
         this.bufferLength += rowBytes;
     }
-    readBlockPng(): void {
+    public readBlockPng(): void {
         const rowBytes: number = this.rowBytes;
         const pixBytes: number = this.pixBytes;
         const predictor: number = this.stream.getByte();

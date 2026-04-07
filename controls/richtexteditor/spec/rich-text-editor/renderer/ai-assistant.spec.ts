@@ -2526,4 +2526,74 @@ describe('AI Assistant Module', ()=> {
             });
         });
     });
+
+    describe('1020112: AI Assistant Insert Content Without Editor Focus testing', () => {
+        let editor: RichTextEditor;
+        const requestCount = { current: 0 };
+        beforeAll(() => {
+            editor = renderRTE({
+                value: '<p>This is the full content that should be processed when not focused.</p>',
+                toolbarSettings: {
+                    items: ['aiquery', 'aicommands']
+                },
+                aiAssistantSettings: {
+                    commands: [{
+                        text: "Change Tone",
+                        items: [
+                            {
+                                text: "Professional",
+                                prompt: "Rewrite the following content in a professional tone:"
+                            }
+                        ]
+                    }],
+                    prompts: [
+                        {
+                            prompt: 'What is Essential Studio ?',
+                            response:
+                                'Essential Studio is a software toolkit by Syncfusion that offers a variety of UI controls, frameworks, and libraries for developing applications on web, desktop, and mobile platforms. It aims to streamline application development with customizable, pre-built components.',
+                        },
+                    ]
+                },
+                aiAssistantPromptRequest: (args: AIAssistantPromptRequestArgs) => {
+                    requestCount.current = requestCount.current + 1;
+                    const fullText = requestCount.current === 1
+                        ? '- test1 \n- test2 \n- test3'
+                        : 'If I select test2 and run AI assist, I expect only test2 is replaced, test1 and test3 should not be removed';
+                    editor.addAIPromptResponse(fullText, false);
+                    editor.addAIPromptResponse(fullText, true);
+                }
+            });
+        });
+        afterAll(() => {
+            destroy(editor);
+        });
+        it('Should insert AI response to the editor without focusing the editor and opening AI-Commands dropdown', (done: DoneFn) => {
+            // DO NOT call editor.focusIn(); we want the "not focused" case.
+            // Click the AI Commands toolbar button
+            const commandsButton: HTMLButtonElement = editor.getToolbarElement().querySelector('.e-ai-commands-tbar-btn');
+            commandsButton.click();
+            setTimeout(() => {
+                // Open submenu by hover and then click first item
+                const rootMenu: HTMLElement = document.querySelector('.e-dropdown-popup.e-ai-commands-tbar-btn .e-menu-parent') as HTMLElement;
+                rootMenu.querySelector('li').classList.add('e-focused');
+                const mouseOverEvent: MouseEvent = new MouseEvent('mouseover', BASIC_MOUSE_EVENT_INIT);
+                rootMenu.querySelector('li').dispatchEvent(mouseOverEvent);
+                setTimeout(() => {
+                    const subMenu: HTMLElement = document.querySelectorAll('.e-menu-popup')[0] as HTMLElement;
+                    expect(subMenu).not.toBeUndefined();
+                    // Click the first AI command item
+                    subMenu.querySelector('li').click();
+                    setTimeout(() => {
+                        const aiQueryPopup: HTMLElement = document.querySelector('.e-rte-aiquery-popup');
+                        const insertButton: HTMLElement = aiQueryPopup.querySelectorAll('.e-check')[1].parentElement.parentElement;
+                        insertButton.click();
+                        setTimeout(() => {
+                            expect(editor.inputElement.querySelectorAll('li').length).toBe(3);
+                            done();
+                        }, 100);
+                    }, 100);
+                }, 100);
+            }, 100);
+        });
+    });
 });

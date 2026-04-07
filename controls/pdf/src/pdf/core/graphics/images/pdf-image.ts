@@ -237,7 +237,7 @@ export abstract class PdfImage {
      * document.destroy();
      * ```
      */
-    draw(graphics: PdfGraphics): void
+    public draw(graphics: PdfGraphics): void
     /**
      * Represents a method to draw a image on the PDF graphics.
      *
@@ -261,8 +261,8 @@ export abstract class PdfImage {
      * document.destroy();
      * ```
      */
-    draw(graphics: PdfGraphics, location: Point): void
-    draw(graphics: PdfGraphics, location?: Point): void {
+    public draw(graphics: PdfGraphics, location: Point): void
+    public draw(graphics: PdfGraphics, location?: Point): void {
         if (location && (location.x === null || typeof location.x === 'undefined') && (location.y === null || typeof location.y === 'undefined')) {
             location.x = 0;
             location.y = 0;

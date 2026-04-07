@@ -5816,6 +5816,18 @@ export class TreeView extends Component<HTMLElement> implements INotifyPropertyC
         this.wireExpandOnEvent(false);
         EventHandler.remove(this.element, 'mouseover', this.onMouseOver);
         EventHandler.remove(this.element, 'mouseout', this.onMouseLeave);
+        const liElements: HTMLElement[] = <HTMLElement[] & NodeListOf<HTMLElement>>selectAll('.' + LISTITEM, this.element);
+        for (let i: number = 0; i < liElements.length; i++) {
+            const li: HTMLElement = liElements[parseInt(i.toString(), 10)];
+            EventHandler.remove(li, 'focus', this.focusIn);
+            EventHandler.remove(li, 'blur', this.focusOut);
+            const frame: HTMLElement = select('.' + CHECKBOXFRAME, li) as HTMLElement;
+            if (frame) {
+                EventHandler.remove(frame, 'mousedown', this.frameMouseHandler);
+                EventHandler.remove(frame, 'mouseup', this.frameMouseHandler);
+                EventHandler.remove(frame, 'mouseleave', this.frameMouseHandler);
+            }
+        }
         if (!this.disabled) {
             this.keyboardModule.destroy();
         }

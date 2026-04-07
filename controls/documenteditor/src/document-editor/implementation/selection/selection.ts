@@ -37,7 +37,7 @@ import {
 import { TextPositionInfo, PositionInfo, ParagraphInfo } from '../editor/editor-helper';
 import { WCharacterFormat, WParagraphFormat, WStyle, WParagraphStyle, WSectionFormat } from '../index';
 import { HtmlExport } from '../writer/html-export';
-import { Popup } from '@syncfusion/ej2-popups';
+import { DialogUtility, Popup } from '@syncfusion/ej2-popups';
 import { ContextType, RequestNavigateEventArgs, TablePasteOptions, PasteOptionSwitch } from '../../index';
 import { TextPosition, SelectionWidgetInfo, Hyperlink, ImageSizeInfo } from './selection-helper';
 import { ItemModel, MenuEventArgs, DropDownButton } from '@syncfusion/ej2-splitbuttons';
@@ -3121,6 +3121,28 @@ export class Selection {
         const currentField: FieldElementBox = this.currentFormField;
         let previousFieldData: FormFieldFillEventArgs;
         let currentFieldData: FormFieldFillEventArgs;
+        if (currentField !== previousField && currentField && previousField && previousField.formFieldData instanceof TextFormField && this.documentHelper.isInlineFormFillProtectedMode) {
+            const formFieldData: TextFormField = previousField.formFieldData as TextFormField;
+            if (formFieldData.type === 'Number' || formFieldData.type === 'Date') {
+                const isValid: boolean = this.validateFormFieldValue(previousField);
+                if (!isValid) {
+                    const validationMessage: string = formFieldData.type === 'Number' ? 'A valid number is required' : 'A valid date or time is required';
+                    const localValue: L10n = new L10n('documenteditor', this.owner.defaultLocale);
+                    localValue.setLocale(this.owner.locale);
+                    DialogUtility.alert({
+                        title: localValue.getConstant('Information'),
+                        content: validationMessage,
+                        closeOnEscape: true,
+                        showCloseIcon: true,
+                        position: { X: 'center', Y: 'center' },
+                        animationSettings: { effect: 'Zoom' }
+                    }).enableRtl = this.owner.enableRtl;
+                    // Refocus the previous field — block leaving
+                    this.selectFieldInternal(previousField, true);
+                    return;
+                }
+            }
+        }
         if (currentField !== previousField && previousField && previousField.formFieldData instanceof TextFormField
             && previousField.formFieldData.type === 'Text') {
             if ((previousField.formFieldData as TextFormField).format !== '' && !this.isFormatUpdated) {
@@ -3140,6 +3162,32 @@ export class Selection {
             currentFieldData = { 'fieldName': currentField.formFieldData.name, 'value': this.owner.editorModule.getFieldResultText(currentField) };
             this.owner.trigger(beforeFormFieldFillEvent, currentFieldData);
         }
+    }
+    private validateFormFieldValue(field: FieldElementBox): boolean {
+        const formFieldData: TextFormField = field.formFieldData as TextFormField;
+        const resultantText: string = this.owner.editorModule.getFieldResultText(field);
+        if (resultantText === '') {
+            return true;
+        }
+        if (formFieldData.type === 'Number') {
+            const number = Number(resultantText.replace(/[$,%]/g, '').replace(/,/g, '').replace(/^\((.+)\)$/, '-$1'));
+            if (isNaN(number)) {
+                return false;
+            }
+            const formattedNumber: string = HelperMethods.formatNumber((formFieldData as TextFormField).format, resultantText);
+            this.owner.editorModule.updateFormField(field, formattedNumber);
+            return true;
+        }        
+        if (formFieldData.type === 'Date') {
+            const date = new Date(resultantText);
+            if (isNaN(date.getTime())) {
+                return false;
+            }
+            const formattedDate: string = HelperMethods.formatDate((formFieldData as TextFormField).format, resultantText);
+            this.owner.editorModule.updateFormField(field, formattedDate);
+            return true;
+        }
+        return true;
     }
     /**
      * @private
@@ -4803,6 +4851,9 @@ export class Selection {
 
                 }
                 if ((start.containerWidget instanceof BodyWidget && block.containerWidget instanceof BodyWidget)) {
+                    if (this.documentHelper.isCopying && start.containerWidget.footNoteReference && start.containerWidget.footNoteReference.line && start.containerWidget.footNoteReference.line.paragraph.index < block.index) {
+                        return true;
+                    }
                     //Splitted blocks
                     const startPage: number = this.documentHelper.pages.indexOf(start.containerWidget.page);
                     const endPage: number = this.documentHelper.pages.indexOf(block.containerWidget.page);
@@ -4820,6 +4871,11 @@ export class Selection {
                     } else {
                         return startPage < endPage;
                     }
+                }
+                if (this.documentHelper.isCopying && start.containerWidget && start.containerWidget !== block.containerWidget && start.containerWidget instanceof TextFrame
+                    && start.containerWidget.containerShape && start.containerWidget.containerShape instanceof ShapeElementBox && start.containerWidget.containerShape.line
+                    && start.containerWidget.containerShape.line.paragraph && start.containerWidget.containerShape.line.paragraph.index < block.index) {
+                    return true;
                 }
             }
         }
@@ -7708,7 +7764,17 @@ export class Selection {
                     if (element instanceof TextElementBox && (isParaBidi || isRtlText) && caretPosition.x < left + element.margin.left + element.width + element.padding.left) {
                         index = this.getTextLength(element.line, element) + (element as TextElementBox).length;
                     } else if (element instanceof BookmarkElementBox && element.bookmarkType == 0) {
-                        index = this.getNextValidOffset(element.line, 0, true);
+                        let hasMouseDrag: boolean = (this.documentHelper.isSelectionChangedOnMouseMoved || this.documentHelper.isSelectionActive);
+                        if (!hasMouseDrag && this.documentHelper.isMouseDown && this.documentHelper.mouseDownOffset) {
+                            if (this.documentHelper.mouseDownOffset.x !== caretPosition.x || this.documentHelper.mouseDownOffset.y !== caretPosition.y) {
+                                hasMouseDrag = true;
+                            }
+                        }
+                        if (hasMouseDrag) {
+                            index = this.getTextLength(element.line, element);
+                        } else {
+                            index = this.getNextValidOffset(element.line, 0, true);
+                        }
                     }
                     else {
                         index = this.getTextLength(element.line, element);

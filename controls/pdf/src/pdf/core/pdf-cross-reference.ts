@@ -1425,6 +1425,13 @@ export class _PdfCrossReference {
         } else if (typeof obj === 'string') {
             this._writeString(`(${_escapePdfName(obj)})\n`, buffer);
         }
+        if (obj instanceof _PdfName) {
+            if (obj.name.indexOf(' ') !== -1) {
+                obj.name = obj.name.replace(/ /g,'#20'); // eslint-disable-line
+            }
+            const escapedName: string = obj.name;
+            this._writeString(`/${escapedName}`, buffer);
+        }
         if (reference && reference instanceof _PdfReference) {
             this._writeString(`endobj${this._newLine}`, buffer);
         }
@@ -1802,6 +1809,12 @@ export class _PdfCrossReference {
         let cipher: _CipherTransform | undefined;
         if (value instanceof _PdfDictionary && value.isCatalog) {
             this._writeToBuffer(buffer, key, value);
+        } else if (value instanceof _PdfName) {
+            if (this._document.fileStructure._crossReferenceType === PdfCrossReferenceType.stream) {
+                this._writeArchiveStream(objectStreamCollection, key, value);
+            } else {
+                this._writeToBuffer(buffer, key, value);
+            }
         } else if (value instanceof _PdfDictionary) {
             const type: _PdfName = value.get('Filter');
             const typeIsFilter: boolean = type && type.name === 'Standard';

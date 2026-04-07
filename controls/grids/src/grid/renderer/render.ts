@@ -924,7 +924,7 @@ export class Render {
         const groupN: Group = <Group>e.result[parseInt(index.toString(), 10)]; const predicate: Predicate[] = [];
         const addWhere: (query: Query) => void =
             (input: Query) => {
-                const groups: Group[] = [group0, groupN];
+                const groups: Group[] = index === 0 ? [group0] : [group0, groupN];
                 for (let i: number = 0; i < groups.length; i++) {
                     predicate.push(new Predicate('field', '==', groups[parseInt(i.toString(), 10)].field).and(this.getPredicate('key', 'equal', groups[parseInt(i.toString(), 10)].key)));
                 }
@@ -935,7 +935,7 @@ export class Render {
         const curFilter: Object[] = <Object[]>curDm.executeLocal(query);
         const newQuery: Query = this.data.generateQuery(true); const rPredicate: Predicate[] = [];
         if (this.data.isRemote()) {
-            const groups: Group[] = [group0, groupN];
+            const groups: Group[] = index === 0 ? [group0] : [group0, groupN];
             for (let i: number = 0; i < groups.length; i++) {
                 rPredicate.push(this.getPredicate((groups[parseInt(i.toString(), 10)] as Group).field, 'equal', (groups[parseInt(i.toString(), 10)] as Group).key));
             }

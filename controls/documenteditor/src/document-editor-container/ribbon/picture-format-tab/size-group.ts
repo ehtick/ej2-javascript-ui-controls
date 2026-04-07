@@ -54,6 +54,22 @@ export class SizeGroup {
      */
     public getSizeGroup(): RibbonGroupModel {
         const id: string = this.container.element.id + '_pictureformat';
+        const pictureWidth: any = () =>
+            `<div class="e-de-ctnr-picture-ribbon-segment e-de-ctnr-picture-format-tab"
+            title="${this.localObj.getConstant('Width')}">
+            <div class="e-de-picture-label-container">
+                <span class="e-de-ribbon-property-label">${this.localObj.getConstant('Width')}:</span>
+            </div>
+            <input id="${this.container.element.id + WIDTH_BOX_ID}" class="e-textbox" />
+        </div>`;
+        const pictureHeight: any = () =>
+            ` <div class="e-de-ctnr-picture-ribbon-segment e-de-ctnr-picture-format-tab" 
+                title="${this.localObj.getConstant('Height')}">
+                <div class="e-de-picture-label-container">
+                    <span class="e-de-ribbon-property-label">${this.localObj.getConstant('Height')}:</span>
+                </div>
+                <input id="${this.container.element.id + HEIGHT_BOX_ID}" class="e-textbox"/>
+            </div>`;
         return {
             header: this.localObj.getConstant('Size'),
             id: id + SIZE_GROUP,
@@ -66,7 +82,7 @@ export class SizeGroup {
                             keyTip: 'W',
                             type: RibbonItemType.Template,
                             allowedSizes: RibbonItemSize.Small,
-                            itemTemplate: '#' + this.container.element.id + RIBBON_ID + '_pictureformat_width',
+                            itemTemplate: pictureWidth,
                             ribbonTooltipSettings: {
                                 title: this.localObj.getConstant('Width'),
                                 content: this.localObj.getConstant('Adjust image width')
@@ -75,7 +91,7 @@ export class SizeGroup {
                         {
                             keyTip: 'H',
                             type: RibbonItemType.Template,
-                            itemTemplate: '#' + this.container.element.id + RIBBON_ID + '_pictureformat_height',
+                            itemTemplate: pictureHeight,
                             ribbonTooltipSettings: {
                                 title: this.localObj.getConstant('Height'),
                                 content: this.localObj.getConstant('Adjust image height')

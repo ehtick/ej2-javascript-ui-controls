@@ -64,7 +64,7 @@ export class PdfBitmap extends PdfImage {
      * document.destroy();
      * ```
      */
-    constructor(encodedString: string)
+    public constructor(encodedString: string)
     /**
      * Create an instance for `PdfBitmap` class.
      *
@@ -86,8 +86,8 @@ export class PdfBitmap extends PdfImage {
      * document.destroy();
      * ```
      */
-    constructor(encodedString: Uint8Array)
-    constructor(encodedString: string | Uint8Array) {
+    public constructor(encodedString: Uint8Array)
+    public constructor(encodedString: string | Uint8Array) {
         super();
         if (encodedString !== null && typeof encodedString !== 'undefined' && typeof encodedString === 'string') {
             this._initializeAsync(encodedString);

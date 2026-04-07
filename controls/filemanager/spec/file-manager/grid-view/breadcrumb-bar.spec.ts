@@ -1020,5 +1020,52 @@ describe('FileManager control Grid view', () => {
                 }, 500);
             }.bind(searchObj), 500);
         });
+        it('should make all breadcrumb items keyboard accessible (tabindex on all items including last)', (done: Function) => {
+            feObj.detailsviewModule.gridObj.element.querySelectorAll('.e-row')[2].firstElementChild.dispatchEvent(dblclickevent);
+            this.request = jasmine.Ajax.requests.mostRecent();
+            this.request.respondWith({
+                status: 200,
+                responseText: JSON.stringify(doubleClickRead)
+            });
+            setTimeout(function () {
+                const items = feObj.breadCrumbBarNavigation.querySelectorAll('.e-address-list-item');
+                // Assert: All items have tabindex="0" including last item
+                items.forEach((item: any) => {
+                    expect(item.getAttribute('tabindex')).toBe('0');
+                });
+                done();
+            }, 500);
+        });
+        it('should have role="link" on each breadcrumb item for screen reader announcement', (done: Function) => {
+            feObj.detailsviewModule.gridObj.element.querySelectorAll('.e-row')[2].firstElementChild.dispatchEvent(dblclickevent);
+            this.request = jasmine.Ajax.requests.mostRecent();
+            this.request.respondWith({
+                status: 200,
+                responseText: JSON.stringify(doubleClickRead)
+            });
+            setTimeout(function () {
+                const items = feObj.breadCrumbBarNavigation.querySelectorAll('.e-address-list-item');
+                // Assert: Each item has role="link" and aria-label for screen reader
+                items.forEach((item: any) => {
+                    expect(item.getAttribute('role')).toBe('link');
+                    expect(item.getAttribute('aria-label')).toBeTruthy();
+                });
+                done();
+            }, 500);
+        });
+        it('should have aria-current="page" on last breadcrumb item', (done: Function) => {
+            feObj.detailsviewModule.gridObj.element.querySelectorAll('.e-row')[2].firstElementChild.dispatchEvent(dblclickevent);
+            this.request = jasmine.Ajax.requests.mostRecent();
+            this.request.respondWith({
+                status: 200,
+                responseText: JSON.stringify(doubleClickRead)
+            });
+            setTimeout(function () {
+                const items = feObj.breadCrumbBarNavigation.querySelectorAll('.e-address-list-item');
+                const lastItem = items[items.length - 1];
+                expect(lastItem.getAttribute('aria-current')).toBe('page');
+                done();
+            }, 500);
+        });
     });
 });

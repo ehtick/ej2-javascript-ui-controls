@@ -7,7 +7,7 @@ import { WRowFormat } from '../index';
 import { LayoutViewer } from '../index';
 import { TableAlignment } from '../../index';
 import { TableHistoryInfo, RowFormatHistoryInfo, CellFormatHistoryInfo } from '../index';
-import { DocumentHelper } from '../viewer';
+import { DocumentHelper, IWidget } from '../viewer';
 /**
  * @private
  */
@@ -264,16 +264,16 @@ export class TableResizer {
             if (row.rowFormat.heightType === 'Exactly') {
                 this.startingPoint.y += HelperMethods.convertPointToPixel(dragValue);
             } else {
-                this.startingPoint.y += dragValue + row.topBorderWidth + row.bottomBorderWidth;
+                this.startingPoint.y += dragValue;
             }
         }
         this.owner.documentHelper.layout.reLayoutTable(table);
         this.owner.editorModule.isSkipOperationsBuild = this.owner.enableCollaborativeEditing;
         this.owner.editorModule.reLayout(this.owner.selectionModule);
         this.owner.editorModule.isSkipOperationsBuild = false;
-        if (row) {
-            this.getRowReSizerPosition(undefined, this.startingPoint);
-        }
+        // if (row) {
+        //     this.getRowReSizerPosition(undefined, this.startingPoint);
+        // }
         if (this.currentResizingTable && (this.currentResizingTable.childWidgets === undefined
             || this.currentResizingTable.childWidgets[this.resizerPosition] === undefined)) {
             this.resizerPosition = -1;
@@ -364,11 +364,29 @@ export class TableResizer {
             }
         } else {
             //the minimum height of the Row in MS word is 2.7 points which is equal to 3.6 pixel.
-            const currentHeight: number = this.owner.documentHelper.layout.getRowHeight(row, [row]);
+            const currentHeight: number = this.getRowFormatHeight(row);
             if (rowFormat.height !== currentHeight + dragValue) {
                 rowFormat.height = currentHeight + dragValue < 2.7 ? 2.7 : currentHeight + dragValue;
             }
         }
+    }
+    private getRowFormatHeight(row: TableRowWidget): number {
+        let height: number = 0;
+        if (row.rowFormat.heightType === 'Exactly') {
+            height = row.rowFormat.height;
+        } else {
+            let cellHeight: number;
+            for (let i: number = 0; i < row.childWidgets.length; i++) {
+                const cellWidget: IWidget = row.childWidgets[i as number];
+                if (cellWidget instanceof TableCellWidget) {
+                    cellHeight = cellWidget.height;
+                }
+                if (height < cellHeight) {
+                    height = cellHeight;
+                }
+            }
+        }
+        return height;
     }
     //Resize Table cell
     public resizeTableCellColumn(dragValue: number): void {

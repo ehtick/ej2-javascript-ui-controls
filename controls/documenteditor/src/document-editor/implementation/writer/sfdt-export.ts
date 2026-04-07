@@ -1037,6 +1037,14 @@ private hasSameContentControlProperties(props1: any, props2: any): boolean {
                     isformField = true;
                 }
             }
+            if (element instanceof EditRangeStartElementBox && !isNullOrUndefined(this.editRangeCollection) &&
+                this.editRangeCollection.indexOf(element) === -1 && !this.isExport) {
+                continue;
+            }
+            if (element instanceof EditRangeEndElementBox && !isNullOrUndefined(this.editRangeCollection) &&
+                this.editRangeCollection.indexOf(element.editRangeStart) === -1 && !this.isExport) {
+                continue;
+            }
             if (element instanceof ListTextElementBox) {
                 continue;
             }
@@ -1753,8 +1761,12 @@ private hasSameContentControlProperties(props1: any, props2: any): boolean {
                     (element.bookmarkType === 1 && this.bookmarkCollection.indexOf(element.reference) === -1))) {
                 continue;
             }
-            if (element instanceof EditRangeStartElementBox && this.editRangeCollection.length > 0 &&
-                this.editRangeCollection.indexOf(element) === -1) {
+            if (element instanceof EditRangeStartElementBox && !isNullOrUndefined(this.editRangeCollection) &&
+                this.editRangeCollection.indexOf(element) === -1 && !this.isExport) {
+                continue;
+            }
+            if (element instanceof EditRangeEndElementBox && !isNullOrUndefined(this.editRangeCollection) &&
+                this.editRangeCollection.indexOf(element.editRangeStart) === -1 && !this.isExport) {
                 continue;
             }
 
@@ -1890,8 +1902,8 @@ private hasSameContentControlProperties(props1: any, props2: any): boolean {
             let isExistBefore: boolean = this.documentHelper.selection.isExistBefore(paragraphWidget, endPos.paragraph);
             const isEndBeforeContentControl = lastLine.children.length === 1 && lastLine.children[0] instanceof ContentControl && endPos.offset === 0;
             isListPara = !isNullOrUndefined(paragraphWidget.paragraphFormat.listFormat.list);
-            isParaSelected = this.documentHelper.selection.isParagraphLastLine(lastLine)
-                && (endPos.offset === this.documentHelper.selection.getLineLength(lastLine) + 1 || isExistBefore || isEndBeforeContentControl);
+            isParaSelected = endPos.paragraph === paragraphWidget ? this.documentHelper.selection.isParagraphLastLine(lastLine)
+                && (endPos.offset === this.documentHelper.selection.getLineLength(lastLine) + 1 || isExistBefore || isEndBeforeContentControl): isExistBefore;
         } else {
             isParaSelected = true;
         }

@@ -43,6 +43,7 @@ export class AIAssistant {
     private L10n: L10n;
     private handlePopupEscapeBoundFn: () => void;
     private isProcessWholeEditorContent: boolean;
+    private shouldProcessResponse: boolean = false;
     constructor(parent: IRichTextEditor, serviceLocator: ServiceLocator) {
         this.parent = parent;
         this.locator = serviceLocator;
@@ -290,7 +291,10 @@ export class AIAssistant {
         this.queryPopup.element.classList.add('processing');
         const range: Range = this.parent.getRange();
         let htmlString: string;
-        if (this.assistView.prompts.length === 1) {
+        if (this.shouldProcessResponse) {
+            const length: number = this.assistView.prompts.length;
+            htmlString = this.assistView.prompts[length - 2].response; // Since executing a prompt adds a item to the prompts array to get last response -2 is needed.
+        } else {
             this.isProcessWholeEditorContent = false;
             if (!this.parent.isRTEFocused && !this.parent.inputElement.contains(range.startContainer)) {
                 this.parent.notify(events.selectAll, {});
@@ -302,9 +306,7 @@ export class AIAssistant {
             } else {
                 htmlString = this.parent.getSelectedHtml();
             }
-        } else {
-            const length: number = this.assistView.prompts.length;
-            htmlString = this.assistView.prompts[length - 2].response; // Since executing a prompt adds a item to the prompts array to get last response -2 is needed.
+            this.shouldProcessResponse = true;
         }
         const textContent: string = (this.parent.createElement('div', { innerHTML: htmlString}) as HTMLElement).textContent;
         const promptEventArgs: AIAssistantPromptRequestArgs = {
@@ -321,6 +323,7 @@ export class AIAssistant {
             } else {
                 args.cancel = false;
             }
+            this.shouldProcessResponse = false;
         });
     }
 
@@ -393,6 +396,7 @@ export class AIAssistant {
                 this.queryPopup.hide();
                 this.element = detach(this.element);
                 this.updateAIQueryButtonActiveState();
+                this.shouldProcessResponse = false;
             });
         }
     }

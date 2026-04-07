@@ -2549,13 +2549,15 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
             case 'toolbar-focus':
                 if (this.toolbarSettings.enable && this.getToolbarElement()) {
                     // Check if cursor is on a link; if so, show link quick toolbar
-                    const range: Range = this.getRange();
-                    const selectedStartNode: HTMLElement = range.startContainer.nodeName === '#text' ?
-                        range.startContainer.parentElement : range.startContainer as HTMLElement;
-                    const selectedEndNode: HTMLElement = range.endContainer.nodeName === '#text' ?
-                        range.endContainer.parentElement : range.endContainer as HTMLElement;
-                    if (selectedStartNode.closest('a') && selectedEndNode.closest('a') && range.collapsed) {
-                        this.quickToolbarModule.linkQTBar.showPopup(selectedStartNode.closest('a') as HTMLElement, e);
+                    if (this.editorMode === 'HTML') {
+                        const range: Range = this.getRange();
+                        const selectedStartNode: HTMLElement = range.startContainer.nodeName === '#text' ?
+                            range.startContainer.parentElement : range.startContainer as HTMLElement;
+                        const selectedEndNode: HTMLElement = range.endContainer.nodeName === '#text' ?
+                            range.endContainer.parentElement : range.endContainer as HTMLElement;
+                        if (selectedStartNode.closest('a') && selectedEndNode.closest('a') && range.collapsed) {
+                            this.quickToolbarModule.linkQTBar.showPopup(selectedStartNode.closest('a') as HTMLElement, e);
+                        }
                     }
                     if (this.userAgentData.isSafari() && e.type === 'keydown' && this.formatter.editorManager.nodeSelection &&
                         this.formatter.editorManager.nodeSelection.get(this.contentModule.getDocument()).rangeCount > 0 &&

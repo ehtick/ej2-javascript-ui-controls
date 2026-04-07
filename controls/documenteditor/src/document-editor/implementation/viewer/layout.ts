@@ -5229,9 +5229,17 @@ export class Layout {
 
         } else if (isSplitByWord && (index > 0 || (text.indexOf(' ') !== -1 && isSplitWordByWord) || text.indexOf('-') !== -1) && isSplitByHyphen) {
             this.splitByWord(lineWidget, paragraph, element, text, width, characterFormat);
+        } else if (this.isRtlNonBreakableNumeric(element, text)) {
+            this.addSplittedLineWidget(lineWidget, lineWidget.children.indexOf(element) - 1);
         } else {
             this.splitByCharacter(lineWidget, element, text, width, characterFormat);
         }
+    }
+
+    private isRtlNonBreakableNumeric (element: TextElementBox, text: string) : boolean {
+        // Looks if a numeric token (date-like or number groups with / or .)
+        const isNumericToken = /^(?!.*\\).*?\d+(?:[./-]\d*)+(?:[a-zA-Z]+)?\b.*$/.test(text);
+        return this.documentHelper.compatibilityMode !== 'Word2013' && element.characterFormat.bidi && !this.documentHelper.textHelper.isRightToLeftLanguage(element.characterFormat.localeIdBidi) && isNumericToken;
     }
 
     private splitByLineBreakOrTab(viewer: LayoutViewer, span: TextElementBox, index: number, spiltBy: string): void {
@@ -6117,6 +6125,11 @@ export class Layout {
                         let element: ElementBox = val[i];
                         element.margin.top += beforeSpacing;
                     }
+                }
+                if (paragraphWidget instanceof ParagraphWidget) {
+                        this.viewer.updateParagraphXPositionBasedOnTextWrap(paragraphWidget as ParagraphWidget);
+                } else {
+                    this.viewer.updateTableXPositionBasedOnTextWrap(paragraphWidget as TableWidget);
                 }
                 this.viewer.updateClientAreaLocation(paragraphWidget, this.viewer.clientActiveArea);
                 if (keepLinesTogether || keepWithNext) {

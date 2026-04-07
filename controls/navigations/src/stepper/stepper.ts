@@ -354,6 +354,7 @@ export class Stepper extends StepperBase implements INotifyPropertyChanged {
     private keyConfigs: { [key: string]: string };
     private l10n: L10n;
     private isKeyNavFocus: boolean;
+    private windowEventHandlers: { [key: string]: Function };
 
     /**
      * * Constructor for creating the Stepper component.
@@ -473,13 +474,21 @@ export class Stepper extends StepperBase implements INotifyPropertyChanged {
     }
 
     private wireEvents(): void {
-        EventHandler.add(<HTMLElement & Window><unknown>window, 'resize', this.updateResize, this);
-        EventHandler.add(<HTMLElement & Window><unknown>window, 'click', this.updateStepFocus, this);
+        this.windowEventHandlers = {};
+        this.windowEventHandlers.resize = this.updateResize.bind(this);
+        this.windowEventHandlers.click = this.updateStepFocus.bind(this);
+        EventHandler.add(<HTMLElement & Window><unknown>window, 'resize', this.windowEventHandlers.resize);
+        EventHandler.add(<HTMLElement & Window><unknown>window, 'click', this.windowEventHandlers.click);
     }
 
     private unWireEvents(): void {
-        EventHandler.remove(<HTMLElement & Window><unknown>window, 'resize', this.updateResize);
-        EventHandler.remove(<HTMLElement & Window><unknown>window, 'click', this.updateStepFocus);
+        EventHandler.remove(<HTMLElement & Window><unknown>window, 'resize', this.windowEventHandlers && this.windowEventHandlers.resize);
+        EventHandler.remove(<HTMLElement & Window><unknown>window, 'click', this.windowEventHandlers && this.windowEventHandlers.click);
+        if (this.windowEventHandlers) {
+            this.windowEventHandlers.resize = null;
+            this.windowEventHandlers.click = null;
+            this.windowEventHandlers = null;
+        }
     }
 
     private updateResize(): void {

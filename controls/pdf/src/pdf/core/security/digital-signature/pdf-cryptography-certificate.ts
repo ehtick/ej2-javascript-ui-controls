@@ -794,7 +794,7 @@ export class _PdfPublicKeyCryptographyCertificate {
     _generateDerivedKey(password: Uint8Array, salt: Uint8Array, id: number,
                         iterations: number, n: number,
                         hashValues: { hash(data: Uint8Array): Uint8Array; u: number; v: number }): Uint8Array {
-        const { u, v }: any = hashValues; // eslint-disable-line
+        const { u, v }: any = hashValues;
         const D: Uint8Array = new Uint8Array(v).fill(id);
         const Slen: number = salt.length ? v * Math.ceil(salt.length / v) : 0;
         const S: Uint8Array = new Uint8Array(Slen);

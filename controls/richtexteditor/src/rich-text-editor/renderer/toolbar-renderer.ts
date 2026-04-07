@@ -713,18 +713,22 @@ export class ToolbarRenderer implements IRenderer {
                 const validNumberFormatAction: boolean  = (currentAction === 'NumberFormatList' && currentLiElem.nodeName === 'OL');
                 const validBulletFormatAction: boolean  = (currentAction === 'BulletFormatList' && currentLiElem.nodeName === 'UL');
                 if (validNumberFormatAction || validBulletFormatAction) {
-                    let currentListStyle: string = currentLiElem.style.listStyleType.split('-').join('').toLocaleLowerCase();
-                    currentListStyle = currentListStyle === 'decimal' ? 'number' : currentListStyle;
+                    const currentListStyle: string = currentLiElem.style.listStyleType.split('-').join('').toLocaleLowerCase();
+                    // Match by item value (CSS list-style-type) not by rendered text, to support custom types.
                     for (let index: number = 0; index < args.element.childNodes.length; index++) {
-                        // Marks the active list style in the dropdown
-                        if (currentListStyle === (args.element.childNodes[index as number] as HTMLElement).innerHTML.split(' ').join('').toLocaleLowerCase()) {
+                        const itemValue: string = ((args.items[index as number] as IDropDownItemModel).value || '').split('-').join('').toLocaleLowerCase();
+                        if (currentListStyle !== '' && currentListStyle === itemValue) {
+                            // Marks the active list style in the dropdown by value match
                             addClass([args.element.childNodes[index as number]] as Element[], 'e-active');
                             break;
-                        } else if (currentListStyle === '' && ((args.element.childNodes[index as number] as HTMLElement).innerHTML === 'Number' ||
-                            (args.element.childNodes[index as number] as HTMLElement).innerHTML === 'Disc') ) {
-                            // Handles default list style case
+                        } else if (currentListStyle === '' && (
+                            (validNumberFormatAction && itemValue === 'decimal') ||
+                            (validBulletFormatAction && itemValue === 'disc'))) {
+                            // Handles default list style case (no explicit list-style-type set)
                             addClass([args.element.childNodes[index as number]] as Element[], 'e-active');
                             break;
+                        } else {
+                            removeClass([args.element.childNodes[index as number]] as Element[], 'e-active');
                         }
                     }
                 }

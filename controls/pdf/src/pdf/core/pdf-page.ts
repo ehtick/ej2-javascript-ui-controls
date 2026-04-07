@@ -916,15 +916,45 @@ export class PdfPage {
  */
 
 export class PdfDestination {
+    /**
+     * @private
+     */
     _page: PdfPage;
+    /**
+     * @private
+     */
     _location: Point = {x: 0, y: 0};
+    /**
+     * @private
+     */
     _destinationMode: PdfDestinationMode = PdfDestinationMode.location;
+    /**
+     * @private
+     */
     _zoom: number = 0;
+    /**
+     * @private
+     */
     _isValid: boolean = true;
+    /**
+     * @private
+     */
     _index: number;
+    /**
+     * @private
+     */
     _destinationBounds: Rectangle = {x: 0, y: 0, width: 0, height: 0};
+    /**
+     * @private
+     */
     _array: Array<any> = Array<any>(); // eslint-disable-line
+    /**
+     * @private
+     */
     _parent: any; // eslint-disable-line
+    /**
+     * @private
+     */
     _isBookmark: boolean;
     /**
      * Initializes a new instance of the `PdfDestination` class.
@@ -953,27 +983,27 @@ export class PdfDestination {
      * document.destroy();
      * ```
      */
-    constructor()
+    public constructor()
     /**
      * Initializes a new instance of the `PdfDestination` class.
      *
      * @param {PdfPage} page PdfPage.
      */
-    constructor(page: PdfPage)
+    public constructor(page: PdfPage)
     /**
      * Initializes a new instance of the `PdfDestination` class.
      *
      * @param {PdfPage} page PdfPage.
      * @param {Point} location Location.
      */
-    constructor(page: PdfPage, location: Point)
+    public constructor(page: PdfPage, location: Point)
     /**
      * Initializes a new instance of the `PdfDestination` class.
      *
      * @param {PdfPage} page PdfPage.
      * @param {Rectangle} bounds Bounds.
      */
-    constructor(page: PdfPage, bounds: Rectangle)
+    public constructor(page: PdfPage, bounds: Rectangle)
     /**
      * Initializes a new instance of the `PdfDestination` class.
      *
@@ -1004,7 +1034,7 @@ export class PdfDestination {
      * document.destroy();
      * ```
      */
-    constructor(page: PdfPage, location: Point, options: {zoom?: number, mode?: PdfDestinationMode})
+    public constructor(page: PdfPage, location: Point, options: {zoom?: number, mode?: PdfDestinationMode})
     /**
      * Initializes a new instance of the `PdfDestination` class.
      *
@@ -1035,8 +1065,8 @@ export class PdfDestination {
      * document.destroy();
      * ```
      */
-    constructor(page: PdfPage, bounds: Rectangle, options: {zoom?: number, mode?: PdfDestinationMode})
-    constructor(arg1?: PdfPage, arg2?: Point | Rectangle, arg3?: {zoom?: number, mode?: PdfDestinationMode}) {
+    public constructor(page: PdfPage, bounds: Rectangle, options: {zoom?: number, mode?: PdfDestinationMode})
+    public constructor(arg1?: PdfPage, arg2?: Point | Rectangle, arg3?: {zoom?: number, mode?: PdfDestinationMode}) {
         if (typeof arg1 !== 'undefined' && arg1 !== null) {
             if (arg1.rotation === PdfRotationAngle.angle180) {
                 this._location = {x: arg1.graphics._size.width, y: this._location.y};

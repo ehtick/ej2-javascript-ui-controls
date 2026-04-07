@@ -1362,7 +1362,7 @@ export abstract class PdfAnnotation {
      * document.destroy();
      * ```
      */
-    setAppearance(value: boolean): void {
+    public setAppearance(value: boolean): void {
         this._setAppearance = value;
         if (value) {
             this._dictionary._updated = true;
@@ -1385,7 +1385,7 @@ export abstract class PdfAnnotation {
      * document.destroy();
      * ```
      */
-    getValues(name: string): string[] {
+    public getValues(name: string): string[] {
         const values: string[] = [];
         if (this._dictionary && this._dictionary.has(name)) {
             let value: any = this._dictionary.get(name);// eslint-disable-line
@@ -1433,7 +1433,7 @@ export abstract class PdfAnnotation {
      * document.destroy();
      * ```
      */
-    setValues(name: string, value: string): void {
+    public setValues(name: string, value: string): void {
         if (name && name !== '' && value && value !== '') {
             this._dictionary.update(name, value);
         }
@@ -3042,7 +3042,7 @@ export abstract class PdfAnnotation {
         if (source) {
             for (const key of keys) {
                 if (source.has(key)) {
-                    const appearance: any = source.get(key); // eslint-disable-line
+                    const appearance: any = source.get(key);
                     if (appearance) {
                         fontData = this._obtainAppearanceFont(appearance, fontFamily, fontSize, style);
                     }
@@ -3063,7 +3063,7 @@ export abstract class PdfAnnotation {
      * @param {PdfFontStyle} style Placeholder for resolved style (unused input).
      * @returns {{ name: string; fontSize: number; style: PdfFontStyle }} fontData.
      */
-    _obtainAppearanceFont(resourceDict: any, fontFamily: string, fontSize: number, style: PdfFontStyle):// eslint-disable-line
+    _obtainAppearanceFont(resourceDict: any, fontFamily: string, fontSize: number, style: PdfFontStyle):
     { name: string; fontSize: number; style: PdfFontStyle } {
         if (resourceDict && resourceDict instanceof _PdfBaseStream && resourceDict.dictionary &&
             resourceDict.dictionary.has('Resources')) {
@@ -4219,7 +4219,7 @@ export class PdfLineAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(startPoint: Point, endPoint: Point)
+    public constructor(startPoint: Point, endPoint: Point)
     /**
      * Initializes a new instance of the `PdfLineAnnotation` class with start/end points and optional properties.
      *
@@ -4257,12 +4257,12 @@ export class PdfLineAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(startPoint: Point, endPoint: Point, properties: { text?: string, author?: string, subject?: string, color?: PdfColor,
+    public constructor(startPoint: Point, endPoint: Point, properties: { text?: string, author?: string, subject?: string, color?: PdfColor,
         innerColor?: PdfColor, lineEndingStyle?: PdfAnnotationLineEndingStyle, opacity?: number, border?: PdfAnnotationBorder,
         measurementUnit?: PdfMeasurementUnit})
-    constructor(startPoint?: Point, endPoint?: Point, properties?: { text?: string, author?: string, subject?: string, color?: PdfColor,
-        innerColor?: PdfColor, lineEndingStyle?: PdfAnnotationLineEndingStyle, opacity?: number, border?: PdfAnnotationBorder,
-        measurementUnit?: PdfMeasurementUnit}) {
+    public constructor(startPoint?: Point, endPoint?: Point, properties?: { text?: string, author?: string, subject?: string,
+        color?: PdfColor, innerColor?: PdfColor, lineEndingStyle?: PdfAnnotationLineEndingStyle, opacity?: number,
+        border?: PdfAnnotationBorder, measurementUnit?: PdfMeasurementUnit}) {
         super();
         this._dictionary = new _PdfDictionary();
         this._dictionary.update('Type', _PdfName.get('Annot'));
@@ -5592,7 +5592,7 @@ export class PdfCircleAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle)
+    public constructor(bounds: Rectangle)
     /**
      * Initializes a new instance of the `PdfCircleAnnotation` class with bounds and optional properties.
      *
@@ -5628,10 +5628,10 @@ export class PdfCircleAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle, properties: {text?: string, author?: string, subject?: string,
+    public constructor(bounds: Rectangle, properties: {text?: string, author?: string, subject?: string,
         color?: PdfColor, innerColor?: PdfColor, opacity?: number, border?: PdfAnnotationBorder,
         measure?: {unit?: PdfMeasurementUnit, type?: PdfCircleMeasurementType}})
-    constructor(bounds?: Rectangle, properties?: {text?: string, author?: string, subject?: string,
+    public constructor(bounds?: Rectangle, properties?: {text?: string, author?: string, subject?: string,
         color?: PdfColor, innerColor?: PdfColor, opacity?: number, border?: PdfAnnotationBorder,
         measure?: {unit?: PdfMeasurementUnit, type?: PdfCircleMeasurementType}}) {
         super();
@@ -6158,7 +6158,7 @@ export class PdfEllipseAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle)
+    public constructor(bounds: Rectangle)
     /**
      * Initializes a new instance of the `PdfEllipseAnnotation` class with bounds and optional properties.
      *
@@ -6191,9 +6191,9 @@ export class PdfEllipseAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle, properties: {text?: string, author?: string, subject?: string,
+    public constructor(bounds: Rectangle, properties: {text?: string, author?: string, subject?: string,
         color?: PdfColor, innerColor?: PdfColor, opacity?: number, border?: PdfAnnotationBorder})
-    constructor(bounds?: Rectangle, properties?: {text?: string, author?: string, subject?: string,
+    public constructor(bounds?: Rectangle, properties?: {text?: string, author?: string, subject?: string,
         color?: PdfColor, innerColor?: PdfColor, opacity?: number, border?: PdfAnnotationBorder}) {
         super();
         this._dictionary = new _PdfDictionary();
@@ -6416,7 +6416,7 @@ export class PdfSquareAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle)
+    public constructor(bounds: Rectangle)
     /**
      * Initializes a new instance of the `PdfSquareAnnotation` class with bounds and optional properties.
      *
@@ -6452,9 +6452,9 @@ export class PdfSquareAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle, properties: {text?: string, author?: string, subject?: string, color?: PdfColor,
+    public constructor(bounds: Rectangle, properties: {text?: string, author?: string, subject?: string, color?: PdfColor,
         innerColor?: PdfColor, opacity?: number, border?: PdfAnnotationBorder, measurementUnit?: PdfMeasurementUnit})
-    constructor(bounds?: Rectangle, properties?: {text?: string, author?: string, subject?: string, color?: PdfColor,
+    public constructor(bounds?: Rectangle, properties?: {text?: string, author?: string, subject?: string, color?: PdfColor,
         innerColor?: PdfColor, opacity?: number, border?: PdfAnnotationBorder, measurementUnit?: PdfMeasurementUnit}) {
         super();
         this._dictionary = new _PdfDictionary();
@@ -7013,7 +7013,7 @@ export class PdfRectangleAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle)
+    public constructor(bounds: Rectangle)
     /**
      * Initializes a new instance of the `PdfRectangleAnnotation` class with bounds and optional properties.
      *
@@ -7046,9 +7046,9 @@ export class PdfRectangleAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle, properties: {text?: string, author?: string, subject?: string,
+    public constructor(bounds: Rectangle, properties: {text?: string, author?: string, subject?: string,
         color?: PdfColor, innerColor?: PdfColor, opacity?: number, border?: PdfAnnotationBorder})
-    constructor(bounds?: Rectangle, properties?: {text?: string, author?: string, subject?: string,
+    public constructor(bounds?: Rectangle, properties?: {text?: string, author?: string, subject?: string,
         color?: PdfColor, innerColor?: PdfColor, opacity?: number, border?: PdfAnnotationBorder}) {
         super();
         this._dictionary = new _PdfDictionary();
@@ -7380,7 +7380,7 @@ export class PdfPolygonAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(points: Point[])
+    public constructor(points: Point[])
     /**
      * Initializes a new instance of the `PdfPolygonAnnotation` class with points and optional properties.
      *
@@ -7416,9 +7416,9 @@ export class PdfPolygonAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(points: Point[], properties: {text?: string, author?: string, subject?: string,
+    public constructor(points: Point[], properties: {text?: string, author?: string, subject?: string,
         color?: PdfColor, innerColor?: PdfColor, opacity?: number, border?: PdfAnnotationBorder})
-    constructor(points?: Point[], properties?: {text?: string, author?: string, subject?: string,
+    public constructor(points?: Point[], properties?: {text?: string, author?: string, subject?: string,
         color?: PdfColor, innerColor?: PdfColor, opacity?: number, border?: PdfAnnotationBorder}) {
         super();
         this._dictionary = new _PdfDictionary();
@@ -7955,7 +7955,7 @@ export class PdfPolyLineAnnotation extends PdfComment {
      *
      * @private
      */
-    constructor()
+    public constructor()
     /**
      * Initializes a new instance of the `PdfPolyLineAnnotation` class.
      *
@@ -7973,7 +7973,7 @@ export class PdfPolyLineAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(points: Point[])
+    public constructor(points: Point[])
     /**
      * Initializes a new instance of the `PdfPolyLineAnnotation` class with points and optional properties.
      *
@@ -8010,10 +8010,10 @@ export class PdfPolyLineAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(points: Point[], properties: {text?: string, author?: string, subject?: string,
+    public constructor(points: Point[], properties: {text?: string, author?: string, subject?: string,
         color?: PdfColor, innerColor?: PdfColor, lineEndingStyle?: PdfAnnotationLineEndingStyle,
         opacity?: number, border?: PdfAnnotationBorder})
-    constructor(points?: Point[], properties?: {text?: string, author?: string, subject?: string,
+    public constructor(points?: Point[], properties?: {text?: string, author?: string, subject?: string,
         color?: PdfColor, innerColor?: PdfColor, lineEndingStyle?: PdfAnnotationLineEndingStyle,
         opacity?: number, border?: PdfAnnotationBorder}) {
         super();
@@ -8722,7 +8722,7 @@ export class PdfAngleMeasurementAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(startPoint: Point, midPoint: Point, endPoint: Point)
+    public constructor(startPoint: Point, midPoint: Point, endPoint: Point)
     /**
      * Initializes a new instance of the `PdfAngleMeasurementAnnotation` class with points and optional properties.
      *
@@ -8755,9 +8755,9 @@ export class PdfAngleMeasurementAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(startPoint: Point, midPoint: Point, endPoint: Point, properties: {text?: string, author?: string,
+    public constructor(startPoint: Point, midPoint: Point, endPoint: Point, properties: {text?: string, author?: string,
         subject?: string, color?: PdfColor, opacity?: number, border?: PdfAnnotationBorder})
-    constructor(startPoint?: Point, midPoint?: Point, endPoint?: Point, properties?: {text?: string, author?: string,
+    public constructor(startPoint?: Point, midPoint?: Point, endPoint?: Point, properties?: {text?: string, author?: string,
         subject?: string, color?: PdfColor, opacity?: number, border?: PdfAnnotationBorder}) {
         super();
         this._dictionary = new _PdfDictionary();
@@ -9425,7 +9425,7 @@ export class PdfInkAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle, points: Point[])
+    public constructor(bounds: Rectangle, points: Point[])
     /**
      * Initializes a new instance of the `PdfInkAnnotation` class with bounds, ink points and optional properties.
      *
@@ -9467,9 +9467,9 @@ export class PdfInkAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle, points: Point[], properties: {text?: string, author?: string, subject?: string,
+    public constructor(bounds: Rectangle, points: Point[], properties: {text?: string, author?: string, subject?: string,
         color?: PdfColor, thickness: number, opacity?: number, pointsCollection: Array<Point[]>})
-    constructor(bounds?: Rectangle, points?: Point[], properties?: {text?: string, author?: string, subject?: string,
+    public constructor(bounds?: Rectangle, points?: Point[], properties?: {text?: string, author?: string, subject?: string,
         color?: PdfColor, thickness: number, opacity?: number, pointsCollection: Array<Point[]>}) {
         super();
         this._dictionary = new _PdfDictionary();
@@ -10409,7 +10409,7 @@ export class PdfPopupAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor()
+    public constructor()
     /**
      * Initializes a new instance of the `PdfPopupAnnotation` class with optional properties.
      *
@@ -10445,7 +10445,7 @@ export class PdfPopupAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(properties: {author?: string, subject?: string,
+    public constructor(properties: {author?: string, subject?: string,
         color?: PdfColor, icon?: PdfPopupIcon, open?: boolean, state?: PdfAnnotationState,
         stateModel?: PdfAnnotationStateModel})
     /**
@@ -10466,7 +10466,7 @@ export class PdfPopupAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(text: string, bounds: Rectangle)
+    public constructor(text: string, bounds: Rectangle)
     /**
      * Initializes a new instance of the `PdfPopupAnnotation` class with bounds, text and optional properties.
      *
@@ -10506,13 +10506,13 @@ export class PdfPopupAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(text: string, bounds: Rectangle, properties: {author?: string, subject?: string,
+    public constructor(text: string, bounds: Rectangle, properties: {author?: string, subject?: string,
         color?: PdfColor, icon?: PdfPopupIcon, open?: boolean, state?: PdfAnnotationState,
         stateModel?: PdfAnnotationStateModel})
-    constructor(arg1?: string | {author?: string, subject?: string, color?: PdfColor, icon?: PdfPopupIcon,
+    public constructor(arg1?: string | {author?: string, subject?: string, color?: PdfColor, icon?: PdfPopupIcon,
         open?: boolean, state?: PdfAnnotationState, stateModel?: PdfAnnotationStateModel},
-                bounds?: Rectangle, properties?: {author?: string, subject?: string, color?: PdfColor, icon?: PdfPopupIcon,
-                    open?: boolean, state?: PdfAnnotationState, stateModel?: PdfAnnotationStateModel}) {
+                       bounds?: Rectangle, properties?: {author?: string, subject?: string, color?: PdfColor, icon?: PdfPopupIcon,
+                           open?: boolean, state?: PdfAnnotationState, stateModel?: PdfAnnotationStateModel}) {
         super();
         this._dictionary = new _PdfDictionary();
         this._dictionary.update('Type', _PdfName.get('Annot'));
@@ -11043,7 +11043,7 @@ export class PdfFileLinkAnnotation extends PdfAnnotation {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle, fileName: string)
+    public constructor(bounds: Rectangle, fileName: string)
     /**
      * Initializes a new instance of the `PdfFileLinkAnnotation` class with bounds, target file name and optional properties.
      *
@@ -11078,9 +11078,9 @@ export class PdfFileLinkAnnotation extends PdfAnnotation {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle, fileName: string, properties: {text?: string, author?: string,
+    public constructor(bounds: Rectangle, fileName: string, properties: {text?: string, author?: string,
         subject?: string, color?: PdfColor, opacity?: number, action?: string})
-    constructor(bounds?: Rectangle, fileName?: string, properties?: {text?: string, author?: string,
+    public constructor(bounds?: Rectangle, fileName?: string, properties?: {text?: string, author?: string,
         subject?: string, color?: PdfColor, opacity?: number, action?: string}) {
         super();
         this._dictionary = new _PdfDictionary();
@@ -11347,7 +11347,7 @@ export class PdfUriAnnotation extends PdfAnnotation {
      *
      * @private
      */
-    constructor()
+    public constructor()
     /**
      * Initializes a new instance of the `PdfUriAnnotation` class.
      *
@@ -11367,7 +11367,7 @@ export class PdfUriAnnotation extends PdfAnnotation {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle)
+    public constructor(bounds: Rectangle)
     /**
      * Initializes a new instance of the `PdfUriAnnotation` class.
      *
@@ -11386,7 +11386,7 @@ export class PdfUriAnnotation extends PdfAnnotation {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle, uri: string)
+    public constructor(bounds: Rectangle, uri: string)
     /**
      * Initializes a new instance of the `PdfUriAnnotation` class with bounds, URI and optional properties.
      *
@@ -11419,9 +11419,9 @@ export class PdfUriAnnotation extends PdfAnnotation {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle, uri: string, properties: {text?: string, author?: string, subject?: string,
+    public constructor(bounds: Rectangle, uri: string, properties: {text?: string, author?: string, subject?: string,
         color?: PdfColor, innerColor?: PdfColor, opacity?: number, border?: PdfAnnotationBorder})
-    constructor(bounds?: Rectangle, uri?: string, properties?: {text?: string, author?: string, subject?: string,
+    public constructor(bounds?: Rectangle, uri?: string, properties?: {text?: string, author?: string, subject?: string,
         color?: PdfColor, innerColor?: PdfColor, opacity?: number, border?: PdfAnnotationBorder}) {
         super();
         this._dictionary = new _PdfDictionary();
@@ -11643,7 +11643,7 @@ export class PdfDocumentLinkAnnotation extends PdfAnnotation {
      *
      * @private
      */
-    constructor()
+    public constructor()
     /**
      * Initializes a new instance of the `PdfDocumentLinkAnnotation` class.
      *
@@ -11661,7 +11661,7 @@ export class PdfDocumentLinkAnnotation extends PdfAnnotation {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle)
+    public constructor(bounds: Rectangle)
     /**
      * Initializes a new instance of the `PdfDocumentLinkAnnotation` class with bounds, destination and optional properties.
      *
@@ -11694,9 +11694,9 @@ export class PdfDocumentLinkAnnotation extends PdfAnnotation {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle, destination: PdfDestination, properties: {text?: string, author?: string, subject?: string,
+    public constructor(bounds: Rectangle, destination: PdfDestination, properties: {text?: string, author?: string, subject?: string,
         color?: PdfColor, innerColor?: PdfColor, opacity?: number, border?: PdfAnnotationBorder})
-    constructor(bounds?: Rectangle, destination?: PdfDestination, properties?: {text?: string, author?: string, subject?: string,
+    public constructor(bounds?: Rectangle, destination?: PdfDestination, properties?: {text?: string, author?: string, subject?: string,
         color?: PdfColor, innerColor?: PdfColor, opacity?: number, border?: PdfAnnotationBorder}) {
         super();
         this._dictionary = new _PdfDictionary();
@@ -11953,7 +11953,7 @@ export class PdfTextWebLinkAnnotation extends PdfAnnotation {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle, brushColor: PdfColor, penColor: PdfColor, penWidth: number)
+    public constructor(bounds: Rectangle, brushColor: PdfColor, penColor: PdfColor, penWidth: number)
     /**
      * Initializes a new instance of the `PdfTextWebLinkAnnotation` class with bounds, brush/pen, text and optional properties.
      *
@@ -11992,16 +11992,17 @@ export class PdfTextWebLinkAnnotation extends PdfAnnotation {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle, brushColor: PdfColor, penColor: PdfColor, penWidth: number, properties: {text?: string, url?: string,
-        font?: PdfFont, author?: string, subject?: string,
-        color?: PdfColor, opacity?: number, border?: PdfAnnotationBorder})
-    constructor(bounds?: Rectangle,
-                brushColor?: PdfColor,
-                penColor?: PdfColor,
-                penWidth?: number,
-                properties?: {text?: string, url?: string,
-                    font?: PdfFont, author?: string, subject?: string,
-                    color?: PdfColor, opacity?: number, border?: PdfAnnotationBorder}) {
+    public constructor(bounds: Rectangle, brushColor: PdfColor, penColor: PdfColor, penWidth: number,
+        properties: {text?: string, url?: string,
+            font?: PdfFont, author?: string, subject?: string,
+            color?: PdfColor, opacity?: number, border?: PdfAnnotationBorder})
+    public constructor(bounds?: Rectangle,
+                       brushColor?: PdfColor,
+                       penColor?: PdfColor,
+                       penWidth?: number,
+                       properties?: {text?: string, url?: string,
+                           font?: PdfFont, author?: string, subject?: string,
+                           color?: PdfColor, opacity?: number, border?: PdfAnnotationBorder}) {
         super();
         this._dictionary = new _PdfDictionary();
         this._dictionary.update('Type', _PdfName.get('Annot'));
@@ -12304,7 +12305,7 @@ export class PdfAttachmentAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle, fileName: string, data: string)
+    public constructor(bounds: Rectangle, fileName: string, data: string)
     /**
      * Initializes a new instance of the `PdfAttachmentAnnotation` class.
      *
@@ -12326,7 +12327,7 @@ export class PdfAttachmentAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle, fileName: string, data: Uint8Array)
+    public constructor(bounds: Rectangle, fileName: string, data: Uint8Array)
     /**
      * Initializes a new instance of the `PdfAttachmentAnnotation` class with bounds, file and data, and optional properties.
      *
@@ -12361,12 +12362,12 @@ export class PdfAttachmentAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle, fileName: string, data: Uint8Array,
+    public constructor(bounds: Rectangle, fileName: string, data: Uint8Array,
         properties: {text?: string, icon?: PdfAttachmentIcon, author?: string,
             subject?: string, color?: PdfColor, opacity?: number, border?: PdfAnnotationBorder})
-    constructor(bounds?: Rectangle, fileName?: string, data?: string | Uint8Array,
-                properties?: {text?: string, icon?: PdfAttachmentIcon, author?: string,
-                    subject?: string, color?: PdfColor, opacity?: number, border?: PdfAnnotationBorder}) {
+    public constructor(bounds?: Rectangle, fileName?: string, data?: string | Uint8Array,
+                       properties?: {text?: string, icon?: PdfAttachmentIcon, author?: string,
+                           subject?: string, color?: PdfColor, opacity?: number, border?: PdfAnnotationBorder}) {
         super();
         this._dictionary = new _PdfDictionary();
         this._dictionary.update('Type', _PdfName.get('Annot'));
@@ -12615,7 +12616,7 @@ export class Pdf3DAnnotation extends PdfAnnotation {
      *
      * @private
      */
-    constructor() {
+    public constructor() {
         super();
         this._type = _PdfAnnotationType.movieAnnotation;
     }
@@ -12718,7 +12719,7 @@ export class PdfTextMarkupAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor()
+    public constructor()
     /**
      * Initializes a new instance of the `PdfTextMarkupAnnotation` class.
      *
@@ -12739,7 +12740,7 @@ export class PdfTextMarkupAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(text: string, bounds: Rectangle)
+    public constructor(text: string, bounds: Rectangle)
     /**
      * Initializes a new instance of the `PdfTextMarkupAnnotation` class with bounds and optional properties.
      *
@@ -12773,10 +12774,10 @@ export class PdfTextMarkupAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(text: string, bounds: Rectangle, properties: {boundsCollection?: Rectangle[],
+    public constructor(text: string, bounds: Rectangle, properties: {boundsCollection?: Rectangle[],
         textMarkupType?: PdfTextMarkupAnnotationType, author?: string, subject?: string, textMarkUpColor?: PdfColor,
         innerColor?: PdfColor, opacity?: number, border?: PdfAnnotationBorder})
-    constructor(text?: string, bounds?: Rectangle, properties?: {boundsCollection?: Rectangle[],
+    public constructor(text?: string, bounds?: Rectangle, properties?: {boundsCollection?: Rectangle[],
         textMarkupType?: PdfTextMarkupAnnotationType, author?: string, subject?: string, textMarkUpColor?: PdfColor,
         innerColor?: PdfColor, opacity?: number, border?: PdfAnnotationBorder}) {
         super();
@@ -13479,7 +13480,7 @@ export class PdfWatermarkAnnotation extends PdfAnnotation {
      *
      * @private
      */
-    constructor()
+    public constructor()
     /**
      * Initializes a new instance of the `PdfWatermarkAnnotation` class.
      *
@@ -13502,7 +13503,7 @@ export class PdfWatermarkAnnotation extends PdfAnnotation {
      * document.destroy();
      * ```
      */
-    constructor(text: string, bounds: Rectangle)
+    public constructor(text: string, bounds: Rectangle)
     /**
      * Initializes a new instance of the `PdfWatermarkAnnotation` class with bounds and optional properties.
      *
@@ -13534,11 +13535,11 @@ export class PdfWatermarkAnnotation extends PdfAnnotation {
      * document.destroy();
      * ```
      */
-    constructor(text: string, bounds: Rectangle, properties: {
+    public constructor(text: string, bounds: Rectangle, properties: {
         author?: string, subject?: string, color?: PdfColor,
         innerColor?: PdfColor, opacity?: number, border?: PdfAnnotationBorder
     })
-    constructor(text?: string, bounds?: Rectangle, properties?: {author?: string, subject?: string, color?: PdfColor,
+    public constructor(text?: string, bounds?: Rectangle, properties?: {author?: string, subject?: string, color?: PdfColor,
         innerColor?: PdfColor, opacity?: number, border?: PdfAnnotationBorder}) {
         super();
         this._dictionary = new _PdfDictionary();
@@ -13792,7 +13793,7 @@ export class PdfRubberStampAnnotation extends PdfComment {
      *
      * @private
      */
-    constructor()
+    public constructor()
     /**
      * Initializes a new instance of the `PdfRubberStampAnnotation` class.
      *
@@ -13812,7 +13813,7 @@ export class PdfRubberStampAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle)
+    public constructor(bounds: Rectangle)
     /**
      * Initializes a new instance of the `PdfRubberStampAnnotation` class with bounds and optional properties.
      *
@@ -13843,10 +13844,10 @@ export class PdfRubberStampAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle, properties: {icon?: PdfRubberStampAnnotationIcon, text?: string, author?: string, subject?: string,
-        color?: PdfColor, innerColor?: PdfColor, opacity?: number, border?: PdfAnnotationBorder})
-    constructor(bounds?: Rectangle, properties?: {icon?: PdfRubberStampAnnotationIcon, text?: string, author?: string, subject?: string,
-        color?: PdfColor, innerColor?: PdfColor, opacity?: number, border?: PdfAnnotationBorder}) {
+    public constructor(bounds: Rectangle, properties: {icon?: PdfRubberStampAnnotationIcon, text?: string, author?: string,
+        subject?: string, color?: PdfColor, innerColor?: PdfColor, opacity?: number, border?: PdfAnnotationBorder})
+    public constructor(bounds?: Rectangle, properties?: {icon?: PdfRubberStampAnnotationIcon, text?: string, author?: string,
+        subject?: string, color?: PdfColor, innerColor?: PdfColor, opacity?: number, border?: PdfAnnotationBorder}) {
         super();
         this._dictionary = new _PdfDictionary();
         this._dictionary.update('Type', _PdfName.get('Annot'));
@@ -13987,7 +13988,7 @@ export class PdfRubberStampAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    createTemplate(): PdfTemplate {
+    public createTemplate(): PdfTemplate {
         let template: PdfTemplate = this._createTemplate();
         if (typeof template === 'undefined') {
             template = this._createRubberStampAppearance();
@@ -14641,7 +14642,7 @@ export class PdfFreeTextAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle)
+    public constructor(bounds: Rectangle)
     /**
      * Initializes a new instance of the `PdfFreeTextAnnotation` class with bounds and optional properties.
      *
@@ -14685,11 +14686,11 @@ export class PdfFreeTextAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle, properties: {calloutLines?: Point[], lineEndingStyle?: PdfLineEndingStyle,
+    public constructor(bounds: Rectangle, properties: {calloutLines?: Point[], lineEndingStyle?: PdfLineEndingStyle,
         annotationIntent?: PdfAnnotationIntent, borderColor?: PdfColor, textAlignment?: PdfTextAlignment,
         font?: PdfFont, text?: string, author?: string, subject?: string, textMarkUpColor?: PdfColor,
         innerColor?: PdfColor, opacity?: number, border?: PdfAnnotationBorder})
-    constructor(bounds?: Rectangle, properties?: {calloutLines?: Point[],
+    public constructor(bounds?: Rectangle, properties?: {calloutLines?: Point[],
         lineEndingStyle?: PdfLineEndingStyle,
         annotationIntent?: PdfAnnotationIntent,
         borderColor?: PdfColor,
@@ -15219,7 +15220,7 @@ export class PdfFreeTextAnnotation extends PdfComment {
         return annot;
     }
     /**
-     * Sets the free text internal padding values used to inset text within the annotation rectangle.
+     * Sets the free text internal padding values used to insert text within the annotation rectangle.
      *
      * @private
      * @param {_PdfPaddings} paddings The paddings to apply (left/top/right/bottom).
@@ -15760,7 +15761,7 @@ export class PdfFreeTextAnnotation extends PdfComment {
             graphics.rotateTransform(angle);
             parameter.bounds = {x: 0, y: 0, width: parameter.bounds.width, height: parameter.bounds.height};
         }
-        const bounds: number[] = [rectangle[0], rectangle[1], rectangle[2], rectangle[3]];
+        const bounds: number[] = [rectangle[0], rectangle[1], rectangle[2], rectangle[3]]; // eslint-disable-line
         if (this._paddings && !this._isLoaded) {
             const left: number = this._paddings._left;
             const top: number = this._paddings._top;
@@ -16705,7 +16706,7 @@ export class PdfRedactionAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle)
+    public constructor(bounds: Rectangle)
     /**
      * Initializes a new instance of the `PdfRedactionAnnotation` class.
      *
@@ -16743,11 +16744,11 @@ export class PdfRedactionAnnotation extends PdfComment {
      * document.destroy();
      * ```
      */
-    constructor(bounds: Rectangle, properties: {borderColor?: PdfColor, repeatText?: boolean,
+    public constructor(bounds: Rectangle, properties: {borderColor?: PdfColor, repeatText?: boolean,
         overlayText?: string, font?: PdfFont, textColor?: PdfColor, appearanceFillColor?: PdfColor, innerColor?: PdfColor,
         textAlignment?: PdfTextAlignment, text?: string, author?: string, subject?: string, opacity?: number,
         boundsCollection?: Rectangle[] })
-    constructor(bounds?: Rectangle, properties?: {borderColor?: PdfColor, repeatText?: boolean,
+    public constructor(bounds?: Rectangle, properties?: {borderColor?: PdfColor, repeatText?: boolean,
         overlayText?: string, font?: PdfFont, textColor?: PdfColor, appearanceFillColor?: PdfColor, innerColor?: PdfColor,
         textAlignment?: PdfTextAlignment, text?: string, author?: string, subject?: string, opacity?: number,
         boundsCollection?: Rectangle[] }) {
@@ -19200,7 +19201,9 @@ export class PdfStateItem extends PdfWidgetAnnotation {
      * ```
      */
     set exportValue(value: string) {
-        this._exportValue = value;
+        if (value !== '') {
+            this._exportValue = value;
+        }
         if (this.checked) {
             this._dictionary.update('AS', _PdfName.get(value));
             this._setCheckedStatus(this.checked);
@@ -19425,7 +19428,7 @@ export class PdfRadioButtonListItem extends PdfStateItem {
      *
      * @private
      */
-    constructor()
+    public constructor()
     /**
      * Initializes a new instance of the `PdfRadioButtonListItem` class.
      *
@@ -19459,7 +19462,7 @@ export class PdfRadioButtonListItem extends PdfStateItem {
      * document.destroy();
      * ```
      */
-    constructor(value: string, bounds: Rectangle, field: PdfField)
+    public constructor(value: string, bounds: Rectangle, field: PdfField)
     /**
      * Initializes a new instance of the `PdfRadioButtonListItem` class.
      *
@@ -19493,8 +19496,8 @@ export class PdfRadioButtonListItem extends PdfStateItem {
      * document.destroy();
      * ```
      */
-    constructor(value: string, bounds: Rectangle, page: PdfPage)
-    constructor(value?: string, bounds?: Rectangle, item?: PdfField | PdfPage) {
+    public constructor(value: string, bounds: Rectangle, page: PdfPage)
+    public constructor(value?: string, bounds?: Rectangle, item?: PdfField | PdfPage) {
         super();
         if (item && value && bounds) {
             if (item instanceof PdfField) {
@@ -19727,7 +19730,7 @@ export class PdfListFieldItem extends PdfStateItem {
      *
      * @private
      */
-    constructor()
+    public constructor()
     /**
      * Initializes a new instance of the `PdfListFieldItem` class.
      *
@@ -19758,7 +19761,7 @@ export class PdfListFieldItem extends PdfStateItem {
      * document.destroy();
      * ```
      */
-    constructor(text: string, value: string)
+    public constructor(text: string, value: string)
     /**
      * Initializes a new instance of the `PdfListFieldItem` class.
      *
@@ -19791,8 +19794,8 @@ export class PdfListFieldItem extends PdfStateItem {
      * document.destroy();
      * ```
      */
-    constructor(text: string, value: string, field: PdfListBoxField)
-    constructor(text?: string, value?: string, field?: PdfListBoxField) {
+    public constructor(text: string, value: string, field: PdfListBoxField)
+    public constructor(text?: string, value?: string, field?: PdfListBoxField) {
         super();
         if (text && value) {
             this._initializeItem(text, value, field);
@@ -19965,8 +19968,10 @@ export class PdfAnnotationCaption {
     _offset: Point;
     /**
      * Initializes a new instance of the `PdfAnnotationCaption` class.
+     *
+     * @private
      */
-    constructor()
+    public constructor()
     /**
      * Initializes a new instance of the `PdfAnnotationCaption` class.
      *
@@ -19987,8 +19992,8 @@ export class PdfAnnotationCaption {
      * document.destroy();
      * ```
      */
-    constructor(options: {cap?: boolean, type?: PdfLineCaptionType, offset?: Point})
-    constructor(options?: {cap?: boolean, type?: PdfLineCaptionType, offset?: Point}) {
+    public constructor(options: {cap?: boolean, type?: PdfLineCaptionType, offset?: Point})
+    public constructor(options?: {cap?: boolean, type?: PdfLineCaptionType, offset?: Point}) {
         if (options && 'cap' in options && options.cap !== null && typeof options.cap === 'boolean') {
             this._cap = options.cap;
         } else {
@@ -20205,7 +20210,7 @@ export class PdfAnnotationLineEndingStyle {
      * document.destroy();
      * ```
      */
-    constructor()
+    public constructor()
     /**
      * Initializes a new instance of the `PdfAnnotationLineEndingStyle` class.
      *
@@ -20229,8 +20234,8 @@ export class PdfAnnotationLineEndingStyle {
      * document.destroy();
      * ```
      */
-    constructor(options: {begin?: PdfLineEndingStyle, end?: PdfLineEndingStyle})
-    constructor(options?: {begin?: PdfLineEndingStyle; end?: PdfLineEndingStyle}) {
+    public constructor(options: {begin?: PdfLineEndingStyle, end?: PdfLineEndingStyle})
+    public constructor(options?: {begin?: PdfLineEndingStyle; end?: PdfLineEndingStyle}) {
         if (options && 'begin' in options && options.begin !== null && typeof options.begin !== 'undefined') {
             this._begin = options.begin;
         } else {
@@ -20412,7 +20417,7 @@ export class PdfInteractiveBorder {
      * document.destroy();
      * ```
      */
-    constructor()
+    public constructor()
     /**
      * Initializes a new instance of the `PdfInteractiveBorder` class.
      *
@@ -20431,8 +20436,8 @@ export class PdfInteractiveBorder {
      * document.destroy();
      * ```
      */
-    constructor(options: {width?: number, style?: PdfBorderStyle, dash?: Array<number>});
-    constructor(options?: {width?: number, style?: PdfBorderStyle, dash?: Array<number>}) {
+    public constructor(options: {width?: number, style?: PdfBorderStyle, dash?: Array<number>});
+    public constructor(options?: {width?: number, style?: PdfBorderStyle, dash?: Array<number>}) {
         if (options && 'width' in options && options.width !== null && typeof options.width !== 'undefined') {
             this._width = options.width;
         } else {
@@ -20683,7 +20688,7 @@ export class PdfAnnotationBorder extends PdfInteractiveBorder {
      * document.destroy();
      * ```
      */
-    constructor()
+    public constructor()
     /**
      * Initializes a new instance of the `PdfAnnotationBorder` class.
      *
@@ -20713,8 +20718,8 @@ export class PdfAnnotationBorder extends PdfInteractiveBorder {
      * document.destroy();
      * ```
      */
-    constructor(options: { width?: number, hRadius?: number, vRadius?: number, style?: PdfBorderStyle, dash?: Array<number>})
-    constructor(options?: { width?: number, hRadius?: number, vRadius?: number, style?: PdfBorderStyle, dash?: Array<number>}) {
+    public constructor(options: { width?: number, hRadius?: number, vRadius?: number, style?: PdfBorderStyle, dash?: Array<number>})
+    public constructor(options?: { width?: number, hRadius?: number, vRadius?: number, style?: PdfBorderStyle, dash?: Array<number>}) {
         super(options);
         if (options !== null && typeof options !== 'undefined') {
             if (options && 'hRadius' in options && options.hRadius !== null && typeof options.hRadius !== 'undefined') {
@@ -20969,7 +20974,7 @@ export class PdfBorderEffect {
      * document.destroy();
      * ```
      */
-    constructor()
+    public constructor()
     /**
      * Initializes a new instance of the `PdfBorderEffect` class.
      * ```typescript
@@ -20987,15 +20992,15 @@ export class PdfBorderEffect {
      * document.destroy();
      * ```
      */
-    constructor(options: {intensity?: number, style?: PdfBorderEffectStyle})
+    public constructor(options: {intensity?: number, style?: PdfBorderEffectStyle})
     /**
      * Initializes a new instance of the `PdfBorderEffect` class.
      *
      * @private
      * @param {_PdfDictionary} dictionary Border effect dictionary.
      */
-    constructor(dictionary: _PdfDictionary)
-    constructor(arg?: _PdfDictionary | {intensity ?: number, style ?: PdfBorderEffectStyle}) {
+    public constructor(dictionary: _PdfDictionary)
+    public constructor(arg?: _PdfDictionary | {intensity ?: number, style ?: PdfBorderEffectStyle}) {
         if (typeof arg !== 'undefined' && arg !== null) {
             if (arg instanceof _PdfDictionary) {
                 if (arg.has('BE')) {

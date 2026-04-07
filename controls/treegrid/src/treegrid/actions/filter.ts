@@ -4,7 +4,7 @@ import { isNullOrUndefined, setValue, getValue } from '@syncfusion/ej2-base';
 import { getExpandStatus } from '../utils';
 import { ITreeData } from '../base';
 import { getParentData } from '../utils';
-import {  FilterHierarchyMode } from '..';
+import { FilterHierarchyMode } from '..';
 
 /**
  * TreeGrid Filter module will handle filtering action
@@ -87,7 +87,7 @@ export class Filter {
             const rec: ITreeData = this.flatFilteredData[parseInt(f.toString(), 10)];
             this.addParentRecord(rec);
             if (((hierarchyMode === 'Child' || hierarchyMode === 'None') &&
-            (this.parent.grid.filterSettings.columns.length !== 0 || this.parent.grid.searchSettings.key !== ''))) {
+                (this.parent.grid.filterSettings.columns.length !== 0 || this.parent.grid.searchSettings.key !== ''))) {
                 this.isHierarchyFilter = true;
             }
             const ischild: Object[] = getObject('childRecords', rec);
@@ -106,17 +106,19 @@ export class Filter {
         if (this.flatFilteredData.length > 0 && this.isHierarchyFilter) {
             this.updateFilterLevel();
         }
-        for (let i: number = 0; i < this.filteredResult.length; i++) {
-            const record: ITreeData = this.filteredResult[parseInt(i.toString(), 10)] as ITreeData;
-            if (!isNullOrUndefined(record.parentItem)) {
-                const parentUID: string = record.parentItem.uniqueID;
-                const parentPresent: boolean = this.filteredResult.some((r: ITreeData) => {
-                    return !isNullOrUndefined((r as ITreeData).uniqueID) && (r as ITreeData).uniqueID === parentUID;
-                });
-                if (parentPresent) {
-                    (record as any).isCollapsedChild = !getExpandStatus(this.parent, record, this.parent.parentData);
-                } else {
-                    (record as any).isCollapsedChild = false;
+        if (hierarchyMode === 'None') {
+            for (let i: number = 0; i < this.filteredResult.length; i++) {
+                const record: ITreeData = this.filteredResult[parseInt(i.toString(), 10)] as ITreeData;
+                if (!isNullOrUndefined(record.parentItem)) {
+                    const parentUID: string = record.parentItem.uniqueID;
+                    const parentPresent: boolean = this.filteredResult.some((r: ITreeData) => {
+                        return !isNullOrUndefined((r as ITreeData).uniqueID) && (r as ITreeData).uniqueID === parentUID;
+                    });
+                    if (parentPresent) {
+                        setValue('isCollapsedChild', !getExpandStatus(this.parent, record, this.parent.parentData), record);
+                    } else {
+                        setValue('isCollapsedChild', false, record);
+                    }
                 }
             }
         }
@@ -212,11 +214,11 @@ export class Filter {
         }
         return isExist;
     }
-    private  updateFilterLevel(): void {
+    private updateFilterLevel(): void {
         const record: ITreeData[] = this.filteredResult;
         const len: number = this.filteredResult.length;
         for (let c: number = 0; c < len; c++) {
-            const parent: ITreeData =  getParentData(this.parent, record[parseInt(c.toString(), 10)].parentUniqueID);
+            const parent: ITreeData = getParentData(this.parent, record[parseInt(c.toString(), 10)].parentUniqueID);
             const isPrst: boolean = record.indexOf(parent) !== -1;
             if (isPrst) {
                 const parent: ITreeData = getParentData(this.parent, record[parseInt(c.toString(), 10)].parentUniqueID, true);
@@ -238,6 +240,9 @@ export class Filter {
             if (fLevel || fLevel === 0 || !isNullOrUndefined(currentRecord.hasFilteredChildRecords)) {
                 currentRecord.hasFilteredChildRecords = null;
                 currentRecord.filterLevel = null;
+            }
+            if (!isNullOrUndefined(currentRecord.isCollapsedChild)) {
+                currentRecord.isCollapsedChild = null;
             }
         }
         this.filteredResult = [];

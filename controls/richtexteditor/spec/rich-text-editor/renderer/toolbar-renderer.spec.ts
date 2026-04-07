@@ -1354,3 +1354,128 @@ describe("NumberFormat and BulletFormat list dropdown wiith zero drop down items
     });
 });
 
+describe('1017545: BulletFormatList/NumberFormatList dropdown active state with custom types', () => {
+    let rteObj: RichTextEditor;
+    let rteEle: HTMLElement;
+    let controlId: string;
+    beforeEach(() => {
+        rteObj = renderRTE({
+            toolbarSettings: {
+                items: ['BulletFormatList', 'NumberFormatList']
+            },
+            bulletFormatList: {
+                types: [
+                    { text: 'None', value: 'none' },
+                    { text: '●', value: 'disc' },
+                    { text: '○', value: 'circle' },
+                    { text: '■', value: 'square' },
+                    { text: '-', value: 'dash' }
+                ]
+            },
+            numberFormatList: {
+                types: [
+                    { text: 'None', value: 'none' },
+                    { text: '1, 2, 3, \u2026', value: 'decimal' },
+                    { text: '\u03b1, \u03b2, \u03b3, \u2026', value: 'lowerGreek' }
+                ]
+            }
+        });
+        rteEle = rteObj.element;
+        controlId = rteEle.id;
+    });
+    afterEach(() => {
+        destroy(rteObj);
+    });
+    it('BulletFormatList custom items: circle item should be active when cursor is in a circle-style list', (done: DoneFn) => {
+        rteObj.inputElement.innerHTML = '<ul style="list-style-type: circle"><li>Item</li></ul>';
+        const li: HTMLElement = rteEle.querySelector('li');
+        const nodeSelection: NodeSelection = rteObj.formatter.editorManager.nodeSelection;
+        nodeSelection.setSelectionText(document, li, li, 0, 0);
+        const dropdownBtn: HTMLElement = rteEle.querySelector(`#${controlId}_toolbar_BulletFormatList_dropdownbtn`) as HTMLElement;
+        dropdownBtn.click();
+        setTimeout(() => {
+            const popup: HTMLElement = document.querySelector(`#${controlId}_toolbar_BulletFormatList_dropdownbtn-popup`) as HTMLElement;
+            const circleItem: HTMLElement = Array.from(popup.querySelectorAll('.e-item')).find((el: HTMLElement) => el.getAttribute('aria-label') === '○') as HTMLElement;
+            expect(circleItem).not.toBeNull();
+            expect(circleItem.classList.contains('e-active')).toBe(true);
+            done();
+        }, 100);
+    });
+    it('BulletFormatList custom items: disc item should be active when cursor is in a disc-style list', (done: DoneFn) => {
+        rteObj.inputElement.innerHTML = '<ul style="list-style-type: disc"><li>Item</li></ul>';
+        const li: HTMLElement = rteEle.querySelector('li');
+        const nodeSelection: NodeSelection = rteObj.formatter.editorManager.nodeSelection;
+        nodeSelection.setSelectionText(document, li, li, 0, 0);
+        const dropdownBtn: HTMLElement = rteEle.querySelector(`#${controlId}_toolbar_BulletFormatList_dropdownbtn`) as HTMLElement;
+        dropdownBtn.click();
+        setTimeout(() => {
+            const popup: HTMLElement = document.querySelector(`#${controlId}_toolbar_BulletFormatList_dropdownbtn-popup`) as HTMLElement;
+            const discItem: HTMLElement = Array.from(popup.querySelectorAll('.e-item')).find((el: HTMLElement) => el.getAttribute('aria-label') === '●') as HTMLElement;
+            expect(discItem).not.toBeNull();
+            expect(discItem.classList.contains('e-active')).toBe(true);
+            done();
+        }, 100);
+    });
+    it('NumberFormatList custom items: decimal item should be active when cursor is in a decimal-style list', (done: DoneFn) => {
+        rteObj.inputElement.innerHTML = '<ol style="list-style-type: decimal"><li>Item</li></ol>';
+        const li: HTMLElement = rteEle.querySelector('li');
+        const nodeSelection: NodeSelection = rteObj.formatter.editorManager.nodeSelection;
+        nodeSelection.setSelectionText(document, li, li, 0, 0);
+        const dropdownBtn: HTMLElement = rteEle.querySelector(`#${controlId}_toolbar_NumberFormatList_dropdownbtn`) as HTMLElement;
+        dropdownBtn.click();
+        setTimeout(() => {
+            const popup: HTMLElement = document.querySelector(`#${controlId}_toolbar_NumberFormatList_dropdownbtn-popup`) as HTMLElement;
+            const decimalItem: HTMLElement = Array.from(popup.querySelectorAll('.e-item')).find((el: HTMLElement) => el.getAttribute('aria-label') === '1, 2, 3, \u2026') as HTMLElement;
+            expect(decimalItem).not.toBeNull();
+            expect(decimalItem.classList.contains('e-active')).toBe(true);
+            done();
+        }, 100);
+    });
+    it('NumberFormatList custom items: lowerGreek item should be active when cursor is in a lowerGreek-style list', (done: DoneFn) => {
+        rteObj.inputElement.innerHTML = '<ol style="list-style-type: lower-greek"><li>Item</li></ol>';
+        const li: HTMLElement = rteEle.querySelector('li');
+        const nodeSelection: NodeSelection = rteObj.formatter.editorManager.nodeSelection;
+        nodeSelection.setSelectionText(document, li, li, 0, 0);
+        const dropdownBtn: HTMLElement = rteEle.querySelector(`#${controlId}_toolbar_NumberFormatList_dropdownbtn`) as HTMLElement;
+        dropdownBtn.click();
+        setTimeout(() => {
+            const popup: HTMLElement = document.querySelector(`#${controlId}_toolbar_NumberFormatList_dropdownbtn-popup`) as HTMLElement;
+            const lowerGreekItem: HTMLElement = Array.from(popup.querySelectorAll('.e-item')).find((el: HTMLElement) => el.getAttribute('aria-label') === '\u03b1, \u03b2, \u03b3, \u2026') as HTMLElement;
+            expect(lowerGreekItem).not.toBeNull();
+            expect(lowerGreekItem.classList.contains('e-active')).toBe(true);
+            done();
+        }, 100);
+    });
+    it('BulletFormatList default items: active state still works after fix (regression guard)', (done: DoneFn) => {
+        destroy(rteObj);
+        rteObj = renderRTE({
+            toolbarSettings: {
+                items: ['BulletFormatList']
+            },
+            bulletFormatList: {
+                types: [
+                    { text: 'None', value: 'none' },
+                    { text: 'Disc', value: 'disc' },
+                    { text: 'Circle', value: 'circle' },
+                    { text: 'Square', value: 'square' }
+                ]
+            },
+            value: '<ul style="list-style-type: circle"><li>Item</li></ul>'
+        });
+        rteEle = rteObj.element;
+        controlId = rteEle.id;
+        const li: HTMLElement = rteEle.querySelector('li');
+        const nodeSelection: NodeSelection = rteObj.formatter.editorManager.nodeSelection;
+        nodeSelection.setSelectionText(document, li, li, 0, 0);
+        const dropdownBtn: HTMLElement = rteEle.querySelector(`#${controlId}_toolbar_BulletFormatList_dropdownbtn`) as HTMLElement;
+        dropdownBtn.click();
+        setTimeout(() => {
+            const popup: HTMLElement = document.querySelector(`#${controlId}_toolbar_BulletFormatList_dropdownbtn-popup`) as HTMLElement;
+            const circleItem: HTMLElement = Array.from(popup.querySelectorAll('.e-item')).find((el: HTMLElement) => el.getAttribute('aria-label') === 'Circle') as HTMLElement;
+            expect(circleItem).not.toBeNull();
+            expect(circleItem.classList.contains('e-active')).toBe(true);
+            done();
+        }, 100);
+    });
+});
+

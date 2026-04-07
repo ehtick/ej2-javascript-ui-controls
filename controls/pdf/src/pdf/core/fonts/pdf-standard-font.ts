@@ -288,8 +288,8 @@ export abstract class PdfFont {
         return this._getHeight();
     }
     constructor(size: number)
-    constructor(size: number, style: PdfFontStyle)
-    constructor(size?: number, style?: PdfFontStyle) {
+    public constructor(size: number, style: PdfFontStyle)
+    public constructor(size?: number, style?: PdfFontStyle) {
         if (typeof size === 'number' && typeof style === 'undefined') {
             this._size = size;
         } else {
@@ -743,7 +743,7 @@ export class PdfStandardFont extends PdfFont {
      * document.destroy();
      * ```
      */
-    constructor(fontFamily: PdfFontFamily, size: number)
+    public constructor(fontFamily: PdfFontFamily, size: number)
     /**
      * Initializes a new instance of the `PdfStandardFont` class.
      *
@@ -767,7 +767,7 @@ export class PdfStandardFont extends PdfFont {
      * document.destroy();
      * ```
      */
-    constructor(fontFamily: PdfFontFamily, size: number, style: PdfFontStyle)
+    public constructor(fontFamily: PdfFontFamily, size: number, style: PdfFontStyle)
     /**
      * Initializes a new instance of the `PdfStandardFont` class.
      *
@@ -777,8 +777,8 @@ export class PdfStandardFont extends PdfFont {
      * @param {PdfFontStyle} style The Font style.
      * @param {_PdfFontPrimitive} primitive The Font primitive.
      */
-    constructor(fontFamily: PdfFontFamily, size: number, style: PdfFontStyle, primitive: _PdfFontPrimitive)
-    constructor(fontFamily: PdfFontFamily, size: number, style?: PdfFontStyle, primitive?: _PdfFontPrimitive) {
+    public constructor(fontFamily: PdfFontFamily, size: number, style: PdfFontStyle, primitive: _PdfFontPrimitive)
+    public constructor(fontFamily: PdfFontFamily, size: number, style?: PdfFontStyle, primitive?: _PdfFontPrimitive) {
         super(size, (typeof style === 'undefined') ? PdfFontStyle.regular : style);
         this._fontFamily = fontFamily;
         this._checkStyle();
@@ -829,7 +829,7 @@ export class PdfStandardFont extends PdfFont {
      * document.destroy();
      * ```
      */
-    getLineWidth(line: string, format: PdfStringFormat): number {
+    public getLineWidth(line: string, format: PdfStringFormat): number {
         let width: number = 0;
         line.split('').forEach((char: string) => {
             width += this._getCharacterWidthInternal(char);
@@ -864,7 +864,7 @@ export class PdfStandardFont extends PdfFont {
      * document.destroy();
      * ```
      */
-    getFont(size: number, style: PdfFontStyle): PdfStandardFont {
+    public getFont(size: number, style: PdfFontStyle): PdfStandardFont {
         if (this._document) {
             return this._document.embedFont(this._fontFamily, size, style);
         } else {
@@ -1130,7 +1130,7 @@ export class PdfCjkStandardFont extends PdfFont {
      * document.destroy();
      * ```
      */
-    constructor(fontFamily: PdfCjkFontFamily, size: number)
+    public constructor(fontFamily: PdfCjkFontFamily, size: number)
     /**
      * Initializes a new instance of the `PdfCjkStandardFont` class.
      *
@@ -1154,7 +1154,7 @@ export class PdfCjkStandardFont extends PdfFont {
      * document.destroy();
      * ```
      */
-    constructor(fontFamily: PdfCjkFontFamily, size: number, style: PdfFontStyle)
+    public constructor(fontFamily: PdfCjkFontFamily, size: number, style: PdfFontStyle)
     /**
      * Initializes a new instance of the `PdfCjkStandardFont` class.
      *
@@ -1164,8 +1164,8 @@ export class PdfCjkStandardFont extends PdfFont {
      * @param {PdfFontStyle} style The Font style.
      * @param {_PdfFontPrimitive} primitive The Font primitive.
      */
-    constructor(fontFamily: PdfCjkFontFamily, size: number, style: PdfFontStyle, primitive: _PdfFontPrimitive)
-    constructor(fontFamily: PdfCjkFontFamily, size: number, style?: PdfFontStyle, primitive?: _PdfFontPrimitive) {
+    public constructor(fontFamily: PdfCjkFontFamily, size: number, style: PdfFontStyle, primitive: _PdfFontPrimitive)
+    public constructor(fontFamily: PdfCjkFontFamily, size: number, style?: PdfFontStyle, primitive?: _PdfFontPrimitive) {
         super(size, (typeof style === 'undefined') ? PdfFontStyle.regular : style);
         this._fontFamily = fontFamily;
         this._size = size;
@@ -1199,7 +1199,7 @@ export class PdfCjkStandardFont extends PdfFont {
      * document.destroy();
      * ```
      */
-    getLineWidth(line: string, format: PdfStringFormat): number {
+    public getLineWidth(line: string, format: PdfStringFormat): number {
         let width: number = 0;
         for (let i: number = 0; i < line.length; i++) {
             width += this._getCharacterWidthInternal(line.charCodeAt(i));
@@ -1234,7 +1234,7 @@ export class PdfCjkStandardFont extends PdfFont {
      * document.destroy();
      * ```
      */
-    getFont(size: number, style: PdfFontStyle): PdfCjkStandardFont {
+    public getFont(size: number, style: PdfFontStyle): PdfCjkStandardFont {
         if (this._document) {
             return this._document.embedFont(this._fontFamily, size, style, true);
         } else {
@@ -1581,7 +1581,7 @@ export class PdfTrueTypeFont extends PdfFont {
      * @param {PdfFontStyle} style The Font style.
      * @param {_PdfFontPrimitive} primitive The Font primitive.
      */
-    constructor(data: Uint8Array, size: number, style: PdfFontStyle, primitive: _PdfFontPrimitive)
+    public constructor(data: Uint8Array, size: number, style: PdfFontStyle, primitive: _PdfFontPrimitive)
     public constructor(data: string | Uint8Array, size: number, style?: PdfFontStyle, primitive?: _PdfFontPrimitive) {
         super(size, (typeof style === 'undefined') ? PdfFontStyle.regular : style);
         if (style !== undefined) {
@@ -1614,7 +1614,7 @@ export class PdfTrueTypeFont extends PdfFont {
      * document.destroy();
      * ```
      */
-    getLineWidth(line: string, format: PdfStringFormat): number {
+    public getLineWidth(line: string, format: PdfStringFormat): number {
         let width: number = 0;
         if (format !== null && typeof format !== 'undefined' && format.textDirection !== PdfTextDirection.none) {
             width = this._getUnicodeLineWidth(line, width);
@@ -1656,7 +1656,7 @@ export class PdfTrueTypeFont extends PdfFont {
      * document.destroy();
      * ```
      */
-    getFont(size: number, style?: PdfFontStyle): PdfTrueTypeFont {
+    public getFont(size: number, style?: PdfFontStyle): PdfTrueTypeFont {
         if (this._document) {
             let strikeout: boolean = false;
             let underline: boolean = false;

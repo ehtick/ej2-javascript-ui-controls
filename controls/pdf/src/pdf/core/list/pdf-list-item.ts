@@ -104,7 +104,7 @@ export class PdfListItem {
      * document.destroy();
      * ````
      */
-    constructor(text: string, settings?: {font?: PdfFont, format?: PdfStringFormat, brush?: PdfBrush, pen?: PdfPen}) {
+    public constructor(text: string, settings?: {font?: PdfFont, format?: PdfStringFormat, brush?: PdfBrush, pen?: PdfPen}) {
         if (text === null || typeof text === 'undefined') {
             throw new Error('Text cannot be null or undenfied.');
         }
@@ -602,7 +602,7 @@ export class PdfListItemCollection {
      * document.destroy();
      * ````
      */
-    constructor()
+    public constructor()
     /**
      * Initializes a new instance of the ` PdfListItemCollection ` class.
      *
@@ -628,8 +628,8 @@ export class PdfListItemCollection {
      * document.destroy();
      * ```
      */
-    constructor(items: string[])
-    constructor(items?: string[]) {
+    public constructor(items: string[])
+    public constructor(items?: string[]) {
         if (!this._listItems) {
             this._listItems = [];
         }
@@ -690,7 +690,7 @@ export class PdfListItemCollection {
      * document.destroy();
      * ```
      */
-    add(item: PdfListItem): void;
+    public add(item: PdfListItem): void;
     /**
      * Adds a `PdfListItem` to the collection.
      *
@@ -715,8 +715,8 @@ export class PdfListItemCollection {
      * document.destroy();
      * ```
      */
-    add(item: PdfListItem, itemIndent: number): void;
-    add(item: PdfListItem, itemIndent?: number): void {
+    public add(item: PdfListItem, itemIndent: number): void;
+    public add(item: PdfListItem, itemIndent?: number): void {
         if (item) {
             this._listItems.push(item);
             if (itemIndent) {
@@ -752,7 +752,7 @@ export class PdfListItemCollection {
      * document.destroy();
      * ```
      */
-    at(index: number): PdfListItem {
+    public at(index: number): PdfListItem {
         if (index === null) {
             throw new Error('index should not be null');
         }
@@ -792,7 +792,7 @@ export class PdfListItemCollection {
      * document.destroy();
      * ```
      */
-    remove(item: PdfListItem): void {
+    public remove(item: PdfListItem): void {
         if (!item) {
             throw new Error('item should not be null');
         }
@@ -840,7 +840,7 @@ export class PdfListItemCollection {
      * document.destroy();
      * ```
      */
-    removeAt(index: number): void {
+    public removeAt(index: number): void {
         if (index < 0 || index >= this._listItems.length) {
             throw new Error('The index should be less than items count or equal to 0');
         }
@@ -877,7 +877,7 @@ export class PdfListItemCollection {
      * document.destroy();
      * ```
      */
-    clear(): void {
+    public clear(): void {
         this._listItems = [];
     }
     /**
@@ -916,7 +916,7 @@ export class PdfListItemCollection {
      * document.destroy();
      * ```
      */
-    insert(index: number, item: PdfListItem, itemIndent: number): void {
+    public insert(index: number, item: PdfListItem, itemIndent: number): void {
         if (index < 0 || index > this._listItems.length) {
             throw new Error('Index should be within the range of items count (inclusive).');
         }
@@ -962,7 +962,7 @@ export class PdfListItemCollection {
      * document.destroy();
      * ```
      */
-    indexOf(item: PdfListItem): number {
+    public indexOf(item: PdfListItem): number {
         if (!item) {
             throw new Error('Item should be defined.');
         }

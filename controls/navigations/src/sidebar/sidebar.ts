@@ -70,6 +70,7 @@ export class Sidebar extends Component<HTMLElement> implements INotifyPropertyCh
     // Specifies the first render of Sidebar component.
     private firstRender: boolean;
     private documentClickContext: EventListenerObject = this.documentclickHandler.bind(this);
+    private resizeHandler: EventListener = this.resize.bind(this);
 
     /**
      * Specifies the size of the Sidebar in dock state.
@@ -666,11 +667,12 @@ export class Sidebar extends Component<HTMLElement> implements INotifyPropertyCh
     }
     private wireEvents(): void {
         this.setEnableGestures();
-        EventHandler.add(<HTMLElement & Window><unknown>window, 'resize', this.resize, this);
+        EventHandler.add(<HTMLElement & Window><unknown>window, 'resize', this.resizeHandler);
     }
     private unWireEvents(): void {
-        EventHandler.remove(<HTMLElement & Window><unknown>window, 'resize', this.resize);
+        EventHandler.remove(<HTMLElement & Window><unknown>window, 'resize', this.resizeHandler);
         EventHandler.remove(document, 'mousedown touchstart', this.documentclickHandler);
+        EventHandler.remove(this.element, 'transitionend', this.transitionEnd);
         if (this.mainContentEle) { this.mainContentEle.destroy(); }
         if (this.sidebarEle) { this.sidebarEle.destroy(); }
     }

@@ -527,6 +527,10 @@ export class Accordion extends Component<HTMLElement> implements INotifyProperty
         if (!isNOU(this.keyModule)) {
             this.keyModule.destroy();
         }
+        const headerEles: Element[] = <Element[]>[].slice.call(this.element.querySelectorAll('.' + CLS_HEADER));
+        for (const hdr of headerEles) {
+            EventHandler.clearEvents(hdr);
+        }
     }
     private wireEvents(): void {
         EventHandler.add(this.element, 'click', this.clickHandler, this);
@@ -1413,6 +1417,10 @@ export class Accordion extends Component<HTMLElement> implements INotifyProperty
             this.clearTemplate();
         }
         [].slice.call(this.element.querySelectorAll('.' + CLS_ITEM)).forEach((el: HTEle) => {
+            const hdr: Element = <Element>select('.' + CLS_HEADER, el);
+            if (hdr) {
+                EventHandler.clearEvents(hdr);
+            }
             detach(el);
         });
     }

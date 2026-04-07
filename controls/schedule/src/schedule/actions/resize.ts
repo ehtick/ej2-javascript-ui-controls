@@ -383,19 +383,23 @@ export class Resize extends ActionBase {
                     offsetValue += (this.parent.getElementWidth(this.actionObj.clone) - this.actionObj.cellWidth);
                 }
                 cellIndex = !isTimelineMonth ? Math.round(offsetValue / (this.parent.getElementWidth(tr) / noOfDays)) :
-                    Math.floor(offsetValue / Math.floor(this.parent.getElementWidth(tr) / noOfDays));
+                    Math.floor(offsetValue / (this.parent.getElementWidth(tr) / noOfDays));
                 cellIndex = isLeft ? cellIndex : isTimelineMonth ? cellIndex + 1 : cellIndex;
                 isLastCell = cellIndex === tdCollections.length;
                 cellIndex = (cellIndex < 0) ? 0 : (cellIndex >= noOfDays) ? noOfDays - 1 : cellIndex;
             } else {
                 const cellWidth: number = this.actionObj.cellWidth;
-                cellIndex = isLeft ? Math.round(offset / this.actionObj.cellWidth) :
+                cellIndex = isLeft ? Math.floor(offset / this.actionObj.cellWidth) :
                     Math.ceil((offset + (this.parent.getElementWidth(this.actionObj.clone) - cellWidth)) / this.actionObj.cellWidth);
                 if (this.parent.enableRtl) {
-                    const offsetWidth: number = (Math.round(offset / this.actionObj.cellWidth) *
-                        this.actionObj.cellWidth) + (isLeft ? 0 : (this.parent.getElementWidth(this.actionObj.clone) -
-                            this.actionObj.cellWidth));
-                    cellIndex = Math.ceil(offsetWidth / this.actionObj.cellWidth);
+                    let cellOffsetWidth: number = 0;
+                    if (headerName === 'TimelineMonth' || (!this.parent.activeViewOptions.timeScale.enable &&
+                        !isTimelineMonth)) {
+                        cellOffsetWidth = this.actionObj.cellWidth;
+                    }
+                    const offsetWidth: number = (Math.floor(offset / this.actionObj.cellWidth) *
+                        this.actionObj.cellWidth) + (isLeft ? 0 : this.parent.getElementWidth(this.actionObj.clone) - cellOffsetWidth);
+                    cellIndex = Math.floor(offsetWidth / this.actionObj.cellWidth);
                 }
                 isLastCell = cellIndex === tdCollections.length;
                 cellIndex = this.getIndex(cellIndex);
@@ -411,29 +415,14 @@ export class Resize extends ActionBase {
                 resizeTime = new Date(resizeDate.setHours(resizeTime.getHours(), resizeTime.getMinutes(), resizeTime.getSeconds()));
             } else {
                 if (!isLeft) {
-                    let cloneWidth: number = this.parent.getElementWidth(this.actionObj.clone);
-                    const pixelsPerInterval: number = this.actionObj.cellWidth /
-                        (this.actionObj.slotInterval / this.actionObj.interval);
-                    const numIntervals: number = Math.round(cloneWidth / pixelsPerInterval);
-                    cloneWidth = numIntervals * pixelsPerInterval;
-                    offset = offset + cloneWidth;
+                    offset += this.parent.getElementWidth(this.actionObj.clone);
                 }
                 let spanMinutes: number = Math.ceil((this.actionObj.slotInterval / this.actionObj.cellWidth) *
                     (offset - Math.floor(offset / this.actionObj.cellWidth) * this.actionObj.cellWidth));
-                spanMinutes = (isLastCell || (!isLeft && spanMinutes === 0)) ? this.actionObj.slotInterval : spanMinutes;
+                spanMinutes = (isLastCell || (!isLeft && spanMinutes === 0 && !this.parent.enableRtl)) ?
+                    this.actionObj.slotInterval : spanMinutes;
                 resizeTime = new Date(resizeDate.getTime());
-                resizeTime = new Date(resizeDate.getTime() + (spanMinutes * util.MS_PER_MINUTE));
-                const isCustomResizeInterval: boolean = this.actionObj.interval !== this.actionObj.slotInterval;
-                const initialCellTime: Date = new Date(resizeTime.getTime());
-                const intervalInMS: number = this.actionObj.interval * 60000;
-                if (intervalInMS > 0 && isCustomResizeInterval) {
-                    if (this.resizeEdges.right || this.resizeEdges.left) {
-                        const eventTime: Date = this.resizeEdges.right ? eventEnd : eventStart;
-                        const timeDifferenceMs: number = initialCellTime.getTime() - eventTime.getTime();
-                        const intervalCount: number = Math.round(timeDifferenceMs / intervalInMS);
-                        resizeTime = new Date(eventTime.getTime() + intervalCount * intervalInMS);
-                    }
-                }
+                resizeTime.setMinutes(resizeTime.getMinutes() + spanMinutes);
                 this.updateTimePosition(resizeTime);
             }
         } else {

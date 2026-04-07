@@ -2469,10 +2469,16 @@ export class RulerHelper {
             let tableMarkerOffset: number;
 
             tableMarker.addEventListener('mousedown', (e: MouseEvent) => {
+                let viewerStartOffset: number = 0;
+                if (!isNullOrUndefined(documentEditor.viewer) &&
+                    !isNullOrUndefined(documentEditor.viewer.documentHelper) &&
+                    !isNullOrUndefined(documentEditor.viewer.documentHelper.viewerContainer)) {
+                    viewerStartOffset = documentEditor.viewer.documentHelper.viewerContainer.getBoundingClientRect().left - 8 ;
+                }
                 tableMarkerOffset = e.clientX - tableMarker.getBoundingClientRect().left;
                 documentEditor.startXPosition = HelperMethods.convertPixelToPoint(e.clientX);
                 documentEditor.isTableMarkerDragging = true;
-                const clientX: number = e.clientX - tableMarkerOffset - tableMarker.getBoundingClientRect().width;
+                const clientX: number = e.clientX - tableMarkerOffset - tableMarker.getBoundingClientRect().width - viewerStartOffset;
                 const cursorPoint: Point = new Point(clientX, e.clientY);
                 const touchPoint: Point = documentEditor.viewer.findFocusedPage(cursorPoint, true, true);
                 let currentMarkerPostion: number;

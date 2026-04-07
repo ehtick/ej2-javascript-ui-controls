@@ -374,6 +374,32 @@ export class SpreadsheetChart {
                 return '';
             }
         };
+        const updatePieChartRange: Function = (startMinCol: number, startMinRow?: number): void => {
+            let stringColIdx: number; let numericColIdx: number; let isStringDetected: boolean;
+            const startRowIdx: number = startMinRow === undefined ? minr : startMinRow;
+            for (let colIdx: number = startMinCol; colIdx < maxc; colIdx++) {
+                const cell: CellModel = getCell(startRowIdx, colIdx, sheet);
+                if (cell) {
+                    if ((numericColIdx === undefined || isStringDetected) && isNumber(cell.value)) {
+                        numericColIdx = colIdx;
+                        isStringDetected = false;
+                    }
+                    const isDateTimeFormat: boolean = cell.format && isCustomDateTime(cell.format, true, null, true);
+                    if (!isNumber(cell.value) || isDateTimeFormat) {
+                        stringColIdx = colIdx;
+                        isStringDetected = true;
+                        if (isDateTimeFormat && colIdx === maxc - 1) {
+                            numericColIdx = maxc;
+                        }
+                    }
+                }
+            }
+            xRange = [startRowIdx, minc, maxr, stringColIdx ? stringColIdx : minc];
+            yRange = [startRowIdx, numericColIdx ? numericColIdx : maxc, maxr, maxc];
+            if (startMinRow !== undefined) {
+                lRange = [minr, numericColIdx ? numericColIdx : maxc, minr, maxc];
+            }
+        };
         const trVal: number | string = sheet ? getPropertyValue(minr, maxc, false, true) : '';
         const blVal: number | string = sheet ? getPropertyValue(maxr, minc, true) : '';
         const tlVal: number | string = sheet ? getPropertyValue(minr, minc, true) : '';
@@ -403,12 +429,20 @@ export class SpreadsheetChart {
             const startMinCol: number = skipHiddenIdx(sheet, minc + 1, true, 'columns');
             if (!isNullOrUndefined(trVal) && (!isNumber(trVal) || !tlVal)) {
                 const startMinRow: number = skipHiddenIdx(sheet, minr + 1, true);
-                xRange = [startMinRow, minc, maxr, minc];
-                yRange = [startMinRow, startMinCol, maxr, maxc];
-                lRange = [minr, startMinCol, minr, maxc];
+                if ((opt.type === 'Pie' || opt.type === 'Doughnut') && !isDiscontinuousRange) {
+                    updatePieChartRange(startMinCol, startMinRow);
+                } else {
+                    xRange = [startMinRow, minc, maxr, minc];
+                    yRange = [startMinRow, startMinCol, maxr, maxc];
+                    lRange = [minr, startMinCol, minr, maxc];
+                }
             } else {
-                xRange = [minr, minc, maxr, minc];
-                yRange = [minr, startMinCol, maxr, maxc];
+                if ((opt.type === 'Pie' || opt.type === 'Doughnut') && !isDiscontinuousRange) {
+                    updatePieChartRange(startMinCol);
+                } else {
+                    xRange = [minr, minc, maxr, minc];
+                    yRange = [minr, startMinCol, maxr, maxc];
+                }
             }
         } else {
             yRange = [minr, minc, maxr, maxc];
@@ -570,6 +604,9 @@ export class SpreadsheetChart {
         if (options.isSeriesInRows) {
             xValue = lRange ? this.toArrayData(this.getRangeData({ range: lRange, sheet: sheet, isScatter: isScatter,
                 isDateTime: isDateTime })) : this.getVirtualXValues(cDiff + 1);
+            if (isAccChart && lRange && !isDiscontinuousRange) {
+                xValue = xValue.filter((value: string) => value !== null);
+            }
             seriesRange = xRange;
             diff = rDiff;
         } else {
@@ -578,6 +615,9 @@ export class SpreadsheetChart {
                     !isAccChart && this.isDateFormattedRange(xRange, sheet);
                 xValue = this.toArrayData(this.getRangeData({ range: xRange, sheet: sheet, isScatter: isScatter,
                     isDateTime: isDateTime, isDateFormat: isDateFormat }));
+                if (isAccChart && !isDiscontinuousRange) {
+                    this.generteXValueForPieChart(xRange, xValue);
+                }
                 if (isDateFormat) {
                     minDate = new Date(8640000000000000);
                     maxDate = new Date(-8640000000000000);
@@ -683,6 +723,18 @@ export class SpreadsheetChart {
             };
         }
         return result;
+    }
+
+    private generteXValueForPieChart(xRange: number[], xValue: (string | Date)[]): void {
+        if (xRange[1] !== xRange[3]) {
+            let i: number = 0;
+            const diff: number = (xRange[3] - xRange[1]) - this.parent.hiddenCount(xRange[1], xRange[3], 'columns') + 1;
+            while (i < xValue.length) {
+                xValue[i as number] = xValue.slice(i, i + diff).join(' ');
+                xValue.splice(i + 1, Math.min(diff - 1, xValue.length - i - 1));
+                i++;
+            }
+        }
     }
 
     private getAxisFormat(range: number[], sheet: SheetModel): string {

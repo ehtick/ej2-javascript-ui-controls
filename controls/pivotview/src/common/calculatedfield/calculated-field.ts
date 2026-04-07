@@ -1123,7 +1123,7 @@ export class CalculatedField implements IAction {
             enableHtmlSanitizer: this.parent.enableHtmlSanitizer,
             showCloseIcon: true,
             header: this.parent.localeObj.getConstant('createCalculatedField'),
-            target: document.body,
+            target: PivotUtil.getAppendToElement(this.parent.element, this.parent.isAngular),
             cssClass: this.parent.cssClass
         });
         dialog.isStringTemplate = true;
@@ -2243,7 +2243,7 @@ export class CalculatedField implements IAction {
             isModal: true,
             visible: true,
             closeOnEscape: true,
-            target: document.body,
+            target: PivotUtil.getAppendToElement(this.parent.element, this.parent.isAngular),
             cssClass: this.parent.cssClass,
             close: this.removeErrorDialog.bind(this, node)
         });

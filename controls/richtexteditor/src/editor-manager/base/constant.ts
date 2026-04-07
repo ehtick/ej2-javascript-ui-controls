@@ -129,7 +129,7 @@ export const SELF_CLOSING_TAGS: string[] = ['area', 'base', 'br', 'embed', 'hr',
  *
  * @hidden
  */
-export const PASTE_SOURCE: string[] = ['word', 'excel', 'onenote'];
+export const PASTE_SOURCE: string[] = ['word', 'excel', 'onenote', 'powerpoint'];
 
 /**
  * @hidden

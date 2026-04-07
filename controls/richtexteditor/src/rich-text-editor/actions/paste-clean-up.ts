@@ -272,7 +272,11 @@ export class PasteCleanup {
     ): { value: string, shouldContinue: boolean } {
         const htmlRegex: RegExp = new RegExp(/<\/[a-z][\s\S]*>/i);
         let processedValue: string = (e.args as ClipboardEvent).clipboardData.getData('text/plain');
-        this.parent.trigger(events.beforePasteCleanup, {value : processedValue});
+        this.parent.trigger(
+            events.beforePasteCleanup,
+            {value: processedValue},
+            (updatedArgs: PasteCleanupArgs) => { processedValue = updatedArgs.value; }
+        );
         this.isNotFromHtml = processedValue !== '' ? true : false;
         processedValue = processedValue.replace(/</g, '&lt;');
         processedValue = processedValue.replace(/>/g, '&gt;');
@@ -348,10 +352,14 @@ export class PasteCleanup {
         args: { [key: string]: string | NotifyArgs }
     ): string {
         let processedValue: string = value;
-        this.parent.trigger(events.beforePasteCleanup, {value : processedValue});
+        this.parent.trigger(
+            events.beforePasteCleanup,
+            {value: processedValue},
+            (updatedArgs: PasteCleanupArgs) => { processedValue = updatedArgs.value; }
+        );
         this.parent.formatter.editorManager.observer.notify(EVENTS.MS_WORD_CLEANUP, {
             args: e.args,
-            text: e.text,
+            text: processedValue,
             allowedStylePropertiesArray: this.parent.pasteCleanupSettings.allowedStyleProps,
             callBack: (a: string, cropImageData: CropImageDataItem[], pasteTableSource?: string) => {
                 args.pasteTableSource = pasteTableSource;

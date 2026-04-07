@@ -644,13 +644,17 @@ export class Toolbar extends Component<HTMLElement> implements INotifyPropertyCh
     }
     private destroyItems(): void {
         if (this.element) {
-            [].slice.call(this.element.querySelectorAll('.' + CLS_ITEM)).forEach((el: HTEle) => { detach(el); });
+            [].slice.call(this.element.querySelectorAll('.' + CLS_ITEM)).forEach((el: HTEle) => {
+                EventHandler.remove(el, 'click', this.itemClick);
+                detach(el);
+            });
         }
         if (this.tbarAlign) {
             const tbarItems: HTEle = <HTEle>this.element.querySelector('.' + CLS_ITEMS);
             if (tbarItems) {
                 if (tbarItems.children) {
                     [].slice.call(tbarItems.children).forEach((el: HTEle) => {
+                        EventHandler.remove(el, 'click', this.itemClick);
                         detach(el);
                     });
                 }
@@ -2295,7 +2299,7 @@ export class Toolbar extends Component<HTMLElement> implements INotifyPropertyCh
                 dom.setAttribute('aria-label', (item.text || item.tooltipText));
                 dom.setAttribute('aria-disabled', 'false');
                 innerEle.appendChild(dom);
-                innerEle.addEventListener('click', this.itemClick.bind(this));
+                EventHandler.add(innerEle, 'click', this.itemClick, this);
                 break;
             case 'Separator':
                 this.add(innerEle, CLS_SEPARATOR);

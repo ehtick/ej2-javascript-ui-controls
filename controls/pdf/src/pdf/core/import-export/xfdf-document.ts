@@ -1320,8 +1320,8 @@ export class _XfdfDocument extends _ExportHelper {
                 const values: string[] = key.toString().split('.');
                 values.forEach((element: string, i: number) => {
                     if (parentElements.has(element)) {
-                        this._getElements(parentElements[element]); // eslint-disable-line
-                        parentElements = parentElements[element]; // eslint-disable-line
+                        this._getElements(parentElements.get(element));
+                        parentElements = parentElements.get(element);
                     } else {
                         if (i === values.length - 1) {
                             parentElements.set(element, value);
@@ -2247,104 +2247,77 @@ export class _XfdfDocument extends _ExportHelper {
      */
     _importFormNodes(list: Element[]): void {
         list.forEach((child: Element) => {
-            let fieldName: string = '';
-            if (child) {
-                if (child.hasAttribute('name')) {
-                    fieldName = child.getAttribute('name');
+            if (!child || child.localName !== 'field') {
+                return;
+            }
+            const childFields: Element[] = [];
+            for (let i: number = 0; i < child.children.length; i++) {
+                const el: Element = child.children[<number>i];
+                if (el.localName === 'field') {
+                    childFields.push(el);
                 }
-                if (fieldName && fieldName !== '') {
-                    let values: HTMLCollectionOf<Element> = child.getElementsByTagName('value');
-                    if (values && values.length > 0) {
-                        let node: Element = child;
-                        let textName: string = '';
-                        while (node.localName !== 'fields') {
-                            if (textName.length > 0) {
-                                textName = '.' + textName;
-                            }
-                            let skip: boolean = false;
-                            if (node.hasAttribute('name')) {
-                                const name: string = node.getAttribute('name');
-                                if (name && name !== '') {
-                                    textName = name + textName;
-                                    skip = true;
-                                }
-                            }
-                            if (!skip) {
-                                textName += node.localName;
-                            }
-                            node = node.parentElement;
+            }
+            if (childFields.length > 0) {
+                this._importFormNodes(childFields);
+                return;
+            }
+            const fieldName: string = this._getFieldName(child);
+            const dataValues: string[] = this._fields.get(fieldName) || [];
+            let values: HTMLCollectionOf<Element> = child.getElementsByTagName('value');
+            if (values && values.length > 0) {
+                for (let i: number = 0; i < values.length; i++) {
+                    dataValues.push(values[<number>i].textContent || '');
+                }
+                this._fields.set(fieldName, dataValues);
+                return;
+            }
+            values = child.getElementsByTagName('value-richtext');
+            if (values && values.length > 0) {
+                const element: Element = values.item(0);
+                let richText: string = element.textContent || '';
+                if (element.childNodes.length > 0) {
+                    const body: ChildNode = element.childNodes[0];
+                    if (body && body.hasChildNodes()) {
+                        richText = '';
+                        for (let j: number = 0; j < body.childNodes.length; j++) {
+                            const node: ChildNode = body.childNodes[<number>j];
+                            richText += (node.textContent || '') + '\r';
                         }
-                        fieldName = textName;
-                        let dataValues: string[];
-                        if (this._fields.has(fieldName)) {
-                            dataValues = this._fields.get(fieldName);
-                        } else {
-                            dataValues = [];
-                        }
-                        for (let j: number = 0; j < values.length; j++) {
-                            dataValues.push(values.item(j).textContent);
-                        }
-                        this._fields.set(fieldName, dataValues);
-                    } else {
-                        values = child.getElementsByTagName('value-richtext');
-                        if (values && values.length > 0) {
-                            const element: Element = values.item(0);
-                            if (element) {
-                                let node: Element = child;
-                                let textName: string = '';
-                                while (node.localName !== 'fields') {
-                                    if (textName.length > 0) {
-                                        textName = '.' + textName;
-                                    }
-                                    let skip: boolean = false;
-                                    if (node.hasAttribute('name')) {
-                                        const name: string = node.getAttribute('name');
-                                        if (name && name !== '') {
-                                            textName = name + textName;
-                                            skip = true;
-                                        }
-                                    }
-                                    if (!skip) {
-                                        textName += node.localName;
-                                    }
-                                    node = node.parentElement;
-                                }
-                                fieldName = textName;
-                                let richText: string = element.textContent;
-                                if (element.childNodes && element.childNodes.length > 0) {
-                                    const childNode: Node = element.childNodes[0];
-                                    if (childNode && childNode.hasChildNodes()) {
-                                        richText = '';
-                                        const childNodes: NodeListOf<ChildNode> = childNode.childNodes;
-                                        for (let j: number; j < childNodes.length; j++) {
-                                            richText += childNodes.item(j).textContent + '\r';
-                                        }
-                                        if (richText.length > 0) {
-                                            richText = richText.substring(0, richText.length - 1);
-                                        } else {
-                                            richText = element.textContent;
-                                        }
-                                    }
-                                }
-                                let dataValues: string[];
-                                if (this._fields.has(fieldName)) {
-                                    dataValues = this._fields.get(fieldName);
-                                } else {
-                                    dataValues = [];
-                                }
-                                for (let j: number = 0; j < values.length; j++) {
-                                    dataValues.push(richText);
-                                }
-                                this._fields.set(fieldName, dataValues);
-                                if (!this._richTextValues.has(fieldName)) {
-                                    this._richTextValues.set(fieldName, element.innerHTML);
-                                }
-                            }
-                        }
+                        richText = richText.length
+                            ? richText.substring(0, richText.length - 1)
+                            : element.textContent || '';
                     }
+                }
+                dataValues.push(richText);
+                this._fields.set(fieldName, dataValues);
+                if (!this._richTextValues.has(fieldName)) {
+                    this._richTextValues.set(fieldName, element.innerHTML);
                 }
             }
         });
+    }
+    /**
+     * Builds the fully qualified field name by walking up the form field hierarchy.
+     *
+     * @private
+     * @param {Element} node Field element from which to derive the full name.
+     * @returns {string} Fully qualified field name (e.g., "parent.child.subchild").
+     */
+    _getFieldName(node: Element): string {
+        let textName: string = '';
+        let current: Element = node;
+        while (current && current.localName !== 'fields') {
+            if (textName.length > 0) {
+                textName = '.' + textName;
+            }
+            if (current.hasAttribute('name') && current.getAttribute('name') !== '') {
+                textName = current.getAttribute('name') + textName;
+            } else {
+                textName = current.localName + textName;
+            }
+            current = current.parentElement;
+        }
+        return textName;
     }
     /**
      * Parses a single annotation element and adds it to the corresponding page.

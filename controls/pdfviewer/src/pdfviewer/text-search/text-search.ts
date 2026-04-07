@@ -3202,47 +3202,105 @@ export class TextSearch {
         const searchResults: any = {};
         const startIndex: number = pageIndex ? pageIndex : 0;
         const endIndex: number = !isNullOrUndefined(pageIndex) ? pageIndex + 1 : this.pdfViewerBase.pageCount;
-        const jsonObject: object = { pageStartIndex: startIndex, pageEndIndex: endIndex, documentId: proxy.pdfViewerBase.getDocumentId(), hashId: proxy.pdfViewerBase.hashId, action: 'RenderPdfTexts', elementId: proxy.pdfViewer.element.id, uniqueId: proxy.pdfViewerBase.documentId };
-        if (this.pdfViewerBase.jsonDocumentId) {
-            (jsonObject as any).documentId = this.pdfViewerBase.jsonDocumentId;
-        }
-        const requestType: string = 'pdfTextSearchRequest';
-        if (this.pdfViewer.extractTextOption === ExtractTextOption.None ||
-            this.pdfViewer.extractTextOption === ExtractTextOption.TextOnly ||
-            isNullOrUndefined(this.pdfViewerBase.documentTextCollection[endIndex as number])) {
-            return new Promise((resolve: Function, reject: Function): void => {
-                const processPage: any = (i: number, msg: string) => {
-                    proxy.pdfViewerBase.pdfViewerRunner.addTask({
-                        pageIndex: i,
-                        message: msg,
-                        zoomFactor: proxy.pdfViewer.magnificationModule.zoomFactor,
-                        isTextNeed: true,
-                        isLayout: true,
-                        isSkipCharacterBounds: false,
-                        isNeedToRender: true,
-                        jsonObject: jsonObject,
-                        isRenderText: true,
-                        requestType: requestType
-                    }, TaskPriorityLevel.Medium);
-                    proxy.pdfViewerBase.pdfViewerRunner.onMessage(msg, (event: any) => {
-                        if ((event.data.message.indexOf('extractText') !== -1)) {
-                            proxy.pdfViewer.pdfRendererModule.textExtractionOnmessage(event, null, null);
-                            if (event.data.pageIndex + 1 === endIndex) {
-                                resolve(this.getSearchResults(searchText, searchTerms, searchResults, startIndex, endIndex,
-                                                              proxy.findTextDocumentCollection));
-                                proxy.findTextDocumentCollection = [];
+        if (this.pdfViewerBase.clientSideRendering) {
+            const jsonObject: object = { pageStartIndex: startIndex, pageEndIndex: endIndex, documentId: proxy.pdfViewerBase.getDocumentId(), hashId: proxy.pdfViewerBase.hashId, action: 'RenderPdfTexts', elementId: proxy.pdfViewer.element.id, uniqueId: proxy.pdfViewerBase.documentId };
+            if (this.pdfViewerBase.jsonDocumentId) {
+                (jsonObject as any).documentId = this.pdfViewerBase.jsonDocumentId;
+            }
+            const requestType: string = 'pdfTextSearchRequest';
+            if (this.pdfViewer.extractTextOption === ExtractTextOption.None ||
+                this.pdfViewer.extractTextOption === ExtractTextOption.TextOnly ||
+                isNullOrUndefined(this.pdfViewerBase.documentTextCollection[endIndex as number])) {
+                return new Promise((resolve: Function, reject: Function): void => {
+                    const processPage: any = (i: number, msg: string) => {
+                        proxy.pdfViewerBase.pdfViewerRunner.addTask({
+                            pageIndex: i,
+                            message: msg,
+                            zoomFactor: proxy.pdfViewer.magnificationModule.zoomFactor,
+                            isTextNeed: true,
+                            isLayout: true,
+                            isSkipCharacterBounds: false,
+                            isNeedToRender: true,
+                            jsonObject: jsonObject,
+                            isRenderText: true,
+                            requestType: requestType
+                        }, TaskPriorityLevel.Medium);
+                        proxy.pdfViewerBase.pdfViewerRunner.onMessage(msg, (event: any) => {
+                            if ((event.data.message.indexOf('extractText') !== -1)) {
+                                proxy.pdfViewer.pdfRendererModule.textExtractionOnmessage(event, null, null);
+                                if (event.data.pageIndex + 1 === endIndex) {
+                                    resolve(this.getSearchResults(searchText, searchTerms, searchResults, startIndex, endIndex,
+                                                                  proxy.findTextDocumentCollection));
+                                    proxy.findTextDocumentCollection = [];
+                                }
                             }
+                        });
+                    };
+                    const msg: string = 'extractText_' + PdfViewerUtils.createGUID();
+                    for (let i: number = startIndex; i < endIndex; i++) {
+                        processPage(i, msg);
+                    }
+                });
+            } else {
+                return Promise.resolve(this.getSearchResults(searchText, searchTerms, searchResults, startIndex, endIndex,
+                                                             proxy.documentTextCollection));
+            }
+        }
+        else {
+            const jsonObject: Object = {
+                text: JSON.stringify(searchTerms),
+                matchCase: isMatchCase,
+                documentId: this.pdfViewerBase.getDocumentId(),
+                hashId: this.pdfViewerBase.hashId,
+                action: 'FindTextPdf',
+                elementId: this.pdfViewer.element.id,
+                uniqueId: this.pdfViewerBase.documentId,
+                startIndex: startIndex,
+                endIndex: endIndex,
+                isCompleted: false,
+                isRequestsend: false
+            };
+            this.textSearchHandleRequest = new AjaxHandler(this.pdfViewer);
+            this.textSearchHandleRequest.url = this.pdfViewer.serviceUrl + '/RenderPdfTexts';
+            this.textSearchHandleRequest.responseType = 'json';
+            return new Promise<any>((resolve: any) => {
+                proxy.textSearchHandleRequest.send(jsonObject);
+                proxy.textSearchHandleRequest.onSuccess = function (result: any): void {
+                    const response: any = result.data;
+                    let finalOutput: any = {};
+                    response.forEach(function (item: any): void {
+                        const keyword: string = item.keyword;
+                        const resultPages: any = item.result && item.result.resultPages
+                            ? item.result.resultPages
+                            : null;
+                        if (!resultPages) { return; }
+                        const flatList: any[] = [];
+                        Object.keys(resultPages).forEach(function (pageIndex: any): any {
+                            const pageData: any = resultPages[pageIndex as number];
+                            if (!pageData || !pageData.Bounds) { return; }
+                            Object.keys(pageData.Bounds).forEach(function (key: any): void {
+                                const b: any = pageData.Bounds[key as string];
+                                flatList.push({
+                                    pageIndex: Number(pageIndex),
+                                    bounds: [{
+                                        x: (b[0].X * 72) / 96,
+                                        y: (b[0].Y * 72) / 96,
+                                        width: (b[0].Width * 72) / 96,
+                                        height: (b[0].Height * 72) / 96
+                                    }]
+                                });
+                            });
+                        });
+                        if (Array.isArray(searchText)) {
+                            finalOutput[keyword as string] = flatList;
+                        }
+                        else {
+                            finalOutput = flatList;
                         }
                     });
+                    resolve(finalOutput);
                 };
-                const msg: string = 'extractText_' + PdfViewerUtils.createGUID();
-                for (let i: number = startIndex; i < endIndex; i++) {
-                    processPage(i, msg);
-                }
             });
-        } else {
-            return Promise.resolve(this.getSearchResults(searchText, searchTerms, searchResults, startIndex, endIndex,
-                                                         proxy.documentTextCollection));
         }
     }
 

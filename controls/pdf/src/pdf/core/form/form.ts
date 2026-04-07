@@ -168,6 +168,12 @@ export class PdfForm {
      */
     _fontResources: _PdfDictionary;
     /**
+     * Indicates whether additional post-processing is required.
+     *
+     * @private
+     */
+    _requiresPostProcessing: boolean = false;
+    /**
      * Represents a loaded from the PDF document.
      *
      * @private
@@ -340,7 +346,7 @@ export class PdfForm {
      * document.destroy();
      * ```
      */
-    fieldAt(index: number): PdfField {
+    public fieldAt(index: number): PdfField {
         if (index < 0 || index >= this._fields.length) {
             throw Error('Index out of range.');
         }
@@ -428,7 +434,7 @@ export class PdfForm {
      * document.destroy();
      * ```
      */
-    add(field: PdfField): number {
+    public add(field: PdfField): number {
         if (this._fields.length > 0) {
             const fieldsCollection: PdfField[] = this._getFields();
             const old: PdfField = fieldsCollection.find(oldField => oldField.name === field.name); // eslint-disable-line
@@ -445,6 +451,7 @@ export class PdfForm {
                 return this._groupingFormFields(field, old);
             }
         }
+        this._requiresPostProcessing = true;
         this._fieldName.push(field._name);
         return this._doAdd(field);
     }
@@ -509,7 +516,7 @@ export class PdfForm {
                 oldField._parsedItems.set(appendedIndex, newItem);
                 newItem._field = oldField;
                 newItem._index = appendedIndex;
-                if (!newValue) {
+                if (!newValue && newValue !== '') {
                     return this._fields.length - 1;
                 }
                 const matchIndex: number = this._findFirstByExportValue(oldField, newValue);
@@ -768,7 +775,7 @@ export class PdfForm {
      * document.destroy();
      * ```
      */
-    removeField(field: PdfField): void {
+    public removeField(field: PdfField): void {
         const index: number = this._fields.indexOf(field._ref);
         if (index >= 0) {
             this.removeFieldAt(index);
@@ -791,7 +798,7 @@ export class PdfForm {
      * document.destroy();
      * ```
      */
-    removeFieldAt(index: number): void {
+    public removeFieldAt(index: number): void {
         const field: PdfField = this.fieldAt(index);
         if (field) {
             if (field._kidsCount > 0) {
@@ -861,7 +868,7 @@ export class PdfForm {
      * document.destroy();
      * ```
      */
-    setDefaultAppearance(value: boolean): void {
+    public setDefaultAppearance(value: boolean): void {
         this._setAppearance = !value;
         this._needAppearances = value;
         this._isDefaultAppearance = value;
@@ -882,7 +889,7 @@ export class PdfForm {
      * document.destroy();
      * ```
      */
-    orderFormFields(): void
+    public orderFormFields(): void
     /**
      * Order the form fields based on page tab order.
      *
@@ -900,7 +907,7 @@ export class PdfForm {
      * document.destroy();
      * ```
      */
-    orderFormFields(tabOrder: PdfFormFieldsTabOrder): void
+    public orderFormFields(tabOrder: PdfFormFieldsTabOrder): void
     /**
      * Order the form fields based on tab collection.
      *
@@ -924,8 +931,8 @@ export class PdfForm {
      * document.destroy();
      * ```
      */
-    orderFormFields(tabCollection: Map<number, PdfFormFieldsTabOrder>): void
-    orderFormFields(tabOrder?: PdfFormFieldsTabOrder | Map<number, PdfFormFieldsTabOrder>): void {
+    public orderFormFields(tabCollection: Map<number, PdfFormFieldsTabOrder>): void
+    public orderFormFields(tabOrder?: PdfFormFieldsTabOrder | Map<number, PdfFormFieldsTabOrder>): void {
         if (tabOrder === null || typeof tabOrder === 'undefined') {
             this.orderFormFields(new Map<number, PdfFormFieldsTabOrder>());
         } else {

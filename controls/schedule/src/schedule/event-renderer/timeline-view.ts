@@ -467,7 +467,8 @@ export class TimelineEvent extends MonthEvent {
     }
 
     private getEndTimeOfLastSlot(startHour: Date, endHour: Date, interval: number): Date {
-        const minutesInDay: number = (endHour.getTime() - startHour.getTime()) / (1000 * 60);
+        const dstOffset: number = ((endHour.getTimezoneOffset() - startHour.getTimezoneOffset()) * util.MS_PER_MINUTE);
+        const minutesInDay: number = (endHour.getTime() - startHour.getTime() - dstOffset) / util.MS_PER_MINUTE;
         const lastSlotEndMinutes: number = Math.floor(minutesInDay / interval) * interval;
         const lastSlotEndTime: Date = new Date(startHour);
         lastSlotEndTime.setMinutes(lastSlotEndMinutes);

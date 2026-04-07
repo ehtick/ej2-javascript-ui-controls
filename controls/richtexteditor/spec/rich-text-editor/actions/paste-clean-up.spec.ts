@@ -5904,4 +5904,31 @@ p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 13.0px 'Helvetica Neue'; min-height
             }, 100);
         });
     });
+
+    describe('1018611: beforePasteCleanup args.value mutation — plain-text paste path', () => {
+        let rteObj: RichTextEditor;
+        beforeAll(() => {
+            rteObj = renderRTE({
+                value: '<p>initial</p>',
+                beforePasteCleanup: (args: PasteCleanupArgs) => {
+                    args.value = '<p>replaced text</p>';
+                }
+            });
+        });
+        afterAll(() => {
+            destroy(rteObj);
+        });
+        it('should use the args.value from beforePasteCleanup when pasting plain text', (done: DoneFn) => {
+            rteObj.inputElement.focus();
+            setCursorPoint(rteObj.inputElement.firstElementChild, 0);
+            const dataTransfer: DataTransfer = new DataTransfer();
+            dataTransfer.setData('text/plain', 'original pasted text');
+            const pasteEvent: ClipboardEvent = new ClipboardEvent('paste', { clipboardData: dataTransfer } as ClipboardEventInit);
+            rteObj.inputElement.dispatchEvent(pasteEvent);
+            setTimeout(() => {
+                expect(rteObj.inputElement.textContent).toContain('replaced text');
+                done();
+            }, 100);
+        });
+    });
 });// Add the spec above this.

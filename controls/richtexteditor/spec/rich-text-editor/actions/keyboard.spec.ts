@@ -5,7 +5,7 @@ import { createElement, detach } from '@syncfusion/ej2-base';
 import { KeyboardEvents } from './../../../src/rich-text-editor/actions/keyboard';
 import { htmlKeyConfig } from './../../../src/common/config';
 import { RichTextEditor } from "../../../src/rich-text-editor";
-import { INSRT_IMG_EVENT_INIT } from "../../constant.spec";
+import { INSRT_IMG_EVENT_INIT, TOOLBAR_FOCUS_SHORTCUT_EVENT_INIT } from "../../constant.spec";
 import { destroy, renderRTE } from "../render.spec";
 import { NodeSelection } from '../../../src/selection/index';
 
@@ -113,6 +113,28 @@ describe('Markdown Keyboard shortcut testing', () => {
             rteObj.inputElement.dispatchEvent(new KeyboardEvent('keydown', INSRT_IMG_EVENT_INIT));
             rteObj.inputElement.dispatchEvent(new KeyboardEvent('keyup', INSRT_IMG_EVENT_INIT));
             expect(rteObj.element.querySelector('.e-rte-img-dialog')).not.toBe(null);
+        });
+    });
+
+    describe('1020152: Markdown Editor: Alt+F10 doesnot highlight Bold toolbar', () => {
+        beforeAll(() => {
+            rteObj = renderRTE({
+                editorMode: 'Markdown',
+                toolbarSettings: {
+                    items: ['Bold', 'Italic', 'StrikeThrough', '|', 'Formats', 'OrderedList', 'UnorderedList']
+                },
+                value: 'Markdown Editor content'
+            });
+        });
+        afterAll(() => {
+            destroy(rteObj);
+        });
+        it('Check the toolbar item is focused on Alt+F10', () => {
+            rteObj.focusIn();
+            // Alt + F10
+            rteObj.inputElement.dispatchEvent(new KeyboardEvent('keydown', TOOLBAR_FOCUS_SHORTCUT_EVENT_INIT));
+            const toolbarItem: HTMLElement = rteObj.element.querySelector('.e-toolbar-item .e-btn');
+            expect(document.activeElement === toolbarItem).toBe(true);
         });
     });
 });

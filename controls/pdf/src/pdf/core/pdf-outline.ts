@@ -183,7 +183,7 @@ export class PdfBookmarkBase {
      * document.destroy();
      * ```
      */
-    at(index: number): PdfBookmark {
+    public at(index: number): PdfBookmark {
         let bookmark: PdfBookmark;
         if (index < 0 || index >= this.count) {
             throw Error('Index out of range.');
@@ -212,7 +212,7 @@ export class PdfBookmarkBase {
      * document.destroy();
      * ```
      */
-    contains(outline: PdfBookmark): boolean {
+    public contains(outline: PdfBookmark): boolean {
         return this._bookMarkList.indexOf(outline) !== -1;
     }
     /**
@@ -236,7 +236,7 @@ export class PdfBookmarkBase {
      * document.destroy();
      * ```
      */
-    add(title: string): PdfBookmark
+    public add(title: string): PdfBookmark
     /**
      * Adds a new outline (bookmark) with title and optional properties to the PDF document .
      *
@@ -263,7 +263,7 @@ export class PdfBookmarkBase {
      * document.destroy();
      * ```
      */
-    add(title: string, options: {
+    public add(title: string, options: {
         destination?: PdfDestination,
         namedDestination?: PdfNamedDestination,
         color?: PdfColor,
@@ -291,7 +291,7 @@ export class PdfBookmarkBase {
      * document.destroy();
      * ```
      */
-    add(title: string, index: number): PdfBookmark
+    public add(title: string, index: number): PdfBookmark
     /**
      * Adds a new outline (bookmark) to the PDF document.
      *
@@ -319,13 +319,13 @@ export class PdfBookmarkBase {
      * document.destroy();
      * ```
      */
-    add(title: string, index: number, options: {
+    public add(title: string, index: number, options: {
         destination?: PdfDestination,
         namedDestination?: PdfNamedDestination,
         color?: PdfColor,
         textStyle?: PdfTextStyle
     }): PdfBookmark
-    add(title: string, arg2?: number | {
+    public add(title: string, arg2?: number | {
         destination?: PdfDestination,
         namedDestination?: PdfNamedDestination,
         color?: PdfColor,
@@ -438,7 +438,7 @@ export class PdfBookmarkBase {
      * document.destroy();
      * ```
      */
-    remove(title: string): void
+    public remove(title: string): void
     /**
      * Remove the bookmark from the document at the specified index.
      *
@@ -459,8 +459,8 @@ export class PdfBookmarkBase {
      * document.destroy();
      * ```
      */
-    remove(index: number): void
-    remove(value: string | number): void {
+    public remove(index: number): void
+    public remove(value: string | number): void {
         if (typeof value === 'string') {
             for (let i: number = this._bookMarkList.length - 1; i >= 0; i--) {
                 const bookmark: PdfBookmark = this.at(i);
@@ -524,7 +524,7 @@ export class PdfBookmarkBase {
      * document.destroy();
      * ```
      */
-    clear(): void {
+    public clear(): void {
         this._removeFirst(this._dictionary);
         this._removeLast(this._dictionary);
         this._removeCount(this._dictionary);
@@ -1093,9 +1093,21 @@ export class PdfBookmark extends PdfBookmarkBase {
  * ```
  */
 export class PdfNamedDestination {
+    /**
+     * @private
+     */
     _destination: PdfDestination;
+    /**
+     * @private
+     */
     _title: string;
+    /**
+     * @private
+     */
     _dictionary: _PdfDictionary;
+    /**
+     * @private
+     */
     _crossReference: _PdfCrossReference;
     /**
      * Initializes a new instance of the `PdfNamedDestination` class.
@@ -1115,7 +1127,7 @@ export class PdfNamedDestination {
      * document.destroy();
      * ```
      */
-    constructor(title: string)
+    public constructor(title: string)
     /**
      * Initializes a new instance of the `PdfNamedDestination` class.
      *
@@ -1137,7 +1149,7 @@ export class PdfNamedDestination {
      * document.destroy();
      * ```
      */
-    constructor(title: string, destination: PdfDestination)
+    public constructor(title: string, destination: PdfDestination)
     /**
      * Initializes a new instance of the `PdfNamedDestination` class.
      *
@@ -1146,8 +1158,8 @@ export class PdfNamedDestination {
      * @param {_PdfCrossReference} crossReference Cross reference.
      *
      */
-    constructor(dictionary: _PdfDictionary, crossReference: _PdfCrossReference)
-    constructor(arg1: string | _PdfDictionary, arg2?: _PdfCrossReference | PdfDestination) {
+    public constructor(dictionary: _PdfDictionary, crossReference: _PdfCrossReference)
+    public constructor(arg1: string | _PdfDictionary, arg2?: _PdfCrossReference | PdfDestination) {
         if (arg1 instanceof _PdfDictionary && arg2 instanceof _PdfCrossReference) {
             this._dictionary = arg1;
             this._crossReference = arg2;

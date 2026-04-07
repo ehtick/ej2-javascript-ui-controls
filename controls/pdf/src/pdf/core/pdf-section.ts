@@ -128,7 +128,7 @@ export class PdfSection {
      * document.destroy();
      * ```
      */
-    addPage(): PdfPage {
+    public addPage(): PdfPage {
         const pageIndex: number = this._document.pageCount === 0 ? 0 : (this._document.pageCount);
         const pageDictionary: _PdfDictionary = new _PdfDictionary(this._crossReference);
         pageDictionary.update('Type', _PdfName.get('Page'));

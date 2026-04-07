@@ -627,7 +627,7 @@ export class HelperMethods {
                 return 2;
         }
     }
-    public static getHighlightColorEnumValue(highlightColor: HighlightColor): number {
+    public static getHighlightColorEnumValue(highlightColor: HighlightColor | string): number | string {
         switch (highlightColor) {
             case 'NoColor':
                 return 0;
@@ -661,6 +661,8 @@ export class HelperMethods {
                 return 14;
             case 'Black':
                 return 15;
+            default:
+                return highlightColor;
         }
     }
     public static getBiDirectionalOverride(biDirectionalOverride: BiDirectionalOverride): number {

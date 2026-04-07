@@ -232,6 +232,29 @@ export class HtmlEditor {
         this.parent.formatter.process(this.parent, args, keyboardArgs);
     }
 
+    /* Handles deletion of an entire table when all cells are selected. Prevents default deletion and triggers the table removal action. */
+    private handleEntireTableBackspace(e: NotifyArgs, args: KeyboardEvent): boolean {
+        const range: Range = this.parent.formatter.editorManager.nodeSelection.getRange(
+            this.parent.contentModule.getDocument());
+        if (this.isEntireTableSelected(range) && (args.keyCode === 8) &&
+            !isNOU(this.parent.tableModule)) {
+            args.preventDefault();
+            const save: NodeSelection = this.parent.formatter.editorManager.nodeSelection.save(
+                range, this.parent.contentModule.getDocument());
+            const selectParentEle: Node[] = this.parent.formatter.editorManager.nodeSelection
+                .getParentNodeCollection(range);
+            this.parent.notify(events.tableToolbarAction, {
+                member: 'table',
+                args: { item: { command: 'Table', subCommand: 'TableRemove' }, originalEvent: e.args },
+                selection: save,
+                selectParent: selectParentEle
+            });
+            this.parent.autoResize();
+            return true;
+        }
+        return false;
+    }
+
     private onKeyUp(e: NotifyArgs): void {
         const args: KeyboardEvent = e.args as KeyboardEvent;
         const restrictKeys: number[] = [8, 9, 13, 17, 18, 20, 27, 36, 37, 38, 39, 40, 44, 45, 46, 91,
@@ -596,6 +619,14 @@ export class HtmlEditor {
         const currentLength: number = this.parent.getText().replace(/(\r\n|\n|\r|\t)/gm, '').replace(/\u200B/g, '').length;
         const selectionLength: number = this.parent.getSelection().length;
         return maxLength === -1 || (currentLength - selectionLength + tabSpaceLength) <= maxLength;
+    }
+    private isEntireTableSelected(range: Range): boolean {
+        const rangeNode: Node = range.startContainer.nodeName === '#text' ? range.startContainer.parentElement : range.startContainer;
+        const currentSelectedTable: HTMLElement = closest(rangeNode, 'table') as HTMLElement;
+        const cells: NodeListOf<HTMLElement> = currentSelectedTable ? currentSelectedTable.querySelectorAll('td, th') : null;
+        const selectedCells: NodeListOf<HTMLElement> = currentSelectedTable ? currentSelectedTable.querySelectorAll('.e-cell-select.e-multi-cells-select') : null;
+        const isEntireTableSelcted: boolean = cells && selectedCells ? cells.length === selectedCells.length : false;
+        return isEntireTableSelcted;
     }
     private isOrderedList(editorValue: string): boolean {
         editorValue = editorValue.replace(/\u200B/g, '');
@@ -1622,6 +1653,9 @@ export class HtmlEditor {
         const args: KeyboardEvent = e.args as KeyboardEvent;
         // Handle the space, enter and backspace keys when the table cells are selected.
         const tableCellSelectNodes: NodeListOf<Element> = this.parent.inputElement.querySelectorAll('.e-cell-select');
+        if (this.handleEntireTableBackspace(e, args)) {
+            return;
+        }
         for (let i: number = 0; i < tableCellSelectNodes.length; i++) {
             const currentCell: Element = tableCellSelectNodes[i as number];
             removeClassWithAttr([currentCell as HTMLElement],

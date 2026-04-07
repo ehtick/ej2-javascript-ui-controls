@@ -437,6 +437,7 @@ export class DropDownTree extends Component<HTMLElement> implements INotifyPrope
     private clearIconWidth: number;
     private isClicked: boolean = false;
     private documentClickContext: EventListenerObject = this.onDocumentClick.bind(this);
+    private windowResizeContext: EventListener = this.windowResize.bind(this);
     // Specifies if the checkAll method has been called
     private isCheckAllCalled: boolean = false;
     private isFromFilterChange: boolean = false;
@@ -1450,7 +1451,7 @@ export class DropDownTree extends Component<HTMLElement> implements INotifyPrope
         EventHandler.add(this.inputWrapper, 'mousemove', this.mouseIn, this);
         EventHandler.add(this.inputWrapper, 'mouseout', this.onMouseLeave, this);
         EventHandler.add(this.overAllClear, 'mousedown', this.clearAll, this);
-        EventHandler.add(<HTMLElement & Window><unknown>window, 'resize', this.windowResize, this);
+        EventHandler.add(<HTMLElement & Window><unknown>window, 'resize', this.windowResizeContext);
         const formElement: HTMLFormElement = closest(this.inputWrapper, 'form') as HTMLFormElement;
         if (formElement) {
             EventHandler.add(formElement, 'reset', this.resetValueHandler, this);
@@ -1498,7 +1499,7 @@ export class DropDownTree extends Component<HTMLElement> implements INotifyPrope
         EventHandler.remove(this.inputWrapper, 'mousemove', this.mouseIn);
         EventHandler.remove(this.inputWrapper, 'mouseout', this.onMouseLeave);
         EventHandler.remove(this.overAllClear, 'mousedown', this.clearAll);
-        EventHandler.remove(<HTMLElement & Window><unknown>window, 'resize', this.windowResize);
+        EventHandler.remove(<HTMLElement & Window><unknown>window, 'resize', this.windowResizeContext);
         const formElement: HTMLFormElement = closest(this.inputWrapper, 'form') as HTMLFormElement;
         if (formElement) {
             EventHandler.remove(formElement, 'reset', this.resetValueHandler);

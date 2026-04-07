@@ -218,6 +218,41 @@ describe('Paste CR issues ', ()=> {
         });
     });
 
+    describe('Bug 1017167: Bold Formatting from Excel Not Preserved When Pasted into Rich Text Editor.', () => {
+        let editor: RichTextEditor;
+        const hostUrl: string = 'https://services.syncfusion.com/js/production/';
+        beforeAll(() => {
+            editor = renderRTE({
+                pasteCleanupSettings: {
+                    prompt: false
+                },
+                insertImageSettings: {
+                    saveUrl: hostUrl + 'api/RichTextEditor/SaveFile',
+                    removeUrl: hostUrl + 'api/RichTextEditor/DeleteFile',
+                    path: hostUrl + 'RichTextEditor/'
+                }
+            });
+        });
+        afterAll(() => {
+            destroy(editor);
+        });
+        it('need to preserve the bold formats when Excel shapes come with metadata identifying them as PowerPoint content ', (done: DoneFn) => {
+            editor.focusIn();
+            const clipBoardData: string = `<html xmlns:m="http://schemas.microsoft.com/office/2004/12/omml"\r\nxmlns="http://www.w3.org/TR/REC-html40">\r\n\r\n<head>\r\n<meta http-equiv=Content-Type content="text/html; charset=utf-8">\r\n<meta name=ProgId content=PowerPoint.Slide>\r\n<meta name=Generator content="Microsoft PowerPoint 15">\r\n</head>\r\n\r\n<body>\r\n\x3C!--StartFragment-->\r\n\r\n<p style='language:en-US;margin-top:0pt;margin-bottom:0pt;margin-left:0in;\r\ntext-indent:0in'><span style='font-size:12.0pt;font-family:Calibri;mso-ascii-font-family:\r\nCalibri;mso-fareast-font-family:+mn-ea;mso-bidi-font-family:+mn-cs;mso-ascii-theme-font:\r\nminor-latin;mso-fareast-theme-font:minor-fareast;mso-bidi-theme-font:minor-bidi;\r\ncolor:black;mso-color-index:13;language:en-ZA;font-weight:normal;font-style:\r\nnormal;mso-style-textfill-type:solid;mso-style-textfill-fill-themecolor:dark1;\r\nmso-style-textfill-fill-color:black;mso-style-textfill-fill-alpha:100.0%'>Good\r\nday&nbsp;</span><span style='font-size:12.0pt;font-family:Calibri;mso-ascii-font-family:\r\nCalibri;mso-fareast-font-family:+mn-ea;mso-bidi-font-family:+mn-cs;mso-ascii-theme-font:\r\nminor-latin;mso-fareast-theme-font:minor-fareast;mso-bidi-theme-font:minor-bidi;\r\ncolor:black;mso-color-index:13;language:en-ZA;mso-style-textfill-type:solid;\r\nmso-style-textfill-fill-themecolor:dark1;mso-style-textfill-fill-color:black;\r\nmso-style-textfill-fill-alpha:100.0%'> </span></p>\r\n\r\n<p style='language:en-US;margin-top:0pt;margin-bottom:0pt;margin-left:0in;\r\ntext-indent:0in'><span style='font-size:11.0pt;font-family:Calibri;mso-ascii-font-family:\r\nCalibri;mso-fareast-font-family:+mn-ea;mso-bidi-font-family:+mn-cs;mso-ascii-theme-font:\r\nminor-latin;mso-fareast-theme-font:minor-fareast;mso-bidi-theme-font:minor-bidi;\r\ncolor:black;mso-color-index:13;language:en-ZA;font-weight:bold;font-style:normal;\r\nmso-style-textfill-type:solid;mso-style-textfill-fill-themecolor:dark1;\r\nmso-style-textfill-fill-color:black;mso-style-textfill-fill-alpha:100.0%'><br\r\n/>\r\n</span><span style='font-size:16.0pt;font-family:Calibri;mso-ascii-font-family:\r\nCalibri;mso-fareast-font-family:+mn-ea;mso-bidi-font-family:+mn-cs;mso-ascii-theme-font:\r\nminor-latin;mso-fareast-theme-font:minor-fareast;mso-bidi-theme-font:minor-bidi;\r\ncolor:black;mso-color-index:13;language:en-ZA;font-weight:bold;font-style:normal;\r\nmso-style-textfill-type:solid;mso-style-textfill-fill-themecolor:dark1;\r\nmso-style-textfill-fill-color:black;mso-style-textfill-fill-alpha:100.0%'>Hereby\r\nSenwes confirms that the following stock was transferred from SEABAORD (532368)\r\nto RANDAGRI (532922) on&nbsp;12.02.2026</span><span style='font-size:16.0pt;\r\nfont-family:Calibri;mso-ascii-font-family:Calibri;mso-fareast-font-family:+mn-ea;\r\nmso-bidi-font-family:+mn-cs;mso-ascii-theme-font:minor-latin;mso-fareast-theme-font:\r\nminor-fareast;mso-bidi-theme-font:minor-bidi;color:black;mso-color-index:13;\r\nlanguage:en-ZA;mso-style-textfill-type:solid;mso-style-textfill-fill-themecolor:\r\ndark1;mso-style-textfill-fill-color:black;mso-style-textfill-fill-alpha:100.0%'><br\r\n/>\r\n</span><span style='font-size:16.0pt;font-family:Calibri;mso-ascii-font-family:\r\nCalibri;mso-fareast-font-family:+mn-ea;mso-bidi-font-family:+mn-cs;mso-ascii-theme-font:\r\nminor-latin;mso-fareast-theme-font:minor-fareast;mso-bidi-theme-font:minor-bidi;\r\ncolor:black;mso-color-index:13;language:en-ZA;font-weight:bold;font-style:normal;\r\nmso-style-textfill-type:solid;mso-style-textfill-fill-themecolor:dark1;\r\nmso-style-textfill-fill-color:black;mso-style-textfill-fill-alpha:100.0%'>Admin\r\nRef :</span><span style='font-size:16.0pt;font-family:Calibri;mso-ascii-font-family:\r\nCalibri;mso-fareast-font-family:+mn-ea;mso-bidi-font-family:+mn-cs;mso-ascii-theme-font:\r\nminor-latin;mso-fareast-theme-font:minor-fareast;mso-bidi-theme-font:minor-bidi;\r\ncolor:black;mso-color-index:13;language:en-ZA;mso-style-textfill-type:solid;\r\nmso-style-textfill-fill-themecolor:dark1;mso-style-textfill-fill-color:black;\r\nmso-style-textfill-fill-alpha:100.0%'><span style='mso-spacerun:yes'>  </span></span></p>\r\n\r\n\x3C!--EndFragment-->\r\n</body>\r\n\r\n</html>\r\n`;
+            const dataTransfer: DataTransfer = new DataTransfer();
+            dataTransfer.setData('text/html', clipBoardData);
+            const file: File = getImageUniqueFIle();
+            dataTransfer.items.add(file);
+            const pasteEvent: ClipboardEvent = new ClipboardEvent('paste', { clipboardData: dataTransfer } as ClipboardEventInit);
+            editor.onPaste(pasteEvent);
+            setTimeout(() => {
+                const spanElements: NodeListOf<HTMLSpanElement> = editor.inputElement.querySelectorAll('span');
+                expect(spanElements.length > 0).toBe(true)
+                done();
+            }, 100);
+        });
+    });
+
     describe('Bug 1008637: Facing table borders not shown issue when copy paste from one note', () => {
         let editor: RichTextEditor;
         const hostUrl: string = 'https://services.syncfusion.com/js/production/';
@@ -1375,6 +1410,32 @@ describe('Paste CR issues ', ()=> {
             rteObj.onPaste(pasteEvent);
             setTimeout(() => {
                 expect(rteObj.inputElement.innerHTML === `<blockquote><p><em>Easily access Audio, Image, Link, Video, and Table operations through the quick toolbar by right-clicking on the corresponding element with your mouse.</em></p><h1>Welcome to the Syncfusion Rich Text Editor</h1><p><strong><span style="text-decoration: underline">The Rich Text Editor, a WYSIWYG (what you see is what you get) editor, is a user interface that allows you to create, edit, and format rich text content. You can try out a demo of this editor here.</span></strong></p><h2>Do you know the key features of the editor?</h2><ul><li>Basic features include headings, block quotes, numbered lists, bullet lists, and support to insert images, tables, audio, and video.<ul><li>Inline styles include <b>bold</b>, <em>italic</em>, <span style="text-decoration-line: underline">underline</span>, <span style="text-decoration-line: line-through">strikethrough</span>, <a class="e-rte-anchor" href="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/tools.html" title="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/tools.html" aria-label="Open in new window">hyperlinks</a>, 😀 and more.<ul><li>The toolbar has multi-row, expandable, and scrollable modes. The Editor supports an inline toolbar, a floating toolbar, and custom toolbar items.</li></ul></li></ul></li><li>Integration with Syncfusion Mention control lets users tag other users. To learn more, check out the <a class="e-rte-anchor" href="https://ej2.syncfusion.com/documentation/rich-text-editor/mention-integration" title="Mention Documentation" aria-label="Open in new window">documentation</a> and <a class="e-rte-anchor" href="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/mention-integration.html" title="Mention Demos" aria-label="Open in new window">demos</a>.</li><li><b>Paste from MS Word</b> - helps to reduce the effort while converting the Microsoft Word content to HTML format with format and styles. To learn more, check out the documentation <a class="e-rte-anchor" href="https://ej2.syncfusion.com/documentation/rich-text-editor/paste-cleanup" title="Paste from MS Word Documentation" aria-label="Open in new window">here</a>.</li><li>Other features: placeholder text, character count, form validation, enter key configuration, resizable editor, IFrame rendering, tooltip, source code view, RTL mode, persistence, HTML Sanitizer, autosave, and <a class="e-rte-anchor" href="https://ej2.syncfusion.com/documentation/api/rich-text-editor/" title="Rich Text Editor API" aria-label="Open in new window">more</a>.<strong style="font-weight: 700;"><span style="text-decoration: underline;">The Rich Text Editor, a WYSIWYG (what you see is what you get) editor, is a user interface that allows you to create, edit, and format rich text content. You can try out a demo of this editor here.</span></strong></li><li><h2 style="font-size: 2.285em; font-weight: 600; line-height: 1.2; margin: 10px 0px; color: rgb(51, 51, 51); font-family: Roboto, &quot;Segoe UI&quot;, GeezaPro, &quot;DejaVu Serif&quot;, &quot;sans-serif&quot;, -apple-system, BlinkMacSystemFont; font-style: normal; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; background-color: rgb(255, 255, 255);">Do you know the key features of the editor?</h2></li><li style="margin-bottom: 10px;">Basic features include headings, block quotes, numbered lists, bullet lists, and support to insert images, tables, audio, and video.<ul style="list-style-type: circle; margin-bottom: 0px;"><li style="margin-bottom: 10px;">Inline styles include<span>&nbsp;</span><b style="font-weight: 700;">bold</b>,<span>&nbsp;</span><em>italic</em>,<span>&nbsp;</span><span>underline</span>,<span>&nbsp;</span><span>strikethrough</span>,<span>&nbsp;</span><a class="e-rte-anchor" href="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/tools.html" title="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/tools.html" aria-label="Open in new window" style="text-decoration: none; color: rgb(46, 46, 241);">hyperlinks</a>, 😀 and more.<ul style="list-style-type: square; margin-bottom: 0px;"><li style="margin-bottom: 10px;">The toolbar has multi-row, expandable, and scrollable modes. The Editor supports an inline toolbar, a floating toolbar, and custom toolbar items.</li></ul></li></ul></li><li style="margin-bottom: 10px;">Integration with Syncfusion Mention control lets users tag other users. To learn more, check out the<span>&nbsp;</span><a class="e-rte-anchor" href="https://ej2.syncfusion.com/documentation/rich-text-editor/mention-integration" title="Mention Documentation" aria-label="Open in new window" style="text-decoration: none; color: rgb(46, 46, 241);">documentation</a><span>&nbsp;</span>and<span>&nbsp;</span><a class="e-rte-anchor" href="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/mention-integration.html" title="Mention Demos" aria-label="Open in new window" style="text-decoration: none; color: rgb(46, 46, 241);">demos</a>.</li><li style="margin-bottom: 10px;"><b style="font-weight: 700;">Paste from MS Word</b><span>&nbsp;</span>- helps to reduce the effort while converting the Microsoft Word content to HTML format with format and styles. To learn more, check out the documentation<span>&nbsp;</span><a class="e-rte-anchor" href="https://ej2.syncfusion.com/documentation/rich-text-editor/paste-cleanup" title="Paste from MS Word Documentation" aria-label="Open in new window" style="text-decoration: none; color: rgb(46, 46, 241);">here</a>.</li></ul></blockquote>`).toBe(true);
+                done();
+            }, 100);
+        });
+    });
+    describe('1018611: beforePasteCleanup args.value mutation should be reflected in editor content', () => {
+        let rteObj: RichTextEditor;
+        beforeAll(() => {
+            rteObj = renderRTE({
+                value: '<p>initial content</p>',
+                beforePasteCleanup: (args: any) => {
+                    args.value = '<p>mutated by event</p>';
+                }
+            });
+        });
+        afterAll(() => {
+            destroy(rteObj);
+        });
+        it('should insert the mutated args.value from beforePasteCleanup into the editor', (done: DoneFn) => {
+            rteObj.inputElement.focus();
+            setCursorPoint(rteObj.inputElement.firstElementChild, 0);
+            const dataTransfer: DataTransfer = new DataTransfer();
+            dataTransfer.setData('text/plain', 'clipboard plain text');
+            const pasteEvent: ClipboardEvent = new ClipboardEvent('paste', { clipboardData: dataTransfer } as ClipboardEventInit);
+            rteObj.inputElement.dispatchEvent(pasteEvent);
+            setTimeout(() => {
+                expect(rteObj.inputElement.textContent).toContain('mutated by event');
                 done();
             }, 100);
         });
