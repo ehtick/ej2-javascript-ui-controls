@@ -3713,7 +3713,7 @@ export class TableRowWidget extends BlockWidget {
                 prevColumnIndex = (cellWidget.previousWidget as TableCellWidget).columnIndex + (cellWidget.previousWidget as TableCellWidget).cellFormat.columnSpan;
             }
             if (prevColumnIndex < cellWidget.columnIndex) {
-                prevSpannedCellWidth = HelperMethods.convertPointToPixel(cellWidget.ownerTable.tableHolder.getPreviousSpannedCellWidth(prevColumnIndex, cellWidget.columnIndex));
+                prevSpannedCellWidth += HelperMethods.convertPointToPixel(cellWidget.ownerTable.tableHolder.getPreviousSpannedCellWidth(prevColumnIndex, cellWidget.columnIndex));
                 if (prevColumnIndex === 0) {
                     prevSpannedCellWidth = prevSpannedCellWidth - cellSpace / 2;
                 }
@@ -6150,6 +6150,10 @@ export class TextElementBox extends ElementBox {
      * @private
      */
     public scriptType?: FontScriptType = FontScriptType.English;
+    /**
+     * @private
+     */
+    public isCombinedRTLText?: boolean = false;
     /**
      * @private
      */
@@ -9618,9 +9622,10 @@ export class CommentCharacterElementBox extends ElementBox {
     public commentType: number = 0;
 
     public commentId: string = '';
-
-
-    private commentInternal: CommentElementBox;
+    /**
+     * @private
+     */   
+    public commentInternal: CommentElementBox;
 
     public commentMark: HTMLElement;
 

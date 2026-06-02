@@ -5496,3 +5496,28 @@ describe('1017735: Lists - Enter then Backspace scenarios (regressions)', () => 
     });
 });
 
+describe('Bug 1027346: Ordered List Numbers Do Not Reflect Selected Font Name and Size in RichTextEditor', () => {
+    let rteObj: RichTextEditor;
+    beforeEach(() => {
+        rteObj = renderRTE({
+            value: `<p><span style="font-size: 36pt;"><span style="color: rgb(255, 192, 0); text-decoration: inherit;"><span style="background-color: rgb(153, 102, 51);"><span style="text-decoration: line-through;"><span style="text-decoration: underline;"><em><strong><span style="font-family: Impact, Charcoal, sans-serif;">1.</span></strong></em></span></span></span></span></span></p>`
+        });
+    });
+    afterEach(() => {
+        destroy(rteObj);
+    });
+    it('List element should inherit certain styles of child element', (done: Function) => {
+        rteObj.focusIn();
+        let cursorEle: HTMLElement = rteObj.inputElement.querySelector('strong').firstChild as HTMLElement;
+        setCursorPoint(cursorEle.firstChild as Element, 2);
+        const spaceDownEvent: KeyboardEvent = new KeyboardEvent('keydown', SPACE_EVENT_INIT);
+        rteObj.inputElement.dispatchEvent(spaceDownEvent);
+        const spaceUpEvent: KeyboardEvent = new KeyboardEvent('keyup', SPACE_EVENT_INIT);
+        rteObj.inputElement.dispatchEvent(spaceUpEvent);
+        setTimeout(() => {
+            const expectedContent: string = `<ol><li style="font-family: Impact, Charcoal, sans-serif; font-weight: bold; font-style: italic; color: rgb(255, 192, 0); font-size: 36pt;"><span style="font-size: 36pt;"><span style="color: rgb(255, 192, 0); text-decoration: inherit;"><span style="background-color: rgb(153, 102, 51);"><span style="text-decoration: line-through;"><span style="text-decoration: underline;"><em><strong><span style="font-family: Impact, Charcoal, sans-serif;"><br></span></strong></em></span></span></span></span></span></li></ol>`;
+            expect(rteObj.inputElement.innerHTML === expectedContent).toBe(true);
+            done();
+        }, 100);
+    });
+});

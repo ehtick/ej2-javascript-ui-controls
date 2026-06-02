@@ -1395,3 +1395,55 @@ describe('Automatic Port Creation for connectors', function () {
         done();
     });
 });
+describe('Annotation template position shifts unexpectedly during drag interaction', () => {
+    let diagram: Diagram;
+    let ele: HTMLElement;
+    let mouseEvents = new MouseEvents();
+    beforeAll((): void => {
+        ele = createElement('div', { id: 'diagramAnnotationDragIssue' });
+        document.body.appendChild(ele);
+        let ports: PointPortModel[] = [
+            {
+                id: 'test1',
+                offset: { x: 0, y: 1 },
+                visibility: PortVisibility.Hover,
+                constraints: PortConstraints.Draw,
+                shape: 'Circle',
+            }
+        ];
+        let node: NodeModel[] = [
+            {
+                id: 'node1',
+                offsetX: 350,
+                offsetY: 150,
+                width: 100,
+                height: 100,
+
+                ports: ports,
+                annotations: [
+                    {
+                        id: 'label1',
+                        template: '<div><input type="button" value="Submit"></div>',
+                    },
+                ],
+
+            },]
+
+        diagram = new Diagram({ width: 800, height: 800, nodes: node, });
+        diagram.appendTo('#diagramAnnotationDragIssue');
+    });
+
+    afterAll((): void => {
+        diagram.destroy();
+        ele.remove();
+        diagram = null;
+        ele = null;
+    });
+
+    it('Annotation template position shifts unexpectedly during drag', (done: Function) => {
+        let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+        mouseEvents.mouseMoveEvent(diagramCanvas, 380, 180);
+        expect(diagram.nodes.length === 1).toBe(true);
+        done();
+    });
+});

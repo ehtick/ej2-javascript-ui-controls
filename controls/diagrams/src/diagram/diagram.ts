@@ -1911,6 +1911,7 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
             let refreshLayout: boolean = false;
             let refereshColelction: boolean = false;
             let bpmnAnnotationConnector: ConnectorModel;
+            let isDataSourceUpdate: boolean = false;
             if (this.diagramActions & DiagramAction.Render) {
                 for (const prop of Object.keys(newProp)) {
                     switch (prop) {
@@ -2072,6 +2073,7 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                         this.updateSelector();
                         break;
                     case 'dataSourceSettings':
+                        isDataSourceUpdate = true;
                         this.clear();
                         if (this.layout.type === 'None') {
                             refereshColelction = true;
@@ -2181,6 +2183,11 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                         }
                     }
                     this.doLayout(); this.renderReactTemplates();
+                    // BUG 1024983: Scrollbar left and top positions are not updated after changing dataSourceSettings at runtime.
+                    // To resolve this, explicitly update the scroll offsets of the diagram content.
+                    if (isDataSourceUpdate) {
+                        this.updateScroller();
+                    }
                 }
                 if (isPropertyChanged && this.propertyChange) {
                     const args: IPropertyChangeEventArgs | IBlazorPropertyChangeEventArgs = {
@@ -2283,6 +2290,17 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
         } else {
             (this as any).rotateUsingButton = false;
         }
+    }
+    /**
+     * updateScroller - Updates the scroll left and scroll top of diagram content.
+     * @private
+     * @returns {void}
+     */
+    public updateScroller(): void {
+        const pageBounds: Rect = this.scroller.getPageBounds(undefined, undefined, true);
+        pageBounds.x *= this.scroller.currentZoom;
+        pageBounds.y *= this.scroller.currentZoom;
+        this.setOffset(-this.scroller.horizontalOffset - pageBounds.x, -this.scroller.verticalOffset - pageBounds.y);
     }
     /* tslint:enable */
     private updateSnapSettings(newProp: DiagramModel): void {
@@ -10597,6 +10615,9 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
         if ((obj instanceof Node || obj instanceof Connector) && drawingObject && canMove(obj)) {
             const ports: PointPortModel[] | PortModel[] = obj.ports;
             let changed: boolean = false;
+            const annotations: ShapeAnnotationModel[] | PathAnnotationModel[] = obj.annotations;
+            let isAnnotationTemplate: boolean = false;
+
             for (let i: number = 0; i < ports.length; i++) {
                 portElement = this.getWrapper(obj.wrapper, ports[parseInt(i.toString(), 10)].id);
                 if ((portVisibility & PortVisibility.Hover || portVisibility & PortVisibility.Connect)) {
@@ -10606,7 +10627,21 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                     }
                 }
             }
+            if (annotations && annotations.length && obj instanceof Node && changed) {
+                for (let i: number = 0; i < annotations.length; i++) {
+                    const annotationWrapper: DiagramElement = this.getWrapper(obj.wrapper, annotations[parseInt(i.toString(), 10)].id);
+                    if (annotationWrapper instanceof DiagramHtmlElement) {
+                        isAnnotationTemplate = true;
+                        break;
+                    }
+                }
+            }
             if (changed) {
+                //1028870: Annotation template position shifts unexpectedly during drag interaction.
+                if (isAnnotationTemplate) {
+                    obj.wrapper.measure(new Size(obj.wrapper.actualSize.width, obj.wrapper.actualSize.height));
+                    obj.wrapper.arrange(obj.wrapper.desiredSize);
+                }
                 this.updateDiagramObject(obj);
             }
             //EJ2-59672 - Added the below code to render the ports while hovering over the node

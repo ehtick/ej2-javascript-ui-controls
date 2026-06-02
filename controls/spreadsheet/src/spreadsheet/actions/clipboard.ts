@@ -883,7 +883,8 @@ export class Clipboard {
             const cancel: boolean = updateCell(
                 this.parent, sheet, {
                     cell: cell, rowIdx: rIdx, colIdx: cIdx, pvtExtend: !isExtend, valChange: !isUniqueCell, lastCell: lastCell,
-                    uiRefresh: uiRefresh, requestType: 'paste', skipFormatCheck: !args.isExternal, isRandomFormula: args.isRandFormula
+                    uiRefresh: uiRefresh, requestType: 'paste', skipFormatCheck: !args.isExternal, isRandomFormula: args.isRandFormula,
+                    checkFormulaAdded: true
                 }, actionData, isUndo);
             if (!cancel) {
                 if (cell && cell.style && args.isExternal) {

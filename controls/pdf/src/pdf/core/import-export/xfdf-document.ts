@@ -2,7 +2,7 @@ import { _XmlWriter } from './xml-writer';
 import { PdfDocument } from './../pdf-document';
 import { PdfPage } from './../pdf-page';
 import { PdfForm } from './../form/form';
-import { PdfWidgetAnnotation, PdfAnnotation, PdfLineAnnotation, PdfFileLinkAnnotation, PdfTextWebLinkAnnotation, PdfDocumentLinkAnnotation, PdfUriAnnotation, PdfRadioButtonListItem, PdfStateItem, Pdf3DAnnotation, PdfPopupAnnotation } from './../annotations/annotation';
+import { PdfWidgetAnnotation, PdfAnnotation, PdfLineAnnotation, PdfFileLinkAnnotation, PdfTextWebLinkAnnotation, PdfDocumentLinkAnnotation, PdfRadioButtonListItem, PdfStateItem, Pdf3DAnnotation, PdfPopupAnnotation } from './../annotations/annotation';
 import { PdfAnnotationCollection } from './../annotations/annotation-collection';
 import { _PdfAnnotationType, PdfAnnotationFlag } from './../enumerator';
 import { _PdfDictionary, _PdfName, _PdfReference } from './../pdf-primitives';
@@ -1380,7 +1380,6 @@ export class _XfdfDocument extends _ExportHelper {
             !(annotation instanceof PdfFileLinkAnnotation ||
             annotation instanceof PdfTextWebLinkAnnotation ||
             annotation instanceof PdfDocumentLinkAnnotation ||
-            annotation instanceof PdfUriAnnotation ||
             annotation instanceof Pdf3DAnnotation)) {
             this._writeAnnotationData(writer, pageIndex, annotation);
         }
@@ -2464,6 +2463,9 @@ export class _XfdfDocument extends _ExportHelper {
         case 'redact':
             dictionary.update('Subtype', _PdfName.get('Redact'));
             break;
+        case 'link':
+            dictionary.update('Subtype', _PdfName.get('Link'));
+            break;
         default:
             isValidType = false;
             break;
@@ -2625,6 +2627,17 @@ export class _XfdfDocument extends _ExportHelper {
                 break;
             case 'name':
                 this._addString(dictionary, 'NM', value);
+                break;
+            case 'uri':
+                if (value) {
+                    const actionDictionary: _PdfDictionary = new _PdfDictionary(this._crossReference);
+                    actionDictionary.update('Type', new _PdfName('Action'));
+                    actionDictionary.update('S', new _PdfName('URI'));
+                    actionDictionary.update('URI', value);
+                    const actionRef: _PdfReference = this._crossReference._getNextReference();
+                    this._crossReference._cacheMap.set(actionRef, actionDictionary);
+                    dictionary.update('A', actionRef);
+                }
                 break;
             case 'icon':
                 if (value && value !== '') {

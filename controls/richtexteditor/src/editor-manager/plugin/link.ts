@@ -199,19 +199,19 @@ export class LinkCommand {
                 (e.item.selectParent[0]) as Element : null;
         if (!isNOU(closestAnchor) && (closestAnchor as HTMLElement).tagName === 'A') {
             const anchorEle: HTMLElement = closestAnchor as HTMLElement;
-            let linkText: string = '';
+            const linkText: string = anchorEle.innerText;
             if (!isNOU(e.item.url)) {
                 anchorEle.setAttribute('href', e.item.url);
             }
             if (!isNOU(e.item.title)) {
                 anchorEle.setAttribute('title', e.item.title);
             }
-            if (!isNOU(e.item.text) && e.item.text !== '') {
-                linkText = anchorEle.innerText;
-                const walker: TreeWalker = document.createTreeWalker(anchorEle, NodeFilter.SHOW_TEXT, null);
-                const anchorTextnode: Node = walker.nextNode();
-                if (anchorTextnode) {
-                    anchorTextnode.textContent = e.item.text;
+            if (!isNOU(e.item.text) && e.item.text !== '' && anchorEle.innerText !== e.item.text) {
+                if (anchorEle.childNodes.length === 1 && anchorEle.childNodes[0].nodeName !== '#text') {
+                    const replaceNode: Node = this.parent.domTree.getLastTextNode(anchorEle);
+                    replaceNode.parentElement.innerText = e.item.text;
+                } else {
+                    anchorEle.textContent = e.item.text;
                 }
             }
             if (!isNOU(e.item.target)) {
@@ -226,12 +226,14 @@ export class LinkCommand {
                 e.item.selection.setSelectionText(this.parent.currentDocument, anchorEle, anchorEle, 1, 1);
                 e.item.selection.restore();
             } else {
-                const startIndex: number = e.item.action === 'Paste' ? anchorEle.childNodes[0].textContent.length : 0;
-                const endIndex: number = anchorEle.firstChild.nodeName === '#text' ? anchorEle.childNodes[0].textContent.length : anchorEle.childNodes.length;
-                e.item.selection.setSelectionText(this.parent.currentDocument,
-                                                  anchorEle.childNodes[0],
-                                                  anchorEle.childNodes[0],
-                                                  startIndex, endIndex);
+                const rangeNode: Node = anchorEle.firstChild.nodeName === '#text' && anchorEle.childNodes.length === 1 ?
+                    anchorEle.firstChild : this.parent.domTree.getLastTextNode(anchorEle);
+                const cursorPoint: number = rangeNode.textContent.length;
+                if (e.item.action === 'Paste') {
+                    e.item.selection.setCursorPoint(this.parent.currentDocument, rangeNode as Element, cursorPoint);
+                } else {
+                    e.item.selection.setSelectionText(this.parent.currentDocument, rangeNode, rangeNode, 0, cursorPoint);
+                }
             }
         } else {
             const domSelection: NodeSelection = new NodeSelection(this.parent.editableElement as HTMLElement);

@@ -6159,4 +6159,137 @@ Strikethrough    Type ~~text~~`);
             }, 100);
         });
     });
+    describe('Bug 1028857: EJ2 Vue RTE - Edited image saved outside paragraph, new img element created causing locator issues', () => {
+        let rteObj: RichTextEditor;
+        beforeEach(() => {
+            rteObj = renderRTE({
+                value: `<p>Existing text <img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 15%" class="e-rte-image e-img-inline"/></p>`
+            });
+        });
+        afterEach(() => {
+            destroy(rteObj);
+        });
+        it('should replace an image when pasting a new image by selecting the image inside paragraph', (done: DoneFn) => {
+            rteObj.inputElement.innerHTML = `<p>Existing text <img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 15%" class="e-rte-image e-img-inline"/></p>`;
+            const imgParentElement: HTMLElement = rteObj.inputElement.querySelector('img').parentElement as HTMLElement;
+            const selection = new NodeSelection();
+            selection.setSelectionText(document, imgParentElement, imgParentElement, 1, 2);
+            const dataTransfer: DataTransfer = new DataTransfer();
+            const file: File = getImageUniqueFIle();
+            dataTransfer.items.add(file);
+            const pasteEvent: ClipboardEvent = new ClipboardEvent('paste', { clipboardData: dataTransfer } as ClipboardEventInit);
+            rteObj.inputElement.dispatchEvent(pasteEvent);
+            setTimeout(() => {
+                const images = rteObj.inputElement.querySelectorAll('img');
+                expect(images.length === 1).toBe(true);
+                expect((images[0] as HTMLImageElement).src).not.toContain('RTE-Overview.png');
+                done();
+            }, 100);
+        });
+    });
+    describe('Bug 1029265: RTL Mode Hides Left Border of Excel-Pasted Table in RichTextEditor', () => {
+        let rteObj: RichTextEditor;
+        beforeEach(() => {
+            rteObj = renderRTE({
+                value: '',
+                toolbarSettings: {
+                    items: ['bold']
+                },
+            });
+        });
+        afterEach(() => {
+            destroy(rteObj);
+        });
+        it('border left style should be empty after pasting content from excel in both LTR and RTL modes', (done: DoneFn) => {
+            rteObj.inputElement.focus();
+            setCursorPoint(rteObj.inputElement.firstElementChild, 0);
+            const dataTransfer: DataTransfer = new DataTransfer();
+            dataTransfer.setData('text/html', `<html xmlns:v="urn:schemas-microsoft-com:vml"
+xmlns:o="urn:schemas-microsoft-com:office:office"
+xmlns:x="urn:schemas-microsoft-com:office:excel"
+xmlns="http://www.w3.org/TR/REC-html40">
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=utf-8">
+<meta name=ProgId content=Excel.Sheet>
+<meta name=Generator content="Microsoft Excel 15">
+<link id=Main-File rel=Main-File
+href="file:///C:/Users/ARUNSU~1/AppData/Local/Temp/msohtmlclip1/01/clip.htm">
+<link rel=File-List
+href="file:///C:/Users/ARUNSU~1/AppData/Local/Temp/msohtmlclip1/01/clip_filelist.xml">
+<style>
+<!--table
+	{mso-displayed-decimal-separator:"\.";
+	mso-displayed-thousand-separator:"\,";}
+@page
+	{margin:.75in .7in .75in .7in;
+	mso-header-margin:.3in;
+	mso-footer-margin:.3in;}
+tr
+	{mso-height-source:auto;}
+col
+	{mso-width-source:auto;}
+br
+	{mso-data-placement:same-cell;}
+td
+	{padding-top:1px;
+	padding-right:1px;
+	padding-left:1px;
+	mso-ignore:padding;
+	color:black;
+	font-size:11.0pt;
+	font-weight:400;
+	font-style:normal;
+	text-decoration:none;
+	font-family:"Aptos Narrow", sans-serif;
+	mso-font-charset:0;
+	mso-number-format:General;
+	text-align:general;
+	vertical-align:bottom;
+	border:none;
+	mso-background-source:auto;
+	mso-pattern:auto;
+	mso-protection:locked visible;
+	white-space:nowrap;
+	mso-rotate:0;}
+.xl65
+	{border:.5pt solid windowtext;}
+-->
+</style>
+</head>
+
+<body link="#467886" vlink="#96607D">
+
+<table border=0 cellpadding=0 cellspacing=0 width=192 style='border-collapse:
+ collapse;width:144pt'>
+<!--StartFragment-->
+ <col width=64 span=3 style='width:48pt'>
+ <tr height=20 style='height:15.0pt'>
+  <td height=20 class=xl65 width=64 style='height:15.0pt;width:48pt'>&nbsp;</td>
+  <td class=xl65 width=64 style='border-left:none;width:48pt'>&nbsp;</td>
+  <td class=xl65 width=64 style='border-left:none;width:48pt'>&nbsp;</td>
+ </tr>
+ <tr height=20 style='height:15.0pt'>
+  <td height=20 class=xl65 style='height:15.0pt;border-top:none'>&nbsp;</td>
+  <td class=xl65 style='border-top:none;border-left:none'>&nbsp;</td>
+  <td class=xl65 style='border-top:none;border-left:none'>&nbsp;</td>
+ </tr>
+<!--EndFragment-->
+</table>
+
+</body>
+
+</html>
+`);
+            const pasteEvent: ClipboardEvent = new ClipboardEvent('paste', { clipboardData: dataTransfer } as ClipboardEventInit);
+            rteObj.inputElement.dispatchEvent(pasteEvent);
+            setTimeout(() => {
+                expect(getComputedStyle(rteObj.inputElement.querySelectorAll('td')[1]).borderLeft !== 'none').toBe(true);
+                rteObj.enableRtl = true;
+                rteObj.dataBind();
+                expect(getComputedStyle(rteObj.inputElement.querySelectorAll('td')[1]).borderLeft !== 'none').toBe(true);
+                done();
+            }, 100);
+        });
+    });
 });// Add the spec above this.

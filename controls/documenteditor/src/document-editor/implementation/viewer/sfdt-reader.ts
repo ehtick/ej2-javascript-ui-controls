@@ -236,7 +236,10 @@ export class SfdtReader {
         }
         this.documentHelper.endBookmarksUpdated = [];
     }
-    private parseFootnotes(data: any, footnote: Footnote): void {
+    /**
+     * @private
+     */
+    public parseFootnotes(data: any, footnote: Footnote): void {
         if (!isNullOrUndefined(data[separatorProperty[this.keywordIndex]])) {
             this.parseBody(data[separatorProperty[this.keywordIndex]], footnote.separator);
         }

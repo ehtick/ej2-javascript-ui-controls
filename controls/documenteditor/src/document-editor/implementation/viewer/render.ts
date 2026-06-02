@@ -3298,7 +3298,7 @@ private calculatePathBounds(data: string): Rect {
         lineWidth = HelperMethods.convertPointToPixel(border.getLineWidth()); //Renders the cell left border.
         this.renderCellBackground(height, cellWidget, cellLeftMargin, cellRightMargin, lineWidth);
         let leftBorderWidth: number = lineWidth;
-        if (tableCell.index === 0 || tableCell.cellFormat.rowSpan === 1 || (tableCell.cellFormat.rowSpan > 1 && tableCell.columnIndex === 0)) {
+        if (tableCell.index === 0 || tableCell.cellFormat.rowSpan === 1 || (tableCell.cellFormat.rowSpan > 1 && (isBidiTable ? tableCell.columnIndex === tableCell.ownerRow.childWidgets.length - 1 : tableCell.columnIndex === 0))) {
             this.renderSingleBorder(border.color, cellWidget.x - cellLeftMargin - lineWidth, cellWidget.y - cellWidget.margin.top, cellWidget.x - cellLeftMargin - lineWidth, cellWidget.y + cellWidget.height + cellBottomMargin, lineWidth, border.lineStyle);
         } else { 
             for (let i: number = 0; i < tableCell.ownerTable.childWidgets.length; i++) {

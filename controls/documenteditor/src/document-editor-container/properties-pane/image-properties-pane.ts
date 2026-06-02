@@ -136,8 +136,8 @@ export class ImageProperties {
         this.heightNumericBox.element.addEventListener('click', this.heightBlurHook);
         this.widthNumericBox.element.addEventListener('keydown', this.onImageWidthHook);
         this.heightNumericBox.element.addEventListener('keydown', this.onImageHeightHook);
-        this.widthNumericBox.element.addEventListener('blur', this.widthNumericBlurHook);
-        this.heightNumericBox.element.addEventListener('blur', this.heightNumericBlurHook);
+        this.widthNumericBox.element.addEventListener('mousedown', this.widthNumericBlurHook);
+        this.heightNumericBox.element.addEventListener('mousedown', this.heightNumericBlurHook);
         this.textArea.addEventListener('blur', this.altTextAreaBlurHook);
     }
     private altTextAreaBlur(): void {
@@ -295,8 +295,8 @@ export class ImageProperties {
         this.heightNumericBox.element.removeEventListener('click', this.heightBlurHook);
         this.widthNumericBox.element.removeEventListener('keydown', this.onImageWidthHook);
         this.heightNumericBox.element.removeEventListener('keydown', this.onImageHeightHook);
-        this.widthNumericBox.element.removeEventListener('blur', this.widthNumericBlurHook);
-        this.heightNumericBox.element.removeEventListener('blur', this.heightNumericBlurHook);
+        this.widthNumericBox.element.removeEventListener('mousedown', this.widthNumericBlurHook);
+        this.heightNumericBox.element.removeEventListener('mousedown', this.heightNumericBlurHook);
         this.textArea.removeEventListener('blur', this.altTextAreaBlurHook);
 
         this.onAspectRatioBtnClickHook = undefined;

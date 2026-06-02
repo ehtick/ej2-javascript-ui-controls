@@ -76,20 +76,15 @@ export function updateTextNode(value: string, isBlazor?: boolean): string {
                 }
                 const tdElm: NodeListOf<HTMLElement> = tableElm[i as number].querySelectorAll('td');
                 for (let j: number = 0; j < tdElm.length; j++) {
-                    if (tdElm[j as number].style.borderLeft === 'none') {
-                        tdElm[j as number].style.removeProperty('border-left');
-                    }
-                    if (tdElm[j as number].style.borderRight === 'none') {
-                        tdElm[j as number].style.removeProperty('border-right');
-                    }
-                    if (tdElm[j as number].style.borderBottom === 'none') {
-                        tdElm[j as number].style.removeProperty('border-bottom');
-                    }
-                    if (tdElm[j as number].style.borderTop === 'none') {
-                        tdElm[j as number].style.removeProperty('border-top');
-                    }
-                    if (tdElm[j as number].style.border === 'none') {
-                        tdElm[j as number].style.removeProperty('border');
+                    const style: string = tdElm[j as number].getAttribute('style');
+                    if (style) {
+                        // While this code execution the table is not in virtual DOM. So that is why we can't use removeAttribute method to remove unwanted styles
+                        const updated: string = style.replace(/border-left\s*:\s*none;?/gi, '')
+                            .replace(/border-right\s*:\s*none;?/gi, '')
+                            .replace(/border-bottom\s*:\s*none;?/gi, '')
+                            .replace(/border-top\s*:\s*none;?/gi, '')
+                            .replace(/border\s*:\s*none;?/gi, '');
+                        tdElm[j as number].setAttribute('style', updated);
                     }
                 }
             } else if (tableElm[i as number].classList.contains('e-rte-paste-onenote-table')) {

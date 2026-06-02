@@ -555,6 +555,30 @@ describe('FileManager control Grid view', () => {
                 done();
             }, 400);
         });
+        it('for sorting unrendered column should not throw error', (done) => {
+            let consoleSpy: jasmine.Spy;
+            feObj = new FileManager({
+                view: 'Details',
+                fileSystemData: flatData,
+                detailsViewSettings: {
+                    columns: [
+                        { field: 'name', headerText: 'File Name', minWidth: 120, width: 'auto' }
+                    ]
+                }
+            });
+            feObj.appendTo('#file');
+            setTimeout(function () {
+                consoleSpy = spyOn(console, 'error');
+                let items: any = document.getElementById('file_tb_sortby');
+                items.click();
+                let sizeOption: any = document.getElementById('file_ddl_size');
+                expect(sizeOption).not.toBeNull();
+                sizeOption.click();
+                expect(consoleSpy).not.toHaveBeenCalled();
+                expect(document.getElementById('file_grid').querySelectorAll('.e-row').length).toEqual(6);
+                done();
+            }, 400);
+        });
     });
 
     describe('popupTarget property testing', () => {

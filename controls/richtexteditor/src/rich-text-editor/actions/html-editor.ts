@@ -436,7 +436,8 @@ export class HtmlEditor {
         }
     }
     private onKeyDown(e: NotifyArgs): void {
-        if ((e.args as KeyboardEventArgs).ctrlKey && (e.args as KeyboardEventArgs).keyCode === 65) {
+        if ((e.args as KeyboardEventArgs).ctrlKey && (e.args as KeyboardEventArgs).keyCode === 65 &&
+            !this.parent.tableModule.isTableCopyAll) {
             this.isCopyAll = true;
         }
         else if (!(((e.args as KeyboardEventArgs).key === 'Backspace' || (e.args as KeyboardEventArgs).key === 'Delete') && this.isCopyAll)){

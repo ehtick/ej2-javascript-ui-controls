@@ -219,7 +219,7 @@
       }
     }
   
-    @if $ddt-skin-name == 'material' or $ddt-skin-name == 'material-dark' {
+    @if $ddt-skin-name == 'Material3' or $ddt-skin-name == 'material' or $ddt-skin-name == 'material-dark' {
       &.e-outline {
         .e-overflow {
           &.e-show-text,
@@ -272,6 +272,12 @@
               }
             }
           }
+          .e-float-text.e-label-top {
+            @if $ddt-skin-name == 'Material3' {
+              font-size: 12px !important; /* stylelint-disable-line declaration-no-important */
+              top: 12px !important; /* stylelint-disable-line declaration-no-important */
+            }
+          }
         }
 
         &.e-float-input.e-control-wrapper:not(.e-show-chip) {
@@ -284,11 +290,21 @@
         &.e-float-input.e-control-wrapper.e-show-chip,
         &.e-float-input.e-control-wrapper.e-show-text {
           .e-ddt-icon {
-            @include icon-style(12px, 12px);
+            @if $ddt-skin-name == 'Material3' {
+              padding: 0;
+            }
+            @else {
+              @include icon-style(12px, 12px);
+            }
           }
 
           .e-clear-icon {
-            @include icon-style(11px, 44px);
+            @if $ddt-skin-name == 'Material3' {
+              @include icon-style(0, 30px);
+            }
+            @else {
+              @include icon-style(11px, 44px);
+            }
           }
 
           &:not(.e-show-dd-icon) .e-clear-icon {
@@ -310,7 +326,12 @@
             padding-top: 19px;
 
             .e-chips {
-              height: 24px;
+              @if $ddt-skin-name == 'Material3' {
+                height: 26px;
+              }
+              @else {
+                height: 24px;
+              }
             }
 
             .e-chips > .e-chipcontent {

@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## 33.2.10 (2026-06-02)
+
+### PDF
+
+#### Bug Fixes
+
+- Resolved an issue where client-side exported custom stamp annotations were not visible on the server side.
+- Resolved an issue where radio button and checkbox states were not preserved in FDF imports.
+- Resolved an issue where the URI link annotation was not preserved during JSON import.
+
 ## 33.2.8 (2026-05-26)
 
 ### PDF

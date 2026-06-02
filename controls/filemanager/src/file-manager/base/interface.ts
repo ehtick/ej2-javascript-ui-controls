@@ -807,6 +807,7 @@ export interface IFileManager extends Component<HTMLElement> {
     extDialogObj: Dialog;
     splitterObj: Splitter;
     breadCrumbBarNavigation: HTMLElement;
+    breadCrumbNavElement: HTMLElement;
     searchSettings: SearchSettingsModel;
     activeElements: Element[];
     contextMenuSettings: ContextMenuSettingsModel;

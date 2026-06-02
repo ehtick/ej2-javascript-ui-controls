@@ -83,6 +83,52 @@ export class RibbonEventManager {
     }
 
     /**
+     * Handle ribbon expand (layout becomes expanded)
+     * @returns {void}
+     * @private
+     */
+    public onExpand(): void {
+        const editorContainer: HTMLElement = this.ribbon.container.editorContainer;
+        // remove any previous layout classes (expanded or collapsed)
+        editorContainer.classList.remove(
+            'e-de-tool-ctnr-properties-pane',
+            'e-de-ribbon-simplified-ctnr-properties-pane',
+            'e-de-ribbon-classic-ctnr-properties-pane',
+            'e-de-ribbon-simplified-ctnr-properties-pane-collapsed',
+            'e-de-ribbon-classic-ctnr-properties-pane-collapsed'
+        );
+        if (this.ribbon.ribbon.activeLayout === 'Simplified') {
+            editorContainer.classList.add('e-de-ribbon-simplified-ctnr-properties-pane');
+        } else {
+            editorContainer.classList.add('e-de-ribbon-classic-ctnr-properties-pane');
+        }
+        this.container.documentEditor.resize();
+    }
+
+    /**
+     * Handle ribbon collapse (layout becomes collapsed)
+     * @returns {void}
+     * @private
+     */
+    public onCollapse(): void {
+        const editorContainer: HTMLElement = this.ribbon.container.editorContainer;
+        // remove any previous layout classes (expanded or collapsed)
+        editorContainer.classList.remove(
+            'e-de-tool-ctnr-properties-pane',
+            'e-de-ribbon-simplified-ctnr-properties-pane',
+            'e-de-ribbon-classic-ctnr-properties-pane',
+            'e-de-ribbon-simplified-ctnr-properties-pane-collapsed',
+            'e-de-ribbon-classic-ctnr-properties-pane-collapsed'
+        );
+        if (this.ribbon.ribbon.activeLayout === 'Simplified') {
+            editorContainer.classList.add('e-de-ribbon-simplified-ctnr-properties-pane-collapsed');
+        } else {
+            editorContainer.classList.add('e-de-ribbon-classic-ctnr-properties-pane-collapsed');
+        }
+        this.container.documentEditor.resize();
+    }
+
+    /**
      * Handle ribbon layout change
      * @returns {void}
      * @private

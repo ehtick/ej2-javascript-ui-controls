@@ -8168,6 +8168,45 @@ describe('Ribbon', () => {
             remove(ribbonEle);
             remove(containerEle);
         });
+        it('should not open splitbutton popup when e-active class is added dynamically in Simplified mode', () => {
+        ribbon = new Ribbon({
+            activeLayout: 'Simplified',
+            tabs: [{
+                id: "tab1",
+                header: "tab1",
+                groups: [{
+                    id: "group1",
+                    header: "group1Header",
+                    orientation: ItemOrientation.Row,
+                    collections: [{
+                        id: "collection1",
+                        items: [{
+                            id: "item1",
+                            type: RibbonItemType.SplitButton,
+                            allowedSizes: RibbonItemSize.Medium,
+                            splitButtonSettings: {
+                                content: 'Edit',
+                                iconCss: 'e-icons e-edit',
+                                items: dropDownButtonItems
+                            }
+                        }]
+                    }]
+                }]
+            }]
+        }, ribbonEle);
+
+        const dropdownBtn: HTMLElement = ribbon.element.querySelector('#item1_dropdownbtn');
+
+        expect(dropdownBtn.classList.contains('e-active')).toBe(false);
+        expect(dropdownBtn.getAttribute('aria-expanded')).toBe('false');
+
+        dropdownBtn.classList.add('e-active');
+
+        ribbon.refreshLayout();
+
+        expect(dropdownBtn.getAttribute('aria-expanded')).toBe('false');
+        expect(document.querySelector('#item1_dropdownbtn-popup.e-popup-open')).toBeNull();
+        });
         it('With initial overflow', () => {
             let isfiltered: boolean = false;
             let template1 = '<button id="btn1" class="tempContent">Button1</button>';

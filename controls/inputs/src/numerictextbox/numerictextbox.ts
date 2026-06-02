@@ -1294,6 +1294,9 @@ export class NumericTextBox extends Component<HTMLInputElement> implements INoti
         result = Math.round(Number(result1[0] + 'e' + (result1[1] ? (Number(result1[1]) + decimals) : decimals)));
         const result2: string[] = result.toString().split('e');
         result = Number(result2[0] + 'e' + (result2[1] ? (Number(result2[1]) - decimals) : -decimals));
+        if (isNaN(result)) {
+            result = value;
+        }
         return Number(result.toFixed(decimals));
     }
     private cancelEvent(event: Event): boolean {

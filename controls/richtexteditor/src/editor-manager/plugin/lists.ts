@@ -1569,7 +1569,7 @@ export class Lists {
             return innerHTML;
         }
         const targetProps: string[] = ['color', 'font-size', 'font-family', 'font-weight', 'font-style'];
-        const styleTextMap: Map<string, Map<string, string>> = new Map(); // Map<styleProp, Map<styleValue, text>>
+        let styleTextMap: Map<string, Map<string, string>> = new Map(); // Map<styleProp, Map<styleValue, text>>
         const walker: TreeWalker = this.parent.currentDocument.createTreeWalker(
             liElement,
             NodeFilter.SHOW_TEXT,
@@ -1578,34 +1578,26 @@ export class Lists {
         let node: Node | null = walker.nextNode();
         while (node) {
             const text: string = node.textContent || '';
-            let current: HTMLElement | null = node.parentElement;
-            const styleSnapshot: Map<string, string> = new Map();
-            // Traverse up to <li> and collect inline styles and semantic tags
-            while (current && current !== liElement) {
-                targetProps.forEach((prop: string) => {
-                    const inlineValue: string = current.style.getPropertyValue(prop);
-                    if (inlineValue && !styleSnapshot.has(prop)) {
-                        styleSnapshot.set(prop, inlineValue);
-                    }
-                });
-                if ((current.tagName === 'B' || current.tagName === 'STRONG') && !styleSnapshot.has('font-weight')) {
-                    styleSnapshot.set('font-weight', 'bold');
-                }
-                if ((current.tagName === 'I' || current.tagName === 'EM') && !styleSnapshot.has('font-style')) {
-                    styleSnapshot.set('font-style', 'italic');
-                }
-                current = current.parentElement;
-            }
+            const current: HTMLElement | null = node.parentElement;
+            const styleSnapshot: Map<string, string> = this.getStyleSnapshot(current, liElement, targetProps);
             // Merge text into styleTextMap
-            styleSnapshot.forEach((value: string, prop: string) => {
-                if (!styleTextMap.has(prop)) {
-                    styleTextMap.set(prop, new Map());
-                }
-                const valueMap: Map<string, string> = styleTextMap.get(prop) || new Map<string, string>();
-                const existingText: string = valueMap.get(value) || '';
-                valueMap.set(value, existingText + text);
-            });
+            styleTextMap = this.setStyleTextMap(styleSnapshot, styleTextMap, text);
             node = walker.nextNode();
+        }
+        if (styleTextMap.size === 0 && liElement.childNodes.length === 1 && liElement.textContent === '') {
+            // When there is no text content inside li element
+            let innerMostInline: HTMLElement;
+            if (liElement.querySelector('.e-editor-select-start')) {
+                innerMostInline = liElement.querySelector('.e-editor-select-start').parentElement;
+            }
+            if (!isNOU(innerMostInline) && innerMostInline.childNodes.length === 2 && innerMostInline.querySelector('br')) {
+                while (innerMostInline !== liElement) {
+                    const text: string = '';
+                    const styleSnapshot: Map<string, string> = this.getStyleSnapshot(innerMostInline, liElement, targetProps);
+                    styleTextMap = this.setStyleTextMap(styleSnapshot, styleTextMap, text);
+                    innerMostInline = innerMostInline.parentElement;
+                }
+            }
         }
         // Apply styles where the accumulated text matches li's full text
         styleTextMap.forEach((valueMap: Map<string, string>, prop: string) => {
@@ -1616,6 +1608,40 @@ export class Lists {
             });
         });
         return tempDiv.innerHTML;
+    }
+    private setStyleTextMap(
+        styleSnapshot: Map<string, string>,
+        styleTextMap: Map<string, Map<string, string>>,
+        text: string): Map<string, Map<string, string>> {
+        styleSnapshot.forEach((value: string, prop: string) => {
+            if (!styleTextMap.has(prop)) {
+                styleTextMap.set(prop, new Map());
+            }
+            const valueMap: Map<string, string> = styleTextMap.get(prop) || new Map<string, string>();
+            const existingText: string = valueMap.get(value) || '';
+            valueMap.set(value, existingText + text);
+        });
+        return styleTextMap;
+    }
+    private getStyleSnapshot(current: HTMLElement, liElement: HTMLElement, targetProps: string[]): Map<string, string> {
+        const styleSnapshot: Map<string, string> = new Map();
+        // Traverse up to <li> and collect inline styles and semantic tags
+        while (current && current !== liElement) {
+            targetProps.forEach((prop: string) => {
+                const inlineValue: string = current.style.getPropertyValue(prop);
+                if (inlineValue && !styleSnapshot.has(prop)) {
+                    styleSnapshot.set(prop, inlineValue);
+                }
+            });
+            if ((current.tagName === 'B' || current.tagName === 'STRONG') && !styleSnapshot.has('font-weight')) {
+                styleSnapshot.set('font-weight', 'bold');
+            }
+            if ((current.tagName === 'I' || current.tagName === 'EM') && !styleSnapshot.has('font-style')) {
+                styleSnapshot.set('font-style', 'italic');
+            }
+            current = current.parentElement;
+        }
+        return styleSnapshot;
     }
     private isRevert(nodes: Element[], tagName: string, item?: IAdvanceListItem, subCommand?: string): boolean {
         let isRevert: boolean = true;

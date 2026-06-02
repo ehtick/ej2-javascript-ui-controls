@@ -2666,4 +2666,57 @@ describe('AI Assistant Module', ()=> {
             }, 100);
         });
     });
+
+    describe('Bug 1028605: UI artifact appears after using AI Commands dropdown multiple times in RichTextEditor', ()=> {
+        let editor: RichTextEditor;
+        beforeAll(()=> {
+            editor = renderRTE({
+                value: 'This is a content wiht improper format',
+                toolbarSettings: {
+                    items: ['aiquery', 'aicommands']
+                },
+                aiAssistantPromptRequest: (e) => {
+                    editor.addAIPromptResponse('This is a modified text content from LLM.', false);
+                    editor.addAIPromptResponse('This is a modified text content from LLM.', true);
+                }
+            });
+        });
+        afterAll(()=> {
+            destroy(editor);
+        });
+        it ('Should not render the popup menu items again and again', (done: DoneFn) => {
+            editor.focusIn();
+            setSelection(editor.inputElement.querySelector('p').firstChild, 0, editor.inputElement.querySelector('p').firstChild.textContent.length); 
+            const button: HTMLButtonElement = editor.getToolbarElement().querySelector('.e-ai-commands-tbar-btn');
+            button.click();
+            setTimeout(() => {
+                const subMenu: HTMLElement = document.querySelector('.e-dropdown-popup.e-ai-commands-tbar-btn .e-menu-parent') as HTMLElement;
+                subMenu.querySelector('li').classList.add('e-focused');
+                subMenu.querySelector('li').click();
+                setTimeout(() => {
+                    const dropdownButton: HTMLElement = document.querySelector('#' + editor.element.id + '_QueryPopupCommandsDropDown');
+                    dropdownButton.click();
+                    setTimeout(() => {
+                        //trigger the AI Query popup again
+                        setSelection(editor.inputElement.querySelector('p').firstChild, 0, editor.inputElement.querySelector('p').firstChild.textContent.length); 
+                        const button: HTMLButtonElement = editor.getToolbarElement().querySelector('.e-ai-commands-tbar-btn');
+                        button.click();
+                        setTimeout(() => {
+                            const subMenu: HTMLElement = document.querySelector('.e-dropdown-popup.e-ai-commands-tbar-btn .e-menu-parent') as HTMLElement;
+                            subMenu.querySelector('li').classList.add('e-focused');
+                            subMenu.querySelector('li').click();
+                            setTimeout(() => {
+                                const dropdownButton: HTMLElement = document.querySelector('#' + editor.element.id + '_QueryPopupCommandsDropDown');
+                                dropdownButton.click();
+                                setTimeout(() => {
+                                    expect(document.querySelectorAll('#' + editor.element.id + '_QueryPopupCommandsDropDown-popup').length).toBe(1);
+                                    done();
+                                }, 100);
+                            }, 100);
+                        }, 100);
+                    }, 100);
+                }, 100);
+            }, 100);
+        });
+    });
 });

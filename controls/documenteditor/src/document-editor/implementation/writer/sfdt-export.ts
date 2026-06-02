@@ -1268,6 +1268,9 @@ private hasSameContentControlProperties(props1: any, props2: any): boolean {
             inline[editableRangeStartProperty[this.keywordIndex]][columnLastProperty[this.keywordIndex]] = element.editRangeStart.columnLast;
             inline[editRangeIdProperty[this.keywordIndex]] = element.editRangeId.toString();
         } else if (element instanceof CommentCharacterElementBox) {
+            if (!isNullOrUndefined(element.commentInternal) && !element.commentInternal.isPosted) {
+                return undefined;
+            }
             if(this.iscontentInsert) {
                 if (!this.isExport && element.commentType === 0) {
                     this.selectedCommentsId.push(element.commentId);
@@ -2398,10 +2401,10 @@ private hasSameContentControlProperties(props1: any, props2: any): boolean {
     public writeComments(documentHelper: DocumentHelper): void {
         this.document[commentsProperty[this.keywordIndex]] = [];
         for (let i: number = 0; i < documentHelper.comments.length; i++) {
-            // if (this.documentHelper.comments[i].isPosted && (this.isExport ||
-            //     (!this.isExport && this.selectedCommentsId.indexOf(this.documentHelper.comments[i].commentId) !== -1))) {
-            if (this.isExport ||
-                (!this.isExport && this.selectedCommentsId.indexOf(this.documentHelper.comments[i].commentId) !== -1)) {
+            if (this.documentHelper.comments[i].isPosted && (this.isExport ||
+                (!this.isExport && this.selectedCommentsId.indexOf(this.documentHelper.comments[i].commentId) !== -1))) {
+            // if (this.isExport ||
+            //     (!this.isExport && this.selectedCommentsId.indexOf(this.documentHelper.comments[i].commentId) !== -1)) {
                 this.document[commentsProperty[this.keywordIndex]].push(this.writeComment(this.documentHelper.comments[i]));
             }
         }

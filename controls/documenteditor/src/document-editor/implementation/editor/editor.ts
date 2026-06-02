@@ -36,7 +36,7 @@ import {
     nsidProperty,
     customXmlProperty,
     BeforePasteEventArgs,
-    beforePaste, headersFootersProperty
+    beforePaste, headersFootersProperty, footnotesProperty
 } from '../../base/index';
 import { SelectionCharacterFormat, SelectionParagraphFormat } from '../index';
 import { Action } from '../../index';
@@ -5137,6 +5137,8 @@ export class Editor {
             if (sectionFormat.numberOfColumns > 1 && isUpdated) {
                 newBodyWidget.sectionFormat = sectionFormat;
                 this.viewer.owner.parser.parseSectionFormat(0, bodyWidget.sectionFormat, newBodyWidget.sectionFormat, true);
+            } else if (this.isPaste && isUpdated) {
+                newBodyWidget.sectionFormat = sectionFormat;
             } else {
                 newBodyWidget.sectionFormat = new WSectionFormat(newBodyWidget);
                 if (sectionFormat.numberOfColumns > 1 || (!isNullOrUndefined(bodyWidget.page) && !isNullOrUndefined(bodyWidget.page.nextPage) && this.documentHelper.getPageWidth(bodyWidget.page) !== this.documentHelper.getPageWidth(bodyWidget.page.nextPage))) {
@@ -5149,6 +5151,8 @@ export class Editor {
             if (sectionFormat.numberOfColumns > 1 && isUpdated) {
                 newBodyWidget.sectionFormat = sectionFormat;
                 this.viewer.owner.parser.parseSectionFormat(0, bodyWidget.sectionFormat, newBodyWidget.sectionFormat, true);
+            } else if (this.isPaste && isUpdated) {
+                newBodyWidget.sectionFormat = sectionFormat;
             } else {
                 newBodyWidget.sectionFormat = new WSectionFormat(newBodyWidget);
                 this.viewer.owner.parser.parseSectionFormat(0, bodyWidget.sectionFormat, newBodyWidget.sectionFormat, true);
@@ -7074,6 +7078,9 @@ export class Editor {
                         // Add the parsed headers/footers to the document's headersFooters collection at the appropriate index
                         this.documentHelper.copiedHeaderFooterData.push(parsedHeaderFooters);
                     }
+                }
+                if (isPaste && !isContextBasedPaste && !isNullOrUndefined(pasteContent[footnotesProperty[this.keywordIndex]])) {
+                    parser.parseFootnotes(pasteContent[footnotesProperty[this.keywordIndex]], this.documentHelper.footnotes);
                 }
                 if (isPaste && !this.isRemoteAction && !isNullOrUndefined(comments)) {
                     let existingCommentIds: string[] = [];
@@ -24149,6 +24156,16 @@ export class Editor {
             }
             if (!isNullOrUndefined(tableFormat.shading)) {
                 this.applyShading(tableFormat.shading, applyFormat.shading);
+                if (this.editorHistory && (this.editorHistory.isUndoing || this.editorHistory.isRedoing)) {
+                    const table: TableWidget = tableFormat.ownerBase as TableWidget;
+                    for (let i: number = 0; i < table.childWidgets.length; i++) {
+                        const rowWidget: TableRowWidget = table.childWidgets[i] as TableRowWidget;
+                        for (let j: number = 0; j < rowWidget.childWidgets.length; j++) {
+                            const cellWidget: TableCellWidget = rowWidget.childWidgets[j] as TableCellWidget;
+                            this.applyShading(cellWidget.cellFormat.shading, applyFormat.shading);
+                        }
+                    }
+                }
             }
         }
         if (!this.isBordersAndShadingDialog) {
@@ -24616,7 +24633,7 @@ export class Editor {
         if (code.toLocaleLowerCase().indexOf('toc') !== -1) {
             showSpinner(this.owner.element);
             setTimeout(() => {
-                this.insertTableOfContents(this.validateTocSettings(this.getTocSettings(code, tocField)));
+                this.insertTableOfContents(this.validateTocSettings(this.getTocSettings(code, tocField)), true);
                 hideSpinner(this.owner.element);
             });
         }
@@ -24704,7 +24721,7 @@ export class Editor {
      * @param {TableOfContentsSettings} tableOfContentsSettings Specify the table of content settings to be inserted.
      * @returns {void}
      */
-    public insertTableOfContents(tableOfContentsSettings?: TableOfContentsSettings): void {
+    public insertTableOfContents(tableOfContentsSettings?: TableOfContentsSettings, isUpdateToc?: Boolean): void {
         if (this.selection.isPlainContentControl() || this.owner.isReadOnlyMode) {
             return;
         }
@@ -24724,8 +24741,33 @@ export class Editor {
         }
         let tocField: FieldElementBox = undefined;
         let code: string = undefined;
-        if (this.selection.contextType === 'TableOfContents') {
-            tocField = this.selection.getTocFieldInternal();
+        // Currently, the document editor supports inserting only one TOC in the document.
+        // If a document contains a custom TOC, Microsoft Word allows inserting a default TOC again, but our editor does not support inserting a default TOC for a second time.
+        // TODO: If building block content control is supported, we can easily identify the custom TOC and the default TOC. This will help us match Microsoft Word's behavior when a document contains a custom TOC.
+        if (isUpdateToc) {
+            if (this.selection.contextType === 'TableOfContents') {
+                tocField = this.selection.getTocFieldInternal();
+            }
+        } else {
+            for (let i: number = 0; i < this.documentHelper.fields.length; i++) {
+                let field: FieldElementBox = this.documentHelper.fields[i];
+                if (this.documentHelper.layout.isTocField(field)) {
+                    if (!this.selection.start.paragraph.isInHeaderFooter && !field.paragraph.isInHeaderFooter) {
+                        tocField = field;
+                        break;
+                    }
+                    if (this.selection.start.paragraph.isInHeaderFooter && field.paragraph.isInHeaderFooter) {
+                        if ((this.selection.start.paragraph.bodyWidget as HeaderFooterWidget).headerFooterType.indexOf('Header') !== -1 && (field.paragraph.bodyWidget as HeaderFooterWidget).headerFooterType.indexOf('Header') !== -1) {
+                            tocField = field;
+                            break;
+                        }
+                        if ((this.selection.start.paragraph.bodyWidget as HeaderFooterWidget).headerFooterType.indexOf('Footer') !== -1 && (field.paragraph.bodyWidget as HeaderFooterWidget).headerFooterType.indexOf('Footer') !== -1) {
+                            tocField = field;
+                            break;
+                        }
+                    }
+                }
+            }
         }
         if (tocField instanceof FieldElementBox) {
             this.selection.start.setPositionForSelection(tocField.line, tocField, 0, this.selection.start.location);

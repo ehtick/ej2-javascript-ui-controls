@@ -1047,7 +1047,8 @@ describe('FileManager control Grid view', () => {
                 const items = feObj.breadCrumbBarNavigation.querySelectorAll('.e-address-list-item');
                 // Assert: Each item has role="link" and aria-label for screen reader
                 items.forEach((item: any) => {
-                    expect(item.getAttribute('role')).toBe('link');
+                    const linkElement = item.querySelector('a');
+                    expect(linkElement.getAttribute('role')).toBe('link');
                     expect(item.getAttribute('aria-label')).toBeTruthy();
                 });
                 done();
@@ -1066,6 +1067,164 @@ describe('FileManager control Grid view', () => {
                 expect(lastItem.getAttribute('aria-current')).toBe('page');
                 done();
             }, 500);
+        });
+        it('should render breadcrumb wrapper as a nav element with aria-label="Breadcrumb"', (done: Function) => {
+            const navElement = feObj.breadCrumbNavElement;
+            // Assert: nav element exists
+            expect(navElement).toBeTruthy();
+            // Assert: nav element has tag name 'nav' (case-insensitive)
+            expect(navElement.tagName.toLowerCase()).toBe('nav');
+            // Assert: nav element has aria-label="Breadcrumb"
+            expect(navElement.getAttribute('aria-label')).toBe('Breadcrumb');
+            done();
+        });
+
+        it('should not have role="link" on li elements, only on anchor tags', (done: Function) => {
+            feObj.detailsviewModule.gridObj.element.querySelectorAll('.e-row')[2].firstElementChild.dispatchEvent(dblclickevent);
+            this.request = jasmine.Ajax.requests.mostRecent();
+            this.request.respondWith({
+                status: 200,
+                responseText: JSON.stringify(doubleClickRead)
+            });
+            setTimeout(function () {
+                const liItems = feObj.breadCrumbNavElement.querySelectorAll('.e-address-list-item');
+                const addressbarUL = feObj.breadCrumbNavElement.querySelector('.e-addressbar-ul');
+                
+                // Assert: li elements should NOT have role="link"
+                liItems.forEach((li: HTMLElement) => {
+                    expect(li.getAttribute('role')).not.toBe('link');
+                    
+                    // Assert: each li should have exactly one anchor tag with role="link"
+                    const anchor = li.querySelector('a');
+                    expect(anchor).toBeTruthy();
+                    expect(anchor.getAttribute('role')).toBe('link');
+                });
+                done();
+            }, 500);
+        });
+
+        it('should verify correct semantic structure of breadcrumb', (done: Function) => {
+            feObj.detailsviewModule.gridObj.element.querySelectorAll('.e-row')[2].firstElementChild.dispatchEvent(dblclickevent);
+            this.request = jasmine.Ajax.requests.mostRecent();
+            this.request.respondWith({
+                status: 200,
+                responseText: JSON.stringify(doubleClickRead)
+            });
+            setTimeout(function () {
+                const navElement = feObj.breadCrumbNavElement;
+                const ulElement = navElement.querySelector('.e-addressbar-ul');
+                const liItems = navElement.querySelectorAll('.e-address-list-item');
+                
+                // Assert: ul element is a direct child of nav
+                expect(ulElement.parentElement as HTMLElement).toBe(navElement as HTMLElement);
+                
+                // Assert: li elements are direct children of ul
+                liItems.forEach((li: HTMLElement) => {
+                    expect(li.parentElement as HTMLElement).toBe(ulElement as HTMLElement);
+                    
+                    // Assert: anchor is a child of li
+                    const anchor = li.querySelector('a') as HTMLElement;
+                    expect(anchor.parentElement as HTMLElement).toBe(li);
+                });
+                done();
+            }, 500);
+        });
+
+        it('should have proper accessibility attributes on all breadcrumb items', (done: Function) => {
+            feObj.detailsviewModule.gridObj.element.querySelectorAll('.e-row')[2].firstElementChild.dispatchEvent(dblclickevent);
+            this.request = jasmine.Ajax.requests.mostRecent();
+            this.request.respondWith({
+                status: 200,
+                responseText: JSON.stringify(doubleClickRead)
+            });
+            setTimeout(function () {
+                const liItems = feObj.breadCrumbNavElement.querySelectorAll('.e-address-list-item');
+                
+                liItems.forEach((li: HTMLElement, index: number) => {
+                    // Assert: each li has aria-label
+                    expect(li.getAttribute('aria-label')).toBeTruthy();
+                    
+                    // Assert: each li has tabindex="0" for keyboard navigation
+                    expect(li.getAttribute('tabindex')).toBe('0');
+                    
+                    // Assert: last item has aria-current="page"
+                    if (index === liItems.length - 1) {
+                        expect(li.getAttribute('aria-current')).toBe('page');
+                    }
+                });
+                done();
+            }, 500);
+        });
+
+        it('should maintain breadcrumb accessibility after navigation', (done: Function) => {
+            let treeObj: any = (document.getElementById("file_tree") as any).ej2_instances[0];
+            let treeLi: any = treeObj.element.querySelectorAll('li');
+            
+            // Initial check
+            let navElement = feObj.breadCrumbNavElement;
+            expect(navElement.getAttribute('aria-label')).toBe('Breadcrumb');
+            
+            // Navigate to a folder
+            feObj.detailsviewModule.gridObj.element.querySelectorAll('.e-row')[2].firstElementChild.dispatchEvent(dblclickevent);
+            this.request = jasmine.Ajax.requests.mostRecent();
+            this.request.respondWith({
+                status: 200,
+                responseText: JSON.stringify(doubleClickRead)
+            });
+            
+            setTimeout(function () {
+                navElement = feObj.breadCrumbNavElement;
+                const liItems = navElement.querySelectorAll('.e-address-list-item');
+                
+                // Assert: nav still has aria-label after navigation
+                expect(navElement.getAttribute('aria-label')).toBe('Breadcrumb');
+                
+                // Assert: all links still have role="link"
+                liItems.forEach((li: HTMLElement) => {
+                    const anchor = li.querySelector('a');
+                    expect(anchor.getAttribute('role')).toBe('link');
+                });
+                done();
+            }, 500);
+        });
+
+        it('should have no role="presentation" on breadcrumb items', (done: Function) => {
+            feObj.detailsviewModule.gridObj.element.querySelectorAll('.e-row')[2].firstElementChild.dispatchEvent(dblclickevent);
+            this.request = jasmine.Ajax.requests.mostRecent();
+            this.request.respondWith({
+                status: 200,
+                responseText: JSON.stringify(doubleClickRead)
+            });
+            setTimeout(function () {
+                const liItems = feObj.breadCrumbNavElement.querySelectorAll('.e-address-list-item');
+                
+                // Assert: li elements should NOT have role="presentation"
+                liItems.forEach((li: HTMLElement) => {
+                    expect(li.getAttribute('role')).not.toBe('presentation');
+                });
+                
+                // Assert: anchor elements should have role="link", not role="presentation"
+                const anchors = feObj.breadCrumbNavElement.querySelectorAll('.e-address-list-item a');
+                anchors.forEach((anchor: HTMLElement) => {
+                    expect(anchor.getAttribute('role')).not.toBe('presentation');
+                    expect(anchor.getAttribute('role')).toBe('link');
+                });
+                done();
+            }, 500);
+        });
+
+        it('should verify breadcrumb nav element is created on initialization', (done: Function) => {
+            const navElement = feObj.breadCrumbNavElement;
+            const parentDiv = feObj.breadCrumbBarNavigation;
+            
+            // Assert: nav element exists and is a child of breadCrumbBarNavigation
+            expect(navElement).toBeTruthy();
+            expect((navElement as HTMLElement).tagName.toLowerCase()).toBe('nav');
+            expect((navElement.parentElement as HTMLElement)).toBe(parentDiv as HTMLElement);
+            
+            // Assert: aria-label is set on initialization
+            expect(navElement.getAttribute('aria-label')).toBe('Breadcrumb');
+            done();
         });
     });
 });

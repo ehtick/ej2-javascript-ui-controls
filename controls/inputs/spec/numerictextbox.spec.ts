@@ -6353,4 +6353,52 @@ describe('Change Event testing', () => {
             numerictextbox.focusOutHandler();
         });
     });
+    describe('EJ2-1021552', () => {
+        let numeric: any;
+        beforeEach(():void =>{
+            let ele: HTMLInputElement = <HTMLInputElement>createElement('input', {id: 'numeric'});
+            document.body.appendChild(ele);
+            numeric = new NumericTextBox({
+                min: 0,
+                max: 9999,
+                value: 16,
+                step: 1,
+                showSpinButton: false,
+                format: "0",
+                decimals: 0,
+                floatLabelType: "Never",
+                strictMode: true
+            });
+            numeric.appendTo('#numeric');
+        });
+        afterEach((): void =>{
+            if (numeric) {
+                numeric.destroy();
+            }
+            document.body.innerHTML = '';
+        });
+        it('Should clamp to max on Enter when large value overflows with decimals and strictMode enabled', function () {
+            var eventArgs = {
+                keyCode: 13,
+                which: 13,
+                altKey: false,
+                ctrlKey: false,
+                shiftKey: false,
+                preventDefault: function () { }
+            };
+            numeric.element.value = 1234567890123456789012345678908888888888888888888888888;
+            numeric.isFocused = true;
+            // Simulate Enter key
+            numeric.keyDownHandler(eventArgs);
+            // Trigger change + focus out (as done in existing tests)
+            var evt = document.createEvent('HTMLEvents');
+            evt.initEvent('change', false, true);
+            numeric.element.dispatchEvent(evt);
+            numeric.focusOutHandler();
+            // ✅ strictMode should clamp to max
+            expect(numeric.element.value).toEqual('9999');
+            expect(numeric.value).toEqual(9999);
+            expect(numeric.element.parentElement.classList.contains('e-error')).toEqual(false);
+        });
+    });
 });

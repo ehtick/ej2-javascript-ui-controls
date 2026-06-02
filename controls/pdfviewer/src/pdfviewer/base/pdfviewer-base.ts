@@ -4124,7 +4124,7 @@ export class PdfViewerBase {
         }
         };
         this.unloadDocument(this);
-        window.addEventListener('unload', this.unload);
+        window.addEventListener('pagehide', this.unload);
         window.addEventListener('beforeunload', this.clearSessionStorage);
         window.addEventListener('resize', this.onWindowResize);
         if (navigator.userAgent.indexOf('MSIE') !== -1 || navigator.userAgent.indexOf('Edge') !== -1 || navigator.userAgent.indexOf('Trident') !== -1) {
@@ -4177,7 +4177,7 @@ export class PdfViewerBase {
             window.removeEventListener('keydown', this.onWindowKeyDown);
             window.removeEventListener('mouseup', this.onWindowMouseUp);
             window.removeEventListener('touchend', this.onWindowTouchEnd);
-            window.removeEventListener('unload', this.unload);
+            window.removeEventListener('pagehide', this.unload);
             window.removeEventListener('beforeunload', this.clearSessionStorage);
             window.removeEventListener('resize', this.onWindowResize);
             if (navigator.userAgent.indexOf('MSIE') !== -1 || navigator.userAgent.indexOf('Edge') !== -1 || navigator.userAgent.indexOf('Trident') !== -1) {
@@ -14663,6 +14663,7 @@ export class PdfViewerBase {
                         }
                     }
                 }
+                this.pdfViewer.annotation.stickyNotesAnnotationModule.updateCommentPanelTextTop();
                 this.isImportedAnnotation = false;
                 this.isImportAction = false;
                 this.importedAnnotation = [];

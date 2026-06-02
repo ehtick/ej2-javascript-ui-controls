@@ -2440,4 +2440,56 @@ describe('Link Module', () => {
             }, 200);
         });
     });
+
+    describe('Bug 1026149: Hyperlink Text Duplicates When Pasted from Word into Angular RichTextEditor', () => {
+        let rteObj: any;
+        let initialInner: string = `<p style='margin:0in;font-size:12.0pt;font-family:"Aptos",sans-serif;'><b><i><span style='font-size:11.0pt;font-family:"Calibri",sans-serif;'><a href="https://www.syncfusion.com/feedback/74036/richtexteditor-allows-new-line-creation-even-after-reaching-maxlength" title="" target="_blank" aria-label="Open in new window"><span style="color: blue; background: transparent; text-decoration: underline;">APR 135</span><span style="color: blue; background: transparent; text-decoration: underline;"><span style="font-weight:normal;font-style:normal;">-</span></span><span style="color: blue; background: transparent; text-decoration: underline;">Lobbying and Related Activities (U.S.)</span></a></span></i></b></p>`;
+        beforeAll(() => {
+            rteObj = renderRTE({ value: initialInner });
+        });
+        afterAll(() => {
+            destroy(rteObj);
+        });
+        it('hyperlink should not duplicate when pasted from word', (done: DoneFn) => {
+            const anchor: HTMLAnchorElement = rteObj.inputElement.querySelector('a') as HTMLAnchorElement;
+            setCursorPoint(anchor.childNodes[2], 1);
+            anchor.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+            anchor.dispatchEvent(MOUSEUP_EVENT);
+            setTimeout(() => {
+                const editlink: HTMLElement = document.querySelector('[title="Edit Link"]');
+                (editlink.childNodes[0] as HTMLElement).click();
+                setTimeout(() => {
+                    (document.querySelector('.e-input.e-rte-linkurl') as HTMLInputElement).value = 'https://www.syncfusion.com/feedback/74036/richtexteditor-allows-new-line-creation-even-after-reaching-maxlength';
+                    (document.querySelector('.e-input.e-rte-linkText') as HTMLInputElement).value = 'APR 135-Lobbying and Related Activities (U.S.)';
+                    const targetBtn: any = document.querySelector('.e-insertLink.e-primary');
+                    targetBtn.click();
+                    setTimeout(() => {
+                        expect(rteObj.inputElement.querySelector('a').innerText === 'APR 135-Lobbying and Related Activities (U.S.)').toBe(true);
+                        done();
+                    }, 100);
+                }, 100);
+            }, 100);
+        });
+        it('hyperlink should replace updated text content when nested span is present', (done: DoneFn) => {
+            rteObj.inputElement.innerHTML = `<p style="margin:0in;font-size:12.0pt;font-family:&quot;Aptos&quot;,sans-serif;"><b><i><span style="font-size:11.0pt;font-family:&quot;Calibri&quot;,sans-serif;"><a href="https://www.syncfusion.com/feedback/74036/richtexteditor-allows-new-line-creation-even-after-reaching-maxlength" title="" target="_blank" aria-label="Open in new window"><span style="color: blue; background: transparent; text-decoration: underline;"><span>Content Before Changed</span></span></a></span></i></b></p>`;
+            const anchor: HTMLAnchorElement = rteObj.inputElement.querySelector('a') as HTMLAnchorElement;
+            setCursorPoint(anchor.childNodes[0].childNodes[0], 1);
+            anchor.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+            anchor.dispatchEvent(MOUSEUP_EVENT);
+            setTimeout(() => {
+                const editlink: HTMLElement = document.querySelector('[title="Edit Link"]');
+                (editlink.childNodes[0] as HTMLElement).click();
+                setTimeout(() => {
+                    (document.querySelector('.e-input.e-rte-linkurl') as HTMLInputElement).value = 'https://www.syncfusion.com/feedback/74036/richtexteditor-allows-new-line-creation-even-after-reaching-maxlength';
+                    (document.querySelector('.e-input.e-rte-linkText') as HTMLInputElement).value = 'Content After Changed';
+                    const targetBtn: any = document.querySelector('.e-insertLink.e-primary');
+                    targetBtn.click();
+                    setTimeout(() => {
+                        expect(rteObj.inputElement.querySelector('a').innerHTML === '<span style="color: blue; background: transparent; text-decoration: underline;"><span>Content After Changed</span></span>').toBe(true);
+                        done();
+                    }, 100);
+                }, 100);
+            }, 100);
+        });
+    });
 });

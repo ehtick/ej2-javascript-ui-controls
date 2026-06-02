@@ -9,7 +9,7 @@ import { NodeSelection } from '../../../src/selection/index';
 import { DialogType, ToolbarType } from "../../../src/common/enum";
 import { renderRTE, destroy, setCursorPoint, androidUA, iPhoneUA, currentBrowserUA, ieUA, setSelection } from './../render.spec';
 import { getLastTextNode, convertPixelToPercentage, getCorrespondingIndex } from "../../../src/common/util";
-import { ARROW_DOWN_EVENT_INIT, ARROW_LEFT_EVENT_INIT, ARROW_UP_EVENT_INIT, ARROWRIGHT_EVENT_INIT, BACKSPACE_EVENT_INIT, BASIC_CONTEXT_MENU_EVENT_INIT, BASIC_MOUSE_EVENT_INIT, ENTERKEY_EVENT_INIT, ESCAPE_KEY_EVENT_INIT, INSRT_TABLE_EVENT_INIT, SHIFT_ARROW_DOWN_EVENT_INIT, SHIFT_ARROW_LEFT_EVENT_INIT, SHIFT_ARROW_RIGHT_EVENT_INIT, SHIFT_ARROW_UP_EVENT_INIT, TAB_KEY_EVENT_INIT } from "../../constant.spec";
+import { ARROW_DOWN_EVENT_INIT, ARROW_LEFT_EVENT_INIT, ARROW_UP_EVENT_INIT, ARROWRIGHT_EVENT_INIT, BACKSPACE_EVENT_INIT, BASIC_CONTEXT_MENU_EVENT_INIT, BASIC_MOUSE_EVENT_INIT, ENTERKEY_EVENT_INIT, ESCAPE_KEY_EVENT_INIT, INSRT_TABLE_EVENT_INIT, SHIFT_ARROW_DOWN_EVENT_INIT, SHIFT_ARROW_LEFT_EVENT_INIT, SHIFT_ARROW_RIGHT_EVENT_INIT, SHIFT_ARROW_UP_EVENT_INIT, TAB_KEY_EVENT_INIT, CONTROL_A_EVENT_INIT } from "../../constant.spec";
 import { MACOS_USER_AGENT } from "../user-agent.spec";
 
 const MOUSEUP_EVENT: MouseEvent = new MouseEvent('mouseup', BASIC_MOUSE_EVENT_INIT);
@@ -13848,6 +13848,41 @@ the tool bar support, it�s also customiza</p><table class="e-rte-table" style=
                 const undoBtn: HTMLElement = editor.element.querySelector('.e-toolbar-items').childNodes[0] as HTMLElement;
                 expect(undoBtn.classList.contains('e-overlay')).toBe(false);
                 done();
+            }, 100);
+        });
+    });
+
+    describe('Bug 1029229: Backspace deletes entire editor content when table cell is selected using Ctrl+A', () => {
+        let rteObj: RichTextEditor;
+        let rteEle: HTMLElement;
+        beforeEach(() => {
+            rteObj = renderRTE({
+                toolbarSettings: {
+                    items: ['CreateTable', 'Undo', 'Redo']
+                },
+                enableRtl: true,
+                value: '<table class="e-rte-table" style="width: 100%;"><tbody><tr><td class="e-cell-select" style="width: 50%;">Cell 1</td><td style="width: 50%;">Cell 2</td></tr><tr><td style="width: 50%;">Cell 3</td><td style="width: 50%;">Cell 4</td></tr></tbody></table><p><br></p>'
+            });
+            rteEle = rteObj.element;
+        });
+        afterEach(() => {
+            destroy(rteObj);
+        });
+        it('should not remove the table after a cell is selected through ctrl + A', (done: Function) => {
+            rteObj.focusIn();
+            const td = rteObj.contentModule.getEditPanel().querySelector('td') as HTMLElement;
+            setCursorPoint(td, 0);
+            const tr = rteObj.contentModule.getEditPanel().querySelector('tr') as HTMLElement;
+            const keyUpEvent: KeyboardEvent = new KeyboardEvent('keydown', CONTROL_A_EVENT_INIT);
+            td.dispatchEvent(keyUpEvent);
+            setTimeout(() => {
+                expect(td.classList.contains('e-multi-cells-select')).toBe(true);
+                td.dispatchEvent(new KeyboardEvent('keydown', BACKSPACE_EVENT_INIT));
+                td.dispatchEvent(new KeyboardEvent('keyup', BACKSPACE_EVENT_INIT));
+                setTimeout(() => {
+                    expect(rteObj.inputElement.querySelector('table') !== null).toBe(true);
+                    done();
+                }, 100);
             }, 100);
         });
     });

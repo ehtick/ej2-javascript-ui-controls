@@ -393,6 +393,14 @@
         height: $de-ribbon-classic-editor-height;
         width: 100%;
     }
+    .e-de-ribbon-simplified-ctnr-properties-pane-collapsed {
+        height:  $de-ribbon-simplified-ctnr-collapsed-editor-height;
+        width: 100%;
+    }
+    .e-de-ribbon-classic-ctnr-properties-pane-collapsed{
+        height: $de-ribbon-classic-collapsed-editor-height;
+        width: 100%;
+    }
     .e-de-statusbar-separator {
         border-left: $e-de-statusbar-separator-border-left solid $e-de-statusbar-separator-color;
         height: $e-de-statusbar-separator-height;

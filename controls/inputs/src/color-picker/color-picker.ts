@@ -1764,10 +1764,10 @@ export class ColorPicker extends Component<HTMLInputElement> implements INotifyP
                 this.unWireEvents();
                 this.destroyOtherComp();
             }
-            this.splitBtn.beforeClose = null;
-            this.splitBtn.beforeOpen = null;
-            this.splitBtn.click = null;
-            this.splitBtn.open = null;
+            delete this.splitBtn.beforeClose;
+            delete this.splitBtn.beforeOpen;
+            delete this.splitBtn.click;
+            delete this.splitBtn.open;
             this.splitBtn.destroy();
             this.splitBtn = null;
         }

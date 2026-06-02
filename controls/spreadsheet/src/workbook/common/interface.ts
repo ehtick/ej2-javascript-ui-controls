@@ -1009,6 +1009,7 @@ export interface CellUpdateArgs {
     isDelete?: boolean;
     deletedRange?: number[];
     fillType?: string;
+    checkFormulaAdded?: boolean;
 }
 /** @hidden */
 export interface NumberFormatArgs {

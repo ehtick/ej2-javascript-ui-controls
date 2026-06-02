@@ -121,6 +121,7 @@ export class Layout {
     public isFootnoteContentChanged: boolean = false;
     public isEndnoteContentChanged: boolean = false;
     private keepWithNext: boolean = false;
+    private effectiveJustifyWidth: number = 0;
     private is2013Justification: boolean = false;
     private nextElementToLayout: ElementBox = undefined;
     private endNoteHeight: number = 0;
@@ -1653,6 +1654,10 @@ export class Layout {
                                 const topMargin: number = element.textFrame.marginTop;
                                 this.updateChildLocationForCellOrShape(element.y + topMargin, element as ShapeElementBox);
                             }
+                        } else if (element instanceof ShapeElementBox && element.textWrappingStyle === "Inline") {
+                            element.y = (childWidget as Widget).y;
+                            const topMargin: number = element.textFrame.marginTop;
+                            this.updateChildLocationForCellOrShape(element.y + topMargin, element as ShapeElementBox);
                         }
                     }
                 }
@@ -2631,6 +2636,30 @@ export class Layout {
         }
         return line;
     }
+    private getWholeTextWidth(element: TextElementBox, canCombine: boolean) : number {
+        let nextElement: ElementBox | undefined= element.nextNode;
+        let width: number = element.width;
+        while (!isNullOrUndefined(nextElement) && nextElement instanceof TextElementBox &&
+            (element.characterFormat.isEqualFormat(nextElement.characterFormat) ||
+            (this.documentHelper.textHelper.isWordSplitChar(nextElement.text) &&
+            this.documentHelper.render.checkFormatToCombineText(element.characterFormat, nextElement.characterFormat)))) {
+            if (!(nextElement.text as any).includes(" ")) {
+                if (canCombine) {
+                    nextElement.isCombinedRTLText = true;
+                    width += nextElement.isWidthUpdated ? nextElement.width : this.documentHelper.textHelper.getTextSize(nextElement, nextElement.characterFormat);
+                    nextElement = nextElement.nextNode;
+                }
+                else {
+                    nextElement.isCombinedRTLText = false;
+                    nextElement = nextElement.nextNode;
+                }
+            }
+            else {
+                nextElement = undefined;
+            }
+        }
+        return width;
+    }
     /* eslint-disable  */
     private layoutElement(element: ElementBox, paragraph: ParagraphWidget, isEmptyField?: boolean): void {
         if (((element.isColumnBreak || element.isPageBreak) && paragraph.isInHeaderFooter) || (element instanceof ShapeElementBox && element.isHorizontalRule)) {
@@ -3053,6 +3082,19 @@ export class Layout {
             }
         }
         if (parseFloat(width.toFixed(4)) <= parseFloat(this.viewer.clientActiveArea.width.toFixed(4)) || !this.viewer.textWrap || (element instanceof TextElementBox && element.text === '\v')) {
+            if (paragraph.paragraphFormat.textAlignment === "Justify" && element instanceof TextElementBox && element.characterFormat.bidi && !element.isCombinedRTLText) {
+                if (element.text.trim() !== "") {
+                    const nextWordWidth: number = this.getWholeTextWidth(element, true);
+                    let isFullWordFit: boolean = false
+                    if (parseFloat(nextWordWidth.toFixed(4)) > parseFloat(this.viewer.clientActiveArea.width.toFixed(4))) {
+                        isFullWordFit = this.isWordFittedByJustification(element, nextWordWidth, true);
+                    }
+                    if (!isFullWordFit) {
+                        const nextWordsWidth: number = this.getWholeTextWidth(element, false);
+                        this.effectiveJustifyWidth = 0;
+                    }
+                }
+            }
             //Fits the text in current line.
             this.addElementToLine(paragraph, element);
             if (isNullOrUndefined(element.nextElement) && !element.line.isLastLine()) {
@@ -3681,7 +3723,7 @@ export class Layout {
                                
                                 if (Math.round(rect.width) < minimumWidthRequired || rect.width < minwidth) {
                                     if (isEntityFitInCurrentLine && (textWrappingBounds.x - (ownerPara.x + ownerPara.leftIndent)) > minimumWidthRequired
-                                        && (this.viewer.clientArea.right - textWrappingBounds.right) > minimumWidthRequired) {
+                                        && (ownerPara.x + bodyWidget.width - paragarphRightIndent - textWrappingBounds.right) > minimumWidthRequired) {
                                         rect.width = 0;
                                     } else {
                                         let topMarginValue = 0;
@@ -4521,7 +4563,7 @@ export class Layout {
         let lineWidget: LineWidget;
         if (paragraph.childWidgets.length > 0 && !isShiftEnter) {
             this.isUpdateMarginForCurrentLine(line);
-            lineWidget = paragraph.childWidgets[0] as LineWidget;
+            lineWidget = paragraph.childWidgets[paragraph.childWidgets.length -1] as LineWidget;
             if (lineWidget.children.length > 0) {
                 if ((paraFormat.bidi || this.isContainsRtl(lineWidget))) {
                     this.shiftElementsForRTLLayouting(lineWidget, paraFormat.bidi)
@@ -5238,7 +5280,7 @@ export class Layout {
                 textWidth = this.documentHelper.textHelper.measureTextExcludingSpaceAtEnd(text.slice(0, index), characterFormat, element.scriptType);
             }
             if (this.viewer.clientActiveArea.width < textWidth && !this.documentHelper.textHelper.isUnicodeText(text, element.scriptType)
-                && !this.isWordFittedByJustification(element, textWidth)) {
+                && !this.isWordFittedByJustification(element, textWidth, false)) {
                 //Check and split the previous text elements to next line.
                 isSplitByWord = this.checkPreviousElement(lineWidget, lineWidget.children.indexOf(element));
                 if (isSplitByWord) {
@@ -7889,7 +7931,7 @@ export class Layout {
         return subWidths;
     }
     /* eslint-disable  */
-    private isWordFittedByJustification(element: TextElementBox, nextWordWidth: number): boolean {
+    private isWordFittedByJustification(element: TextElementBox, nextWordWidth: number, isCombinedForJustication: boolean): boolean {
         let line: LineWidget = element.line;
         let paragraph: ParagraphWidget = line.paragraph;
         let paraFormat: WParagraphFormat = paragraph.paragraphFormat;
@@ -7903,6 +7945,12 @@ export class Layout {
             firstLineIndent = HelperMethods.convertPointToPixel(paraFormat.firstLineIndent);
         }
         let availableLineWidth: number = this.viewer.clientActiveArea.width;
+        if (!isCombinedForJustication && element.characterFormat.bidi && element.isCombinedRTLText && availableLineWidth < nextWordWidth / 2) {
+            availableLineWidth += this.effectiveJustifyWidth;
+            this.viewer.clientActiveArea.width = availableLineWidth;
+        }
+        element.isCombinedRTLText = false;
+        this.effectiveJustifyWidth = 0;
         if (nextWordWidth != 0 && availableLineWidth >= nextWordWidth / 2) {
             let whiteSpaceCount: number = 0;
             let widthInfo: SubWidthInfo[];
@@ -7927,11 +7975,13 @@ export class Layout {
                 } else {
                     effectiveWidth = totalSpaceWidth / 4;
                 }
-
                 if (availableLineWidth + effectiveWidth >= nextWordWidth) {
-                    this.viewer.clientActiveArea.x -= effectiveWidth;
-                    this.viewer.clientActiveArea.width += effectiveWidth;
-                    this.is2013Justification = true;
+                    if (!isCombinedForJustication) {
+                        this.viewer.clientActiveArea.x -= effectiveWidth;
+                        this.viewer.clientActiveArea.width += effectiveWidth;
+                        this.is2013Justification = true;
+                    }
+                    this.effectiveJustifyWidth = isCombinedForJustication ? effectiveWidth : 0;  
                     return true;
                 }
             }

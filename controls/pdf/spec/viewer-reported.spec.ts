@@ -1,7 +1,7 @@
-import { PdfAnnotationBorder, PdfPolyLineAnnotation, PdfPopupAnnotation, PdfRubberStampAnnotation, PdfTextMarkupAnnotation, PdfSquareAnnotation, PdfFreeTextAnnotation, PdfRadioButtonListItem, PdfListFieldItem } from "../src/pdf/core/annotations/annotation";
+import { PdfAnnotationBorder, PdfPolyLineAnnotation, PdfPopupAnnotation, PdfRubberStampAnnotation, PdfTextMarkupAnnotation, PdfSquareAnnotation, PdfFreeTextAnnotation, PdfRadioButtonListItem, PdfListFieldItem, PdfUriAnnotation } from "../src/pdf/core/annotations/annotation";
 import { _ContentParser, _PdfRecord } from "../src/pdf/core/content-parser";
 import { _JsonDocument } from '../src/pdf/core/import-export/json-document';
-import { DataFormat, PdfAnnotationFlag, PdfRotationAngle, PdfRubberStampAnnotationIcon, PdfTextMarkupAnnotationType, PdfAnnotationIntent, PdfLineEndingStyle, PdfTextAlignment, PdfCrossReferenceType } from "../src/pdf/core/enumerator";
+import { DataFormat, PdfAnnotationFlag, PdfRotationAngle, PdfRubberStampAnnotationIcon, PdfTextMarkupAnnotationType, PdfAnnotationIntent, PdfLineEndingStyle, PdfTextAlignment, PdfCrossReferenceType, PdfBorderStyle } from "../src/pdf/core/enumerator";
 import { PdfFontFamily, PdfFontStyle, PdfStandardFont, PdfTrueTypeFont } from "../src/pdf/core/fonts/pdf-standard-font";
 import { PdfStringFormat, PdfVerticalAlignment } from "../src/pdf/core/fonts/pdf-string-format";
 import { PdfRadioButtonListField, PdfCheckBoxField, PdfComboBoxField } from "../src/pdf/core/form/field";
@@ -3432,7 +3432,7 @@ describe('Viewer Reported Issues', () => {
        let inputString: string = "\u0000\u0000\u0000ÿ\u0000\u0000ÿ\u0000ÿUU¿@@Õ+UÛIIß@`ã9UÌ3MÑ.]Õ@UØ;NÛ7IÏ@PÒ<K×6QÙ3MÛ=UÓ7NÕ5UÖ=RÙ9UÑ7RÓ5OÕ<U×8PØ6UÒ<SÓ:P×6QØ;UÓ8QÖ:QÓ7SÔ<QÕ:PÕ9SÖ8R×7PÔ:RÖ;R×:QÔ8RÕ7QÕ;TÖ:RÔ;RÖ7QÓ:TÔ9SÕ9QÓ9QÕ8RÕ:QÕ8SÖ8RÔ9SÕ9RÕ8RÖ9RÖ8RÔ:QÖ8SÖ:RÔ9QÕ8RÕ:QÖ9SÕ8SÕ:RÕ9QÖ9SÖ8RÔ:QÕ9SÕ9RÕ8RÖ8SÖ:RÔ9RÕ8RÖ9RÔ8RÕ:QÕ9QÕ8RÖ9SÕ9RÖ9SÕ9SÕ9RÖ8SÔ:RÕ9RÕ:RÕ9RÕ:RÕ9SÕ8RÕ9RÕ9RÕ9SÕ9RÕ9SÕ9RÕ9RÕ8RÕ9RÕ:RÕ9RÖ9RÕ8RÕ9RÕ9RÖ9RÕ:SÕ9RÕ9RÕ9SÖ9RÕ9SÕ9RÕ9QÕ9RÕ9RÕ:RÕ9RÕ9RÕ9RÕ9RÕ9RÕ9RÕ9RÕ9RÕ9RÕ9RÕ:RÕ9RÕ9RÕ9RÕ9RÕ9QÕ9RÕ9RÕ9RÕ9RÕ9RÕ9RÕ9RÕ9RÕ9RÕ9Rÿÿÿ";
        let dictionary: _PdfDictionary = new _PdfDictionary();
        jsonDoc._writeObject(table, inputString, dictionary, 'ColorSpace');
-       expect(table.get("ColorSpace")).toEqual('{"unicodeData":"000000C3BF0000C3BF00C280C3BF5555C2BF4040C3952B55C39B4949C39F4060C3A33955C38C334DC3912E5DC3954055C3983B4EC39B3749C38F4050C3923C4BC3973651C399334DC39B3D55C393374EC3953555C3963D52C3993955C3913752C393354FC3953C55C3973850C3983655C3923C53C3933A50C3973651C3983B55C3933851C3963A51C3933753C3943C51C3953A50C3953953C3963852C3973750C3943A52C3963B52C3973A51C3943852C3953751C3953B54C3963A52C3943B52C3963751C3933A54C3943953C3953951C3933951C3953852C3953A51C3953853C3963852C3943953C3953952C3953852C3963952C3963852C3943A51C3963853C3963A52C3943951C3953852C3953A51C3963953C3953853C3953A52C3953951C3963953C3963852C3943A51C3953953C3953952C3953852C3963853C3963A52C3943952C3953852C3963952C3943852C3953A51C3953951C3953852C3963953C3953952C3963953C3953953C3953952C3963853C3943A52C3953952C3953A52C3953952C3953A52C3953953C3953852C3953952C3953952C3953953C3953952C3953953C3953952C3953952C3953852C3953952C3953A52C3953952C3963952C3953852C3953952C3953952C3963952C3953A53C3953952C3953952C3953953C3963952C3953953C3953952C3953951C3953952C3953952C3953A52C3953952C3953952C3953952C3953952C3953952C3953952C3953952C3953952C3953952C3953952C3953A52C3953952C3953952C3953952C3953952C3953951C3953952C3953952C3953952C3953952C3953952C3953952C3953952C3953952C3953952C3953952C3BFC3BFC3BF"}');
+       expect(table.get("ColorSpace")).toEqual('{"string":{"encoding":"hex","bytes":"000000FF0000FF0080FF5555BF4040D52B55DB4949DF4060E33955CC334DD12E5DD54055D83B4EDB3749CF4050D23C4BD73651D9334DDB3D55D3374ED53555D63D52D93955D13752D3354FD53C55D73850D83655D23C53D33A50D73651D83B55D33851D63A51D33753D43C51D53A50D53953D63852D73750D43A52D63B52D73A51D43852D53751D53B54D63A52D43B52D63751D33A54D43953D53951D33951D53852D53A51D53853D63852D43953D53952D53852D63952D63852D43A51D63853D63A52D43951D53852D53A51D63953D53853D53A52D53951D63953D63852D43A51D53953D53952D53852D63853D63A52D43952D53852D63952D43852D53A51D53951D53852D63953D53952D63953D53953D53952D63853D43A52D53952D53A52D53952D53A52D53953D53852D53952D53952D53953D53952D53953D53952D53952D53852D53952D53A52D53952D63952D53852D53952D53952D63952D53A53D53952D53952D53953D63952D53953D53952D53951D53952D53952D53A52D53952D53952D53952D53952D53952D53952D53952D53952D53952D53952D53A52D53952D53952D53952D53952D53951D53952D53952D53952D53952D53952D53952D53952D53952D53952D53952FFFFFF"}}');
        jsonDoc._dispose();
     });
     it('1020747 - Annotation Import Issue', () => {
@@ -3539,6 +3539,57 @@ describe('Viewer Reported Issues', () => {
         crossRef._trailer.update('Info', infoDict);
         let updated = document.save();
         expect(crossRef._offsets.indexOf(17) >= 0).toBeTruthy();
+        document.destroy();
+    });
+    it('1027849 - URI Export Import issue', () => {
+        let document = new PdfDocument(crossReferenceTable);
+        let page = document.getPage(0) as PdfPage;
+        const uri = new PdfUriAnnotation(
+            { x: 50, y: 400, width: 180, height: 25 },
+            'https://www.syncfusion.com',
+            {
+                text: 'Syncfusion Website',
+                author: 'Syncfusion',
+                subject: 'URI',
+                color: { r: 0, g: 0, b: 255 },
+                innerColor: { r: 220, g: 235, b: 255 },
+                opacity: 0.9,
+                border: new PdfAnnotationBorder({ width: 1, style: PdfBorderStyle.solid })
+            }
+        );
+        uri.setAppearance(true);
+        page.annotations.add(uri);
+        let settings: PdfAnnotationExportSettings = new PdfAnnotationExportSettings();
+        settings.dataFormat = DataFormat.json;
+        let exportedData = document.exportAnnotations(settings);
+        settings.dataFormat = DataFormat.xfdf;
+        let xfdfExportedData = document.exportAnnotations(settings);
+        settings.dataFormat = DataFormat.fdf;
+        let fdfExportedData = document.exportAnnotations(settings);
+        document.destroy();
+        document = new PdfDocument(crossReferenceTable);
+        document.importAnnotations(exportedData, DataFormat.json);
+        page = document.getPage(0) as PdfPage;
+        let annotation: PdfUriAnnotation = page.annotations.at(0) as PdfUriAnnotation;
+        expect(annotation instanceof PdfUriAnnotation).toBeTruthy();
+        expect(annotation.uri).toEqual('https://www.syncfusion.com');
+        expect(annotation.text).toEqual('Syncfusion Website');
+        document.destroy();
+        document = new PdfDocument(crossReferenceTable);
+        document.importAnnotations(xfdfExportedData, DataFormat.xfdf);
+        page = document.getPage(0) as PdfPage;
+        annotation = page.annotations.at(0) as PdfUriAnnotation;
+        expect(annotation instanceof PdfUriAnnotation).toBeTruthy();
+        expect(annotation.uri).toEqual('https://www.syncfusion.com');
+        expect(annotation.text).toEqual('Syncfusion Website');
+        document.destroy();
+        document = new PdfDocument(crossReferenceTable);
+        document.importAnnotations(fdfExportedData, DataFormat.fdf);
+        page = document.getPage(0) as PdfPage;
+        annotation = page.annotations.at(0) as PdfUriAnnotation;
+        expect(annotation instanceof PdfUriAnnotation).toBeTruthy();
+        expect(annotation.uri).toEqual('https://www.syncfusion.com');
+        expect(annotation.text).toEqual('Syncfusion Website');
         document.destroy();
     });
 });
@@ -3897,4 +3948,5 @@ describe('1026363 - allowImportCustomData full coverage', () => {
         expect(loadedAnnotation._dictionary.has('page')).toBeFalsy();
         document.destroy();
     });
+	
 });

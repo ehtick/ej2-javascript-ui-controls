@@ -26419,4 +26419,40 @@ describe('Spreadsheet formula module ->', () => {
             });
         });
     });
+    describe('EJ2-1027313: Custom function executes twice when a formula cell is copy-pasted in Spreadsheet', () => {
+        let count: number = 0;
+        beforeAll((done: Function) => {
+            const isBlank = (val: string) => {
+                count++;
+                if (val) {
+                    return "TRUE"
+                }
+                else {
+                    return "FALSE"
+                }
+            };
+            helper.initializeSpreadsheet({
+                sheets: [{ ranges: [{ dataSource: defaultData }] }],
+                created: (): void => {
+                    const spreadsheet: Spreadsheet = helper.getInstance();
+                    spreadsheet.addCustomFunction(isBlank, 'ISBLANK');
+                    spreadsheet.updateCell({ value: "=ISBLANK(12)" }, 'A5')
+                }
+            }, done);
+        });
+        afterAll(() => {
+            helper.invoke('destroy');
+        });
+        it('Custom function should be executed only once for a formula', (done: Function) => {
+            expect(count).toBe(1);
+            const sheet: SheetModel = helper.getInstance().sheets[0];
+            helper.invoke('copy', ['A5']).then(() => {
+                helper.invoke('paste', ['A13']);
+                expect(sheet.rows[12].cells[0].formula).toBe('=ISBLANK(12)');
+                expect(sheet.rows[12].cells[0].value).toBe('TRUE');
+                expect(count).toBe(2);
+                done();
+            });
+        });
+    });
 });

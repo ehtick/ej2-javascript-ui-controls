@@ -809,10 +809,11 @@ export class Overview extends Component<HTMLElement> implements INotifyPropertyC
         const heightratio: number = (Number(this.model.height) / this.contentHeight);
         widthratio = Math.min(widthratio, heightratio);
         //1024983: Overview does not update SVG node positions correctly when panning/moving diagram.
-        if (!this.nativeLayer.style.transform) {
-            this.nativeLayer.style.transform = newTransform;
-            this.nativeLayer.style.webkitTransform = newTransform;
-        }
+        const tx: number = -bounds.x;
+        const ty: number = -bounds.y;
+        this.nativeLayer.setAttribute('transform', 'translate('
+            + (tx * widthratio) + ',' + (ty * heightratio) + '),scale('
+            + widthratio + ')');
         this.context2d.setTransform(widthratio, 0, 0, widthratio, 0, 0);
         this.context2d.fillStyle = 'red';
         this.scrollOverviewRect(

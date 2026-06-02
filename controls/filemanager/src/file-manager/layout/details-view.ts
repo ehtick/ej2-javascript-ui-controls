@@ -566,7 +566,10 @@ export class DetailsView {
     }
 
     private onSortColumn(): void {
-        if (this.parent.sortOrder !== 'None') {
+        const columns: ColumnModel[] = this.gridObj.columns as ColumnModel[];
+        const isValidSortField: boolean = !isNullOrUndefined(columns) &&
+            columns.some((col: ColumnModel) => col.field === this.parent.sortBy);
+        if (this.parent.sortOrder !== 'None' && isValidSortField) {
             this.gridObj.sortModule.sortColumn(this.parent.sortBy, this.parent.sortOrder);
         } else {
             this.gridObj.dataSource = getSortedData(this.parent, this.gridObj.dataSource as Object[]);

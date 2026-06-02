@@ -580,6 +580,7 @@ export class AIAssistant {
         const rootElement: HTMLButtonElement = select('#' + this.parent.getID() + '_QueryPopupCommandsDropDown', toolbar);
         if (!isNOU(rootElement)) {
             const ulElement: HTMLUListElement = this.parent.createElement('ul', { id: this.parent.getID() + '_QueryPopupCommandsMenu'});
+            if (!isNOU(document.getElementById(this.parent.getID() + '_QueryPopupCommandsMenu'))) { return; }
             rootElement.parentElement.appendChild(ulElement);
             const argument: IMenuRenderArgs = {
                 dropDownItems: {

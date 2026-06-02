@@ -138,6 +138,7 @@ export class FileManager extends Component<HTMLElement> implements INotifyProper
     public splitterObj: Splitter;
     public persistData: boolean = false;
     public breadCrumbBarNavigation: HTMLElement;
+    public breadCrumbNavElement: HTMLElement;
     public localeObj: L10n;
     public uploadObj: Uploader;
     public uploadDialogObj: Dialog;
@@ -960,6 +961,8 @@ export class FileManager extends Component<HTMLElement> implements INotifyProper
             id: this.element.id + CLS.BREADCRUMBBAR_ID,
             className: CLS.BREADCRUMBS
         });
+        this.breadCrumbNavElement = this.createElement('nav');
+        this.breadCrumbBarNavigation.appendChild(this.breadCrumbNavElement);
         contentWrap.appendChild(this.breadCrumbBarNavigation);
         const gridWrap: HTMLElement = this.createElement('div', {
             id: this.element.id + CLS.GRID_ID
@@ -1848,6 +1851,7 @@ export class FileManager extends Component<HTMLElement> implements INotifyProper
         removeClass([this.element], [CLS.RTL, CLS.MOBILE, CLS.CHECK_SELECT]);
         this.element.innerHTML = '';
         this.breadCrumbBarNavigation = null;
+        this.breadCrumbNavElement = null;
         this.activeElements = null;
         this.virtualDragElement = null;
         this.visitedItem = null;

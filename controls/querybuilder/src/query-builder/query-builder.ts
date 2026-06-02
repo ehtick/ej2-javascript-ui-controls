@@ -394,6 +394,7 @@ export class QueryBuilder extends Component<HTMLDivElement> implements INotifyPr
     private dragElement: HTMLElement;
     private prvtEvtTgrDaD: boolean;
     private isDragEventPrevent: boolean;
+    private groupConnectorStates: { [key: string]: string } = {};
     private isValueEmpty: boolean = false;
     private isPropChange: boolean = false;
     private isRuleClicked: boolean = false;
@@ -5014,6 +5015,16 @@ export class QueryBuilder extends Component<HTMLDivElement> implements INotifyPr
     }
 
     private dragStartHandler(e: { target: HTMLElement, event: MouseEventArgs }): void {
+        this.groupConnectorStates = {};
+        const allGroupContainers: NodeListOf<Element> = this.element.querySelectorAll('.e-group-container');
+        allGroupContainers.forEach((grpContainer: HTMLElement) => {
+            if (grpContainer.id !== '') {
+                const groupRule: RuleModel = this.getGroup(grpContainer);
+                if (groupRule && groupRule.condition) {
+                    this.groupConnectorStates[grpContainer.id] = groupRule.condition.toUpperCase();
+                }
+            }
+        });
         this.draggedRule = e.target; this.isDragEventPrevent = false;
         document.body.classList.add('e-prevent-select');
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -5088,6 +5099,7 @@ export class QueryBuilder extends Component<HTMLDivElement> implements INotifyPr
 
     private dragStopHandler(e: { target: HTMLTableRowElement, event: MouseEventArgs, helper: Element }): void {
         if (this.isDragEventPrevent) { return; }
+        let dropped: boolean = false;
         let targetGroup: HTMLElement = closest(e.target as Element, '.e-rule-container') as HTMLElement;
         if (isNullOrUndefined(targetGroup) && e.target.parentElement &&
             e.target.parentElement.classList.contains('e-btn-group') && this.enableSeparateConnector) {
@@ -5182,6 +5194,7 @@ export class QueryBuilder extends Component<HTMLDivElement> implements INotifyPr
                         }
                     }
                 });
+                dropped = true;
             }
         } else if (tgrt.classList.contains('e-rule-list') && tgrt.children.length === 0 && !isPreventelem) {
             const groupElem: HTMLElement = closest(tgrt as Element, '.e-group-container') as HTMLElement;
@@ -5207,6 +5220,7 @@ export class QueryBuilder extends Component<HTMLDivElement> implements INotifyPr
                     this.addRules([rule], groupId);
                 }
             }
+            dropped = true;
         } else if (tgrt.classList.contains('e-rule-list') && tgrt.children[0].classList.contains('e-group-container') && !isPreventelem) {
             const groupElem: HTMLElement = closest(tgrt as Element, '.e-group-container') as HTMLElement;
             const groupId: string = groupElem.id.split(this.element.id + '_')[1].split('_')[0];
@@ -5253,6 +5267,7 @@ export class QueryBuilder extends Component<HTMLDivElement> implements INotifyPr
                     }
                 }
             });
+            dropped = true;
         } else if ((closest(e.target as Element, '.e-group-container') || e.target.classList.contains('e-group-container')) && !isPreventelem) {
             let rule: RuleModel;
             targetGroup = closest(e.target as Element, '.e-group-container') as HTMLElement;
@@ -5282,9 +5297,13 @@ export class QueryBuilder extends Component<HTMLDivElement> implements INotifyPr
                     }
                 }
             }
+            dropped = true;
         }
         if (!isPreventelem) {
             this.trigger('ruleChange', { previousRule: prevRule, rule: this.getValidRules(), type: 'drag-and-drop' });
+        }
+        if (!dropped) {
+            this.restoreGroupConnectorStates();
         }
         this.prvtEvtTgrDaD = false;
         document.body.classList.remove('e-prevent-select');
@@ -5629,10 +5648,36 @@ export class QueryBuilder extends Component<HTMLDivElement> implements INotifyPr
             if (dragElemnet) {
                 remove(dragElemnet);
             }
+            this.restoreGroupConnectorStates();
             if (this.enableSeparateConnector) {
                 this.refresh();
             }
         }
+    }
+
+    private restoreGroupConnectorStates(): void {
+        const updatedGroupContainers: NodeListOf<Element> = this.element.querySelectorAll('.e-group-container');
+        updatedGroupContainers.forEach((grpContainer: HTMLElement) => {
+            const groupId: string = grpContainer.id;
+            if (this.groupConnectorStates.hasOwnProperty(groupId)) {
+                const savedCondition: string = this.groupConnectorStates[groupId as string];
+                const groupRule: RuleModel = this.getGroup(grpContainer);
+                if (groupRule) {
+                    groupRule.condition = savedCondition.toLowerCase();
+                }
+                const andElem: HTMLInputElement = grpContainer.querySelector('.e-btngroup-and') as HTMLInputElement;
+                const orElem: HTMLInputElement = grpContainer.querySelector('.e-btngroup-or') as HTMLInputElement;
+                if (andElem && orElem) {
+                    if (savedCondition === 'AND') {
+                        andElem.checked = true;
+                        orElem.checked = false;
+                    } else {
+                        orElem.checked = true;
+                        andElem.checked = false;
+                    }
+                }
+            }
+        });
     }
 
     private windowResizeHandler(): void {
@@ -6432,8 +6477,7 @@ export class QueryBuilder extends Component<HTMLDivElement> implements INotifyPr
                 const keys: string[] = Object.keys(ruleColl[i as number]);
                 if (!isNullOrUndefined(ruleColl[i as number].rules) && keys.indexOf('rules') > -1 && (ruleColl[i as number].rules.length !== 0)) {
                     if (this.element.querySelectorAll('.e-group-container').length > this.maxGroupCount) { return null; }
-                    if (isNullOrUndefined(this.updatedRule) && this.allowDragAndDrop && this.dragElement &&
-                    this.dragElement.querySelector('.e-rule-list') && this.dragElement.querySelector('.e-rule-list').querySelector('.e-group-container')) {
+                    if (isNullOrUndefined(this.updatedRule) && this.allowDragAndDrop && this.dragElement) {
                         this.updatedRule = {
                             isLocked: ruleColl[i as number].isLocked, condition: ruleColl[i as number].condition,
                             not: ruleColl[i as number].not

@@ -5,7 +5,7 @@ import { _PdfContentStream, _PdfStream } from '../base-stream';
 import { _PdfCommand } from './../pdf-primitives';
 import { _ExportHelper } from './xfdf-document';
 import { PdfForm } from './../form/form';
-import { PdfAnnotation, PdfUriAnnotation, PdfRubberStampAnnotation, PdfFileLinkAnnotation, PdfTextWebLinkAnnotation, PdfRectangleAnnotation, PdfDocumentLinkAnnotation, PdfPopupAnnotation } from './../annotations/annotation';
+import { PdfAnnotation, PdfRubberStampAnnotation, PdfFileLinkAnnotation, PdfTextWebLinkAnnotation, PdfRectangleAnnotation, PdfDocumentLinkAnnotation, PdfPopupAnnotation } from './../annotations/annotation';
 import { PdfAnnotationCollection } from './../annotations/annotation-collection';
 import { PdfField } from './../form/field';
 import { _bytesToString, _getNewGuidString, _byteArrayToHexString, _stringToBytes, _isNullOrUndefined } from './../utils';
@@ -187,7 +187,7 @@ export class _FdfDocument extends _ExportHelper {
         this._checkFdf(_bytesToString(data));
         const stream: _PdfStream = new _PdfStream(data);
         this._isAnnotationImport = true;
-        const parser: _PdfParser = new _PdfParser(new _PdfLexicalOperator(stream, true), null, true, false);
+        const parser: _PdfParser = new _PdfParser(new _PdfLexicalOperator(stream, true, this._isAnnotationImport), null, true, false);
         this._readFdfData(parser);
         if (_isNullOrUndefined(this._annotationObjects) && this._annotationObjects.size > 0) {
             this._annotationObjects.clear();
@@ -210,7 +210,7 @@ export class _FdfDocument extends _ExportHelper {
         this._isAnnotationExport = false;
         this._checkFdf(_bytesToString(data));
         const stream: _PdfStream = new _PdfStream(data);
-        const parser: _PdfParser = new _PdfParser(new _PdfLexicalOperator(stream, true), null, false, false);
+        const parser: _PdfParser = new _PdfParser(new _PdfLexicalOperator(stream, true, this._isAnnotationExport), null, false, false);
         this._readFdfData(parser);
     }
     /**
@@ -580,8 +580,8 @@ export class _FdfDocument extends _ExportHelper {
                 for (let k: number = 0; k < page.annotations.count; k++) {
                     const annotation: PdfAnnotation = page.annotations.at(k);
                     if (annotation !== null && typeof annotation !== 'undefined' && !(annotation instanceof PdfFileLinkAnnotation ||
-                        annotation instanceof PdfTextWebLinkAnnotation || annotation instanceof PdfDocumentLinkAnnotation ||
-                        annotation instanceof PdfUriAnnotation)) {
+                        annotation instanceof PdfTextWebLinkAnnotation || annotation instanceof PdfDocumentLinkAnnotation
+                    )) {
                         if (annotation instanceof PdfPopupAnnotation && annotation._dictionary.has('Parent')) {
                             continue;
                         }
@@ -955,7 +955,7 @@ export class _FdfDocument extends _ExportHelper {
      * @returns {void}
      */
     _checkFdf(element: string): void {
-        if (element.includes(this._specialCharacters) || element.includes('Ã¢Ã£Ã\u008fÃ\u0093')) {
+        if (element.includes(this._specialCharacters) || element.includes('Ã¢Ã£Ã\u008fÃ\u0093') || element.includes('%ï¿½ï¿½ï¿½ï¿½')) {
             this._asPerSpecification = true;
         }
         if (element.startsWith('%')) {

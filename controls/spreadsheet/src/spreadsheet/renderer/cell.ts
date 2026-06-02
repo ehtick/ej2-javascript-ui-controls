@@ -800,7 +800,7 @@ export class CellRenderer implements ICellRenderer {
     public refresh(
         rowIdx: number, colIdx: number, lastCell?: boolean, element?: Element, checkCF?: boolean, checkWrap?: boolean,
         skipFormatCheck?: boolean, isRandomFormula?: boolean, fillType?: string, prevCell?: HTMLTableCellElement,
-        viewportTopIdx?: number): void {
+        viewportTopIdx?: number, checkFormulaAdded?: boolean): void {
         const sheet: SheetModel = this.parent.getActiveSheet();
         if (!element && (isHiddenRow(sheet, rowIdx) || isHiddenCol(sheet, colIdx))) {
             return;
@@ -813,6 +813,9 @@ export class CellRenderer implements ICellRenderer {
             const args: CellRenderArgs = { rowIdx: rowIdx, colIdx: colIdx, td: cell, cell: getCell(rowIdx, colIdx, sheet), isRefresh: true,
                 lastCell: lastCell, isHeightCheckNeeded: true, manualUpdate: true, first: '', skipFormatCheck: skipFormatCheck,
                 isRandomFormula: isRandomFormula, fillType: fillType, prevCell: prevCell, viewportTopIdx: viewportTopIdx };
+            if (checkFormulaAdded && args.cell && args.cell.formula) {
+                args.address = getCellAddress(rowIdx, colIdx);
+            }
             this.update(args);
             if (checkCF && sheet.conditionalFormats && sheet.conditionalFormats.length) {
                 this.parent.notify(applyCF, <ApplyCFArgs>{ indexes: [rowIdx, colIdx], isAction: true });

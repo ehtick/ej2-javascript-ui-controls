@@ -321,6 +321,7 @@ export class WorkbookAutoFill {
                     prop.td = this.parent.getCell(cellIdx.rowIndex, cellIdx.colIndex);
                     if (prop.td) {
                         prop.uiRefresh = true;
+                        prop.checkFormulaAdded = true;
                     }
                 }
                 cancel = updateCell(this.parent, fillSheet, prop, options.cells);
@@ -445,6 +446,7 @@ export class WorkbookAutoFill {
                 if (activeSheet && !isHiddenRow(fillSheet, cellIdx.rowIndex) && !isHiddenCol(fillSheet, cellIdx.colIndex)) {
                     prop.td = this.parent.getCell(cellIdx.rowIndex, cellIdx.colIndex);
                     prop.uiRefresh = !!prop.td;
+                    prop.checkFormulaAdded = true;
                 }
                 cancel = updateCell(this.parent, fillSheet, prop, options.cells);
                 if (!cancel) {

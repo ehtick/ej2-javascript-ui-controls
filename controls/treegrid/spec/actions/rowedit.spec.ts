@@ -4298,3 +4298,34 @@ describe('Row Update with aggregates', () => {
         destroy(gridObj);
     });
 });
+describe('EJ2_1029677 Coverage not covered for action edit.ts file', () => {
+  let gridObj: TreeGrid;
+  beforeAll((done: Function) => {
+    gridObj = createGrid(
+      {
+        dataSource: sampleData,
+        childMapping: 'subtasks',
+        editSettings: { allowEditing: true, mode: 'Row', allowDeleting: true, allowAdding: true, newRowPosition: 'Top' },
+        treeColumnIndex: 1,
+        toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll'],
+        columns: [{ field: 'taskID', headerText: 'Task ID', isPrimaryKey: true },
+        { field: 'taskName', headerText: 'Task Name' },
+        { field: 'progress', headerText: 'Progress' },
+        { field: 'startDate', headerText: 'Start Date' }
+        ]
+      },
+      done
+    );
+  });
+  it('Coverage method for recordDoubleClick', () => {
+    const editObj: any = gridObj.editModule
+    const target: any = document.createElement('div');
+    const args: any = {
+      target: target,
+      rowIndex: 0
+    };
+    spyOn(target, 'closest').and.returnValue(null);
+    editObj['recordDoubleClick'](args);
+    expect(target.closest).toHaveBeenCalledWith('td.e-rowcell');
+  });
+});

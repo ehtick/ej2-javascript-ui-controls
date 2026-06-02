@@ -86,6 +86,7 @@ export class Table {
     private heightValue: string = '';
     private widthValue: string = '';
     private savedSelectionForDialog: NodeSelection = null;
+    public isTableCopyAll: boolean;
     /**
      * @private
      */
@@ -102,6 +103,7 @@ export class Table {
         this.dialogRenderObj = serviceLocator.getService<DialogRenderer>('dialogRenderObject');
         this.addEventListener();
         this.isDestroyed = false;
+        this.isTableCopyAll = false;
     }
 
     /*
@@ -541,6 +543,7 @@ export class Table {
      * including navigation, selection, deletion, and insertion operations.
      */
     private keyDown(e: NotifyArgs): void {
+        this.isTableCopyAll = false;
         const event: KeyboardEventArgs = e.args as KeyboardEventArgs;
         const selectedCell: Element = this.contentModule.getDocument().querySelector('.e-cell-select');
         if ((event.ctrlKey || event.metaKey) && event.code === 'KeyA' && selectedCell) {
@@ -548,6 +551,7 @@ export class Table {
                 event.preventDefault();
                 addClass([selectedCell], 'e-multi-cells-select');
                 this.selectionStage = 1;
+                this.isTableCopyAll = true;
             } else if (this.selectionStage === 1) {
                 // Stage 2: select the row
                 const row: HTMLElement = selectedCell.closest('tr');
@@ -555,12 +559,14 @@ export class Table {
                     event.preventDefault();
                     this.tableObj.selectTableRow(row);
                     this.selectionStage = 2;
+                    this.isTableCopyAll = true;
                 }
             } else if (this.selectionStage === 2) {
                 event.preventDefault();
                 const table: HTMLElement = selectedCell.closest('table');
                 this.tableObj.selectEntireTable(table);
                 this.selectionStage = 3;
+                this.isTableCopyAll = true;
             }
             else {
                 this.selectionStage = 0;
@@ -2718,6 +2724,7 @@ export class Table {
         if (this.tableObj) {
             this.tableObj.removeResizeEventHandlers();
         }
+        this.isTableCopyAll = false;
         this.isDestroyed = true;
     }
 

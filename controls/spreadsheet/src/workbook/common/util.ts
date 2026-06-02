@@ -594,7 +594,7 @@ export function updateCell(context: Workbook, sheet: SheetModel, prop: CellUpdat
             if (prop.uiRefresh) {
                 context.serviceLocator.getService<{ refresh: Function }>('cell').refresh(
                     args.rowIndex, args.colIndex, prop.lastCell, prop.td, prop.checkCF, prop.checkWrap, prop.skipFormatCheck,
-                    prop.isRandomFormula, prop.fillType);
+                    prop.isRandomFormula, prop.fillType, undefined, undefined, prop.checkFormulaAdded);
             }
             if (!prop.preventEvt) {
                 const cellDisplayText: string = context.getDisplayText(cell);

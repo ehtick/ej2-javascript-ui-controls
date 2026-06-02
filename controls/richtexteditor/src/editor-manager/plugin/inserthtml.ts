@@ -865,13 +865,18 @@ export class InsertHtml {
         return lastSelectionNode;
     }
 
-    //To remove any media element in range startContainer
+    //To return any media element in range startContainer
     private static isStartContainerMediaEle(startElem: HTMLElement): HTMLElement {
         if (!startElem) { return null; }
         startElem = startElem.nodeType === Node.ELEMENT_NODE ?
             startElem : startElem.parentElement;
         const mediaEle: HTMLElement = startElem.closest('img, .e-video-wrap, .e-embed-video-wrap, .e-audio-wrap') as HTMLElement;
         if (mediaEle) {
+            // Don't select image with crossorigin attribute if startElem is also image
+            if (startElem.tagName.toLowerCase() === 'img' &&
+                mediaEle === startElem && !isNOU(startElem.previousSibling)) {
+                return null;
+            }
             return mediaEle;
         }
         return null;

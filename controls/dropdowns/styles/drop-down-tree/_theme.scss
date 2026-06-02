@@ -23,8 +23,8 @@
     .e-chips {
       @include chip-style($ddt-chip-bg-color, $ddt-chip-close, $ddt-chip-font-color);
       @if $ddt-skin-name == 'Material3' or $theme-name == 'fluent2-highcontrast' {
-        border-color: $ddt-chip-border-color;
         border: $ddt-chip-border;
+        border-color: $ddt-chip-border-color;
       }
       &:hover {
         @if $ddt-skin-name == 'highcontrast' {
@@ -40,6 +40,14 @@
       &.e-filled {
         .e-chips {
           background-color: $ddt-filled-chip-bg-color;
+        }
+      }
+    }
+
+    @if $ddt-skin-name == 'Material3' {
+      &.e-filled {
+        .e-chips {
+          background: transparent;
         }
       }
     }

@@ -571,10 +571,12 @@ export class _JsonDocument extends _ExportHelper {
             break;
         case 'AllowedInteractions':
             if (primitive) {
-                const bytes: Uint8Array = _stringToBytes(primitive) as Uint8Array;
-                const styleTable: Map<string, string> = new Map<string, string>();
-                styleTable.set('unicodeData', _byteArrayToHexString(bytes));
-                this._table.set(key, this._convertToJson(styleTable));
+                const bytes: Uint8Array = _stringToBytes(primitive, false, true) as Uint8Array;
+                const hexString: string = _byteArrayToHexString(bytes);
+                const stringData: Map<string, string> = new Map<string, string>();
+                stringData.set('encoding', 'hex');
+                stringData.set('bytes', hexString);
+                this._table.set(key, this._convertToJson(stringData));
             }
             break;
         case 'RC':
@@ -821,8 +823,12 @@ export class _JsonDocument extends _ExportHelper {
                 value = this._getValidString(value);
             }
             if (this._isColorSpace || key === 'AllowedInteractions' || _hasUnicodeCharacters(value) || isTabSpace) {
-                const bytes: Uint8Array = _stringToBytes(value) as Uint8Array;
-                this._writeTable('unicodeData', _byteArrayToHexString(bytes), table, key, array);
+                const bytes: Uint8Array = _stringToBytes(value, false, true) as Uint8Array;
+                const hexString: string = _byteArrayToHexString(bytes);
+                const stringData: Map<string, string> = new Map<string, string>();
+                stringData.set('encoding', 'hex');
+                stringData.set('bytes', hexString);
+                this._writeTable('string', this._convertToJson(stringData), table, key, array);
                 isTabSpace = false;
             } else {
                 this._writeTable('string', value, table, key, array);
@@ -1139,6 +1145,9 @@ export class _JsonDocument extends _ExportHelper {
                                                 case 'caret':
                                                     dictionary.update('Subtype', _PdfName.get('Caret'));
                                                     break;
+                                                case 'link':
+                                                    dictionary.update('Subtype', _PdfName.get('Link'));
+                                                    break;
                                                 default:
                                                     isValidType = false;
                                                     break;
@@ -1212,6 +1221,8 @@ export class _JsonDocument extends _ExportHelper {
         let endLineStyle: string;
         let values: string = '';
         let rect: {x: string, y: string, width: string, height: string};
+        let actionDictionary: _PdfDictionary;
+        let actionRef: _PdfReference;
         annotationKeys.forEach((key: string) => {
             let value: any = annotation[key]; // eslint-disable-line
             switch (key.toLowerCase()) {
@@ -1316,6 +1327,15 @@ export class _JsonDocument extends _ExportHelper {
                 break;
             case 'name':
                 this._addString(dictionary, 'NM', value);
+                break;
+            case 'uri':
+                actionDictionary = new _PdfDictionary(this._crossReference);
+                actionDictionary.update('Type', new _PdfName('Action'));
+                actionDictionary.update('S', new _PdfName('URI'));
+                actionDictionary.update('URI', value);
+                actionRef = this._crossReference._getNextReference();
+                this._crossReference._cacheMap.set(actionRef, actionDictionary);
+                dictionary.update('A', actionRef);
                 break;
             case 'icon':
                 if (value) {
@@ -1481,11 +1501,20 @@ export class _JsonDocument extends _ExportHelper {
                         this._addString(dictionary, 'AllowedInteractions', value);
                     } else {
                         const interactionKeys: string[] = Object.keys(value);
-                        if (interactionKeys && interactionKeys.length > 0 && interactionKeys.indexOf('unicodeData') !== -1) {
-                            let convertString: string = JSON.stringify(value['unicodeData']);
-                            convertString = convertString.substring(1, convertString.length - 1);
-                            value =  _bytesToString(_hexStringToByteArray(convertString, false) as Uint8Array, true);
-                            this._addString(dictionary, 'AllowedInteractions', value);
+                        if (interactionKeys && interactionKeys.length > 0) {
+                            if (interactionKeys.indexOf('encoding') !== -1 && interactionKeys.indexOf('bytes') !== -1) {
+                                const bytes: string = value['bytes'];
+                                const encoding: string = value['encoding'];
+                                if (encoding === 'hex') {
+                                    value = _bytesToString(_hexStringToByteArray(bytes, false) as Uint8Array, true);
+                                    this._addString(dictionary, 'AllowedInteractions', value);
+                                }
+                            } else if (interactionKeys.indexOf('unicodeData') !== -1) {
+                                let convertString: string = JSON.stringify(value['unicodeData']);
+                                convertString = convertString.substring(1, convertString.length - 1);
+                                value = _bytesToString(_hexStringToByteArray(convertString, false) as Uint8Array, true);
+                                this._addString(dictionary, 'AllowedInteractions', value);
+                            }
                         }
                     }
                 }
@@ -1886,7 +1915,10 @@ export class _JsonDocument extends _ExportHelper {
                 value = element.string;
             } else {
                 const bytes: string = element.string.bytes as string;
-                value = _bytesToString(_hexStringToByteArray(bytes) as Uint8Array);
+                const encoding: string = element.string.encoding;
+                if (encoding === 'hex') {
+                    value = _bytesToString(_hexStringToByteArray(bytes, false) as Uint8Array, false);
+                }
             }
         } else if (keys.indexOf('boolean') !== -1) {
             value = element.boolean === 'true' ? true : false;

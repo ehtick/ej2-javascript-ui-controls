@@ -146,7 +146,7 @@
   }
 
   .e-de-hidden {
-    display: none;
+    display: none !important; /* stylelint-disable-line declaration-no-important */
   }
 
   .e-de-segment-full {

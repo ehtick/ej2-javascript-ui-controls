@@ -200,8 +200,18 @@ export class SizeGroup {
                     this.applyImageWidth();
                 }, 30);
             }
+            if (e.key === 'Tab' && !e.shiftKey) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                const heightElement: HTMLElement = document.getElementById(this.container.element.id + HEIGHT_BOX_ID);
+                if (heightElement) {
+                    setTimeout(() => {
+                        heightElement.focus();
+                    }, 0);
+                }
+            }
         });
-        element.addEventListener('blur', this.applyImageWidth.bind(this));
+        element.addEventListener('mousedown', this.applyImageWidth.bind(this));
     }
 
 
@@ -229,8 +239,18 @@ export class SizeGroup {
                     this.applyImageHeight();
                 }, 30);
             }
+            if (e.key === 'Tab' && e.shiftKey) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                const widthElement: HTMLElement = document.getElementById(this.container.element.id + WIDTH_BOX_ID);
+                if (widthElement) {
+                    setTimeout(() => {
+                        widthElement.focus();
+                    }, 0);
+                }
+            }
         });
-        element.addEventListener('blur', this.applyImageHeight.bind(this));
+        element.addEventListener('mousedown', this.applyImageHeight.bind(this));
     }
 
     private onWidthChange(): void {

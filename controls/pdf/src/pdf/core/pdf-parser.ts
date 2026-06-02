@@ -57,13 +57,20 @@ export class _PdfLexicalOperator {
      * @private
      */
     _isFormsDataFormat: boolean;
-    constructor(stream: any, isFormDataFormat: boolean = false) { // eslint-disable-line
+    /**
+     * Indicates whether the lexer is operating in annotation import mode.
+     *
+     * @private
+     */
+    _isAnnotationImport: boolean;
+    constructor(stream: any, isFormDataFormat: boolean = false, isAnnotationImport: boolean = false) { // eslint-disable-line
         this.stream = stream;
         this.nextChar();
         this.stringBuffer = [];
         this._hexStringNumber = 0;
         this.beginInlineImagePosition = -1;
         this._isFormsDataFormat = isFormDataFormat;
+        this._isAnnotationImport = isAnnotationImport;
     }
     nextChar(): number {
         return (this.currentChar = this.stream.getByte());
@@ -254,8 +261,23 @@ export class _PdfLexicalOperator {
         let previousCh: number;
         const stringBuffer: string[] = this.stringBuffer;
         stringBuffer.length = 0;
+        const keyWords: string[] = ['Root', 'T', 'V'];
         ch = this.nextChar();
-        while (ch >= 0 && !specialChars[ch]) { // eslint-disable-line
+        while (ch >= 0) {
+            if (this._isFormsDataFormat &&
+                ch === 32 &&
+                !(keyWords.indexOf(stringBuffer.join('')) >= 0) &&
+                !this._isAnnotationImport) {
+                const next: number = this.peekChar();
+                if (!specialChars[<number>next]) {
+                    stringBuffer.push(String.fromCharCode(ch));
+                }
+                ch = this.nextChar();
+                continue;
+            }
+            if (specialChars[<number>ch]) {
+                break;
+            }
             if (ch === 0x23) {
                 ch = this.nextChar();
                 if (specialChars[ch]) { // eslint-disable-line
@@ -276,7 +298,9 @@ export class _PdfLexicalOperator {
                         ch = this.nextChar();
                         continue;
                     }
-                    stringBuffer.push(String.fromCharCode((x << 4) | x2));
+                    stringBuffer.push(
+                        String.fromCharCode((x << 4) | x2)
+                    );
                 } else {
                     stringBuffer.push('#', String.fromCharCode(ch));
                 }
@@ -336,8 +360,16 @@ export class _PdfLexicalOperator {
                 if (ch === 0x0a || ch === 0x0d) {
                     comment = false;
                 }
+                if (ch === 92) { // '\'
+                    break;
+                }
             } else if (ch === 0x25) {
                 comment = true;
+            } else if (ch === 92) { // '\'
+                const next: number = this.peekChar();
+                if (next === 114 || next === 110) { // 'r' or 'n'
+                    break;
+                }
             } else if (specialChars[ch] !== 1) { // eslint-disable-line
                 break;
             }

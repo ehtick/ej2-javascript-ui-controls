@@ -147,6 +147,8 @@ export class Ribbon implements IToolbarHandler {
             enableKeyTips: true,
             activeLayout: this.container.ribbonLayout,
             tabSelected: this.eventManager.onTabSelected.bind(this.eventManager),
+            ribbonCollapsing: this.eventManager.onCollapse.bind(this.eventManager),
+            ribbonExpanding: this.eventManager.onExpand.bind(this.eventManager),
             ribbonLayoutSwitched: this.eventManager.onRibbonLayoutChange.bind(this.eventManager),
             created: () => {
                 const fontSizeElement: HTMLElement = document.getElementById(this.container.element.id + '_ribbon_font_size');

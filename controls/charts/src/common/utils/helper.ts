@@ -293,14 +293,14 @@ export function showTooltip(
                 'position:absolute;border:1px solid rgb(112, 112, 112); padding-left : 3px; padding-right : 2px;' +
                 'padding-bottom : 2px; padding-top : 2px; font-size:12px; font-family: "Segoe UI"'
         });
-        tooltip.innerText = text.replace(/&lt;br\/?&gt;/gi, '\n');
+        tooltip.innerText = text.replace(/(?:<br\s*\/?>|&lt;br\s*\/?&gt;|&amp;lt;br\s*\/?&amp;gt;)/gi, '\n');
         element.appendChild(tooltip);
         const left: number = parseInt(tooltip.style.left.replace('px', ''), 10);
         if (left < 0) {
             tooltip.style.left = '0px';
         }
     } else {
-        tooltip.innerText = text.replace(/&lt;br\/?&gt;/gi, '\n');
+        tooltip.innerText = text.replace(/(?:<br\s*\/?>|&lt;br\s*\/?&gt;|&amp;lt;br\s*\/?&amp;gt;)/gi, '\n');
         tooltip.style.top = (y).toString() + 'px';
         tooltip.style.left = (x + 15).toString() + 'px';
     }

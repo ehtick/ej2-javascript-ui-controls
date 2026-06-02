@@ -1725,7 +1725,8 @@ export class Workbook extends Component<HTMLElement> implements INotifyPropertyC
                 this.getCell(eventArgs.rowIdx, eventArgs.colIdx);
             if (cellEle) {
                 this.serviceLocator.getService<{ refresh: Function }>('cell').refresh(
-                    eventArgs.rowIdx, eventArgs.colIdx, true, cellEle, valChange, valChange);
+                    eventArgs.rowIdx, eventArgs.colIdx, true, cellEle, valChange, valChange, false, false, undefined, undefined,
+                    undefined, isPublic);
             }
             const activeCellIdx: number[] = getCellIndexes(sheet.activeCell);
             if (range[0] === activeCellIdx[0] && range[1] === activeCellIdx[1]) {

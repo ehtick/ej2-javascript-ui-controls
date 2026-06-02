@@ -1,3 +1,4 @@
+@use 'sass:color';
 @use 'ej2-base/styles/common/mixin' as *;
 @use 'ej2-base/styles/definition/material3' as *;
 @forward 'ej2-base/styles/definition/material3';
@@ -103,3 +104,4 @@ $ddt-height-none: 0 !default;
 $ddt-nrml-popup-margin-top: 2px !default;
 $ddt-list-item-ul-padding: 0 0 0 14px !default;
 $ddt-chip-border: 1px solid !default;
+$ddt-filled-chip-bg-color: color.adjust($grey-300, $lightness: -7%) !default;

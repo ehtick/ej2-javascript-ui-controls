@@ -66,7 +66,14 @@ export class BreadCrumbBar {
         }
     }
     private render(): void {
+        this.setBreadcrumbNavAttributes();
         this.addEventListener();
+    }
+    private setBreadcrumbNavAttributes(): void {
+        const navElement: HTMLElement = this.parent && this.parent.breadCrumbNavElement;
+        if (navElement) {
+            navElement.setAttribute('aria-label', 'Breadcrumb');
+        }
     }
     public onPathChange(): void {
         const pathNames: string[] = this.parent.pathNames;
@@ -88,7 +95,6 @@ export class BreadCrumbBar {
                     addressbarLI.appendChild(icon);
                 }
                 addressbarLI.setAttribute('tabindex', '0');
-                addressbarLI.setAttribute('role', 'link');
                 const pathLabel: string = pathNames.slice(0, i + 1).join(' / ');
                 addressbarLI.setAttribute('aria-label', pathLabel);
                 if (pathNamesLen - i === 1) {
@@ -96,23 +102,23 @@ export class BreadCrumbBar {
                 }
                 id = '';
                 addressATag = createElement('a', { className: CLS.LIST_TEXT });
-                addressATag.setAttribute('role', 'presentation');
+                addressATag.setAttribute('role', 'link');
                 addressATag.innerText = pathNames[i as number];
                 addressbarLI.appendChild(addressATag);
                 addressbarUL.appendChild(addressbarLI);
             }
-            const ulElement: Element = this.parent.breadCrumbBarNavigation.querySelector('.e-addressbar-ul');
+            const ulElement: Element = this.parent.breadCrumbNavElement.querySelector('.e-addressbar-ul');
             if (!isNullOrUndefined(ulElement)) {
                 if (!isNullOrUndefined(this.subMenuObj)) {
                     this.subMenuObj.destroy();
                 }
                 remove(ulElement);
             }
-            const searchWrap: Element = this.parent.breadCrumbBarNavigation.querySelector('.e-search-wrap');
+            const searchWrap: Element = this.parent.breadCrumbNavElement.querySelector('.e-search-wrap');
             if (!searchWrap) {
-                this.parent.breadCrumbBarNavigation.insertBefore(addressbarUL, searchWrap);
+                this.parent.breadCrumbNavElement.insertBefore(addressbarUL, searchWrap);
             } else {
-                this.parent.breadCrumbBarNavigation.appendChild(addressbarUL);
+                this.parent.breadCrumbNavElement.appendChild(addressbarUL);
             }
             this.updateBreadCrumbBar(addressbarUL);
         }
@@ -120,7 +126,7 @@ export class BreadCrumbBar {
     /* istanbul ignore next */
     private updateBreadCrumbBar(addresBarUL: HTMLElement): void {
         const liElements: NodeListOf<Element> = addresBarUL.querySelectorAll('li');
-        const ulElement: Element = this.parent.breadCrumbBarNavigation.querySelector('.e-addressbar-ul');
+        const ulElement: Element = this.parent.breadCrumbNavElement.querySelector('.e-addressbar-ul');
         const style: CSSStyleDeclaration = window.getComputedStyle(ulElement, null);
         const pRight: number = parseFloat(style.getPropertyValue('padding-right'));
         const pLeft: number = parseFloat(style.getPropertyValue('padding-left'));
@@ -142,9 +148,9 @@ export class BreadCrumbBar {
         const searchInput: HTMLElement = createElement('input', { id: id,
             attrs: { autocomplete: 'off', 'aria-label': getLocaleText(this.parent, 'Search') } });
         searchContainer.appendChild(searchInput);
-        const searchEle: Element = this.parent.breadCrumbBarNavigation.querySelector('.e-search-wrap .e-input');
+        const searchEle: Element = this.parent.breadCrumbNavElement.querySelector('.e-search-wrap .e-input');
         if (isNullOrUndefined(searchEle)) {
-            this.parent.breadCrumbBarNavigation.appendChild(searchContainer);
+            this.parent.breadCrumbNavElement.appendChild(searchContainer);
             this.searchIcon = createElement('span', { className: 'e-icons e-fe-search' });
             EventHandler.add(this.searchIcon, 'click', this.onShowInput, this);
             searchInput.parentElement.insertBefore(this.searchIcon, searchInput);
@@ -161,7 +167,7 @@ export class BreadCrumbBar {
             EventHandler.add(this.searchSibling, 'mousedown', this.boundSearchChangeHandler, this);
             EventHandler.add(this.searchObj.element, 'keyup', this.boundOnKeyUp, this);
         }
-        const searchWrap: HTMLElement = this.parent.breadCrumbBarNavigation.querySelector('.e-search-wrap');
+        const searchWrap: HTMLElement = this.parent.breadCrumbNavElement.querySelector('.e-search-wrap');
         breadCrumbBarWidth = breadCrumbBarWidth - (this.searchWrapWidth ? this.searchWrapWidth : searchWrap.offsetWidth);
         if (liElementsWidth > breadCrumbBarWidth) {
             let i: number = liElements.length;
@@ -198,9 +204,9 @@ export class BreadCrumbBar {
                     break;
                 }
             }
-            this.parent.breadCrumbBarNavigation.insertBefore(addressbarUL, searchWrap);
+            this.parent.breadCrumbNavElement.insertBefore(addressbarUL, searchWrap);
         } else {
-            this.parent.breadCrumbBarNavigation.insertBefore(addresBarUL, searchWrap);
+            this.parent.breadCrumbNavElement.insertBefore(addresBarUL, searchWrap);
         }
     }
     /* istanbul ignore next */
@@ -277,7 +283,7 @@ export class BreadCrumbBar {
                 removeClass([this.parent.element], CLS.FILTER);
                 this.searchWrapWidth = null;
             } else {
-                const searchWrap: HTMLElement = this.parent.breadCrumbBarNavigation.querySelector('.e-search-wrap');
+                const searchWrap: HTMLElement = this.parent.breadCrumbNavElement.querySelector('.e-search-wrap');
                 this.searchWrapWidth = searchWrap.offsetWidth;
                 addClass([this.parent.element], CLS.FILTER);
                 this.searchObj.element.focus();

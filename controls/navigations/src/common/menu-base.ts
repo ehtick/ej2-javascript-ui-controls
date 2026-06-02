@@ -591,6 +591,9 @@ export abstract class MenuBase extends Component<HTMLUListElement> implements IN
             }
         }
         this.defaultOption = this.showItemOnClick;
+        if (isNullOrUndefined(this.animation)) {
+            this.animation = new Animation({});
+        }
     }
 
     private renderItems(): void {

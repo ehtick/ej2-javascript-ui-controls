@@ -151,7 +151,7 @@ export interface ICellRenderer {
     refresh(
         rowIdx: number, colIdx: number, lastCell?: boolean, element?: Element, checkCF?: boolean, checkWrap?: boolean,
         skipFormatCheck?: boolean, isRandomFormula?: boolean, fillType?: string, prevCell?: HTMLTableCellElement,
-        viewportTopIdx?: number): void;
+        viewportTopIdx?: number, checkFormulaAdded?: boolean): void;
 }
 
 /**

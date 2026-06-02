@@ -5719,9 +5719,25 @@ export class TreeGrid extends Component<HTMLElement> implements INotifyPropertyC
         this.grid.on('initial-end', this.afterGridRender, this);
         this.grid.on('partial-filter-update', this.partialFilterUpdate, this);
         this.grid.on('get-row-cells', this.getCellsByTableName, this);
+        this.grid.on('save-complete', this.onSaveComplete, this);
     }
     private updateResultModel(returnResult: BeforeDataBoundArgs): void {
         this.dataResults = <ReturnOption>returnResult;
+    }
+    private onSaveComplete(args: any): void {
+        if (!this['isGantt'] && this.enableVirtualization && args.action === 'add'
+            && (!isNullOrUndefined(args.index) && args.index !== -1) && args.data) {
+            const primaryKeyField: string = this.getPrimaryKeyFieldNames()[0];
+            const dataRecord: Record<string, any> = args.data;
+            const addedRecordValue: string | number | undefined =
+                Object.prototype.hasOwnProperty.call(dataRecord, primaryKeyField)
+                    ? dataRecord[`${primaryKeyField}`]
+                    : undefined;
+            if (!isNullOrUndefined(addedRecordValue)) {
+                const index: number = this.grid.getRowIndexByPrimaryKey(addedRecordValue);
+                args.index = index !== -1 ? index : args.index;
+            }
+        }
     }
     /**
      * @hidden
@@ -5734,6 +5750,7 @@ export class TreeGrid extends Component<HTMLElement> implements INotifyPropertyC
         this.grid.off('last-rowcell-border-updated', this.lastRowCellBorderUpdated);
         this.grid.off('partial-filter-update', this.partialFilterUpdate);
         this.grid.off('get-row-cells', this.getCellsByTableName);
+        this.grid.off('save-complete', this.onSaveComplete);
     }
 
     private getCellsByTableName(args: any): void {

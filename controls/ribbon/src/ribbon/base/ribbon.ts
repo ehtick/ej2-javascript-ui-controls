@@ -693,7 +693,7 @@ export class Ribbon extends Component<HTMLElement> implements INotifyPropertyCha
             this.scrollModule.scrollStep = scrollEle.offsetWidth;
         }
         if (this.activeLayout === 'Simplified') {
-            const activePopups: NodeListOf<Element> = document.querySelectorAll('.e-ribbon .e-dropdown-btn.e-active, .e-ribbon-group-overflow-ddb .e-dropdown-btn.e-active');
+            const activePopups: NodeListOf<Element> = document.querySelectorAll('.e-ribbon .e-dropdown-btn.e-active[aria-expanded="true"], .e-ribbon-group-overflow-ddb .e-dropdown-btn.e-active[aria-expanded="true"]');
             const colorPickerPopups: NodeListOf<Element> = document.querySelectorAll('.e-ribbon .e-colorpicker-wrapper.e-ribbon-control.e-ribbon-open .e-colorpicker, .e-ribbon-group-overflow-ddb .e-colorpicker-wrapper.e-ribbon-control.e-ribbon-open .e-colorpicker');
             activePopups.forEach((popup: HTMLElement) => {
                 const dropDownBtn: DropDownButton = getInstance(popup as HTMLElement, DropDownButton) as DropDownButton;

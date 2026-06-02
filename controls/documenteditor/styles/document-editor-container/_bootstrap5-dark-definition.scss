@@ -179,6 +179,9 @@ $de-ctnr-layout-margin-bottom: 2px;
 $de-ctnr-picture-margin-bottom: 0;
 $de-ctnr-picture-simplified-margin-top: 12px;
 
+$de-ribbon-simplified-ctnr-collapsed-editor-height: calc(100% - 54px) !default;
+$de-ribbon-classic-collapsed-editor-height: calc(100% - 64px) !default;
+
 // layout.scss
 $de-toolbar-line-height: 0;
 $de-statusbar-pageweb-padding: 0;

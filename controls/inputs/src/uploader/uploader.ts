@@ -1796,6 +1796,7 @@ export class Uploader extends Component<HTMLInputElement> implements INotifyProp
             EventHandler.remove(this.dropZoneElement, 'drop', this.dropElement);
             EventHandler.remove(this.dropZoneElement, 'dragover', this.dragHover);
             EventHandler.remove(this.dropZoneElement, 'dragleave', this.onDragLeave);
+            EventHandler.remove(this.dropZoneElement, 'paste', this.onPasteFile);
             EventHandler.remove(this.dropZoneElement, 'dragenter', this.onDragEnter);
         }
     }

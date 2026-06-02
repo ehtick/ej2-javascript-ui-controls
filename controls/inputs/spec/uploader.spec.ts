@@ -5361,6 +5361,18 @@ describe('Uploader Control', () => {
             uploadObj.retry();
             uploadObj.upload();
         });
+        it('should cover specific branch coverage - 2', () => {
+            // Setup where (this.filesData.length - fileData.length - 1) exists and statusCode !== '1'
+            uploadObj.filesData = [
+                { name: 'file1.txt', statusCode: '2' }, 
+                { name: 'file2.txt', statusCode: '3' }
+            ];
+            uploadObj.showFileList = false;
+            uploadObj.multiple = false;
+            spyOn(uploadObj, 'upload').and.callFake(function () {});
+            uploadObj.sequenceUpload([{ name: 'test.txt' }]);
+
+        });
     });
     describe('updateInitialFileDetails branch coverage', () => {
         let uploadObj: any;
