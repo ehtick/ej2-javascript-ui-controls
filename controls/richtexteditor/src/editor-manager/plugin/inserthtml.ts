@@ -917,11 +917,6 @@ export class InsertHtml {
                 range.insertNode(inlineFragment);
                 // Restore caret using NodeSelection
                 if (lastChildNode) {
-                    const caretOffset: number =
-                        lastChildNode.nodeType === Node.TEXT_NODE
-                            ? (lastChildNode.textContent ? lastChildNode.textContent.length : 0)
-                            : 1;
-                    nodeSelection.setCursorPoint(docElement, lastChildNode as Element, caretOffset);
                     lastSelectionNode = lastChildNode;
                 }
                 return lastSelectionNode;
@@ -1576,12 +1571,12 @@ export class InsertHtml {
     private static insertTempNode(range: Range, insertedNode: Node, nodes: Node[], nodeCutter: NodeCutter, editNode?: Element): Node {
         let lastSelectionNode: Node = insertedNode.lastChild;
         // Handle insertion after a TABLE when selection is at editor root
-        if (this.shouldInsertAfterTable(range, editNode)) {
+        if (this.shouldInsertAfterTable(range, editNode) && range.collapsed) {
             this.insertNodeAfterTable(range.startContainer, insertedNode, range.endOffset - 1);
             return lastSelectionNode;
         }
         // Handle insertion before a TABLE when selection is at editor root
-        if (this.shouldInsertBeforeTable(range, editNode)) {
+        if (this.shouldInsertBeforeTable(range, editNode) && range.collapsed) {
             this.insertNodeBeforeTable(range.startContainer, insertedNode, range.startOffset);
             return lastSelectionNode;
         }
@@ -1647,7 +1642,7 @@ export class InsertHtml {
         const lastSelectionNode: Node = insertedNode.lastChild;
         // Handle table cell insertion
         if (this.isTableCellNode(blockNode)) {
-            this.insertInTableCell(range, insertedNode, blockNode, nodeCutter);
+            this.insertInTableCell(range, insertedNode, blockNode, nodeCutter, editNode);
             return lastSelectionNode;
         }
         const emptyBlockEle: HTMLElement | null = this.isHorizontalRuleInEmptyBlock(lastSelectionNode, range);
@@ -1668,6 +1663,11 @@ export class InsertHtml {
 
     // Finds appropriate block node for insertion.
     private static findBlockNodeForInsertion(range: Range, nodes: Node[], editNode: Element): Node {
+        // Check if the entire table is selected — if so, use TABLE as the block node directly.
+        const entireTableNode: Node | null = this.getEntireTableSelectionNode(range, editNode);
+        if (!isNOU(entireTableNode)) {
+            return entireTableNode;
+        }
         let blockNode: Node = this.getImmediateBlockNode(nodes[nodes.length - 1], editNode);
         // Fallback to range end container if no block node found
         if ((isNOU(blockNode) || isNOU(blockNode.parentElement)) && range.endContainer.nodeType !== 3) {
@@ -1682,6 +1682,71 @@ export class InsertHtml {
             blockNode = range.startContainer;
         }
         return blockNode;
+    }
+
+    // Checks whether the entire table is covered by the selection range.
+    // Returns the TABLE node when the end is at the last cell's end and start is at first cell or outside.
+    private static getEntireTableSelectionNode(range: Range, editNode: Element): Node | null {
+        const endCell: HTMLElement | null = (range.endContainer.nodeType === Node.TEXT_NODE
+            ? range.endContainer.parentElement as HTMLElement : range.endContainer as HTMLElement).closest('td, th') as HTMLElement;
+        if (isNOU(endCell)) {
+            return null;
+        }
+        const endTable: HTMLElement | null = endCell.closest('table');
+        if (isNOU(endTable) || !editNode.contains(endTable)) {
+            return null;
+        }
+        const allCells: NodeListOf<Element> = endTable.querySelectorAll('td, th');
+        if (allCells.length === 0 || endCell !== allCells[allCells.length - 1]) {
+            return null;
+        }
+        if (!this.isRangeEndAtLastCellEnd(range, endCell)) {
+            return null;
+        }
+        const startCell: HTMLElement | null = (range.startContainer.nodeType === Node.TEXT_NODE
+            ? range.startContainer.parentElement as HTMLElement : range.startContainer as HTMLElement).closest('td, th') as HTMLElement;
+        if (!isNOU(startCell)) {
+            const startTable: HTMLElement | null = startCell.closest('table');
+            if (startTable !== endTable || startCell !== allCells[0]) {
+                return null;
+            }
+        }
+        endTable.classList.add('e-entire-table-selected');
+        return endTable;
+    }
+
+    // Checks if the range's end position is at the absolute end of the last cell's content
+    private static isRangeEndAtLastCellEnd(range: Range, lastCell: HTMLElement): boolean {
+        const { endContainer, endOffset } = range;
+        if (endContainer.nodeType === Node.TEXT_NODE) {
+            return endOffset === (endContainer as Text).length && !this.hasContentAfterNode(endContainer, lastCell);
+        }
+        return endOffset === endContainer.childNodes.length && this.isContainerAtOrAfterLastCell(endContainer, lastCell);
+    }
+
+    // Checks if there is any content after the given node within the boundary cell
+    private static hasContentAfterNode(node: Node, boundaryCell: HTMLElement): boolean {
+        let nextNode: Node | null = node.nextSibling;
+        while (nextNode) {
+            if (nextNode.nodeType === Node.ELEMENT_NODE ||
+                (nextNode.nodeType === Node.TEXT_NODE && nextNode.textContent !== '')) {
+                return true;
+            }
+            nextNode = nextNode.nextSibling;
+        }
+        let parent: Node | null = node.parentNode;
+        while (parent && parent !== boundaryCell) {
+            if (parent.nextSibling) {
+                return true;
+            }
+            parent = parent.parentNode;
+        }
+        return false;
+    }
+
+    // Checks if the container is at or encompasses all remaining content in the last cell
+    private static isContainerAtOrAfterLastCell(container: Node, lastCell: HTMLElement): boolean {
+        return container === lastCell || (lastCell.contains(container as HTMLElement) && !this.hasContentAfterNode(container, lastCell));
     }
 
     // Processes list items in a node being inserted inside a list context.
@@ -1772,7 +1837,8 @@ export class InsertHtml {
     }
 
     // Handles insertion in a table cell.
-    private static insertInTableCell(range: Range, insertedNode: Node, blockNode: Node, nodeCutter: NodeCutter): void {
+    private static insertInTableCell(range: Range, insertedNode: Node, blockNode: Node,
+                                     nodeCutter: NodeCutter, editNode: Element): void {
         let parentElem: Node = range.startContainer;
         // Check if parentElem is TD or TH and contains only a BR element
         if ((parentElem.nodeName === 'TD' || parentElem.nodeName === 'TH') && parentElem.childNodes.length === 1 && parentElem.firstChild.nodeName === 'BR') {
@@ -1782,10 +1848,21 @@ export class InsertHtml {
             return;  // Exit the function after directly replacing
         }
         // Find direct child of the table cell
-        while (!isNOU(parentElem) && parentElem.parentElement !== blockNode) {
+        while (!isNOU(parentElem) && parentElem.parentElement !== blockNode && parentElem !== editNode) {
             parentElem = parentElem.parentElement as Node;
         }
         range.deleteContents();
+        let selectedTable: HTMLElement| null = editNode.querySelector('.e-entire-table-selected');
+        if (selectedTable) {
+            if (parentElem.parentElement === selectedTable) {
+                parentElem = null;
+            }
+            selectedTable.remove();
+            selectedTable = null;
+        }
+        if (parentElem === editNode) {
+            parentElem = parentElem.firstChild;
+        }
         const splitedElm: Node = nodeCutter.GetSpliceNode(range, parentElem as HTMLElement);
         if (splitedElm) {
             splitedElm.parentNode.replaceChild(insertedNode, splitedElm);

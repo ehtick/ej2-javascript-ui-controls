@@ -4393,8 +4393,8 @@ export class TableCellWidget extends BlockWidget {
         if (!isNullOrUndefined(ownerCell)) {
             let isLastCell: boolean = false;
             //Have to check lastcell logic
-            if ((ownerCell.columnIndex + ownerCell.cellFormat.columnSpan) === ownerCell.ownerTable.tableHolder.columns.length
-                || (ownerCell.cellIndex === ownerCell.ownerRow.childWidgets.length - 1)) {
+            if (((ownerCell.columnIndex + ownerCell.cellFormat.columnSpan) === ownerCell.ownerTable.tableHolder.columns.length)
+                || ((ownerCell.cellIndex === ownerCell.ownerRow.childWidgets.length - 1) && ownerCell.ownerRow.rowFormat.gridAfter > 0 && (ownerCell.columnIndex + ownerCell.cellFormat.columnSpan + ownerCell.ownerRow.rowFormat.gridAfter) === ownerCell.ownerTable.tableHolder.columns.length)) {
                 isLastCell = true;
             }
             let isRowBorderDefined: boolean = false;

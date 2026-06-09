@@ -1527,7 +1527,7 @@ export class ColorPicker extends Component<HTMLInputElement> implements INotifyP
             const cValue: string = this.rgbToHex(this.rgb);
             this.triggerChangeEvent(cValue, e);
         }
-        if (!this.inline) {
+        if (!this.inline && this.splitBtn) {
             this.closePopup(e);
             this.splitBtn.element.focus();
         } else if (ele.classList.contains(CANCEL)) {

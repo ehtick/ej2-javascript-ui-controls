@@ -3617,6 +3617,17 @@ describe('Datepicker', () => {
             (<any>document.getElementById("form-element")).reset();
             expect(datepicker.value === null).toBe(true);
         });
+        it('value proeprty coverage', () => {
+            datepicker = new DatePicker({ value: new Date('2/2/2012') });
+            datepicker.appendTo('#date');
+            datepicker.value = new Date('3/2/2012');
+            datepicker.dataBind();
+        });
+        it('getDeviceType coverage', () => {
+            datepicker = new DatePicker({ value: new Date('2/2/2012') });
+            datepicker.appendTo('#date');
+            datepicker.getDeviceType();
+        });
     });
 
     describe('open event customization ', () => {

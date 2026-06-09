@@ -456,12 +456,15 @@
       }
       
       .e-content table {
-        margin-bottom: $rte-content-table-margin-bottom;
         border-collapse: collapse;
         border-spacing: 0;
         empty-cells: show;
 
-        &:not(:first-child):not(table table) {
+        &:not(.e-rte-paste-table) {
+          margin-bottom: $rte-content-table-margin-bottom;
+        }
+
+        &:not(:first-child):not(table table):not(.e-rte-paste-table) {
           margin-top: $rte-content-table-margin-top;
         }
       }

@@ -3349,7 +3349,7 @@ export class DropDownList extends DropDownBase implements IInput {
                     }, 5);
                 }
                 attributes(this.targetElement(), { 'aria-expanded': 'true', 'aria-owns': this.element.id + '_popup', 'aria-controls': this.element.id });
-                if (this.getModuleName() !== 'dropdownlist' && this.list.classList.contains('e-nodata')) {
+                if (this.list.classList.contains('e-nodata')) {
                     attributes(this.targetElement(), { 'aria-activedescendant': 'no-record' });
                     this.popupContentElement.setAttribute('role', 'status');
                     this.popupContentElement.setAttribute('id', 'no-record');
@@ -4506,6 +4506,9 @@ export class DropDownList extends DropDownBase implements IInput {
                 }
                 break;
             case 'value':
+                if (this.isAngular && closest(this.inputElement, 'form') && oldProp.value === newProp.value) {
+                    this.preventChange = true;
+                }
                 if (this.fields.disabled) {
                     newProp.value = newProp.value != null && !this.isDisableItemValue(newProp.value) ? newProp.value : null;
                 }

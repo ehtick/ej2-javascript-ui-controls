@@ -46,6 +46,7 @@ export class ChartRows extends DateProcessor {
     private tagRegex: RegExp = /<\/?(\w+)([^>]*?)(\/?)>/g;
     private attributeRegex: RegExp = /([\w-]+)\s*=\s*"([^"]*)"/g;
     private taskBaselineTemplateNode: NodeList = null;
+    private skipReactRefresh: boolean = false;
     constructor(ganttObj?: Gantt) {
         super(ganttObj);
         this.parent = ganttObj;
@@ -1831,6 +1832,7 @@ export class ChartRows extends DateProcessor {
                     this.parent.chartRowsModule.refreshRecords([collapsedResourceRecord[j as number]]);
                 }
             }
+            this.skipReactRefresh = true;
         }
         this.parent.isGanttChartRendered = true;
         this.parent.renderTemplates();
@@ -2741,7 +2743,7 @@ export class ChartRows extends DateProcessor {
                 items = sortedRecords;
             }
             if (!this.parent.ganttChartModule.isExpandAll && !this.parent.ganttChartModule.isCollapseAll &&
-                !this.parent['isCollapsePerformed'] && !this.parent['isExpandPerformed'] &&
+                !this.parent['isCollapsePerformed'] && !this.parent['isExpandPerformed'] && !this.skipReactRefresh &&
                 this.parent.treeGrid.grid.element.querySelectorAll('.e-templatecell').length > 0 && this.parent.isReact) {
                 this.isGridRowRefreshed = true;
                 this.parent.treeGrid.grid['portals'] = [];

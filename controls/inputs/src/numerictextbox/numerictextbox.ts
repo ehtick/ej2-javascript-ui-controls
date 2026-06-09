@@ -1746,6 +1746,9 @@ export class NumericTextBox extends Component<HTMLInputElement> implements INoti
                 this.floatLabelTypeUpdate();
                 break;
             case 'value':
+                if (this.isAngular && this.formEle && oldProp.value === newProp.value) {
+                    this.preventChange = true;
+                }
                 this.isDynamicChange = (this.isAngular || this.isVue) && this.preventChange;
                 this.updateValue(newProp.value);
                 if (this.isDynamicChange) {

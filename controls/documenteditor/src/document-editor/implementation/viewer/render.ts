@@ -1357,7 +1357,7 @@ private calculatePathBounds(data: string): Rect {
             this.renderTableRowWidget(page, widget);
 
             if (tableWidget.tableFormat.cellSpacing > 0) {
-                this.renderTableOutline(tableWidget);
+                this.renderTableOutline(page, tableWidget);
             }
             if((widget as TableRowWidget).isRenderBookmarkEnd && this.documentHelper.owner.documentEditorSettings.showBookmarks){
                 let cellWidget: TableCellWidget = widget.lastChild as TableCellWidget;
@@ -1663,7 +1663,7 @@ private calculatePathBounds(data: string): Rect {
     }
     private validateRemoveSearchHighlighters(page: Page): void {
         let keys: LineWidget[] = page.documentHelper.owner.searchModule.searchHighlighters.keys;
-        for (let j: number = 0; j < keys.length; j++) {
+        for (let j: number = keys.length - 1; j >= 0; j--) {
             let selectedWidget: IWidget = keys[j];
             if (selectedWidget instanceof LineWidget && !isNullOrUndefined(selectedWidget.paragraph) &&
             !isNullOrUndefined(selectedWidget.paragraph.containerWidget) ) {
@@ -3231,37 +3231,56 @@ private calculatePathBounds(data: string): Rect {
         }
     }
 
-    private renderTableOutline(tableWidget: TableWidget): void {
+    private renderTableOutline(page: Page, tableWidget: TableWidget): void {
         let layout: Layout = new Layout(this.documentHelper);
         let table: TableWidget = tableWidget;
         tableWidget.width = this.documentHelper.layout.getTableWidth(table);
-        let border: WBorder = !table.isBidiTable ? layout.getTableLeftBorder(table.tableFormat.borders)
-            : layout.getTableRightBorder(table.tableFormat.borders);
+        let borderValue: WBorders = table.tableFormat.isRTFTable ? (table.firstChild as TableRowWidget).rowFormat.borders : table.tableFormat.borders;
+        let border: WBorder = !table.isBidiTable ? layout.getTableLeftBorder(borderValue)
+            : layout.getTableRightBorder(borderValue);
 
         let lineWidth: number = 0;
         //ToDo: Need to draw the borders based on the line style.
         // if (!isNullOrUndefined(border )) {
         lineWidth = HelperMethods.convertPointToPixel(border.getLineWidth());
 
-        this.renderSingleBorder(border.color, tableWidget.x - tableWidget.margin.left - lineWidth / 2, tableWidget.y, tableWidget.x - tableWidget.margin.left - lineWidth / 2, tableWidget.y + tableWidget.height, lineWidth, border.lineStyle);
+        let repeatedHeaderHeight = 0;
+        let bodyWidget;
+        if (table.containerWidget instanceof BodyWidget) {
+            bodyWidget = table.containerWidget;
+        }
+        if (bodyWidget && bodyWidget.firstChild === tableWidget && ((bodyWidget.childWidgets[0] as TableWidget).childWidgets.length > 0) && page.repeatHeaderRowTableWidget) {
+            let headerRow = this.documentHelper.layout.getHeader((bodyWidget.childWidgets[0] as TableWidget));
+            while (headerRow) {
+                if (headerRow.rowFormat.isHeader) {
+                    repeatedHeaderHeight += headerRow.height;
+                }
+                else {
+                    break;
+                }
+                headerRow = headerRow.previousWidget as TableRowWidget;
+            }
+        }
+
+        this.renderSingleBorder(border.color, tableWidget.x - tableWidget.margin.left - lineWidth / 2, tableWidget.y - repeatedHeaderHeight, tableWidget.x - tableWidget.margin.left - lineWidth / 2, tableWidget.y + tableWidget.height, lineWidth, border.lineStyle);
         // }
 
-        border = layout.getTableTopBorder(table.tableFormat.borders);
+        border = layout.getTableTopBorder(borderValue);
         lineWidth = 0;
         // if (!isNullOrUndefined(border )) {
         lineWidth = HelperMethods.convertPointToPixel(border.getLineWidth());
 
-        this.renderSingleBorder(border.color, tableWidget.x - tableWidget.margin.left - lineWidth, tableWidget.y - lineWidth / 2, tableWidget.x + tableWidget.width + lineWidth + tableWidget.margin.right, tableWidget.y - lineWidth / 2, lineWidth, border.lineStyle);
+        this.renderSingleBorder(border.color, tableWidget.x - tableWidget.margin.left - lineWidth, tableWidget.y - lineWidth / 2 - repeatedHeaderHeight, tableWidget.x + tableWidget.width + lineWidth + tableWidget.margin.right, tableWidget.y - lineWidth / 2 - repeatedHeaderHeight, lineWidth, border.lineStyle);
         // }
-        border = !table.isBidiTable ? layout.getTableRightBorder(table.tableFormat.borders)
-            : layout.getTableLeftBorder(table.tableFormat.borders);
+        border = !table.isBidiTable ? layout.getTableRightBorder(borderValue)
+            : layout.getTableLeftBorder(borderValue);
         lineWidth = 0;
         // if (!isNullOrUndefined(border )) {
         lineWidth = HelperMethods.convertPointToPixel(border.getLineWidth());
 
-        this.renderSingleBorder(border.color, tableWidget.x + tableWidget.width + tableWidget.margin.right + lineWidth / 2, tableWidget.y, tableWidget.x + tableWidget.width + tableWidget.margin.right + lineWidth / 2, tableWidget.y + tableWidget.height, lineWidth, border.lineStyle);
+        this.renderSingleBorder(border.color, tableWidget.x + tableWidget.width + tableWidget.margin.right + lineWidth / 2, tableWidget.y - repeatedHeaderHeight, tableWidget.x + tableWidget.width + tableWidget.margin.right + lineWidth / 2, tableWidget.y + tableWidget.height, lineWidth, border.lineStyle);
         // }
-        border = layout.getTableBottomBorder(table.tableFormat.borders);
+        border = layout.getTableBottomBorder(borderValue);
         lineWidth = 0;
         // if (!isNullOrUndefined(border )) {
         lineWidth = HelperMethods.convertPointToPixel(border.getLineWidth());

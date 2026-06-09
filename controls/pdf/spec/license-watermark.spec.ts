@@ -8,7 +8,7 @@ import { PdfDocument, PdfMargins, PdfPageSettings } from './../src/pdf/core/pdf-
 import { PdfDestination, PdfPage } from './../src/pdf/core/pdf-page';
 import { _PdfDictionary, _PdfName, _PdfReference } from './../src/pdf/core/pdf-primitives';
 import { _PdfFlateStream } from './../src/pdf/core/flate-stream';
-import { _PdfStream } from './../src/pdf/core/base-stream';
+import { _PdfStream, _PdfContentStream } from './../src/pdf/core/base-stream';
 import { PdfStandardFont } from './../src/pdf/core/fonts/pdf-standard-font';
 import { PdfStringFormat } from '../src/pdf/core/fonts/pdf-string-format';
 import { _stringToBytes } from "./../src/pdf/core/utils";
@@ -2731,4 +2731,52 @@ describe('PdfPageSettings - parameterized', () => {
             parsed.destroy();
         });
     }
+});
+describe('Add watermark to specific PDF document', () => {
+    it('1011332 - Pdf fetch return type _PdfStream', () => {
+        const document = new PdfDocument();
+        const page = document.addPage();
+        const resourceDictionary = new _PdfDictionary();
+        const resourceStream = new _PdfStream([], resourceDictionary);
+        const xref = document._crossReference;
+        const resourceRef = xref._getNextReference();
+        xref._cacheMap.set(resourceRef, resourceStream);
+        page._pageDictionary.update('Resources', resourceRef);
+        const contentBytes = [48, 32, 115];
+        const contentStream = new _PdfContentStream(contentBytes);
+        const graphics = new PdfGraphics(
+            page.size,
+            contentStream,
+            xref,
+            page
+        );
+        const resources = (graphics as any)._resourceObject;
+        expect(resources).toBeDefined();
+        expect(resources instanceof _PdfDictionary).toBeTruthy();
+        expect(resources instanceof _PdfStream).toBeFalsy();
+        document.destroy();
+    });
+    it('1011332 - Pdf fetch return type _PdfDictionary', () => {
+        const document = new PdfDocument();
+        const page = document.addPage();
+        const resourceDictionary = new _PdfDictionary();
+        const xref = document._crossReference;
+        const resourceRef = xref._getNextReference();
+        xref._cacheMap.set(resourceRef, resourceDictionary);
+        page._pageDictionary.update('Resources', resourceRef);
+        const contentBytes = [48, 32, 115];
+        const contentStream = new _PdfContentStream(contentBytes);
+        const graphics = new PdfGraphics(
+            page.size,
+            contentStream,
+            xref,
+            page
+        );
+        const resources = (graphics as any)._resourceObject;
+        expect(resources).toBeDefined();
+        expect(resources instanceof _PdfDictionary).toBeTruthy();
+        expect(resources instanceof _PdfStream).toBeFalsy();
+        expect(resources).toBe(resourceDictionary);
+        document.destroy();
+    });
 });

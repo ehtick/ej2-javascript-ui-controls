@@ -2,7 +2,15 @@
 
 ## [Unreleased]
 
-## 33.2.10 (2026-06-02)
+## 33.2.12 (2026-06-09)
+
+### DataManager
+
+#### Bug Fixes
+
+- `FB74307` - Resolved an issue where changing the page size did not trigger a server request when `enableCaching` was enabled in the `DataManager`.
+
+## 33.2.5 (2026-05-05)
 
 ### DataManager
 

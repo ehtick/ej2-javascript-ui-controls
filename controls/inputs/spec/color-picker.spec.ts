@@ -843,12 +843,13 @@ describe('ColorPicker', () => {
     });
 
     describe('Public events', () => {
+        let isDestroy: boolean;
         beforeEach((): void => {
             document.body.appendChild(element);
         });
 
         afterEach(() => {
-            colorPicker.destroy();
+            !isDestroy ? colorPicker.destroy() : (isDestroy = false);
             document.body.innerHTML = '';
         });
 
@@ -895,7 +896,20 @@ describe('ColorPicker', () => {
             // Applying the newly selected tile color.
             (colorPicker.container.querySelector('.e-apply') as HTMLElement).click();
         });
-
+        it('Should not throw error when destroy is called in change event handler', () => {
+            isDestroy = true;
+            colorPicker = new ColorPicker(
+                {
+                    mode: 'Palette',
+                    change: (args: ColorPickerEventArgs) => {
+                        colorPicker.destroy();
+                    }
+                },
+                '#color-picker');
+            colorPicker.toggle();
+            (colorPicker.container.querySelectorAll('.e-row')[0].children[3] as HTMLElement).click();
+            (colorPicker.container.querySelector('.e-apply') as HTMLElement).click();
+        });
         it('change event testing without control buttons', () => {
             colorPicker = new ColorPicker(
                 {

@@ -1,6 +1,6 @@
 import { PdfPage } from './../pdf-page';
 import { _PdfStreamWriter } from './pdf-stream-writer';
-import { _PdfBaseStream, _PdfContentStream } from './../base-stream';
+import { _PdfBaseStream, _PdfContentStream, _PdfStream } from './../base-stream';
 import { _floatToString, _addProcSet, _reverseMapBlendMode, _mapBlendMode, _getNewGuidString, _getBezierArc, _numberToString, _bytesToString, _stringToUnicodeArray, _isNullOrUndefined } from './../utils';
 import { _PdfDictionary, _PdfReference, _PdfName } from './../pdf-primitives';
 import { _PdfCrossReference } from './../pdf-cross-reference';
@@ -356,6 +356,9 @@ export class PdfGraphics {
             if (obj && obj instanceof _PdfReference) {
                 this._hasResourceReference = true;
                 this._resourceObject = xref._fetch(obj);
+                if (this._resourceObject && this._resourceObject instanceof _PdfStream) {
+                    this._resourceObject = this._resourceObject.dictionary;
+                }
             } else if (obj && obj instanceof _PdfDictionary) {
                 this._resourceObject = obj;
             } else {

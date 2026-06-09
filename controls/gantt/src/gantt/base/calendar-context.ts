@@ -9,6 +9,8 @@ export class CalendarContext {
     protected parent: Gantt;
     private calendar: ProjectCalendarModel;
     public defaultHolidays: number[] = [];
+    public sortedDefaultHolidays: number[] = [];
+    private exceptionDateSet: Set<number> = new Set<number>();
     public exceptionsRanges: {
         id: string;
         from: Date;
@@ -49,6 +51,7 @@ export class CalendarContext {
                 }
             }
         }
+        this.sortedDefaultHolidays = this.defaultHolidays.slice().sort((a: number, b: number) => a - b);
     }
     private buildExceptionsCollection(): void {
         const overrides: CalendarExceptionModel[] = this.calendar.exceptions;
@@ -62,6 +65,9 @@ export class CalendarContext {
                 from: fromDate,
                 to: toDate
             });
+            for (let d: Date = new Date(fromDate); d <= toDate; d.setDate(d.getDate() + 1)) {
+                this.exceptionDateSet.add(new Date(d).setHours(0, 0, 0, 0));
+            }
         }
     }
     /**
@@ -71,17 +77,7 @@ export class CalendarContext {
      * @public
      */
     public getExceptionForDate(date: Date): boolean {
-        const target: Date = new Date(date.getTime());
-        target.setHours(0, 0, 0, 0);
-        for (const range of this.exceptionsRanges) {
-            const from: Date = new Date(range.from);
-            const to: Date = new Date(range.to);
-            from.setHours(0, 0, 0, 0);
-            to.setHours(0, 0, 0, 0);
-            if (target >= from && target <= to) {
-                return true;
-            }
-        }
-        return false;
+        const timestamp: number = new Date(date.getTime()).setHours(0, 0, 0, 0);
+        return this.exceptionDateSet.has(timestamp);
     }
 }

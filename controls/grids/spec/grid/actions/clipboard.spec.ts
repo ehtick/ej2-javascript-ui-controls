@@ -602,3 +602,112 @@ describe('EJ2-1011563: Accessibility warning throws due to textarea used for Cli
         gridObj = null;
     });
 });
+
+describe('EJ2-1030705: Not able to copy to clipboard when virtualization is enabled => ', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: filterData,
+                enableVirtualization: true,
+                height: 200,
+                allowSelection: true,
+                selectionSettings: { type: 'Multiple', mode: 'Row' },
+                columns: [
+                    { field: 'OrderID', headerText: 'Order ID', width: 120, },
+                    { field: 'CustomerID', headerText: 'Customer Name', width: 150 },
+                    { field: 'OrderDate', headerText: 'Order Date', width: 130, format: 'yMd' },
+                    { field: 'Freight', width: 120, format: 'C2' }
+                ]
+            }, done);
+    });
+
+    it('should check whether the row is copied correctly', () => {
+        gridObj.selectRows([1]);
+        gridObj.copy(true);
+        const clipboardValue = (document.querySelector('.e-clipboard') as HTMLInputElement).value;
+        expect(clipboardValue).toBeTruthy();
+        expect(clipboardValue).toContain('TOMSP');
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Coverage Improvement - Empty String Branch in setCopyData (ariaRowIndex) => ', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: filterData,
+                enableVirtualization: true,
+                height: 300,
+                allowSelection: true,
+                selectionSettings: { type: 'Multiple', mode: 'Row' },
+                columns: [
+                    { field: 'OrderID', headerText: 'Order ID', width: 120 },
+                    { field: 'CustomerID', headerText: 'Customer Name', width: 150 },
+                    { field: 'OrderDate', headerText: 'Order Date', width: 130, format: 'yMd' },
+                    { field: 'Freight', width: 120, format: 'C2' }
+                ]
+            }, done);
+    });
+
+    it('should handle empty string when ariaRowIndex is undefined', () => {
+        gridObj.selectRows([5, 10, 15]);
+        const rows: HTMLElement[] = [].slice.call(gridObj.getContent().querySelectorAll('.e-row'));
+        if (rows.length > 0) {
+            const rowElement: HTMLElement = rows[0];
+            const originalAriaRowIndex = rowElement.getAttribute('aria-rowindex');
+            rowElement.removeAttribute('aria-rowindex');
+            gridObj.copy(true);
+            if (originalAriaRowIndex) {
+                rowElement.setAttribute('aria-rowindex', originalAriaRowIndex);
+            }
+        }
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Coverage Improvement - Virtualization with selectedIndexes > rows.length => ', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: filterData,
+                enableVirtualization: true,
+                height: 250,
+                allowSelection: true,
+                selectionSettings: { type: 'Multiple', mode: 'Row', persistSelection: true },
+                columns: [
+                    { field: 'OrderID', headerText: 'Order ID', width: 120, textAlign: 'Right' },
+                    { field: 'CustomerID', headerText: 'Customer Name', width: 150 },
+                    { field: 'OrderDate', headerText: 'Order Date', width: 130, format: 'yMd', textAlign: 'Right' },
+                    { field: 'Freight', width: 120, format: 'C2', textAlign: 'Right' }
+                ]
+            }, done);
+    });
+
+    it('should enter if block when enableVirtualization=true AND selectedIndexes.length > rows.length - Coverage: Line 242', () => {
+        const largeSelection: number[] = [];
+        for (let i: number = 0; i < 50; i += 2) {
+            largeSelection.push(i);
+        }
+        gridObj.selectRows(largeSelection);
+        const rows: HTMLElement[] = [].slice.call(gridObj.getContent().querySelectorAll('.e-row'));
+        gridObj.selectionModule.selectedRowIndexes = largeSelection;
+        expect(gridObj.getSelectedRowIndexes().length).toBeGreaterThan(rows.length);
+        gridObj.copy(true);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});

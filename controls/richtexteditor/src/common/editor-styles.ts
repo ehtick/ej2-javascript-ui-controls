@@ -214,10 +214,13 @@ hr.e-rte-hr-focus {
 }
 
 .e-content table {
-    margin-bottom: 10px;
     border-collapse: collapse;
     border-spacing: 0;
     empty-cells: show;
+
+    &:not(.e-rte-paste-table) {
+        margin-bottom: 10px;
+    }
 }
 
 .e-content table.e-cell-select {

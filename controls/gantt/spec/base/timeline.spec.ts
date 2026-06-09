@@ -5763,3 +5763,137 @@ describe('Gantt with viewStart is set auto and project start date is defined' , 
         }
     });
 });
+describe('CR-1028185: Dependency line and milestone not visible when taskbar renders near splitter', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+        {
+            dataSource: [
+                {   
+                    TaskID: 1, 
+                    TaskName: "Planning and Permits", 
+                    Duration: 7, 
+                    Progress: 100
+                },
+                { 
+                    TaskID: 2, 
+                    TaskName: "Site Evaluation", 
+                    Duration: 2, 
+                    Progress: 100, 
+                    Predecessor: "1SS"
+                },
+                { 
+                    TaskID: 3, 
+                    TaskName: "Site Evaluation", 
+                    Duration: 0, 
+                    Progress: 100
+                }
+            ],
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                endDate: 'EndDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor'
+            },
+            editSettings: {
+                allowAdding: true,
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            height: '550px',
+            timelineSettings: {
+                topTier: {
+                    unit: 'Week',
+                    format: 'MMM dd, y',
+                },
+                bottomTier: {
+                    unit: 'Day'
+                }
+            },
+            allowUnscheduledTasks: true,
+            includeWeekend: true,
+        }, done);
+    });
+    it('Comparing timeline Start date and clone timeline start date- Unscheduled case', () => {
+        expect(ganttObj.getFormatedDate(ganttObj.timelineModule.timelineStartDate, 'MM/dd/yyyy')).not.toBe(ganttObj.getFormatedDate(ganttObj.cloneTimelineStartDate, 'MM/dd/yyyy'));
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('CR-1028185: Dependency line and milestone not visible when taskbar renders near splitter-Root level milestone', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+        {
+            dataSource: [
+                { 
+                    TaskID: 1, 
+                    TaskName: "Planning and Permits", 
+                    StartDate: new Date("03/31/2025"), 
+                    EndDate: new Date("03/31/2025"), 
+                    Duration: 7, 
+                    Progress: 100,  
+                },
+                { 
+                    TaskID: 2, 
+                    TaskName: "Site Evaluation", 
+                    Duration: 2, 
+                    Progress: 100, 
+                    Predecessor: "1SS",
+                    ParentId:1
+                },
+                { 
+                    TaskID: 3, 
+                    TaskName: "Site Evaluation", 
+                    Duration: 0, 
+                    Progress: 100,
+                }
+            ],
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                endDate: 'EndDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor'
+            },
+            editSettings: {
+                allowAdding: true,
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            height: '550px',
+            timelineSettings: {
+                topTier: {
+                    unit: 'Week',
+                    format: 'MMM dd, y',
+                },
+                bottomTier: {
+                    unit: 'Day'
+                }
+            },
+            allowUnscheduledTasks: true,
+            includeWeekend: true,
+        }, done);
+    });
+    it('Comparing timeline Start date and clone timeline start date for root milestone task-partial unscheduled case', () => {
+        expect(ganttObj.getFormatedDate(ganttObj.cloneTimelineStartDate, 'MM/dd/yyyy')).toBe("03/30/2025");
+        expect(ganttObj.getFormatedDate(ganttObj.timelineModule.timelineStartDate, 'MM/dd/yyyy')).not.toBe(ganttObj.getFormatedDate(ganttObj.cloneTimelineStartDate, 'MM/dd/yyyy'));
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});

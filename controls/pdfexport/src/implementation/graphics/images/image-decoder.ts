@@ -217,7 +217,7 @@ export class ImageDecoder {
      * @private
      */
     public get imageDataAsNumberArray() : ArrayBuffer {
-        return this.mImageData.internalBuffer.buffer;
+        return this.mImageData.internalBuffer.buffer as ArrayBuffer;
     }
     /**
      * `Initialize` image data and image stream.

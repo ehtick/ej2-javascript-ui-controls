@@ -223,7 +223,10 @@ export class Clipboard implements IAction {
                         for (let i: number = 0; i < rows.length; i++) {
                             const row: Element = rows[parseInt(i.toString(), 10)] as HTMLTableRowElement;
                             if (row.getAttribute('aria-selected') === 'true') {
-                                selectedIndexes.push(parseInt(row.getAttribute('data-rowindex'), 10));
+                                const ariaRowIndex: string = row.getAttribute('aria-rowindex');
+                                if (ariaRowIndex) {
+                                    selectedIndexes.push(parseInt(ariaRowIndex, 10) - 1);
+                                }
                             }
                         }
                     }
@@ -236,8 +239,10 @@ export class Clipboard implements IAction {
                         if (!isGroupAdaptive(this.parent) && (this.parent.enableVirtualization ||
                             (this.parent.enableInfiniteScrolling && this.parent.infiniteScrollSettings.enableCache) ||
                             (this.parent.groupSettings.columns.length && this.parent.groupSettings.enableLazyLoading))) {
-                            idx = rows.map((m: Element) => m.getAttribute('data-rowindex')).indexOf(
-                                selectedIndexes[parseInt(i.toString(), 10)].toString());
+                            idx = rows.map((m: Element) => {
+                                const ariaRowIndex: string = m.getAttribute('aria-rowindex');
+                                return ariaRowIndex ? (parseInt(ariaRowIndex, 10) - 1).toString() : '';
+                            }).indexOf(selectedIndexes[parseInt(i.toString(), 10)].toString());
                         }
                         const currentRow: Element = rows[parseInt(idx.toString(), 10)];
                         if (!(isNullOrUndefined(currentRow))) {

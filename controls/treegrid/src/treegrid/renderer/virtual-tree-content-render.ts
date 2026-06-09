@@ -738,6 +738,10 @@ export class VirtualTreeContentRenderer extends VirtualContentRenderer {
             this.parent.root.scrollPosition = scrollArgs.offset;
         }
         const info: SentinelType = scrollArgs.sentinel;
+        let treeGridParent: any = null;
+        if (this.parent.clipboardModule && this.parent.clipboardModule['treeGridParent']) {
+            treeGridParent = this.parent.clipboardModule['treeGridParent'];
+        }
         const rowHeight: number = parseInt(this.parent.getRowHeight().toString(), 10);
         const outBuffer: number = this.parent.pageSettings.pageSize - Math.ceil(this.parent.pageSettings.pageSize / 2);
         let content: HTMLElement;
@@ -814,8 +818,8 @@ export class VirtualTreeContentRenderer extends VirtualContentRenderer {
         } else if (downScroll && (scrollArgs.direction !== 'right' && scrollArgs.direction !== 'left') && !isNullOrUndefined(content)) {
             let nextSetResIndex: number = ~~(content.scrollTop / rowHeight);
             const isLastBlock: boolean = (this[`${selectedRowIndex}`] + this.parent.pageSettings.pageSize) < this.totalRecords ? false : true;
-            if (!isNullOrUndefined(this[`${selectedRowIndex}`]) && this[`${selectedRowIndex}`] !== -1 &&
-             nextSetResIndex !== this[`${selectedRowIndex}`] && !isLastBlock && !this.parent.allowRowDragAndDrop) {
+            if (treeGridParent !== null && treeGridParent.isGantt && !isNullOrUndefined(this[`${selectedRowIndex}`]) && this[`${selectedRowIndex}`] !== -1 &&
+                nextSetResIndex !== this[`${selectedRowIndex}`] && !isLastBlock && !this.parent.allowRowDragAndDrop) {
                 nextSetResIndex = this[`${selectedRowIndex}`];
             }
             let lastIndex: number = nextSetResIndex + this.parent.pageSettings.pageSize;
@@ -925,6 +929,15 @@ export class VirtualTreeContentRenderer extends VirtualContentRenderer {
      * @returns {void}
      */
     public appendContent(target: HTMLElement, newChild: DocumentFragment, e: NotifyArgs) : void {
+        let treeGridParent: any = null;
+        if (this.parent.clipboardModule && this.parent.clipboardModule['treeGridParent']) {
+            treeGridParent = this.parent.clipboardModule['treeGridParent'];
+        }
+        const totalBlocks: number = this.getTotalBlocks();
+        const lastPage: number = Math.ceil(totalBlocks / 2);
+        const isBottom: boolean = (this.parent.pageSettings.currentPage === lastPage) &&
+            (treeGridParent && treeGridParent.flatData &&
+                treeGridParent.flatData.length === (e as any).index + 1);
         if ((this.parent.dataSource instanceof DataManager && (this.parent.dataSource as DataManager).dataSource.url !== undefined
         && !(this.parent.dataSource as DataManager).dataSource.offline && (this.parent.dataSource as DataManager).dataSource.url !== '') || isCountRequired(this.parent)
         || (this.parent.isFrozenGrid() && (e.requestType === undefined || !isNullOrUndefined(e.virtualInfo) && (e.virtualInfo.direction === 'right' || e.virtualInfo.direction === 'left' )))) {
@@ -1003,6 +1016,14 @@ export class VirtualTreeContentRenderer extends VirtualContentRenderer {
                         this.parent.isEdit = false;
                     }
                 }
+            }
+            if ((treeGridParent !== null && !treeGridParent.isGantt) && e.action === 'add' && isBottom) {
+                const rowHeight: number = this.parent.getRowHeight();
+                const pageSize: number = this.parent.pageSettings.pageSize;
+                const newTranslateY: number = (this.totalRecords * rowHeight) - (pageSize * rowHeight);
+                this.translateY = newTranslateY > 0 ? newTranslateY : this.translateY;
+                this.virtualEle.adjustTable(cOffset, this.translateY);
+                this.content.scrollTop = this.translateY;
             }
             this.restoreEditState();
             super[`${restoreAdd}`]();

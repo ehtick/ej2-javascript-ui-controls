@@ -2912,6 +2912,9 @@ export class TimePicker extends Component<HTMLElement> implements IInput {
                 }
                 break;
             case 'value':
+                if (this.isAngular && this.formElement && oldProp.value === newProp.value) {
+                    this.preventChange = true;
+                }
                 this.invalidValueString = null;
                 this.checkInvalidValue(newProp.value);
                 newProp.value = this.value;

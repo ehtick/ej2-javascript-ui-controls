@@ -2428,6 +2428,9 @@ export class DatePicker extends Calendar implements IInput {
             }
             switch (prop) {
             case 'value':
+                if (this.isAngular && this.formElement && oldProp.value === newProp.value) {
+                    this.preventChange = true;
+                }
                 this.isDynamicValueChanged = true;
                 this.isInteracted = false;
                 this.invalidValueString = null;

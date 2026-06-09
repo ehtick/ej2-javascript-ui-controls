@@ -609,6 +609,29 @@ describe('Chart Control', () => {
             chartObj.series[0].marker.dataLabel.position = 'Middle';
             chartObj.refresh();
         });
+        it('Bubble - data label should render above trackball on hover', (done: Function) => {
+            loaded = (args: Object): void => {
+                let chartArea: HTMLElement = document.getElementById('container_ChartAreaBorder');
+                targetElement = document.getElementById('container_Series_0_Point_1');
+                let series: Series = <Series>chartObj.series[0];
+                let point: Points = series.points[1];
+                let y = series.points[1].regions[0].y + series.points[6].regions[0].height / 2 + parseFloat(chartArea.getAttribute('y')) +
+                    elem.offsetTop;
+                let x = series.points[1].regions[0].x + parseFloat(chartArea.getAttribute('x')) + elem.offsetLeft;
+                trigger.mousemovetEvent(targetElement, Math.ceil(x), Math.ceil(y));
+                let tempTrackballLabel: HTMLElement = document.getElementById('container_Series_0_Point_1_TrackballDataLabel');
+                expect(tempTrackballLabel).not.toBeNull();
+                let clonedshape: HTMLElement = document.getElementById('container_Series_0_Point_1_TextShape_0_Trackball');
+                expect(clonedshape).not.toBeNull();
+                let clonedText: HTMLElement = document.getElementById('container_Series_0_Point_1_Text_0_Trackball');
+                expect(clonedText).not.toBeNull();
+                done();
+            };
+            chartObj.loaded = loaded;
+            chartObj.series[0].marker.dataLabel.position = 'Middle';
+            chartObj.series[0].marker.dataLabel.border = { width : 2 };
+            chartObj.refresh();
+        });
         it('Checking with track ball', (done: Function) => {
             loaded = (args: Object): void => {
                 targetElement = document.getElementById('container_Series_0_Point_6');

@@ -4303,6 +4303,7 @@ export class Gantt extends Component<HTMLElement>
         removeClass([this.element], cls.root);
         this.element.innerHTML = '';
         this.isTreeGridRendered = false;
+        this.dataOperation['isHavingUnscheduledTaskOnLoad'] = false;
         this.resetTemplates();
         this.dataOperation['uid'] = null;
     }

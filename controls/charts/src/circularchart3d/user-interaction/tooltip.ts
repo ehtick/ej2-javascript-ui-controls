@@ -206,9 +206,16 @@ export class CircularChartTooltip3D extends ChildProperty<CircularChartTooltip3D
     /**
      * Handles the mouse leave event for the circular 3D chart.
      *
+     * @param {CircularChart3D} chart - The circular 3D chart instance.
      * @returns {void}
      */
-    public mouseLeaveHandler(): void {
+    public mouseLeaveHandler(chart: CircularChart3D): void {
+        this.control = chart;
+        this.element = chart.element;
+        if (!this.control.tooltip) {
+            this.tooltipRendered = false;
+            return;
+        }
         this.removeTooltip(this.control.tooltip.fadeOutDuration);
     }
 

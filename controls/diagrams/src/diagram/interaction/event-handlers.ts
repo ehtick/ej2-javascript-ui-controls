@@ -1740,8 +1740,10 @@ export class DiagramEventHandler {
                 // Detect trackpad vs mouse wheel for Ctrl+scroll zoom
                 const normalizedDeltaY: number = evt.deltaY !== undefined ? evt.deltaY : 0;
                 const isTrackpadZoom: boolean = evt.isTrusted && Math.abs(normalizedDeltaY) < 95;
+                //1031154-Mozilla Firefox CTRL + Mouse Wheel Zoom Performance
+                const isFireFox: boolean = navigator.userAgent.toLowerCase().includes('firefox');
                 // Use zoomfactor/6 for trackpad for more linear zooming action.
-                const zoomFactor: number = isTrackpadZoom ? (this.diagram.scrollSettings.zoomFactor / 6)
+                const zoomFactor: number = (isTrackpadZoom && !isFireFox) ? (this.diagram.scrollSettings.zoomFactor / 6)
                     : this.diagram.scrollSettings.zoomFactor;
                 if (up) {
                     this.diagram.zoomTo({ type: 'ZoomIn', zoomFactor: zoomFactor, focusPoint: mousePosition });

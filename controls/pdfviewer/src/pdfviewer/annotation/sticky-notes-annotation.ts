@@ -1873,7 +1873,9 @@ export class StickyNotesAnnotation {
             statusSpan.className = 'e-pv-rejected-icon';
         } else {
             statusSpan.className = '';
-            statusContainer.parentElement.removeChild(statusContainer);
+            if (statusContainer && statusContainer.parentElement) {
+                statusContainer.parentElement.removeChild(statusContainer);
+            }
         }
     }
 
@@ -3274,6 +3276,29 @@ export class StickyNotesAnnotation {
                         activeDiv.firstChild.lastChild.remove();
                     }
                 }
+                const stateValue: string = undoAnnotation.state || (undoAnnotation.review && undoAnnotation.review.state) || null;
+                if (stateValue && stateValue !== 'None') {
+                    const statusContainer: HTMLElement = createElement('div', { id: this.pdfViewer.element.id + 'status' + '_container', className: 'e-pv-status-container' });
+                    const statusDiv: HTMLElement = createElement('div', { id: this.pdfViewer.element.id + 'status' + '_div', className: 'e-pv-status-div' });
+                    const statusSpan: HTMLElement = createElement('span', { id: this.pdfViewer.element.id + 'status' + '_icon' });
+                    statusDiv.appendChild(statusSpan);
+                    statusContainer.appendChild(statusDiv);
+                    if (annotation.annotName === undoAnnotation.annotName) {
+                        const isReply: boolean = !!activeDiv.closest('.e-pv-reply, .e-pv-replies-container, .e-pv-reply-div, .e-pv-reply-item');
+                        statusContainer.style.marginLeft = isReply ? '0px' : '22px';
+                        this.updateStatusContainer(stateValue, statusSpan, statusDiv, statusContainer);
+                        activeDiv.firstChild.appendChild(statusContainer);
+                    } else {
+                        for (let i: number = 0; i < annotation.comments.length; i++) {
+                            if (annotation.comments[parseInt(i.toString(), 10)].annotName === undoAnnotation.annotName) {
+                                this.updateStatusContainer(stateValue, statusSpan, statusDiv, statusContainer);
+                                const statusElement: HTMLElement = document.getElementById(undoAnnotation.annotName);
+                                statusElement.appendChild(statusContainer);
+                                break;
+                            }
+                        }
+                    }
+                }
                 this.updateUndoRedoCollections(annotation, pageIndex);
                 return clonedAnnotationObject;
             }
@@ -3344,19 +3369,25 @@ export class StickyNotesAnnotation {
                     pageIndex = pageNumber - 1;
                 }
                 if (annotation.annotName === poppedItem.annotName) {
-                    this.updateStatusContainer(annotation.state, statusSpan, statusDiv, statusContainer);
+                    const stateValue: string = annotation.state || (annotation.review && annotation.review.state) || null;
                     for (let i: number = 0; i < activeDiv.firstChild.children.length; i++) {
                         if (activeDiv.firstChild.children[parseInt(i.toString(), 10)].id === this.pdfViewer.element.id + 'status_container') {
                             activeDiv.firstChild.children[parseInt(i.toString(), 10)].parentElement.
                                 removeChild(activeDiv.firstChild.children[parseInt(i.toString(), 10)]);
                         }
                     }
-                    activeDiv.firstChild.appendChild(statusContainer);
+                    if (stateValue && stateValue !== 'None') {
+                        const isReply: boolean = !!activeDiv.closest('.e-pv-reply, .e-pv-replies-container, .e-pv-reply-div, .e-pv-reply-item');
+                        statusContainer.style.marginLeft = isReply ? '0px' : '22px';
+                        this.updateStatusContainer(stateValue, statusSpan, statusDiv, statusContainer);
+                        activeDiv.firstChild.appendChild(statusContainer);
+                    }
                 } else {
                     for (let i: number = 0; i < annotation.comments.length; i++) {
                         if (annotation.comments[parseInt(i.toString(), 10)].annotName === poppedItem.annotName) {
-                            this.updateStatusContainer(annotation.comments[parseInt(i.toString(), 10)].state,
-                                                       statusSpan, statusDiv, statusContainer);
+                            const commentStateValue: string = annotation.comments[parseInt(i.toString(), 10)].state ||
+                            (annotation.comments[parseInt(i.toString(), 10)].review &&
+                            annotation.comments[parseInt(i.toString(), 10)].review.state) || null;
                             const statusElement: HTMLElement = document.getElementById(poppedItem.annotName);
                             for (let i: number = 0; i < statusElement.children.length; i++) {
                                 if (statusElement.children[parseInt(i.toString(), 10)].id === this.pdfViewer.element.id + 'status_container') {
@@ -3364,8 +3395,12 @@ export class StickyNotesAnnotation {
                                         parentElement.removeChild(statusElement.children[parseInt(i.toString(), 10)]);
                                 }
                             }
-                            if (statusElement) {
-                                statusElement.appendChild(statusContainer);
+                            if (commentStateValue && commentStateValue !== 'None') {
+                                this.updateStatusContainer(commentStateValue,
+                                                           statusSpan, statusDiv, statusContainer);
+                                if (statusElement) {
+                                    statusElement.appendChild(statusContainer);
+                                }
                             }
                         }
                     }

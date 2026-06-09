@@ -914,6 +914,9 @@ export class DataManager {
         if (this.isEnableCache) {
             window.localStorage.setItem(this.guidId, JSON.stringify({ keys: [], results: [] }));
         }
+        if (this.dataSource && this.dataSource.enableCaching && this.adaptor && (this.adaptor as { guidId: string }).guidId) {
+            window.localStorage.setItem((this.adaptor as { guidId: string }).guidId, JSON.stringify({ keys: [], results: [] }));
+        }
     }
 }
 

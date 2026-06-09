@@ -8319,7 +8319,7 @@ export class Layout {
         }
         //Add the border widths to respective margin side.
         //cell.margin.left += (isLeftStyleNone) ? 0 : (cell.leftBorderWidth);
-        cell.margin.right += (isRightStyleNone && !linestyle) ? 0 : (cell.rightBorderWidth);
+        cell.margin.right += ((isRightStyleNone && !linestyle) || cell.ownerTable.tableFormat.isRTFTable) ? 0 : (cell.rightBorderWidth);
         //cell.ownerWidget = owner;
         return cell;
     }
@@ -8976,6 +8976,12 @@ export class Layout {
                         }
                     } else if (tableRowWidget.y === viewer.clientArea.y && tableRowWidget.height + tableRowWidget.y + this.footHeight > viewer.clientArea.bottom && isAllowBreakAcrossPages) {
                         splittedWidget = this.splitWidgets(tableRowWidget, viewer, tableWidgets, rowWidgets, splittedWidget, isLastRow, footnoteElements);
+                    } else if (heightType === 'Exactly' && tableRowWidget.y === viewer.clientArea.y && tableRowWidget.height + tableRowWidget.y + this.footHeight > viewer.clientArea.bottom && tableRowWidget.height > viewer.clientActiveArea.height && !isNullOrUndefined(splittedWidget)) {
+                        const isSplitRowWidget: boolean = !isAllowBreakAcrossPages && isNullOrUndefined(tableRowWidget.previousWidget) && tableWidgets.length > 1;
+                        splittedWidget = isSplitRowWidget ? this.splitWidgets(tableRowWidget, viewer, tableWidgets, rowWidgets, splittedWidget, isLastRow, footnoteElements) : splittedWidget;
+                        if (isNullOrUndefined(splittedWidget)) {
+                            this.addWidgetToTable(viewer, tableWidgets, rowWidgets, tableRowWidget, footnoteElements);
+                        }
                     }
                     this.updateHeader(row, isHeader, viewer);
                 }
@@ -9124,8 +9130,7 @@ export class Layout {
                         splittedWidget.x = splittedWidget.x;
                         splittedWidget.y = tableWidget.y + rowToMove.ownerTable.headerHeight;
                         // let cellspace: number = viewer instanceof PageLayoutViewer ? cellspacing / 2 : cellspacing;
-                        let cellspace: number = cellSpacing / 2;
-                        this.updateChildLocationForRow(tableWidget.y + rowToMove.ownerTable.headerHeight - cellspace, splittedWidget, tableWidget.containerWidget as BodyWidget);
+                        this.updateChildLocationForRow(tableWidget.y + rowToMove.ownerTable.headerHeight, splittedWidget, tableWidget.containerWidget as BodyWidget);
                     } else {
                         //Updates table widgets location.
                         viewer.updateClientAreaForBlock(rowToMove.ownerTable, true, tableWidgets, undefined, true);
@@ -9414,7 +9419,7 @@ export class Layout {
                     // In the Case of tableWidget is greater than one and rowWidget is start at the Top Position of the page.
                     // In such case we have update the cell height with half of cell spacing.
                     // Remaining cases we have to update the entire hight
-                    if (tableCollection.length > 1 && rowWidget.y === viewer.clientArea.y && viewer instanceof PageLayoutViewer) {
+                    if (!rowWidget.rowFormat.isHeader && tableCollection.length > 1 && rowWidget.y === viewer.clientArea.y && viewer instanceof PageLayoutViewer) {
                         cellspacing = cellspacing / 2;
                     }
                 }
@@ -11743,7 +11748,7 @@ export class Layout {
         let borderWidth: number = 0;
         if (!isNullOrUndefined(rowWidget.ownerTable) && !isNullOrUndefined(rowWidget.ownerTable.tableFormat)
             && rowWidget.ownerTable.tableFormat.cellSpacing > 0) {
-            rowWidget.height = rowWidget.height + HelperMethods.convertPointToPixel(rowWidget.ownerTable.tableFormat.cellSpacing);
+            rowWidget.height = rowWidget.height > 0 ? rowWidget.height : rowWidget.height + HelperMethods.convertPointToPixel(rowWidget.ownerTable.tableFormat.cellSpacing);
             //Update the table height with the border width to layout the border when the cell spacing is defined..
             for (let j: number = 0; j < rowWidget.childWidgets.length; j++) {
                 if (!isNullOrUndefined((rowWidget.childWidgets[j] as TableCellWidget).cellFormat)

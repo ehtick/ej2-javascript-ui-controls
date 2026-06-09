@@ -46,8 +46,12 @@ export class StackingColumnSeries extends ColumnBase {
                         break;
                     }
                 }
-                startvalue = series.index > 0 && index !== undefined ?
-                    series.chart.visibleSeries[index as number].stackedValues.endValues[point.index] :
+                const currentSeries: Series = series.chart.visibleSeries[index as number];
+                const isStackSeries: boolean = currentSeries ?
+                    currentSeries.type.toString().indexOf('StackingColumn') !== -1 ||
+                    currentSeries.type.toString().indexOf('StackingBar') !== -1 : false;
+                startvalue = series.index > 0 && index !== undefined && isStackSeries ?
+                    currentSeries.stackedValues.endValues[point.index] :
                     series.stackedValues.startValues[point.index];
             }
             this.rect = this.getRectangle(point.xValue + sideBySideInfo.start, (!series.visible && series.isLegendClicked) ? startvalue :

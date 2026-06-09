@@ -200,6 +200,63 @@ export class MarkerExplode extends ChartData {
         return duration;
     }
 
+    private cloneTrustedElement(source: Element): Element {
+        return source.cloneNode(true) as Element;
+    }
+
+    private renderTrackballDataLabel(series: Series, point: Points): void {
+        if (!series || !point || !series.marker || !series.marker.dataLabel || !series.marker.dataLabel.visible) {
+            return;
+        }
+        const chartId: string = this.chart.element.id;
+        const seriesIndex: number = series.index;
+        const pointIndex: number = point.index;
+        const shapeElements: NodeListOf<Element> = this.chart.svgObject.querySelectorAll('[id^="' + chartId + '_Series_' + seriesIndex + '_Point_' + pointIndex + '_TextShape_"]');
+        const textElements: NodeListOf<Element> = this.chart.svgObject.querySelectorAll('[id^="' + chartId + '_Series_' + seriesIndex + '_Point_' + pointIndex + '_Text_"]');
+        if ((!shapeElements || shapeElements.length === 0) && (!textElements || textElements.length === 0)) {
+            return;
+        }
+        const tempGroupId: string = chartId + '_Series_' + seriesIndex + '_Point_' + pointIndex + '_TrackballDataLabel';
+        const tempGroup: Element = this.chart.svgRenderer.createGroup({ id: tempGroupId });
+        tempGroup.setAttribute('pointer-events', 'none');
+        let sourceParent: Element = null;
+        if (shapeElements.length > 0 && shapeElements[0].parentElement) {
+            sourceParent = shapeElements[0].parentElement;
+        }
+        else if (textElements.length > 0 && textElements[0].parentElement) {
+            sourceParent = textElements[0].parentElement;
+        }
+        if (sourceParent instanceof Element) {
+            const transform: string = sourceParent.getAttribute('transform');
+            const clipPath: string = sourceParent.getAttribute('clip-path');
+            if (transform) {
+                tempGroup.setAttribute('transform', transform);
+            }
+            if (clipPath) {
+                tempGroup.setAttribute('clip-path', clipPath);
+            }
+        }
+        for (let i: number = 0; i < shapeElements.length; i++) {
+            const shapeElement: Element | null = shapeElements.item(i);
+            if (!shapeElement) {
+                continue;
+            }
+            const shapeClone: Element = this.cloneTrustedElement(shapeElement);
+            shapeClone.setAttribute('id', shapeElement.id + '_Trackball');
+            tempGroup.appendChild(shapeClone);
+        }
+        for (let j: number = 0; j < textElements.length; j++) {
+            const textElement: Element | null = textElements.item(j);
+            if (!textElement) {
+                continue;
+            }
+            const textClone: Element = this.cloneTrustedElement(textElement);
+            textClone.setAttribute('id', textElement.id + '_Trackball');
+            tempGroup.appendChild(textClone);
+        }
+        this.chart.svgObject.appendChild(tempGroup);
+    }
+
     private drawTrackBall(series: Series, point: Points, location: ChartLocation, index: number): void {
         const marker: MarkerSettingsModel = point.marker;
         const seriesMarker: MarkerSettingsModel = series.marker;
@@ -280,6 +337,9 @@ export class MarkerExplode extends ChartData {
             if (point.symbolLocations.length > 1 && series.marker.visible && (series.type !== 'Bubble' && series.type !== 'Scatter')) {
                 this.trackballAnimate(symbol, 0, this.animationDuration(), series, point.index, location, false, false);
             }
+        }
+        if (explodeSeries) {
+            this.renderTrackballDataLabel(series, point);
         }
         if (point.symbolLocations.length < 2 && series.marker.visible) {
             this.doAnimation(series, point, false);
@@ -391,6 +451,7 @@ export class MarkerExplode extends ChartData {
      */
     public removeHighlightedMarker(series: Series = null, point: Points = null, fadeOut: boolean = false): void {
         if (!isNullOrUndefined(series) && !isNullOrUndefined(point)) {
+            const tempGroup: Element = document.getElementById(this.chart.element.id + '_Series_' + series.index + '_Point_' + point.index + '_TrackballDataLabel');
             const markerElement: Element = document.getElementById(this.elementId + '_Series_' + series.index + '_Point_' +
                 point.index + '_Symbol');
             const trackballElements: HTMLCollectionOf<Element> = document.getElementsByClassName(this.elementId + '_EJ2-Trackball_Series_' + series.index + '_Point_' + point.index);
@@ -399,6 +460,7 @@ export class MarkerExplode extends ChartData {
                 if (elements[1]) { elements[1].remove(); }
                 if (elements[0]) { elements[0].remove(); }
             }
+            if (tempGroup) { tempGroup.remove(); }
             for (let i: number = trackballElements.length - 1; i >= 0; i--) {
                 if (!series.marker.visible || trackballElements[i as number] && trackballElements[i as number].id[trackballElements[i as number].id.length - 1] === '0' || series.type === 'Scatter') {
                     remove(trackballElements[i as number]);
@@ -420,6 +482,8 @@ export class MarkerExplode extends ChartData {
                 const elements: HTMLCollectionOf<Element> = document.getElementsByClassName(this.elementId + '_EJ2-Trackball_Series_' + series.index + '_Point_' + point.index);
                 const markerElement: Element = document.getElementById(this.elementId + '_Series_' + series.index + '_Point_' +
                     point.index + '_Symbol');
+                const tempGroup: Element = document.getElementById(this.chart.element.id + '_Series_' + series.index + '_Point_' + point.index + '_TrackballDataLabel');
+                if (tempGroup) { tempGroup.remove(); }
                 for (let i: number = 0, len: number = elements.length; i < len; i++) {
                     if (!isNullOrUndefined(markerElement)) {
                         markerElement.setAttribute('visibility', 'visible');

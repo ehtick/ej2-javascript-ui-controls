@@ -7849,7 +7849,9 @@ export class PdfPolygonAnnotation extends PdfComment {
                 graphics.restore();
                 if (this._isBounds) {
                     template._content.dictionary._updated = true;
-                    this._dictionary.update('LLE', this.lineExtension);
+                    if (typeof this.lineExtension === 'number') {
+                        this._dictionary.update('LLE', this.lineExtension);
+                    }
                     const data: number[] = _convertPointToNumberArray(this._points);
                     this._dictionary.update('Vertices', data);
                 }

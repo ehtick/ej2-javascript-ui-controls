@@ -31,6 +31,7 @@ export class TaskProcessor extends DateProcessor {
     private cache: { [year: number]: boolean } = {};
     private offsetUpdateParentList: IGanttData[] = [];
     private validatedGanttData: Map<string | number, IGanttData> = new Map();
+    private isHavingUnscheduledTaskOnLoad: boolean = false;
 
     constructor(parent: Gantt) {
         super(parent);
@@ -302,6 +303,17 @@ export class TaskProcessor extends DateProcessor {
      * @private
      */
     public appendGanttRecord(ganttData: IGanttData): void {
+        // Detect if dataset contains UNSCHEDULED tasks at initial load
+        // This flag is used later to conditionally adjust timeline logic
+        if (!this.isHavingUnscheduledTaskOnLoad && this.isUnscheduledTask(ganttData.ganttProperties)[0] &&
+        this.isUnscheduledTask(ganttData.ganttProperties)[1] === 'duration') {
+            // Condition applies for:
+            // 1. Unscheduled parent task that has child records (hierarchical validation)
+            // 2. Unscheduled root-level task with no parent and no child records
+            if (isNullOrUndefined(ganttData.parentItem)) {
+                this.isHavingUnscheduledTaskOnLoad = true;
+            }
+        }
         this.parent.flatData.push(ganttData);
     }
     private prepareRecordCollection(data: Object[], level: number, parentItem?: IGanttData): void {
@@ -3832,7 +3844,7 @@ export class TaskProcessor extends DateProcessor {
         let count: number = 0;
         let filledProperty: string | null = null;
         for (const prop of properties) {
-            if (ganttProperties && ganttProperties[prop as string]) {
+            if (ganttProperties && !isNullOrUndefined(ganttProperties[prop as string])) {
                 count++;
                 filledProperty = prop;
             }

@@ -5038,6 +5038,9 @@ export class DateRangePicker extends CalendarBase {
                 }
                 break;
             case 'value':
+                if (this.isAngular && this.formElement && oldProp.value === newProp.value) {
+                    this.preventChange = true;
+                }
                 isDynamicValueChange = true;
                 this.invalidValueString = null;
                 this.checkInvalidRange(newProp.value);

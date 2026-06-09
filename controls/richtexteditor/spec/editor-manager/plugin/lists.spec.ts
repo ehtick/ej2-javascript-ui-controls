@@ -5521,3 +5521,36 @@ describe('Bug 1027346: Ordered List Numbers Do Not Reflect Selected Font Name an
         }, 100);
     });
 });
+
+describe('Bug 1028607: Unexpected Extra Line Appears When Reconstructing List After Backspace in Rich Text Editor', () => {
+    let elem: HTMLElement;
+    let rteObj: RichTextEditor;
+    beforeEach(() => {
+        rteObj = renderRTE({
+            value: `<ul><li>hello1</li><li>hello2<ul><li>hello3</li></ul></li></ul>`
+        });
+        elem = rteObj.inputElement;
+    });
+    afterEach(() => {
+        destroy(rteObj);
+    });
+    it('should not insert a be element when nested list is pressed with backspace and enter key continuously', (done: DoneFn) => {
+        elem.focus();
+        const level2: HTMLElement = elem.querySelectorAll('li')[1];
+        setCursorPoint(level2.firstChild as Element, 0);
+        const backDown: KeyboardEvent = new KeyboardEvent('keydown', BACKSPACE_EVENT_INIT as KeyboardEventInit);
+        const backUp: KeyboardEvent = new KeyboardEvent('keyup', BACKSPACE_EVENT_INIT as KeyboardEventInit);
+        elem.dispatchEvent(backDown);
+        elem.dispatchEvent(backUp);
+        setTimeout(() => {
+            const enterDown: KeyboardEvent = new KeyboardEvent('keydown', ENTERKEY_EVENT_INIT as KeyboardEventInit);
+            const enterUp: KeyboardEvent = new KeyboardEvent('keyup', ENTERKEY_EVENT_INIT as KeyboardEventInit);
+            elem.dispatchEvent(enterDown);
+            elem.dispatchEvent(enterUp);
+            setTimeout(() => {
+                expect(elem.querySelectorAll('li')[1].firstElementChild.nodeName !== 'BR').toBe(true);
+                done();
+            }, 100);
+        }, 100);
+    });
+});

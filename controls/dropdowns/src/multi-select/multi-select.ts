@@ -3026,7 +3026,7 @@ export class MultiSelect extends DropDownBase implements IInput {
             else{
                 const listUl: HTMLElement = this.list && this.list.querySelector('ul');
                 const isFullList: boolean = (this as any).isReact && this.itemTemplate && listUl != null &&
-                    listUl.querySelectorAll('.e-list-item').length === this.mainData.length;
+                    listUl.querySelectorAll('.e-list-item').length === this.mainData.length && !this.groupTemplate;
                 this.onActionComplete(isFullList ? listUl : list, this.mainData);
             }
             this.focusAtLastListItem(data);
@@ -3270,7 +3270,10 @@ export class MultiSelect extends DropDownBase implements IInput {
             element.setAttribute('aria-hidden', 'true');
             const chipTitle: string | null = element.getAttribute('title');
             if (chipTitle && this.chipAnnouncerLiveRegion) {
-                const announcement: string = `${chipTitle} focused. Press Backspace to remove`;
+                const announcement: string =
+                    chipTitle.length > 500
+                        ? 'Chip focused. Press Backspace to remove'
+                        : `${chipTitle} focused. Press Backspace to remove`;
                 this.chipAnnouncerLiveRegion.textContent = announcement;
             }
             if (!isNullOrUndefined(this.inputElement) && element.id) {

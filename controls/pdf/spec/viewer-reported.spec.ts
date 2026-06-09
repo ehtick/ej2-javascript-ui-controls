@@ -1,4 +1,4 @@
-import { PdfAnnotationBorder, PdfPolyLineAnnotation, PdfPopupAnnotation, PdfRubberStampAnnotation, PdfTextMarkupAnnotation, PdfSquareAnnotation, PdfFreeTextAnnotation, PdfRadioButtonListItem, PdfListFieldItem, PdfUriAnnotation } from "../src/pdf/core/annotations/annotation";
+import { PdfAnnotationBorder, PdfPolyLineAnnotation, PdfPolygonAnnotation, PdfPopupAnnotation, PdfRubberStampAnnotation, PdfTextMarkupAnnotation, PdfSquareAnnotation, PdfUriAnnotation, PdfFreeTextAnnotation, PdfRadioButtonListItem, PdfListFieldItem } from "../src/pdf/core/annotations/annotation";
 import { _ContentParser, _PdfRecord } from "../src/pdf/core/content-parser";
 import { _JsonDocument } from '../src/pdf/core/import-export/json-document';
 import { DataFormat, PdfAnnotationFlag, PdfRotationAngle, PdfRubberStampAnnotationIcon, PdfTextMarkupAnnotationType, PdfAnnotationIntent, PdfLineEndingStyle, PdfTextAlignment, PdfCrossReferenceType, PdfBorderStyle } from "../src/pdf/core/enumerator";
@@ -3592,6 +3592,29 @@ describe('Viewer Reported Issues', () => {
         expect(annotation.text).toEqual('Syncfusion Website');
         document.destroy();
     });
+    it('1029251 - LLE undefined', () => {
+		let document: PdfDocument = new PdfDocument(crossReferenceTable);
+		let page = document.getPage(0);
+		let annot: PdfPolygonAnnotation = new PdfPolygonAnnotation([{x: 100, y: 300}, {x: 150, y: 200}, {x: 300, y: 200}, {x: 350, y: 300}, {x: 300, y: 400}, {x: 150, y: 400}]);
+		annot.setAppearance(true);
+        page.annotations.add(annot);
+		let data = document.save();
+		document.destroy();
+        document = new PdfDocument(data);
+        page = document.getPage(0);
+        annot = page.annotations.at(0) as PdfPolygonAnnotation;
+        let bounds = annot.bounds;
+        annot.bounds = bounds;
+        annot.setAppearance(true);
+        delete annot._dictionary._map.LLE;
+        data = document.save();
+        document.destroy();
+        document = new PdfDocument(data);
+        page = document.getPage(0);
+        annot = page.annotations.at(0) as PdfPolygonAnnotation;
+        expect(annot._dictionary.has('LLE')).toBeFalsy();
+        document.destroy();
+	});
 });
 describe('1023771 - PdfForm internal methods coverage', () => {
     let document: PdfDocument;

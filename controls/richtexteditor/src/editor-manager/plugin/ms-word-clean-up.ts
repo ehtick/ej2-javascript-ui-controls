@@ -108,6 +108,7 @@ export class MsWordPaste {
             this.imageConversion(clipboardDataElement, rtfData);
             this.cleanList(clipboardDataElement, 'UL');
             this.cleanList(clipboardDataElement, 'OL');
+            this.processTableBorder(clipboardDataElement);
             this.styleCorrection(clipboardDataElement, wordPasteStyleConfig);
             this.removingComments(clipboardDataElement);
             this.removeUnwantedElements(clipboardDataElement);
@@ -772,6 +773,28 @@ export class MsWordPaste {
         this.applyStylesToElements(clipboardDataElement, selectors, styleValues);
         // Process list-specific styles
         this.processListStyles(clipboardDataElement, selectors, styleValues);
+        // Remove table width styles set to 0
+        this.removeTableWidthZero(clipboardDataElement);
+    }
+
+    /* Removes width style from table elements where width is set to 0 */
+    private removeTableWidthZero(clipboardDataElement: HTMLElement): void {
+        const tableElements: NodeListOf<Element> = clipboardDataElement.querySelectorAll('table');
+        for (let i: number = 0; i < tableElements.length; i++) {
+            const tableElement: HTMLElement = tableElements[i as number] as HTMLElement;
+            const styleAttribute: string = tableElement.getAttribute('style');
+            if (!isNOU(styleAttribute) && styleAttribute.indexOf('width') !== -1) {
+                const widthMatch: RegExpMatchArray = styleAttribute.match(/width\s*:\s*0(?:px)?\s*;?/);
+                if (!isNOU(widthMatch)) {
+                    const newStyle: string = styleAttribute.replace(widthMatch[0], '').replace(/;\s*$/, '');
+                    if (newStyle.trim() === '') {
+                        tableElement.removeAttribute('style');
+                    } else {
+                        tableElement.setAttribute('style', newStyle);
+                    }
+                }
+            }
+        }
     }
 
     // Sorts CSS selectors to ensure a specific application order: classes and then other elements.
@@ -1936,6 +1959,22 @@ export class MsWordPaste {
             }
         }
     }
+
+    private processTableBorder(clipboardDataElement: HTMLElement): void {
+        const tableElems: NodeListOf<HTMLTableElement> = clipboardDataElement.querySelectorAll('table');
+        const borderSeparatePattern: RegExp = /mso-cellspacing\s*:\s*([^;]+);?/i;
+        for (let i: number = 0; i < tableElems.length; i++) {
+            const curTable: HTMLTableElement = tableElems[i as number];
+            const styleAttr: string = curTable.getAttribute('style') as string;
+            const isSeparateBorder: boolean = borderSeparatePattern.test(styleAttr);
+            if (isSeparateBorder) {
+                const cellSpacingValue: string = (styleAttr.match(borderSeparatePattern))[1] as string;
+                curTable.style.borderCollapse = 'separate';
+                curTable.style.borderSpacing = cellSpacingValue;
+            }
+        }
+    }
+
 
     /**
      * Cleans up resources when the component is destroyed

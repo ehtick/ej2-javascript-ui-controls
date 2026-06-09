@@ -2061,6 +2061,9 @@ export class DateTimePicker extends DatePicker {
             }
             switch (prop) {
             case 'value':
+                if (this.isAngular && closest(this.inputElement, 'form') && oldProp.value === newProp.value) {
+                    this.preventChange = true;
+                }
                 this.isDynamicValueChanged = true;
                 this.invalidValueString = null;
                 this.checkInvalidValue(newProp.value);

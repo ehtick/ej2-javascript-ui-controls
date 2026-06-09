@@ -933,7 +933,7 @@ export class CircularChart3D extends Component<HTMLElement> implements INotifyPr
         this.setMouseXY(e);
         this.trigger('circularChart3DMouseLeave', { target: (<Element>e.target).id, x: this.mouseX, y: this.mouseY });
         if (this.tooltip.enable && this.circularChartTooltip3DModule) {
-            this.circularChartTooltip3DModule.mouseLeaveHandler();
+            this.circularChartTooltip3DModule.mouseLeaveHandler(this);
         }
         this.notify(Browser.isPointer ? 'pointerleave' : 'mouseleave', e);
         this.rotateActivate = false;

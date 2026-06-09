@@ -1500,21 +1500,27 @@ export class DateProcessor {
      */
     protected getHolidaysCount(startDate: Date, endDate: Date, calendarContext: CalendarContext): number {
         let holidaysCount: number = 0;
-        const holidays: number[] = calendarContext.defaultHolidays;
+        const holidays: number[] = calendarContext.sortedDefaultHolidays;
+        if (!holidays || holidays.length === 0) {
+            return 0;
+        }
         const sDate: Date = new Date(startDate.getTime());
         const eDate: Date = new Date(endDate.getTime());
         sDate.setDate(sDate.getDate() + 1);
         sDate.setHours(0, 0, 0, 0);
         eDate.setHours(0, 0, 0, 0);
-        if (sDate.getTime() < eDate.getTime()) {
-            for (let i: number = 0; i < holidays.length; i++) {
-                const currentHoliday: Date = this.getDateFromFormat(new Date(holidays[i as number]));
-                if (sDate.getTime() <= currentHoliday.getTime() && eDate.getTime() > currentHoliday.getTime()) {
-                    if (!calendarContext.getExceptionForDate(currentHoliday)) {
-                        if ((!this.parent.includeWeekend && this.parent.nonWorkingDayIndex.indexOf(currentHoliday.getDay()) === -1) ||
-                            this.parent.includeWeekend) {
-                            holidaysCount += 1;
-                        }
+        if (sDate.getTime() < eDate.getTime() && holidays.length > 0) {
+            const sTime: number = sDate.getTime();
+            const eTime: number = eDate.getTime();
+            const startIndex: number = this.getBinaryBound(holidays, sTime);
+            const endIndex: number = this.getBinaryBound(holidays, eTime);
+            for (let i: number = startIndex; i < endIndex; i++) {
+                const holidayValue: number = holidays[i as number];
+                const currentHoliday: Date = this.getDateFromFormat(new Date(holidayValue));
+                if (!calendarContext.getExceptionForDate(currentHoliday)) {
+                    if ((!this.parent.includeWeekend && this.parent.nonWorkingDayIndex.indexOf(currentHoliday.getDay()) === -1) ||
+                        this.parent.includeWeekend) {
+                        holidaysCount += 1;
                     }
                 }
             }
@@ -1578,17 +1584,23 @@ export class DateProcessor {
         if (!checkWeekEnd && this.parent.nonWorkingDayIndex.indexOf(date.getDay()) !== -1) {
             return true;
         }
-        const holidays: number[] = calendarContext.defaultHolidays;
+        const holidays: number[] = calendarContext.sortedDefaultHolidays;
         if (!holidays || holidays.length === 0) {
             return false;
         }
-        const dateTime: number = date.getTime();
-        for (let i: number = 0; i < holidays.length; i++) {
-            const holidayDate: Date = this.getDateFromFormat(new Date(holidays[i as number]));
-            const holidayStart: number = holidayDate.setHours(0, 0, 0, 0);
-            const holidayEnd: number = holidayDate.setHours(23, 59, 59, 999);
-            if (dateTime >= holidayStart && dateTime <= holidayEnd) {
+        const dateTime: number = new Date(date.getTime()).setHours(0, 0, 0, 0);
+        let low: number = 0;
+        let high: number = holidays.length - 1;
+        while (low <= high) {
+            const mid: number = Math.floor((low + high) / 2);
+            const holidayValue: number = holidays[mid as number];
+            if (holidayValue === dateTime) {
                 return true;
+            }
+            if (holidayValue < dateTime) {
+                low = mid + 1;
+            } else {
+                high = mid - 1;
             }
         }
         return false;
@@ -2189,5 +2201,20 @@ export class DateProcessor {
             duration += Math.ceil(this.getTimeDifference(sDate, eDate) / (1000 * 60 * 60 * 24));
         }
         return duration;
+    }
+    private getBinaryBound(holidayDates: number[], targetDate: number): number {
+        let start: number = 0;
+        let end: number = holidayDates.length;
+
+        while (start < end) {
+            const middleIndex: number = Math.floor((start + end) / 2);
+            // eslint-disable-next-line security/detect-object-injection
+            if (holidayDates[middleIndex] < targetDate) {
+                start = middleIndex + 1;
+            } else {
+                end = middleIndex;
+            }
+        }
+        return start;
     }
 }

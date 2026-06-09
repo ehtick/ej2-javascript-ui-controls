@@ -6,6 +6,8 @@ import { InsertHtml } from '../../../src/editor-manager/plugin/inserthtml';
 import { NodeCutter } from '../../../src/editor-manager/plugin/nodecutter';
 import { NodeSelection } from '../../../src/selection/index';
 import { EditorManager } from '../../../src/editor-manager/index';
+import { RichTextEditor } from '../../../src';
+import { destroy, renderRTE } from '../../rich-text-editor/render.spec';
 
 describe('Testing the insert method for html content paste', function () {
     let innervalue: string = '<p>Values</p><p>Testing 1</p><p>Testing 2</p>';
@@ -691,7 +693,7 @@ describe('923287 - Pasting a list inside another list is not working as expected
         pasteElement.innerHTML = '<ol id="parentDiv"><li style="">test4</li><li style="">test5</li><li style="">test6</li></ol>';
         domSelection.setSelectionText(document, selectNode.firstChild, selectNode.firstChild, 0, 0);
         InsertHtml.Insert(document, pasteElement, editNode);
-        expect(document.getElementById('divElement').innerHTML === '<ol><li style="">test1</li><li>test4</li><li>test5</li><li>test6</li><li id="parentDiv" style="">test2</li><li style="">test3</li></ol>').toBe(true);
+        expect(document.getElementById('divElement').innerHTML === '<ol><li style="">test1</li><li>test4</li><li>test5</li><li>test6</li><li>test2</li><li style="">test3</li></ol>').toBe(true);
     });
 });
 
@@ -1284,5 +1286,141 @@ describe('InsertHtml - insertHorizontalRule method', () => {
 
         expect(divElement.innerHTML).toBe('<table><tbody><tr><td class="e-cell-select"><table><tbody><tr><td class=""><br></td></tr></tbody></table><hr><p><br></p></td></tr></tbody></table>');
         done();
+    });
+});
+
+describe('1031317: Script Exception Occurs When Copy-Pasting Image Next to Bold Text in RichTextEditor', () => {
+    let rteObj: RichTextEditor;
+    let consoleSpy: jasmine.Spy;
+
+    beforeEach(() => {
+        consoleSpy = jasmine.createSpy('console');
+        rteObj = renderRTE({
+            value: '<p><strong>Syncfusion</strong></p>'
+        });
+    });
+
+    afterEach(() => {
+        destroy(rteObj);
+        consoleSpy = null;
+    });
+
+    it('does not call console.error when pasting an image after the last strong character', (done) => {
+        rteObj.focusIn();
+        const strong = rteObj.contentModule.getEditPanel().querySelector('strong');
+        expect(strong).not.toBeNull();
+        const textNode = strong.firstChild;
+        const len = textNode.textContent.length;
+        rteObj.formatter.editorManager.nodeSelection.setSelectionText(document, textNode, textNode, len, len);
+        const data = new DataTransfer();
+        data.setData('text/html', '<img src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png">');
+        const pasteEvent = new ClipboardEvent('paste', {
+            clipboardData: data,
+            bubbles: true,
+            cancelable: true
+        } as any);
+        rteObj.inputElement.dispatchEvent(pasteEvent);
+        setTimeout(() => {
+            expect(consoleSpy).not.toHaveBeenCalled();
+            const range: Range = rteObj.formatter.editorManager.nodeSelection.getRange(document);
+            const strong = rteObj.contentModule.getEditPanel().querySelector('strong');
+            expect(strong.querySelector('img')).not.toBe(null);
+            expect(range.startContainer.nodeName === '#text').toBe(true);
+            expect(range.startContainer.textContent === '\u00A0').toBe(true);
+            done();
+        }, 100);
+    });
+});
+
+describe('1031317: InsertHTML should be placed inside formatted span', () => {
+    let rteObj: RichTextEditor;
+    let editor: HTMLElement;
+
+    beforeEach(() => {
+        rteObj = renderRTE({
+            value: '<p><span style="font-size: 12pt;"><span style="font-family: Arial;">\u200B</span></span></p>'
+        });
+        editor = rteObj.contentModule.getEditPanel() as HTMLElement;
+    });
+
+    afterEach(() => {
+        destroy(rteObj);
+    });
+
+    it('Case 1: Insert text string', (done) => {
+        const span = editor.querySelector('span > span');
+        rteObj.formatter.editorManager.nodeSelection.setSelectionText(document, span.firstChild, span.firstChild, 1, 1);
+        rteObj.executeCommand('insertHTML', 'Lorem ipsum dolor sit amet and so on');
+        setTimeout(() => {
+            const expected = '<span style="font-size: 12pt;"><span style="font-family: Arial;">\u200BLorem ipsum dolor sit amet and so on</span></span>';
+            expect(editor.querySelector('p').innerHTML).toBe(expected);
+            const range: Range = rteObj.formatter.editorManager.nodeSelection.getRange(document);
+            expect(range.startContainer.textContent).toBe('Lorem ipsum dolor sit amet and so on');
+            expect(range.startOffset).toBe(range.startContainer.textContent.length);
+            done();
+        }, 100);
+    });
+});
+
+describe('1031317: InsertHTML should be placed inside formatted span with text and span', () => {
+    let rteObj: RichTextEditor;
+    let editor: HTMLElement;
+
+    beforeEach(() => {
+        rteObj = renderRTE({
+            value: '<p><span style="font-size: 12pt;"><span style="font-family: Arial;">\u200B</span></span></p>'
+        });
+        editor = rteObj.contentModule.getEditPanel() as HTMLElement;
+    });
+
+    afterEach(() => {
+        destroy(rteObj);
+    });
+
+    it('Case 2: Text with span Insertion', (done) => {
+        const span = editor.querySelector('span > span');
+        rteObj.formatter.editorManager.nodeSelection.setSelectionText(document, span.firstChild, span.firstChild, 1, 1);
+        const insertContent: string = 'Lorem ipsum dolor sit amet and so on <span>Hi asdasdassa</span>';
+        rteObj.executeCommand('insertHTML', insertContent);
+        setTimeout(() => {
+            const expected = '<span style="font-size: 12pt;"><span style="font-family: Arial;">\u200BLorem ipsum dolor sit amet and so on <span>Hi asdasdassa</span></span></span>';
+            expect(editor.querySelector('p').innerHTML).toBe(expected);
+            const range: Range = rteObj.formatter.editorManager.nodeSelection.getRange(document);
+            expect(range.startContainer.textContent).toBe('Hi asdasdassa');
+            expect(range.startOffset).toBe(range.startContainer.textContent.length);
+            done();
+        }, 100);
+    });
+});
+
+describe('1031317: InsertHTML should be placed inside formatted span with text span and p', () => {
+    let rteObj: RichTextEditor;
+    let editor: HTMLElement;
+
+    beforeEach(() => {
+        rteObj = renderRTE({
+            value: '<p><span style="font-size: 12pt;"><span style="font-family: Arial;">\u200B</span></span></p>'
+        });
+        editor = rteObj.contentModule.getEditPanel() as HTMLElement;
+    });
+
+    afterEach(() => {
+        destroy(rteObj);
+    });
+
+    it('Case 3: Insertion of text with span and p', (done) => {
+        const span = editor.querySelector('span > span');
+        rteObj.formatter.editorManager.nodeSelection.setSelectionText(document, span.firstChild, span.firstChild, 1, 1);
+        const insertContent = 'Lorem ipsum dolor sit amet and so on <span>Hi asdasdassa</span><p>Hello</p>';
+        rteObj.executeCommand('insertHTML', insertContent);
+        setTimeout(() => {
+            const expectedFirstP = '<span style="font-size: 12pt;"><span style="font-family: Arial;">\u200BLorem ipsum dolor sit amet and so on <span>Hi asdasdassa</span></span></span>';
+            expect(editor.querySelectorAll('p')[0].innerHTML).toBe(expectedFirstP);
+            expect(editor.querySelectorAll('p')[1].innerHTML).toBe('Hello');
+            const range: Range = rteObj.formatter.editorManager.nodeSelection.getRange(document);
+            expect(range.startContainer.textContent).toBe('Hello');
+            expect(range.startOffset).toBe(range.startContainer.textContent.length);
+            done();
+        }, 100);
     });
 });

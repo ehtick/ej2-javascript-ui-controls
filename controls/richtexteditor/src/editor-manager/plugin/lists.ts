@@ -392,10 +392,9 @@ export class Lists {
         for (let i: number = 0; i < listItems.length; i++) {
             const li: Element = listItems[i as number];
             // Check if list item has no text content or only contains nested lists
-            const hasOnlyLists: boolean = li.childNodes.length > 0 && ((li.firstChild &&
-                (li.firstChild.nodeName === 'UL' || li.firstChild.nodeName === 'OL')) ||
-                (li.firstElementChild && (li.firstElementChild.nodeName === 'UL' || li.firstElementChild.nodeName === 'OL'))) &&
-                !(li.firstChild && li.firstChild.nodeName === '#text' && li.firstChild.textContent.trim().length > 0);
+            const hasOnlyLists: boolean = li.childNodes.length > 0 && (this.parent.domNode.isList(li.childNodes[0] as HTMLElement) ||
+                (li.childNodes[0] && li.childNodes[1] && li.childNodes[0].nodeName === '#text' && li.childNodes[0].textContent.trim() === '' &&
+                this.parent.domNode.isList(li.childNodes[1] as HTMLElement)));
             if (hasOnlyLists || li.innerHTML === '') {
                 const brElement: HTMLBRElement = document.createElement('br');
                 if (li.firstChild) {

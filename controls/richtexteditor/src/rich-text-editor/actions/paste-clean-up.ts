@@ -1145,6 +1145,11 @@ export class PasteCleanup {
         }
         clipBoardElem.innerHTML = value;
         clipBoardElem = this.pasteObj.cleanAppleClass(clipBoardElem);
+        let newText: string = clipBoardElem.innerHTML;
+        if (this.parent.enableHtmlSanitizer) { // Sanitize innerHTML and ensure ampersands
+            newText = clipBoardElem.innerHTML.split('&').join('&amp;');
+        }
+        clipBoardElem.innerHTML = sanitizeHelper(newText, this.parent);
         // Remove denied tags and attributes as per settings
         clipBoardElem = this.pasteObj.cleanupDeniedTagsAndAttributes(clipBoardElem, clean);
         // Restrict allowed CSS style properties if configured
@@ -1152,11 +1157,6 @@ export class PasteCleanup {
             clipBoardElem = this.pasteObj.allowedStyle(clipBoardElem);
         }
         this.saveSelection.restore();
-        let newText: string = clipBoardElem.innerHTML;
-        if (this.parent.enableHtmlSanitizer) { // Sanitize innerHTML and ensure ampersands
-            newText = clipBoardElem.innerHTML.split('&').join('&amp;');
-        }
-        clipBoardElem.innerHTML = sanitizeHelper(newText, this.parent);
         this.pasteObj.setImageClassAndProps(clipBoardElem);
         // Handle pasted <picture> elements if present
         if (this.pasteObj.hasPictureElement(clipBoardElem)) {

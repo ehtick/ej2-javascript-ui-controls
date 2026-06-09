@@ -3,7 +3,7 @@ import { closest} from '@syncfusion/ej2-base';
 import { Toolbar, ClickEventArgs, BeforeCreateArgs, OverflowMode, Menu, KeyDownEventArgs, OpenCloseMenuEventArgs } from '@syncfusion/ej2-navigations';
 import { DropDownButton, MenuEventArgs, BeforeOpenCloseMenuEventArgs, SplitButton, ItemModel } from '@syncfusion/ej2-splitbuttons';
 import { MenuEventArgs as MenuBarItemSelectedArgs } from '@syncfusion/ej2-navigations';
-import { Tooltip, TooltipEventArgs } from '@syncfusion/ej2-popups';
+import { Tooltip, TooltipEventArgs, TooltipAnimationSettings } from '@syncfusion/ej2-popups';
 import * as classes from '../base/classes';
 import * as events from '../base/constant';
 import { CLS_TOOLBAR, CLS_DROPDOWN_BTN, CLS_RTE_ELEMENTS, CLS_INLINE_DROPDOWN,
@@ -103,11 +103,40 @@ export class ToolbarRenderer implements IRenderer {
         }
     }
 
+    private mouseOutHandler (): void {
+        if (!isNOU(this.tooltipTargetEle)){
+            this.tooltipTargetEle.setAttribute('title', this.tooltipTargetEle.getAttribute('data-title'));
+        } else {
+            const currentDocument: Document = this.parent.iframeSettings.enable ? this.parent.contentModule.getPanel().ownerDocument :
+                this.parent.contentModule.getDocument();
+            this.tooltipTargetEle = currentDocument.querySelector('[data-title]');
+            this.tooltipTargetEle.setAttribute('title', this.tooltipTargetEle.getAttribute('data-title'));
+        }
+        this.tooltipTargetEle.removeAttribute('data-title');
+        EventHandler.remove(this.tooltipTargetEle, 'mouseout', this.mouseOutHandler);
+    }
+
+    private tooltipAfterClose(args: ClickEventArgs | TooltipEventArgs): void {
+        const target: HTMLElement = (args as TooltipEventArgs).target ? (args as TooltipEventArgs).target :
+            (args as ClickEventArgs).originalEvent.target as HTMLElement ;
+        if (this.parent.showTooltip && target) {
+            this.tooltipTargetEle = target.getAttribute('title') ? target : target.closest('[title]');
+            if (!isNOU(this.tooltipTargetEle)) {
+                this.tooltipTargetEle.setAttribute('data-title', this.tooltipTargetEle.getAttribute('title'));
+                this.tooltipTargetEle.removeAttribute('title');
+                EventHandler.add(this.tooltipTargetEle, 'mouseout', this.mouseOutHandler, this);
+            }
+        }
+    }
+
     private toolbarClicked(args: ClickEventArgs): void {
         if ( !this.parent.enabled) {
             return;
         }
         this.closeTooltips();
+        if (!isNOU(args.originalEvent) && (args.originalEvent as PointerEvent).pointerType === 'mouse') {
+            this.tooltipAfterClose(args);
+        }
         if (this.parent.toolbarSettings.type === ToolbarType.Popup) {
             let command: string;
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -156,6 +185,9 @@ export class ToolbarRenderer implements IRenderer {
             }
         }
         if (args.target.querySelector('.e-active')) {
+            if (args.target.querySelector('.e-rte-dropdown-menu') || args.target.querySelector('.e-rte-dropdown')) {
+                this.tooltipAfterClose(args);
+            }
             args.cancel = true;
         }
     }
@@ -987,7 +1019,8 @@ export class ToolbarRenderer implements IRenderer {
     private closeTooltips(): void {
         if (this.parent.showTooltip) {
             if (!isNOU(this.tooltip)) {
-                this.tooltip.close();
+                const closeAnimation: TooltipAnimationSettings = { effect: 'None', duration: 0, delay: 0 };
+                this.tooltip.close(closeAnimation);
             }
             if (!isNOU(this.parent.quickToolbarModule)) {
                 this.parent.quickToolbarModule.closeTooltip();

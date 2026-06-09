@@ -2225,6 +2225,24 @@ export class Timeline {
             }
             startDate = this.parent.dataOperation['getNextWorkingDay'](startDate, calendarContext);
             endDate = this.parent.dataOperation['getNextWorkingDay'](endDate, calendarContext);
+            // CR-1028185: Fix for unscheduled tasks without projectStartDate.
+            // When timeline start overlaps with task start (especially Monday case),
+            // move timeline 1 day backward to ensure visibility of SS dependency, Milestone tasks.
+            if (this.parent.allowUnscheduledTasks && !this.parent.projectStartDate &&
+                this.parent.dataOperation['isHavingUnscheduledTaskOnLoad']) {
+                const minTaskDate: Date = this.parent.cloneTimelineStartDate;
+                // Ensure timeline does not overlap with earliest task start
+                if (minTaskDate && startDate && startDate.getTime() >= minTaskDate.getTime()) {
+                    let adjustedStart: Date = new Date(minTaskDate);
+                    // Move timeline start one day backward
+                    adjustedStart.setDate(adjustedStart.getDate() - 1);
+                    // Adjust to previous working day if weekends are excluded
+                    if (this.parent.dataOperation['getPreviousWorkingDay'] && !this.parent.includeWeekend) {
+                        adjustedStart = this.parent.dataOperation['getPreviousWorkingDay'](adjustedStart, calendarContext);
+                    }
+                    startDate = adjustedStart;
+                }
+            }
         }
         this.timelineStartDate = startDate;
         this.timelineEndDate = endDate;

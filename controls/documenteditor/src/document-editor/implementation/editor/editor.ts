@@ -127,6 +127,7 @@ export class Editor {
      * @private
      */
     public isInsertingText: boolean = false;
+    private isRTFContentPasting: boolean = false;
     private isInternalPaste: boolean = false;
     private guid: string;
     private type: string = null;
@@ -281,6 +282,7 @@ export class Editor {
      * @private
      */
     public isInsertingTOC: boolean = false;
+    private isUpdateToc: boolean = false;
     /**
      * @private
      */
@@ -6559,6 +6561,7 @@ export class Editor {
                 this.pasteFormattedContent({ data: JSON.parse(sfdtContent) });
                 this.isInternalPaste = false;
             } else if (rtfContent !== '') {
+                this.isRTFContentPasting = true;
                 this.pasteAjax(rtfContent, '.rtf');
             } else if (htmlContent !== '') {
                 this.isHtmlPaste = true;
@@ -6663,6 +6666,7 @@ export class Editor {
         if (this.currentPasteOptions !== 'KeepSourceFormatting') {
             this.applyPasteOptions(this.currentPasteOptions);
         }
+        this.isRTFContentPasting = false;
         hideSpinner(this.owner.element);
         setTimeout((): void => {
             if (!isNullOrUndefined(this.viewer)) {
@@ -8124,6 +8128,9 @@ export class Editor {
                 let widget: BlockWidget = widgets[j];
                 if (widget instanceof TableWidget) {
                     isConsiderLastBlock = true;
+                    if (this.isRTFContentPasting && widget.tableFormat) {
+                        widget.tableFormat.isRTFTable = true;
+                    }
                 }
                 if (widget instanceof ParagraphWidget && widget.childWidgets.length === 0) {
                     widget.childWidgets[0] = new LineWidget(widget as ParagraphWidget);
@@ -24633,8 +24640,10 @@ export class Editor {
         if (code.toLocaleLowerCase().indexOf('toc') !== -1) {
             showSpinner(this.owner.element);
             setTimeout(() => {
-                this.insertTableOfContents(this.validateTocSettings(this.getTocSettings(code, tocField)), true);
+                this.isUpdateToc = true;
+                this.insertTableOfContents(this.validateTocSettings(this.getTocSettings(code, tocField)));
                 hideSpinner(this.owner.element);
+                this.isUpdateToc = false;
             });
         }
 
@@ -24721,7 +24730,7 @@ export class Editor {
      * @param {TableOfContentsSettings} tableOfContentsSettings Specify the table of content settings to be inserted.
      * @returns {void}
      */
-    public insertTableOfContents(tableOfContentsSettings?: TableOfContentsSettings, isUpdateToc?: Boolean): void {
+    public insertTableOfContents(tableOfContentsSettings?: TableOfContentsSettings): void {
         if (this.selection.isPlainContentControl() || this.owner.isReadOnlyMode) {
             return;
         }
@@ -24744,7 +24753,7 @@ export class Editor {
         // Currently, the document editor supports inserting only one TOC in the document.
         // If a document contains a custom TOC, Microsoft Word allows inserting a default TOC again, but our editor does not support inserting a default TOC for a second time.
         // TODO: If building block content control is supported, we can easily identify the custom TOC and the default TOC. This will help us match Microsoft Word's behavior when a document contains a custom TOC.
-        if (isUpdateToc) {
+        if (this.isUpdateToc) {
             if (this.selection.contextType === 'TableOfContents') {
                 tocField = this.selection.getTocFieldInternal();
             }

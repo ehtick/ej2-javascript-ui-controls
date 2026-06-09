@@ -20,6 +20,10 @@ export class WTableFormat {
     public _description: string = undefined;
     public ownerBase: TableWidget = undefined;
     private _styleName: string = undefined;
+    /**
+     * @private
+     */
+    public isRTFTable: boolean = false;
     public get title(): string {
         return this._title;
     }
@@ -322,6 +326,7 @@ export class WTableFormat {
             if (!isNullOrUndefined(format.description)) {
                 this.description = format.description;
             }
+            this.isRTFTable = format.isRTFTable;
         }
     }
     public static clear(): void {

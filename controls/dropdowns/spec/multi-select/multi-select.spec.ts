@@ -477,6 +477,59 @@ describe('MultiSelect', () => {
             expect(child.getAttribute('aria-atomic')).toBe('true');
             listObj.destroy();
         });
+        it('aria-live announces full chip title when title length is 500 or less', () => {
+            const shortTitle = 'Short chip title'; // 16 chars
+            const datasource = [{ id: 'list1', text: shortTitle }];
+            let listObj: any = new MultiSelect({ 
+                dataSource: datasource, 
+                mode: 'Box', 
+                fields: { text: "text", value: "text" }, 
+                value: [shortTitle] 
+            });
+            listObj.appendTo(element);
+            
+            // Click the chip to trigger addChipSelection
+            const chip = listObj.chipCollectionWrapper.querySelector('.e-chips');
+            (listObj as any).chipClick({ target: chip });
+            const announcer = document.querySelector('.e-chip-announcer') as HTMLElement;
+            expect(announcer.textContent).toBe(`${shortTitle} focused. Press Backspace to remove`);
+            
+            listObj.destroy();
+        });
+        it('aria-live announces generic message when title length exceeds 500', () => {
+            const longTitle = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. ' +
+                'Cras varius arcu a purus consequat, quis vulputate enim efficitur. ' +
+                'Curabitur porttitor dolor ut nisl lobortis, nec consectetur enim dignissim. ' +
+                'In efficitur enim magna, sed eleifend tellus auctor id. Etiam eu mi venenatis, ' +
+                'efficitur purus ac, porta felis. Quisque dapibus orci augue, ac tempus lacus ' +
+                'fringilla eget. Fusce ac mollis dolor, ut gravida risus. Aliquam eleifend ' +
+                'interdum nibh. Sed molestie bibendum eros, et aliquet mauris molestie eget. ' +
+                'Duis lobortis lacus lorem, a mollis erat consectetur et. Donec lacus justo, ' +
+                'cursus at rutrum sit amet, vulputate eu urna. Nullam fringilla ipsum eget eros ' +
+                'blandit fringilla. Vestibulum feugiat sodales sapien, interdum viverra dolor ' +
+                'malesuada semper. Donec ut varius felis. Nam nisl diam, rutrum in libero et, ' +
+                'euismod luctus augue. header 2 Sed felis sem, tincidunt sed finibus sit amet, ' +
+                'convallis bibendum dolor. Lorem ipsum dolor sit amet, consectetur adipiscing ' +
+                'elit. In a nunc nisl. Suspendisse eget dapibus felis. Nullam purus magna, ' +
+                'vehicula venenatis venenatis vitae, consequat sed urna. Maecenas sed ultricies'; // >500 chars
+            
+            const datasource = [{ id: 'list1', text: longTitle }];
+            let listObj: any = new MultiSelect({ 
+                dataSource: datasource, 
+                mode: 'Box', 
+                fields: { text: "text", value: "text" }, 
+                value: [longTitle] 
+            });
+            listObj.appendTo(element);
+            
+            // Click the chip to trigger addChipSelection
+            const chip = listObj.chipCollectionWrapper.querySelector('.e-chips');
+            (listObj as any).chipClick({ target: chip });
+            const announcer = document.querySelector('.e-chip-announcer') as HTMLElement;
+            expect(announcer.textContent).toBe('Chip focused. Press Backspace to remove');
+            expect(longTitle.length).toBeGreaterThan(500); // Verify test data
+            listObj.destroy();
+        });
     });
     describe('Placeholder testing through inline', () => {
         let listObj: any;
