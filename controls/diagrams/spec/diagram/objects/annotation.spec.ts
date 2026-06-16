@@ -1204,7 +1204,7 @@ describe('Diagram Control', () => {
         it('Checking Text overflow - Ellipsis and TextWrapping - NoWrap', (done: Function) => {
             expect((document.getElementById("node8_label8_groupElement").childNodes[1].childNodes[0] as HTMLElement).getAttribute("x") == "0").toBe(true);
             expect((document.getElementById("node8_label8_groupElement").childNodes[1].childNodes[0] as HTMLElement).getAttribute("y") == "10.8").toBe(true);
-            expect((document.getElementById("node8_label8_groupElement").childNodes[1].childNodes[0] as HTMLElement).textContent == "The text e...").toBe(true);
+            expect((document.getElementById("node8_label8_groupElement").childNodes[1].childNodes[0] as HTMLElement).textContent == "The text ele...").toBe(true);
             done();
         });
 

@@ -943,6 +943,11 @@ export class BaseHistoryInfo {
             this.documentHelper.layout.layoutWholeDocument(true);
         }
         this.owner.editorModule.reLayout(this.owner.selectionModule, this.owner.selectionModule.isEmpty);
+        if (this.action === 'ListFormat') {
+            this.documentHelper.owner.isShiftingEnabled = true;
+            this.documentHelper.layout.layoutWholeDocument();
+            this.documentHelper.owner.isShiftingEnabled = false;
+        }
         if (this.editorHistory.isUndoing && (this.action === 'SectionBreak' || (this.action === 'SectionBreakContinuous' && this.owner.selectionModule.sectionFormat.numberOfColumns > 1))) {
             this.owner.editorModule.isSkipOperationsBuild = this.owner.enableCollaborativeEditing;
             this.documentHelper.layout.layoutWholeDocument();

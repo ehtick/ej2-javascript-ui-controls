@@ -211,8 +211,10 @@ export class MarkerExplode extends ChartData {
         const chartId: string = this.chart.element.id;
         const seriesIndex: number = series.index;
         const pointIndex: number = point.index;
-        const shapeElements: NodeListOf<Element> = this.chart.svgObject.querySelectorAll('[id^="' + chartId + '_Series_' + seriesIndex + '_Point_' + pointIndex + '_TextShape_"]');
-        const textElements: NodeListOf<Element> = this.chart.svgObject.querySelectorAll('[id^="' + chartId + '_Series_' + seriesIndex + '_Point_' + pointIndex + '_Text_"]');
+        const root: Element = this.chart.enableCanvas ? document.getElementById(chartId + '_Secondary_Element') : this.chart.svgObject;
+        if (!root) { return; }
+        const shapeElements: NodeListOf<Element> = root.querySelectorAll('[id^="' + chartId + '_Series_' + seriesIndex + '_Point_' + pointIndex + '_TextShape_"]');
+        const textElements: NodeListOf<Element> = root.querySelectorAll('[id^="' + chartId + '_Series_' + seriesIndex + '_Point_' + pointIndex + '_Text_"]');
         if ((!shapeElements || shapeElements.length === 0) && (!textElements || textElements.length === 0)) {
             return;
         }
@@ -254,7 +256,9 @@ export class MarkerExplode extends ChartData {
             textClone.setAttribute('id', textElement.id + '_Trackball');
             tempGroup.appendChild(textClone);
         }
-        this.chart.svgObject.appendChild(tempGroup);
+        const target: Element = this.chart.enableCanvas ? document.getElementById(chartId + '_trackball_svg') : this.chart.svgObject;
+        if (!target) { return; }
+        target.appendChild(tempGroup);
     }
 
     private drawTrackBall(series: Series, point: Points, location: ChartLocation, index: number): void {
@@ -338,7 +342,7 @@ export class MarkerExplode extends ChartData {
                 this.trackballAnimate(symbol, 0, this.animationDuration(), series, point.index, location, false, false);
             }
         }
-        if (explodeSeries) {
+        if (series.type === 'Bubble') {
             this.renderTrackballDataLabel(series, point);
         }
         if (point.symbolLocations.length < 2 && series.marker.visible) {

@@ -1584,6 +1584,7 @@ export class Editor {
         if (protectionType === 'RevisionsOnly') {
             this.toggleTrackChangesProtection(true);
         }
+        this.owner.commentReviewPane.enableDisableItems();
         this.owner.trackChangesPane.enableDisableButton(false, true);
         if (!this.documentHelper.owner.enableCollaborativeEditing) {
             this.fireContentChange();
@@ -1759,6 +1760,7 @@ export class Editor {
         if (this.documentHelper.dialog.visible) {
             this.documentHelper.dialog.hide();
         }
+        this.owner.commentReviewPane.enableDisableItems();
         this.owner.showHideRulers();
         if (!this.documentHelper.owner.enableCollaborativeEditing) {
             this.fireContentChange();
@@ -7082,9 +7084,6 @@ export class Editor {
                         // Add the parsed headers/footers to the document's headersFooters collection at the appropriate index
                         this.documentHelper.copiedHeaderFooterData.push(parsedHeaderFooters);
                     }
-                }
-                if (isPaste && !isContextBasedPaste && !isNullOrUndefined(pasteContent[footnotesProperty[this.keywordIndex]])) {
-                    parser.parseFootnotes(pasteContent[footnotesProperty[this.keywordIndex]], this.documentHelper.footnotes);
                 }
                 if (isPaste && !this.isRemoteAction && !isNullOrUndefined(comments)) {
                     let existingCommentIds: string[] = [];

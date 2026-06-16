@@ -206,11 +206,7 @@ export class TextPosition {
             position.index = position.index.substring(index).replace(';', '');
         }
         index = parseInt(newValue, 10);
-        if (this.documentHelper.owner.enableLayout) {
-            page = this.documentHelper.pages[index];
-        } else {
-            page = this.documentHelper.pages[0];
-        }
+        page = this.documentHelper.pages[index];
         return page;
     }
     /**

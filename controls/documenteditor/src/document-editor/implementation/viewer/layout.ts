@@ -2512,6 +2512,53 @@ export class Layout {
             }
         }
     }
+    private splitFirstWordFromElement(line: LineWidget, nextLine: LineWidget, element: TextElementBox): void {
+        const text: string = element.text;
+        const spaceIndex: number = text.indexOf(' ');
+        const firstWord: string = text.substring(0, spaceIndex);
+        const spaceChar: string = text[spaceIndex];
+        const remainingText: string = text.substring(spaceIndex + 1);
+
+        // Create element for first word
+        const wordElement: TextElementBox = new TextElementBox();
+        wordElement.text = firstWord;
+        wordElement.characterFormat.copyFormat(element.characterFormat);
+        wordElement.height = element.height;
+        wordElement.baselineOffset = element.baselineOffset;
+        wordElement.characterRange = element.characterRange;
+        wordElement.scriptType = element.scriptType;
+        wordElement.width = this.documentHelper.textHelper.getWidth(firstWord, element.characterFormat, element.scriptType);
+        wordElement.trimEndWidth = wordElement.width;
+
+        // Space element
+        const spaceElement: TextElementBox = new TextElementBox();
+        spaceElement.text = spaceChar;
+        spaceElement.characterFormat.copyFormat(element.characterFormat);
+        spaceElement.height = element.height;
+        spaceElement.baselineOffset = element.baselineOffset;
+        spaceElement.characterRange = element.characterRange;
+        spaceElement.scriptType = element.scriptType;
+        spaceElement.width = this.documentHelper.textHelper.getWidth(spaceChar, element.characterFormat, element.scriptType);
+        spaceElement.trimEndWidth = 0;
+
+        // Update remaining element (next line)
+        if (remainingText.length === 0) {
+            nextLine.children.splice(0, 0, spaceElement);
+        }
+        else {
+            element.text = remainingText;
+            element.width = this.documentHelper.textHelper.getWidth(remainingText, element.characterFormat, element.scriptType);
+            if (remainingText[remainingText.length - 1] === ' ') {
+                element.trimEndWidth = this.documentHelper.textHelper.getWidth(HelperMethods.trimEnd(remainingText), element.characterFormat, element.scriptType);
+            } else {
+                element.trimEndWidth = element.width;
+            }
+        }
+        wordElement.line = line;
+        line.children.push(wordElement);
+        spaceElement.line = line;
+        line.children.push(spaceElement);
+    }
     private moveElementFromNextLine(line: LineWidget): void {
         let nextLine: LineWidget = line.nextLine;
         const bodyWidget: BodyWidget= line.paragraph.bodyWidget
@@ -2520,10 +2567,30 @@ export class Layout {
         }
         while (nextLine instanceof LineWidget) {
             if (nextLine.children.length > 0) {
-                const element: ElementBox = nextLine.children.splice(0, 1)[0];
-                line.children.push(element);
-                element.line = line;
-                break;
+                let element: ElementBox = nextLine.children[0];
+                let isNextElement: boolean = true;
+                while (isNextElement) {
+                    // Check if element is TextElementBox and contains space
+                    if (element instanceof TextElementBox && nextLine.paragraph.paragraphFormat.textAlignment === 'Justify'
+                        && element.characterFormat.bidi && element.text.indexOf(' ') > 0 && element.text.trim().length > 0) {
+                        this.splitFirstWordFromElement(line, nextLine, element);
+                        isNextElement = false;
+                        break;
+                    } else {
+                        nextLine.children.splice(0, 1);
+                        line.children.push(element);
+                        element.line = line;
+                        isNextElement = false;
+                        if (element.nextNode && element.nextNode instanceof TextElementBox && nextLine.paragraph.bidi &&
+                            (element.nextNode.text.indexOf(' ') !== 0) && element.nextNode.text.trim().length > 0) {
+                            isNextElement = true;
+                            element = element.nextNode;
+                        }
+                    }
+                }
+                if (!isNextElement) {
+                    break;
+                }
             } else {
                 if (nextLine.paragraph.childWidgets.length === 1) {
                     nextLine.paragraph.destroy();
@@ -3126,7 +3193,7 @@ export class Layout {
                     }
                     this.addSplittedLineWidget(currentLine, currentLine.children.indexOf(element));
                 }
-                this.moveToNextLine(currentLine);
+                this.moveToNextLine(currentLine, undefined, undefined, true);
                 if (currentLine.paragraph.bodyWidget.floatingElements.length > 0 && isElementMoved) {
                     this.nextElementToLayout = element;
                     this.hasFloatingElement = true;
@@ -5513,7 +5580,7 @@ export class Layout {
         }
     }
     /* eslint-disable  */
-    private moveToNextLine(line: LineWidget, isMultiColumnSplit?: boolean, index?: number): void {
+    private moveToNextLine(line: LineWidget, isMultiColumnSplit?: boolean, index?: number, isTabElement?: boolean): void {
         let paragraph: ParagraphWidget = line.paragraph;
         let paraFormat: WParagraphFormat = paragraph.paragraphFormat;
         let isParagraphStart: boolean = line.isFirstLine();
@@ -5583,7 +5650,7 @@ export class Layout {
             trimmedSpaceWidth = getWidthAndSpace[0].trimmedSpaceWidth;
             skip2013Justification = line.isEndsWithPageBreak || line.isEndsWithColumnBreak || line.isEndsWithLineBreak || line.paragraph.bidi || this.isRTLLayout;
         }
-        if (!skip2013Justification && (getWidthAndSpace && getWidthAndSpace.length === 1) && this.viewer.clientActiveArea.width > 0 &&
+        if (!isTabElement && !skip2013Justification && (getWidthAndSpace && getWidthAndSpace.length === 1) && this.viewer.clientActiveArea.width > 0 &&
             !isParagraphEnd && !this.is2013Justification && textAlignment === 'Justify' && this.documentHelper.compatibilityMode === 'Word2013') {
             let availableWidth: number = this.viewer.clientActiveArea.width;
             let totalSpaceWidth: number = this.getTotalSpaceWidth(line);
@@ -7936,7 +8003,7 @@ export class Layout {
         let paragraph: ParagraphWidget = line.paragraph;
         let paraFormat: WParagraphFormat = paragraph.paragraphFormat;
         let textAlignment: TextAlignment = paraFormat.textAlignment;
-        if (paraFormat.bidi) {
+        if (paraFormat.bidi && (isNullOrUndefined(element.nextElement) || paragraph.isInsideTable)) {
             paragraph.splitTextRangeByScriptType(line.indexInOwner);
         }
         let isParagraphEnd: boolean = line.isLastLine();
@@ -8319,7 +8386,7 @@ export class Layout {
         }
         //Add the border widths to respective margin side.
         //cell.margin.left += (isLeftStyleNone) ? 0 : (cell.leftBorderWidth);
-        cell.margin.right += ((isRightStyleNone && !linestyle) || cell.ownerTable.tableFormat.isRTFTable) ? 0 : (cell.rightBorderWidth);
+        cell.margin.right += ((isRightStyleNone && !linestyle) || (cell.ownerTable.tableFormat.cellSpacing > 0 && cell.ownerTable.tableFormat.allowAutoFit) || cell.ownerTable.tableFormat.isRTFTable) ? 0 : (cell.rightBorderWidth);
         //cell.ownerWidget = owner;
         return cell;
     }
@@ -11271,6 +11338,7 @@ export class Layout {
     // //#region Table
 
     public layoutTable(table: TableWidget, startIndex: number, isAsync?: boolean): BlockWidget | Promise<BlockWidget> {
+        table.tableFormat.borders = table.tableFormat.isRTFTable ? (table.firstChild as TableRowWidget).rowFormat.borders : table.tableFormat.borders;
         if (this.isFieldCode && !this.checkTableHasField(table) && !this.isRelayout) {
             table.isFieldCodeBlock = true;
             return table;

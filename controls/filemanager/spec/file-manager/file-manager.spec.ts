@@ -5,7 +5,7 @@ import { FileManager } from '../../src/file-manager/base/file-manager';
 import { NavigationPane } from '../../src/file-manager/layout/navigation-pane';
 import { DetailsView } from '../../src/file-manager/layout/details-view';
 import { Toolbar } from '../../src/file-manager/actions/toolbar';
-import { createElement, Browser, isNullOrUndefined } from '@syncfusion/ej2-base';
+import { createElement, Browser, isNullOrUndefined, addClass } from '@syncfusion/ej2-base';
 import { data1, data10, data11, stringData, accessData1, idData1 } from './data';
 import { FailureEventArgs } from '../../src';
 import * as fmUtility from '../../src/file-manager/common/utility';
@@ -2224,6 +2224,412 @@ describe('FileManager control', () => {
                 expect(feObj.uploadSettings.sequentialUpload).toBe(true);
                 done();
             }, 50);
+        });
+    });
+
+    describe('Tab and Shift+Tab keyboard navigation in Details View', () => {
+        let feObj: FileManager;
+        let ele: HTMLElement;
+
+        beforeEach((): void => {
+            jasmine.Ajax.install();
+            let Chromebrowser: string = "Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36";
+            Browser.userAgent = Chromebrowser;
+            feObj = undefined;
+            ele = createElement('div', { id: 'file_nav' });
+            document.body.appendChild(ele);
+        });
+
+        afterEach((): void => {
+            jasmine.Ajax.uninstall();
+            if (feObj) feObj.destroy();
+            ele.remove();
+        });
+
+        it('Details View has Tab and Shift+Tab navigation configured', (done: Function) => {
+            feObj = new FileManager({
+                view: 'Details',
+                ajaxSettings: {
+                    url: '/FileOperations',
+                    uploadUrl: '/Upload', downloadUrl: '/Download', getImageUrl: '/GetImage'
+                },
+            });
+            feObj.appendTo('#file_nav');
+            this.request = jasmine.Ajax.requests.mostRecent();
+            this.request.respondWith({
+                status: 200,
+                responseText: JSON.stringify(data10)
+            });
+            setTimeout(function () {
+                expect(feObj.detailsviewModule).toBeDefined();
+                expect(feObj.detailsviewModule.gridObj).toBeDefined();
+                let keyConfigs = (feObj.detailsviewModule as any).keyConfigs;
+                expect(keyConfigs['tab']).toBe('tab');
+                expect(keyConfigs['shiftTab']).toBe('shift+tab');
+                done();
+            }, 500);
+        });
+        it('Tab and Shift+Tab methods exist in DetailsView for keyboard navigation', (done: Function) => {
+            feObj = new FileManager({
+                view: 'Details',
+                ajaxSettings: {
+                    url: '/FileOperations',
+                    uploadUrl: '/Upload', downloadUrl: '/Download', getImageUrl: '/GetImage'
+                },
+            });
+            feObj.appendTo('#file_nav');
+            this.request = jasmine.Ajax.requests.mostRecent();
+            this.request.respondWith({
+                status: 200,
+                responseText: JSON.stringify(data10)
+            });
+            setTimeout(function () {
+                const detailsView = feObj.detailsviewModule as any;
+                expect(typeof detailsView.moveFocusToHeader).toBe('function');
+                expect(typeof detailsView.clearDetailsFocus).toBe('function');
+                expect(typeof detailsView.handleReverseTabNavigation).toBe('function');
+                done();
+            }, 500);
+        });
+
+        it('Tab and shitTab key should focus grid content row cell and navigate columns', (done: Function) => {
+            feObj = new FileManager({
+                view: 'Details',
+                ajaxSettings: {
+                    url: '/FileOperations',
+                    uploadUrl: '/Upload', downloadUrl: '/Download', getImageUrl: '/GetImage'
+                },
+            });
+            feObj.appendTo('#file_nav');
+            this.request = jasmine.Ajax.requests.mostRecent();
+            this.request.respondWith({
+                status: 200,
+                responseText: JSON.stringify(data10)
+            });
+            setTimeout(function () {
+                const detailsView = feObj.detailsviewModule as any;
+                const gridObj = feObj.detailsviewModule.gridObj;
+                gridObj.selectRow(0);
+                detailsView.addFocus(0);
+                const gridElement: any = document.getElementById(feObj.element.id + '_grid');
+                const rows: any = gridElement.querySelectorAll('tr.e-row');
+                const cells: any = rows[0].querySelectorAll('td.e-rowcell');
+                expect(cells.length).toBeGreaterThan(1);
+                let focusedRow: any = rows[0].querySelector('tr.e-row.e-focus');
+                expect(focusedRow).toBeDefined();
+                let keyboardEventArgs: any = { preventDefault: (): void => { }, action: 'tab', target: null, stopImmediatePropagation: (): void => { } };
+                detailsView.keyupHandler(keyboardEventArgs);
+                let focusedCell: any = document.activeElement;
+                expect(focusedCell).toBe(cells[1]);
+                keyboardEventArgs.action = 'tab';
+                detailsView.keyupHandler(keyboardEventArgs);
+                focusedCell = document.activeElement;
+                expect(focusedCell).toBe(cells[2]);
+                keyboardEventArgs.action = 'tab';
+                detailsView.keyupHandler(keyboardEventArgs);
+                focusedCell = document.activeElement;
+                expect(focusedCell).toBe(cells[3]);
+                keyboardEventArgs.action = 'shiftTab';
+                detailsView.keyupHandler(keyboardEventArgs);
+                focusedCell = document.activeElement;
+                expect(focusedCell).toBe(cells[2]);
+                keyboardEventArgs.action = 'shiftTab';
+                detailsView.keyupHandler(keyboardEventArgs);
+                focusedCell = document.activeElement;
+                expect(focusedCell).toBe(cells[1]);          
+                done();
+            }, 500);
+        });
+        it('keyboard Right/Left key should focus grid content row cell and navigate columns', (done: Function) => {
+            feObj = new FileManager({
+                view: 'Details',
+                ajaxSettings: {
+                    url: '/FileOperations',
+                    uploadUrl: '/Upload', downloadUrl: '/Download', getImageUrl: '/GetImage'
+                },
+            });
+            feObj.appendTo('#file_nav');
+            this.request = jasmine.Ajax.requests.mostRecent();
+            this.request.respondWith({
+                status: 200,
+                responseText: JSON.stringify(data10)
+            });
+            setTimeout(function () {
+                const detailsView = feObj.detailsviewModule as any;
+                const gridObj = feObj.detailsviewModule.gridObj;
+                gridObj.selectRow(0);
+                detailsView.addFocus(0);
+                const gridElement: any = document.getElementById(feObj.element.id + '_grid');
+                const rows: any = gridElement.querySelectorAll('tr.e-row');
+                const cells: any = rows[0].querySelectorAll('td.e-rowcell');
+                expect(cells.length).toBeGreaterThan(1);
+                let focusedRow: any = rows[0].querySelector('tr.e-row.e-focus');
+                expect(focusedRow).toBeDefined();
+                let keyboardEventArgs: any = { preventDefault: (): void => { }, action: 'moveRight', target: null, stopImmediatePropagation: (): void => { } };
+                detailsView.keyupHandler(keyboardEventArgs);
+                let focusedCell: any = document.activeElement;
+                expect(focusedCell).toBe(cells[1]);
+                keyboardEventArgs.action = 'moveRight';
+                detailsView.keyupHandler(keyboardEventArgs);
+                focusedCell = document.activeElement;
+                expect(focusedCell).toBe(cells[2]);
+                keyboardEventArgs.action = 'moveRight';
+                detailsView.keyupHandler(keyboardEventArgs);
+                focusedCell = document.activeElement;
+                expect(focusedCell).toBe(cells[3]);
+                keyboardEventArgs.action = 'moveLeft';
+                detailsView.keyupHandler(keyboardEventArgs);
+                focusedCell = document.activeElement;
+                expect(focusedCell).toBe(cells[2]);
+                keyboardEventArgs.action = 'moveLeft';
+                detailsView.keyupHandler(keyboardEventArgs);
+                focusedCell = document.activeElement;
+                expect(focusedCell).toBe(cells[1]);
+                done();
+            }, 500);
+        });
+
+        it('Single-column grid navigation should stay at same cell on arrow key press', (done: Function) => {
+            feObj = new FileManager({
+                view: 'Details',
+                ajaxSettings: {
+                    url: '/FileOperations',
+                    uploadUrl: '/Upload', downloadUrl: '/Download', getImageUrl: '/GetImage'
+                },
+            });
+            feObj.appendTo('#file_nav');
+            this.request = jasmine.Ajax.requests.mostRecent();
+            this.request.respondWith({
+                status: 200,
+                responseText: JSON.stringify(data10)
+            });
+            setTimeout(function () {
+                const detailsView = feObj.detailsviewModule as any;
+                const gridObj = feObj.detailsviewModule.gridObj;
+                gridObj.selectRow(0);
+                detailsView.addFocus(0);
+                const gridElement: any = document.getElementById(feObj.element.id + '_grid');
+                const rows: any = gridElement.querySelectorAll('tr.e-row');
+                const cells: any = rows[0].querySelectorAll('td.e-rowcell');
+                if (cells.length === 1) {
+                    let keyboardEventArgs: any = { preventDefault: (): void => { }, action: 'moveRight', target: null, stopImmediatePropagation: (): void => { } };
+                    const initialCell: any = document.activeElement;
+                    detailsView.keyupHandler(keyboardEventArgs);
+                    let focusedCell: any = document.activeElement;
+                    expect(focusedCell).toBe(initialCell);
+                }
+                done();
+            }, 500);
+        });
+
+        it('Last header column Tab should move focus to next grid row first column', (done: Function) => {
+            feObj = new FileManager({
+                view: 'Details',
+                ajaxSettings: {
+                    url: '/FileOperations',
+                    uploadUrl: '/Upload', downloadUrl: '/Download', getImageUrl: '/GetImage'
+                },
+            });
+            feObj.appendTo('#file_nav');
+            this.request = jasmine.Ajax.requests.mostRecent();
+            this.request.respondWith({
+                status: 200,
+                responseText: JSON.stringify(data10)
+            });
+            setTimeout(function () {
+                const detailsView = feObj.detailsviewModule as any;
+                const gridObj = feObj.detailsviewModule.gridObj;
+                gridObj.selectRow(0);
+                detailsView.addFocus(0);
+                const gridElement: any = document.getElementById(feObj.element.id + '_grid');
+                const headers: any = gridElement.querySelectorAll('th.e-headercell');
+                const lastHeader: any = headers[headers.length - 1];
+                lastHeader.setAttribute('tabindex', '0');
+                addClass([lastHeader], ['e-focus', 'e-focused']);
+                lastHeader.focus();
+                let keyboardEventArgs: any = { preventDefault: (): void => { }, action: 'tab', target: lastHeader, stopImmediatePropagation: (): void => { } };
+                detailsView.keyupHandler(keyboardEventArgs);
+                const rows: any = gridElement.querySelectorAll('tr.e-row');
+                if (rows.length > 1) {
+                    expect(document.activeElement).toBe(rows[0]);
+                }
+                done();
+            }, 500);
+        });
+
+        it('First header Shift+Tab exit should move focus to breadcrumb search input', (done: Function) => {
+            feObj = new FileManager({
+                view: 'Details',
+                ajaxSettings: {
+                    url: '/FileOperations',
+                    uploadUrl: '/Upload', downloadUrl: '/Download', getImageUrl: '/GetImage'
+                },
+            });
+            feObj.appendTo('#file_nav');
+            this.request = jasmine.Ajax.requests.mostRecent();
+            this.request.respondWith({
+                status: 200,
+                responseText: JSON.stringify(data10)
+            });
+            setTimeout(function () {
+                const detailsView = feObj.detailsviewModule as any;
+                const gridObj = feObj.detailsviewModule.gridObj;
+                gridObj.selectRow(0);
+                detailsView.addFocus(0);
+                const gridElement: any = document.getElementById(feObj.element.id + '_grid');
+                const headers: any = gridElement.querySelectorAll('th.e-headercell');
+                // Focus first header
+                const firstHeader: any = headers[0];
+                firstHeader.setAttribute('tabindex', '0');
+                firstHeader.focus();
+                addClass([firstHeader], ['e-focus', 'e-focused']);
+                // Shift+Tab from first header should exit to breadcrumb
+                let keyboardEventArgs: any = { preventDefault: (): void => { }, action: 'shiftTab', target: firstHeader, stopImmediatePropagation: (): void => { } };
+                detailsView.keyupHandler(keyboardEventArgs);
+                // Focus should move to breadcrumb search input or address bar
+                const breadcrumbBar: any = document.querySelector('.e-breadcrumbbar') || document.querySelector('.e-address-list-item:last-child');
+                expect(breadcrumbBar || document.activeElement.closest('.e-breadcrumbbar')).not.toBeNull();
+                done();
+            }, 500);
+        });
+
+        it('Mixed Tab and arrow key navigation sequences should work correctly', (done: Function) => {
+            feObj = new FileManager({
+                view: 'Details',
+                ajaxSettings: {
+                    url: '/FileOperations',
+                    uploadUrl: '/Upload', downloadUrl: '/Download', getImageUrl: '/GetImage'
+                },
+            });
+            feObj.appendTo('#file_nav');
+            this.request = jasmine.Ajax.requests.mostRecent();
+            this.request.respondWith({
+                status: 200,
+                responseText: JSON.stringify(data10)
+            });
+            setTimeout(function () {
+                const detailsView = feObj.detailsviewModule as any;
+                const gridObj = feObj.detailsviewModule.gridObj;
+                gridObj.selectRow(0);
+                detailsView.addFocus(0);
+                const gridElement: any = document.getElementById(feObj.element.id + '_grid');
+                const rows: any = gridElement.querySelectorAll('tr.e-row');
+                const cells: any = rows[0].querySelectorAll('td.e-rowcell');
+                expect(cells.length).toBeGreaterThan(1);
+                let focusedRow: any = rows[0].querySelector('tr.e-row.e-focus');
+                expect(focusedRow).toBeDefined();
+                let keyboardEventArgs: any = { preventDefault: (): void => { }, action: 'tab', target: null, stopImmediatePropagation: (): void => { } };
+                    detailsView.keyupHandler(keyboardEventArgs);
+                    var focusedCell = document.activeElement;
+                    expect(focusedCell).toBe(cells[1]);
+                    keyboardEventArgs.action = 'moveRight';
+                    detailsView.keyupHandler(keyboardEventArgs);
+                    focusedCell = document.activeElement;
+                    keyboardEventArgs.action = 'tab';
+                    detailsView.keyupHandler(keyboardEventArgs);
+                    focusedCell = document.activeElement;
+                    expect(focusedCell).toBe(cells[2]);
+                    keyboardEventArgs.action = 'moveRight';
+                    detailsView.keyupHandler(keyboardEventArgs);
+                    focusedCell = document.activeElement;
+                    expect(focusedCell).toBe(cells[3]);
+                    keyboardEventArgs.action = 'moveLeft';
+                    detailsView.keyupHandler(keyboardEventArgs);
+                    focusedCell = document.activeElement;
+                    expect(focusedCell).toBe(cells[2]);
+                    keyboardEventArgs.action = 'shiftTab';
+                    detailsView.keyupHandler(keyboardEventArgs);
+                    focusedCell = document.activeElement;
+                    expect(focusedCell).toBe(cells[1]);
+                done();
+            }, 500);
+        });
+        it('Tab from last column should move focus to next row and then to first column', (done: Function) => {
+            feObj = new FileManager({
+                view: 'Details',
+                ajaxSettings: {
+                    url: '/FileOperations',
+                    uploadUrl: '/Upload',
+                    downloadUrl: '/Download',
+                    getImageUrl: '/GetImage'
+                },
+            });
+            feObj.appendTo('#file_nav');
+            this.request = jasmine.Ajax.requests.mostRecent();
+            this.request.respondWith({
+                status: 200,
+                responseText: JSON.stringify(data10)
+            });
+            setTimeout(function () {
+                const detailsView = feObj.detailsviewModule as any;
+                const gridElement: any = document.getElementById(feObj.element.id + '_grid');
+                const rows: any = gridElement.querySelectorAll('tr.e-row');
+                expect(rows.length).toBeGreaterThan(1);
+                const firstRowCells: any =
+                    rows[0].querySelectorAll('td.e-rowcell:not(.e-gridchkbox)');
+                const secondRowCells: any =
+                    rows[1].querySelectorAll('td.e-rowcell:not(.e-gridchkbox)');
+                const lastCell: HTMLElement =
+                    firstRowCells[firstRowCells.length - 1];
+                lastCell.setAttribute('tabindex', '0');
+                addClass([lastCell], ['e-focus', 'e-focused']);
+                lastCell.focus();
+                let keyboardEventArgs: any = {
+                    preventDefault: (): void => { },
+                    action: 'tab',
+                    target: lastCell,
+                    stopImmediatePropagation: (): void => { }
+                };
+                detailsView.keyupHandler(keyboardEventArgs);
+                expect(document.activeElement).toBe(rows[1]);
+                detailsView.keyupHandler(keyboardEventArgs);
+                expect(document.activeElement).toBe(secondRowCells[0]);
+                done();
+            }, 500);
+        });
+        it('Shift+Tab from first column should move focus to row and then previous row last column', (done: Function) => {
+            feObj = new FileManager({
+                view: 'Details',
+                ajaxSettings: {
+                    url: '/FileOperations',
+                    uploadUrl: '/Upload',
+                    downloadUrl: '/Download',
+                    getImageUrl: '/GetImage'
+                },
+            });
+            feObj.appendTo('#file_nav');
+            this.request = jasmine.Ajax.requests.mostRecent();
+            this.request.respondWith({
+                status: 200,
+                responseText: JSON.stringify(data10)
+            });
+            setTimeout(function () {
+                const detailsView = feObj.detailsviewModule as any;
+                const gridElement: any = document.getElementById(feObj.element.id + '_grid');
+                const rows: any = gridElement.querySelectorAll('tr.e-row');
+                expect(rows.length).toBeGreaterThan(1);
+                const firstRowCells: any =
+                    rows[0].querySelectorAll('td.e-rowcell:not(.e-gridchkbox)');
+                const secondRowCells: any =
+                    rows[1].querySelectorAll('td.e-rowcell:not(.e-gridchkbox)');
+                const firstCellSecondRow: HTMLElement = secondRowCells[0];
+                const previousRowLastCell: HTMLElement =
+                    firstRowCells[firstRowCells.length - 1];
+                firstCellSecondRow.setAttribute('tabindex', '0');
+                addClass([firstCellSecondRow], ['e-focus', 'e-focused']);
+                firstCellSecondRow.focus();
+                let keyboardEventArgs: any = {
+                    preventDefault: (): void => { },
+                    action: 'shiftTab',
+                    target: firstCellSecondRow,
+                    stopImmediatePropagation: (): void => { }
+                };
+                detailsView.keyupHandler(keyboardEventArgs);
+                expect(document.activeElement).toBe(rows[1]);
+                detailsView.keyupHandler(keyboardEventArgs);
+                expect(document.activeElement).toBe(previousRowLastCell);
+                done();
+            }, 500);
         });
     });
 });

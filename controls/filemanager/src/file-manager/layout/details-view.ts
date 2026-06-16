@@ -43,6 +43,7 @@ export class DetailsView {
     private dragObj: Draggable = null;
     private startIndex: number = null;
     private firstItemIndex: number = null;
+    private currentColumnIndex: number = 0;
     private isSelectionUpdate: boolean = false;
     private currentSelectedItem: string[] = [];
     private count: number = 0;
@@ -50,6 +51,7 @@ export class DetailsView {
     private isLoaded: boolean = false;
     private isNameWidth: boolean = false;
     private isMultiSelect: boolean = false;
+    private isTabKeypressed: boolean = false;
 
     /* public variable */
     public gridObj: Grid;
@@ -71,6 +73,7 @@ export class DetailsView {
             altEnter: 'alt+enter',
             esc: 'escape',
             tab: 'tab',
+            shiftTab: 'shift+tab',
             moveDown: 'downarrow',
             ctrlEnd: 'ctrl+end',
             ctrlHome: 'ctrl+home',
@@ -93,6 +96,8 @@ export class DetailsView {
             end: 'end',
             home: 'home',
             moveUp: 'uparrow',
+            moveLeft: 'leftarrow',
+            moveRight: 'rightarrow',
             del: 'delete',
             ctrlX: this.parent.isMac ? 'cmd+x' : 'ctrl+x',
             ctrlC: this.parent.isMac ? 'cmd+c' : 'ctrl+c',
@@ -1444,8 +1449,20 @@ export class DetailsView {
     }
 
     private getFocusedItemIndex(): number {
-        return (!isNOU(this.getFocusedItem())) ?
-            parseInt(this.getFocusedItem().getAttribute('aria-rowindex'), 10) - 1 : null;
+        const focusedItem: Element = this.getFocusedItem();
+        if (isNOU(focusedItem)) { return null; }
+        if (focusedItem.classList.contains('e-rowcell')) {
+            return this.getRowIndexFromParent(focusedItem);
+        }
+        return parseInt(focusedItem.getAttribute('aria-rowindex'), 10) - 1;
+    }
+
+    private getRowIndexFromParent(focusedItem: Element): number {
+        const parentRow: HTMLElement = focusedItem.parentElement as HTMLElement;
+        if (parentRow && parentRow.classList.contains('e-row')) {
+            return parseInt(parentRow.getAttribute('aria-rowindex'), 10) - 1;
+        }
+        return null;
     }
 
     /* istanbul ignore next */
@@ -1473,6 +1490,8 @@ export class DetailsView {
         case 'ctrlLeft':
         case 'shiftLeft':
         case 'csLeft':
+        case 'tab':
+        case 'shiftTab':
         case 'esc':
         case 'del':
         case 'shiftdel':
@@ -1482,6 +1501,8 @@ export class DetailsView {
         case 'f2':
         case 'moveDown':
         case 'moveUp':
+        case 'moveLeft':
+        case 'moveRight':
         case 'ctrlD':
             e.preventDefault();
             break;
@@ -1563,13 +1584,18 @@ export class DetailsView {
             break;
         case 'ctrlHome':
         case 'tab':
+        case 'shiftTab':
             if (!isNOU(gridItems[0])) {
                 if (!this.parent.allowMultiSelection && e.action === 'ctrlHome') {
                     this.gridObj.selectRow(0);
-                } else if (this.gridObj.selectedRowIndex !== -1 && e.action === 'tab') {
-                    return;
+                } else if (e.action === 'shiftTab') {
+                    this.handleReverseTabNavigation(e);
                 }
-                else{
+                else if (e.action === 'tab') {
+                    this.isTabKeypressed = true;
+                    this.addHeaderFocus(e);
+                    this.isTabKeypressed = false;
+                } else {
                     this.addHeaderFocus(e);
                 }
             }
@@ -1632,6 +1658,10 @@ export class DetailsView {
         case 'moveUp':
         case 'moveDown':
             this.moveFunction(gridItems, e, selIndex);
+            break;
+        case 'moveLeft':
+        case 'moveRight':
+            this.moveColumn(e);
             break;
         case 'end':
             lastItem = [getValue(this.parent.hasId ? 'id' : 'name', gridItems[gridLength - 1])];
@@ -1760,6 +1790,63 @@ export class DetailsView {
         this.addFocus(nextItem);
     }
 
+    private moveColumn(e: KeyboardEventArgs): void {
+        const focusedItem: Element = this.getFocusedItem();
+        if (isNOU(focusedItem)) { return; }
+        const isHeaderFocused: boolean = focusedItem.classList.contains('e-headercell');
+        const isRowFocused: boolean = focusedItem.classList.contains('e-row');
+        const isCellFocused: boolean = focusedItem.classList.contains('e-rowcell');
+        if (!isHeaderFocused && !isRowFocused && !isCellFocused) { return; }
+        if (isHeaderFocused) {
+            const headers: HTMLElement[] = Array.from(this.element.querySelectorAll('th.e-headercell:not(.e-fe-checkbox)')) as HTMLElement[];
+            const currentIndex: number = headers.indexOf(focusedItem as HTMLElement);
+            if (currentIndex === -1) { return; }
+            const nextIndex: number = this.getNextColumnIndex(currentIndex, headers.length, e.action === 'moveRight');
+            // eslint-disable-next-line security/detect-object-injection
+            const headerElement: HTMLElement = headers[nextIndex];
+            focusedItem.setAttribute('tabindex', '-1');
+            removeClass([focusedItem], [CLS.FOCUS, CLS.FOCUSED]);
+            headerElement.setAttribute('tabindex', '0');
+            headerElement.focus();
+            addClass([headerElement], [CLS.FOCUS, CLS.FOCUSED]);
+        } else if (isRowFocused || isCellFocused) {
+            const row: HTMLElement = (isRowFocused ? focusedItem : focusedItem.parentElement) as HTMLElement;
+            if (!isRowFocused && (!row || !row.classList.contains('e-row'))) { return; }
+            const cells: HTMLElement[] = Array.from(row.querySelectorAll('.e-rowcell')) as HTMLElement[];
+            if (cells.length === 0) { return; }
+            const currentCellIndex: number = this.currentColumnIndex || 0;
+            const nextColumnIndex: number = this.getNextColumnIndex(currentCellIndex, cells.length, e.action === 'moveRight');
+            this.currentColumnIndex = nextColumnIndex;
+            if (isRowFocused) {
+                removeClass([row], [CLS.FOCUS, CLS.FOCUSED]);
+                row.setAttribute('tabindex', '-1');
+            } else {
+                removeClass([focusedItem], [CLS.FOCUS, CLS.FOCUSED]);
+                (focusedItem as HTMLElement).setAttribute('tabindex', '-1');
+            }
+            this.clearCellFocus(cells);
+            // eslint-disable-next-line security/detect-object-injection
+            const nextCell: HTMLElement = cells[nextColumnIndex];
+            nextCell.setAttribute('tabindex', '0');
+            addClass([nextCell], [CLS.FOCUS, CLS.FOCUSED]);
+            nextCell.focus();
+        }
+    }
+
+    private clearCellFocus(cells: HTMLElement[]): void {
+        for (let i: number = 0; i < cells.length; i++) {
+            cells[i as number].setAttribute('tabindex', '-1');
+            removeClass([cells[i as number]], [CLS.FOCUS, CLS.FOCUSED]);
+        }
+    }
+
+    private getNextColumnIndex(currentIndex : number, maxLength: number, isRight: boolean): number {
+        if (isRight) {
+            return Math.min(currentIndex  + 1, maxLength - 1);
+        }
+        return Math.max(currentIndex  - 1, 0);
+    }
+
     private checkRowsKey(items: object[], indexValue: number, focIndex: (null | number), e: KeyboardEventArgs): void {
         if (this.gridObj.checkAllRows === 'Uncheck' || this.gridObj.checkAllRows === 'Intermediate') {
             if (e.action !== 'csHome' && e.action !== 'csEnd') {
@@ -1838,19 +1925,57 @@ export class DetailsView {
         if (fItem) {
             fItem.removeAttribute('tabindex');
             removeClass([fItem], [CLS.FOCUS, CLS.FOCUSED]);
+            if (fItem.classList.contains('e-rowcell')) {
+                const parentRow: HTMLElement = fItem.parentElement as HTMLElement;
+                if (parentRow) {
+                    removeClass([parentRow], [CLS.FOCUS, CLS.FOCUSED]);
+                    parentRow.removeAttribute('tabindex');
+                }
+            }
+            if (fItem.classList.contains('e-row')) {
+                const focusedCells: NodeListOf<HTMLElement> = fItem.querySelectorAll('.e-rowcell');
+                for (let i: number = 0; i < focusedCells.length; i++) {
+                    if (focusedCells[i as number].classList.contains('e-focus') || focusedCells[i as number].classList.contains('e-focused')) {
+                        focusedCells[i as number].removeAttribute('tabindex');
+                        removeClass([focusedCells[i as number]], [CLS.FOCUS, CLS.FOCUSED]);
+                    }
+                }
+            }
         }
         if (!isNOU(itemElement)) {
             this.gridObj.element.setAttribute('tabindex', '-1');
-            itemElement.setAttribute('tabindex', '0');
-            itemElement.focus();
-            addClass([itemElement], [CLS.FOCUS, CLS.FOCUSED]);
+            const targetRow: HTMLElement = itemElement;
+            targetRow.setAttribute('tabindex', '0');
+            const cells: NodeListOf<HTMLElement> = targetRow.querySelectorAll('.e-rowcell');
+            this.clearCellFocus(Array.from(cells));
+            targetRow.focus();
+            addClass([targetRow], [CLS.FOCUS, CLS.FOCUSED]);
+            this.currentColumnIndex = 0;
         }
     }
 
     private addHeaderFocus(e: KeyboardEventArgs) : void {
         const treeFocus: HTMLElement = select('.e-row', this.element);
         this.gridObj.element.setAttribute('tabindex', '-1');
+        const isHeaderFocused: Element = this.getFocusedItem();
         let nameFocus: Element;
+        const focusedRow: HTMLElement = select('.e-row.e-focus', this.element);
+        let gridIconCell: HTMLElement;
+        if (!isNOU(focusedRow) && this.isTabKeypressed) {
+            gridIconCell = select('.e-rowcell.e-fe-grid-icon', focusedRow) as HTMLElement;
+        } else {
+            if (this.isTabKeypressed) {
+                const activeCell: HTMLElement = this.getFocusedItem() as HTMLElement;
+                if (activeCell && activeCell.classList.contains('e-rowcell')) {
+                    gridIconCell = select('.e-rowcell.e-fe-grid-icon', activeCell.closest('.e-row')) as HTMLElement;
+                } else {
+                    gridIconCell = select('.e-rowcell.e-fe-grid-icon', this.element) as HTMLElement;
+                }
+            }
+        }
+        if (this.tryNavigateToNextCellInRow(focusedRow, gridIconCell, isHeaderFocused)) {
+            return;
+        }
         if (!isNOU(e.target as HTMLElement) && (e.target as HTMLElement).classList.contains('e-defaultcursor')) {
             this.addFocus(0);
             nameFocus = (e.target as HTMLElement).nextElementSibling;
@@ -1869,6 +1994,155 @@ export class DetailsView {
             treeFocus.setAttribute('tabindex', '0');
             if (treeFocus.tabIndex === 0 && (nameFocus as HTMLElement).tabIndex === 0) {
                 removeClass([treeFocus], [CLS.FOCUS, CLS.FOCUSED]);
+            }
+        }
+    }
+
+    private tryNavigateToNextCellInRow(focusedRow: HTMLElement, gridIconCell: HTMLElement,
+                                       isHeaderFocused: Element): boolean {
+        if ((!isNOU(focusedRow) || !isNOU(gridIconCell)) && (!isNOU(isHeaderFocused) && !isHeaderFocused.classList.contains('e-headercell'))) {
+            if (!isNOU(gridIconCell)) {
+                const activeCell: HTMLElement = this.getFocusedItem() as HTMLElement;
+                if (activeCell && activeCell.classList.contains('e-rowcell')) {
+                    const row: HTMLElement = activeCell.parentElement as HTMLElement;
+                    const cells: HTMLElement[] = row ? Array.from(row.querySelectorAll('.e-rowcell')) as HTMLElement[] : [];
+                    const currentIndex: number = cells.indexOf(activeCell);
+                    const nextIndex: number = currentIndex + 1;
+                    if (nextIndex < cells.length) {
+                        this.currentColumnIndex = nextIndex;
+                        activeCell.setAttribute('tabindex', '-1');
+                        removeClass([activeCell], [CLS.FOCUS, CLS.FOCUSED]);
+                        // eslint-disable-next-line security/detect-object-injection
+                        const nextCell: HTMLElement = cells[nextIndex];
+                        nextCell.setAttribute('tabindex', '0');
+                        addClass([nextCell], [CLS.FOCUS, CLS.FOCUSED]);
+                        nextCell.focus();
+                        return true;
+                    } else {
+                        const currentRow: HTMLElement = activeCell.parentElement as HTMLElement;
+                        const rows: Element[] = this.gridObj.getRows();
+                        const currentRowIndex: number = rows.indexOf(currentRow);
+                        if (currentRowIndex !== -1) {
+                            const nextRow: Element =
+                                this.gridObj.getRowByIndex(currentRowIndex + 1);
+                            if (!isNOU(nextRow)) {
+                                activeCell.setAttribute('tabindex', '-1');
+                                removeClass([activeCell], [CLS.FOCUS, CLS.FOCUSED]);
+                                this.addFocus(currentRowIndex + 1);
+                                return true;
+                            } else {
+                                activeCell.setAttribute('tabindex', '-1');
+                                removeClass([activeCell], [CLS.FOCUS, CLS.FOCUSED]);
+                                activeCell.blur();
+                                return true;
+                            }
+                        }
+                        return false;
+                    }
+                }
+                const focusedRow: HTMLElement = this.getFocusedItem() as HTMLElement;
+                if (!isNOU(focusedRow) && focusedRow.classList.contains('e-row')) {
+                    focusedRow.setAttribute('tabindex', '-1');
+                    removeClass([focusedRow], [CLS.FOCUS, CLS.FOCUSED]);
+                }
+                gridIconCell.setAttribute('tabindex', '0');
+                addClass([gridIconCell], [CLS.FOCUS, CLS.FOCUSED]);
+                gridIconCell.focus();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private handleReverseTabNavigation(e: KeyboardEventArgs): void {
+        e.preventDefault();
+        const focusedItem: Element = this.getFocusedItem();
+        const headers: HTMLElement[] = Array.from(this.element.querySelectorAll('th.e-headercell:not(.e-fe-checkbox)')) as HTMLElement[];
+        if (headers.length === 0) {
+            return;
+        }
+        if (!isNOU(focusedItem) && focusedItem.classList.contains('e-rowcell')) {
+            const row: HTMLElement = focusedItem.parentElement as HTMLElement;
+            const cells: HTMLElement[] = row ? Array.from(row.querySelectorAll('.e-rowcell:not(.e-gridchkbox)')) as HTMLElement[] : [];
+            const currentTargetIndex: number = cells.indexOf(focusedItem as HTMLElement);
+            const prevIndex: number = currentTargetIndex - 1;
+            // eslint-disable-next-line security/detect-object-injection
+            const targetElement: HTMLElement = prevIndex >= 0 ? cells[prevIndex] : row;
+            (focusedItem as HTMLElement).setAttribute('tabindex', '-1');
+            removeClass([focusedItem], [CLS.FOCUS, CLS.FOCUSED]);
+            targetElement.setAttribute('tabindex', '0');
+            addClass([targetElement], [CLS.FOCUS, CLS.FOCUSED]);
+            targetElement.focus();
+            return;
+        }
+        if (!isNOU(focusedItem) && focusedItem.classList.contains('e-row')) {
+            const rows: HTMLElement[] = this.gridObj.getRows() as HTMLElement[];
+            const currentRowIndex: number =
+                rows.indexOf(focusedItem as HTMLElement);
+            if (currentRowIndex > 0) {
+                const previousRow: HTMLElement =
+                    rows[currentRowIndex - 1];
+                const previousRowCells: HTMLElement[] =
+                    Array.from(
+                        previousRow.querySelectorAll('.e-rowcell:not(.e-gridchkbox)')
+                    ) as HTMLElement[];
+                const lastCell: HTMLElement =
+                    previousRowCells[previousRowCells.length - 1];
+                (focusedItem as HTMLElement).setAttribute('tabindex', '-1');
+                removeClass([focusedItem], [CLS.FOCUS, CLS.FOCUSED]);
+                lastCell.setAttribute('tabindex', '0');
+                addClass([lastCell], [CLS.FOCUS, CLS.FOCUSED]);
+                lastCell.focus();
+                return;
+            }
+            (focusedItem as HTMLElement).setAttribute('tabindex', '-1');
+            removeClass([focusedItem], [CLS.FOCUS, CLS.FOCUSED]);
+            this.moveFocusToHeader(headers[headers.length - 1]);
+            return;
+        }
+        if (!isNOU(focusedItem) && focusedItem.classList.contains('e-headercell')) {
+            const currentIndex: number = headers.indexOf(focusedItem as HTMLElement);
+            if (currentIndex > 0) {
+                this.moveFocusToHeader(headers[currentIndex - 1]);
+            } else if (currentIndex === 0) {
+                this.clearDetailsFocus();
+            }
+            return;
+        }
+        if (!isNOU(focusedItem)) {
+            this.moveFocusToHeader(headers[headers.length - 1]);
+        }
+    }
+
+    private moveFocusToHeader(header: HTMLElement): void {
+        const focusedItem: Element = this.getFocusedItem();
+        if (!isNOU(focusedItem)) {
+            focusedItem.setAttribute('tabindex', '-1');
+            removeClass([focusedItem], [CLS.FOCUS, CLS.FOCUSED]);
+        }
+        header.setAttribute('tabindex', '0');
+        header.focus();
+        addClass([header], [CLS.FOCUS, CLS.FOCUSED]);
+    }
+
+    private clearDetailsFocus(): void {
+        const focusedItem: Element = this.getFocusedItem();
+        if (!isNOU(focusedItem)) {
+            focusedItem.setAttribute('tabindex', '-1');
+            removeClass([focusedItem], [CLS.FOCUS, CLS.FOCUSED]);
+        }
+        const breadcrumbBar: HTMLElement = select('.' + CLS.BREADCRUMBS, this.parent.element) as HTMLElement;
+        if (!isNOU(breadcrumbBar)) {
+            const searchInput: HTMLElement = breadcrumbBar.querySelector('input[aria-label="Search"]') as HTMLElement;
+            if (!isNOU(searchInput)) {
+                searchInput.setAttribute('tabindex', '0');
+                searchInput.focus();
+            } else {
+                const lastBreadcrumb: HTMLElement = breadcrumbBar.querySelector('.e-address-list-item:last-child') as HTMLElement;
+                if (!isNOU(lastBreadcrumb)) {
+                    lastBreadcrumb.setAttribute('tabindex', '0');
+                    lastBreadcrumb.focus();
+                }
             }
         }
     }

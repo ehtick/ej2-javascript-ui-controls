@@ -348,7 +348,9 @@ export class DropDownFormFieldDialog {
     }
 
     private onMoveUpItemClick(): void {
-        this.moveUpItem();
+        if (this.dropDownItems.length > 0) {
+            this.moveUpItem();
+        }
     }
     /**
      * @private
@@ -361,7 +363,9 @@ export class DropDownFormFieldDialog {
     }
 
     private onMouseDownItemClick(): void {
-        this.moveDownItem();
+        if (this.dropDownItems.length > 0) {
+            this.moveDownItem();
+        }
     }
     /**
      * @private

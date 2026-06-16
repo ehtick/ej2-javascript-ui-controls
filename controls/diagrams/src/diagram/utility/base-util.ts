@@ -506,8 +506,20 @@ export function overFlow(text: string, options: TextAttributes): string {
         }
     }
     if (options.textOverflow === 'Ellipsis') {
-        text = text.substr(0, text.length - 3);
-        text += '...';
+        // 1030715: Incorrect text truncation and ellipsis positioning for Japanese characters in diagram nodes
+        // Measure ellipsis width and ensure text + ellipsis fits within the available width
+        const ellipsis: string = '...';
+        // Iteratively remove characters until text + ellipsis fits
+        while (text.length > 0) {
+            const testText: string = text + ellipsis;
+            const testWidth: number = bBoxText(testText, options);
+            if (testWidth <= options.width) {
+                text = testText;
+                break;
+            }
+            // Remove one character at a time to accommodate different character widths
+            text = text.substr(0, text.length - 1);
+        }
     } else {
         text = text.substr(0, text.length);
     }

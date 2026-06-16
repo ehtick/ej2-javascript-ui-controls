@@ -4958,6 +4958,9 @@ export class Selection {
                 if (containerCell.ownerTable.contains(cell2)) {
                     cell1 = this.getSelectedCell(cell1, containerCell);
                     cell2 = this.getSelectedCell(cell2, containerCell);
+                    if (cell2 === containerCell) {
+                        return this.isExistAfter(cell1.ownerTable, block);
+                    }
                     if (containerCell.ownerRow === cell2.ownerRow) {
                         return containerCell.cellIndex > cell2.cellIndex;
                     }
@@ -4965,10 +4968,12 @@ export class Selection {
                         return containerCell.ownerRow.rowIndex > cell2.ownerRow.rowIndex;
                     }
                     if (cell1 === containerCell) {
-                        return this.isExistAfter(start, cell2.ownerTable);
-                    }
-                    if (cell2 === containerCell) {
-                        return this.isExistAfter(cell1.ownerTable, block);
+                        if (cell2.ownerTable.contains(cell1)) {
+                            return this.isExistAfter(start, block.associatedCell.ownerTable);
+                        }
+                        if (containerCell.childWidgets.indexOf(cell2.ownerTable) !== -1) {
+                            return this.isExistAfter(start, cell2.ownerTable);
+                        }
                     }
                     return this.isExistAfter(cell1.ownerTable, cell2.ownerTable);
                 }

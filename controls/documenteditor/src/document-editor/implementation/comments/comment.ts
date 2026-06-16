@@ -400,7 +400,7 @@ export class CommentReviewPane {
         const keys: CommentElementBox[] = this.commentPane.comments.keys;
         for (let i: number = 0; i < keys.length; i++) {
             const commentView: CommentView = this.commentPane.comments.get(keys[i]);
-            if (this.owner.isReadOnly) {
+            if (this.owner.isReadOnly || this.owner.documentHelper.protectionType === "ReadOnly" || this.owner.documentHelper.protectionType === "FormFieldsOnly") {
                 if(!isNullOrUndefined(commentView.replyViewTextBox)) {
                     commentView.replyViewTextBox.style.display = 'none';
                 }

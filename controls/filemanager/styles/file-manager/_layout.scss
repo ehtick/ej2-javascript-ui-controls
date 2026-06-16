@@ -693,7 +693,6 @@
         @include visibility(hidden);
 
         &.e-focused {
-          box-shadow: none;
           @if $fm-skin-name != 'tailwind' and $fm-skin-name != 'bootstrap5' and $fm-skin-name != 'bootstrap5.3' and $fm-skin-name != 'FluentUI' and $fm-skin-name != 'Material3' and $fm-skin-name != 'fluent2' and $fm-skin-name != 'tailwind3' {
             td {
               box-shadow: $fe-grid-row-ie-box-shadow;

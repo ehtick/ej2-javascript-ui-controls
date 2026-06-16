@@ -52,13 +52,14 @@ export class DataLabel {
     private initPrivateVariables(series: Series, marker: MarkerSettingsModel): void {
         let transform: string = '';
         let clipPath: string = '';
-        const render: SvgRenderer | CanvasRenderer = series.chart.renderer;
+        const isBubbleCanvasMode: boolean = this.chart.enableCanvas && series.type === 'Bubble' && marker.dataLabel.visible;
+        const render: SvgRenderer | CanvasRenderer = isBubbleCanvasMode ? this.chart.svgRenderer : series.chart.renderer;
         const index: number | string = (series.index === undefined) ? series.category : series.index;
         if (series.chart.chartAreaType === 'Cartesian') {
             transform = 'translate(' + series.clipRect.x + ',' + (series.clipRect.y) + ')';
             clipPath = 'url(#' + this.chart.element.id + '_ChartSeriesClipRect_' + index + ')';
         }
-        if (marker.dataLabel.visible && !this.chart.enableCanvas) {
+        if ((marker.dataLabel.visible && !this.chart.enableCanvas) || isBubbleCanvasMode) {
             series.shapeElement = render.createGroup({
                 'id': this.chart.element.id + 'ShapeGroup' + index,
                 'transform': transform,
@@ -145,13 +146,37 @@ export class DataLabel {
             id: templateId
         });
         const visiblePoints: Points[] = getVisiblePoints(series);
+        const secondaryElement: Element = getElement(chart.element.id + '_Secondary_Element');
+        const isBubbleCanvasMode: boolean = chart.enableCanvas && series.type === 'Bubble' && dataLabel.visible;
         // Data label point iteration started
         if (series.visible) {
             for (let i: number = 0; i < visiblePoints.length; i++) {
                 this.renderDataLabel(series, visiblePoints[i as number], element, dataLabel);
             }
         }
-        if (element.childElementCount) {
+        if (isBubbleCanvasMode) {
+            let labelSvg: Element = getElement(chart.element.id + '_datalabel_svg');
+            if (!labelSvg) {
+                labelSvg = chart.svgRenderer.createSvg({
+                    id: chart.element.id + '_datalabel_svg',
+                    width: chart.availableSize.width,
+                    height: chart.availableSize.height
+                });
+                (labelSvg as SVGElement).style.cssText = 'position:absolute; display:block; pointer-events:none;';
+                secondaryElement.appendChild(labelSvg);
+            }
+            if (series.shapeElement && series.shapeElement.parentNode !== labelSvg) {
+                labelSvg.appendChild(series.shapeElement);
+            }
+            if (series.textElement && series.textElement.parentNode !== labelSvg) {
+                labelSvg.appendChild(series.textElement);
+            }
+            if (element.childElementCount) {
+                appendChildElement(chart.enableCanvas, secondaryElement, element, chart.redraw,
+                                   false, 'x', 'y', null, '', false, false, null, chart.duration);
+            }
+        }
+        else if (element.childElementCount) {
             if (!chart.enableCanvas) {
                 appendChildElement(chart.enableCanvas, getElement(chart.element.id + '_Secondary_Element'), element, chart.redraw,
                                    false, 'x', 'y', null, '', false, false, null, chart.duration);
@@ -185,6 +210,7 @@ export class DataLabel {
         const angle: number = degree = dataLabel.labelIntersectAction === 'Rotate90' ? 90 : dataLabel.angle;
         const border: BorderModel = { width: dataLabel.border.width, color: dataLabel.border.color };
         const argsFont: FontModel = <FontModel>(extend({}, getValue('properties', dataLabel.font), null, true));
+        const isBubbleCanvasMode: boolean = this.chart.enableCanvas && series.type === 'Bubble';
         if (
             (point.symbolLocations.length && point.symbolLocations[0]) ||
             (series.type === 'BoxAndWhisker' && point.regions.length)
@@ -265,7 +291,7 @@ export class DataLabel {
                             }
                             this.chart.dataLabelCollections.push(actualRect);
                             if (this.isShape) {
-                                shapeRect = this.chart.renderer.drawRectangle(
+                                shapeRect = (isBubbleCanvasMode ? this.chart.svgRenderer : this.chart.renderer).drawRectangle(
                                     new RectOption(
                                         this.commonId + point.index + '_TextShape_' + i,
                                         argsData.color, argsData.border, dataLabel.opacity, rect, dataLabel.rx,
@@ -273,8 +299,11 @@ export class DataLabel {
                                     ),
                                     new Int32Array([clip.x, clip.y])) as HTMLElement;
                                 if (series.shapeElement) {
-                                    appendChildElement(this.chart.enableCanvas, series.shapeElement, shapeRect, this.chart.redraw,
-                                                       true, 'x', 'y', startLocation);
+                                    if (isBubbleCanvasMode) {
+                                        series.shapeElement.appendChild(shapeRect);
+                                    } else {
+                                        appendChildElement(this.chart.enableCanvas, series.shapeElement, shapeRect, this.chart.redraw, true, 'x', 'y', startLocation);
+                                    }
                                 }
                             }
                             // Checking the font color
@@ -308,8 +337,8 @@ export class DataLabel {
                                 oldText = document.getElementById(this.commonId + point.index + '_Text_' + i).textContent;
                             }
                             if (argsData.text) {
-                                dataLabelElement.push(textElement(
-                                    this.chart.renderer,
+                                const textElem: Element = textElement(
+                                    isBubbleCanvasMode ? this.chart.svgRenderer : this.chart.renderer,
                                     new TextOption(
                                         this.commonId + ((series.removedPointIndex !== null && series.removedPointIndex <= point.index) ? (point.index + 1) : point.index) + '_Text_' + i,
                                         xPos, yPos,
@@ -318,9 +347,10 @@ export class DataLabel {
                                     argsData.font, argsData.font.color || (this.chart.theme === 'Bootstrap5' ? '#212529' : this.chart.theme === 'Bootstrap5Dark' ? '#DEE2E6' : ((contrast >= 128 || series.type === 'Hilo' || series.type === 'HiloOpenClose') ?
                                         this.chart.theme.indexOf('Tailwind3') > -1 ? '#111827' : 'black' : this.chart.theme.indexOf('Tailwind3') > -1 ? '#FFFFFF' : 'white')),
                                     series.textElement, false, this.chart.redraw, true, false, series.chart.duration, series.clipRect, null,
-                                    null, this.chart.enableCanvas, isMultiLine, this.chart.themeStyle.datalabelFont,
-                                    new ChartLocation(xValue, yValue)
-                                ));
+                                    null, isBubbleCanvasMode ? false : this.chart.enableCanvas, isMultiLine,
+                                    this.chart.themeStyle.datalabelFont, new ChartLocation(xValue, yValue)
+                                );
+                                dataLabelElement.push(textElem);
                             }
                             if (this.isShape && dataLabel.enableRotation) {
                                 shapeRect.setAttribute('transform', 'rotate(' + angle + ', ' + xValue + ', ' + yValue + ')');

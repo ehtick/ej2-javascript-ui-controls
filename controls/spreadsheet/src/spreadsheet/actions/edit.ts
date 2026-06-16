@@ -158,31 +158,32 @@ export class Edit {
         EventHandler.remove(this.parent.element, 'compositionend', this.imeCompositionEndHandler);
     }
 
-    private getImeEditorTarget(target: EventTarget): HTMLElement {
-        const editEle: HTMLElement = this.getEditElement(this.parent.getActiveSheet());
-        if (!editEle) {
-            return null;
-        }
+    private getImeEditorTarget(target: EventTarget): HTMLElement | HTMLTextAreaElement | null {
         const targetEle: Element = target as Element;
         if (!targetEle) {
+            return null;
+        }
+        const formulaBar: HTMLTextAreaElement = this.parent.element.querySelector('.e-formula-bar') as HTMLTextAreaElement;
+        if (formulaBar && closest(targetEle, '.e-formula-bar')) {
+            return formulaBar as HTMLTextAreaElement;
+        }
+        const editEle: HTMLElement = this.getEditElement(this.parent.getActiveSheet());
+        if (!editEle) {
             return null;
         }
         const clickedEdit: HTMLElement = closest(targetEle, '.e-spreadsheet-edit') as HTMLElement;
         return clickedEdit && (editEle.contains(clickedEdit) || editEle === clickedEdit) ? editEle : null;
     }
 
-    private syncEditModelFromEditor(): void {
+    private syncEditModelFromEditor(target: HTMLElement | HTMLTextAreaElement | null): void {
         if (!this.parent) {
             return;
         }
-        const sheet: SheetModel = this.parent.getActiveSheet();
-        const editorElem: HTMLElement = this.getEditElement(sheet);
-        if (!editorElem) {
-            return;
-        }
-        const newValue: string = editorElem.textContent;
+        const fromFormulaBar: boolean = !!(target && target.classList && target.classList.contains('e-formula-bar'));
+        const newValue: string = fromFormulaBar ? (target as HTMLTextAreaElement).value
+            : (target as HTMLElement).textContent;
         if (newValue !== this.editCellData.value) {
-            this.refreshEditor(newValue, true, false, false, false);
+            this.refreshEditor(newValue, !fromFormulaBar, fromFormulaBar, false, false);
         }
     }
 
@@ -205,7 +206,7 @@ export class Edit {
             return;
         }
         this.isImeComposing = false;
-        this.syncEditModelFromEditor();
+        this.syncEditModelFromEditor(target);
     }
 
     /**
@@ -542,6 +543,12 @@ export class Edit {
         this.parent.isEdit = this.isEdit = true;
         this.parent.notify(clearCopy, null);
         this.parent.notify(enableToolbarItems, [{ enable: false }]);
+        if (Browser.isDevice && Browser.info.name === 'safari' && (Browser.isIos || Browser.isIos7)) {
+            const editorElem: HTMLElement = this.getEditElement(this.parent.getActiveSheet());
+            if (editorElem) {
+                EventHandler.add(editorElem, 'paste', this.pasteHandler, this);
+            }
+        }
         if (cell.formula && !preventFormulaReference) {
             this.parent.notify(initiateFormulaReference, { range: cell.formula, formulaSheetIdx: this.editCellData.sheetIndex });
         }
@@ -788,6 +795,19 @@ export class Edit {
                 }
             }
         }
+    }
+
+    private pasteHandler(e: ClipboardEvent): void {
+        const target: HTMLElement = e.target as HTMLElement;
+        setTimeout(() => {
+            if (!this.isEdit) {
+                return;
+            }
+            const editorEle: HTMLElement = target.parentElement && closest(target, '.e-spreadsheet-edit') as HTMLElement;
+            if (editorEle) {
+                this.syncEditModelFromEditor(editorEle);
+            }
+        }, 0);
     }
 
     private tapHandler(e: TouchEvent): void {
@@ -1603,8 +1623,8 @@ export class Edit {
     }
 
     private resetEditState(elemRefresh: boolean = true): void {
+        const editorElem: HTMLElement = this.getEditElement(this.parent.getActiveSheet());
         if (elemRefresh) {
-            const editorElem: HTMLElement = this.getEditElement(this.parent.getActiveSheet());
             if (checkIsFormula(editorElem.textContent, this.isEdit) || editorElem.textContent === '') {
                 this.parent.notify(clearCellRef, null);
             }
@@ -1623,6 +1643,9 @@ export class Edit {
         this.isCellEdit = true;
         this.isAltEnter = false;
         this.parent.notify(formulaOperation, { action: 'endEdit' });
+        if (Browser.isDevice && Browser.info.name === 'safari' && (Browser.isIos || Browser.isIos7)) {
+            EventHandler.remove(editorElem, 'paste', this.pasteHandler);
+        }
         if (this.parent.showSheetTabs && !this.parent.isProtected) {
             const addSheetBtn: Element = this.parent.element.querySelector('.e-add-sheet-tab');
             if (addSheetBtn) {

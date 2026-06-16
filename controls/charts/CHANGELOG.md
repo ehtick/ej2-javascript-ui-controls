@@ -2,7 +2,21 @@
 
 ## [Unreleased]
 
-## 33.2.12 (2026-06-09)
+## 33.2.13 (2026-06-16)
+
+### Chart
+
+#### Bug Fixes
+
+- `#I842396` - The data label is now rendered correctly above the trackball when hovering over a bubble point.
+
+### 3DCircularChart
+
+#### Bug Fixes
+
+- `#I843312` - The console error no longer occurs when moving the mouse over the 3D pie chart after resizing the panel.
+
+## 33.2.10 (2026-06-02)
 
 ### Chart
 

@@ -2,7 +2,17 @@
 
 ## [Unreleased]
 
-## 33.2.12 (2026-06-09)
+## 33.2.13 (2026-06-16)
+
+### FileManager
+
+#### Bug Fixes
+
+- `#I834820` - Resolved an issue in the File Manager Details View where the visual focus indicator was missing and column navigation was not supported.
+
+- `#I834823` - Resolved an issue with keyboard navigation (Tab and Shift + Tab) across column headers and their items in the File Manager Details View.
+
+## 33.2.10 (2026-06-02)
 
 ### FileManager
 

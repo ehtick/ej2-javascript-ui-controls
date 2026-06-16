@@ -350,6 +350,51 @@ describe('Editing ->', () => {
                 done();
             }, 20);
         });
+        it('Formula Bar IME candidate selection commit on tap preserves candidate', (done: Function) => {
+            helper.invoke('selectRange', ['A1']);
+            helper.invoke('startEdit');
+            const formulaInput = helper.getElement('#' + helper.id + '_formula_input') as HTMLTextAreaElement;
+            formulaInput.focus();
+            formulaInput.value = 'pre';
+            (helper.getInstance() as any).editModule.editCellData.value = 'pre';
+            formulaInput.value = 'Candid';
+            EventHandler.trigger(helper.getElement(), 'compositionstart', { target: formulaInput, isComposing: true });
+            const inputEvt: any = document.createEvent('Event');
+            inputEvt.initEvent('input', true, true);
+            inputEvt.isComposing = false;
+            formulaInput.dispatchEvent(inputEvt);
+            EventHandler.trigger(helper.getElement(), 'compositionend', { target: formulaInput, isComposing: false });
+            const td = helper.invoke('getCell', [1, 1]);
+            const coords = td.getBoundingClientRect();
+            helper.triggerMouseAction('mousedown', { x: coords.left + 1, y: coords.top + 1 }, null, td);
+            helper.triggerMouseAction('mouseup', { x: coords.left + 1, y: coords.top + 1 }, document, td);
+            setTimeout(() => {
+                const cell = helper.getInstance().sheets[0].rows[0].cells[0];
+                expect(cell.value).toBe('Candid');
+                done();
+            }, 20);
+        });
+        it('Formula Bar IME candidate selection commit on Enter preserves candidate', (done: Function) => {
+            helper.invoke('selectRange', ['A1']);
+            helper.invoke('startEdit');
+            const formulaInput = helper.getElement('#' + helper.id + '_formula_input') as HTMLTextAreaElement;
+            formulaInput.focus();
+            formulaInput.value = 'pre';
+            (helper.getInstance() as any).editModule.editCellData.value = 'pre';
+            formulaInput.value = 'Candidate';
+            EventHandler.trigger(helper.getElement(), 'compositionstart', { target: formulaInput, isComposing: true });
+            const inputEvt: any = document.createEvent('Event');
+            inputEvt.initEvent('input', true, true);
+            inputEvt.isComposing = false;
+            formulaInput.dispatchEvent(inputEvt);
+            EventHandler.trigger(helper.getElement(), 'compositionend', { target: formulaInput, isComposing: false });
+            helper.triggerKeyNativeEvent(13);
+            setTimeout(() => {
+                const cell = helper.getInstance().sheets[0].rows[0].cells[0];
+                expect(cell.value).toBe('Candidate');
+                done();
+            }, 20);
+        });
     });
 
     describe('Rtl ->', () => {

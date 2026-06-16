@@ -2006,11 +2006,11 @@ export class SpellChecker {
         /* eslint-disable @typescript-eslint/no-explicit-any */
         const uniqueWords: any = this.uniqueSpelledWords || {};
         if (!isNullOrUndefined(uniqueWords)) {
-            if (!isNullOrUndefined(uniqueWords[wordToCheck])) {
+            if (Object.prototype.hasOwnProperty.call(uniqueWords, wordToCheck)) {
                 return { hasSpellError: uniqueWords[wordToCheck], isElementPresent: true };
             }
         }
-        if (elementBox && isNullOrUndefined(uniqueWords[wordToCheck]) && elementBox.width === 0 && elementBox.height === 0) {
+        if (elementBox && !Object.prototype.hasOwnProperty.call(uniqueWords, wordToCheck) && elementBox.width === 0 && elementBox.height === 0) {
             return { hasSpellError: hasError, isElementPresent: true };
         }
         return { hasSpellError: hasError, isElementPresent: elementPresent };
