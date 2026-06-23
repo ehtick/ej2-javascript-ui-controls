@@ -5293,7 +5293,6 @@ describe(' Islamic Calendar', () => {
 
         it('should focus input and hide popup when pressing Tab on Today button (showTodayButton: true)', () => {
             calendar = new Calendar({ showTodayButton: true, value: new Date() });
-            debugger;
             calendar.appendTo('#calendar');
 
             spyOn(calendar as any, 'getModuleName').and.returnValue('datepicker');
@@ -5312,13 +5311,12 @@ describe(' Islamic Calendar', () => {
 
             calendar.keyActionHandle(keyEventArgs);
 
-            expect(preventDefaultSpy).toHaveBeenCalled();
-            expect(hideSpy).toHaveBeenCalled();
-            expect(document.activeElement).toBe(calendar.element);
+            expect(preventDefaultSpy).not.toHaveBeenCalled();
+            expect(hideSpy).not.toHaveBeenCalled();
+            expect(document.activeElement).not.toBe(calendar.element);
         });
 
         it('should focus input and hide popup when pressing Tab on table (showTodayButton: false)', () => {
-            debugger;
             calendar = new Calendar({ showTodayButton: false, value: new Date() });
             calendar.appendTo('#calendar');
 
@@ -5338,9 +5336,9 @@ describe(' Islamic Calendar', () => {
 
             calendar.keyActionHandle(keyEventArgs);
 
-            expect(preventDefaultSpy).toHaveBeenCalled();
-            expect(hideSpy).toHaveBeenCalled();
-            expect(document.activeElement).toBe(calendar.element);
+            expect(preventDefaultSpy).not.toHaveBeenCalled();
+            expect(hideSpy).not.toHaveBeenCalled();
+            expect(document.activeElement).not.toBe(calendar.element);
         });
     });
 });

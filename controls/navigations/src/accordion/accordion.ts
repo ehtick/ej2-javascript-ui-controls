@@ -20,6 +20,7 @@ type HTEle = HTMLElement;
 type Str = string;
 
 const CLS_ACRDN_ROOT: Str = 'e-acrdn-root';
+const CLS_ACRDN_CTRL: Str = 'e-acrdn-ctrl';
 const CLS_ROOT: Str = 'e-accordion';
 const CLS_ITEM: Str = 'e-acrdn-item';
 const CLS_ITEMFOCUS: Str = 'e-item-focus';
@@ -452,6 +453,7 @@ export class Accordion extends Component<HTMLElement> implements INotifyProperty
             this.ctrlTem = null;
         }
         ele.classList.remove(CLS_ACRDN_ROOT);
+        ele.classList.remove(CLS_ACRDN_CTRL);
         ele.removeAttribute('style');
         this.element.removeAttribute('data-ripple');
         if (!this.isNested && isRippleEnabled) {
@@ -476,6 +478,7 @@ export class Accordion extends Component<HTMLElement> implements INotifyProperty
         if (this.enableRtl) {
             this.add(this.element, CLS_RTL);
         }
+        this.element.classList.add(CLS_ACRDN_CTRL);
     }
     private add(ele: HTEle, val: Str): void {
         ele.classList.add(val);

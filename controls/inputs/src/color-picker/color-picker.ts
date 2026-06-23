@@ -1221,7 +1221,7 @@ export class ColorPicker extends Component<HTMLInputElement> implements INotifyP
 
     private enterKeyHandler(value: string): void {
         this.triggerChangeEvent(value);
-        if (!this.inline) {
+        if (!this.inline && this.splitBtn) {
             this.splitBtn.element.focus();
         }
     }

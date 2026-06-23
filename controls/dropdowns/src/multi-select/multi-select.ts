@@ -791,6 +791,7 @@ export class MultiSelect extends DropDownBase implements IInput {
     private isSelectAllLoop: boolean = false;
     private initialPopupHeight: number;
     private chipAnnouncerLiveRegion: HTMLElement;
+    private isInitialFocusAnnouncementDone: boolean = false;
 
     private enableRTL(state: boolean): void {
         if (state) {
@@ -2051,6 +2052,7 @@ export class MultiSelect extends DropDownBase implements IInput {
             return;
         }
         this.inputFocus = false;
+        this.isInitialFocusAnnouncementDone = false;
         this.overAllWrapper.classList.remove(FOCUS);
         if (this.addTagOnBlur) {
             const dataChecks: string | boolean | number = this.getValueByText(this.inputElement.value, this.ignoreCase, this.ignoreAccent);
@@ -2344,6 +2346,10 @@ export class MultiSelect extends DropDownBase implements IInput {
                 const args: FocusEventArgs = { isInteracted: e ? true : false, event: e };
                 this.trigger('focus', args);
                 this.focused = false;
+            }
+            if (!this.isInitialFocusAnnouncementDone) {
+                this.announceInitialFocusInstruction();
+                this.isInitialFocusAnnouncementDone = true;
             }
             if (!this.overAllWrapper.classList.contains(FOCUS)) {
                 this.overAllWrapper.classList.add(FOCUS);
@@ -3068,6 +3074,24 @@ export class MultiSelect extends DropDownBase implements IInput {
         }
         this.checkPlaceholderSize();
     }
+    private announceSelection(text: string): void {
+        if (text && this.chipAnnouncerLiveRegion) {
+            const count: number = this.value ? this.value.length : 0;
+            const announcement: string = `${text} added to selection ${count} items selected`;
+            this.chipAnnouncerLiveRegion.textContent = announcement;
+        }
+    }
+    private announceInitialFocusInstruction(): void {
+        if (this.chipAnnouncerLiveRegion) {
+            const instruction: string = 'Use arrow keys to open popup and navigate items, Enter to select, and Backspace to delete selections';
+            this.chipAnnouncerLiveRegion.textContent = '';
+            setTimeout((): void => {
+                if (this.chipAnnouncerLiveRegion) {
+                    this.chipAnnouncerLiveRegion.textContent = instruction;
+                }
+            }, 200);
+        }
+    }
     private moveByTop(state: boolean): void {
         const elements: NodeListOf<Element> = <NodeListOf<HTMLElement>>this.list.querySelectorAll('li.' + dropDownBaseClasses.li);
         let index: number;
@@ -3643,6 +3667,8 @@ export class MultiSelect extends DropDownBase implements IInput {
         }
         if (this.mode !== 'Delimiter' && this.mode !== 'CheckBox') {
             this.addChip(text, value, eve);
+        } else {
+            this.announceSelection(text);
         }
         if (this.hideSelectedItem && this.fields.groupBy) {
             this.hideGroupItem(value);
@@ -3866,6 +3892,7 @@ export class MultiSelect extends DropDownBase implements IInput {
                 }
                 EventHandler.add(chipClose, 'mousedown', this.onChipRemove, this);
                 this.chipCollectionWrapper.appendChild(chip as HTMLElement);
+                this.announceSelection(data);
                 if (!this.changeOnBlur && e) {
                     this.updateValueState(e, this.value, this.tempValues);
                 }

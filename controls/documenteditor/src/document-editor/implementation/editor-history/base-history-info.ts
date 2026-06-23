@@ -1332,7 +1332,7 @@ export class BaseHistoryInfo {
                             editor.removeBlock(this.owner.selectionModule.start.paragraph);
                         }
                         let paragraph: ParagraphWidget = this.documentHelper.selection.getNextParagraphBlock(firstNode.getSplitWidgets().pop() as BlockWidget);
-                        if (!isNullOrUndefined(paragraph) && firstNode !== firstNode.containerWidget.lastChild) {
+                        if (!isNullOrUndefined(paragraph) && (firstNode !== firstNode.containerWidget.lastChild || !isNullOrUndefined(firstNode.nextSplitWidget) && !(deletedNodes[0] instanceof BodyWidget))) {
                             this.owner.selectionModule.selectParagraphInternal(paragraph, true);
                         } else if (!isNullOrUndefined(firstNode)) {
                             this.owner.selectionModule.selectParagraphInternal(firstNode, false);

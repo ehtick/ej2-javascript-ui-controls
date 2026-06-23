@@ -2477,7 +2477,6 @@ export class Image {
         const filesToProcess: File[] = files;
         for (let i: number = 0; i < filesToProcess.length; i++) {
             const file: File = filesToProcess[i as number];
-            let isUrlPassed: boolean;
             const imageTag: HTMLImageElement = this.parent.createElement('IMG') as HTMLImageElement;
             imageTag.style.opacity = '0.5';
             imageTag.classList.add(classes.CLS_RTE_IMAGE);
@@ -2487,67 +2486,63 @@ export class Image {
             const reader: FileReader = new FileReader();
             reader.addEventListener('load', () => {
                 const url: string = URL.createObjectURL(convertToBlob(reader.result as string));
-                if (isNOU(proxy.parent.insertImageSettings.path) && !isUrlPassed) {
-                    imageTag.src = proxy.parent.insertImageSettings.saveFormat === 'Blob' ? url : reader.result as string;
-                }
+                const selection: NodeSelection = this.parent.formatter.editorManager.nodeSelection.save(
+                    range, this.parent.contentModule.getDocument());
+                const imageCommand: IImageCommandsArgs = {
+                    cssClass: (this.parent.insertImageSettings.display === 'inline' ? classes.CLS_IMG_INLINE : classes.CLS_IMG_BREAK),
+                    url:  proxy.parent.insertImageSettings.saveFormat === 'Blob' ? url : reader.result as string,
+                    selection: selection,
+                    altText: file.name.replace(/\.[a-zA-Z0-9]+$/, ''),
+                    width: {
+                        width: this.parent.insertImageSettings.width, minWidth: this.parent.insertImageSettings.minWidth,
+                        maxWidth: this.parent.getInsertImgMaxWidth()
+                    },
+                    height: {
+                        height: this.parent.insertImageSettings.height, minHeight: this.parent.insertImageSettings.minHeight,
+                        maxHeight: this.parent.insertImageSettings.maxHeight
+                    }
+                };
+                const actionBeginArgs: ActionBeginEventArgs = {
+                    requestType: 'Image',
+                    name: 'ImageDragAndDrop',
+                    cancel: false,
+                    originalEvent: args,
+                    itemCollection: imageCommand
+                };
+                this.parent.trigger(events.actionBegin, actionBeginArgs, (actionBeginArgs: ActionBeginEventArgs) => {
+                    if (!actionBeginArgs.cancel) {
+                        const command: IImageCommandsArgs = actionBeginArgs.itemCollection as IImageCommandsArgs;
+                        imageTag.className = command.cssClass;
+                        imageTag.alt = command.altText;
+                        imageTag.src = command.url || imageTag.src;
+                        imageTag.classList.add(classes.CLS_RTE_IMAGE);
+                        imageTag.classList.add(CLS_RESIZE);
+                        // Insert at current caret
+                        range.insertNode(imageTag);
+                        // Move caret after the inserted image to keep sequence order for multiple files
+                        const afterRange: Range = this.parent.contentModule.getDocument().createRange();
+                        afterRange.setStartAfter(imageTag);
+                        afterRange.collapse(true);
+                        this.parent.formatter.editorManager.nodeSelection.setRange(this.parent.contentModule.getDocument(), afterRange);
+                        // update working range for the next iteration
+                        range = afterRange;
+                        // Per-file synthetic drag event for uploadMethod to read dataTransfer.files[0]
+                        const perFileDrag: DragEvent = { dataTransfer: { files: [file] } } as unknown as DragEvent;
+                        const isLastImg: boolean = (i === filesToProcess.length - 1);
+                        this.uploadMethod(perFileDrag, imageTag, isLastImg);
+                        const actionCompleteArgs: ActionCompleteEventArgs = {
+                            requestType: 'Image',
+                            name: 'InsertDropImage',
+                            elements: [imageTag],
+                            editorMode: 'HTML'
+                        };
+                        this.parent.trigger(events.actionComplete, actionCompleteArgs);
+                    } else {
+                        actionBeginArgs.originalEvent.preventDefault();
+                    }
+                });
             });
             reader.readAsDataURL(file);
-            const selection: NodeSelection = this.parent.formatter.editorManager.nodeSelection.save(
-                range, this.parent.contentModule.getDocument());
-            const imageCommand: IImageCommandsArgs = {
-                cssClass: (this.parent.insertImageSettings.display === 'inline' ? classes.CLS_IMG_INLINE : classes.CLS_IMG_BREAK),
-                url: !isNOU(proxy.parent.insertImageSettings.path) ? this.parent.insertImageSettings.path + file.name : '',
-                selection: selection,
-                altText: file.name.replace(/\.[a-zA-Z0-9]+$/, ''),
-                width: {
-                    width: this.parent.insertImageSettings.width, minWidth: this.parent.insertImageSettings.minWidth,
-                    maxWidth: this.parent.getInsertImgMaxWidth()
-                },
-                height: {
-                    height: this.parent.insertImageSettings.height, minHeight: this.parent.insertImageSettings.minHeight,
-                    maxHeight: this.parent.insertImageSettings.maxHeight
-                }
-            };
-            const actionBeginArgs: ActionBeginEventArgs = {
-                requestType: 'Image',
-                name: 'ImageDragAndDrop',
-                cancel: false,
-                originalEvent: args,
-                itemCollection: imageCommand
-            };
-            this.parent.trigger(events.actionBegin, actionBeginArgs, (actionBeginArgs: ActionBeginEventArgs) => {
-                if (!actionBeginArgs.cancel) {
-                    const command: IImageCommandsArgs = actionBeginArgs.itemCollection as IImageCommandsArgs;
-                    isUrlPassed = command.url !== '';
-                    imageTag.className = command.cssClass;
-                    imageTag.alt = command.altText;
-                    imageTag.src = command.url || imageTag.src;
-                    imageTag.classList.add(classes.CLS_RTE_IMAGE);
-                    imageTag.classList.add(CLS_RESIZE);
-                    // Insert at current caret
-                    range.insertNode(imageTag);
-                    // Move caret after the inserted image to keep sequence order for multiple files
-                    const afterRange: Range = this.parent.contentModule.getDocument().createRange();
-                    afterRange.setStartAfter(imageTag);
-                    afterRange.collapse(true);
-                    this.parent.formatter.editorManager.nodeSelection.setRange(this.parent.contentModule.getDocument(), afterRange);
-                    // update working range for the next iteration
-                    range = afterRange;
-                    // Per-file synthetic drag event for uploadMethod to read dataTransfer.files[0]
-                    const perFileDrag: DragEvent = { dataTransfer: { files: [file] } } as unknown as DragEvent;
-                    const isLastImg: boolean = (i === filesToProcess.length - 1);
-                    this.uploadMethod(perFileDrag, imageTag, isLastImg);
-                    const actionCompleteArgs: ActionCompleteEventArgs = {
-                        requestType: 'Image',
-                        name: 'InsertDropImage',
-                        elements: [imageTag],
-                        editorMode: 'HTML'
-                    };
-                    this.parent.trigger(events.actionComplete, actionCompleteArgs);
-                } else {
-                    actionBeginArgs.originalEvent.preventDefault();
-                }
-            });
         }
         detach(parentElement);
     }
@@ -2613,7 +2608,7 @@ export class Image {
                 reader.addEventListener('load', (e: MouseEvent) => {
                     const url: IImageCommandsArgs = {
                         cssClass: (proxy.parent.insertImageSettings.display === 'inline' ? classes.CLS_IMG_INLINE : classes.CLS_IMG_BREAK),
-                        url: this.parent.insertImageSettings.saveFormat === 'Base64' || !isNOU(args.callBack) ?
+                        url: this.parent.insertImageSettings.saveFormat === 'Base64' ?
                             reader.result as string : URL.createObjectURL(convertToBlob(reader.result as string)),
                         width: {
                             width: proxy.parent.insertImageSettings.width, minWidth: proxy.parent.insertImageSettings.minWidth,

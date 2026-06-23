@@ -4,7 +4,7 @@ import { _JsonDocument } from '../src/pdf/core/import-export/json-document';
 import { DataFormat, PdfAnnotationFlag, PdfRotationAngle, PdfRubberStampAnnotationIcon, PdfTextMarkupAnnotationType, PdfAnnotationIntent, PdfLineEndingStyle, PdfTextAlignment, PdfCrossReferenceType, PdfBorderStyle } from "../src/pdf/core/enumerator";
 import { PdfFontFamily, PdfFontStyle, PdfStandardFont, PdfTrueTypeFont } from "../src/pdf/core/fonts/pdf-standard-font";
 import { PdfStringFormat, PdfVerticalAlignment } from "../src/pdf/core/fonts/pdf-string-format";
-import { PdfRadioButtonListField, PdfCheckBoxField, PdfComboBoxField } from "../src/pdf/core/form/field";
+import { PdfRadioButtonListField, PdfCheckBoxField, PdfComboBoxField, PdfSignatureField } from "../src/pdf/core/form/field";
 import { PdfBrush, PdfPen } from "../src/pdf/core/graphics/pdf-graphics";
 import { PdfPath } from "../src/pdf/core/graphics/pdf-path";
 import { PdfTemplate } from "../src/pdf/core/graphics/pdf-template";
@@ -3753,6 +3753,363 @@ describe('1023771 - PdfForm internal methods coverage', () => {
         expect(result).toBe(false);
         expect(parent.get('Kids').length).toBe(0);
     });
+    it('_getPageWidgetCollection - no document', () => {
+        form._crossReference._document = null;
+        form._getPageWidgetCollection();
+        expect(form._pageWidgetReference).toBeDefined();
+        expect(form._pageWidgetReference.size).toBe(0);
+    });
+
+    it('_getPageWidgetCollection - with widget annotations', () => {
+        const page = document.getPage(0) as any;
+        const widgetDict = new _PdfDictionary(crossRef);
+        widgetDict.set('Subtype', _PdfName.get('Widget'));
+        const widgetRef = crossRef._getNextReference();
+        crossRef._cacheMap.set(widgetRef, widgetDict);
+        page._pageDictionary.update('Annots', [widgetRef]);
+        form._getPageWidgetCollection();
+        expect(form._pageWidgetReference).toBeDefined();
+        expect(form._pageWidgetReference.size).toBeGreaterThan(0);
+    });
+
+    it('_getPageWidgetCollection - Annots as reference', () => {
+        const page = document.getPage(0) as any;
+        const annotsArray: any = [];
+        const annotsRef = crossRef._getNextReference();
+        crossRef._cacheMap.set(annotsRef, annotsArray);
+        page._pageDictionary.set('Annots', annotsRef);
+        form._getPageWidgetCollection();
+        expect(form._pageWidgetReference).toBeDefined();
+    });
+
+    it('_getPageWidgetCollection - non-widget annotation', () => {
+        const page = document.getPage(0) as any;
+        const annotDict = new _PdfDictionary(crossRef);
+        annotDict.set('Subtype', _PdfName.get('Text'));
+        const annotRef = crossRef._getNextReference();
+        crossRef._cacheMap.set(annotRef, annotDict);
+        page._pageDictionary.update('Annots', [annotRef]);
+        form._getPageWidgetCollection();
+        expect(form._pageWidgetReference).toBeDefined();
+        expect(form._pageWidgetReference.size).toBe(0);
+    });
+
+    it('_getField - null when terminalFields not set', () => {
+        form._terminalFields = null;
+        const field = form._getField(0);
+        expect(field).toBeNull();
+    });
+
+    it('_getField - null when index negative', () => {
+        form._terminalFields = [new _PdfDictionary(crossRef)];
+        const field = form._getField(-1);
+        expect(field).toBeNull();
+    });
+
+    it('_getField - null when index out of bounds', () => {
+        form._terminalFields = [new _PdfDictionary(crossRef)];
+        const field = form._getField(5);
+        expect(field).toBeNull();
+    });
+
+    it('_getField - initializes pageWidgetReference when not set', () => {
+        form._pageWidgetReference = null;
+        const fieldDict = new _PdfDictionary(crossRef);
+        fieldDict.set('FT', _PdfName.get('Tx'));
+        fieldDict.set('T', 'TestField');
+        form._terminalFields = [fieldDict];
+        const field = form._getField(0);
+        expect(form._pageWidgetReference).toBeDefined();
+    });
+
+    it('_getField - finds matching widget in pageWidgetReference', () => {
+        const fieldDict = new _PdfDictionary(crossRef);
+        fieldDict.set('FT', _PdfName.get('Tx'));
+        fieldDict.set('T', 'TestField');
+        fieldDict.set('Rect', [0, 0, 100, 100]);
+        const widgetDict = new _PdfDictionary(crossRef);
+        widgetDict.set('FT', _PdfName.get('Tx'));
+        widgetDict.set('T', 'TestField');
+        widgetDict.set('Rect', [0, 0, 100, 100]);
+        widgetDict.set('P', {});
+        const widgetRef = crossRef._getNextReference();
+        form._pageWidgetReference = new Map();
+        form._pageWidgetReference.set(widgetRef, widgetDict);
+        form._terminalFields = [fieldDict];
+        form._dictionary.update('Fields', [widgetRef]);
+        const field = form._getField(0);
+        expect(field).toBeUndefined();
+    });
+
+    it('_getField - uses dictionary without P key', () => {
+        const fieldDict = new _PdfDictionary(crossRef);
+        fieldDict.set('FT', _PdfName.get('Tx'));
+        fieldDict.set('T', 'TestField');
+        fieldDict.set('Rect', [0, 0, 100, 100]);
+        const widgetDict = new _PdfDictionary(crossRef);
+        widgetDict.set('FT', _PdfName.get('Tx'));
+        widgetDict.set('T', 'TestField');
+        widgetDict.set('Rect', [0, 0, 100, 100]);
+        widgetDict.set('P', {});
+        const widgetRef = crossRef._getNextReference();
+        form._pageWidgetReference = new Map();
+        form._pageWidgetReference.set(widgetRef, widgetDict);
+        form._fieldsMap = new Map();
+        form._fieldsMap.set(widgetDict, widgetRef);
+        form._terminalFields = [fieldDict];
+        form._dictionary.update('Fields', [widgetRef]);
+        const field = form._getField(0);
+        expect(field).toBeUndefined();
+    });
+
+    it('_getFieldFromDictionary - initializes pageWidgetReference', () => {
+        form._pageWidgetReference = null;
+        const fieldDict = new _PdfDictionary(crossRef);
+        fieldDict.set('FT', _PdfName.get('Tx'));
+        fieldDict.set('T', 'TestField');
+        const field = form._getFieldFromDictionary(fieldDict);
+        expect(form._pageWidgetReference).toBeDefined();
+    });
+
+    it('_getFieldFromDictionary - finds matching widget', () => {
+        const fieldDict = new _PdfDictionary(crossRef);
+        fieldDict.set('FT', _PdfName.get('Tx'));
+        fieldDict.set('T', 'TestField');
+        fieldDict.set('Rect', [0, 0, 100, 100]);
+        const widgetDict = new _PdfDictionary(crossRef);
+        widgetDict.set('FT', _PdfName.get('Tx'));
+        widgetDict.set('T', 'TestField');
+        widgetDict.set('Rect', [0, 0, 100, 100]);
+        widgetDict.set('P', {});
+        const widgetRef = crossRef._getNextReference();
+        form._pageWidgetReference = new Map();
+        form._pageWidgetReference.set(widgetRef, widgetDict);
+        form._dictionary.update('Fields', [widgetRef]);
+        const field = form._getFieldFromDictionary(fieldDict);
+    });
+
+    it('_doAdd - adds new field to form', () => {
+        const fieldDict = new _PdfDictionary(crossRef);
+        fieldDict.set('FT', _PdfName.get('Tx'));
+        fieldDict.set('T', 'NewField');
+        const fieldRef = crossRef._getNextReference();
+        const mockField: any = {
+            _ref: fieldRef,
+            _form: null,
+            _dictionary: fieldDict
+        };
+        form._fields = [];
+        form._parsedFields = new Map();
+        const index = form._doAdd(mockField);
+        expect(form._fields.length).toBe(1);
+        expect(form._fields[0]).toBe(fieldRef);
+        expect(mockField._form).toBe(form);
+        expect(form._isNeedAppearances).toBe(true);
+        expect(index).toBe(0);
+    });
+
+    it('_doAdd - does not add duplicate field', () => {
+        const fieldDict = new _PdfDictionary(crossRef);
+        fieldDict.set('FT', _PdfName.get('Tx'));
+        fieldDict.set('T', 'DuplicateField');
+        const fieldRef = crossRef._getNextReference();
+        const mockField: any = {
+            _ref: fieldRef,
+            _form: null,
+            _dictionary: fieldDict
+        };
+        form._fields = [fieldRef];
+        form._parsedFields = new Map();
+        const initialLength = form._fields.length;
+        const index = form._doAdd(mockField);
+        expect(form._fields.length).toBe(initialLength);
+        expect(index).toBe(0);
+    });
+
+    it('_doAdd - updates crossReference root', () => {
+        const fieldDict = new _PdfDictionary(crossRef);
+        fieldDict.set('FT', _PdfName.get('Tx'));
+        fieldDict.set('T', 'UpdateField');
+        const fieldRef = crossRef._getNextReference();
+        const mockField: any = {
+            _ref: fieldRef,
+            _form: null,
+            _dictionary: fieldDict
+        };
+        form._fields = [];
+        form._parsedFields = new Map();
+        crossRef._root._updated = false;
+        form._doAdd(mockField);
+        expect(crossRef._root._updated).toBe(true);
+    });
+
+    it('_doAdd - sets signature flag for PdfSignatureField', () => {
+        const fieldDict = new _PdfDictionary(crossRef);
+        fieldDict.set('FT', _PdfName.get('Sig'));
+        fieldDict.set('T', 'SignatureField');
+        const fieldRef = crossRef._getNextReference();
+        const mockSignatureField: any = {
+            _ref: fieldRef,
+            _form: null,
+            _dictionary: fieldDict,
+            constructor: { name: 'PdfSignatureField' }
+        };
+        Object.setPrototypeOf(mockSignatureField, PdfSignatureField.prototype);
+        form._fields = [];
+        form._parsedFields = new Map();
+        form._signatureFlag = 0;
+        form._doAdd(mockSignatureField);
+        expect(form._signatureFlag).toBeGreaterThan(0);
+    });
+
+    it('_doAdd - updates parsed fields map', () => {
+        const fieldDict = new _PdfDictionary(crossRef);
+        fieldDict.set('FT', _PdfName.get('Tx'));
+        fieldDict.set('T', 'ParsedField');
+        const fieldRef = crossRef._getNextReference();
+        const mockField: any = {
+            _ref: fieldRef,
+            _form: null,
+            _dictionary: fieldDict
+        };
+        form._fields = [];
+        form._parsedFields = new Map();
+        form._doAdd(mockField);
+        expect(form._parsedFields.has(0)).toBe(true);
+        expect(form._parsedFields.get(0)).toBe(mockField);
+    });
+
+    it('_validFieldName - returns true for unique name', () => {
+        form._fieldName = ['Field1', 'Field2'];
+        const mockField: any = { name: 'Field3' };
+        const result = form._validFieldName(mockField);
+        expect(result).toBe(true);
+    });
+
+    it('_validFieldName - returns false for duplicate name', () => {
+        form._fieldName = ['Field1', 'Field2'];
+        const mockField: any = { name: 'Field1' };
+        const result = form._validFieldName(mockField);
+        expect(result).toBe(false);
+    });
+
+    it('_createFormFieldsFromWidgets - returns early when no terminalFields', () => {
+        form._terminalFields = null;
+        form._createFormFieldsFromWidgets(0);
+        expect(form._terminalFields).toBeNull();
+    });
+
+    it('_createFormFieldsFromWidgets - returns early when terminalFields empty', () => {
+        form._terminalFields = [];
+        const initialFields = form._fields.length;
+        form._createFormFieldsFromWidgets(0);
+        expect(form._fields.length).toBe(initialFields);
+    });
+
+    it('_processWidgetDictionary - returns early when widgetDictionary null', () => {
+        form._widgetDictionary = null;
+        form._processWidgetDictionary();
+        expect(form._widgetDictionary).toBeNull();
+    });
+
+    it('_processWidgetDictionary - skips null lists', () => {
+        form._widgetDictionary = new Map();
+        form._widgetDictionary.set('key1', null);
+        const initialLength = form._fields.length;
+        form._processWidgetDictionary();
+        expect(form._fields.length).toBe(initialLength);
+    });
+
+    it('_processWidgetDictionary - skips empty lists', () => {
+        form._widgetDictionary = new Map();
+        form._widgetDictionary.set('key1', []);
+        const initialLength = form._fields.length;
+        form._processWidgetDictionary();
+        expect(form._fields.length).toBe(initialLength);
+    });
+
+    it('_processWidgetDictionary - processes single widget', () => {
+        const widgetDict = new _PdfDictionary(crossRef);
+        widgetDict.set('FT', _PdfName.get('Tx'));
+        widgetDict.set('T', 'SingleWidget');
+        form._widgetDictionary = new Map();
+        form._widgetDictionary.set('key1', [widgetDict]);
+        form._terminalFields = [];
+        form._processWidgetDictionary();
+        expect(form._terminalFields.length).toBeGreaterThan(0);
+    });
+
+    it('_mergeRadioButtonItems - merges items from source to target', () => {
+        const targetDict = new _PdfDictionary(crossRef);
+        targetDict.set('FT', _PdfName.get('Btn'));
+        targetDict.set('Ff', 49152);
+        targetDict.set('T', 'TargetRadio');
+        const sourceDict = new _PdfDictionary(crossRef);
+        sourceDict.set('FT', _PdfName.get('Btn'));
+        sourceDict.set('Ff', 49152);
+        sourceDict.set('T', 'SourceRadio');
+        const targetField = form._parseFields(targetDict, null) as any;
+        const sourceField = form._parseFields(sourceDict, null) as any;
+        if (targetField && sourceField && targetField._parsedItems && sourceField._parsedItems) {
+            const initialSize = targetField._parsedItems.size;
+            form._mergeRadioButtonItems(targetField, sourceField);
+            expect(targetField._parsedItems.size).toBeGreaterThanOrEqual(initialSize);
+        }
+    });
+
+    it('_handleFieldNaming - corrects invalid field name', () => {
+        form._fieldName = ['ExistingField'];
+        const fieldDict = new _PdfDictionary(crossRef);
+        fieldDict.set('T', 'ExistingField');
+        const mockField: any = { name: 'ExistingField', _dictionary: fieldDict };
+        form._handleFieldNaming(mockField);
+        expect(fieldDict.has('T')).toBe(true);
+    });
+
+    it('_handleFieldNaming - adds valid field name to list', () => {
+        form._fieldName = ['Field1'];
+        const fieldDict = new _PdfDictionary(crossRef);
+        fieldDict.set('T', 'Field2');
+        const mockField: any = { name: 'Field2', _dictionary: fieldDict };
+        form._handleFieldNaming(mockField);
+        expect(form._fieldName.includes('Field2')).toBe(true);
+    });
+
+    it('_processSingleWidget - returns early for null dict', () => {
+        form._terminalFields = [];
+        form._processSingleWidget(null);
+        expect(form._terminalFields.length).toBe(0);
+    });
+
+    it('_processSingleWidget - adds dict to terminalFields', () => {
+        const widgetDict = new _PdfDictionary(crossRef);
+        widgetDict.set('FT', _PdfName.get('Tx'));
+        widgetDict.set('T', 'SingleWidget');
+        form._terminalFields = [];
+        form._processSingleWidget(widgetDict);
+        expect(form._terminalFields.includes(widgetDict)).toBe(true);
+    });
+
+    it('_processSingleWidget - does not add duplicate dict', () => {
+        const widgetDict = new _PdfDictionary(crossRef);
+        widgetDict.set('FT', _PdfName.get('Tx'));
+        widgetDict.set('T', 'ExistingWidget');
+        form._terminalFields = [widgetDict];
+        const initialLength = form._terminalFields.length;
+        form._processSingleWidget(widgetDict);
+        expect(form._terminalFields.length).toBe(initialLength);
+    });
+
+    it('_processSingleWidget - adds field when index valid', () => {
+        const widgetDict = new _PdfDictionary(crossRef);
+        widgetDict.set('FT', _PdfName.get('Tx'));
+        widgetDict.set('T', 'ValidWidget');
+        form._terminalFields = [];
+        const initialFieldsLength = form._fields.length;
+        form._processSingleWidget(widgetDict);
+        expect(form._terminalFields.length).toBeGreaterThan(0);
+    });
+
 });
 describe('1026363 - allowImportCustomData full coverage', () => {
     it('1026363 - allowImportCustomData XFDF Coverage - string with colon splits to more than 2 parts', () => {
@@ -3971,5 +4328,23 @@ describe('1026363 - allowImportCustomData full coverage', () => {
         expect(loadedAnnotation._dictionary.has('page')).toBeFalsy();
         document.destroy();
     });
-	
+    it('1029845 - exportValue getter - returns custom export value when loaded and not "Yes"', () => {
+        let document: PdfDocument = new PdfDocument();
+        let page: PdfPage = document.addPage();
+        let form: PdfForm = document.form;
+        let checkBox: PdfCheckBoxField = new PdfCheckBoxField('CustomCheckBox', {x: 100, y: 100, width: 20, height: 20}, page);
+        checkBox.exportValue = 'CustomValue';
+        checkBox.checked = true;
+        form.add(checkBox);
+        let savedData: Uint8Array = document.save();
+        document.destroy();
+        document = new PdfDocument(savedData);
+        form = document.form;
+        let loadedCheckBox: PdfCheckBoxField = form.fieldAt(0) as PdfCheckBoxField;
+        expect(loadedCheckBox._isLoaded).toBeTruthy();
+        let exportValue: string = loadedCheckBox.exportValue;
+        expect(exportValue).toEqual('CustomValue');
+        expect(exportValue).not.toEqual('Yes');
+        document.destroy();
+    });
 });

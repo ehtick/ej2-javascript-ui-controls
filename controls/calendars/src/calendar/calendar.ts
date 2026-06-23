@@ -962,30 +962,29 @@ export class CalendarBase extends Component<HTMLElement> implements INotifyPrope
             break;
         case 'tab':
             if (this.getModuleName() === 'datepicker' || this.getModuleName() === 'datetimepicker') {
-                const hasToday: boolean = this.showTodayButton && !isNullOrUndefined(this.todayElement);
-                const isLastFocusable: boolean = hasToday
-                    ? (e.target === this.todayElement)
-                    : (e.target === this.table);
-                if (isLastFocusable) {
-                    e.preventDefault();
-                    if ((this as any).isAngular) {
-                        (this as any).inputElement.focus();
-                    } else {
-                        (this as any).element.focus();
+                const popupEl: HTMLElement = (this as any).popupWrapper;
+                if (!isNullOrUndefined(popupEl)) {
+                    const focusable: HTMLElement[] = this.getPopupFocusableElements(popupEl);
+                    const lastIndex: number = focusable.length - 1;
+                    if (focusable.length > 0 && e.target === focusable[lastIndex as number]) {
+                        e.preventDefault();
+                        focusable[0].focus();
+                        // popup stays open — no hide() call
                     }
-                    (this as any).hide();
                 }
             }
             break;
         case 'shiftTab':
-            if ((this.getModuleName() === 'datepicker' || this.getModuleName() === 'datetimepicker') && e.target === this.headerTitleElement) {
-                e.preventDefault();
-                if ((this as any).isAngular) {
-                    (this as any).inputElement.focus();
-                } else {
-                    (this as any).element.focus();
+            if (this.getModuleName() === 'datepicker' || this.getModuleName() === 'datetimepicker') {
+                const popupEl: HTMLElement = (this as any).popupWrapper;
+                if (!isNullOrUndefined(popupEl)) {
+                    const focusable: HTMLElement[] = this.getPopupFocusableElements(popupEl);
+                    if (focusable.length > 0 && e.target === focusable[0]) {
+                        e.preventDefault();
+                        focusable[focusable.length - 1].focus();
+                        // popup stays open — no hide() call
+                    }
                 }
-                (this as any).hide();
             }
             break;
         case 'escape':
@@ -994,6 +993,16 @@ export class CalendarBase extends Component<HTMLElement> implements INotifyPrope
             }
             break;
         }
+    }
+
+    protected getPopupFocusableElements(container: HTMLElement): HTMLElement[] {
+        const selector: string = [
+            'button:not([disabled]):not([tabindex="-1"])',
+            'td[tabindex="0"]:not([aria-disabled="true"])',
+            '[tabindex="0"]:not([disabled])'
+        ].join(', ');
+        return Array.from(container.querySelectorAll<HTMLElement>(selector))
+            .filter((el: HTMLElement) => !isNullOrUndefined(el.offsetParent));
     }
 
     protected keyboardNavigate(number: number, currentView: number, e: KeyboardEvent, max: Date, min: Date): void {

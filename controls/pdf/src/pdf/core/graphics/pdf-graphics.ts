@@ -249,6 +249,12 @@ export class PdfGraphics {
      * @private
      * @returns {_PdfTransformationMatrix} The current transformation matrix.
      */
+    /**
+     * Cached string layouter reused across drawString calls.
+     *
+     * @private
+     */
+    _stringLayouter: _PdfStringLayouter;
     get _matrix(): _PdfTransformationMatrix {
         if (typeof this._m === 'undefined') {
             this._m = new _PdfTransformationMatrix();
@@ -1879,7 +1885,11 @@ export class PdfGraphics {
         if (font && font._document && font._document._crossReference) {
             this._crossReference = font._document._crossReference;
         }
-        const layouter: _PdfStringLayouter = new _PdfStringLayouter();
+        let layouter: _PdfStringLayouter = this._stringLayouter;
+        if (typeof layouter === 'undefined') {
+            layouter = new _PdfStringLayouter();
+            this._stringLayouter = layouter;
+        }
         if (!format) {
             format = new PdfStringFormat();
         }
@@ -2870,10 +2880,11 @@ export class PdfGraphics {
         const tokens: string[] = [];
         if (line !== null && typeof line !== 'undefined' && line.length > 0) {
             words = line.split(null);
-            words.forEach((word: string) => {
+            for (let i: number = 0; i < words.length; i++) {
+                const word: string = words[<number>i];
                 const token: string = this._convertToUnicode(word, ttfFont);
                 tokens.push(token);
-            });
+            }
         }
         return { tokens: tokens, words: words };
     }
@@ -2979,7 +2990,9 @@ export class PdfGraphics {
         let value: string = '';
         if (lineInfo._text.indexOf('(') !== -1 || lineInfo._text.indexOf(')') !== -1 ||
             lineInfo._text.indexOf('\\') !== -1 || lineInfo._text.indexOf('\r') !== -1) {
-            Array.from(lineInfo._text).forEach((char: string) => {
+            const text: string = lineInfo._text;
+            for (let i: number = 0, len: number = text.length; i < len; i++) {
+                const char: string = text[<number>i];
                 if (char === '(') {
                     value += '\\(';
                 } else if (char === ')') {
@@ -2991,7 +3004,7 @@ export class PdfGraphics {
                 } else {
                     value += char;
                 }
-            });
+            }
         }
         if (value === '') {
             value = lineInfo._text;
@@ -3070,7 +3083,8 @@ export class PdfGraphics {
                 let underlineYOffset: number = layoutRectangle[1] + shift + font._getAscent(format) + 1.5 * linePen._width;
                 let strikeoutYOffset: number = layoutRectangle[1] + shift + font._getHeight(format) / 2 + 1.5 * linePen._width;
                 const lines: _LineInfo[] = result._lines;
-                lines.forEach((lineInfo: _LineInfo, i: number) => {
+                for (let i: number = 0, len: number = lines.length; i < len; i++) {
+                    const lineInfo: _LineInfo = lines[<number>i];
                     const lineWidth: number = lineInfo._width;
                     const hShift: number = this._getHorizontalAlignShift(lineWidth, layoutRectangle[2], format);
                     const lineIndent: number = this._getLineIndent(lineInfo, format, layoutRectangle[2], (i === 0));
@@ -3086,7 +3100,7 @@ export class PdfGraphics {
                         this.drawLine(linePen, {x: x1, y: strikeoutYOffset}, {x: x2, y: strikeoutYOffset});
                         strikeoutYOffset += result._lineHeight;
                     }
-                });
+                }
             }
         }
     }

@@ -647,7 +647,7 @@ export class PageRenderer{
         };
         if (isFormField) {
             this.pdfViewerBase.pdfViewerRunner.addTask({ uploadedFile: fileByteArray, message: 'LoadPageStampCollection', password: null,
-                pageIndex: 0, zoomFactor: this.pdfViewer.magnificationModule.zoomFactor, isTextNeed: false, isZoomMode: false,
+                pageIndex: 0, zoomFactor: this.pdfViewerBase.getZoomFactor(), isTextNeed: false, isZoomMode: false,
                 AnnotName: rubberStampAnnotation.AnnotName, rubberStampAnnotationPageNumber: rubberStampAnnotation.pageNumber,
                 annotationOrder: JSON.stringify(this.annotationOrder), collectionOrder: collectionOrder, isFormField: isFormField,
                 formFieldName: formFieldName, formFieldList: JSON.stringify(formFieldList), rubberStampAnnotation: rubberStampAnnotation,
@@ -655,7 +655,7 @@ export class PageRenderer{
         }
         else {
             this.pdfViewerBase.pdfViewerRunner.addTask({ uploadedFile: fileByteArray, message: 'LoadPageStampCollection', password: null,
-                pageIndex: 0, zoomFactor: this.pdfViewer.magnificationModule.zoomFactor, isTextNeed: false, isZoomMode: false,
+                pageIndex: 0, zoomFactor: this.pdfViewerBase.getZoomFactor(), isTextNeed: false, isZoomMode: false,
                 AnnotName: rubberStampAnnotation.AnnotName, rubberStampAnnotationPageNumber: rubberStampAnnotation.pageNumber,
                 annotationOrder: JSON.stringify(this.annotationOrder), collectionOrder: collectionOrder,
                 pageSize: pageSize, rotation: page.rotation }, TaskPriorityLevel.High);

@@ -28,7 +28,7 @@ describe('FileManager module', () => {
                 },
                 fileManagerSettings: {
                     enable: true,
-                    path: '/Pictures/Food',
+                    path: '/Food',
                     ajaxSettings: {
                         url: hostURL + 'api/RichTextEditor/FileOperations',
                         getImageUrl: hostURL + 'api/RichTextEditor/GetImage',
@@ -49,8 +49,8 @@ describe('FileManager module', () => {
             }, 500);
         });
         it('image - fileSelect as true', () => {
-            (rteObj.fileManagerModule as any).fileObj.trigger('fileSelect', { fileDetails: { filterPath: '\\Pictures', isFile: true, type: '.png' } });
-            expect((document.body.querySelector('.e-rte-file-manager-dialog .e-input.e-img-url') as HTMLInputElement).value).toContain('https://ej2services.syncfusion.com/js/development/api/RichTextEditor/GetImage?path=/Pictures');
+            (rteObj.fileManagerModule as any).fileObj.trigger('fileSelect', { fileDetails: { filterPath: '\\Food', isFile: true, type: '.png' } });
+            expect((document.body.querySelector('.e-rte-file-manager-dialog .e-input.e-img-url') as HTMLInputElement).value).toContain('https://ej2services.syncfusion.com/js/development/api/RichTextEditor/GetImage?path=/Food');
         });
         it('image FileSelect as false', () => {
             (rteObj.fileManagerModule as any).fileObj.trigger('fileSelect', { fileDetails: { isFile: false, type: '.png' } });
@@ -92,7 +92,7 @@ describe('FileManager module', () => {
                 },
                 fileManagerSettings: {
                     enable: true,
-                    path: '/Pictures/Food',
+                    path: '/Food',
                     ajaxSettings: {
                         url: hostURL + 'api/RichTextEditor/FileOperations',
                         getImageUrl: hostURL + 'api/RichTextEditor/GetImage',
@@ -114,8 +114,8 @@ describe('FileManager module', () => {
             }, 500);
         });
         it('image - fileSelect as true', () => {
-            (rteObj.fileManagerModule as any).fileObj.trigger('fileSelect', { fileDetails: { filterPath: '\\Pictures', isFile: true, type: '.png' } });
-            expect((document.body.querySelector('.e-rte-file-manager-dialog .e-input.e-img-url') as HTMLInputElement).value).toContain('https://ej2services.syncfusion.com/js/development/api/RichTextEditor/GetImage?path=/Pictures');
+            (rteObj.fileManagerModule as any).fileObj.trigger('fileSelect', { fileDetails: { filterPath: '\\Food', isFile: true, type: '.png' } });
+            expect((document.body.querySelector('.e-rte-file-manager-dialog .e-input.e-img-url') as HTMLInputElement).value).toContain('https://ej2services.syncfusion.com/js/development/api/RichTextEditor/GetImage?path=/Food');
         });
         it('image FileSelect as false', () => {
             (rteObj.fileManagerModule as any).fileObj.trigger('fileSelect', { fileDetails: { isFile: false, type: '.png' } });
@@ -217,7 +217,7 @@ describe('FileManager module', () => {
                 },
                 fileManagerSettings: {
                     enable: true,
-                    path: '/Pictures/Food',
+                    path: '/Food',
                     ajaxSettings: {
                         url: hostURL + 'api/RichTextEditor/FileOperations',
                         getImageUrl: hostURL + 'api/RichTextEditor/GetImage',
@@ -254,7 +254,7 @@ describe('FileManager module', () => {
                 cssClass: 'customClass',
                 fileManagerSettings: {
                     enable: true,
-                    path: '/Pictures/Food',
+                    path: '/Food',
                     ajaxSettings: {
                         url: hostURL + 'api/RichTextEditor/FileOperations',
                         getImageUrl: hostURL + 'api/RichTextEditor/GetImage',
@@ -293,7 +293,7 @@ describe('FileManager module', () => {
                 },
                 fileManagerSettings: {
                     enable: true,
-                    path: '/Pictures/Food',
+                    path: '/Food',
                     ajaxSettings: {
                         url: hostURL + 'api/RichTextEditor/FileOperations',
                         getImageUrl: hostURL + 'api/RichTextEditor/GetImage',
@@ -344,7 +344,7 @@ describe('FileManager module', () => {
                 },
                 fileManagerSettings: {
                     enable: true,
-                    path: '/Pictures/Food',
+                    path: '/Food',
                     ajaxSettings: {
                         url: hostURL + 'api/RichTextEditor/FileOperations',
                         getImageUrl: hostURL + 'api/RichTextEditor/GetImage',
@@ -386,7 +386,7 @@ describe('FileManager module', () => {
                 },
                 fileManagerSettings: {
                     enable: true,
-                    path: '/Pictures/Food',
+                    path: '/Food',
                     ajaxSettings: {
                         url: hostURL + 'api/RichTextEditor/FileOperations',
                         getImageUrl: hostURL + 'api/RichTextEditor/GetImage',
@@ -441,7 +441,7 @@ describe('FileManager module', () => {
                 },
                 fileManagerSettings: {
                     enable: true,
-                    path: '/Pictures/Employees',
+                    path: '/Employees',
                     ajaxSettings: {
                         url: hostURL + 'api/RichTextEditor/FileOperations',
                         getImageUrl: hostURL + 'api/RichTextEditor/GetImage',
@@ -459,18 +459,18 @@ describe('FileManager module', () => {
             editor.inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
             (editor.element.querySelector('.e-toolbar-item button') as HTMLElement).click();
             setTimeout(() => {
-                (editor.fileManagerModule as any).fileObj.trigger('fileSelect', { fileDetails: {  filterPath: '\\Pictures\\Employees\\', name: 'Adam.png', isFile: true, type: '.png' } });
+                (editor.fileManagerModule as any).fileObj.trigger('fileSelect', { fileDetails: {  filterPath: '\\Employees\\', name: 'Adam.png', isFile: true, type: '.png' } });
                 let insertBtn: HTMLButtonElement = document.body.querySelector('.e-rte-file-manager-dialog button.e-primary');
                 insertBtn.click();
                 setTimeout(() => {
                     let imageElement: HTMLImageElement = document.body.querySelector('.e-rte-image');
-                    expect(imageElement.src).toBe('https://ej2services.syncfusion.com/js/development/api/RichTextEditor/GetImage/Pictures/Employees/Adam.png');
+                    expect(imageElement.src).toBe('https://ej2services.syncfusion.com/js/development/api/RichTextEditor/GetImage/Employees/Adam.png');
                     done();
                 }, 100);
             }, 500);
         });
         it('Check the image src when replace image', (done: Function) => {
-            editor.inputElement.innerHTML = '<img src="https://ej2services.syncfusion.com/js/development/api/RichTextEditor/GetImage/Pictures/Employees/Adam.png" class="e-rte-image" />';
+            editor.inputElement.innerHTML = '<img src="https://ej2services.syncfusion.com/js/development/api/RichTextEditor/GetImage/Employees/Adam.png" class="e-rte-image" />';
             let imageElement: HTMLImageElement = editor.element.querySelector('.e-content .e-rte-image') as HTMLImageElement;
             editor.formatter.editorManager.nodeSelection.setSelectionNode(document, imageElement);
             const target: HTMLElement = editor.inputElement.querySelector('img');
@@ -480,12 +480,12 @@ describe('FileManager module', () => {
                 let pop: Element = document.body.querySelector('.e-rte-quick-popup');
                 (pop.querySelectorAll('.e-toolbar-item')[13] as HTMLElement).click();
                 setTimeout(() => {
-                    (editor.fileManagerModule as any).fileObj.trigger('fileSelect', { fileDetails: { filterPath: '\\Pictures\\Employees\\', name: 'Andrew.png', isFile: true, type: '.png' } });
+                    (editor.fileManagerModule as any).fileObj.trigger('fileSelect', { fileDetails: { filterPath: '\\Employees\\', name: 'Andrew.png', isFile: true, type: '.png' } });
                     let insertBtn: HTMLButtonElement = document.body.querySelector('.e-rte-file-manager-dialog button.e-primary');
                     insertBtn.click();
                     setTimeout(() => {
                         let imageElement: HTMLImageElement = document.body.querySelector('.e-rte-image');
-                        expect(imageElement.src).toBe('https://ej2services.syncfusion.com/js/development/api/RichTextEditor/GetImage/Pictures/Employees/Andrew.png');
+                        expect(imageElement.src).toBe('https://ej2services.syncfusion.com/js/development/api/RichTextEditor/GetImage/Employees/Andrew.png');
                         done();
                     }, 100);
                 }, 100);
@@ -508,7 +508,7 @@ describe('FileManager module', () => {
             editor = renderRTE({
                 fileManagerSettings: {
                     enable: true,
-                    path: '/Pictures/Employees',
+                    path: '/Employees',
                     ajaxSettings: {
                         url: hostURL + 'api/RichTextEditor/FileOperations',
                         getImageUrl: hostURL + 'api/RichTextEditor/GetImage',
@@ -522,7 +522,7 @@ describe('FileManager module', () => {
             destroy(editor);
         });
         it('Check the image class name when replace image', (done: DoneFn) => {
-            editor.inputElement.innerHTML = '<p><img src="https://ej2services.syncfusion.com/js/development/api/RichTextEditor/GetImage/Pictures/Employees/Adam.png" class="e-rte-image e-img-break e-custom-class" style="width: 150px; height: 400px;"/></p>';
+            editor.inputElement.innerHTML = '<p><img src="https://ej2services.syncfusion.com/js/development/api/RichTextEditor/GetImage/Employees/Adam.png" class="e-rte-image e-img-break e-custom-class" style="width: 150px; height: 400px;"/></p>';
             const INIT_MOUSEDOWN_EVENT: MouseEvent = new MouseEvent('mousedown', BASIC_MOUSE_EVENT_INIT);
             editor.inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
             const target: HTMLElement = editor.inputElement.querySelector('img');
@@ -533,7 +533,7 @@ describe('FileManager module', () => {
                 let pop: Element = document.body.querySelector('.e-rte-quick-popup');
                 (pop.querySelectorAll('.e-toolbar-item')[13].firstElementChild as HTMLElement).click();
                 setTimeout(() => {
-                    (editor.fileManagerModule as any).fileObj.trigger('fileSelect', { fileDetails: { filterPath: '\\Pictures\\Employees\\', name: 'Andrew.png', isFile: true, type: '.png' } });
+                    (editor.fileManagerModule as any).fileObj.trigger('fileSelect', { fileDetails: { filterPath: '\\Employees\\', name: 'Andrew.png', isFile: true, type: '.png' } });
                     let insertBtn: HTMLButtonElement = document.body.querySelector('.e-rte-file-manager-dialog button.e-primary');
                     insertBtn.click();
                     setTimeout(() => {
@@ -545,7 +545,7 @@ describe('FileManager module', () => {
             }, 500);
         });
         it('Check the image class name when replace image', (done: DoneFn) => {
-            editor.inputElement.innerHTML = '<p><img src="https://ej2services.syncfusion.com/js/development/api/RichTextEditor/GetImage/Pictures/Employees/Adam.png" class="e-rte-image e-custom-class" style="width: 150px; height: 400px;"/></p>';
+            editor.inputElement.innerHTML = '<p><img src="https://ej2services.syncfusion.com/js/development/api/RichTextEditor/GetImage/Employees/Adam.png" class="e-rte-image e-custom-class" style="width: 150px; height: 400px;"/></p>';
             const INIT_MOUSEDOWN_EVENT: MouseEvent = new MouseEvent('mousedown', BASIC_MOUSE_EVENT_INIT);
             editor.inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
             const target: HTMLElement = editor.inputElement.querySelector('img');
@@ -556,7 +556,7 @@ describe('FileManager module', () => {
                 let pop: Element = document.body.querySelector('.e-rte-quick-popup');
                 (pop.querySelectorAll('.e-toolbar-item')[13].firstElementChild as HTMLElement).click();
                 setTimeout(() => {
-                    (editor.fileManagerModule as any).fileObj.trigger('fileSelect', { fileDetails: { filterPath: '\\Pictures\\Employees\\', name: 'Andrew.png', isFile: true, type: '.png' } });
+                    (editor.fileManagerModule as any).fileObj.trigger('fileSelect', { fileDetails: { filterPath: '\\Employees\\', name: 'Andrew.png', isFile: true, type: '.png' } });
                     let insertBtn: HTMLButtonElement = document.body.querySelector('.e-rte-file-manager-dialog button.e-primary');
                     insertBtn.click();
                     setTimeout(() => {

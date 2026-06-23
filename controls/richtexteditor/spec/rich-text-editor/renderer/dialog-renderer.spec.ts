@@ -318,7 +318,7 @@ describe('946028: File Manager Toolbar Opens New Folder Dialog Instead of File M
     beforeAll(()=> {
         editor = renderRTE( {
             fileManagerSettings: {
-                enable: true, path: '/Pictures/Food',
+                enable: true, path: '/Food',
                 ajaxSettings: {
                     url: hostURL + 'api/RichTextEditor/FileOperations',
                     getImageUrl: hostURL +  'api/RichTextEditor/GetImage',

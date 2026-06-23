@@ -12,6 +12,7 @@ import { PointModel } from '../diagram/primitives/point-model';
 import { OverviewModel } from './overview-model';
 import { SvgRenderer } from '../diagram/rendering/svg-renderer';
 import { TransformFactor } from '../diagram/interaction/scroller';
+import { DiagramElements } from '../diagram/objects/bpmn';
 
 /**
  * Overview control allows you to see a preview or an overall view of the entire content of a Diagram.
@@ -904,6 +905,11 @@ export class Overview extends Component<HTMLElement> implements INotifyPropertyC
             this.helper = null;
         }
         this.event = true;
+        //1032768: The cursor changes to a grabbing icon when moving from the overview to the diagram area.
+        if (this.parent) {
+            this.parent.setCursor(this.parent.getCursor((this.parent as unknown as DiagramElements).eventHandler.currentAction
+                , (this.parent as unknown as DiagramElements).eventHandler.inAction));
+        }
         document.getElementById(this.canvas.id + 'overviewhandle').style.pointerEvents = 'all';
     }
 

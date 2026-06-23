@@ -5335,6 +5335,9 @@ export class PdfCheckBoxField extends PdfField {
      * ```
      */
     get exportValue(): string {
+        if (this._isLoaded && typeof this._exportValue === 'string' && this._exportValue !== 'Yes') {
+            return this._exportValue;
+        }
         return this._isLoaded ? _getItemValue(this._dictionary) : this._exportValue;
     }
     /**

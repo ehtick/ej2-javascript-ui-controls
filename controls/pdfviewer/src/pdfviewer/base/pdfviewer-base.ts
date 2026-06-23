@@ -9440,7 +9440,7 @@ export class PdfViewerBase {
      * @returns {boolean} - Returns whether annotation is present.
      */
     private isAnnotationsExist(annotationInfo: string): boolean {
-        return !isNullOrUndefined(annotationInfo) ? JSON.parse(annotationInfo).flat(1).length > 0 : false;
+        return !isNullOrUndefined(annotationInfo) && annotationInfo.length > 0 ? JSON.parse(annotationInfo).flat(1).length > 0 : false;
     }
 
     /**
@@ -9479,7 +9479,7 @@ export class PdfViewerBase {
         const annotActionCollection: any[] = !isNullOrUndefined(this.pdfViewer.annotationModule) ? this.pdfViewer.annotationModule.actionCollection.filter((value: any) => value.annotation.propName === 'formFields' || !isNullOrUndefined(value.annotation.formFieldAnnotationType) || !isNullOrUndefined(value.annotation.type)).map((a: any) => a.pageIndex) : [];
         const fullPageList: any[] = formFieldsCollection.concat(annotActionCollection);
         let designerDataList: any;
-        if (!isNullOrUndefined(formDesignerData)) {
+        if (!isNullOrUndefined(formDesignerData) && formDesignerData.length > 0) {
             designerDataList = JSON.parse(formDesignerData).map(function (item: any): any {
                 return item.FormField.pageNumber;
             });

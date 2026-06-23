@@ -2940,9 +2940,11 @@ export class PdfDocument {
         }
         const pageReference: Map<_PdfDictionary, PdfPage> = new Map<_PdfDictionary, PdfPage>();
         if (!this._isDuplicatePage) {
-            for (let index: number = 0; index < sourceDocument.pageCount; index++) {
-                const sourcepage: PdfPage = sourceDocument.getPage(index);
-                pageReference.set(sourcepage._pageDictionary, null);
+            const start: number = Math.max(0, startIndex);
+            const end: number = Math.min(endIndex, sourceDocument.pageCount - 1);
+            for (let index: number = start; index <= end; index++) {
+                const srcPage: PdfPage = sourceDocument.getPage(index);
+                pageReference.set(srcPage._pageDictionary, null);
             }
         }
         let helper: _PdfMergeHelper;
@@ -2967,12 +2969,14 @@ export class PdfDocument {
             helper._writeObject(sourceDocument, ocProperties, sourceOCProperties, sourceOCProperties, 'OCProperties', null, null);
             ocProperties._updated = true;
         }
+        const flattenSource: boolean = sourceDocument.flatten;
+        const isSplitImport: boolean = sourceDocument._isSplitDocument;
         for (let i: number = startIndex; i <= endIndex; i++) {
             const page: PdfPage = sourceDocument.getPage(i);
-            sourceDocument.form._doPostProcess(sourceDocument.flatten, page);
+            sourceDocument.form._doPostProcess(flattenSource, page);
             if (page.annotations.count > 0) {
-                page.annotations._doPostProcess(sourceDocument.flatten);
-                if (sourceDocument.flatten) {
+                page.annotations._doPostProcess(flattenSource);
+                if (flattenSource) {
                     if (page._pageDictionary.has('Annots')) {
                         delete page._pageDictionary._map.Annots;
                         page._pageDictionary._updated = true;
@@ -2980,9 +2984,9 @@ export class PdfDocument {
                     page.annotations._clear();
                 }
             }
-            if (sourceDocument._isSplitDocument) {
+            if (isSplitImport) {
                 helper._importPages(page, this._targetIndex, isLayersPresent, this._isDuplicatePage, options,
-                                    sourceDocument._isSplitDocument);
+                                    isSplitImport);
             } else {
                 helper._importPages(page, this._targetIndex, isLayersPresent, this._isDuplicatePage, options);
             }

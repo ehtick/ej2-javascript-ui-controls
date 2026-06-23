@@ -2053,7 +2053,14 @@ export class SfdtReader {
                     }
                     (formFieldData as DropDownFormField).dropdownItems.push(sourceItems[i]);
                 }
-                (formFieldData as DropDownFormField).selectedIndex = sourceData[formFieldDataProperty[keywordIndex]][dropDownListProperty[keywordIndex]][selectedIndexProperty[keywordIndex]];
+                const value: any = sourceData[formFieldDataProperty[keywordIndex]][dropDownListProperty[keywordIndex]][selectedIndexProperty[keywordIndex]];
+                if (typeof value === 'string' && sourceItems.indexOf(value) !== -1) {
+                    (formFieldData as DropDownFormField).selectedIndex = sourceItems.indexOf(value);
+                } else if (value >= 0 && value < (formFieldData as DropDownFormField).dropdownItems.length) {
+                    (formFieldData as DropDownFormField).selectedIndex = value;
+                } else {
+                    (formFieldData as DropDownFormField).selectedIndex = 0;
+                }
             }
             formFieldData.name = sourceData[formFieldDataProperty[keywordIndex]][nameProperty[keywordIndex]];
             formFieldData.enabled = HelperMethods.parseBoolValue(sourceData[formFieldDataProperty[keywordIndex]][enabledProperty[keywordIndex]]);

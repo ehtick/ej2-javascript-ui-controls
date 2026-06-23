@@ -251,51 +251,53 @@ export class _PdfMergeHelper {
      * @returns {void}
      */
     _importAnnotation(page: PdfPage, newPage: PdfPage): void {
-        const array: any[] = []; // eslint-disable-line
-        let dest: any[]; // eslint-disable-line
-        let isDestination: boolean = false;
         const oldCollection: PdfAnnotationCollection = page.annotations;
-        const annotations: Array<_PdfReference> = oldCollection._annotations;
-        annotations.forEach((annotationReference: _PdfReference, i: number) => {
-            if (annotationReference) {
-                const annotationDictionary: _PdfDictionary = this._sourceDocument._crossReference._fetch(annotationReference);
-                if (annotationDictionary) {
-                    if (annotationDictionary.has('Dest')) {
-                        dest = [];
-                        const destinationArray: any = annotationDictionary.get('Dest'); // eslint-disable-line
-                        const destination: any = annotationDictionary._get('Dest'); // eslint-disable-line
-                        if (Array.isArray(destinationArray)) {
-                            dest.push(...destinationArray);
-                            isDestination = true;
-                        } else if (destination instanceof _PdfReference) {
-                            dest.push(destination);
-                        }
-                    }
-                    if (dest && dest.length > 0) {
-                        this._destination.push(dest);
-                    }
-                    if (annotationDictionary.has('OC')) {
-                        const reference: any = annotationDictionary.getRaw('OC'); // eslint-disable-line
-                        if (reference instanceof _PdfReference) {
-                            this._annotationLayer.set(i, reference);
-                        }
-                    }
-                    const copiedAnnotationReference: _PdfReference = this._copier._copy(annotationReference);
-                    const copiedAnnotationDictionary: _PdfDictionary = this._destinationDocument._crossReference.
-                        _fetch(copiedAnnotationReference);
-                    if (isDestination) {
-                        copiedAnnotationDictionary.update('Dest', dest);
-                    }
-                    copiedAnnotationDictionary.update('P', newPage._ref);
-                    this._crossReference._cacheMap.set(copiedAnnotationReference, copiedAnnotationDictionary);
-                    array.push(copiedAnnotationReference);
+        const annotations: _PdfReference[] = oldCollection._annotations;
+        if (!annotations || annotations.length === 0) {
+            return;
+        }
+        const dstXref: _PdfCrossReference = this._crossReference;
+        const srcXref: _PdfCrossReference = this._sourceDocument._crossReference;
+        const result: _PdfReference[] = [];
+        const count: number = annotations.length;
+        for (let i: number = 0; i < count; i++) {
+            const annotationReference: _PdfReference = annotations[<number>i];
+            if (!annotationReference) {
+                continue;
+            }
+            const annotationDictionary: _PdfDictionary = srcXref._fetch(annotationReference);
+            if (!annotationDictionary) {
+                continue;
+            }
+            let dest: any[] // eslint-disable-line
+            if (annotationDictionary.has('Dest')) {
+                const destinationArray: any = annotationDictionary.get('Dest'); // eslint-disable-line
+                const destination: any = annotationDictionary._get('Dest'); // eslint-disable-line
+                if (Array.isArray(destinationArray)) {
+                    dest = destinationArray.slice();
+                } else if (destination instanceof _PdfReference) {
+                    dest = [destination];
                 }
             }
-            isDestination = false;
-            dest = [];
-        });
-        if (array.length > 0) {
-            newPage._pageDictionary.update('Annots', array);
+            if (dest && dest.length > 0) {
+                this._destination.push(dest);
+            }
+            if (annotationDictionary.has('OC')) {
+                const reference: any = annotationDictionary.getRaw('OC'); // eslint-disable-line
+                if (reference instanceof _PdfReference) {
+                    this._annotationLayer.set(i, reference);
+                }
+            }
+            const copiedAnnotationReference: _PdfReference = this._copier._copy(annotationReference);
+            const copiedAnnotationDictionary: _PdfDictionary = dstXref._fetch(copiedAnnotationReference);
+            if (dest && dest.length > 0) {
+                copiedAnnotationDictionary.update('Dest', dest);
+            }
+            copiedAnnotationDictionary.update('P', newPage._ref);
+            result.push(copiedAnnotationReference);
+        }
+        if (result.length > 0) {
+            newPage._pageDictionary.update('Annots', result);
         }
     }
     /**
@@ -1368,9 +1370,9 @@ export class _PdfMergeHelper {
      * @returns {void}
      */
     _writeArray(document: PdfDocument, array: any[], value: any[], dictionary: _PdfDictionary): void { // eslint-disable-line
-        value.forEach((item: any) => { // eslint-disable-line
-            this._writeObject(document, null, item, dictionary, null, array);
-        });
+        for (let i: number = 0, len: number = value.length; i < len; i++) {
+            this._writeObject(document, null, value[<number>i], dictionary, null, array);
+        }
     }
     /**
      * Writes all properties from a source dictionary into a destination dictionary, dereferencing references when needed.
@@ -1580,9 +1582,9 @@ export class _PdfCopier {
      */
     _copyArray(originalArray: any[]): any[] { // eslint-disable-line 
         const newArray: any[] = []; // eslint-disable-line
-        originalArray.forEach((item: any) => { // eslint-disable-line
-            newArray.push(this._copy(item));
-        });
+        for (let i: number = 0, len: number = originalArray.length; i < len; i++) {
+            newArray.push(this._copy(originalArray[<number>i]));
+        }
         return newArray;
     }
     /**
@@ -1633,7 +1635,8 @@ export class _PdfCopier {
                 bytes = originalStream._bytes;
             }
         }
-        const content: _PdfContentStream = new _PdfContentStream(Array.from(bytes));
+        const content: _PdfContentStream = (bytes instanceof Array) ? new _PdfContentStream(bytes)
+            : new _PdfContentStream(Array.from(bytes));
         content._isImage = imageStream;
         content.dictionary = this._copyDictionary(originalStream.dictionary);
         content.dictionary._updated = true;

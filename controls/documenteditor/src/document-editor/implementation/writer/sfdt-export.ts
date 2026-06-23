@@ -1001,7 +1001,7 @@ private hasSameContentControlProperties(props1: any, props2: any): boolean {
         while (next instanceof ParagraphWidget) {
             if (this.writeLines(next, lineIndex, start, paragraph[inlinesProperty[this.keywordIndex]])) {
                 if (this.endLine === next.lastChild && this.endOffset === this.owner.selection.getLineLength(next.lastChild as LineWidget) + 1 && next.paragraphFormat.listFormat.listId === -1 && !this.isContentControl) {
-                    blocks.push(this.createParagraph(next));
+                    this.document[lastParagraphMarkCopiedProperty[this.keywordIndex]] = true;
                 }
                 return undefined;
             }
@@ -1268,7 +1268,7 @@ private hasSameContentControlProperties(props1: any, props2: any): boolean {
             inline[editableRangeStartProperty[this.keywordIndex]][columnLastProperty[this.keywordIndex]] = element.editRangeStart.columnLast;
             inline[editRangeIdProperty[this.keywordIndex]] = element.editRangeId.toString();
         } else if (element instanceof CommentCharacterElementBox) {
-            if (!isNullOrUndefined(element.commentInternal) && !element.commentInternal.isPosted) {
+            if (!isNullOrUndefined(element.commentInternal) && !element.commentInternal.isPosted && !element.commentInternal.isReply) {
                 return undefined;
             }
             if(this.iscontentInsert) {
@@ -2401,7 +2401,7 @@ private hasSameContentControlProperties(props1: any, props2: any): boolean {
     public writeComments(documentHelper: DocumentHelper): void {
         this.document[commentsProperty[this.keywordIndex]] = [];
         for (let i: number = 0; i < documentHelper.comments.length; i++) {
-            if (this.documentHelper.comments[i].isPosted && (this.isExport ||
+            if ((this.documentHelper.comments[i].isPosted || this.documentHelper.comments[i].isReply) && (this.isExport ||
                 (!this.isExport && this.selectedCommentsId.indexOf(this.documentHelper.comments[i].commentId) !== -1))) {
             // if (this.isExport ||
             //     (!this.isExport && this.selectedCommentsId.indexOf(this.documentHelper.comments[i].commentId) !== -1)) {

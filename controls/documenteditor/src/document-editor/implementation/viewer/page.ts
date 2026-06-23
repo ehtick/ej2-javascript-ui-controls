@@ -1309,6 +1309,9 @@ export class ParagraphWidget extends BlockWidget {
                 if (inline.length === 0) {
                     continue;
                 }
+                if (inline instanceof TextElementBox && (inline as TextElementBox).text.length !== 0 && this.isZeroWidthText((inline as TextElementBox).text)) {
+                    continue;
+                }
                 if (inline instanceof TextElementBox || inline instanceof ImageElementBox || inline instanceof BookmarkElementBox
                     || inline instanceof EditRangeEndElementBox || inline instanceof EditRangeStartElementBox
                     || inline instanceof ChartElementBox || inline instanceof ShapeElementBox || inline instanceof GroupShapeElementBox
@@ -1319,6 +1322,17 @@ export class ParagraphWidget extends BlockWidget {
             }
         }
         return true;
+    }
+    private isZeroWidthText(text: string): boolean {
+        // Check if all characters are zero-width (U+200B) or similar invisible characters
+        let zeroWidthCount = 0;
+        for (let i = 0; i < text.length; i++) {
+            const charCode = text.charCodeAt(i);
+            if (charCode === 0x200B || charCode === 0x200C || charCode === 0x200D || charCode === 0xFEFF) {
+                zeroWidthCount++;
+            }
+        }
+        return zeroWidthCount === text.length;
     }
     public isEmpty(): boolean {
         return this.isEmptyInternal(false);
@@ -8153,10 +8167,12 @@ export class ChartElementBox extends ImageElementBox {
     }
 
     private onChartLoaded(): void {
-        this.officeChart.convertChartToImage(this.officeChart.chart, this.width, this.height).then((dataURL: string) => {
-            this.imageString = dataURL;
-            this.element.src = dataURL;
-        });
+        if (!isNullOrUndefined(this.officeChart.chart) && !isNullOrUndefined(this.width) && !isNullOrUndefined(this.height)) {
+            this.officeChart.convertChartToImage(this.officeChart.chart, this.width, this.height).then((dataURL: string) => {
+                this.imageString = dataURL;
+                this.element.src = dataURL;
+            });
+        }
     }
     /**
      * @private

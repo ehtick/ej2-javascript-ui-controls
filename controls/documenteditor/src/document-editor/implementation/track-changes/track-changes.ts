@@ -291,6 +291,16 @@ export class Revision {
         //The boolean was used to check that if the revision from the item was was already removed or not.
         let isItemAlreadyUnlinked: boolean = this.owner.selectionModule.selectRevision(this, undefined, undefined, undefined, true, isAccept);
         if (!isItemAlreadyUnlinked) {
+            let removeChanges: boolean = (!isNullOrUndefined(isAccept)) && ((this.revisionType === 'MoveFrom' || this.revisionType === 'Deletion') && isAccept ) || ((this.revisionType === 'Insertion' || this.revisionType === 'MoveTo') && !isAccept);
+            let comments: CommentCharacterElementBox[];
+            if (removeChanges) {
+                let commentInfo: SelectedCommentInfo = this.owner.editorModule.getSelectedComments();
+                if (commentInfo.commentEndInfo.length > 0 || commentInfo.commentStartInfo.length > 0) {
+                    comments = this.owner.editorModule.checkAndRemoveComments(false, true);
+                } else {
+                    removeChanges = false;
+                }
+            }
             this.owner.editorModule.initHistory(isAccept ? 'Accept Change' : 'Reject Change');
             this.owner.editorModule.deleteSelectedContents(this.owner.selectionModule, true);
             if (!isNullOrUndefined(this.owner.editorHistory) && this.owner.editorHistoryModule.currentBaseHistoryInfo) {
@@ -301,6 +311,22 @@ export class Revision {
                 this.owner.editorHistory.currentHistoryInfo.endPosition = this.owner.selection.endOffset;
             }
             this.owner.editorModule.reLayout(this.owner.selectionModule, undefined, undefined, true);
+            if (removeChanges && this.owner.editorHistory && !isNullOrUndefined(this.owner.editorHistory.currentHistoryInfo)) {
+                for (let k: number = 0; k < comments.length; k++) {
+                    // Reset the removedIds array of the current comment element to an empty array.
+                    if (comments[k].indexInOwner < 0) {
+                        //Deleting revision from comment
+                        const index = comments[k].getAllRevision().indexOf(this);
+                        if(index !== -1){
+                            comments[k].removeRevision(index);
+                        }
+                        comments[k].removedIds = [];
+                        this.owner.editorModule.initInsertInline(comments[k], false);
+                    }
+                }
+                this.owner.editorHistory.currentHistoryInfo.endPosition = this.owner.selection.startOffset;
+                this.owner.editorHistory.updateComplexHistory();
+            }
         }
     }
     /**

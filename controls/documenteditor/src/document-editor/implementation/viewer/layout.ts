@@ -13658,7 +13658,7 @@ export class Layout {
             }
         } else {
             let lastParagraph: BlockWidget = body.lastChild as BlockWidget;
-            if (isNullOrUndefined(lastParagraph.nextSplitWidget) && lastParagraph instanceof ParagraphWidget) {
+            if (!this.isRelayout && isNullOrUndefined(lastParagraph.nextSplitWidget) && lastParagraph instanceof ParagraphWidget) {
                 let reCheckHeight: number = 0;
                 for (let j: number = 0; j < lastParagraph.childWidgets.length; j++) {
                     reCheckHeight += (lastParagraph.childWidgets[j] as LineWidget).height

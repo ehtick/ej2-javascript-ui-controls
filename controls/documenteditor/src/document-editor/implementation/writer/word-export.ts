@@ -865,7 +865,10 @@ export class WordExport {
     private serializeCommentInternal(writer: XmlWriter, comments: any[]): void {
         for (let i: number = 0; i < comments.length; i++) {
             const comment: any = comments[parseInt(i.toString(), 10)];
-            if (comment.isPosted) {
+            if (isNullOrUndefined(this.commentId[comment.commentId])) {
+                continue;
+            }
+            if (comment.isPosted || comment.isReply) {
                 writer.writeStartElement('w', 'comment', this.wNamespace);
                 writer.writeAttributeString('w', 'id', this.wNamespace, this.commentId[comment.commentId].toString());
                 if (comment.author && comment.author !== ' ') {
@@ -913,7 +916,10 @@ export class WordExport {
     private serializeCommentsExInternal(writer: XmlWriter, comments: any[], isReply: boolean): void {
         for (let i: number = 0; i < comments.length; i++) {
             const comment: any = comments[parseInt(i.toString(), 10)];
-            if (comment.isPosted) {
+            if (isNullOrUndefined(this.commentParaIDInfo[comment.commentId])) {
+                continue;
+            }
+            if (comment.isPosted || comment.isReply) {
                 writer.writeStartElement('w15', 'commentEx', this.wNamespace);
                 //if (comment.blocks.length > 0) {
                 const syncParaID: number = this.commentParaIDInfo[comment.commentId];
@@ -6781,32 +6787,41 @@ export class WordExport {
             this.keywordIndex = 0;
         }
         // Check if any character format properties exist before writing the element
-        let hasAnyProperty: boolean = !isNullOrUndefined(characterFormat[styleNameProperty[this.keywordIndex]]) ||
+        let hasAnyProperty: boolean =
+            !isNullOrUndefined(characterFormat[styleNameProperty[this.keywordIndex]]) ||
             !isNullOrUndefined(characterFormat[fontFamilyProperty[this.keywordIndex]]) ||
             !isNullOrUndefined(characterFormat[fontFamilyBidiProperty[this.keywordIndex]]) ||
             !isNullOrUndefined(characterFormat[fontFamilyFarEastProperty[this.keywordIndex]]) ||
             !isNullOrUndefined(characterFormat[fontFamilyAsciiProperty[this.keywordIndex]]) ||
             !isNullOrUndefined(characterFormat[fontFamilyNonFarEastProperty[this.keywordIndex]]) ||
+            !isNullOrUndefined(characterFormat[fontHintTypeProperty[this.keywordIndex]]) ||
             !isNullOrUndefined(characterFormat[boldProperty[this.keywordIndex]]) ||
             HelperMethods.parseBoolValue(characterFormat[boldBidiProperty[this.keywordIndex]]) ||
             !isNullOrUndefined(characterFormat[italicProperty[this.keywordIndex]]) ||
             !isNullOrUndefined(characterFormat[italicBidiProperty[this.keywordIndex]]) ||
-            (HelperMethods.parseBoolValue(characterFormat[hiddenProperty[this.keywordIndex]])) ||
+            (!isNullOrUndefined(characterFormat[hiddenProperty[this.keywordIndex]]) &&
+                HelperMethods.parseBoolValue(characterFormat[hiddenProperty[this.keywordIndex]])) ||
             HelperMethods.parseBoolValue(characterFormat[bidiProperty[this.keywordIndex]]) ||
             !isNullOrUndefined(characterFormat[allCapsProperty[this.keywordIndex]]) ||
             HelperMethods.parseBoolValue(characterFormat[complexScriptProperty[this.keywordIndex]]) ||
             !isNullOrUndefined(characterFormat[strikethroughProperty[this.keywordIndex]]) ||
             !isNullOrUndefined(characterFormat[fontColorProperty[this.keywordIndex]]) ||
-            !isNullOrUndefined(characterFormat[highlightColorProperty[this.keywordIndex]]) ||
+            (!isNullOrUndefined(characterFormat[highlightColorProperty[this.keywordIndex]]) &&
+                characterFormat[highlightColorProperty[this.keywordIndex]] !== (this.keywordIndex === 1 ? 0 : 'NoColor')) ||
             !isNullOrUndefined(characterFormat[fontSizeProperty[this.keywordIndex]]) ||
             !isNullOrUndefined(characterFormat[fontSizeBidiProperty[this.keywordIndex]]) ||
             !isNullOrUndefined(characterFormat[underlineProperty[this.keywordIndex]]) ||
+            !isNullOrUndefined(characterFormat[underlineColorProperty[this.keywordIndex]]) ||
             !isNullOrUndefined(characterFormat[baselineAlignmentProperty[this.keywordIndex]]) ||
             !isNullOrUndefined(characterFormat[localeIdBidiProperty[this.keywordIndex]]) ||
             !isNullOrUndefined(characterFormat[localeIdFarEastProperty[this.keywordIndex]]) ||
             !isNullOrUndefined(characterFormat[localeIdProperty[this.keywordIndex]]) ||
             !isNullOrUndefined(characterFormat[characterSpacingProperty[this.keywordIndex]]) ||
-            !isNullOrUndefined(characterFormat[scalingProperty[this.keywordIndex]]);
+            !isNullOrUndefined(characterFormat[scalingProperty[this.keywordIndex]]) ||
+            (!isNullOrUndefined(characterFormat[revisionIdsProperty[this.keywordIndex]]) &&
+                characterFormat[revisionIdsProperty[this.keywordIndex]].length > 0) ||
+            (!isNullOrUndefined(characterFormat[ligatureProperty[this.keywordIndex]]) &&
+                characterFormat[ligatureProperty[this.keywordIndex]] === 'StandardContextual');
 
         if (!hasAnyProperty) {
             return;

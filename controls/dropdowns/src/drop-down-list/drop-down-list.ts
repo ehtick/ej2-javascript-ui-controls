@@ -4166,8 +4166,8 @@ export class DropDownList extends DropDownBase implements IInput {
             if (!this.targetElement().hasAttribute('aria-label')) {
                 attributes(this.targetElement(), { 'aria-label': this.getModuleName()});
             }
-            if (!this.inputElement.hasAttribute('aria-label')) {
-                this.inputElement.setAttribute('aria-label', this.getModuleName());
+            if (!this.inputElement.hasAttribute('aria-labelledby')) {
+                this.inputElement.setAttribute('aria-labelledby', this.hiddenElement.id);
             }
             this.inputElement.setAttribute('aria-expanded', 'false');
         }

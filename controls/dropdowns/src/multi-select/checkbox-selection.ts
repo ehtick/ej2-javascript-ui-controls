@@ -506,8 +506,10 @@ export class CheckBoxSelection {
         }
     }
     private setLocale(unSelect?: boolean): void {
-        if (this.parent.selectAllText !== 'Select All' || this.parent.unSelectAllText !== 'Unselect All') {
-            const template: string = unSelect ? this.parent.unSelectAllText : this.parent.selectAllText;
+        const template: string = unSelect ? this.parent.unSelectAllText : this.parent.selectAllText;
+        const isListBox: boolean = this.parent.element.classList.contains('e-listbox');
+        if ((this.parent.selectAllText !== 'Select All' || this.parent.unSelectAllText !== 'Unselect All') &&
+            (!isListBox || typeof template === 'function' || (typeof template === 'string' && /<[a-z][\s\S]*>/i.test(template)))) {
             this.selectAllSpan.textContent = '';
             const compiledString: Function = compile(template);
             const templateName: string = unSelect ? 'unSelectAllText' : 'selectAllText';

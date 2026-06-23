@@ -8,6 +8,16 @@
 
 #### Bug Fixes
 
+- `#I842822` - Resolved an issue where the distance annotation leader length was incorrect during printing and downloading.
+- `#I844468` - Fixed a script error that occurred when adding the redaction annotation when the `enableFormDesigner` is set to false.
+- `#I845713` - Resolved an issue where the stamp annotations were not rendered when the `enableMagnification` is set to false.
+
+## 33.2.12 (2026-06-09)
+
+### PDF Viewer
+
+#### Bug Fixes
+
 - `#I841172` - Resolved the issue where the undo functionality was not working properly for comment status changes.
 
 ## 33.2.10 (2026-06-02)

@@ -7492,6 +7492,13 @@ Remove terinal segment in initial
                         if (this.diagram.lineRoutingModule) {
                             for (let i: number = 0; i < actualObject.connectors.length; i++) {
                                 const connector: Connector = actualObject.connectors[i] as Connector;
+                                //1032764:Line routing prevents connectors from being moved in a multiple selection
+                                if (connector.constraints & ConnectorConstraints.Drag) {
+                                    connector.sourcePoint.x += offsetX;
+                                    connector.sourcePoint.y += offsetY;
+                                    connector.targetPoint.x += offsetX;
+                                    connector.targetPoint.y += offsetY;
+                                }
                                 const newValues: Connector = {
                                     sourcePoint: connector.sourcePoint, targetPoint: connector.targetPoint, sourceID: connector.sourceID,
                                     targetID: connector.targetID, sourcePortID: connector.sourcePortID, targetPortID: connector.targetPortID

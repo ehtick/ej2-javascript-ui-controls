@@ -9008,6 +9008,8 @@ export class Editor {
                             // For other cases, copy the revision from the existing element to the new element
                             this.copyElementRevision(element, newElement);
                         }
+                    } else {
+                        this.copyElementRevision(element, textElement);
                     }
                 }
                 // newElement.line = line;
@@ -10211,6 +10213,7 @@ export class Editor {
             table.fitChildToClientArea();
         }
         this.selection.owner.isLayoutEnabled = true;
+        this.selection.owner.isShiftingEnabled = true;
         table.isGridUpdated = false;
         table.buildTableColumns();
         table.isGridUpdated = true;
@@ -20686,7 +20689,7 @@ export class Editor {
                                     }
                                 }
                             }
-                            if (!isTrue || this.isRevisionMatched(elementBox, undefined) || !isNullOrUndefined(elementBox.commentType)) {
+                            if (!isTrue || this.isRevisionMatched(elementBox, undefined) || (this.editorHistory && this.editorHistory.currentHistoryInfo && this.editorHistory.currentHistoryInfo.action === "DeleteComment")) {
                                 elementBox.line.children.splice(elementBox.indexInOwner, 1);
                             } else if (isTrackingEnabled && !((elementBox.commentType === 0 && elementBox.nextElement === elementBox.comment.commentEnd) || 
                                 (elementBox.commentType === 1 && elementBox.previousElement === elementBox.comment.commentStart))) {

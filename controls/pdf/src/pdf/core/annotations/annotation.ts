@@ -5966,23 +5966,24 @@ export class PdfCircleAnnotation extends PdfComment {
             }
         } else if (this._setAppearance || this._customTemplate.size > 0) {
             let appearance: _PdfDictionary;
+            const crossReference: _PdfCrossReference = this._crossReference;
             if (this._dictionary.has('AP')) {
                 appearance = this._dictionary.get('AP');
             } else {
-                const reference: _PdfReference = this._crossReference._getNextReference();
-                appearance = new _PdfDictionary(this._crossReference);
+                const reference: _PdfReference = crossReference._getNextReference();
+                appearance = new _PdfDictionary(crossReference);
                 appearance._updated = true;
-                this._crossReference._cacheMap.set(reference, appearance);
+                crossReference._cacheMap.set(reference, appearance);
                 this._dictionary.update('AP', reference);
             }
             if (this._customTemplate.size > 0) {
                 this._drawCustomAppearance(appearance);
             } else {
-                _removeDuplicateReference(appearance, this._crossReference, 'N');
+                _removeDuplicateReference(appearance, crossReference, 'N');
                 const reference: _PdfReference = this._crossReference._getNextReference();
                 this._appearanceTemplate._content.dictionary._update = true;
                 this._appearanceTemplate._content.reference = reference;
-                this._crossReference._cacheMap.set(reference, this._appearanceTemplate._content);
+                crossReference._cacheMap.set(reference, this._appearanceTemplate._content);
                 appearance.update('N', reference);
             }
         }
@@ -5997,6 +5998,7 @@ export class PdfCircleAnnotation extends PdfComment {
      */
     _createCircleMeasureAppearance(_isFlatten: boolean): PdfTemplate {
         const borderWidth: number = this.border.width;
+        const dictionary: _PdfDictionary = this._dictionary;
         let font: PdfFont = this._obtainFont();
         if ((typeof font === 'undefined' || font === null) || (!this._isLoaded && font.size === 1)) {
             font = this._circleCaptionFont;
@@ -6016,7 +6018,7 @@ export class PdfCircleAnnotation extends PdfComment {
         let template: PdfTemplate;
         if (this._customTemplate.has('N')) {
             template = this._customTemplate.get('N');
-            this._dictionary.update('Rect', _updateBounds(this));
+            dictionary.update('Rect', _updateBounds(this));
         } else {
             template = new PdfTemplate(nativeRectangle, this._crossReference);
             const parameter: _PaintParameter = new _PaintParameter();
@@ -6065,8 +6067,8 @@ export class PdfCircleAnnotation extends PdfComment {
             }
             graphics.restore();
             if ((typeof _isFlatten !== 'undefined' && !_isFlatten) || !this._isLoaded) {
-                if (this._dictionary.has('AP')) {
-                    _removeDuplicateReference(this._dictionary.get('AP'), this._crossReference, 'N');
+                if (dictionary.has('AP')) {
+                    _removeDuplicateReference(dictionary.get('AP'), this._crossReference, 'N');
                 }
                 const dic: _PdfDictionary = new _PdfDictionary();
                 graphics._template._content.dictionary._updated = true;
@@ -6075,21 +6077,21 @@ export class PdfCircleAnnotation extends PdfComment {
                 graphics._template._content.reference = ref;
                 dic.set('N', ref);
                 dic._updated = true;
-                this._dictionary.set('AP', dic);
-                this._dictionary.update('Rect', _updateBounds(this));
-                if (this._dictionary.has('Measure')) {
-                    _removeDuplicateReference(this._dictionary, this._crossReference, 'Measure');
+                dictionary.set('AP', dic);
+                dictionary.update('Rect', _updateBounds(this));
+                if (dictionary.has('Measure')) {
+                    _removeDuplicateReference(dictionary, this._crossReference, 'Measure');
                 }
                 const measureDictionary: _PdfDictionary = this._createMeasureDictionary(this._unitString);
                 const reference: _PdfReference = this._crossReference._getNextReference();
                 this._crossReference._cacheMap.set(reference, measureDictionary);
                 measureDictionary._updated = true;
-                this._dictionary.update('Measure', reference);
-                this._dictionary.update('Subtype', new _PdfName('Circle'));
+                dictionary.update('Measure', reference);
+                dictionary.update('Subtype', new _PdfName('Circle'));
                 if (this._text && this._text !== '') {
-                    this._dictionary.update('Contents', this._text + ' ' + area.toFixed(2) + ' ' + this._unitString);
+                    dictionary.update('Contents', this._text + ' ' + area.toFixed(2) + ' ' + this._unitString);
                 } else {
-                    this._dictionary.update('Contents', area.toFixed(2) + ' ' + this._unitString);
+                    dictionary.update('Contents', area.toFixed(2) + ' ' + this._unitString);
                 }
                 const ds: string = 'font:' +
                     font._metrics._postScriptName +
@@ -6097,7 +6099,7 @@ export class PdfCircleAnnotation extends PdfComment {
                     font._size +
                     'pt; color:' +
                     this._colorToHex([this.color.r, this.color.g, this.color.b]);
-                this._dictionary.update('DS', ds);
+                dictionary.update('DS', ds);
             }
         }
         return template;
@@ -6346,23 +6348,24 @@ export class PdfEllipseAnnotation extends PdfComment {
             }
         } else if (this._setAppearance || this._customTemplate.size > 0) {
             let appearance: _PdfDictionary;
+            const crossReference: _PdfCrossReference = this._crossReference;
             if (this._dictionary.has('AP')) {
                 appearance = this._dictionary.get('AP');
             } else {
-                const reference: _PdfReference = this._crossReference._getNextReference();
-                appearance = new _PdfDictionary(this._crossReference);
+                const reference: _PdfReference = crossReference._getNextReference();
+                appearance = new _PdfDictionary(crossReference);
                 appearance._updated = true;
-                this._crossReference._cacheMap.set(reference, appearance);
+                crossReference._cacheMap.set(reference, appearance);
                 this._dictionary.update('AP', reference);
             }
             if (this._customTemplate.size > 0) {
                 this._drawCustomAppearance(appearance);
             } else {
-                _removeDuplicateReference(appearance, this._crossReference, 'N');
-                const reference: _PdfReference = this._crossReference._getNextReference();
+                _removeDuplicateReference(appearance, crossReference, 'N');
+                const reference: _PdfReference = crossReference._getNextReference();
                 this._appearanceTemplate._content.dictionary._update = true;
                 this._appearanceTemplate._content.reference = reference;
-                this._crossReference._cacheMap.set(reference, this._appearanceTemplate._content);
+                crossReference._cacheMap.set(reference, this._appearanceTemplate._content);
                 appearance.update('N', reference);
             }
         }
@@ -6786,23 +6789,24 @@ export class PdfSquareAnnotation extends PdfComment {
             }
         } else if (this._setAppearance || this._customTemplate.size > 0) {
             let appearance: _PdfDictionary;
+            const crossReference: _PdfCrossReference = this._crossReference;
             if (this._dictionary.has('AP')) {
                 appearance = this._dictionary.get('AP');
             } else {
-                const reference: _PdfReference = this._crossReference._getNextReference();
+                const reference: _PdfReference = crossReference._getNextReference();
                 appearance = new _PdfDictionary(this._crossReference);
                 appearance._updated = true;
-                this._crossReference._cacheMap.set(reference, appearance);
+                crossReference._cacheMap.set(reference, appearance);
                 this._dictionary.update('AP', reference);
             }
             if (this._customTemplate.size > 0) {
                 this._drawCustomAppearance(appearance);
             } else {
-                _removeDuplicateReference(appearance, this._crossReference, 'N');
-                const reference: _PdfReference = this._crossReference._getNextReference();
+                _removeDuplicateReference(appearance, crossReference, 'N');
+                const reference: _PdfReference = crossReference._getNextReference();
                 this._appearanceTemplate._content.dictionary._update = true;
                 this._appearanceTemplate._content.reference = reference;
-                this._crossReference._cacheMap.set(reference, this._appearanceTemplate._content);
+                crossReference._cacheMap.set(reference, this._appearanceTemplate._content);
                 appearance.update('N', reference);
             }
         }
@@ -6840,9 +6844,10 @@ export class PdfSquareAnnotation extends PdfComment {
             template = this._customTemplate.get('N');
             let nativeRectangle1: number[] = [this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height];
             const size: Size = this._page.size;
-            nativeRectangle1[1] = size.height - (this.bounds.y + this.bounds.height);
-            nativeRectangle1[2] = (this.bounds.x + this.bounds.width);
-            nativeRectangle1[3] = size.height - this.bounds.y;
+            const bounds: Rectangle = this.bounds;
+            nativeRectangle1[1] = size.height - (bounds.y + bounds.height);
+            nativeRectangle1[2] = (bounds.x + bounds.width);
+            nativeRectangle1[3] = size.height - bounds.y;
             if (this._isBounds) {
                 nativeRectangle =  nativeRectangle1;
             }
@@ -7876,12 +7881,13 @@ export class PdfPolygonAnnotation extends PdfComment {
             if (this._page._pageDictionary.has('Rotate')) {
                 rotation = this._page._pageDictionary.get('Rotate');
             }
-            if (this._page && this._page.rotation) {
-                if (this._page.rotation === PdfRotationAngle.angle90) {
+            const pageRotation: PdfRotationAngle = this._page.rotation;
+            if (this._page && pageRotation) {
+                if (pageRotation === PdfRotationAngle.angle90) {
                     rotation = 90;
-                } else if (this._page.rotation === PdfRotationAngle.angle180) {
+                } else if (pageRotation === PdfRotationAngle.angle180) {
                     rotation = 180;
-                } else if (this._page.rotation === PdfRotationAngle.angle270) {
+                } else if (pageRotation === PdfRotationAngle.angle270) {
                     rotation = 270;
                 }
             }
@@ -15371,21 +15377,22 @@ export class PdfFreeTextAnnotation extends PdfComment {
         }
         if (!isFlatten && (this._setAppearance || this._customTemplate.size > 0)) {
             let appearance: _PdfDictionary;
+            const crossReference: _PdfCrossReference = this._crossReference;
             if (this._dictionary.has('AP')) {
                 appearance = this._dictionary.get('AP');
             } else {
-                const reference: _PdfReference = this._crossReference._getNextReference();
-                appearance = new _PdfDictionary(this._crossReference);
-                this._crossReference._cacheMap.set(reference, appearance);
+                const reference: _PdfReference = crossReference._getNextReference();
+                appearance = new _PdfDictionary(crossReference);
+                crossReference._cacheMap.set(reference, appearance);
                 appearance._updated = true;
                 this._dictionary.update('AP', reference);
             }
             if (this._customTemplate.size > 0) {
                 this._drawCustomAppearance(appearance);
             } else {
-                _removeDuplicateReference(appearance, this._crossReference, 'N');
-                const reference: _PdfReference = this._crossReference._getNextReference();
-                this._crossReference._cacheMap.set(reference, this._appearanceTemplate._content);
+                _removeDuplicateReference(appearance, crossReference, 'N');
+                const reference: _PdfReference = crossReference._getNextReference();
+                crossReference._cacheMap.set(reference, this._appearanceTemplate._content);
                 this._appearanceTemplate._content.dictionary._update = true;
                 this._appearanceTemplate._content.reference = reference;
                 appearance.update('N', reference);

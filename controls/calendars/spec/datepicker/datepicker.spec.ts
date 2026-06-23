@@ -5715,3 +5715,134 @@ describe('DatePicker - Full Screen Layout in Mobile Mode', function () {
         });
     });
 });
+
+describe('Focus trap — popup keyboard navigation', () => { // #WI-1030875-focus-trap
+    let datepicker: DatePicker;
+    let ele: HTMLElement;
+
+    function createKeyEvent(action: string, target: HTMLElement): KeyboardEventArgs {
+        const keyMap: { [key: string]: number } = { 'tab': 9, 'shiftTab': 9, 'escape': 27 };
+        const event: any = document.createEvent('KeyboardEvent');
+        event.initEvent('keydown', true, true);
+        Object.defineProperty(event, 'keyCode', { value: keyMap[action] || 0, writable: false });
+        Object.defineProperty(event, 'shiftKey', { value: action === 'shiftTab', writable: false });
+        Object.defineProperty(event, 'target', { value: target, writable: false });
+        (event as any).action = action;
+        return event as KeyboardEventArgs;
+    }
+
+    beforeEach(() => {
+        ele = createElement('input', { id: 'focustrap-datepicker' });
+        document.body.appendChild(ele);
+        datepicker = new DatePicker({ value: new Date('6/15/2026') });
+        datepicker.appendTo('#focustrap-datepicker');
+    });
+
+    afterEach(() => {
+        if (datepicker) {
+            datepicker.destroy();
+        }
+        remove(ele);
+    });
+
+    it('getPopupFocusableElements returns non-empty array when popup is open', () => { // #WI-1030875-focus-trap
+        datepicker.show();
+        const popupWrapper: HTMLElement = (datepicker as any).popupWrapper as HTMLElement;
+        expect(popupWrapper).not.toBeNull();
+        const focusable: HTMLElement[] = (datepicker as any).getPopupFocusableElements(popupWrapper);
+        expect(focusable.length).toBeGreaterThanOrEqual(4);
+    });
+
+    it('getPopupFocusableElements returns only enabled, visible elements', () => { // #WI-1030875-focus-trap
+        datepicker.show();
+        const popupWrapper: HTMLElement = (datepicker as any).popupWrapper as HTMLElement;
+        const focusable: HTMLElement[] = (datepicker as any).getPopupFocusableElements(popupWrapper);
+        focusable.forEach((el: HTMLElement) => {
+            expect(el.getAttribute('aria-disabled')).not.toBe('true');
+            expect(el.getAttribute('tabindex')).not.toBe('-1');
+        });
+    });
+
+    it('Tab on last focusable element wraps focus to first — popup stays open', () => { // #WI-1030875-focus-trap
+        const hideSpy: jasmine.Spy = spyOn(datepicker as any, 'hide').and.callThrough();
+        datepicker.show();
+        const popupWrapper: HTMLElement = (datepicker as any).popupWrapper as HTMLElement;
+        const focusable: HTMLElement[] = (datepicker as any).getPopupFocusableElements(popupWrapper);
+        expect(focusable.length).toBeGreaterThan(0);
+        const lastEl: HTMLElement = focusable[focusable.length - 1];
+        const tabEvent: KeyboardEventArgs = createKeyEvent('tab', lastEl);
+        (datepicker as any).calendarKeyActionHandle(tabEvent);
+        // Popup should NOT have been hidden via the tab key
+        expect(hideSpy).not.toHaveBeenCalled();
+        expect((datepicker as any).isCalendar()).toBe(true);
+    });
+
+    it('Shift+Tab on first focusable element wraps focus to last — popup stays open', () => { // #WI-1030875-focus-trap
+        const hideSpy: jasmine.Spy = spyOn(datepicker as any, 'hide').and.callThrough();
+        datepicker.show();
+        const popupWrapper: HTMLElement = (datepicker as any).popupWrapper as HTMLElement;
+        const focusable: HTMLElement[] = (datepicker as any).getPopupFocusableElements(popupWrapper);
+        expect(focusable.length).toBeGreaterThan(0);
+        const firstEl: HTMLElement = focusable[0];
+        const shiftTabEvent: KeyboardEventArgs = createKeyEvent('shiftTab', firstEl);
+        (datepicker as any).calendarKeyActionHandle(shiftTabEvent);
+        expect(hideSpy).not.toHaveBeenCalled();
+        expect((datepicker as any).isCalendar()).toBe(true);
+    });
+
+    it('Tab on a non-last element does not cycle and does not close popup', () => { // #WI-1030875-focus-trap
+        const hideSpy: jasmine.Spy = spyOn(datepicker as any, 'hide').and.callThrough();
+        datepicker.show();
+        const popupWrapper: HTMLElement = (datepicker as any).popupWrapper as HTMLElement;
+        const focusable: HTMLElement[] = (datepicker as any).getPopupFocusableElements(popupWrapper);
+        if (focusable.length > 1) {
+            const middleEl: HTMLElement = focusable[0]; // first element — not the last
+            const tabEvent: KeyboardEventArgs = createKeyEvent('tab', middleEl);
+            // Override target so it does NOT equal focusable[last]
+            (datepicker as any).calendarKeyActionHandle(tabEvent);
+            expect(hideSpy).not.toHaveBeenCalled();
+        }
+    });
+
+    it('Escape key still closes the popup and returns focus to input', () => { // #WI-1030875-focus-trap
+        datepicker.show();
+        expect((datepicker as any).isCalendar()).toBe(true);
+        const escEvent: any = document.createEvent('KeyboardEvent');
+        escEvent.initEvent('keydown', true, true);
+        Object.defineProperty(escEvent, 'keyCode', { value: 27, writable: false });
+        (escEvent as any).action = 'escape';
+        Object.defineProperty(escEvent, 'target', { value: (datepicker as any).headerTitleElement, writable: false });
+        (datepicker as any).calendarKeyActionHandle(escEvent);
+        expect((datepicker as any).isCalendar()).toBe(false);
+    });
+
+    it('Date cell click still closes popup and updates value', () => { // #WI-1030875-focus-trap
+        datepicker.show();
+        expect((datepicker as any).isCalendar()).toBe(true);
+        const popupWrapper: HTMLElement = (datepicker as any).popupWrapper as HTMLElement;
+        const dayCell: HTMLElement = popupWrapper.querySelector('td.e-focused-date') as HTMLElement;
+        if (dayCell) {
+            dayCell.click();
+            expect((datepicker as any).isCalendar()).toBe(false);
+        }
+    });
+
+    it('Tab on last element wraps when showTodayButton is false', () => { // #WI-1030875-focus-trap
+        datepicker.destroy();
+        remove(ele);
+        ele = createElement('input', { id: 'focustrap-no-today' });
+        document.body.appendChild(ele);
+        datepicker = new DatePicker({ value: new Date('6/15/2026'), showTodayButton: false });
+        datepicker.appendTo('#focustrap-no-today');
+        const hideSpy: jasmine.Spy = spyOn(datepicker as any, 'hide').and.callThrough();
+        datepicker.show();
+        const popupWrapper: HTMLElement = (datepicker as any).popupWrapper as HTMLElement;
+        const focusable: HTMLElement[] = (datepicker as any).getPopupFocusableElements(popupWrapper);
+        expect(focusable.length).toBeGreaterThan(0);
+        const lastEl: HTMLElement = focusable[focusable.length - 1];
+        const tabEvent: KeyboardEventArgs = createKeyEvent('tab', lastEl);
+        (datepicker as any).calendarKeyActionHandle(tabEvent);
+        expect(hideSpy).not.toHaveBeenCalled();
+        expect((datepicker as any).isCalendar()).toBe(true);
+    });
+});

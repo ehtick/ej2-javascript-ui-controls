@@ -3353,18 +3353,21 @@ client side. Customer easy to edit the contents and get the HTML content for
             detach(document.querySelector('.e-img-inline'))
             done();
         });
-        it(" Check image after drop", function () {
+        it(" Check image after drop", function (done: DoneFn) {
             rteObj.focusIn();
             const {x, y} = pointInside(rteObj.contentModule.getEditPanel());
             let fileObj: File = new File(["Nice One"], "sample.png", { lastModified: 0, type: "image/png" });
             let event: any = { clientX: x, clientY: y, target: rteObj.contentModule.getEditPanel(), dataTransfer: { files: [fileObj] }, preventDefault: function () { return; } };
             (rteObj.imageModule as any).getDropRange(event.clientX, event.clientY);
             (rteObj.imageModule as any).dragDrop(event);
-            ele = rteObj.element.getElementsByTagName('img')[0];
-            expect(rteObj.element.getElementsByTagName('img').length).toBe(1);
-            expect(ele.classList.contains('e-rte-image')).toBe(true);
-            expect(ele.classList.contains('e-img-inline')).toBe(true);
-            expect(ele.classList.contains('e-resize')).toBe(true);
+            setTimeout(() => {
+                ele = rteObj.element.getElementsByTagName('img')[0];
+                expect(rteObj.element.getElementsByTagName('img').length).toBe(1);
+                expect(ele.classList.contains('e-rte-image')).toBe(true);
+                expect(ele.classList.contains('e-img-inline')).toBe(true);
+                expect(ele.classList.contains('e-resize')).toBe(true);
+                done();
+            }, 100);
 
         });
         it("Check image being removed with args.cancel as true", (done: Function) => {
@@ -8785,7 +8788,7 @@ client side. Customer easy to edit the contents and get the HTML content for
                 editor = renderRTE({
                     fileManagerSettings: {
                         enable: true,
-                        path: '/Pictures/Employees',
+                        path: '/Employees',
                         ajaxSettings: {
                             url: hostURL + 'api/RichTextEditor/FileOperations',
                             getImageUrl: hostURL + 'api/RichTextEditor/GetImage',
@@ -8800,7 +8803,7 @@ client side. Customer easy to edit the contents and get the HTML content for
             });
             it('Check the image src when replace image', (done: DoneFn) => {
                 editor.formatter.editorManager.isBlazor = true;
-                editor.inputElement.innerHTML = '<p><img src="https://ej2services.syncfusion.com/js/development/api/RichTextEditor/GetImage/Pictures/Employees/Adam.png" class="e-rte-image e-imgbreak" style="width: 150px; height: 400px;"/></p>';
+                editor.inputElement.innerHTML = '<p><img src="https://ej2services.syncfusion.com/js/development/api/RichTextEditor/GetImage/Employees/Adam.png" class="e-rte-image e-imgbreak" style="width: 150px; height: 400px;"/></p>';
                 const INIT_MOUSEDOWN_EVENT: MouseEvent = new MouseEvent('mousedown', BASIC_MOUSE_EVENT_INIT);
                 editor.inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
                 const target: HTMLElement = editor.inputElement.querySelector('img');
@@ -8811,7 +8814,7 @@ client side. Customer easy to edit the contents and get the HTML content for
                     let pop: Element = document.body.querySelector('.e-rte-quick-popup');
                     (pop.querySelectorAll('.e-toolbar-item')[13].firstElementChild as HTMLElement).click();
                     setTimeout(() => {
-                        (editor.fileManagerModule as any).fileObj.trigger('fileSelect', { fileDetails: { filterPath: '\\Pictures\\Employees\\', name: 'Andrew.png', isFile: true, type: '.png' } });
+                        (editor.fileManagerModule as any).fileObj.trigger('fileSelect', { fileDetails: { filterPath: '\\Employees\\', name: 'Andrew.png', isFile: true, type: '.png' } });
                         let insertBtn: HTMLButtonElement = document.body.querySelector('.e-rte-file-manager-dialog button.e-primary');
                         insertBtn.click();
                             done();
@@ -9094,6 +9097,43 @@ client side. Customer easy to edit the contents and get the HTML content for
                     done();
                 }, 100);
             });
+        });
+    });
+
+    describe('Bug 1025314: Image preview not shown properly for drag and dropped images in  RichTextEditor', () => {
+        let editor: RichTextEditor;
+        let URL: string = '';
+        beforeAll(() => {
+            editor = renderRTE({
+                value: `<p>This is a text content.</p>`,
+                actionBegin: function (e: any) {
+                    if (e.itemCollection && e.itemCollection.url) {
+                        URL = e.itemCollection.url;
+                    }
+                }
+            });
+        });
+        afterAll(() => {
+            destroy(editor);
+        });
+        it('Should have a blob in image src in action begin event', (done: DoneFn) => {
+            const file: File = getImageUniqueFIle();
+            const dataTransfer: DataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            const eventInit: DragEventInit = {
+                dataTransfer: dataTransfer,
+                bubbles: true,
+                clientX: 40,
+                clientY: 294,
+            };
+            const dropEvent: DragEvent = new DragEvent('drop', eventInit);
+            editor.inputElement.querySelector('p').dispatchEvent(dropEvent);
+            setTimeout(() => {
+                if (URL !== '') {
+                    expect(URL.includes('blob:')).toBe(true);
+                    done();
+                }
+            }, 100);
         });
     });
 });

@@ -2928,9 +2928,10 @@ export class DiagramEventHandler {
                         }
                     } else {
                         history = this.updateContainerPropertiesExtend(parentNode, obj, connectors, helperObject, history);
-                    }
+                    }//1031624: UML Classifier Node visually breaks when LineRouting is enabled in the Diagram
                     if ((this.diagram.lineRoutingModule && (this.diagram.constraints & DiagramConstraints.LineRouting))
-                        && (!checkParentAsContainer(this.diagram, obj, true))) {
+                        && (!checkParentAsContainer(this.diagram, obj, true) && !(obj && obj.shape && obj.shape.type === 'UmlClassifier'))
+                    ) {
                         if (obj.children) {
                             this.diagram.realActions |= RealAction.EnableGroupAction;
                         }

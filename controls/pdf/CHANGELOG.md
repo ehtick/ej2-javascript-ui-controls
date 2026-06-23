@@ -2,7 +2,24 @@
 
 ## [Unreleased]
 
+## 33.2.15 (2026-06-23)
+
+### PDF
+
+#### Bug Fixes
+
+- Resolved an issue where blank pages appeared when importing a page range from a PDF document.
+- Resolved the issue with incorrect grouped checkbox export values.
+
 ## 33.2.13 (2026-06-16)
+
+### PDF
+
+#### Bug Fixes
+
+- Resolved an issue where the counts of form fields and items were not retrieved correctly.
+
+## 33.2.12 (2026-06-09)
 
 ### PDF
 

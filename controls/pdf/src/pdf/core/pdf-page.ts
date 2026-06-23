@@ -1,6 +1,6 @@
 import { _PdfCrossReference } from './pdf-cross-reference';
 import { _PdfDictionary, _PdfReference, _PdfName } from './pdf-primitives';
-import { _checkRotation, _getInheritableProperty, _getPageIndex, _isNullOrUndefined, _stringToBytes } from './utils';
+import { _areArrayEqual, _checkRotation, _getInheritableProperty, _getPageIndex, _isNullOrUndefined, _stringToBytes } from './utils';
 import { PdfAnnotationCollection } from './annotations/annotation-collection';
 import { PdfGraphics, PdfGraphicsState } from './graphics/pdf-graphics';
 import { _PdfBaseStream, _PdfContentStream } from './base-stream';
@@ -835,7 +835,11 @@ export class PdfPage {
         template._content.dictionary.set('Resources', this._resourceObject);
         if (this.cropBox[0] > 0 || this.cropBox[1] > 0) {
             template._content.dictionary.set('BBox', this.cropBox);
-            template._size = {width: this.cropBox[0], height: this.cropBox[1]};
+            if (_areArrayEqual(this.cropBox, this.mediaBox)) {
+                template._size = {width: this.cropBox[0], height: this.cropBox[1]};
+            } else {
+                template._size = {width: this.cropBox[2], height: this.cropBox[3]};
+            }
         } else if (this.mediaBox[0] > 0 || this.mediaBox[1] > 0) {
             template._content.dictionary.set('BBox', this.mediaBox);
             template._size = {width: this.mediaBox[0], height: this.mediaBox[1]};

@@ -204,6 +204,59 @@
         }
       }
 
+      &:disabled,
+      fieldset[disabled] & {
+        cursor: default;
+        pointer-events: none;
+
+        & .e-frame {
+          background-color: $cbox-disabled-bgcolor;
+          @if $skin-name == 'Material3' {
+            border: $cbox-border $cbox-disabled-border-color;
+          }
+          @else {
+            border-color: $cbox-disabled-border-color;
+          }
+          color: $cbox-disabled-color;
+
+          &.e-check {
+            background-color: $cbox-checkmark-disabled-bgcolor;
+            @if $skin-name == 'bootstrap4' {
+              border-color: transparent;
+            }
+            @if $skin-name == 'Material3' {
+              border: none;
+              border-color: $cbox-checkmark-disabled-border-color;
+              line-height: $cbox-mat3-check-line-height;
+            }
+            @else {
+              border-color: $cbox-checkmark-disabled-border-color;
+            }
+            color: $cbox-checkmark-disabled-color;
+          }
+
+          &.e-stop {
+            background-color: $cbox-indeterminate-disabled-bgcolor;
+            @if $skin-name == 'bootstrap4' {
+              border-color: transparent;
+            }
+            @if $skin-name == 'Material3' {
+              border: none;
+              border: $cbox-indeterminate-disabled-border-color;
+              line-height: $cbox-mat3-check-line-height;
+            }
+            @else {
+              border-color: $cbox-indeterminate-disabled-border-color;
+            }
+            color: $cbox-indeterminate-disabled-color;
+          }
+        }
+
+        & .e-label {
+          color: $cbox-disabled-color;
+        }
+      }
+
       .e-small .e-checkbox-wrapper,
       .e-small.e-checkbox-wrapper,
       .e-small .e-css.e-checkbox-wrapper,

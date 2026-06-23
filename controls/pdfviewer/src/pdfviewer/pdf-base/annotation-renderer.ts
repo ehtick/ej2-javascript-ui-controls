@@ -1498,8 +1498,8 @@ export class AnnotationRenderer {
             lineAnnotation.caption.type = this.getCaptionType(measureShapeAnnotation.captionPosition);
             const hasUniCode: boolean = /[\u0600-\u06FF]/.test(lineAnnotation.text);
             lineAnnotation.caption.cap = !hasUniCode && measureShapeAnnotation.caption;
-            lineAnnotation.leaderExt = measureShapeAnnotation.leaderLength;
-            lineAnnotation.leaderLine = measureShapeAnnotation.leaderLineExtension;
+            lineAnnotation.leaderExt = this.convertPixelToPoint(measureShapeAnnotation.leaderLength);
+            lineAnnotation.leaderLine = this.convertPixelToPoint(measureShapeAnnotation.leaderLineExtension);
             const commentsDetails: any = measureShapeAnnotation.comments;
             const bounds: any = JSON.parse(measureShapeAnnotation.bounds);
             lineAnnotation.bounds = bounds;
@@ -1595,7 +1595,7 @@ export class AnnotationRenderer {
                                                                                polylineAnnotation.bounds));
                 }
             }
-            polylineAnnotation.lineExtension = measureShapeAnnotation.leaderLength;
+            polylineAnnotation.lineExtension = this.convertPixelToPoint(measureShapeAnnotation.leaderLength);
             const reviewDetails: any = measureShapeAnnotation.review;
             polylineAnnotation.reviewHistory.add(this.addReviewCollections(reviewDetails, polylineAnnotation.bounds));
             polylineAnnotation._dictionary.set('IT', _PdfName.get(measureShapeAnnotation.indent.toString()));
@@ -1700,7 +1700,7 @@ export class AnnotationRenderer {
                                                                               polygonAnnotation.bounds));
                 }
             }
-            polygonAnnotation.lineExtension = measureShapeAnnotation.leaderLength;
+            polygonAnnotation.lineExtension = this.convertPixelToPoint(measureShapeAnnotation.leaderLength);
             const reviewDetails: any = measureShapeAnnotation.review;
             polygonAnnotation.reviewHistory.add(this.addReviewCollections(reviewDetails, polygonAnnotation.bounds));
             if (!isNullOrUndefined(measureShapeAnnotation.isCloudShape) && Boolean(measureShapeAnnotation['isCloudShape'].toString())) {
@@ -3368,8 +3368,8 @@ export class AnnotationRenderer {
             }
             measureShapeAnnotation.Indent = lineAnnot.lineIntent.toString();
             measureShapeAnnotation.Caption = lineAnnot.caption.cap;
-            measureShapeAnnotation.LeaderLength = lineAnnot.leaderExt;
-            measureShapeAnnotation.LeaderLineExtension = lineAnnot.leaderLine;
+            measureShapeAnnotation.LeaderLength = this.convertPointToPixel(lineAnnot.leaderExt);
+            measureShapeAnnotation.LeaderLineExtension = this.convertPointToPixel(lineAnnot.leaderLine);
             measureShapeAnnotation.ExistingCustomData = shapeAnnotation.ExistingCustomData;
             if (lineAnnot._dictionary.has('LLO')) {
                 measureShapeAnnotation.LeaderLineOffset = lineAnnot._dictionary.get('LLO');
@@ -3723,7 +3723,7 @@ export class AnnotationRenderer {
                 measureShapeAnnotation.Calibrate.Depth = polygonAnnot._dictionary.get('Depth');
             }
             measureShapeAnnotation.Caption = false;
-            measureShapeAnnotation.LeaderLength = polygonAnnot.lineExtension;
+            measureShapeAnnotation.LeaderLength = this.convertPointToPixel(polygonAnnot.lineExtension);
             measureShapeAnnotation.LeaderLineExtension = 0;
             measureShapeAnnotation.LeaderLineOffset = 0;
             measureShapeAnnotation.CaptionPosition = '';
@@ -3884,7 +3884,7 @@ export class AnnotationRenderer {
                 measureShapeAnnotation.Indent = 'PolyLineDimension';
             }
             measureShapeAnnotation.Caption = false;
-            measureShapeAnnotation.LeaderLength = polyLineAnnot.lineExtension;
+            measureShapeAnnotation.LeaderLength = this.convertPointToPixel(polyLineAnnot.lineExtension);
             measureShapeAnnotation.LeaderLineExtension = 0;
             measureShapeAnnotation.LeaderLineOffset = 0;
             measureShapeAnnotation.CaptionPosition = '';

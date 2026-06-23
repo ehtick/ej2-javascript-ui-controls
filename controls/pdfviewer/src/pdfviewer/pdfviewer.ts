@@ -10024,28 +10024,33 @@ export class PdfViewer extends Component<HTMLElement> implements INotifyProperty
     private clearAllFormFields(): void {
         this.saveFormFieldState();
         this.formatFieldCollections();
-        const pageDetails: number[] = Array.from(
-            new Set([
-                ...this.formFieldCollection
-                    .filter((a: any) => !isNullOrUndefined(a.pageIndex))
-                    .map((a: any) => a.pageIndex)
-            ])
-        ).sort((a: number, b: number) => a - b);
+        let pageDetails: number[];
+        if (this.formFieldCollection) {
+            pageDetails = Array.from(
+                new Set([
+                    ...this.formFieldCollection
+                        .filter((a: any) => !isNullOrUndefined(a.pageIndex))
+                        .map((a: any) => a.pageIndex)
+                ])
+            ).sort((a: number, b: number) => a - b);
+        }
         this.formFieldsModule.renderedPageList = [];
-        for (let i: number = 0; i < pageDetails.length; i++) {
-            this.clearSelection(pageDetails[parseInt(i.toString(), 10)]);
-            const pageCollection: any[] = this.formFieldCollection.filter((field: any) =>
-                (field as any).pageIndex === pageDetails[parseInt(i.toString(), 10)]);
-            for (let j: number = 0; j < pageCollection.length; j++) {
-                const currentField: HTMLElement = document.getElementById('form_field_' +
-                    pageCollection[parseInt(j.toString(), 10)].id + '_content_html_element');
-                if (!isNullOrUndefined(currentField)) {
-                    currentField.remove();
+        if (!isNullOrUndefined(pageDetails)) {
+            for (let i: number = 0; i < pageDetails.length; i++) {
+                this.clearSelection(pageDetails[parseInt(i.toString(), 10)]);
+                const pageCollection: any[] = this.formFieldCollection.filter((field: any) =>
+                    (field as any).pageIndex === pageDetails[parseInt(i.toString(), 10)]);
+                for (let j: number = 0; j < pageCollection.length; j++) {
+                    const currentField: HTMLElement = document.getElementById('form_field_' +
+                        pageCollection[parseInt(j.toString(), 10)].id + '_content_html_element');
+                    if (!isNullOrUndefined(currentField)) {
+                        currentField.remove();
+                    }
                 }
-            }
-            this.renderDrawing(null, pageDetails[parseInt(i.toString(), 10)]);
-            if (!isNullOrUndefined(this.formFieldsModule)) {
-                this.formFieldsModule.renderFormFields(pageDetails[parseInt(i.toString(), 10)], false);
+                this.renderDrawing(null, pageDetails[parseInt(i.toString(), 10)]);
+                if (!isNullOrUndefined(this.formFieldsModule)) {
+                    this.formFieldsModule.renderFormFields(pageDetails[parseInt(i.toString(), 10)], false);
+                }
             }
         }
         this.formFieldCollection = [];
@@ -10075,7 +10080,7 @@ export class PdfViewer extends Component<HTMLElement> implements INotifyProperty
                 this.viewerBase.setItemInSessionStorage(this.renderedFormFields, '_formfields');
             }
         }
-        else if (isNullOrUndefined(data) && this.formFieldCollection.length > 0) {
+        else if (isNullOrUndefined(data) && !isNullOrUndefined(this.formFieldCollection) && this.formFieldCollection.length > 0) {
             const iterateData: any = this.formFieldCollection;
             for (let i: number = 0; i < iterateData.length; i++) {
                 this.addFormFieldsData(this.formFieldCollection[parseInt(i.toString(), 10)]);

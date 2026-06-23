@@ -2892,6 +2892,7 @@ export interface DiagramElements {
     eventHandler: {
         currentAction: string;
         isNudgeKey: boolean;
+        inAction: boolean;
     };
 }
 /** @private */

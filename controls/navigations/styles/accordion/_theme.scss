@@ -412,4 +412,21 @@
       }
     }
   }
+  .e-accordion:not(.e-acrdn-ctrl) > .e-acrdn-item {
+    &.e-selected {
+      > .e-acrdn-header {
+        &:focus {
+          @include acrdn-item-header-focus-box-shadow;
+        }
+        @include acrdn-item-header-focus-visible-box-shadow;
+      }
+    }
+
+    > .e-acrdn-header {
+      &:focus {
+        @include acrdn-item-header-focus-box-shadow;
+      }
+      @include acrdn-item-header-focus-visible-box-shadow;
+    }
+  }
 }

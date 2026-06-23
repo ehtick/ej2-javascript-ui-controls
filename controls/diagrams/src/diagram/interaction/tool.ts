@@ -1212,6 +1212,7 @@ export class MoveTool extends ToolBase {
             if (args.source && this.currentTarget && canAllowDrop(this.currentTarget) &&
                 this.commandHandler.isDroppable(args.source, this.currentTarget)) {
                 let canSplit = true;
+                let preventSplit: boolean;
                 this.commandHandler.drop(this.currentElement, this.currentTarget, this.currentPosition);
                 if (this.currentTarget && this.currentTarget instanceof Connector) {
                     if (this.commandHandler.diagram.enableConnectorSplit === true) {
@@ -1230,7 +1231,10 @@ export class MoveTool extends ToolBase {
                                     canSplit = false;
                                 }
                             }
-                            if (canSplit) {
+                            //1032766: Connectors break when moving node groups with line Routing and connector splitting enabled
+                            preventSplit = this.canSplitConnector(this.currentElement, this.currentTarget);
+
+                            if (canSplit && !preventSplit) {
                                 this.commandHandler.connectorSplit(this.currentElement, this.currentTarget);
                             }
                         }
@@ -1249,7 +1253,10 @@ export class MoveTool extends ToolBase {
                                     canSplit = false;
                                 }
                             }
-                            if (canSplit) {
+                            //1032766: Connectors break when moving node groups with line Routing and connector splitting enabled
+                            preventSplit = this.canSplitConnector(this.currentElement.nodes[0], this.currentTarget);
+
+                            if (canSplit && !preventSplit) {
                                 this.commandHandler.connectorSplit(this.currentElement.nodes[0], this.currentTarget);
                                 this.commandHandler.PreventConnectorSplit = false;
                             }
@@ -1356,6 +1363,37 @@ export class MoveTool extends ToolBase {
         }
         // this.commandHandler.updateBlazorSelector();
         super.mouseUp(args);
+    }
+    /**
+     * Checks whether a connector can be split by the given node.
+     * @param droppedNode - The node being dropped onto the connector.
+     * @param connector - The target connector.
+     * @private
+     */
+    private canSplitConnector(droppedNode: NodeModel, connector: Connector): boolean {
+        const targetConnectorId: string = connector.id;
+        const connectorParentId: string = connector.parentId;
+        // A connector should not connect to any child of its parent or to a common nested parent.
+        if (connectorParentId) {
+            const droppedAncestors: string[] = this.getAncestorIds((droppedNode as Node).id);
+            const connectorAncestors: string[] = this.getAncestorIds(targetConnectorId);
+            for (let i: number = 0; i < connectorAncestors.length; i++) {
+                if (droppedAncestors.indexOf(connectorAncestors[parseInt(i.toString(), 10)]) !== -1) { return true; }
+            }
+        }
+        return false;
+    }
+    private getAncestorIds(objectId: string): string[] {
+        const ancestors: string[] = [];
+        const nameTable: { [key: string]: NodeModel | ConnectorModel } =
+            this.commandHandler.diagram.nameTable as { [key: string]: NodeModel | ConnectorModel };
+        let currentId: string = objectId;
+        while (currentId && ancestors.indexOf(currentId) === -1) {
+            ancestors.push(currentId);
+            const current: NodeModel = nameTable[`${currentId}`] as NodeModel;
+            currentId = current ? (current as Node).parentId : null;
+        }
+        return ancestors;
     }
     private clearDiff(nodes: NodeModel[]) {
         nodes.forEach(function (node, index) {

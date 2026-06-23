@@ -3806,37 +3806,45 @@ export class DocumentEditor extends Component<HTMLElement> implements INotifyPro
         }
     }
     private async processSfdt(sfdtText: string, isAsync: boolean): Promise<void> {
-        if (!isNullOrUndefined(this.viewer) && !isNullOrUndefined(sfdtText)) {
-            this.clearPreservedCollectionsInViewer();
-            this.documentHelper.userCollection.push('Everyone');
-            this.documentHelper.lists = [];
-            this.documentHelper.abstractLists = [];
-            this.documentHelper.styles = new WStyles();
-            this.documentHelper.cachedPages = [];
-            this.clearSpellCheck();
-            if (this.isSpellCheck) {
-                if (this.isSpellCheck && !this.spellCheckerModule.enableOptimizedSpellCheck) {
-                    this.documentHelper.triggerElementsOnLoading = true;
-                    this.documentHelper.triggerSpellCheck = true;
+        try {
+            if (!isNullOrUndefined(this.viewer) && !isNullOrUndefined(sfdtText)) {
+                this.clearPreservedCollectionsInViewer();
+                this.documentHelper.userCollection.push('Everyone');
+                this.documentHelper.lists = [];
+                this.documentHelper.abstractLists = [];
+                this.documentHelper.styles = new WStyles();
+                this.documentHelper.cachedPages = [];
+                this.clearSpellCheck();
+                if (this.isSpellCheck) {
+                    if (this.isSpellCheck && !this.spellCheckerModule.enableOptimizedSpellCheck) {
+                        this.documentHelper.triggerElementsOnLoading = true;
+                        this.documentHelper.triggerSpellCheck = true;
+                    }
                 }
-            }
-            if (!isNullOrUndefined(sfdtText) && this.viewer) {
-                const incrementalOps: Record<string, ActionInfo[]> = {};
-                this.documentHelper.setDefaultDocumentFormat();
-                const sections: BodyWidget[] = this.parser.convertJsonToDocument(sfdtText as string, incrementalOps);
-                if (isAsync) {
-                    await this.documentHelper.onDocumentChanged(sections, incrementalOps, true);
-                } else {
-                    this.documentHelper.onDocumentChanged(sections, incrementalOps, false);
+                if (!isNullOrUndefined(sfdtText) && this.viewer) {
+                    const incrementalOps: Record<string, ActionInfo[]> = {};
+                    this.documentHelper.setDefaultDocumentFormat();
+                    const sections: BodyWidget[] = this.parser.convertJsonToDocument(sfdtText as string, incrementalOps);
+                    if (isAsync) {
+                        await this.documentHelper.onDocumentChanged(sections, incrementalOps, true);
+                    } else {
+                        this.documentHelper.onDocumentChanged(sections, incrementalOps, false);
+                    }
                 }
-            }
 
-            if (this.isSpellCheck) {
-                if (this.isSpellCheck && !this.spellCheckerModule.enableOptimizedSpellCheck) {
-                    this.documentHelper.triggerElementsOnLoading = false;
-                    this.documentHelper.triggerSpellCheck = false;
+                if (this.isSpellCheck) {
+                    if (this.isSpellCheck && !this.spellCheckerModule.enableOptimizedSpellCheck) {
+                        this.documentHelper.triggerElementsOnLoading = false;
+                        this.documentHelper.triggerSpellCheck = false;
+                    }
                 }
             }
+        } catch (error) {
+            const locale: L10n = new L10n('documenteditor', this.defaultLocale);
+            const status: string = locale.getConstant('Failed to load the file');
+            const failedargs: DocumentLoadFailedEventArgs = { status: status, hideOpenFailedPopup: false };
+            this.trigger(documentLoadFailedEvent, failedargs);
+            return;
         }
         hideSpinner(this.element);
     }
@@ -3983,7 +3991,6 @@ export class DocumentEditor extends Component<HTMLElement> implements INotifyPro
         const status: string = args.name === 'onError' ? locale.getConstant('Error in establishing connection with web server') :
             locale.getConstant('Failed to load the file');
         const failedargs: DocumentLoadFailedEventArgs = { status: status, hideOpenFailedPopup: false };
-        this.trigger(documentLoadFailedEvent, failedargs);
         if (!failedargs.hideOpenFailedPopup) {
             if (args.name === 'onError') {
                 DialogUtility.alert({
@@ -3993,7 +4000,8 @@ export class DocumentEditor extends Component<HTMLElement> implements INotifyPro
                 }).enableRtl = this.enableRtl;
             } else if (args === 'onError') {
                 alert(locale.getConstant('Failed to load the file'));
-                //this.fireServiceFailure(args);
+            } else if (args.name === 'onFailure') {
+                this.fireServiceFailure(args);
             }
         }
     }

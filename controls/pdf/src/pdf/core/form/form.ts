@@ -120,6 +120,33 @@ export class PdfForm {
      */
     _fieldCollection: PdfField[] = [];
     /**
+     * Terminal field dictionaries discovered during form field parsing.
+     *
+     * @private
+     */
+    _terminalFields: _PdfDictionary[];
+    /**
+     * Map from terminal field dictionary to its indirect reference.
+     *
+     * @private
+     */
+    _fieldsMap: Map<_PdfDictionary, _PdfReference>;
+    /**
+     * Grouped widget dictionaries organized by field name.
+     * Stores multiple widget dictionaries that share the same field name,
+     * primarily used for radio button groups.
+     *
+     * @private
+     */
+    _widgetDictionary: Map<string, _PdfDictionary[]>;
+    /**
+     * Set of field names that have been added during form field creation.
+     * Used to track and avoid duplicate field names when processing widgets.
+     *
+     * @private
+     */
+    _addedFieldNames: Set<string>;
+    /**
      * Per page tab order map.
      *
      * @private
@@ -180,6 +207,12 @@ export class PdfForm {
      */
     _isValidKids: boolean = false;
     /**
+     * Indicates page widget references.
+     *
+     * @private
+     */
+    _pageWidgetReference: Map<_PdfReference, _PdfDictionary>;
+    /**
      * Represents a loaded from the PDF document.
      *
      * @private
@@ -191,6 +224,7 @@ export class PdfForm {
         this._crossReference = crossReference;
         this._parsedFields = new Map();
         this._fields = [];
+        this._addedFieldNames = new Set<string>();
         this._createFields();
     }
     /**
@@ -377,6 +411,125 @@ export class PdfForm {
         return field;
     }
     /**
+     * Builds a map of widget annotation references from all pages in the document.
+     * This collection is used to associate terminal fields with their corresponding
+     * page-level widget annotations, enabling proper field-to-page linkage.
+     *
+     * @private
+     * @returns {void}
+     */
+    _getPageWidgetCollection(): void {
+        this._pageWidgetReference = new Map<_PdfReference, _PdfDictionary>();
+        const document: PdfDocument = this._crossReference._document;
+        if (!document) {
+            return;
+        }
+        for (let i: number = 0; i < document.pageCount; i++) {
+            const page: PdfPage = document.getPage(i);
+            if (!page || !page._pageDictionary) {
+                continue;
+            }
+            let widgetAnnots: _PdfReference[] = [];
+            if (page._pageDictionary.has('Annots')) {
+                widgetAnnots = page._pageDictionary.getRaw('Annots');
+                if (widgetAnnots instanceof _PdfReference) {
+                    widgetAnnots = this._crossReference._fetch(widgetAnnots);
+                }
+            }
+            if (widgetAnnots && Array.isArray(widgetAnnots)) {
+                for (let j: number = 0; j < widgetAnnots.length; j++) {
+                    const ref: _PdfReference = widgetAnnots[<number>j];
+                    if (ref && ref instanceof _PdfReference) {
+                        const annotDictionary: _PdfDictionary = this._crossReference._fetch(ref);
+                        if (annotDictionary && annotDictionary.has('Subtype') && annotDictionary.get('Subtype') &&
+                            annotDictionary.get('Subtype').name === 'Widget') {
+                            this._pageWidgetReference.set(ref, annotDictionary);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    /**
+     * Retrieves a form field by its index within the terminal fields collection.
+     * Resolves the field dictionary with its associated page widget reference when available.
+     *
+     * @private
+     * @param {number} index The index of the field in the terminal fields array.
+     * @returns {PdfField} The parsed PDF form field, or `null` if not found or out of range.
+     */
+    _getField(index: number): PdfField {
+        if (!this._terminalFields || index < 0 || index >= this._terminalFields.length) {
+            return null;
+        }
+        if (!this._pageWidgetReference) {
+            this._getPageWidgetCollection();
+        }
+        let dictionary: _PdfDictionary = this._terminalFields[<number>index];
+        let ref: _PdfReference = dictionary._reference;
+        const acroFields: any = this._dictionary ? this._dictionary.get('Fields') : null; // eslint-disable-line
+        if (acroFields && this._pageWidgetReference && this._pageWidgetReference.size > 0) {
+            let _found: boolean = false;
+            this._pageWidgetReference.forEach((wdict: _PdfDictionary, wref: _PdfReference) => { // eslint-disable-line
+                if (_found) {
+                    return;
+                }
+                if (dictionary && this._compareWidgets(wdict, dictionary)) {
+                    if (!dictionary.has('P')) {
+                        dictionary = wdict;
+                        if (this._fieldsMap && this._fieldsMap.has(wdict)) {
+                            ref = this._fieldsMap.get(wdict);
+                        }
+                    }
+                    _found = true;
+                }
+            });
+        }
+        const field: PdfField = this._parseFields(dictionary, ref);
+        if (field) {
+            field._form = this;
+        }
+        return field;
+    }
+    /**
+     * Parses a form field from a given field dictionary, resolving page widget associations
+     * and constructing the appropriate PDF field type via `_parseFields`.
+     *
+     * @private
+     * @param {_PdfDictionary} fieldDictionary The field dictionary to parse.
+     * @returns {PdfField} The constructed PDF form field, or `null` if parsing fails.
+     */
+    _getFieldFromDictionary(fieldDictionary: _PdfDictionary): PdfField {
+        if (!this._pageWidgetReference) {
+            this._getPageWidgetCollection();
+        }
+        let dictionary: _PdfDictionary = fieldDictionary;
+        let ref: _PdfReference = dictionary._reference;
+        const acroFields: any = this._dictionary ? this._dictionary.get('Fields') : null; // eslint-disable-line
+        if (acroFields && this._pageWidgetReference && this._pageWidgetReference.size > 0) {
+            let found: boolean = false;
+            this._pageWidgetReference.forEach((wdict: _PdfDictionary, wref: _PdfReference) => { // eslint-disable-line
+                if (found) {
+                    return;
+                }
+                if (dictionary && this._compareWidgets(wdict, dictionary)) {
+                    if (!dictionary.has('P')) {
+                        dictionary = wdict;
+                        if (this._fieldsMap && this._fieldsMap.has(wdict)) {
+                            ref = this._fieldsMap.get(wdict);
+                        }
+                    }
+                    found = true;
+                }
+            });
+        }
+        const field: PdfField = this._parseFields(dictionary, ref);
+        if (field) {
+            field._form = this;
+        }
+        return field;
+    }
+    /**
      * Parses a terminal form field from its dictionary and reference, instantiating the appropriate
      * field type based on `FT` and `Ff` (e.g., text, button, choice, signature).
      *
@@ -470,15 +623,17 @@ export class PdfForm {
      * @returns {number} The index of the added field in the form.
      */
     _doAdd(field: PdfField): number {
-        this._fields.push(field._ref);
-        this._dictionary.update('Fields', this._fields);
-        this._parsedFields.set(this._fields.length - 1, field);
-        field._form = this;
-        this._crossReference._root._updated = true;
-        if (field instanceof PdfSignatureField) {
-            field._form._signatureFlag = _SignatureFlag.signatureExists | _SignatureFlag.appendOnly;
+        if (this._fields.indexOf(field._ref) === -1) {
+            this._fields.push(field._ref);
+            this._dictionary.update('Fields', this._fields);
+            this._parsedFields.set(this._fields.length - 1, field);
+            field._form = this;
+            this._crossReference._root._updated = true;
+            if (field instanceof PdfSignatureField) {
+                field._form._signatureFlag = _SignatureFlag.signatureExists | _SignatureFlag.appendOnly;
+            }
+            this._isNeedAppearances = true;
         }
-        this._isNeedAppearances = true;
         return (this._fields.length - 1);
     }
     /**
@@ -1100,12 +1255,15 @@ export class PdfForm {
             fields = entry.fields;
             count = entry.count + 1;
         }
+        this._terminalFields = terminalFields;
+        this._fieldsMap = fieldsMap;
         this._createFieldCollection(terminalFields, fieldsMap);
     }
     private _createFieldCollection(terminalFields: _PdfDictionary[], fieldsMap: Map<_PdfDictionary, _PdfReference>): void {
         const pageWidgets: Map<number, _PdfDictionary[]> = new Map();
         const document: PdfDocument = this._crossReference._document;
         const widgetCollection: _PdfReference[] = [];
+        this._widgetDictionary = new Map<string, _PdfDictionary[]>();
         if (document) {
             for (let i: number = 0; i < document.pageCount; i++) {
                 const page: PdfPage = document.getPage(i);
@@ -1130,6 +1288,19 @@ export class PdfForm {
                             if (annotDictionary && annotDictionary.has('Subtype') &&
                                 annotDictionary.get('Subtype').name === 'Widget') {
                                 annotDictionary._reference = ref;
+                                if (annotDictionary.has('T')) {
+                                    const tname: string = annotDictionary.get('T');
+                                    if (this._formNames.indexOf(tname) === -1) {
+                                        if (tname) {
+                                            let arr: _PdfDictionary[] = this._widgetDictionary.get(tname);
+                                            if (!arr) {
+                                                arr = [];
+                                                this._widgetDictionary.set(tname, arr);
+                                            }
+                                            arr.push(annotDictionary);
+                                        }
+                                    }
+                                }
                                 widgets.push(annotDictionary);
                             }
                         }
@@ -1150,6 +1321,7 @@ export class PdfForm {
         if (terminalFields.length > 0) {
             this._processRemainingWidgets();
         }
+        this._createFormFieldsFromWidgets(terminalFields.length);
     }
     private _processRemainingWidgets(): void {
         const document: PdfDocument = this._crossReference._document;
@@ -1389,6 +1561,8 @@ export class PdfForm {
                         const annotTU: string = annotDictionary.get('TU');
                         if (widgetTU && annotTU && widgetTU === annotTU) {
                             isSame = true;
+                        } else {
+                            isSame = false;
                         }
                     }
                     if (widget.has('Rect') && annotDictionary.has('Rect')) {
@@ -1404,6 +1578,8 @@ export class PdfForm {
                                 typeof w2 === 'number' && typeof a2 === 'number') {
                                 if (w1 === a1 && w2 === a2) {
                                     isSame = true;
+                                } else {
+                                    isSame = false;
                                 }
                             }
                         }
@@ -1412,6 +1588,160 @@ export class PdfForm {
             }
         }
         return isSame;
+    }
+    /**
+     * Create form fields from previously discovered terminal widgets starting at index.
+     * Mirrors the C# CreateFormFieldsFromWidgets logic: add terminal fields not yet added
+     * and merge radio-group items when multiple widgets share the same name.
+     *
+     * @private
+     * @param {number} startIndex The starting index into terminal fields.
+     * @returns {void}
+     */
+    _createFormFieldsFromWidgets(startIndex: number): void {
+        if (!(this._terminalFields && this._terminalFields.length > 0)) {
+            return;
+        }
+        this._processTerminalFields(startIndex);
+        this._processWidgetDictionary();
+    }
+    /**
+     * Process terminal fields starting from the specified index.
+     * Adds fields to the form, tracking added field names to avoid duplicates.
+     *
+     * @private
+     * @param {number} startIndex The starting index into terminal fields.
+     * @returns {void}
+     */
+    private _processTerminalFields(startIndex: number): void {
+        for (let i: number = startIndex; i < this._terminalFields.length; i++) {
+            const field: PdfField = this.fieldAt(i);
+            if (!field) {
+                continue;
+            }
+            const name: string = field.name;
+            if (name && !this._addedFieldNames.has(name)) {
+                this._doAdd(field);
+                this._addedFieldNames.add(name);
+            } else if (!name) {
+                this._doAdd(field);
+            }
+        }
+    }
+    /**
+     * Process widget dictionary to handle radio button groups and single widgets.
+     * Merges radio button items when multiple widgets share the same name.
+     *
+     * @private
+     * @returns {void}
+     */
+    private _processWidgetDictionary(): void {
+        if (!this._widgetDictionary) {
+            return;
+        }
+        this._widgetDictionary.forEach((list: _PdfDictionary[]) => {
+            if (!list || list.length === 0) {
+                return;
+            }
+            if (list.length > 1) {
+                this._processMultipleWidgets(list);
+            } else {
+                this._processSingleWidget(list[0]);
+            }
+        });
+    }
+    /**
+     * Process multiple widgets with the same name, merging radio button items.
+     *
+     * @private
+     * @param {_PdfDictionary[]} list The list of widget dictionaries with the same name.
+     * @returns {void}
+     */
+    private _processMultipleWidgets(list: _PdfDictionary[]): void {
+        const firstDict: _PdfDictionary = list[0];
+        const baseField: PdfField = this._getFieldFromDictionary(firstDict);
+        if (baseField) {
+            this._terminalFields.push(baseField._dictionary);
+            this._doAdd(baseField);
+        }
+        const radioField: PdfRadioButtonListField | undefined =
+            baseField instanceof PdfRadioButtonListField ? baseField : undefined;
+        for (let k: number = 1; k < list.length; k++) {
+            const dict: _PdfDictionary = list[<number>k];
+            const field: PdfField = this._getFieldFromDictionary(dict);
+            if (!field) {
+                continue;
+            }
+            if (radioField && field instanceof PdfRadioButtonListField) {
+                this._mergeRadioButtonItems(radioField, field);
+            }
+            if (field.name) {
+                this._handleFieldNaming(field);
+            }
+            this._terminalFields.push(field._dictionary);
+            this._doAdd(field);
+        }
+    }
+    /**
+     * Merge radio button items from one field into another.
+     *
+     * @private
+     * @param {PdfRadioButtonListField} targetField The target radio button field to merge into.
+     * @param {PdfRadioButtonListField} sourceField The source radio button field to merge from.
+     * @returns {void}
+     */
+    private _mergeRadioButtonItems(targetField: PdfRadioButtonListField, sourceField: PdfRadioButtonListField): void {
+        for (let j: number = 0; j < sourceField.itemsCount; j++) {
+            const item: PdfRadioButtonListItem = sourceField.itemAt(j);
+            if (item) {
+                const insertIndex: number = targetField._parsedItems.size;
+                targetField._parsedItems.set(insertIndex, item);
+            }
+        }
+    }
+    /**
+     * Handle field naming by either correcting duplicate names or adding to the field name list.
+     *
+     * @private
+     * @param {PdfField} field The field to process for naming.
+     * @returns {void}
+     */
+    private _handleFieldNaming(field: PdfField): void {
+        if (!this._validFieldName(field)) {
+            field._dictionary.update('T', this._getCorrectName(field.name));
+        } else {
+            this._fieldName.push(field.name);
+        }
+    }
+    /**
+     * Process a single widget dictionary entry.
+     *
+     * @private
+     * @param {_PdfDictionary} dict The widget dictionary to process.
+     * @returns {void}
+     */
+    private _processSingleWidget(dict: _PdfDictionary): void {
+        if (!dict) {
+            return;
+        }
+        if (this._terminalFields.indexOf(dict) === -1) {
+            this._terminalFields.push(dict);
+        }
+        const idx: number = this._terminalFields.length - 1;
+        const field: PdfField = idx >= 0 ? this._getField(idx) : undefined;
+        if (field) {
+            this._doAdd(field);
+        }
+    }
+    /**
+     * Validates whether a field name is unique within the form.
+     *
+     * @private
+     * @param {PdfField} field The field to validate.
+     * @returns {boolean} Returns `true` if the field name is valid (unique); otherwise, `false`.
+     */
+    _validFieldName(field: PdfField): boolean {
+        return this._fieldName.indexOf(field.name) === -1;
     }
     /**
      * Determines whether the provided `Kids` collection represents a non widget node
